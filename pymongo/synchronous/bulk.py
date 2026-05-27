@@ -36,6 +36,7 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
+from pymongo._telemetry import _CommandTelemetry
 from pymongo.bulk_shared import (
     _COMMANDS,
     _DELETE_ALL,
@@ -252,78 +253,28 @@ class _Bulk:
     ) -> dict[str, Any]:
         """A proxy for SocketInfo.write_command that handles event publishing."""
         cmd[bwc.field] = docs
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=cmd,
-                commandName=next(iter(cmd)),
-                databaseName=bwc.db_name,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=bwc.conn.id,
-                serverConnectionId=bwc.conn.server_connection_id,
-                serverHost=bwc.conn.address[0],
-                serverPort=bwc.conn.address[1],
-                serviceId=bwc.conn.service_id,
-            )
-        if bwc.publish:
-            bwc._start(cmd, request_id, docs)
-        try:
-            reply = bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc]
-            duration = datetime.datetime.now() - bwc.start_time
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.SUCCEEDED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    reply=reply,
-                    commandName=next(iter(cmd)),
-                    databaseName=bwc.db_name,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=bwc.conn.id,
-                    serverConnectionId=bwc.conn.server_connection_id,
-                    serverHost=bwc.conn.address[0],
-                    serverPort=bwc.conn.address[1],
-                    serviceId=bwc.conn.service_id,
-                )
-            if bwc.publish:
-                bwc._succeed(request_id, reply, duration)  # type: ignore[arg-type]
-            client._process_response(reply, bwc.session)  # type: ignore[arg-type]
-        except Exception as exc:
-            duration = datetime.datetime.now() - bwc.start_time
-            if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                failure: _DocumentOut = exc.details  # type: ignore[assignment]
-            else:
-                failure = _convert_exception(exc)
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(cmd)),
-                    databaseName=bwc.db_name,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=bwc.conn.id,
-                    serverConnectionId=bwc.conn.server_connection_id,
-                    serverHost=bwc.conn.address[0],
-                    serverPort=bwc.conn.address[1],
-                    serviceId=bwc.conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
-
-            if bwc.publish:
-                bwc._fail(request_id, failure, duration)
-            # Process the response from the server.
-            if isinstance(exc, (NotPrimaryError, OperationFailure)):
+        with _CommandTelemetry(
+            client=client,
+            command_name=bwc.name,
+            database_name=bwc.db_name,
+            spec=cmd,
+            orig=cmd,
+            driver_connection_id=bwc.conn.id,
+            server_connection_id=bwc.conn.server_connection_id,
+            service_id=bwc.conn.service_id,
+            address=bwc.conn.address,
+            listeners=bwc.listeners,
+            request_id=request_id,
+            publish_event=bwc.publish,
+            operation_id=bwc.op_id,
+        ) as cmd_telemetry:
+            try:
+                reply = bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc]
+            except (NotPrimaryError, OperationFailure) as exc:
                 client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
-            raise
+                raise
+            cmd_telemetry.handle_succeeded(reply)
+        client._process_response(reply, bwc.session)  # type: ignore[arg-type]
         return reply  # type: ignore[return-value]
 
     def unack_write(

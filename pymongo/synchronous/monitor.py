@@ -194,7 +194,11 @@ class Monitor(MonitorBase):
         self.cancel_check()
 
     def join(self) -> None:
-        asyncio.gather(self._executor.join(), self._rtt_monitor.join(), return_exceptions=True)  # type: ignore[func-returns-value]
+        asyncio.gather(
+            self._executor.join(),  # type: ignore[func-returns-value]
+            self._rtt_monitor.join(),  # type: ignore[func-returns-value]
+            return_exceptions=True,
+        )
 
     def close(self) -> None:
         self.gc_safe_close()

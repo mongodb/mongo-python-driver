@@ -15,8 +15,6 @@
 """Internal network layer helper methods."""
 from __future__ import annotations
 
-import datetime
-import logging
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -30,12 +28,8 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo import _csot, helpers_shared, message
+from pymongo._telemetry import _CommandTelemetry
 from pymongo.compression_support import _NO_COMPRESSION
-from pymongo.errors import (
-    NotPrimaryError,
-    OperationFailure,
-)
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import (
@@ -127,9 +121,7 @@ async def command(
         spec["collation"] = collation
 
     publish = listeners is not None and listeners.enabled_for_commands
-    start = datetime.datetime.now()
-    if publish:
-        speculative_hello = _is_speculative_authenticate(name, spec)
+    speculative_hello = _is_speculative_authenticate(name, spec) if publish else False
 
     if compression_ctx and name.lower() in _NO_COMPRESSION:
         compression_ctx = None
@@ -159,36 +151,21 @@ async def command(
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-    if client is not None:
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=spec,
-                commandName=next(iter(spec)),
-                databaseName=dbname,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-            )
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        listeners.publish_command_start(
-            orig,
-            dbname,
-            request_id,
-            address,
-            conn.server_connection_id,
-            service_id=conn.service_id,
-        )
 
-    try:
+    with _CommandTelemetry(
+        client=client,
+        command_name=name,
+        database_name=dbname,
+        spec=spec,
+        orig=orig,
+        driver_connection_id=conn.id,
+        server_connection_id=conn.server_connection_id,
+        service_id=conn.service_id,
+        address=address if address is not None else conn.address,
+        listeners=listeners,
+        request_id=request_id,
+        publish_event=publish,
+    ) as cmd_telemetry:
         await async_sendall(conn.conn.get_conn, msg)
         if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
@@ -215,79 +192,7 @@ async def command(
                     allowable_errors,
                     parse_write_concern_error=parse_write_concern_error,
                 )
-    except Exception as exc:
-        duration = datetime.datetime.now() - start
-        if isinstance(exc, (NotPrimaryError, OperationFailure)):
-            failure: _DocumentOut = exc.details  # type: ignore[assignment]
-        else:
-            failure = message._convert_exception(exc)
-        if client is not None:
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(spec)),
-                    databaseName=dbname,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=conn.id,
-                    serverConnectionId=conn.server_connection_id,
-                    serverHost=conn.address[0],
-                    serverPort=conn.address[1],
-                    serviceId=conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
-        if publish:
-            assert listeners is not None
-            assert address is not None
-            listeners.publish_command_failure(
-                duration,
-                failure,
-                name,
-                request_id,
-                address,
-                conn.server_connection_id,
-                service_id=conn.service_id,
-                database_name=dbname,
-            )
-        raise
-    duration = datetime.datetime.now() - start
-    if client is not None:
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.SUCCEEDED,
-                clientId=client._topology_settings._topology_id,
-                durationMS=duration,
-                reply=response_doc,
-                commandName=next(iter(spec)),
-                databaseName=dbname,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-                speculative_authenticate="speculativeAuthenticate" in orig,
-            )
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        listeners.publish_command_success(
-            duration,
-            response_doc,
-            name,
-            request_id,
-            address,
-            conn.server_connection_id,
-            service_id=conn.service_id,
-            speculative_hello=speculative_hello,
-            database_name=dbname,
-        )
+        cmd_telemetry.handle_succeeded(response_doc, speculative_hello=speculative_hello)
 
     if client and client._encrypter and reply:
         decrypted = await client._encrypter.decrypt(reply.raw_command_response())
