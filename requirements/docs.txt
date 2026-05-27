@@ -2,5 +2,5 @@ sphinx>=5.3,<9
 sphinx_rtd_theme>=3.1.0,<4
 readthedocs-sphinx-search~=0.3
 sphinxcontrib-shellcheck>=1,<2
-sphinx-autobuild>=2020.9.1
+sphinx-autobuild>=2024.10.3
 furo==2025.12.19
