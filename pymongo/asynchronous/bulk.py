@@ -19,8 +19,6 @@
 from __future__ import annotations
 
 import copy
-import datetime
-import logging
 from collections.abc import MutableMapping
 from itertools import islice
 from typing import (
@@ -58,13 +56,11 @@ from pymongo.errors import (
     OperationFailure,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import (
     _DELETE,
     _INSERT,
     _UPDATE,
     _BulkWriteContext,
-    _convert_exception,
     _convert_write_result,
     _EncryptedBulkWriteContext,
     _randint,
@@ -288,81 +284,29 @@ class _AsyncBulk:
         client: AsyncMongoClient[Any],
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for AsyncConnection.unack_write that handles event publishing."""
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=client._topology_settings._topology_id,
-                command=cmd,
-                commandName=next(iter(cmd)),
-                databaseName=bwc.db_name,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=bwc.conn.id,
-                serverConnectionId=bwc.conn.server_connection_id,
-                serverHost=bwc.conn.address[0],
-                serverPort=bwc.conn.address[1],
-                serviceId=bwc.conn.service_id,
-            )
-        if bwc.publish:
-            cmd = bwc._start(cmd, request_id, docs)
-        try:
+        cmd[bwc.field] = docs
+        with _CommandTelemetry(
+            client=client,
+            command_name=bwc.name,
+            database_name=bwc.db_name,
+            spec=cmd,
+            orig=cmd,
+            driver_connection_id=bwc.conn.id,
+            server_connection_id=bwc.conn.server_connection_id,
+            service_id=bwc.conn.service_id,
+            address=bwc.conn.address,
+            listeners=bwc.listeners,
+            request_id=request_id,
+            publish_event=bwc.publish,
+            operation_id=bwc.op_id,
+        ) as cmd_telemetry:
             result = await bwc.conn.unack_write(msg, max_doc_size)  # type: ignore[func-returns-value, misc, override]
-            duration = datetime.datetime.now() - bwc.start_time
             if result is not None:
                 reply = _convert_write_result(bwc.name, cmd, result)  # type: ignore[arg-type]
             else:
                 # Comply with APM spec.
                 reply = {"ok": 1}
-                if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _COMMAND_LOGGER,
-                        message=_CommandStatusMessage.SUCCEEDED,
-                        clientId=client._topology_settings._topology_id,
-                        durationMS=duration,
-                        reply=reply,
-                        commandName=next(iter(cmd)),
-                        databaseName=bwc.db_name,
-                        requestId=request_id,
-                        operationId=request_id,
-                        driverConnectionId=bwc.conn.id,
-                        serverConnectionId=bwc.conn.server_connection_id,
-                        serverHost=bwc.conn.address[0],
-                        serverPort=bwc.conn.address[1],
-                        serviceId=bwc.conn.service_id,
-                    )
-            if bwc.publish:
-                bwc._succeed(request_id, reply, duration)
-        except Exception as exc:
-            duration = datetime.datetime.now() - bwc.start_time
-            if isinstance(exc, OperationFailure):
-                failure: _DocumentOut = _convert_write_result(bwc.name, cmd, exc.details)  # type: ignore[arg-type]
-            elif isinstance(exc, NotPrimaryError):
-                failure = exc.details  # type: ignore[assignment]
-            else:
-                failure = _convert_exception(exc)
-            if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=_CommandStatusMessage.FAILED,
-                    clientId=client._topology_settings._topology_id,
-                    durationMS=duration,
-                    failure=failure,
-                    commandName=next(iter(cmd)),
-                    databaseName=bwc.db_name,
-                    requestId=request_id,
-                    operationId=request_id,
-                    driverConnectionId=bwc.conn.id,
-                    serverConnectionId=bwc.conn.server_connection_id,
-                    serverHost=bwc.conn.address[0],
-                    serverPort=bwc.conn.address[1],
-                    serviceId=bwc.conn.service_id,
-                    isServerSideError=isinstance(exc, OperationFailure),
-                )
-            if bwc.publish:
-                assert bwc.start_time is not None
-                bwc._fail(request_id, failure, duration)
-            raise
+            cmd_telemetry.handle_succeeded(reply)
         return result  # type: ignore[return-value]
 
     async def _execute_batch_unack(

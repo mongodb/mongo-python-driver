@@ -58,7 +58,7 @@ class _CommandTelemetry:
             address=address,
             listeners=listeners,
             request_id=request_id,
-            publish=publish,
+            publish_event=publish,
         ) as cmd_telemetry:
             reply = do_network_call()
             cmd_telemetry.handle_succeeded(reply)
