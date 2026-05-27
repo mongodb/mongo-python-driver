@@ -60,7 +60,7 @@ static PyObject* _error(char* name) {
  * Returns 0 on failure */
 static int buffer_write_bytes_ssize_t(buffer_t buffer, const char* data, Py_ssize_t size) {
     int downsize = _downcast_and_check(size, 0);
-    if (size == -1) {
+    if (downsize == -1) {
         return 0;
     }
     return buffer_write_bytes(buffer, data, downsize);

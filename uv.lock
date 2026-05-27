@@ -1588,23 +1588,23 @@ requires-dist = [
     { name = "certifi", marker = "(os_name == 'nt' and extra == 'encryption') or (sys_platform == 'darwin' and extra == 'encryption')", specifier = ">=2023.7.22" },
     { name = "certifi", marker = "(os_name == 'nt' and extra == 'ocsp') or (sys_platform == 'darwin' and extra == 'ocsp')", specifier = ">=2023.7.22" },
     { name = "cryptography", marker = "extra == 'ocsp'", specifier = ">=42.0.0" },
-    { name = "dnspython", specifier = ">=2.6.1,<3.0.0" },
+    { name = "dnspython", specifier = ">=2.7.0,<3.0.0" },
     { name = "furo", marker = "extra == 'docs'", specifier = "==2025.12.19" },
     { name = "importlib-metadata", marker = "python_full_version < '3.13' and extra == 'test'", specifier = ">=7.0" },
     { name = "pykerberos", marker = "os_name != 'nt' and extra == 'gssapi'", specifier = ">=1.2.4" },
-    { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.1.0,<2.0.0" },
-    { name = "pymongo-auth-aws", marker = "extra == 'encryption'", specifier = ">=1.1.0,<2.0.0" },
+    { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.3.0,<2.0.0" },
+    { name = "pymongo-auth-aws", marker = "extra == 'encryption'", specifier = ">=1.3.0,<2.0.0" },
     { name = "pymongocrypt", marker = "extra == 'encryption'", specifier = ">=1.13.0,<2.0.0" },
-    { name = "pyopenssl", marker = "extra == 'ocsp'", specifier = ">=23.2.0" },
+    { name = "pyopenssl", marker = "extra == 'ocsp'", specifier = ">=26.2.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.2" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.24.0" },
-    { name = "python-snappy", marker = "extra == 'snappy'", specifier = ">=0.6.0" },
+    { name = "python-snappy", marker = "extra == 'snappy'", specifier = ">=0.7.3" },
     { name = "readthedocs-sphinx-search", marker = "extra == 'docs'", specifier = "~=0.3" },
     { name = "requests", marker = "extra == 'ocsp'", specifier = ">=2.23.0,<3.0" },
     { name = "service-identity", marker = "extra == 'ocsp'", specifier = ">=23.1.0" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=5.3,<9" },
-    { name = "sphinx-autobuild", marker = "extra == 'docs'", specifier = ">=2020.9.1" },
-    { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=2,<4" },
+    { name = "sphinx-autobuild", marker = "extra == 'docs'", specifier = ">=2024.10.3" },
+    { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=3.1.0,<4" },
     { name = "sphinxcontrib-shellcheck", marker = "extra == 'docs'", specifier = ">=1,<2" },
     { name = "winkerberos", marker = "os_name == 'nt' and extra == 'gssapi'", specifier = ">=0.5.0" },
 ]
@@ -1657,15 +1657,15 @@ wheels = [
 
 [[package]]
 name = "pyopenssl"
-version = "25.3.0"
+version = "26.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/80/be/97b83a464498a79103036bc74d1038df4a7ef0e402cfaf4d5e113fb14759/pyopenssl-25.3.0.tar.gz", hash = "sha256:c981cb0a3fd84e8602d7afc209522773b94c1c2446a3c710a75b06fe1beae329", size = 184073, upload-time = "2025-09-17T00:32:21.037Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/51/27a5ad5f939d08f690a326ef9582cda7140555180db71695f6fb747d6a36/pyopenssl-26.2.0.tar.gz", hash = "sha256:8c6fcecd1183a7fc897548dfe388b0cdb7f37e018200d8409cf33959dbe35387", size = 182195, upload-time = "2026-05-04T23:06:09.72Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d1/81/ef2b1dfd1862567d573a4fdbc9f969067621764fbb74338496840a1d2977/pyopenssl-25.3.0-py3-none-any.whl", hash = "sha256:1fda6fc034d5e3d179d39e59c1895c9faeaf40a79de5fc4cbbfbe0d36f4a77b6", size = 57268, upload-time = "2025-09-17T00:32:19.474Z" },
+    { url = "https://files.pythonhosted.org/packages/73/b8/a0e2790ae249d6f38c9f66de7a211621a7ab2650217bcd04e1262f578a56/pyopenssl-26.2.0-py3-none-any.whl", hash = "sha256:4f9d971bc5298b8bc1fab282803da04bf000c755d4ad9d99b52de2569ca19a70", size = 55823, upload-time = "2026-05-04T23:06:08.395Z" },
 ]
 
 [[package]]
@@ -2119,7 +2119,7 @@ wheels = [
 
 [[package]]
 name = "sphinx-rtd-theme"
-version = "3.0.2"
+version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docutils" },
@@ -2128,9 +2128,9 @@ dependencies = [
     { name = "sphinx", version = "8.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "sphinxcontrib-jquery" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/91/44/c97faec644d29a5ceddd3020ae2edffa69e7d00054a8c7a6021e82f20335/sphinx_rtd_theme-3.0.2.tar.gz", hash = "sha256:b7457bc25dda723b20b086a670b9953c859eab60a2a03ee8eb2bb23e176e5f85", size = 7620463, upload-time = "2024-11-13T11:06:04.545Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/68/a1bfbf38c0f7bccc9b10bbf76b94606f64acb1552ae394f0b8285bfaea25/sphinx_rtd_theme-3.1.0.tar.gz", hash = "sha256:b44276f2c276e909239a4f6c955aa667aaafeb78597923b1c60babc76db78e4c", size = 7620915, upload-time = "2026-01-12T16:03:31.17Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/77/46e3bac77b82b4df5bb5b61f2de98637724f246b4966cfc34bc5895d852a/sphinx_rtd_theme-3.0.2-py2.py3-none-any.whl", hash = "sha256:422ccc750c3a3a311de4ae327e82affdaf59eb695ba4936538552f3b00f4ee13", size = 7655561, upload-time = "2024-11-13T11:06:02.094Z" },
+    { url = "https://files.pythonhosted.org/packages/87/c7/b5c8015d823bfda1a346adb2c634a2101d50bb75d421eb6dcb31acd25ebc/sphinx_rtd_theme-3.1.0-py2.py3-none-any.whl", hash = "sha256:1785824ae8e6632060490f67cf3a72d404a85d2d9fc26bce3619944de5682b89", size = 7655617, upload-time = "2026-01-12T16:03:28.101Z" },
 ]
 
 [[package]]
