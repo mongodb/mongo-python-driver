@@ -13,8 +13,8 @@ Official Python driver for MongoDB.
 > **Never** run `pip install bson`. PyMongo ships its own `bson`; the PyPI `bson` package silently breaks things.
 
 ## Project Structure
-- `pymongo/` — sync driver (MongoClient, Collection, Database, etc.)
-- `pymongo/asynchronous/` — async API, mirrors `pymongo/`
+- `pymongo/synchronous/` — sync driver (MongoClient, Collection, Database, etc.) generated from `pymongo/asynchronous/` using unasync
+- `pymongo/asynchronous/` — async API, mirrors `pymongo/synchronous/`
 - `bson/` — BSON implementation
 - `gridfs/` — GridFS API
 - `test/` — sync test suite
@@ -37,8 +37,8 @@ MONGODB_VERSION=8.0 just run-server  # start a local MongoDB server
 ## Testing
 Tests require a live MongoDB server (`just run-server` above).
 
-When modifying sync code, also update the async counterpart:
-1. Make changes in `pymongo/` and `test/`.
+Never modify pymongo/synchronous code first; update the async counterpart and run our `tools/synchro.py` script:
+1. Make changes in `pymongo/asynchronous` or top-level `pymongo/` files and `test/`.
 2. Run `tools/convert_test_to_async.py` on the sync test file to generate a starting-point async version.
 3. Manually complete the async version in `test/asynchronous/`.
 
