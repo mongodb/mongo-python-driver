@@ -117,15 +117,12 @@ class TestValidateZlibCompressionLevel(unittest.TestCase):
             validate_zlib_compression_level("level", "abc")
         self.assertIn("must be an integer", str(ctx.exception))
 
-    def test_too_low_raises_value_error(self):
-        with self.assertRaises(ValueError) as ctx:
-            validate_zlib_compression_level("level", -2)
-        self.assertIn("must be between -1 and 9", str(ctx.exception))
-
-    def test_too_high_raises_value_error(self):
-        with self.assertRaises(ValueError) as ctx:
-            validate_zlib_compression_level("level", 10)
-        self.assertIn("must be between -1 and 9", str(ctx.exception))
+    def test_out_of_range_raises_value_error(self):
+        for value in (-2, 10):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError) as ctx:
+                    validate_zlib_compression_level("level", value)
+                self.assertIn("must be between -1 and 9", str(ctx.exception))
 
     def test_string_integer_is_coerced(self):
         self.assertEqual(validate_zlib_compression_level("level", "5"), 5)
@@ -135,28 +132,18 @@ class TestCompressionSettings(unittest.TestCase):
     def _make(self, compressors=None, level=-1):
         return CompressionSettings(compressors or [], level)
 
-    def test_get_context_none_when_empty(self):
+    def test_get_context_none_for_empty_or_none(self):
         settings = self._make()
-        self.assertIsNone(settings.get_compression_context([]))
+        for arg in ([], None):
+            with self.subTest(arg=arg):
+                self.assertIsNone(settings.get_compression_context(arg))
 
-    def test_get_context_none_when_none(self):
+    def test_get_context_returns_correct_type(self):
         settings = self._make()
-        self.assertIsNone(settings.get_compression_context(None))
-
-    def test_get_context_snappy(self):
-        settings = self._make()
-        ctx = settings.get_compression_context(["snappy"])
-        self.assertIsInstance(ctx, SnappyContext)
-
-    def test_get_context_zlib(self):
-        settings = self._make()
-        ctx = settings.get_compression_context(["zlib"])
-        self.assertIsInstance(ctx, ZlibContext)
-
-    def test_get_context_zstd(self):
-        settings = self._make()
-        ctx = settings.get_compression_context(["zstd"])
-        self.assertIsInstance(ctx, ZstdContext)
+        cases = [("snappy", SnappyContext), ("zlib", ZlibContext), ("zstd", ZstdContext)]
+        for name, expected_type in cases:
+            with self.subTest(compressor=name):
+                self.assertIsInstance(settings.get_compression_context([name]), expected_type)
 
     def test_get_context_uses_first_compressor(self):
         settings = self._make()
@@ -189,41 +176,24 @@ class TestDecompress(unittest.TestCase):
             decompress(b"data", 99)
         self.assertIn("Unknown compressorId 99", str(ctx.exception))
 
+    def _assert_roundtrip(self, compressed, compressor_id, data):
+        for payload in (compressed, memoryview(compressed)):
+            with self.subTest(type=type(payload).__name__):
+                self.assertEqual(decompress(payload, compressor_id), data)
+
     def test_zlib_roundtrip(self):
         if not _have_zlib():
             self.skipTest("zlib not available")
         import zlib
 
         data = b"hello world"
-        compressed = zlib.compress(data)
-        result = decompress(compressed, ZlibContext.compressor_id)
-        self.assertEqual(result, data)
-
-    def test_zlib_with_memoryview(self):
-        if not _have_zlib():
-            self.skipTest("zlib not available")
-        import zlib
-
-        data = b"test data"
-        compressed = zlib.compress(data)
-        result = decompress(memoryview(compressed), ZlibContext.compressor_id)
-        self.assertEqual(result, data)
+        self._assert_roundtrip(zlib.compress(data), ZlibContext.compressor_id, data)
 
     def test_snappy_roundtrip(self):
         if not _have_snappy():
             self.skipTest("python-snappy not installed")
         data = b"hello world" * 50
-        compressed = SnappyContext.compress(data)
-        result = decompress(compressed, SnappyContext.compressor_id)
-        self.assertEqual(result, data)
-
-    def test_snappy_with_memoryview(self):
-        if not _have_snappy():
-            self.skipTest("python-snappy not installed")
-        data = b"hello world" * 50
-        compressed = SnappyContext.compress(data)
-        result = decompress(memoryview(compressed), SnappyContext.compressor_id)
-        self.assertEqual(result, data)
+        self._assert_roundtrip(SnappyContext.compress(data), SnappyContext.compressor_id, data)
 
     def test_zstd_roundtrip(self):
         if not _have_zstd():
