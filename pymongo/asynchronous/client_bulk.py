@@ -65,7 +65,6 @@ from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
 from pymongo.message import (
     _ClientBulkWriteContext,
     _convert_client_bulk_exception,
-    _convert_write_result,
     _randint,
 )
 from pymongo.read_preferences import ReadPreference
@@ -294,17 +293,14 @@ class _AsyncClientBulk:
             operation_id=bwc.op_id,
         ) as cmd_telemetry:
             try:
-                result = await bwc.conn.unack_write(msg, bwc.max_bson_size)  # type: ignore[func-returns-value, misc, override]
-                if result is not None:
-                    reply = _convert_write_result(bwc.name, cmd, result)  # type: ignore[arg-type]
-                else:
-                    # Comply with APM spec.
-                    reply = {"ok": 1}
+                await bwc.conn.unack_write(msg, bwc.max_bson_size)  # type: ignore[union-attr, misc]
+                # Comply with APM spec.
+                reply = {"ok": 1}
                 cmd_telemetry.handle_succeeded(reply)
             except Exception as exc:
                 cmd_telemetry.handle_failed(exc)
                 # Top-level error will be embedded in ClientBulkWriteException.
-                reply = {"error": exc}
+                reply = {"error": exc}  # type: ignore[dict-item]
         return reply
 
     async def _execute_batch_unack(

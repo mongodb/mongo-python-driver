@@ -61,7 +61,6 @@ from pymongo.message import (
     _INSERT,
     _UPDATE,
     _BulkWriteContext,
-    _convert_write_result,
     _EncryptedBulkWriteContext,
     _randint,
 )
@@ -300,14 +299,11 @@ class _AsyncBulk:
             publish_event=bwc.publish,
             operation_id=bwc.op_id,
         ) as cmd_telemetry:
-            result = await bwc.conn.unack_write(msg, max_doc_size)  # type: ignore[func-returns-value, misc, override]
-            if result is not None:
-                reply = _convert_write_result(bwc.name, cmd, result)  # type: ignore[arg-type]
-            else:
-                # Comply with APM spec.
-                reply = {"ok": 1}
+            await bwc.conn.unack_write(msg, max_doc_size)  # type: ignore[union-attr, misc]
+            # Comply with APM spec.
+            reply = {"ok": 1}
             cmd_telemetry.handle_succeeded(reply)
-        return result  # type: ignore[return-value]
+        return None
 
     async def _execute_batch_unack(
         self,
