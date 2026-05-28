@@ -153,7 +153,7 @@ async def command(
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
 
     with _CommandTelemetry(
-        client=client,
+        topology_id=client._topology_id if client else None,
         command_name=name,
         database_name=dbname,
         spec=spec,
@@ -162,9 +162,8 @@ async def command(
         server_connection_id=conn.server_connection_id,
         service_id=conn.service_id,
         address=address if address is not None else conn.address,
-        listeners=listeners,
+        listeners=listeners if publish else None,
         request_id=request_id,
-        publish_event=publish,
     ) as cmd_telemetry:
         await async_sendall(conn.conn.get_conn, msg)
         if use_op_msg and unacknowledged:

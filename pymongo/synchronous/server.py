@@ -172,7 +172,7 @@ class Server:
 
         start = datetime.now()
         with _CommandTelemetry(
-            client=client,
+            topology_id=client._topology_id,
             command_name=operation.name,
             database_name=dbn,
             spec=cmd,
@@ -181,9 +181,8 @@ class Server:
             server_connection_id=conn.server_connection_id,
             service_id=conn.service_id,
             address=conn.address,
-            listeners=listeners,
+            listeners=listeners if publish else None,
             request_id=request_id,
-            publish_event=publish,
         ) as cmd_telemetry:
             if more_to_come:
                 reply = conn.receive_message(None)

@@ -47,7 +47,7 @@ class _CommandTelemetry:
     Usage::
 
         with _CommandTelemetry(
-            client=client,
+            topology_id=client._topology_id,
             command_name=name,
             database_name=dbname,
             spec=spec,
@@ -56,9 +56,8 @@ class _CommandTelemetry:
             server_connection_id=conn.server_connection_id,
             service_id=conn.service_id,
             address=address,
-            listeners=listeners,
+            listeners=listeners if publish else None,
             request_id=request_id,
-            publish_event=publish,
         ) as cmd_telemetry:
             reply = do_network_call()
             cmd_telemetry.handle_succeeded(reply)
@@ -66,7 +65,7 @@ class _CommandTelemetry:
     """
 
     __slots__ = (
-        "_client",
+        "_topology_id",
         "_command_name",
         "_database_name",
         "_spec",
@@ -78,14 +77,13 @@ class _CommandTelemetry:
         "_listeners",
         "_request_id",
         "_operation_id",
-        "_publish_event",
         "_start_time",
         "_handled",
     )
 
     def __init__(
         self,
-        client: Any,
+        topology_id: Optional[ObjectId],
         command_name: str,
         database_name: str,
         spec: Any,
@@ -96,10 +94,9 @@ class _CommandTelemetry:
         address: Optional[_Address],
         listeners: Optional[_EventListeners],
         request_id: int,
-        publish_event: bool,
         operation_id: Optional[int] = None,
     ) -> None:
-        self._client = client
+        self._topology_id = topology_id
         self._command_name = command_name
         self._database_name = database_name
         self._spec = spec
@@ -111,17 +108,16 @@ class _CommandTelemetry:
         self._listeners = listeners
         self._request_id = request_id
         self._operation_id = operation_id
-        self._publish_event = publish_event
         self._start_time: Optional[datetime.datetime] = None
         self._handled = False
 
     def __enter__(self) -> _CommandTelemetry:
         self._start_time = datetime.datetime.now()
-        if self._client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+        if self._topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
                 message=_CommandStatusMessage.STARTED,
-                clientId=self._client._topology_settings._topology_id,
+                clientId=self._topology_id,
                 command=self._spec,
                 commandName=next(iter(self._spec)),
                 databaseName=self._database_name,
@@ -133,8 +129,7 @@ class _CommandTelemetry:
                 serverPort=self._address[1] if self._address else None,
                 serviceId=self._service_id,
             )
-        if self._publish_event:
-            assert self._listeners is not None
+        if self._listeners is not None:
             assert self._address is not None
             self._listeners.publish_command_start(
                 self._orig,
@@ -160,11 +155,11 @@ class _CommandTelemetry:
         """
         assert self._start_time is not None
         duration = datetime.datetime.now() - self._start_time
-        if self._client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+        if self._topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
                 message=_CommandStatusMessage.SUCCEEDED,
-                clientId=self._client._topology_settings._topology_id,
+                clientId=self._topology_id,
                 durationMS=duration,
                 reply=reply,
                 commandName=next(iter(self._spec)),
@@ -178,8 +173,7 @@ class _CommandTelemetry:
                 serviceId=self._service_id,
                 speculative_authenticate="speculativeAuthenticate" in self._orig,
             )
-        if self._publish_event:
-            assert self._listeners is not None
+        if self._listeners is not None:
             assert self._address is not None
             self._listeners.publish_command_success(
                 duration,
@@ -209,11 +203,11 @@ class _CommandTelemetry:
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
             failure = _convert_exception(exc)  # type: ignore[arg-type]
-        if self._client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+        if self._topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
                 message=_CommandStatusMessage.FAILED,
-                clientId=self._client._topology_settings._topology_id,
+                clientId=self._topology_id,
                 durationMS=duration,
                 failure=failure,
                 commandName=next(iter(self._spec)),
@@ -227,8 +221,7 @@ class _CommandTelemetry:
                 serviceId=self._service_id,
                 isServerSideError=isinstance(exc, OperationFailure),
             )
-        if self._publish_event:
-            assert self._listeners is not None
+        if self._listeners is not None:
             assert self._address is not None
             self._listeners.publish_command_failure(
                 duration,

@@ -235,7 +235,7 @@ class _AsyncClientBulk:
         """A proxy for AsyncConnection.write_command that handles event publishing."""
         bwc.prepare_command(cmd, op_docs, ns_docs)
         with _CommandTelemetry(
-            client=client,
+            topology_id=client._topology_id,
             command_name=bwc.name,
             database_name=bwc.db_name,
             spec=cmd,
@@ -244,9 +244,8 @@ class _AsyncClientBulk:
             server_connection_id=bwc.conn.server_connection_id,
             service_id=bwc.conn.service_id,
             address=bwc.conn.address,
-            listeners=bwc.listeners,
+            listeners=bwc.listeners if bwc.publish else None,
             request_id=request_id,
-            publish_event=bwc.publish,
             operation_id=bwc.op_id,
         ) as cmd_telemetry:
             try:
@@ -278,7 +277,7 @@ class _AsyncClientBulk:
         """A proxy for AsyncConnection.unack_write that handles event publishing."""
         bwc.prepare_command(cmd, op_docs, ns_docs)
         with _CommandTelemetry(
-            client=client,
+            topology_id=client._topology_id,
             command_name=bwc.name,
             database_name=bwc.db_name,
             spec=cmd,
@@ -287,9 +286,8 @@ class _AsyncClientBulk:
             server_connection_id=bwc.conn.server_connection_id,
             service_id=bwc.conn.service_id,
             address=bwc.conn.address,
-            listeners=bwc.listeners,
+            listeners=bwc.listeners if bwc.publish else None,
             request_id=request_id,
-            publish_event=bwc.publish,
             operation_id=bwc.op_id,
         ) as cmd_telemetry:
             try:
