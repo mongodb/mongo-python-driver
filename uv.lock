@@ -1606,7 +1606,7 @@ requires-dist = [
     { name = "sphinx-autobuild", marker = "extra == 'docs'", specifier = ">=2024.10.3" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=3.1.0,<4" },
     { name = "sphinxcontrib-shellcheck", marker = "extra == 'docs'", specifier = ">=1,<2" },
-    { name = "winkerberos", marker = "os_name == 'nt' and extra == 'gssapi'", specifier = ">=0.5.0" },
+    { name = "winkerberos", marker = "os_name == 'nt' and extra == 'gssapi'", specifier = ">=0.12.2" },
 ]
 provides-extras = ["aws", "docs", "encryption", "gssapi", "ocsp", "snappy", "test", "zstd"]
 
