@@ -13,7 +13,6 @@
 # permissions and limitations under the License.
 
 """Watch changes on a collection, a database, or the entire cluster."""
-
 from __future__ import annotations
 
 import copy
@@ -232,7 +231,8 @@ class AsyncChangeStream(Generic[_DocumentType]):
                 # PYTHON-2181: informative error on missing operationTime.
                 if self._start_at_operation_time is None:
                     raise OperationFailure(
-                        f"Expected field 'operationTime' missing from command response : {result!r}"
+                        "Expected field 'operationTime' missing from command "
+                        f"response : {result!r}"
                     )
 
     async def _run_aggregation_cmd(

@@ -16,7 +16,6 @@
 
 https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.md
 """
-
 from __future__ import annotations
 
 import asyncio
@@ -618,8 +617,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
                 self.skipTest("CSOT not implemented for cursors")
-            if "tailable" in class_name or (
-                "tailable" in description and "non-tailable" not in description
+            if (
+                "tailable" in class_name
+                or "tailable" in description
+                and "non-tailable" not in description
             ):
                 self.skipTest("CSOT not implemented for tailable cursors")
             if "sessions" in class_name:
@@ -1098,7 +1099,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         session = self.entity_map[spec["session"]]
         if not session._pinned_address:
             self.fail(
-                "Cannot use targetedFailPoint operation with unpinned session {}".format(
+                "Cannot use targetedFailPoint operation with unpinned " "session {}".format(
                     spec["session"]
                 )
             )
@@ -1131,7 +1132,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 cmd_started_events.append(event)
         if len(cmd_started_events) < 2:
             self.fail(
-                "Needed 2 CommandStartedEvents to compare lsids, got %s" % (len(cmd_started_events))
+                "Needed 2 CommandStartedEvents to compare lsids, "
+                "got %s" % (len(cmd_started_events))
             )
         return tuple([e.command["lsid"] for e in cmd_started_events][:2])
 

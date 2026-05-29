@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test client for mod_wsgi application, see bug PYTHON-353."""
-
 from __future__ import annotations
 
 import _thread as thread
@@ -132,8 +131,12 @@ def main(options, mode, urls):
 
         if options.verbose:
             print(
-                f"Getting {urls} {nrequests_per_thread * options.nthreads} times total in {options.nthreads} threads, "
-                f"{nrequests_per_thread} times per thread"
+                "Getting {} {} times total in {} threads, " "{} times per thread".format(
+                    urls,
+                    nrequests_per_thread * options.nthreads,
+                    options.nthreads,
+                    nrequests_per_thread,
+                )
             )
         threads = [
             URLGetterThread(options, urls, nrequests_per_thread) for _ in range(options.nthreads)

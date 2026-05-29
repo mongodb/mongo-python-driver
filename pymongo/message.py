@@ -21,6 +21,7 @@ MongoDB.
 """
 from __future__ import annotations
 
+import datetime
 import random
 import struct
 from io import BytesIO as _BytesIO
@@ -74,6 +75,7 @@ if TYPE_CHECKING:
         _AgnosticClientSession,
         _AgnosticConnection,
         _AgnosticMongoClient,
+        _DocumentOut,
     )
 
 
@@ -579,6 +581,7 @@ class _BulkWriteContextBase:
         "name",
         "field",
         "publish",
+        "start_time",
         "listeners",
         "session",
         "compress",
@@ -604,7 +607,7 @@ class _BulkWriteContextBase:
         self.publish = listeners.enabled_for_commands
         self.name = cmd_name
         self.field = _FIELD_MAP[self.name]
-
+        self.start_time = datetime.datetime.now()
         self.session = session
         self.compress = bool(conn.compression_context)
         self.op_type = op_type
@@ -632,6 +635,34 @@ class _BulkWriteContextBase:
     def max_split_size(self) -> int:
         """The maximum size of a BSON command before batch splitting."""
         return self.max_bson_size
+
+    def _succeed(self, request_id: int, reply: _DocumentOut, duration: datetime.timedelta) -> None:
+        """Publish a CommandSucceededEvent."""
+        self.listeners.publish_command_success(
+            duration,
+            reply,
+            self.name,
+            request_id,
+            self.conn.address,
+            self.conn.server_connection_id,
+            self.op_id,
+            self.conn.service_id,
+            database_name=self.db_name,
+        )
+
+    def _fail(self, request_id: int, failure: _DocumentOut, duration: datetime.timedelta) -> None:
+        """Publish a CommandFailedEvent."""
+        self.listeners.publish_command_failure(
+            duration,
+            failure,
+            self.name,
+            request_id,
+            self.conn.address,
+            self.conn.server_connection_id,
+            self.op_id,
+            self.conn.service_id,
+            database_name=self.db_name,
+        )
 
 
 class _BulkWriteContext(_BulkWriteContextBase):
@@ -661,10 +692,6 @@ class _BulkWriteContext(_BulkWriteContextBase):
             codec,
         )
 
-    def prepare_command(self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]) -> None:
-        """Add the batch field to the command document for telemetry."""
-        cmd[self.field] = docs
-
     def batch_command(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
     ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]]]:
@@ -675,6 +702,22 @@ class _BulkWriteContext(_BulkWriteContextBase):
         if not to_send:
             raise InvalidOperation("cannot do an empty bulk write")
         return request_id, msg, to_send
+
+    def _start(
+        self, cmd: MutableMapping[str, Any], request_id: int, docs: list[Mapping[str, Any]]
+    ) -> MutableMapping[str, Any]:
+        """Publish a CommandStartedEvent."""
+        cmd[self.field] = docs
+        self.listeners.publish_command_start(
+            cmd,
+            self.db_name,
+            request_id,
+            self.conn.address,
+            self.conn.server_connection_id,
+            self.op_id,
+            self.conn.service_id,
+        )
+        return cmd
 
 
 class _EncryptedBulkWriteContext(_BulkWriteContext):
@@ -909,16 +952,6 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
             codec,
         )
 
-    def prepare_command(
-        self,
-        cmd: MutableMapping[str, Any],
-        op_docs: list[Mapping[str, Any]],
-        ns_docs: list[Mapping[str, Any]],
-    ) -> None:
-        """Add the ops and nsInfo fields to the command document for telemetry."""
-        cmd["ops"] = op_docs
-        cmd["nsInfo"] = ns_docs
-
     def batch_command(
         self,
         cmd: MutableMapping[str, Any],
@@ -931,6 +964,27 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
         if not to_send_ops:
             raise InvalidOperation("cannot do an empty bulk write")
         return request_id, msg, to_send_ops, to_send_ns
+
+    def _start(
+        self,
+        cmd: MutableMapping[str, Any],
+        request_id: int,
+        op_docs: list[Mapping[str, Any]],
+        ns_docs: list[Mapping[str, Any]],
+    ) -> MutableMapping[str, Any]:
+        """Publish a CommandStartedEvent."""
+        cmd["ops"] = op_docs
+        cmd["nsInfo"] = ns_docs
+        self.listeners.publish_command_start(
+            cmd,
+            self.db_name,
+            request_id,
+            self.conn.address,
+            self.conn.server_connection_id,
+            self.op_id,
+            self.conn.service_id,
+        )
+        return cmd
 
 
 _OP_MSG_OVERHEAD = 1000

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Tests for the Binary wrapper."""
-
 from __future__ import annotations
 
 import array
@@ -124,10 +123,10 @@ class TestBinary(unittest.TestCase):
         self.assertEqual(repr(one), "Binary({}, 0)".format(repr(b"hello world")))
         two = Binary(b"hello world", 2)
         self.assertEqual(repr(two), "Binary({}, 2)".format(repr(b"hello world")))
-        three = Binary(b"\x08\xff")
-        self.assertEqual(repr(three), "Binary({}, 0)".format(repr(b"\x08\xff")))
-        four = Binary(b"\x08\xff", 2)
-        self.assertEqual(repr(four), "Binary({}, 2)".format(repr(b"\x08\xff")))
+        three = Binary(b"\x08\xFF")
+        self.assertEqual(repr(three), "Binary({}, 0)".format(repr(b"\x08\xFF")))
+        four = Binary(b"\x08\xFF", 2)
+        self.assertEqual(repr(four), "Binary({}, 2)".format(repr(b"\x08\xFF")))
         five = Binary(b"test", 100)
         self.assertEqual(repr(five), "Binary({}, 100)".format(repr(b"test")))
 

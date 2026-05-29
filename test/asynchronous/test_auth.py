@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Authentication Tests."""
-
 from __future__ import annotations
 
 import asyncio
@@ -599,13 +598,13 @@ class TestSCRAM(AsyncIntegrationTest):
         await client.testscram.command("dbstats")
 
         client = await self.async_rs_or_single_client_noauth(
-            username="IX", password="I\u00adX", authSource="testscram"
+            username="IX", password="I\u00ADX", authSource="testscram"
         )
         await client.testscram.command("dbstats")
 
         client = await self.async_rs_or_single_client_noauth(
             username="IX",
-            password="I\u00adX",
+            password="I\u00ADX",
             authSource="testscram",
             authMechanism="SCRAM-SHA-256",
         )
@@ -626,7 +625,7 @@ class TestSCRAM(AsyncIntegrationTest):
         await client.testscram.command("dbstats")
 
         client = await self.async_rs_or_single_client_noauth(
-            "mongodb://IX:I\u00adX@%s:%d/testscram" % (host, port)
+            "mongodb://IX:I\u00ADX@%s:%d/testscram" % (host, port)
         )
         await client.testscram.command("dbstats")
         client = await self.async_rs_or_single_client_noauth(

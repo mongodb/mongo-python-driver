@@ -68,7 +68,9 @@ def _a_grid_in_property(
     elif closed_only:
         docstring = "{}\n\n{}".format(
             docstring,
-            "This attribute is read-only and can only be read after :meth:`close` has been called.",
+            "This attribute is read-only and "
+            "can only be read after :meth:`close` "
+            "has been called.",
         )
 
     if not read_only and not closed_only:
@@ -82,7 +84,7 @@ def _a_grid_out_property(field_name: str, docstring: str) -> Any:
     def a_getter(self: Any) -> Any:
         if not self._file:
             raise InvalidOperation(
-                "You must call GridOut.open() before accessing the %s property" % field_name
+                "You must call GridOut.open() before accessing " "the %s property" % field_name
             )
         # Protect against PHP-237
         if field_name == "length":
@@ -128,7 +130,9 @@ def _grid_in_property(
     elif closed_only:
         docstring = "{}\n\n{}".format(
             docstring,
-            "This attribute is read-only and can only be read after :meth:`close` has been called.",
+            "This attribute is read-only and "
+            "can only be read after :meth:`close` "
+            "has been called.",
         )
 
     if not read_only and not closed_only:

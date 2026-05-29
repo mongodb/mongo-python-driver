@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test the pymongo uri_parser module."""
-
 from __future__ import annotations
 
 import copy
@@ -231,7 +230,9 @@ class TestURI(unittest.TestCase):
         self.assertEqual(
             res,
             parse_uri(
-                "mongodb://%2Ftmp%2Fmongodb-27017.sock,example2.com:27017/test.yield_historical.in"
+                "mongodb://%2Ftmp%2Fmongodb-27017.sock,"
+                "example2.com:27017"
+                "/test.yield_historical.in"
             ),
         )
 
@@ -396,7 +397,9 @@ class TestURI(unittest.TestCase):
         self.assertEqual(
             res,
             parse_uri(
-                "mongodb://user%40domain.com:password@localhost/foo?uuidrepresentation=javaLegacy"
+                "mongodb://user%40domain.com:password"
+                "@localhost/foo?uuidrepresentation="
+                "javaLegacy"
             ),
         )
 
@@ -405,7 +408,8 @@ class TestURI(unittest.TestCase):
             self.assertRaises(
                 Warning,
                 parse_uri,
-                "mongodb://user%40domain.com:password@localhost/foo?uuidrepresentation=notAnOption",
+                "mongodb://user%40domain.com:password"
+                "@localhost/foo?uuidrepresentation=notAnOption",
                 warn=True,
             )
         self.assertRaises(

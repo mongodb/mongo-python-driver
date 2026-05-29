@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test the topology module's Server Selection Spec implementation."""
-
 from __future__ import annotations
 
 import asyncio
@@ -57,7 +56,7 @@ class TestAllScenarios(unittest.IsolatedAsyncioTestCase):
             server.pool.operation_count = mock["operation_count"]
 
         pref = ReadPreference.NEAREST
-        counts = dict.fromkeys(topology._description.server_descriptions(), 0)
+        counts = {address: 0 for address in topology._description.server_descriptions()}
 
         # Number of times to repeat server selection
         iterations = scenario_def["iterations"]
@@ -130,7 +129,7 @@ class TestProse(AsyncIntegrationTest):
         self.assertEqual(len(events), n_finds * N_TASKS)
         nodes = client.nodes
         self.assertEqual(len(nodes), 2)
-        freqs = dict.fromkeys(nodes, 0.0)
+        freqs = {address: 0.0 for address in nodes}
         for event in events:
             freqs[event.connection_id] += 1
         for address in freqs:

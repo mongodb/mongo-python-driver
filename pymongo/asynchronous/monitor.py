@@ -195,10 +195,8 @@ class Monitor(MonitorBase):
 
     async def join(self) -> None:
         await asyncio.gather(
-            self._executor.join(),  # type: ignore[func-returns-value]
-            self._rtt_monitor.join(),  # type: ignore[func-returns-value]
-            return_exceptions=True,
-        )
+            self._executor.join(), self._rtt_monitor.join(), return_exceptions=True
+        )  # type: ignore[func-returns-value]
 
     async def close(self) -> None:
         self.gc_safe_close()

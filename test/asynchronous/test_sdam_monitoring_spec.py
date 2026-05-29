@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Run the sdam monitoring spec tests."""
-
 from __future__ import annotations
 
 import asyncio
@@ -90,7 +89,7 @@ def compare_events(expected_dict, actual):
         if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerOpeningEvent published with wrong address (expected {}, got {}".format(
+                "ServerOpeningEvent published with wrong address (expected" " {}, got {}".format(
                     expected["address"], actual.server_address
                 ),
             )
@@ -101,7 +100,7 @@ def compare_events(expected_dict, actual):
         if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerDescriptionChangedEvent has wrong address (expected {}, got {}".format(
+                "ServerDescriptionChangedEvent has wrong address" " (expected {}, got {}".format(
                     expected["address"], actual.server_address
                 ),
             )
@@ -122,7 +121,7 @@ def compare_events(expected_dict, actual):
         if expected["address"] != "{}:{}".format(*actual.server_address):
             return (
                 False,
-                "ServerClosedEvent published with wrong address (expected {}, got {}".format(
+                "ServerClosedEvent published with wrong address" " (expected {}, got {}".format(
                     expected["address"], actual.server_address
                 ),
             )

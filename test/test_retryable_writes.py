@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test retryable writes."""
-
 from __future__ import annotations
 
 import asyncio
@@ -624,7 +623,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         self.setup_client.admin.command(cmd)
 
     def test_01_drivers_return_the_correct_error_when_receiving_only_errors_without_NoWritesPerformed(
-        self,
+        self
     ) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
@@ -676,7 +675,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         assert exc.exception.errors["code"] == 10107  # type:ignore[call-overload]
 
     def test_02_drivers_return_the_correct_error_when_receiving_only_errors_with_NoWritesPerformed(
-        self,
+        self
     ) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
@@ -729,7 +728,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         assert exc.exception.errors["code"] == 91  # type:ignore[call-overload]
 
     def test_03_drivers_return_the_correct_error_when_receiving_some_errors_with_NoWritesPerformed_and_some_without_NoWritesPerformed(
-        self,
+        self
     ) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
