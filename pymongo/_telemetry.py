@@ -64,6 +64,7 @@ class _CommandTelemetry:
         "_database_name",
         "_spec",
         "_orig",
+        "_log_events",
         "_publish_events",
         "_request_id",
         "_operation_id",
@@ -80,6 +81,7 @@ class _CommandTelemetry:
         orig: Any,
         request_id: int,
         publish_events: bool = True,
+        log_events: bool = True,
         operation_id: Optional[int] = None,
     ) -> None:
         self._conn = conn
@@ -89,13 +91,14 @@ class _CommandTelemetry:
         self._orig = orig
         self._request_id = request_id
         self._publish_events = publish_events
+        self._log_events = log_events
         self._operation_id = operation_id
         self._start_time: Optional[datetime.datetime] = None
         self._handled = False
 
     def __enter__(self) -> _CommandTelemetry:
         self._start_time = datetime.datetime.now()
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+        if self._log_events and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
                 message=_CommandStatusMessage.STARTED,
@@ -136,7 +139,7 @@ class _CommandTelemetry:
         """
         assert self._start_time is not None
         duration = datetime.datetime.now() - self._start_time
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+        if self._log_events and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
                 message=_CommandStatusMessage.SUCCEEDED,
@@ -183,7 +186,7 @@ class _CommandTelemetry:
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
             failure = _convert_exception(exc)  # type: ignore[arg-type]
-        if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+        if self._log_events and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,
                 message=_CommandStatusMessage.FAILED,

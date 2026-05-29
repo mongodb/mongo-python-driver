@@ -152,6 +152,7 @@ def command(
         orig=orig,
         request_id=request_id,
         publish_events=publish,
+        log_events=client is not None,
     ) as cmd_telemetry:
         sendall(conn.conn.get_conn, msg)
         if conn.op_msg_enabled and unacknowledged:
