@@ -16,7 +16,6 @@
 
 .. versionadded:: 4.9
 """
-
 from __future__ import annotations
 
 import copy

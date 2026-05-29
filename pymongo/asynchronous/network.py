@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Internal network layer helper methods."""
-
 from __future__ import annotations
 
 from typing import (

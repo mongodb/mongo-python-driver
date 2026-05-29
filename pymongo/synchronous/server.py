@@ -13,7 +13,6 @@
 # permissions and limitations under the License.
 
 """Communicate with one MongoDB server in a topology."""
-
 from __future__ import annotations
 
 import logging
