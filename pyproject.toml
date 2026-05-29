@@ -163,6 +163,10 @@ module = ["gridfs.synchronous.*"]
 warn_unused_ignores = false
 disable_error_code = ["unused-coroutine", "no-redef"]
 
+[[tool.mypy.overrides]]
+module = ["synchro"]
+warn_unused_ignores = false
+
 [tool.ruff]
 target-version = "py37"
 line-length = 100
