@@ -90,14 +90,17 @@ async def command(
         bson._decode_all_selective.
     :param exhaust_allowed: True if we should enable OP_MSG exhaustAllowed.
     """
+    is_mongos = conn.is_mongos
+    use_op_msg = conn.op_msg_enabled
+    max_bson_size = conn.max_bson_size
+    unacknowledged = bool(write_concern and not write_concern.acknowledged)
     name = next(iter(spec))
     ns = dbname + ".$cmd"
     speculative_hello = False
-    unacknowledged = bool(write_concern and not write_concern.acknowledged)
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
-    if conn.is_mongos and not conn.op_msg_enabled:
+    if is_mongos and not use_op_msg:
         assert read_preference is not None
         spec = message._maybe_add_read_preference(spec, read_preference)
     if read_concern and not (session and session.in_transaction):
@@ -123,7 +126,7 @@ async def command(
         conn.apply_timeout(client, spec)
     _csot.apply_write_concern(spec, write_concern)
 
-    if conn.op_msg_enabled:
+    if use_op_msg:
         flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
         flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
         request_id, msg, size, max_doc_size = message._op_msg(
@@ -131,17 +134,15 @@ async def command(
         )
         # If this is an unacknowledged write then make sure the encoded doc(s)
         # are small enough, otherwise rely on the server to return an error.
-        if unacknowledged and conn.max_bson_size is not None and max_doc_size > conn.max_bson_size:
-            message._raise_document_too_large(name, size, conn.max_bson_size)
+        if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
+            message._raise_document_too_large(name, size, max_bson_size)
     else:
         request_id, msg, size = message._query(
             0, ns, 0, -1, spec, None, codec_options, compression_ctx
         )
 
-    if conn.max_bson_size is not None and size > conn.max_bson_size + message._COMMAND_OVERHEAD:
-        message._raise_document_too_large(
-            name, size, conn.max_bson_size + message._COMMAND_OVERHEAD
-        )
+    if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
+        message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
 
     with _CommandTelemetry(
         conn=conn,
@@ -154,7 +155,7 @@ async def command(
         log_events=client is not None,
     ) as cmd_telemetry:
         await async_sendall(conn.conn.get_conn, msg)
-        if conn.op_msg_enabled and unacknowledged:
+        if use_op_msg and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
             response_doc: _DocumentOut = {"ok": 1}
