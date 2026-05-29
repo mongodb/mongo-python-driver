@@ -231,10 +231,10 @@ class _AsyncClientBulk:
         ns_docs: list[Mapping[str, Any]],
         client: AsyncMongoClient[Any],
     ) -> dict[str, Any]:
-        """A proxy for AsyncConnection.write_command that handles event publishing."""
+        """A proxy for AsyncConnection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, op_docs, ns_docs)
         try:
-            reply = await bwc.conn.write_command(  # type: ignore[misc]
+            reply = await bwc.conn.bulk_write_command(  # type: ignore[misc]
                 request_id,
                 msg,  # type: ignore[arg-type]
                 bwc.codec,
@@ -267,17 +267,19 @@ class _AsyncClientBulk:
         ns_docs: list[Mapping[str, Any]],
         client: AsyncMongoClient[Any],
     ) -> Optional[Mapping[str, Any]]:
-        """A proxy for AsyncConnection.unack_write that handles event publishing."""
+        """A proxy for AsyncConnection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, op_docs, ns_docs)
         try:
-            await bwc.conn.unack_write(  # type: ignore[union-attr, misc]
+            await bwc.conn.bulk_write_command(  # type: ignore[union-attr, misc]
+                request_id,
                 msg,
-                bwc.max_bson_size,
+                bwc.codec,
                 command_name=bwc.name,
                 database_name=bwc.db_name,
                 spec=cmd,
                 orig=cmd,
-                request_id=request_id,
+                acknowledged=False,
+                max_doc_size=bwc.max_bson_size,
                 publish_events=bwc.publish,
                 operation_id=bwc.op_id,
             )
@@ -381,7 +383,7 @@ class _AsyncClientBulk:
         listeners = self.client._event_listeners
 
         # AsyncConnection.command validates the session, but we use
-        # AsyncConnection.write_command
+        # AsyncConnection.bulk_write_command
         conn.validate_session(self.client, session)
 
         bwc = self.bulk_ctx_class(

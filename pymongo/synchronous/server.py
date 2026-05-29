@@ -167,7 +167,7 @@ class Server:
         if publish and "$db" not in cmd:
             cmd["$db"] = dbn
 
-        reply, docs, duration = conn.run_operation(
+        reply, docs, duration = conn.cursor_operation(
             data=data,
             max_doc_size=max_doc_size,
             more_to_come=more_to_come,

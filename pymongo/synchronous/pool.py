@@ -465,26 +465,29 @@ class Connection:
             # Write won't succeed, bail as if we'd received a not primary error.
             raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
 
-    def unack_write(
+    def bulk_write_command(
         self,
+        request_id: int,
         msg: bytes,
-        max_doc_size: int,
+        codec_options: CodecOptions[Mapping[str, Any]],
         command_name: str,
         database_name: str,
         spec: Any,
         orig: Any,
-        request_id: int,
+        *,
+        acknowledged: bool = True,
+        max_doc_size: int = 0,
         publish_events: bool = True,
         operation_id: Optional[int] = None,
-    ) -> None:
-        """Send unack OP_MSG.
+    ) -> dict[str, Any]:
+        """Send a bulk write command, returning the server response as a dict.
 
-        Can raise ConnectionFailure or InvalidDocument.
+        When acknowledged=False, sends the message without waiting for a
+        response and returns a synthetic {"ok": 1}.
 
-        :param msg: bytes, an OP_MSG message.
-        :param max_doc_size: size in bytes of the largest document in `msg`.
+        Can raise ConnectionFailure or OperationFailure.
         """
-        self._raise_if_not_writable(True)
+        self._raise_if_not_writable(not acknowledged)
         with _CommandTelemetry(
             conn=self,
             command_name=command_name,
@@ -496,46 +499,17 @@ class Connection:
             operation_id=operation_id,
         ) as cmd_telemetry:
             self.send_message(msg, max_doc_size)
-            cmd_telemetry.handle_succeeded({"ok": 1})
-
-    def write_command(
-        self,
-        request_id: int,
-        msg: bytes,
-        codec_options: CodecOptions[Mapping[str, Any]],
-        command_name: str,
-        database_name: str,
-        spec: Any,
-        orig: Any,
-        publish_events: bool = True,
-        operation_id: Optional[int] = None,
-    ) -> dict[str, Any]:
-        """Send "insert" etc. command, returning response as a dict.
-
-        Can raise ConnectionFailure or OperationFailure.
-
-        :param request_id: an int.
-        :param msg: bytes, the command message.
-        """
-        with _CommandTelemetry(
-            conn=self,
-            command_name=command_name,
-            database_name=database_name,
-            spec=spec,
-            orig=orig,
-            request_id=request_id,
-            publish_events=publish_events,
-            operation_id=operation_id,
-        ) as cmd_telemetry:
-            self.send_message(msg, 0)
-            reply = self.receive_message(request_id)
-            result = reply.command_response(codec_options)
-            # Raises NotPrimaryError or OperationFailure.
-            helpers_shared._check_command_response(result, self.max_wire_version)
+            if not acknowledged:
+                result: dict[str, Any] = {"ok": 1}
+            else:
+                reply = self.receive_message(request_id)
+                result = reply.command_response(codec_options)
+                # Raises NotPrimaryError or OperationFailure.
+                helpers_shared._check_command_response(result, self.max_wire_version)
             cmd_telemetry.handle_succeeded(result)
         return result
 
-    def run_operation(
+    def cursor_operation(
         self,
         data: bytes,
         max_doc_size: int,

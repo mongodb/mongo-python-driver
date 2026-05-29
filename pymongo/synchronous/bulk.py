@@ -245,10 +245,10 @@ class _Bulk:
         docs: list[Mapping[str, Any]],
         client: MongoClient[Any],
     ) -> dict[str, Any]:
-        """A proxy for SocketInfo.write_command that handles event publishing."""
+        """A proxy for Connection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, docs)
         try:
-            reply = bwc.conn.write_command(  # type: ignore[misc]
+            reply = bwc.conn.bulk_write_command(  # type: ignore[misc]
                 request_id,
                 msg,
                 bwc.codec,
@@ -275,16 +275,18 @@ class _Bulk:
         docs: list[Mapping[str, Any]],
         client: MongoClient[Any],
     ) -> Optional[Mapping[str, Any]]:
-        """A proxy for Connection.unack_write that handles event publishing."""
+        """A proxy for Connection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, docs)
-        bwc.conn.unack_write(  # type: ignore[union-attr, misc]
+        bwc.conn.bulk_write_command(  # type: ignore[union-attr, misc]
+            request_id,
             msg,
-            max_doc_size,
+            bwc.codec,
             command_name=bwc.name,
             database_name=bwc.db_name,
             spec=cmd,
             orig=cmd,
-            request_id=request_id,
+            acknowledged=False,
+            max_doc_size=max_doc_size,
             publish_events=bwc.publish,
             operation_id=bwc.op_id,
         )
@@ -360,7 +362,7 @@ class _Bulk:
         run = self.current_run
 
         # Connection.command validates the session, but we use
-        # Connection.write_command
+        # Connection.bulk_write_command
         conn.validate_session(client, session)
         last_run = False
 
