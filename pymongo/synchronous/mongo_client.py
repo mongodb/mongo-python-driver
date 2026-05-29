@@ -30,7 +30,6 @@ access:
   >>> c["test-database"]
   Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test-database')
 """
-
 from __future__ import annotations
 
 import asyncio
