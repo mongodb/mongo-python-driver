@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test that pymongo resets its own locks after a fork."""
-
 from __future__ import annotations
 
 import os

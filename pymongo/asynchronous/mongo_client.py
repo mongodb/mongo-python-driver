@@ -1225,13 +1225,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return change_stream
 
     @property
-    def _topology_id(self) -> Optional[ObjectId]:
-        """The topology ID used to identify this client in log messages."""
-        if self._topology_settings is None:
-            return None
-        return self._topology_settings._topology_id
-
-    @property
     def topology_description(self) -> TopologyDescription:
         """The description of the connected MongoDB deployment.
 

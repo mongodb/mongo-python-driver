@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Run Command unified tests."""
-
 from __future__ import annotations
 
 import os

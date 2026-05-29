@@ -18,7 +18,6 @@
 - A direct connection to a slave.
 - A direct connection to a mongos.
 """
-
 from __future__ import annotations
 
 import itertools

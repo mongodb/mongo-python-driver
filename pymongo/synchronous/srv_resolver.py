@@ -13,7 +13,6 @@
 # permissions and limitations under the License.
 
 """Support for resolving hosts and options from mongodb+srv:// URIs."""
-
 from __future__ import annotations
 
 import ipaddress

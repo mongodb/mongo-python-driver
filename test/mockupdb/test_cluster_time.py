@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test $clusterTime handling."""
-
 from __future__ import annotations
 
 import unittest

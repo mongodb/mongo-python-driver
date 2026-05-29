@@ -37,7 +37,6 @@ To run individual benchmarks quickly::
 
     FASTBENCH=1 python test/performance/perf_test.py -v TestRunCommand TestFindManyAndEmptyCursor
 """
-
 from __future__ import annotations
 
 import multiprocessing as mp

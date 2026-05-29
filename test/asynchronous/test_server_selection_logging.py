@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Run the server selection logging unified format spec tests."""
-
 from __future__ import annotations
 
 import os

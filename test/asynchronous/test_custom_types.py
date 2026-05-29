@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test support for callbacks to encode/decode custom types."""
-
 from __future__ import annotations
 
 import datetime

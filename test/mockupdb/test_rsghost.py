@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test connections to RSGhost nodes."""
-
 from __future__ import annotations
 
 import datetime

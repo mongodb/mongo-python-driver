@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Tests for the Timestamp class."""
-
 from __future__ import annotations
 
 import copy

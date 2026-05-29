@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test built in connection-pooling with threads."""
-
 from __future__ import annotations
 
 import asyncio

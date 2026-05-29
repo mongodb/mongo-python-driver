@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test the client bulk write API."""
-
 from __future__ import annotations
 
 import os

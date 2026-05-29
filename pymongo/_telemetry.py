@@ -45,17 +45,13 @@ class _CommandTelemetry:
     Usage::
 
         with _CommandTelemetry(
-            topology_id=client._topology_id,
+            conn=conn,
             command_name=name,
             database_name=dbname,
             spec=spec,
             orig=orig,
-            driver_connection_id=conn.id,
-            server_connection_id=conn.server_connection_id,
-            service_id=conn.service_id,
-            address=address,
-            listeners=listeners if publish else None,
             request_id=request_id,
+            publish_events=publish,
         ) as cmd_telemetry:
             reply = do_network_call()
             cmd_telemetry.handle_succeeded(reply)

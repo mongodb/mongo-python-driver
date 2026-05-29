@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test MONGODB-AWS Authentication."""
-
 from __future__ import annotations
 
 import os

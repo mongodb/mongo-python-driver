@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """CommandCursor class to iterate over command results."""
-
 from __future__ import annotations
 
 from collections import deque

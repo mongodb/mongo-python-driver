@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test that async cancellation performed by users clean up resources correctly."""
-
 from __future__ import annotations
 
 import asyncio

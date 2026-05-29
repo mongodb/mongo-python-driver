@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Cursor class to iterate over Mongo query results."""
-
 from __future__ import annotations
 
 import copy

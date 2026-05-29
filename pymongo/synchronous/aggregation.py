@@ -13,7 +13,6 @@
 # permissions and limitations under the License.
 
 """Perform aggregation operations on a collection or database."""
-
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, MutableMapping

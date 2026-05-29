@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test the collection module."""
-
 from __future__ import annotations
 
 import asyncio

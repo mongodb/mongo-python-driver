@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test the Retryable Writes unified spec tests."""
-
 from __future__ import annotations
 
 import os

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Tests for the dbref module."""
-
 from __future__ import annotations
 
 import pickle

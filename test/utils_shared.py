@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Shared utilities for testing pymongo"""
-
 from __future__ import annotations
 
 import asyncio

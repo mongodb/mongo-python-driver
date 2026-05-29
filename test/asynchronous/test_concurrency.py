@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Tests to ensure that the async API is properly concurrent with asyncio."""
-
 from __future__ import annotations
 
 import asyncio

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test errors that come from a standalone shard."""
-
 from __future__ import annotations
 
 import unittest

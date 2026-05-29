@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test some utilities for working with JSON and PyMongo."""
-
 from __future__ import annotations
 
 import datetime

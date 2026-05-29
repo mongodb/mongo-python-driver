@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Miscellaneous pieces that need to be synchronized."""
-
 from __future__ import annotations
 
 import asyncio

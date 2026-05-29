@@ -14,7 +14,6 @@
 
 
 """Tools to parse and validate a MongoDB URI."""
-
 from __future__ import annotations
 
 from typing import Any, Optional

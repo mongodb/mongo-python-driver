@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test PyMongo query and read preference with a sharded cluster."""
-
 from __future__ import annotations
 
 import unittest

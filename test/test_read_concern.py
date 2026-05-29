@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test the read_concern module."""
-
 from __future__ import annotations
 
 import sys

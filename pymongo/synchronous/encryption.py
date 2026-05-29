@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Support for explicit client-side field level encryption."""
-
 from __future__ import annotations
 
 import contextlib

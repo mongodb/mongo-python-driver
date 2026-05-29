@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Run the BSON corpus specification tests."""
-
 from __future__ import annotations
 
 import binascii

@@ -13,7 +13,6 @@
 # permissions and limitations under the License.
 
 """Asynchronous cursor base extending the shared agnostic cursor base."""
-
 from __future__ import annotations
 
 from abc import abstractmethod

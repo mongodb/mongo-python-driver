@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test the server_description module."""
-
 from __future__ import annotations
 
 import sys

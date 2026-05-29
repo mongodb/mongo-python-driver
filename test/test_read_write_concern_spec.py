@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Run the read and write concern tests."""
-
 from __future__ import annotations
 
 import json

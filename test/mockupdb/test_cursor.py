@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test PyMongo cursor does not set exhaustAllowed automatically (PYTHON-4007)."""
-
 from __future__ import annotations
 
 import unittest

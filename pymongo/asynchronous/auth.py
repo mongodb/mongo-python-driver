@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Authentication helpers."""
-
 from __future__ import annotations
 
 import functools

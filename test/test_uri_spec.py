@@ -15,7 +15,6 @@
 """Test that the pymongo.uri_parser module is compliant with the connection
 string and uri options specifications.
 """
-
 from __future__ import annotations
 
 import json

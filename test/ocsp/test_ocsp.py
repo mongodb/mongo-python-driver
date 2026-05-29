@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test OCSP."""
-
 from __future__ import annotations
 
 import logging

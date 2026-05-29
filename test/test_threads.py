@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test that pymongo is thread safe."""
-
 from __future__ import annotations
 
 import threading

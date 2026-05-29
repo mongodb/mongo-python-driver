@@ -4,7 +4,6 @@ Lambda function for Python Driver testing
 Creates the client that is cached for all requests, subscribes to
 relevant events, and forces the connection pool to get populated.
 """
-
 from __future__ import annotations
 
 import json

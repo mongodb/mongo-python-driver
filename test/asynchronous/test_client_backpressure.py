@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Test Client Backpressure spec."""
-
 from __future__ import annotations
 
 import os

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Database level operations."""
-
 from __future__ import annotations
 
 from copy import deepcopy
