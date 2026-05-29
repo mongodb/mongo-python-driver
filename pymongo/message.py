@@ -703,6 +703,10 @@ class _BulkWriteContext(_BulkWriteContextBase):
             raise InvalidOperation("cannot do an empty bulk write")
         return request_id, msg, to_send
 
+    def prepare_command(self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]) -> None:
+        """Add the batch field to the command document."""
+        cmd[self.field] = docs
+
     def _start(
         self, cmd: MutableMapping[str, Any], request_id: int, docs: list[Mapping[str, Any]]
     ) -> MutableMapping[str, Any]:
@@ -964,6 +968,16 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
         if not to_send_ops:
             raise InvalidOperation("cannot do an empty bulk write")
         return request_id, msg, to_send_ops, to_send_ns
+
+    def prepare_command(
+        self,
+        cmd: MutableMapping[str, Any],
+        op_docs: list[Mapping[str, Any]],
+        ns_docs: list[Mapping[str, Any]],
+    ) -> None:
+        """Add the ops and nsInfo fields to the command document."""
+        cmd["ops"] = op_docs
+        cmd["nsInfo"] = ns_docs
 
     def _start(
         self,
