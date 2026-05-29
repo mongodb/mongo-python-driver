@@ -19,6 +19,7 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 
 .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
 """
+
 from __future__ import annotations
 
 from gridfs.asynchronous.grid_file import (

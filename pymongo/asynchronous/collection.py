@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Collection level utilities for Mongo."""
+
 from __future__ import annotations
 
 import warnings

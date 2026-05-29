@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for representing files stored in GridFS."""
+
 from __future__ import annotations
 
 import datetime
@@ -1439,7 +1440,6 @@ GRIDOUT_BASE_CLASS = io.IOBase if _IS_SYNC else object  # type: Any
 
 
 class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
-
     """Class to read data out of GridFS."""
 
     def __init__(

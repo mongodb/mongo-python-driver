@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test client side encryption with on demand credentials."""
+
 from __future__ import annotations
 
 import os

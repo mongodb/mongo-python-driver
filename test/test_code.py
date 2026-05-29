@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Tests for the Code wrapper."""
+
 from __future__ import annotations
 
 import sys
@@ -66,8 +67,8 @@ class TestCode(unittest.TestCase):
         self.assertEqual(repr(c), "Code('hello world', {'foo': 'bar'})")
         c = Code("hello world", {"blah": 3})
         self.assertEqual(repr(c), "Code('hello world', {'blah': 3})")
-        c = Code("\x08\xFF")
-        self.assertEqual(repr(c), "Code({}, None)".format(repr("\x08\xFF")))
+        c = Code("\x08\xff")
+        self.assertEqual(repr(c), "Code({}, None)".format(repr("\x08\xff")))
 
     def test_equality(self):
         b = Code("hello")

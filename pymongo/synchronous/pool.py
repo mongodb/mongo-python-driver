@@ -38,6 +38,7 @@ from typing import (
 
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
+from pymongo._telemetry import _CommandTelemetry
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -404,22 +405,16 @@ class Connection:
                 self,
                 dbname,
                 spec,
-                self.is_mongos,
                 read_preference,
                 codec_options,  # type: ignore[arg-type]
                 session,
                 client,
                 check,
                 allowable_errors,
-                self.address,
                 listeners,
-                self.max_bson_size,
                 read_concern,
                 parse_write_concern_error=parse_write_concern_error,
                 collation=collation,
-                compression_ctx=self.compression_context,
-                use_op_msg=self.op_msg_enabled,
-                unacknowledged=unacknowledged,
                 user_fields=user_fields,
                 exhaust_allowed=exhaust_allowed,
                 write_concern=write_concern,
@@ -466,7 +461,18 @@ class Connection:
             # Write won't succeed, bail as if we'd received a not primary error.
             raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
 
-    def unack_write(self, msg: bytes, max_doc_size: int) -> None:
+    def unack_write(
+        self,
+        msg: bytes,
+        max_doc_size: int,
+        command_name: str,
+        database_name: str,
+        spec: Any,
+        orig: Any,
+        request_id: int,
+        publish_events: bool = True,
+        operation_id: Optional[int] = None,
+    ) -> None:
         """Send unack OP_MSG.
 
         Can raise ConnectionFailure or InvalidDocument.
@@ -475,10 +481,30 @@ class Connection:
         :param max_doc_size: size in bytes of the largest document in `msg`.
         """
         self._raise_if_not_writable(True)
-        self.send_message(msg, max_doc_size)
+        with _CommandTelemetry(
+            conn=self,
+            command_name=command_name,
+            database_name=database_name,
+            spec=spec,
+            orig=orig,
+            request_id=request_id,
+            publish_events=publish_events,
+            operation_id=operation_id,
+        ) as cmd_telemetry:
+            self.send_message(msg, max_doc_size)
+            cmd_telemetry.handle_succeeded({"ok": 1})
 
     def write_command(
-        self, request_id: int, msg: bytes, codec_options: CodecOptions[Mapping[str, Any]]
+        self,
+        request_id: int,
+        msg: bytes,
+        codec_options: CodecOptions[Mapping[str, Any]],
+        command_name: str,
+        database_name: str,
+        spec: Any,
+        orig: Any,
+        publish_events: bool = True,
+        operation_id: Optional[int] = None,
     ) -> dict[str, Any]:
         """Send "insert" etc. command, returning response as a dict.
 
@@ -487,12 +513,22 @@ class Connection:
         :param request_id: an int.
         :param msg: bytes, the command message.
         """
-        self.send_message(msg, 0)
-        reply = self.receive_message(request_id)
-        result = reply.command_response(codec_options)
-
-        # Raises NotPrimaryError or OperationFailure.
-        helpers_shared._check_command_response(result, self.max_wire_version)
+        with _CommandTelemetry(
+            conn=self,
+            command_name=command_name,
+            database_name=database_name,
+            spec=spec,
+            orig=orig,
+            request_id=request_id,
+            publish_events=publish_events,
+            operation_id=operation_id,
+        ) as cmd_telemetry:
+            self.send_message(msg, 0)
+            reply = self.receive_message(request_id)
+            result = reply.command_response(codec_options)
+            # Raises NotPrimaryError or OperationFailure.
+            helpers_shared._check_command_response(result, self.max_wire_version)
+            cmd_telemetry.handle_succeeded(result)
         return result
 
     def authenticate(self, reauthenticate: bool = False) -> None:
@@ -573,6 +609,12 @@ class Connection:
             self.conn.close()
         except Exception:  # noqa: S110
             pass
+
+    @property
+    def _topology_id(self) -> Optional[ObjectId]:
+        """The topology ID used to identify this client in log messages."""
+        pool = self.pool_ref()
+        return pool._client_id if pool else None
 
     def conn_closed(self) -> bool:
         """Return True if we know socket has been closed, False otherwise."""

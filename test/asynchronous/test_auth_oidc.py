@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test MONGODB-OIDC Authentication."""
+
 from __future__ import annotations
 
 import os
@@ -87,7 +88,7 @@ class OIDCTestBase(AsyncPyMongoTestCase):
                 token_file = TOKEN_FILE
             else:
                 token_file = os.path.join(TOKEN_DIR, username)
-            with open(token_file) as fid:  # noqa: ASYNC101,RUF100
+            with open(token_file) as fid:  # noqa:RUF100
                 return fid.read()
         elif ENVIRON == "azure":
             opts = parse_uri(self.uri_single)["options"]
@@ -166,7 +167,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         request_cb = kwargs.pop("request_cb", self.create_request_cb(username=username))
         props = kwargs.pop("authmechanismproperties", {"OIDC_HUMAN_CALLBACK": request_cb})
         kwargs["retryReads"] = False
-        if not len(args):
+        if not args:
             args = [self.uri_single]
 
         client = self.simple_client(*args, authmechanismproperties=props, **kwargs)
@@ -776,7 +777,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         request_cb = kwargs.pop("request_cb", self.create_request_cb())
         props = kwargs.pop("authmechanismproperties", {"OIDC_CALLBACK": request_cb})
         kwargs["retryReads"] = False
-        if not len(args):
+        if not args:
             args = [self.uri_single]
         client = AsyncMongoClient(*args, authmechanismproperties=props, **kwargs)
         self.addAsyncCleanup(client.close)

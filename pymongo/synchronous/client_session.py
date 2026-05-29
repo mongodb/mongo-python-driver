@@ -322,8 +322,7 @@ class TransactionOptions:
                 )
             if not write_concern.acknowledged:
                 raise ConfigurationError(
-                    "transactions do not support unacknowledged write concern"
-                    f": {write_concern!r}"
+                    f"transactions do not support unacknowledged write concern: {write_concern!r}"
                 )
         if read_preference is not None:
             if not isinstance(read_preference, _ServerMode):

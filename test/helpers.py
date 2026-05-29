@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Shared helper methods for pymongo, bson, and gridfs test suites."""
+
 from __future__ import annotations
 
 import asyncio
@@ -108,15 +109,9 @@ class client_knobs:
     def __del__(self):
         if self._enabled:
             msg = (
-                "ERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY={}, "
-                "MIN_HEARTBEAT_INTERVAL={}, KILL_CURSOR_FREQUENCY={}, "
-                "EVENTS_QUEUE_FREQUENCY={}, stack:\n{}".format(
-                    common.HEARTBEAT_FREQUENCY,
-                    common.MIN_HEARTBEAT_INTERVAL,
-                    common.KILL_CURSOR_FREQUENCY,
-                    common.EVENTS_QUEUE_FREQUENCY,
-                    self._stack,
-                )
+                f"ERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY={common.HEARTBEAT_FREQUENCY}, "
+                f"MIN_HEARTBEAT_INTERVAL={common.MIN_HEARTBEAT_INTERVAL}, KILL_CURSOR_FREQUENCY={common.KILL_CURSOR_FREQUENCY}, "
+                f"EVENTS_QUEUE_FREQUENCY={common.EVENTS_QUEUE_FREQUENCY}, stack:\n{self._stack}"
             )
             self.disable()
             raise Exception(msg)

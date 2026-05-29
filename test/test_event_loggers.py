@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for pymongo.event_loggers."""
+
 from __future__ import annotations
 
 import sys

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test retryable reads spec."""
+
 from __future__ import annotations
 
 import os
@@ -202,7 +203,7 @@ class TestRetryableReads(AsyncIntegrationTest):
     @async_client_context.require_multiple_mongoses
     @async_client_context.require_failCommand_fail_point
     async def test_retryable_reads_are_retried_on_the_same_mongos_when_no_others_are_available(
-        self
+        self,
     ):
         fail_command = {
             "configureFailPoint": "failCommand",
@@ -283,7 +284,7 @@ class TestRetryableReads(AsyncIntegrationTest):
     @async_client_context.require_failCommand_fail_point
     @async_client_context.require_version_min(4, 4, 0)
     async def test_03_01_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available_and_overload_retargeting_is_enabled(
-        self
+        self,
     ):
         listener = OvertCommandListener()
 
@@ -328,7 +329,7 @@ class TestRetryableReads(AsyncIntegrationTest):
     @async_client_context.require_failCommand_fail_point
     @async_client_context.require_version_min(4, 4, 0)
     async def test_03_02_retryable_reads_caused_by_non_overload_errors_are_retried_on_the_same_replicaset_server(
-        self
+        self,
     ):
         listener = OvertCommandListener()
 
@@ -370,7 +371,7 @@ class TestRetryableReads(AsyncIntegrationTest):
     @async_client_context.require_failCommand_fail_point
     @async_client_context.require_version_min(4, 4, 0)
     async def test_03_03_retryable_reads_caused_by_overload_errors_are_retried_on_the_same_replicaset_server_when_one_is_available_and_overload_retargeting_is_disabled(
-        self
+        self,
     ):
         listener = OvertCommandListener()
 

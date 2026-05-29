@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """MONGODB-OIDC Authentication helpers."""
+
 from __future__ import annotations
 
 import asyncio

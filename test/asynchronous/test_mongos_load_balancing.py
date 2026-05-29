@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test AsyncMongoClient's mongos load balancing using a mock."""
+
 from __future__ import annotations
 
 import asyncio

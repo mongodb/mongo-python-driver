@@ -10,6 +10,6 @@ coll.insert_one(doc)
 retrieved = coll.find_one({"_id": doc["_id"]})
 assert retrieved is not None
 assert len(retrieved.raw) > 0
-retrieved[
-    "foo"
-] = "bar"  # error: Unsupported target for indexed assignment ("RawBSONDocument")  [index]
+retrieved["foo"] = (
+    "bar"  # error: Unsupported target for indexed assignment ("RawBSONDocument")  [index]
+)

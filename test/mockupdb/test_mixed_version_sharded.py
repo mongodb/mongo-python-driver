@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test PyMongo with a mixed-version cluster."""
+
 from __future__ import annotations
 
 import time
@@ -56,9 +57,8 @@ class TestMixedVersionSharded(PyMongoTestCase):
             "ismaster", ismaster=True, msg="isdbgrid", maxWireVersion=upgrade.wire_version
         )
 
-        self.mongoses_uri = "mongodb://{},{}".format(
-            self.mongos_old.address_string,
-            self.mongos_new.address_string,
+        self.mongoses_uri = (
+            f"mongodb://{self.mongos_old.address_string},{self.mongos_new.address_string}"
         )
 
         self.client = self.simple_client(self.mongoses_uri)

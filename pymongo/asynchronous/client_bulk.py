@@ -16,6 +16,7 @@
 
 .. versionadded:: 4.9
 """
+
 from __future__ import annotations
 
 import copy
@@ -46,7 +47,6 @@ from pymongo._client_bulk_shared import (
     _merge_command,
     _throw_client_bulk_write_exception,
 )
-from pymongo._telemetry import _CommandTelemetry
 from pymongo.common import (
     validate_is_document_type,
     validate_ok_for_replace,
@@ -234,34 +234,28 @@ class _AsyncClientBulk:
     ) -> dict[str, Any]:
         """A proxy for AsyncConnection.write_command that handles event publishing."""
         bwc.prepare_command(cmd, op_docs, ns_docs)
-        with _CommandTelemetry(
-            topology_id=client._topology_id,
-            command_name=bwc.name,
-            database_name=bwc.db_name,
-            spec=cmd,
-            orig=cmd,
-            driver_connection_id=bwc.conn.id,
-            server_connection_id=bwc.conn.server_connection_id,
-            service_id=bwc.conn.service_id,
-            address=bwc.conn.address,
-            listeners=bwc.listeners if bwc.publish else None,
-            request_id=request_id,
-            operation_id=bwc.op_id,
-        ) as cmd_telemetry:
-            try:
-                reply = await bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc, arg-type]
-                cmd_telemetry.handle_succeeded(reply)
-                # Process the response from the server.
-                await self.client._process_response(reply, bwc.session)  # type: ignore[arg-type]
-            except Exception as exc:
-                cmd_telemetry.handle_failed(exc)
-                # Top-level error will be embedded in ClientBulkWriteException.
-                reply = {"error": exc}
-                # Process the response from the server.
-                if isinstance(exc, OperationFailure):
-                    await self.client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
-                else:
-                    await self.client._process_response({}, bwc.session)  # type: ignore[arg-type]
+        try:
+            reply = await bwc.conn.write_command(  # type: ignore[misc]
+                request_id,
+                msg,  # type: ignore[arg-type]
+                bwc.codec,
+                command_name=bwc.name,
+                database_name=bwc.db_name,
+                spec=cmd,
+                orig=cmd,
+                publish_events=bwc.publish,
+                operation_id=bwc.op_id,
+            )
+            # Process the response from the server.
+            await self.client._process_response(reply, bwc.session)  # type: ignore[arg-type]
+        except Exception as exc:
+            # Top-level error will be embedded in ClientBulkWriteException.
+            reply = {"error": exc}
+            # Process the response from the server.
+            if isinstance(exc, OperationFailure):
+                await self.client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
+            else:
+                await self.client._process_response({}, bwc.session)  # type: ignore[arg-type]
         return reply  # type: ignore[return-value]
 
     async def unack_write(
@@ -276,29 +270,22 @@ class _AsyncClientBulk:
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for AsyncConnection.unack_write that handles event publishing."""
         bwc.prepare_command(cmd, op_docs, ns_docs)
-        with _CommandTelemetry(
-            topology_id=client._topology_id,
-            command_name=bwc.name,
-            database_name=bwc.db_name,
-            spec=cmd,
-            orig=cmd,
-            driver_connection_id=bwc.conn.id,
-            server_connection_id=bwc.conn.server_connection_id,
-            service_id=bwc.conn.service_id,
-            address=bwc.conn.address,
-            listeners=bwc.listeners if bwc.publish else None,
-            request_id=request_id,
-            operation_id=bwc.op_id,
-        ) as cmd_telemetry:
-            try:
-                await bwc.conn.unack_write(msg, bwc.max_bson_size)  # type: ignore[union-attr, misc]
-                # Comply with APM spec.
-                reply = {"ok": 1}
-                cmd_telemetry.handle_succeeded(reply)
-            except Exception as exc:
-                cmd_telemetry.handle_failed(exc)
-                # Top-level error will be embedded in ClientBulkWriteException.
-                reply = {"error": exc}  # type: ignore[dict-item]
+        try:
+            await bwc.conn.unack_write(  # type: ignore[union-attr, misc]
+                msg,
+                bwc.max_bson_size,
+                command_name=bwc.name,
+                database_name=bwc.db_name,
+                spec=cmd,
+                orig=cmd,
+                request_id=request_id,
+                publish_events=bwc.publish,
+                operation_id=bwc.op_id,
+            )
+            reply: dict[str, Any] = {"ok": 1}
+        except Exception as exc:
+            # Top-level error will be embedded in ClientBulkWriteException.
+            reply = {"error": exc}  # type: ignore[dict-item]
         return reply
 
     async def _execute_batch_unack(

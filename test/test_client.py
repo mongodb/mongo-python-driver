@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the mongo_client module."""
+
 from __future__ import annotations
 
 import _thread as thread

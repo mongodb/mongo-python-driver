@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Run the SRV support tests."""
+
 from __future__ import annotations
 
 import glob
@@ -269,7 +270,7 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
         self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
     def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(
-        self
+        self,
     ):
         test_cases = [
             {
@@ -291,7 +292,7 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
         self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
     def test_5_when_srv_hostname_has_two_dot_separated_parts_it_is_valid_for_the_returned_hostname_to_be_identical(
-        self
+        self,
     ):
         test_cases = [
             {

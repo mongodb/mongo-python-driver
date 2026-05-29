@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 """Communicate with one MongoDB server in a topology."""
+
 from __future__ import annotations
 
 import logging
@@ -172,17 +173,13 @@ class Server:
 
         start = datetime.now()
         with _CommandTelemetry(
-            topology_id=client._topology_id,
+            conn=conn,
             command_name=operation.name,
             database_name=dbn,
             spec=cmd,
             orig=cmd,
-            driver_connection_id=conn.id,
-            server_connection_id=conn.server_connection_id,
-            service_id=conn.service_id,
-            address=conn.address,
-            listeners=listeners if publish else None,
             request_id=request_id,
+            publish_events=publish,
         ) as cmd_telemetry:
             if more_to_come:
                 reply = await conn.receive_message(None)

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Internal network layer helper methods."""
+
 from __future__ import annotations
 
 from typing import (
@@ -42,11 +43,10 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
-    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
+    from pymongo.typings import _CollationIn, _DocumentOut, _DocumentType
     from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = False
@@ -56,22 +56,16 @@ async def command(
     conn: AsyncConnection,
     dbname: str,
     spec: MutableMapping[str, Any],
-    is_mongos: bool,
     read_preference: Optional[_ServerMode],
     codec_options: CodecOptions[_DocumentType],
     session: Optional[AsyncClientSession],
     client: Optional[AsyncMongoClient[Any]],
     check: bool = True,
     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-    address: Optional[_Address] = None,
     listeners: Optional[_EventListeners] = None,
-    max_bson_size: Optional[int] = None,
     read_concern: Optional[ReadConcern] = None,
     parse_write_concern_error: bool = False,
     collation: Optional[_CollationIn] = None,
-    compression_ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
-    use_op_msg: bool = False,
-    unacknowledged: bool = False,
     user_fields: Optional[Mapping[str, Any]] = None,
     exhaust_allowed: bool = False,
     write_concern: Optional[WriteConcern] = None,
@@ -81,23 +75,17 @@ async def command(
     :param conn: a AsyncConnection instance
     :param dbname: name of the database on which to run the command
     :param spec: a command document as an ordered dict type, eg SON.
-    :param is_mongos: are we connected to a mongos?
     :param read_preference: a read preference
     :param codec_options: a CodecOptions instance
     :param session: optional AsyncClientSession instance.
     :param client: optional AsyncMongoClient instance for updating $clusterTime.
     :param check: raise OperationFailure if there are errors
     :param allowable_errors: errors to ignore if `check` is True
-    :param address: the (host, port) of `conn`
     :param listeners: An instance of :class:`~pymongo.monitoring.EventListeners`
-    :param max_bson_size: The maximum encoded bson size for this server
     :param read_concern: The read concern for this command.
     :param parse_write_concern_error: Whether to parse the ``writeConcernError``
         field in the command response.
     :param collation: The collation for this command.
-    :param compression_ctx: optional compression Context.
-    :param use_op_msg: True if we should use OP_MSG.
-    :param unacknowledged: True if this is an unacknowledged command.
     :param user_fields: Response fields that should be decoded
         using the TypeDecoders from codec_options, passed to
         bson._decode_all_selective.
@@ -106,10 +94,11 @@ async def command(
     name = next(iter(spec))
     ns = dbname + ".$cmd"
     speculative_hello = False
+    unacknowledged = bool(write_concern and not write_concern.acknowledged)
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
-    if is_mongos and not use_op_msg:
+    if conn.is_mongos and not conn.op_msg_enabled:
         assert read_preference is not None
         spec = message._maybe_add_read_preference(spec, read_preference)
     if read_concern and not (session and session.in_transaction):
@@ -123,6 +112,7 @@ async def command(
     publish = listeners is not None and listeners.enabled_for_commands
     speculative_hello = _is_speculative_authenticate(name, spec) if publish else False
 
+    compression_ctx = conn.compression_context
     if compression_ctx and name.lower() in _NO_COMPRESSION:
         compression_ctx = None
 
@@ -134,7 +124,7 @@ async def command(
         conn.apply_timeout(client, spec)
     _csot.apply_write_concern(spec, write_concern)
 
-    if use_op_msg:
+    if conn.op_msg_enabled:
         flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
         flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
         request_id, msg, size, max_doc_size = message._op_msg(
@@ -142,31 +132,29 @@ async def command(
         )
         # If this is an unacknowledged write then make sure the encoded doc(s)
         # are small enough, otherwise rely on the server to return an error.
-        if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
-            message._raise_document_too_large(name, size, max_bson_size)
+        if unacknowledged and conn.max_bson_size is not None and max_doc_size > conn.max_bson_size:
+            message._raise_document_too_large(name, size, conn.max_bson_size)
     else:
         request_id, msg, size = message._query(
             0, ns, 0, -1, spec, None, codec_options, compression_ctx
         )
 
-    if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
-        message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
+    if conn.max_bson_size is not None and size > conn.max_bson_size + message._COMMAND_OVERHEAD:
+        message._raise_document_too_large(
+            name, size, conn.max_bson_size + message._COMMAND_OVERHEAD
+        )
 
     with _CommandTelemetry(
-        topology_id=client._topology_id if client else None,
+        conn=conn,
         command_name=name,
         database_name=dbname,
         spec=spec,
         orig=orig,
-        driver_connection_id=conn.id,
-        server_connection_id=conn.server_connection_id,
-        service_id=conn.service_id,
-        address=address if address is not None else conn.address,
-        listeners=listeners if publish else None,
         request_id=request_id,
+        publish_events=publish,
     ) as cmd_telemetry:
         await async_sendall(conn.conn.get_conn, msg)
-        if use_op_msg and unacknowledged:
+        if conn.op_msg_enabled and unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
             response_doc: _DocumentOut = {"ok": 1}

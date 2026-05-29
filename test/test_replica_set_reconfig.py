@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test clients and replica set configuration changes, using mocks."""
+
 from __future__ import annotations
 
 import sys

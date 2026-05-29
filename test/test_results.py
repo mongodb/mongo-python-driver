@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test results module."""
+
 from __future__ import annotations
 
 import sys

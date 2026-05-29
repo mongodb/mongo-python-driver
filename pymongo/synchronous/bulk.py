@@ -16,6 +16,7 @@
 
 .. versionadded:: 2.7
 """
+
 from __future__ import annotations
 
 import copy
@@ -34,7 +35,6 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo._telemetry import _CommandTelemetry
 from pymongo.bulk_shared import (
     _COMMANDS,
     _DELETE_ALL,
@@ -248,26 +248,21 @@ class _Bulk:
     ) -> dict[str, Any]:
         """A proxy for SocketInfo.write_command that handles event publishing."""
         bwc.prepare_command(cmd, docs)
-        with _CommandTelemetry(
-            topology_id=client._topology_id,
-            command_name=bwc.name,
-            database_name=bwc.db_name,
-            spec=cmd,
-            orig=cmd,
-            driver_connection_id=bwc.conn.id,
-            server_connection_id=bwc.conn.server_connection_id,
-            service_id=bwc.conn.service_id,
-            address=bwc.conn.address,
-            listeners=bwc.listeners if bwc.publish else None,
-            request_id=request_id,
-            operation_id=bwc.op_id,
-        ) as cmd_telemetry:
-            try:
-                reply = bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc]
-            except (NotPrimaryError, OperationFailure) as exc:
-                client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
-                raise
-            cmd_telemetry.handle_succeeded(reply)
+        try:
+            reply = bwc.conn.write_command(  # type: ignore[misc]
+                request_id,
+                msg,
+                bwc.codec,
+                command_name=bwc.name,
+                database_name=bwc.db_name,
+                spec=cmd,
+                orig=cmd,
+                publish_events=bwc.publish,
+                operation_id=bwc.op_id,
+            )
+        except (NotPrimaryError, OperationFailure) as exc:
+            client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
+            raise
         client._process_response(reply, bwc.session)  # type: ignore[arg-type]
         return reply  # type: ignore[return-value]
 
@@ -283,24 +278,17 @@ class _Bulk:
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for Connection.unack_write that handles event publishing."""
         bwc.prepare_command(cmd, docs)
-        with _CommandTelemetry(
-            topology_id=client._topology_id,
+        bwc.conn.unack_write(  # type: ignore[union-attr, misc]
+            msg,
+            max_doc_size,
             command_name=bwc.name,
             database_name=bwc.db_name,
             spec=cmd,
             orig=cmd,
-            driver_connection_id=bwc.conn.id,
-            server_connection_id=bwc.conn.server_connection_id,
-            service_id=bwc.conn.service_id,
-            address=bwc.conn.address,
-            listeners=bwc.listeners if bwc.publish else None,
             request_id=request_id,
+            publish_events=bwc.publish,
             operation_id=bwc.op_id,
-        ) as cmd_telemetry:
-            bwc.conn.unack_write(msg, max_doc_size)  # type: ignore[union-attr, misc]
-            # Comply with APM spec.
-            reply = {"ok": 1}
-            cmd_telemetry.handle_succeeded(reply)
+        )
         return None
 
     def _execute_batch_unack(

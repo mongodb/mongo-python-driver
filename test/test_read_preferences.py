@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the replica_set_connection module."""
+
 from __future__ import annotations
 
 import contextlib

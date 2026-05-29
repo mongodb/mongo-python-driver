@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Utilities for testing pymongo that require synchronization."""
+
 from __future__ import annotations
 
 import asyncio
@@ -202,7 +203,7 @@ def flaky(
                     if i == max_runs - 1:
                         raise e
                     print(
-                        f"Retrying after attempt {i+1} of {func_name or target_func.__name__} failed with ({reason})):\n"
+                        f"Retrying after attempt {i + 1} of {func_name or target_func.__name__} failed with ({reason})):\n"
                         f"{traceback.format_exc()}",
                         file=sys.stderr,
                     )

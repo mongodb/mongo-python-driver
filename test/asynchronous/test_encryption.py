@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test client side encryption spec."""
+
 from __future__ import annotations
 
 import base64
