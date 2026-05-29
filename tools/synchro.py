@@ -25,7 +25,7 @@ import sys
 from os import listdir
 from pathlib import Path
 
-from unasync import Rule, unasync_files  # type: ignore[import-not-found]
+from unasync import Rule, unasync_files  # type: ignore[import-untyped]
 
 replacements = {
     "AsyncCollection": "Collection",
