@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -27,9 +26,8 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo._telemetry import _CommandTelemetry
 from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.helpers_shared import _check_command_response
+from pymongo.asynchronous.pool import _CURSOR_DOC_FIELDS
 from pymongo.logger import (
     _SDAM_LOGGER,
     _debug_log,
@@ -52,8 +50,6 @@ if TYPE_CHECKING:
     from pymongo.typings import _DocumentOut
 
 _IS_SYNC = False
-
-_CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
 class Server:
@@ -159,8 +155,9 @@ class Server:
         publish = listeners.enabled_for_commands
 
         use_cmd = operation.use_command(conn)
-        more_to_come = operation.conn_mgr and operation.conn_mgr.more_to_come
+        more_to_come = bool(operation.conn_mgr and operation.conn_mgr.more_to_come)
         cmd, dbn = await self.operation_to_command(operation, conn, use_cmd)
+        data, max_doc_size = b"", 0
         if more_to_come:
             request_id = 0
         else:
@@ -170,62 +167,26 @@ class Server:
         if publish and "$db" not in cmd:
             cmd["$db"] = dbn
 
-        start = datetime.now()
-        with _CommandTelemetry(
-            conn=conn,
+        reply, docs, duration = await conn.run_operation(
+            data=data,
+            max_doc_size=max_doc_size,
+            more_to_come=more_to_come,
+            request_id=request_id,
+            unpack_res=unpack_res,
+            operation=operation,
+            use_cmd=use_cmd,
             command_name=operation.name,
             database_name=dbn,
             spec=cmd,
-            orig=cmd,
-            request_id=request_id,
             publish_events=publish,
-        ) as cmd_telemetry:
-            if more_to_come:
-                reply = await conn.receive_message(None)
-            else:
-                await conn.send_message(data, max_doc_size)
-                reply = await conn.receive_message(request_id)
-
-            # Unpack and check for command errors.
-            if use_cmd:
-                user_fields = _CURSOR_DOC_FIELDS
-                legacy_response = False
-            else:
-                user_fields = None
-                legacy_response = True
-            docs = unpack_res(
-                reply,
-                operation.cursor_id,
-                operation.codec_options,
-                legacy_response=legacy_response,
-                user_fields=user_fields,
-            )
-            if use_cmd:
-                first = docs[0]
-                await operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
-                _check_command_response(first, conn.max_wire_version, pool_opts=conn.opts)  # type:ignore[has-type]
-
-            # Must publish in find / getMore / explain command response format.
-            if use_cmd:
-                res = docs[0]
-            elif operation.name == "explain":
-                res = docs[0] if docs else {}
-            else:
-                res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}  # type: ignore[union-attr]
-                if operation.name == "find":
-                    res["cursor"]["firstBatch"] = docs
-                else:
-                    res["cursor"]["nextBatch"] = docs
-            cmd_telemetry.handle_succeeded(res)
-
-        duration = datetime.now() - start
+        )
 
         # Decrypt response.
         client = operation.client  # type: ignore[assignment]
         if client and client._encrypter:
             if use_cmd:
                 decrypted = await client._encrypter.decrypt(reply.raw_command_response())
-                docs = _decode_all_selective(decrypted, operation.codec_options, user_fields)
+                docs = _decode_all_selective(decrypted, operation.codec_options, _CURSOR_DOC_FIELDS)
 
         response: Response
 

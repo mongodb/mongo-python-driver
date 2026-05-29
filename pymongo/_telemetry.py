@@ -130,8 +130,8 @@ class _CommandTelemetry:
         self,
         reply: Any,
         speculative_hello: bool = False,
-    ) -> None:
-        """Publish command-succeeded telemetry.
+    ) -> datetime.timedelta:
+        """Publish command-succeeded telemetry and return the elapsed duration.
 
         Must be called explicitly by the caller when the command succeeds.
         Sets the internal *handled* flag so that ``__exit__`` does not also
@@ -171,6 +171,7 @@ class _CommandTelemetry:
                 database_name=self._database_name,
             )
         self._handled = True
+        return duration
 
     def handle_failed(self, exc: BaseException) -> None:
         """Publish command-failed telemetry.
