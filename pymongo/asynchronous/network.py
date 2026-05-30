@@ -191,6 +191,8 @@ async def command(
 ) -> _DocumentType:
     """Execute a command over the socket, or raise socket.error.
 
+    Not intended to be called directly — use :meth:`AsyncConnection.command` instead.
+
     :param conn: a AsyncConnection instance
     :param dbname: name of the database on which to run the command
     :param spec: a command document as an ordered dict type, eg SON.
