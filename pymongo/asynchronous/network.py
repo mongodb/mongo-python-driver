@@ -15,9 +15,11 @@
 """Internal network layer helper methods."""
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Mapping,
     MutableMapping,
     Optional,
@@ -42,6 +44,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.message import _GetMore, _OpReply, _Query
     from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
@@ -49,6 +52,123 @@ if TYPE_CHECKING:
     from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = False
+
+_CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
+
+
+async def bulk_write_command(
+    conn: AsyncConnection,
+    request_id: int,
+    msg: bytes,
+    codec_options: CodecOptions[Mapping[str, Any]],
+    command_name: str,
+    database_name: str,
+    spec: Any,
+    orig: Any,
+    *,
+    acknowledged: bool = True,
+    max_doc_size: int = 0,
+    publish_events: bool = True,
+    operation_id: Optional[int] = None,
+) -> dict[str, Any]:
+    """Send a bulk write command, returning the server response as a dict.
+
+    When acknowledged=False, sends the message without waiting for a
+    response and returns a synthetic {"ok": 1}.
+
+    Can raise ConnectionFailure or OperationFailure.
+    """
+    conn._raise_if_not_writable(not acknowledged)
+    with _CommandTelemetry(
+        conn=conn,
+        command_name=command_name,
+        database_name=database_name,
+        spec=spec,
+        orig=orig,
+        request_id=request_id,
+        publish_events=publish_events,
+        operation_id=operation_id,
+    ) as cmd_telemetry:
+        await conn.send_message(msg, max_doc_size)
+        if not acknowledged:
+            result: dict[str, Any] = {"ok": 1}
+        else:
+            reply = await conn.receive_message(request_id)
+            result = reply.command_response(codec_options)
+            # Raises NotPrimaryError or OperationFailure.
+            helpers_shared._check_command_response(result, conn.max_wire_version)
+        cmd_telemetry.handle_succeeded(result)
+    return result
+
+
+async def cursor_operation(
+    conn: AsyncConnection,
+    data: bytes,
+    max_doc_size: int,
+    more_to_come: bool,
+    request_id: int,
+    unpack_res: Callable[..., list[_DocumentOut]],
+    operation: Union[_Query, _GetMore],
+    use_cmd: bool,
+    command_name: str,
+    database_name: str,
+    spec: Any,
+    publish_events: bool,
+) -> tuple[Union[_OpReply, _OpMsg], list[_DocumentOut], timedelta]:
+    """Send a find/getMore operation, manage telemetry, and return the result.
+
+    Can raise ConnectionFailure, OperationFailure, etc.
+    """
+    with _CommandTelemetry(
+        conn=conn,
+        command_name=command_name,
+        database_name=database_name,
+        spec=spec,
+        orig=spec,
+        request_id=request_id,
+        publish_events=publish_events,
+    ) as cmd_telemetry:
+        if more_to_come:
+            reply = await conn.receive_message(None)
+        else:
+            await conn.send_message(data, max_doc_size)
+            reply = await conn.receive_message(request_id)
+
+        # Unpack and check for command errors.
+        user_fields: Optional[Mapping[str, Any]]
+        if use_cmd:
+            user_fields = _CURSOR_DOC_FIELDS
+            legacy_response = False
+        else:
+            user_fields = None
+            legacy_response = True
+        docs = unpack_res(
+            reply,
+            operation.cursor_id,
+            operation.codec_options,
+            legacy_response=legacy_response,
+            user_fields=user_fields,
+        )
+        if use_cmd:
+            first = docs[0]
+            await operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
+            helpers_shared._check_command_response(
+                first, conn.max_wire_version, pool_opts=conn.opts
+            )  # type: ignore[has-type]
+
+        # Must publish in find / getMore / explain command response format.
+        if use_cmd:
+            res = docs[0]
+        elif operation.name == "explain":
+            res = docs[0] if docs else {}
+        else:
+            res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}  # type: ignore[union-attr]
+            if operation.name == "find":
+                res["cursor"]["firstBatch"] = docs
+            else:
+                res["cursor"]["nextBatch"] = docs
+        duration = cmd_telemetry.handle_succeeded(res)
+    return reply, docs, duration
 
 
 async def command(

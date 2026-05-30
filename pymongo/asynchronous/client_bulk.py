@@ -38,6 +38,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.asynchronous.network import bulk_write_command
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
@@ -234,7 +235,8 @@ class _AsyncClientBulk:
         """A proxy for AsyncConnection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, op_docs, ns_docs)
         try:
-            reply = await bwc.conn.bulk_write_command(  # type: ignore[misc]
+            reply = await bulk_write_command(
+                bwc.conn,  # type: ignore[arg-type]
                 request_id,
                 msg,  # type: ignore[arg-type]
                 bwc.codec,
@@ -270,7 +272,8 @@ class _AsyncClientBulk:
         """A proxy for AsyncConnection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, op_docs, ns_docs)
         try:
-            await bwc.conn.bulk_write_command(  # type: ignore[union-attr, misc]
+            await bulk_write_command(
+                bwc.conn,  # type: ignore[arg-type]
                 request_id,
                 msg,
                 bwc.codec,

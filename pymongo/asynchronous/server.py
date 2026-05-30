@@ -27,7 +27,7 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.asynchronous.pool import _CURSOR_DOC_FIELDS
+from pymongo.asynchronous.network import _CURSOR_DOC_FIELDS, cursor_operation
 from pymongo.logger import (
     _SDAM_LOGGER,
     _debug_log,
@@ -167,7 +167,8 @@ class Server:
         if publish and "$db" not in cmd:
             cmd["$db"] = dbn
 
-        reply, docs, duration = await conn.cursor_operation(
+        reply, docs, duration = await cursor_operation(
+            conn,
             data=data,
             max_doc_size=max_doc_size,
             more_to_come=more_to_come,

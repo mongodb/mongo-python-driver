@@ -36,6 +36,7 @@ from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
 from pymongo.asynchronous.client_session import AsyncClientSession, _validate_session_write_concern
 from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.asynchronous.network import bulk_write_command
 from pymongo.bulk_shared import (
     _COMMANDS,
     _DELETE_ALL,
@@ -248,7 +249,8 @@ class _AsyncBulk:
         """A proxy for AsyncConnection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, docs)
         try:
-            reply = await bwc.conn.bulk_write_command(  # type: ignore[misc]
+            reply = await bulk_write_command(
+                bwc.conn,  # type: ignore[arg-type]
                 request_id,
                 msg,
                 bwc.codec,
@@ -277,7 +279,8 @@ class _AsyncBulk:
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for AsyncConnection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, docs)
-        await bwc.conn.bulk_write_command(  # type: ignore[union-attr, misc]
+        await bulk_write_command(
+            bwc.conn,  # type: ignore[arg-type]
             request_id,
             msg,
             bwc.codec,

@@ -34,7 +34,7 @@ from pymongo.logger import (
 from pymongo.message import _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 from pymongo.synchronous.helpers import _handle_reauth
-from pymongo.synchronous.pool import _CURSOR_DOC_FIELDS
+from pymongo.synchronous.network import _CURSOR_DOC_FIELDS, cursor_operation
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -167,7 +167,8 @@ class Server:
         if publish and "$db" not in cmd:
             cmd["$db"] = dbn
 
-        reply, docs, duration = conn.cursor_operation(
+        reply, docs, duration = cursor_operation(
+            conn,
             data=data,
             max_doc_size=max_doc_size,
             more_to_come=more_to_come,

@@ -24,11 +24,9 @@ import ssl
 import sys
 import time
 import weakref
-from datetime import timedelta
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Generator,
     Mapping,
     MutableMapping,
@@ -40,7 +38,6 @@ from typing import (
 
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
-from pymongo._telemetry import _CommandTelemetry
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -102,19 +99,17 @@ if TYPE_CHECKING:
         ZlibContext,
         ZstdContext,
     )
-    from pymongo.message import _GetMore, _OpMsg, _OpReply, _Query
+    from pymongo.message import _OpMsg, _OpReply
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.auth import _AuthContext
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient, _MongoClientErrorHandler
-    from pymongo.typings import _Address, _CollationIn, _DocumentOut
+    from pymongo.typings import _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
 
 _IS_SYNC = True
-
-_CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
 class Connection:
@@ -464,118 +459,6 @@ class Connection:
         if unacknowledged and not self.is_writable:
             # Write won't succeed, bail as if we'd received a not primary error.
             raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
-
-    def bulk_write_command(
-        self,
-        request_id: int,
-        msg: bytes,
-        codec_options: CodecOptions[Mapping[str, Any]],
-        command_name: str,
-        database_name: str,
-        spec: Any,
-        orig: Any,
-        *,
-        acknowledged: bool = True,
-        max_doc_size: int = 0,
-        publish_events: bool = True,
-        operation_id: Optional[int] = None,
-    ) -> dict[str, Any]:
-        """Send a bulk write command, returning the server response as a dict.
-
-        When acknowledged=False, sends the message without waiting for a
-        response and returns a synthetic {"ok": 1}.
-
-        Can raise ConnectionFailure or OperationFailure.
-        """
-        self._raise_if_not_writable(not acknowledged)
-        with _CommandTelemetry(
-            conn=self,
-            command_name=command_name,
-            database_name=database_name,
-            spec=spec,
-            orig=orig,
-            request_id=request_id,
-            publish_events=publish_events,
-            operation_id=operation_id,
-        ) as cmd_telemetry:
-            self.send_message(msg, max_doc_size)
-            if not acknowledged:
-                result: dict[str, Any] = {"ok": 1}
-            else:
-                reply = self.receive_message(request_id)
-                result = reply.command_response(codec_options)
-                # Raises NotPrimaryError or OperationFailure.
-                helpers_shared._check_command_response(result, self.max_wire_version)
-            cmd_telemetry.handle_succeeded(result)
-        return result
-
-    def cursor_operation(
-        self,
-        data: bytes,
-        max_doc_size: int,
-        more_to_come: bool,
-        request_id: int,
-        unpack_res: Callable[..., list[_DocumentOut]],
-        operation: Union[_Query, _GetMore],
-        use_cmd: bool,
-        command_name: str,
-        database_name: str,
-        spec: Any,
-        publish_events: bool,
-    ) -> tuple[Union[_OpReply, _OpMsg], list[_DocumentOut], timedelta]:
-        """Send a find/getMore operation, manage telemetry, and return the result.
-
-        Can raise ConnectionFailure, OperationFailure, etc.
-        """
-        with _CommandTelemetry(
-            conn=self,
-            command_name=command_name,
-            database_name=database_name,
-            spec=spec,
-            orig=spec,
-            request_id=request_id,
-            publish_events=publish_events,
-        ) as cmd_telemetry:
-            if more_to_come:
-                reply = self.receive_message(None)
-            else:
-                self.send_message(data, max_doc_size)
-                reply = self.receive_message(request_id)
-
-            # Unpack and check for command errors.
-            if use_cmd:
-                user_fields = _CURSOR_DOC_FIELDS
-                legacy_response = False
-            else:
-                user_fields = None
-                legacy_response = True
-            docs = unpack_res(
-                reply,
-                operation.cursor_id,
-                operation.codec_options,
-                legacy_response=legacy_response,
-                user_fields=user_fields,
-            )
-            if use_cmd:
-                first = docs[0]
-                operation.client._process_response(first, operation.session)  # type: ignore[misc, arg-type]
-                helpers_shared._check_command_response(
-                    first, self.max_wire_version, pool_opts=self.opts
-                )  # type: ignore[has-type]
-
-            # Must publish in find / getMore / explain command response format.
-            if use_cmd:
-                res = docs[0]
-            elif operation.name == "explain":
-                res = docs[0] if docs else {}
-            else:
-                res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}  # type: ignore[union-attr]
-                if operation.name == "find":
-                    res["cursor"]["firstBatch"] = docs
-                else:
-                    res["cursor"]["nextBatch"] = docs
-            duration = cmd_telemetry.handle_succeeded(res)
-        return reply, docs, duration
 
     def authenticate(self, reauthenticate: bool = False) -> None:
         """Authenticate to the server if needed.

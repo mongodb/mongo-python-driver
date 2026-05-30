@@ -38,6 +38,7 @@ from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.network import bulk_write_command
 
 if TYPE_CHECKING:
     from pymongo.synchronous.mongo_client import MongoClient
@@ -234,7 +235,8 @@ class _ClientBulk:
         """A proxy for Connection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, op_docs, ns_docs)
         try:
-            reply = bwc.conn.bulk_write_command(  # type: ignore[misc]
+            reply = bulk_write_command(
+                bwc.conn,  # type: ignore[arg-type]
                 request_id,
                 msg,  # type: ignore[arg-type]
                 bwc.codec,
@@ -270,7 +272,8 @@ class _ClientBulk:
         """A proxy for Connection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, op_docs, ns_docs)
         try:
-            bwc.conn.bulk_write_command(  # type: ignore[union-attr, misc]
+            bulk_write_command(
+                bwc.conn,  # type: ignore[arg-type]
                 request_id,
                 msg,
                 bwc.codec,

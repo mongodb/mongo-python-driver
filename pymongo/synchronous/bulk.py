@@ -64,6 +64,7 @@ from pymongo.message import (
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
 from pymongo.synchronous.helpers import _handle_reauth
+from pymongo.synchronous.network import bulk_write_command
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -248,7 +249,8 @@ class _Bulk:
         """A proxy for Connection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, docs)
         try:
-            reply = bwc.conn.bulk_write_command(  # type: ignore[misc]
+            reply = bulk_write_command(
+                bwc.conn,  # type: ignore[arg-type]
                 request_id,
                 msg,
                 bwc.codec,
@@ -277,7 +279,8 @@ class _Bulk:
     ) -> Optional[Mapping[str, Any]]:
         """A proxy for Connection.bulk_write_command that handles event publishing."""
         bwc.prepare_command(cmd, docs)
-        bwc.conn.bulk_write_command(  # type: ignore[union-attr, misc]
+        bulk_write_command(
+            bwc.conn,  # type: ignore[arg-type]
             request_id,
             msg,
             bwc.codec,
