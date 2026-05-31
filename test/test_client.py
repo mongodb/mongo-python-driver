@@ -165,6 +165,16 @@ class ClientUnitTest(UnitTest):
         self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
         self.assertAlmostEqual(12, client.options.server_selection_timeout)
 
+    def test_repr_redacts_tls_certificate_keyfile_password(self):
+        client = MongoClient(
+            "mongodb://localhost:27017/?tls=true&tlsCertificateKeyFilePassword=passphrase",
+            connect=False,
+        )
+        the_repr = repr(client)
+
+        self.assertIn("tlscertificatekeyfilepassword='<redacted>'", the_repr)
+        self.assertNotIn("passphrase", the_repr)
+
     def test_connect_timeout(self):
         client = self.simple_client(connect=False, connectTimeoutMS=None, socketTimeoutMS=None)
         pool_opts = client.options.pool_options
