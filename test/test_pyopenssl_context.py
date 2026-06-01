@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import ssl
 import sys
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 sys.path[0:0] = [""]
 
@@ -282,8 +282,6 @@ class TestOcspCallback(unittest.TestCase):
 
     def _make_conn(self, *, peer_cert, chain):
         """Return a mock Connection whose certificate methods return the given values."""
-        from unittest.mock import MagicMock
-
         conn = MagicMock()
         conn.get_peer_certificate.return_value = peer_cert
         conn.get_verified_chain.return_value = chain
@@ -300,8 +298,6 @@ class TestOcspCallback(unittest.TestCase):
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_returns_false_when_chain_is_none(self):
-        from unittest.mock import MagicMock
-
         from pymongo.ocsp_support import _ocsp_callback
 
         conn = self._make_conn(peer_cert=MagicMock(), chain=None)
@@ -311,8 +307,6 @@ class TestOcspCallback(unittest.TestCase):
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_returns_false_when_chain_is_empty(self):
-        from unittest.mock import MagicMock
-
         from pymongo.ocsp_support import _ocsp_callback
 
         conn = self._make_conn(peer_cert=MagicMock(), chain=[])
