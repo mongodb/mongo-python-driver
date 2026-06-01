@@ -2855,7 +2855,9 @@ class _ClientConnectionRetryable(Generic[T]):
                         overloaded = exc.has_error_label("SystemOverloadedError")
                         if overloaded:
                             self._max_retries = self._client.options.max_adaptive_retries
-                            self._retry_after_backoff_ms = exc._retry_after_ms / 1000
+                            self._retry_after_backoff_ms = (
+                                exc._retry_after_ms / 1000 if exc._retry_after_ms else 0
+                            )
                         always_retryable = exc.has_error_label("RetryableError") and overloaded
                         if not self._client.options.retry_reads or (
                             not always_retryable
@@ -2896,7 +2898,9 @@ class _ClientConnectionRetryable(Generic[T]):
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                     if overloaded:
                         self._max_retries = self._client.options.max_adaptive_retries
-                        self._retry_after_backoff_ms = exc._retry_after_ms / 1000
+                        self._retry_after_backoff_ms = (
+                            exc._retry_after_ms / 1000 if exc._retry_after_ms else 0
+                        )
                     always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
 
                     # Always retry abortTransaction and commitTransaction up to once
