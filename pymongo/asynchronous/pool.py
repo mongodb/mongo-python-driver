@@ -288,7 +288,7 @@ class AsyncConnection:
         if performing_handshake:
             start = time.monotonic()
         try:
-            doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
+            doc = await self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
         except AutoReconnect as exc:
             if performing_handshake:
                 raise ConfigurationError(
