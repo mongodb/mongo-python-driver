@@ -30,9 +30,11 @@ from test import unittest
 
 try:
     from pymongo import pyopenssl_context as _ctx_module
+    from pymongo.ocsp_support import _ocsp_callback
     from pymongo.pyopenssl_context import (
         PROTOCOL_SSLv23,
         SSLContext,
+        _CallbackData,
         _is_ip_address,
         _ragged_eof,
     )
@@ -276,8 +278,6 @@ class TestOcspCallback(unittest.TestCase):
     """Unit tests for _ocsp_callback using a mocked SSL Connection."""
 
     def _make_callback_data(self):
-        from pymongo.pyopenssl_context import _CallbackData
-
         return _CallbackData()
 
     def _make_conn(self, *, peer_cert, chain):
@@ -289,8 +289,6 @@ class TestOcspCallback(unittest.TestCase):
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_returns_false_when_peer_cert_is_none(self):
-        from pymongo.ocsp_support import _ocsp_callback
-
         conn = self._make_conn(peer_cert=None, chain=None)
         result = _ocsp_callback(conn, b"", self._make_callback_data())
         self.assertFalse(result)
@@ -298,8 +296,6 @@ class TestOcspCallback(unittest.TestCase):
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_returns_false_when_chain_is_none(self):
-        from pymongo.ocsp_support import _ocsp_callback
-
         conn = self._make_conn(peer_cert=MagicMock(), chain=None)
         result = _ocsp_callback(conn, b"", self._make_callback_data())
         self.assertFalse(result)
@@ -307,8 +303,6 @@ class TestOcspCallback(unittest.TestCase):
 
     @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
     def test_returns_false_when_chain_is_empty(self):
-        from pymongo.ocsp_support import _ocsp_callback
-
         conn = self._make_conn(peer_cert=MagicMock(), chain=[])
         result = _ocsp_callback(conn, b"", self._make_callback_data())
         self.assertFalse(result)
