@@ -267,5 +267,58 @@ class TestLoadVerifyLocations(unittest.TestCase):
         mock_lvl.assert_called_once_with("/tmp/ca.pem", None)
 
 
+# ---------------------------------------------------------------------------
+# _ocsp_callback — early-exit branches
+# ---------------------------------------------------------------------------
+
+
+class TestOcspCallback(unittest.TestCase):
+    """Unit tests for _ocsp_callback using a mocked SSL Connection."""
+
+    def _make_callback_data(self):
+        from pymongo.pyopenssl_context import _CallbackData
+
+        return _CallbackData()
+
+    def _make_conn(self, *, peer_cert, chain):
+        """Return a mock Connection whose certificate methods return the given values."""
+        from unittest.mock import MagicMock
+
+        conn = MagicMock()
+        conn.get_peer_certificate.return_value = peer_cert
+        conn.get_verified_chain.return_value = chain
+        return conn
+
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
+    def test_returns_false_when_peer_cert_is_none(self):
+        from pymongo.ocsp_support import _ocsp_callback
+
+        conn = self._make_conn(peer_cert=None, chain=None)
+        result = _ocsp_callback(conn, b"", self._make_callback_data())
+        self.assertFalse(result)
+        conn.get_peer_certificate.assert_called_once_with(as_cryptography=True)
+
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
+    def test_returns_false_when_chain_is_none(self):
+        from unittest.mock import MagicMock
+
+        from pymongo.ocsp_support import _ocsp_callback
+
+        conn = self._make_conn(peer_cert=MagicMock(), chain=None)
+        result = _ocsp_callback(conn, b"", self._make_callback_data())
+        self.assertFalse(result)
+        conn.get_verified_chain.assert_called_once_with(as_cryptography=True)
+
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
+    def test_returns_false_when_chain_is_empty(self):
+        from unittest.mock import MagicMock
+
+        from pymongo.ocsp_support import _ocsp_callback
+
+        conn = self._make_conn(peer_cert=MagicMock(), chain=[])
+        result = _ocsp_callback(conn, b"", self._make_callback_data())
+        self.assertFalse(result)
+
+
 if __name__ == "__main__":
     unittest.main()
