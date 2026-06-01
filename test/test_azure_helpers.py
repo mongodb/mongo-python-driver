@@ -150,6 +150,20 @@ class TestGetAzureResponse(unittest.TestCase):
         _, kwargs = mock_open.call_args
         self.assertEqual(kwargs["timeout"], 42)
 
+    def test_client_id_is_url_encoded(self):
+        """Ensure special characters in client_id are percent-encoded."""
+        body = json.dumps({"access_token": "tok", "expires_in": "3600"})
+        with _mock_urlopen(200, body) as mock_open:
+            self._call(client_id="id with spaces&special=chars")
+
+        url = mock_open.call_args[0][0].full_url
+        # '&' and '=' must be percent-encoded so they don't inject extra query params
+        self.assertIn("client_id=id%20with%20spaces%26special%3Dchars", url)
+        # The encoded client_id should not introduce a raw '&'
+        # Count params: api-version, resource, client_id — exactly 3
+        query_string = url.split("?", 1)[1]
+        self.assertEqual(query_string.count("&"), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
