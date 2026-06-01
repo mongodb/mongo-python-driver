@@ -293,23 +293,30 @@ class TestHandshake(unittest.TestCase):
         )
 
     def test_handshake_op_msg_not_supported(self):
-        # If a server responds with maxWireVersion < 6 (no OP_MSG support),
-        # the wire version error must surface to the user.
+        # If a server doesn't understand OP_MSG it will just close the connection, thus the driver should
+        # hint towards OP_MSG potentially not being supported in the error.
         server = MockupDB()
-        server.autoresponds("ismaster", ok=1, ismaster=True, minWireVersion=0, maxWireVersion=5)
+
+        def responder(request):
+            if isinstance(request, OpMsg):
+                request.hangup()
+                return None
+
+        server.autoresponds(responder)
         server.run()
         self.addCleanup(server.stop)
 
         client = MongoClient(server.uri, serverSelectionTimeoutMS=500)
         self.addCleanup(client.close)
 
-        # The ConfigurationError from _hello() is stored as the server's error
-        # and surfaces inside ServerSelectionTimeoutError.
-        expected = re.escape(
-            "reports wire version 5, but this version of PyMongo requires at least "
-            "%d (MongoDB %s)." % (MIN_SUPPORTED_WIRE_VERSION, MIN_SUPPORTED_SERVER_VERSION)
-        )
-        with self.assertRaisesRegex(ServerSelectionTimeoutError, expected):
+        with self.assertRaisesRegex(
+            ServerSelectionTimeoutError,
+            re.escape(
+                f"The server may have closed the connection because it does not "
+                f"support the wire protocol version used in the initial handshake. "
+                f"Ensure your MongoDB server version is {MIN_SUPPORTED_SERVER_VERSION} or newer."
+            ),
+        ):
             client.db.command("ping")
 
 

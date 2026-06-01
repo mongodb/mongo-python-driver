@@ -44,7 +44,6 @@ from pymongo.common import (
     MAX_WIRE_VERSION,
     MAX_WRITE_BATCH_SIZE,
     MIN_SUPPORTED_SERVER_VERSION,
-    MIN_SUPPORTED_WIRE_VERSION,
     ORDERED_TYPES,
 )
 from pymongo.errors import (  # type:ignore[attr-defined]
@@ -288,23 +287,19 @@ class Connection:
 
         if performing_handshake:
             start = time.monotonic()
-        doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
+        try:
+            doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
+        except AutoReconnect as exc:
+            if performing_handshake:
+                raise ConfigurationError(
+                    f"The server may have closed the connection because it does not "
+                    f"support the wire protocol version used in the initial handshake. "
+                    f"Ensure your MongoDB server version is {MIN_SUPPORTED_SERVER_VERSION} or newer."
+                ) from exc
+            raise
         if performing_handshake:
             self.connect_rtt = time.monotonic() - start
         hello = Hello(doc, awaitable=awaitable)
-        # OP_MSG requires wire version 6+.
-        if hello.max_wire_version < 6:
-            raise ConfigurationError(
-                "Server at %s:%d reports wire version %d, but this version of "
-                "PyMongo requires at least %d (MongoDB %s)."
-                % (
-                    self.address[0],
-                    self.address[1] or 0,
-                    hello.max_wire_version,
-                    MIN_SUPPORTED_WIRE_VERSION,
-                    MIN_SUPPORTED_SERVER_VERSION,
-                )
-            )
         self.is_writable = hello.is_writable
         self.max_wire_version = hello.max_wire_version
         self.max_bson_size = hello.max_bson_size
