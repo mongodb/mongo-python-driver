@@ -174,8 +174,11 @@ class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
                 self._die_no_lock()
             elif self._sock_mgr:
                 # In load balancer mode the pinned connection must stay checked
-                # out until the cursor is explicitly closed by the application.
-                self._killed = True
+                # out until cursor.close() is called. _killed is already True
+                # for cursor-closed errors (set above); for other errors leave
+                # it False so cursor.close() will send killCursors via the
+                # pinned connection before releasing it.
+                pass
             else:
                 # Return the session and pinned connection, if necessary.
                 await self.close()
