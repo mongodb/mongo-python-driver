@@ -328,22 +328,15 @@ def _ocsp_callback(conn: Connection, ocsp_bytes: bytes, user_data: Optional[_Cal
     """Callback for use with OpenSSL.SSL.Context.set_ocsp_client_callback."""
     # always pass in user_data but OpenSSL requires it be optional
     assert user_data
-    pycert = conn.get_peer_certificate()
-    if pycert is None:
+    cert = conn.get_peer_certificate(as_cryptography=True)
+    if cert is None:
         _LOGGER.debug("No peer cert?")
         return False
-    cert = pycert.to_cryptography()
-    # Use the verified chain when available (pyopenssl>=20.0).
-    if hasattr(conn, "get_verified_chain"):
-        pychain = conn.get_verified_chain()
-        trusted_ca_certs = None
-    else:
-        pychain = conn.get_peer_cert_chain()
-        trusted_ca_certs = user_data.trusted_ca_certs
-    if not pychain:
+    chain = conn.get_verified_chain(as_cryptography=True)
+    trusted_ca_certs = None
+    if not chain:
         _LOGGER.debug("No peer cert chain?")
         return False
-    chain = [cer.to_cryptography() for cer in pychain]
     issuer = _get_issuer_cert(cert, chain, trusted_ca_certs)
     must_staple = False
     # https://tools.ietf.org/html/rfc7633#section-4.2.3.1

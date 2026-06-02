@@ -201,13 +201,16 @@ class SSLContext:
     context.
     """
 
-    __slots__ = ("_protocol", "_ctx", "_callback_data", "_check_hostname")
+    __slots__ = ("_protocol", "_ctx", "_callback_data", "_check_hostname", "_options")
 
     def __init__(self, protocol: int):
         self._protocol = protocol
         self._ctx = _SSL.Context(self._protocol)
         self._callback_data = _CallbackData()
         self._check_hostname = True
+        # Cache options to avoid calling set_options() after a Connection is
+        # created (pyOpenSSL >= 26.2.0 disallows mutations on a used Context).
+        self._options = self._ctx.set_options(0)
         # OCSP
         # XXX: Find a better place to do this someday, since this is client
         # side configuration and wrap_socket tries to support both client and
@@ -231,24 +234,7 @@ class SSLContext:
 
     def __set_verify_mode(self, value: VerifyMode) -> None:
         """Setter for verify_mode."""
-
-        def _cb(
-            _connobj: _SSL.Connection,
-            _x509obj: _crypto.X509,
-            _errnum: int,
-            _errdepth: int,
-            retcode: int,
-        ) -> bool:
-            # It seems we don't need to do anything here. Twisted doesn't,
-            # and OpenSSL's SSL_CTX_set_verify let's you pass NULL
-            # for the callback option. It's weird that PyOpenSSL requires
-            # this.
-            # This is optional in pyopenssl >= 20 and can be removed once minimum
-            # supported version is bumped
-            # See: pyopenssl.org/en/latest/changelog.html#id47
-            return bool(retcode)
-
-        self._ctx.set_verify(_VERIFY_MAP[value], _cb)
+        self._ctx.set_verify(_VERIFY_MAP[value], None)
 
     verify_mode = property(__get_verify_mode, __set_verify_mode)
 
@@ -271,16 +257,14 @@ class SSLContext:
     check_ocsp_endpoint = property(__get_check_ocsp_endpoint, __set_check_ocsp_endpoint)
 
     def __get_options(self) -> int:
-        # Calling set_options adds the option to the existing bitmask and
-        # returns the new bitmask.
-        # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_options
-        return self._ctx.set_options(0)
+        return self._options
 
     def __set_options(self, value: int) -> None:
         # Explicitly convert to int, since newer CPython versions
         # use enum.IntFlag for options. The values are the same
         # regardless of implementation.
-        self._ctx.set_options(int(value))
+        self._options = int(value)
+        self._ctx.set_options(self._options)
 
     options = property(__get_options, __set_options)
 

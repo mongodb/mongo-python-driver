@@ -11,8 +11,10 @@ updates:
       actions:
         patterns:
           - "*"
-  # Python
-  - package-ecosystem: "pip"
+  # Python (uv)
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
