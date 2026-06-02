@@ -100,7 +100,7 @@ linkcheck_workers = 1
 linkcheck_timeout = 60
 
 # Ignore anchors in links since they may not be added to the page right away.
-linkcheck_anchors_ignore = True
+linkcheck_anchors_ignore_for_url = [r"https://github.com/.*"]
 
 # Pass GitHub token to avoid rate-limiting on GitHub links.
 if github_token := os.environ.get("GITHUB_TOKEN"):
