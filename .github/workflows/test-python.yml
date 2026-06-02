@@ -172,6 +172,8 @@ jobs:
         run: just install
       - name: Build docs
         run: just docs-linkcheck
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   typing:
     name: Typing Tests
