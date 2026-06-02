@@ -54,6 +54,7 @@ from pymongo.logger import (
     _SDAM_LOGGER,
     _SERVER_SELECTION_LOGGER,
     _debug_log,
+    _info_log,
     _SDAMStatusMessage,
     _ServerSelectionStatusMessage,
 )
@@ -361,7 +362,7 @@ class Topology:
                 )
 
             if not logged_waiting:
-                _debug_log(
+                _info_log(
                     _SERVER_SELECTION_LOGGER,
                     message=_ServerSelectionStatusMessage.WAITING,
                     selector=selector,
