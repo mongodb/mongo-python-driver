@@ -993,6 +993,10 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
                 self._killed = True
             if exc.timeout:
                 self._die_no_lock()
+            elif self._sock_mgr:
+                # In load balancer mode the pinned connection must stay checked
+                # out until the cursor is explicitly closed by the application.
+                self._killed = True
             else:
                 await self.close()
             # If this is a tailable cursor the error is likely
@@ -1007,7 +1011,8 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
             raise
         except ConnectionFailure:
             self._killed = True
-            await self.close()
+            if not self._sock_mgr:
+                await self.close()
             raise
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:

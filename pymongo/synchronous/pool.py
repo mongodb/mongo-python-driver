@@ -621,12 +621,11 @@ class Connection:
         # KeyboardInterrupt from the start, rather than as an initial
         # socket.error, so we catch that, close the socket, and reraise it.
         #
-        # The connection closed event will be emitted later in checkin.
-        if self.ready:
-            reason = None
-        else:
-            reason = ConnectionClosedReason.ERROR
-        self.close_conn(reason)
+        # The connection closed event will be emitted later in checkin (for
+        # ready connections) or by pool.connect()'s except block (for
+        # not-ready connections). Always use reason=None here so that the
+        # event can be deferred past any pool clearing that needs to happen.
+        self.close_conn(None)
         # SSLError from PyOpenSSL inherits directly from Exception.
         if isinstance(error, (IOError, OSError, *SSLErrors)):
             details = _get_timeout_details(self.opts)
@@ -1084,11 +1083,31 @@ class Pool:
                 self._handle_connection_error(e)
             if completed_hello and handler:
                 # Hello succeeded so service_id is known. Run SDAM error
-                # handling (which clears the pool) before closing the
-                # connection so that poolClearedEvent precedes
+                # handling (which clears the pool) before emitting
                 # connectionClosedEvent as required by the CMAP spec.
                 handler.handle(type(e), e)
-            conn.close_conn(ConnectionClosedReason.ERROR)
+            if conn.closed:
+                # _raise_connection_failure already closed the TCP socket
+                # without emitting connectionClosedEvent (deferred). Emit it
+                # now so it follows any poolClearedEvent from above.
+                if conn.enabled_for_cmap:
+                    assert conn.listeners is not None
+                    conn.listeners.publish_connection_closed(
+                        conn.address, conn.id, ConnectionClosedReason.ERROR
+                    )
+                if conn.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _CONNECTION_LOGGER,
+                        message=_ConnectionStatusMessage.CONN_CLOSED,
+                        clientId=self._client_id,
+                        serverHost=self.address[0],
+                        serverPort=self.address[1],
+                        driverConnectionId=conn.id,
+                        reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
+                        error=ConnectionClosedReason.ERROR,
+                    )
+            else:
+                conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
         if handler:
