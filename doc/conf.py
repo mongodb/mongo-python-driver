@@ -98,6 +98,10 @@ linkcheck_ignore = [
 
 # Allow for flaky links.
 linkcheck_retries = 3
+# Serialize requests to dochub.mongodb.org to avoid rate-limiting (PYTHON-5847).
+linkcheck_workers = 1
+# Give slow redirects more time before retrying.
+linkcheck_timeout = 60
 
 # -- Options for extensions ----------------------------------------------------
 autoclass_content = "init"
