@@ -1601,7 +1601,7 @@ requires-dist = [
     { name = "python-snappy", marker = "extra == 'snappy'", specifier = ">=0.7.3" },
     { name = "readthedocs-sphinx-search", marker = "extra == 'docs'", specifier = "~=0.3" },
     { name = "requests", marker = "extra == 'ocsp'", specifier = ">=2.23.0,<3.0" },
-    { name = "service-identity", marker = "extra == 'ocsp'", specifier = ">=23.1.0" },
+    { name = "service-identity", marker = "extra == 'ocsp'", specifier = ">=24.2.0" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=5.3,<9" },
     { name = "sphinx-autobuild", marker = "extra == 'docs'", specifier = ">=2024.10.3" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=3.1.0,<4" },
