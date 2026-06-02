@@ -1,97 +1,94 @@
 PYMONGO DOES NOT YET SEND readConcern.afterClusterTime IN RETRYABLE WRITE RETRIES
+
 diff --git a/test/transactions-convenient-api/unified/callback-aborts.json b/test/transactions-convenient-api/unified/callback-aborts.json
-index dc8f7fb5..20642871 100644
+index 20642871..dc8f7fb5 100644
 --- a/test/transactions-convenient-api/unified/callback-aborts.json
 +++ b/test/transactions-convenient-api/unified/callback-aborts.json
-@@ -308,14 +308,12 @@
+@@ -308,10 +308,12 @@
                    "lsid": {
                      "$$sessionLsid": "session0"
                    },
--                  "readConcern": {
--                    "afterClusterTime": {
--                      "$$exists": true
--                    }
+-                  "autocommit": {
+-                    "$$exists": false
 -                  },
-                   "autocommit": {
-                     "$$exists": false
-                   },
-+                  "readConcern": {
-+                    "$$exists": false
+                   "readConcern": {
++                    "afterClusterTime": {
++                      "$$exists": true
++                    }
 +                  },
-                   "startTransaction": {
++                  "autocommit": {
                      "$$exists": false
                    },
+                   "startTransaction": {
 diff --git a/test/transactions-convenient-api/unified/callback-commits.json b/test/transactions-convenient-api/unified/callback-commits.json
-index edda3864..06f791e9 100644
+index 06f791e9..edda3864 100644
 --- a/test/transactions-convenient-api/unified/callback-commits.json
 +++ b/test/transactions-convenient-api/unified/callback-commits.json
-@@ -381,14 +381,12 @@
+@@ -381,10 +381,12 @@
                    "lsid": {
                      "$$sessionLsid": "session0"
                    },
--                  "readConcern": {
--                    "afterClusterTime": {
--                      "$$exists": true
--                    }
+-                  "autocommit": {
+-                    "$$exists": false
 -                  },
-                   "autocommit": {
-                     "$$exists": false
-                   },
-+                  "readConcern": {
-+                    "$$exists": false
+                   "readConcern": {
++                    "afterClusterTime": {
++                      "$$exists": true
++                    }
 +                  },
-                   "startTransaction": {
++                  "autocommit": {
                      "$$exists": false
                    },
+                   "startTransaction": {
 diff --git a/test/transactions/unified/commit.json b/test/transactions/unified/commit.json
-index f0339069..ab778d8d 100644
+index ab778d8d..f0339069 100644
 --- a/test/transactions/unified/commit.json
 +++ b/test/transactions/unified/commit.json
-@@ -1040,9 +1040,7 @@
+@@ -1040,7 +1040,9 @@
                    ],
                    "ordered": true,
                    "readConcern": {
--                    "afterClusterTime": {
--                      "$$exists": true
--                    }
-+                    "$$exists": false
+-                    "$$exists": false
++                    "afterClusterTime": {
++                      "$$exists": true
++                    }
                    },
                    "lsid": {
                      "$$sessionLsid": "session1"
-@@ -1198,9 +1196,7 @@
+@@ -1196,7 +1198,9 @@
                    ],
                    "ordered": true,
                    "readConcern": {
--                    "afterClusterTime": {
--                      "$$exists": true
--                    }
-+                    "$$exists": false
+-                    "$$exists": false
++                    "afterClusterTime": {
++                      "$$exists": true
++                    }
                    },
                    "lsid": {
                      "$$sessionLsid": "session1"
 diff --git a/test/transactions/unified/retryable-writes.json b/test/transactions/unified/retryable-writes.json
-index 21ef22b8..c196e686 100644
+index c196e686..21ef22b8 100644
 --- a/test/transactions/unified/retryable-writes.json
 +++ b/test/transactions/unified/retryable-writes.json
-@@ -217,9 +217,7 @@
+@@ -217,7 +217,9 @@
                    ],
                    "ordered": true,
                    "readConcern": {
--                    "afterClusterTime": {
--                      "$$exists": true
--                    }
-+                    "$$exists": false
+-                    "$$exists": false
++                    "afterClusterTime": {
++                      "$$exists": true
++                    }
                    },
                    "lsid": {
                      "$$sessionLsid": "session0"
-@@ -308,9 +306,7 @@
+@@ -306,7 +308,9 @@
                    ],
                    "ordered": true,
                    "readConcern": {
--                    "afterClusterTime": {
--                      "$$exists": true
--                    }
-+                    "$$exists": false
+-                    "$$exists": false
++                    "afterClusterTime": {
++                      "$$exists": true
++                    }
                    },
                    "lsid": {
                      "$$sessionLsid": "session0"

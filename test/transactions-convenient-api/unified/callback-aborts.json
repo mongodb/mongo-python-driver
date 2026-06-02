@@ -308,12 +308,10 @@
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
-                  "readConcern": {
-                    "afterClusterTime": {
-                      "$$exists": true
-                    }
-                  },
                   "autocommit": {
+                    "$$exists": false
+                  },
+                  "readConcern": {
                     "$$exists": false
                   },
                   "startTransaction": {
