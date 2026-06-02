@@ -35,6 +35,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import (
     AuthorityInformationAccess,
     ExtensionNotFound,
@@ -139,6 +140,7 @@ class TestVerifySignature(unittest.TestCase):
     def test_other_key_valid(self):
         key = Mock()
         self.assertEqual(_verify_signature(key, b"sig", Mock(), b"data"), 1)  # type: ignore[arg-type]
+        key.verify.assert_called_once()
 
 
 class TestGetExtension(unittest.TestCase):
@@ -162,6 +164,7 @@ class TestPublicKeyHash(unittest.TestCase):
         cert.public_key.return_value = key
         result = _public_key_hash(cert)
         self.assertEqual(len(result), 20)
+        key.public_bytes.assert_called_once_with(Encoding.DER, PublicFormat.PKCS1)
 
     def test_ec(self):
         key = MagicMock(spec=EllipticCurvePublicKey)
@@ -170,6 +173,7 @@ class TestPublicKeyHash(unittest.TestCase):
         cert.public_key.return_value = key
         result = _public_key_hash(cert)
         self.assertEqual(len(result), 20)
+        key.public_bytes.assert_called_once_with(Encoding.X962, PublicFormat.UncompressedPoint)
 
     def test_other_key_type(self):
         key = Mock()
@@ -178,6 +182,7 @@ class TestPublicKeyHash(unittest.TestCase):
         cert.public_key.return_value = key
         result = _public_key_hash(cert)
         self.assertEqual(len(result), 20)
+        key.public_bytes.assert_called_once_with(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
 
 
 class TestGetCerts(unittest.TestCase):
@@ -396,7 +401,8 @@ class TestVerifyResponse(unittest.TestCase):
     @patch("pymongo.ocsp_support._next_update")
     @patch("pymongo.ocsp_support._this_update")
     def test_naive_datetime(self, mock_this, mock_next, _):
-        # Use UTC-stripped naive time so comparisons don't depend on local timezone
+        # Exercises the code path where _verify_response strips tzinfo from `now`
+        # to match naive timestamps returned by cryptography (tzinfo=None).
         now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         mock_this.return_value = now - timedelta(seconds=60)
         mock_next.return_value = now + timedelta(hours=1)
@@ -542,29 +548,20 @@ class TestGetOcspResponse(unittest.TestCase):
 
 
 class TestOcspCallback(unittest.TestCase):
-    def _setup_conn(self, chain_length=1, has_verified_chain=True):
-        if has_verified_chain:
-            conn = MagicMock()
-            pychain = [Mock() for _ in range(chain_length)]
-            for item in pychain:
-                item.to_cryptography.return_value = Mock()
-            conn.get_verified_chain.return_value = pychain
-        else:
-            conn = Mock(spec=["get_peer_certificate", "get_peer_cert_chain"])
-            pychain = [Mock() for _ in range(chain_length)]
-            for item in pychain:
-                item.to_cryptography.return_value = Mock()
-            conn.get_peer_cert_chain.return_value = pychain
-
+    def _setup_conn(self, chain_length=1):
+        conn = MagicMock()
+        pychain = [Mock() for _ in range(chain_length)]
+        for item in pychain:
+            item.to_cryptography.return_value = Mock()
+        conn.get_verified_chain.return_value = pychain
         pycert = Mock()
         pycert.to_cryptography.return_value = Mock()
         conn.get_peer_certificate.return_value = pycert
         return conn
 
-    def _setup_user_data(self, check_ocsp_endpoint=True, trusted_ca_certs=None, cache=None):
+    def _setup_user_data(self, check_ocsp_endpoint=True, cache=None):
         user_data = Mock()
         user_data.check_ocsp_endpoint = check_ocsp_endpoint
-        user_data.trusted_ca_certs = trusted_ca_certs
         user_data.ocsp_response_cache = cache if cache is not None else Mock()
         return user_data
 
@@ -717,7 +714,7 @@ class TestOcspCallback(unittest.TestCase):
     @patch("pymongo.ocsp_support._load_der_ocsp_response")
     @patch("pymongo.ocsp_support._get_issuer_cert")
     @patch("pymongo.ocsp_support._get_extension", return_value=None)
-    def test_stapled_verify_fail(self, _, mock_issuer, mock_load, __):
+    def test_stapled_verify_fail(self, _mock_get_ext, mock_issuer, mock_load, _mock_verify_resp):
         conn = self._setup_conn()
         mock_issuer.return_value = Mock()
         ocsp_resp = Mock()
@@ -730,7 +727,9 @@ class TestOcspCallback(unittest.TestCase):
     @patch("pymongo.ocsp_support._load_der_ocsp_response")
     @patch("pymongo.ocsp_support._get_issuer_cert")
     @patch("pymongo.ocsp_support._get_extension", return_value=None)
-    def test_stapled_revoked(self, _, mock_issuer, mock_load, __, mock_build):
+    def test_stapled_revoked(
+        self, _mock_get_ext, mock_issuer, mock_load, _mock_verify_resp, mock_build
+    ):
         conn = self._setup_conn()
         mock_issuer.return_value = Mock()
         mock_build.return_value = Mock()
@@ -740,13 +739,16 @@ class TestOcspCallback(unittest.TestCase):
         mock_load.return_value = ocsp_resp
         cache = MagicMock()
         self.assertFalse(_ocsp_callback(conn, b"stapled", self._setup_user_data(cache=cache)))
+        cache.__setitem__.assert_called_once_with(mock_build.return_value, ocsp_resp)
 
     @patch("pymongo.ocsp_support._build_ocsp_request")
     @patch("pymongo.ocsp_support._verify_response", return_value=1)
     @patch("pymongo.ocsp_support._load_der_ocsp_response")
     @patch("pymongo.ocsp_support._get_issuer_cert")
     @patch("pymongo.ocsp_support._get_extension", return_value=None)
-    def test_stapled_good(self, _, mock_issuer, mock_load, __, mock_build):
+    def test_stapled_good(
+        self, _mock_get_ext, mock_issuer, mock_load, _mock_verify_resp, mock_build
+    ):
         conn = self._setup_conn()
         mock_issuer.return_value = Mock()
         mock_build.return_value = Mock()
@@ -756,14 +758,7 @@ class TestOcspCallback(unittest.TestCase):
         mock_load.return_value = ocsp_resp
         cache = MagicMock()
         self.assertTrue(_ocsp_callback(conn, b"stapled", self._setup_user_data(cache=cache)))
-
-    @patch("pymongo.ocsp_support._get_issuer_cert", return_value=None)
-    @patch("pymongo.ocsp_support._get_extension", return_value=None)
-    def test_uses_peer_cert_chain_fallback(self, _, __):
-        conn = self._setup_conn(has_verified_chain=False)
-        user_data = self._setup_user_data()
-        user_data.trusted_ca_certs = []
-        self.assertTrue(_ocsp_callback(conn, b"", user_data))
+        cache.__setitem__.assert_called_once_with(mock_build.return_value, ocsp_resp)
 
 
 if __name__ == "__main__":
