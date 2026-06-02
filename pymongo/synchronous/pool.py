@@ -621,11 +621,15 @@ class Connection:
         # KeyboardInterrupt from the start, rather than as an initial
         # socket.error, so we catch that, close the socket, and reraise it.
         #
-        # The connection closed event will be emitted later in checkin (for
-        # ready connections) or by pool.connect()'s except block (for
-        # not-ready connections). Always use reason=None here so that the
-        # event can be deferred past any pool clearing that needs to happen.
-        self.close_conn(None)
+        # For ready connections the closed event is emitted later in checkin.
+        # For not-ready LB connections, defer the event so that pool.connect()'s
+        # except block can emit poolClearedEvent first (CMAP spec requirement).
+        # For not-ready non-LB connections, emit the event immediately as before.
+        if self.ready or not self.opts.load_balanced:
+            reason = None if self.ready else ConnectionClosedReason.ERROR
+        else:
+            reason = None  # deferred to pool.connect()'s except block
+        self.close_conn(reason)
         # SSLError from PyOpenSSL inherits directly from Exception.
         if isinstance(error, (IOError, OSError, *SSLErrors)):
             details = _get_timeout_details(self.opts)
@@ -1081,15 +1085,14 @@ class Pool:
                 self.active_contexts.discard(conn.cancel_context)
             if not completed_hello:
                 self._handle_connection_error(e)
-            if completed_hello and handler:
-                # Hello succeeded so service_id is known. Run SDAM error
-                # handling (which clears the pool) before emitting
+            if completed_hello and handler and self.opts.load_balanced:
+                # LB only: hello succeeded so service_id is known. Run SDAM
+                # error handling (which clears the pool) before emitting
                 # connectionClosedEvent as required by the CMAP spec.
                 handler.handle(type(e), e)
-            if conn.closed:
-                # _raise_connection_failure already closed the TCP socket
-                # without emitting connectionClosedEvent (deferred). Emit it
-                # now so it follows any poolClearedEvent from above.
+            if self.opts.load_balanced and conn.closed:
+                # LB: _raise_connection_failure deferred the connectionClosedEvent.
+                # Emit it now, after any poolClearedEvent emitted above.
                 if conn.enabled_for_cmap:
                     assert conn.listeners is not None
                     conn.listeners.publish_connection_closed(
@@ -1107,6 +1110,7 @@ class Pool:
                         error=ConnectionClosedReason.ERROR,
                     )
             else:
+                # Non-LB: close_conn emits event if not already closed.
                 conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
