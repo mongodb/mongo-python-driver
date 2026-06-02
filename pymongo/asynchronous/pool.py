@@ -1086,6 +1086,12 @@ class Pool:
                 self.active_contexts.discard(conn.cancel_context)
             if not completed_hello:
                 self._handle_connection_error(e)
+            if completed_hello and handler:
+                # Hello succeeded so service_id is known. Run SDAM error
+                # handling (which clears the pool) before closing the
+                # connection so that poolClearedEvent precedes
+                # connectionClosedEvent as required by the CMAP spec.
+                await handler.handle(type(e), e)
             await conn.close_conn(ConnectionClosedReason.ERROR)
             raise
 
