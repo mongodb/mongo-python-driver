@@ -48,7 +48,6 @@ from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import (
     _GetMore,
     _OpMsg,
-    _OpReply,
     _Query,
     _RawBatchGetMore,
     _RawBatchQuery,
@@ -864,7 +863,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
     def _unpack_response(
         self,
-        response: Union[_OpReply, _OpMsg],
+        response: _OpMsg,
         cursor_id: Optional[int],
         codec_options: CodecOptions,  # type: ignore[type-arg]
         user_fields: Optional[Mapping[str, Any]] = None,
@@ -1020,29 +1019,23 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
         cmd_name = operation.name
         docs = response.docs
-        if response.from_command:
-            if cmd_name != "explain":
-                cursor = docs[0]["cursor"]
-                self._id = cursor["id"]
-                if cmd_name == "find":
-                    documents = cursor["firstBatch"]
-                    # Update the namespace used for future getMore commands.
-                    ns = cursor.get("ns")
-                    if ns:
-                        self._dbname, self._collname = ns.split(".", 1)
-                else:
-                    documents = cursor["nextBatch"]
-                self._data = deque(documents)
-                self._retrieved += len(documents)
+        if cmd_name != "explain":
+            cursor = docs[0]["cursor"]
+            self._id = cursor["id"]
+            if cmd_name == "find":
+                documents = cursor["firstBatch"]
+                # Update the namespace used for future getMore commands.
+                ns = cursor.get("ns")
+                if ns:
+                    self._dbname, self._collname = ns.split(".", 1)
             else:
-                self._id = 0
-                self._data = deque(docs)
-                self._retrieved += len(docs)
+                documents = cursor["nextBatch"]
+            self._data = deque(documents)
+            self._retrieved += len(documents)
         else:
-            assert isinstance(response.data, _OpReply)
-            self._id = response.data.cursor_id
+            self._id = 0
             self._data = deque(docs)
-            self._retrieved += response.data.number_returned
+            self._retrieved += len(docs)
 
         if self._id == 0:
             # Don't wait for garbage collection to call __del__, return the
@@ -1195,7 +1188,7 @@ class AsyncRawBatchCursor(AsyncCursor[_DocumentType]):
 
     def _unpack_response(
         self,
-        response: Union[_OpReply, _OpMsg],
+        response: _OpMsg,
         cursor_id: Optional[int],
         codec_options: CodecOptions[Mapping[str, Any]],
         user_fields: Optional[Mapping[str, Any]] = None,

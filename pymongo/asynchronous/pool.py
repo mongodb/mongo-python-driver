@@ -46,7 +46,6 @@ from pymongo.common import (
     MAX_MESSAGE_SIZE,
     MAX_WIRE_VERSION,
     MAX_WRITE_BATCH_SIZE,
-    MIN_SUPPORTED_SERVER_VERSION,
     ORDERED_TYPES,
 )
 from pymongo.errors import (  # type:ignore[attr-defined]
@@ -103,7 +102,7 @@ if TYPE_CHECKING:
         ZlibContext,
         ZstdContext,
     )
-    from pymongo.message import _OpMsg, _OpReply
+    from pymongo.message import _OpMsg
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.typings import _Address, _CollationIn
@@ -287,16 +286,7 @@ class AsyncConnection:
 
         if performing_handshake:
             start = time.monotonic()
-        try:
-            doc = await self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
-        except AutoReconnect as exc:
-            if performing_handshake:
-                raise ConfigurationError(
-                    f"The server may have closed the connection because it does not "
-                    f"support the wire protocol version used in the initial handshake. "
-                    f"Ensure your MongoDB server version is {MIN_SUPPORTED_SERVER_VERSION} or newer."
-                ) from exc
-            raise
+        doc = await self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
         if performing_handshake:
             self.connect_rtt = time.monotonic() - start
         hello = Hello(doc, awaitable=awaitable)
@@ -456,7 +446,7 @@ class AsyncConnection:
         except BaseException as error:
             await self._raise_connection_failure(error)
 
-    async def receive_message(self, request_id: Optional[int]) -> Union[_OpReply, _OpMsg]:
+    async def receive_message(self, request_id: Optional[int]) -> _OpMsg:
         """Receive a raw BSON message or raise ConnectionFailure.
 
         If any exception is raised, the socket is closed.

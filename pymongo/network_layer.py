@@ -35,7 +35,7 @@ from pymongo._asyncio_task import create_task
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import decompress
 from pymongo.errors import ProtocolError, _OperationCancelled
-from pymongo.message import _UNPACK_REPLY, _OpMsg, _OpReply
+from pymongo.message import _UNPACK_REPLY, _OpMsg
 from pymongo.socket_checker import _errno_from_exception
 
 try:
@@ -696,7 +696,7 @@ async def async_receive_message(
     conn: AsyncConnection,
     request_id: Optional[int],
     max_message_size: int = MAX_MESSAGE_SIZE,
-) -> Union[_OpReply, _OpMsg]:
+) -> _OpMsg:
     """Receive a raw BSON message or raise socket.error."""
     timeout: Optional[Union[float, int]]
     timeout = conn.conn.gettimeout
@@ -745,7 +745,7 @@ async def async_receive_message(
 
 def receive_message(
     conn: Connection, request_id: Optional[int], max_message_size: int = MAX_MESSAGE_SIZE
-) -> Union[_OpReply, _OpMsg]:
+) -> _OpMsg:
     """Receive a raw BSON message or raise socket.error."""
     if _csot.get_timeout():
         deadline = _csot.get_deadline()

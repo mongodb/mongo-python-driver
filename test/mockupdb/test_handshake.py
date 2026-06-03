@@ -19,7 +19,7 @@ import unittest
 import pytest
 
 try:
-    from mockupdb import Command, MockupDB, OpMsg, OpMsgReply, OpReply, absent, go
+    from mockupdb import Command, MockupDB, OpMsg, OpMsgReply, absent, go
 
     _HAVE_MOCKUPDB = True
 except ImportError:
@@ -30,7 +30,13 @@ from bson.objectid import ObjectId
 from pymongo import MongoClient, has_c
 from pymongo import version as pymongo_version
 from pymongo.common import MIN_SUPPORTED_SERVER_VERSION, MIN_SUPPORTED_WIRE_VERSION
-from pymongo.errors import ConfigurationError, OperationFailure, ServerSelectionTimeoutError
+from pymongo.errors import (
+    AutoReconnect,
+    ConfigurationError,
+    ConnectionFailure,
+    OperationFailure,
+    ServerSelectionTimeoutError,
+)
 from pymongo.server_api import ServerApi, ServerApiVersion
 
 pytestmark = pytest.mark.mockupdb
@@ -102,7 +108,7 @@ class TestHandshake(unittest.TestCase):
             self.addCleanup(server.stop)
 
         hosts = [server.address_string for server in (primary, secondary)]
-        primary_response = OpReply(
+        primary_response = OpMsgReply(
             "ismaster",
             True,
             setName="rs",
@@ -110,9 +116,9 @@ class TestHandshake(unittest.TestCase):
             minWireVersion=2,
             maxWireVersion=MIN_SUPPORTED_WIRE_VERSION,
         )
-        error_response = OpReply(0, errmsg="Cache Reader No keys found for HMAC ...", code=211)
+        error_response = OpMsgReply(0, errmsg="Cache Reader No keys found for HMAC ...", code=211)
 
-        secondary_response = OpReply(
+        secondary_response = OpMsgReply(
             "ismaster",
             False,
             setName="rs",
@@ -186,7 +192,7 @@ class TestHandshake(unittest.TestCase):
         server.run()
         self.addCleanup(server.stop)
 
-        primary_response = OpReply(
+        primary_response = OpMsgReply(
             "ismaster", True, minWireVersion=2, maxWireVersion=MIN_SUPPORTED_WIRE_VERSION
         )
         client = MongoClient(server.uri, username="username", password="password")
@@ -309,14 +315,7 @@ class TestHandshake(unittest.TestCase):
         client = MongoClient(server.uri, serverSelectionTimeoutMS=500)
         self.addCleanup(client.close)
 
-        with self.assertRaisesRegex(
-            ServerSelectionTimeoutError,
-            re.escape(
-                f"The server may have closed the connection because it does not "
-                f"support the wire protocol version used in the initial handshake. "
-                f"Ensure your MongoDB server version is {MIN_SUPPORTED_SERVER_VERSION} or newer."
-            ),
-        ):
+        with self.assertRaises(AutoReconnect):
             client.db.command("ping")
 
 

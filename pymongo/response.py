@@ -15,12 +15,12 @@
 """Represent a response from the server."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 
 if TYPE_CHECKING:
     from datetime import timedelta
 
-    from pymongo.message import _OpMsg, _OpReply
+    from pymongo.message import _OpMsg
     from pymongo.typings import _Address, _AgnosticConnection, _DocumentOut
 
 
@@ -29,7 +29,7 @@ class Response:
 
     def __init__(
         self,
-        data: Union[_OpMsg, _OpReply],
+        data: _OpMsg,
         address: _Address,
         request_id: int,
         duration: Optional[timedelta],
@@ -52,7 +52,7 @@ class Response:
         self._docs = docs
 
     @property
-    def data(self) -> Union[_OpMsg, _OpReply]:
+    def data(self) -> _OpMsg:
         """Server response's raw BSON bytes."""
         return self._data
 
@@ -87,7 +87,7 @@ class PinnedResponse(Response):
 
     def __init__(
         self,
-        data: Union[_OpMsg, _OpReply],
+        data: _OpMsg,
         address: _Address,
         conn: _AgnosticConnection,
         request_id: int,
