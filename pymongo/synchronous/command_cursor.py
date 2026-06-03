@@ -189,15 +189,10 @@ class CommandCursor(_CursorBase[_DocumentType]):
         if isinstance(response, PinnedResponse):
             if not self._sock_mgr:
                 self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)  # type: ignore[arg-type]
-        if response.from_command:
-            cursor = response.docs[0]["cursor"]
-            documents = cursor["nextBatch"]
-            self._postbatchresumetoken = cursor.get("postBatchResumeToken")
-            self._id = cursor["id"]
-        else:
-            documents = response.docs
-            assert isinstance(response.data, _OpReply)
-            self._id = response.data.cursor_id
+        cursor = response.docs[0]["cursor"]
+        documents = cursor["nextBatch"]
+        self._postbatchresumetoken = cursor.get("postBatchResumeToken")
+        self._id = cursor["id"]
 
         if self._id == 0:
             self.close()
