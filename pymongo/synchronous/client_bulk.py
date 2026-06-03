@@ -19,7 +19,6 @@
 from __future__ import annotations
 
 import copy
-import datetime
 from collections.abc import MutableMapping
 from itertools import islice
 from typing import (
@@ -283,11 +282,10 @@ class _ClientBulk:
                 result = bwc.conn.unack_write(msg, bwc.max_bson_size)  # type: ignore[func-returns-value, misc, override]
                 if result is not None:
                     reply = _convert_write_result(bwc.name, cmd, result)  # type: ignore[arg-type]
-                    duration = datetime.datetime.now() - bwc.start_time
                 else:
                     # Comply with APM spec.
                     reply = {"ok": 1}
-                    duration = cmd_telemetry.handle_succeeded(reply)
+                duration = cmd_telemetry.handle_succeeded(reply)
                 if bwc.publish:
                     bwc._succeed(request_id, reply, duration)
             except Exception as exc:

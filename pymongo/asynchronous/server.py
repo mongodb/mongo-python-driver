@@ -154,15 +154,20 @@ class Server:
         assert listeners is not None
         start = datetime.now()
 
-        operation.use_command(conn)
+        # All supported servers have wire version >= 8, so use_command() always
+        # returns True and the command (OP_MSG) path is always used; the legacy
+        # OP_QUERY/OP_GET_MORE path is dead. Call it for its session-validation
+        # side effect and assert the invariant rather than ignoring the result.
+        use_cmd = operation.use_command(conn)
+        assert use_cmd
         more_to_come = bool(operation.conn_mgr and operation.conn_mgr.more_to_come)
-        cmd, dbn = await self.operation_to_command(operation, conn, True)
+        cmd, dbn = await self.operation_to_command(operation, conn, use_cmd)
         if more_to_come:
             request_id = 0
             msg = None
             max_doc_size = 0
         else:
-            op_message = operation.get_message(read_preference, conn, True)
+            op_message = operation.get_message(read_preference, conn, use_cmd)
             request_id, msg, max_doc_size = self._split_message(op_message)
 
         if listeners.enabled_for_commands and "$db" not in cmd:
@@ -200,7 +205,7 @@ class Server:
                 conn=conn,
                 duration=duration,
                 request_id=request_id,
-                from_command=True,
+                from_command=use_cmd,
                 docs=docs,
                 more_to_come=more_to_come,
             )
@@ -210,7 +215,7 @@ class Server:
                 address=self._description.address,
                 duration=duration,
                 request_id=request_id,
-                from_command=True,
+                from_command=use_cmd,
                 docs=docs,
             )
 
