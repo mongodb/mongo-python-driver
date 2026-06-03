@@ -23,14 +23,14 @@ import time
 
 sys.path[0:0] = [""]
 
-from test.synchronous import UnitTest, unittest
+from test import UnitTest, unittest
 
 from pymongo.periodic_executor import PeriodicExecutor
 
-_IS_SYNC = False
+_IS_SYNC = True
 
 
-class TestAsyncPeriodicExecutor(UnitTest):
+class TestPeriodicExecutor(UnitTest):
     def _make_executor(self, interval=30.0, min_interval=0.01, target=None, name="test"):
         if target is None:
 
