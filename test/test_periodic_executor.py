@@ -73,6 +73,7 @@ class TestPeriodicExecutor(UnitTest):
         call_times = []
 
         def target():
+            nonlocal call_times
             call_times.append(time.monotonic())
             if len(call_times) >= 2:
                 return False
@@ -114,6 +115,7 @@ class TestPeriodicExecutor(UnitTest):
         call_times = []
 
         def target():
+            nonlocal call_times
             call_times.append(time.monotonic())
             if len(call_times) == 1:
                 # Shorten the interval from 30s so the next run happens promptly.
