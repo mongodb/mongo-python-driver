@@ -117,7 +117,7 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
             call_times.append(time.monotonic())
             if len(call_times) == 1:
                 # Shorten the interval from 30s so the next run happens promptly.
-                executor.update_interval(0)
+                executor.update_interval(0.05)
                 return True
             return False
 
