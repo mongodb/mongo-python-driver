@@ -77,7 +77,7 @@ repos:
       stages: [manual]
 
 - repo: https://github.com/sirosen/check-jsonschema
-  rev: 0.29.0
+  rev: 0.37.2
   hooks:
     - id: check-github-workflows
     - id: check-github-actions
