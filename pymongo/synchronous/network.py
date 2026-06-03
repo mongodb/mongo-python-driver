@@ -105,7 +105,12 @@ def _network_command_core(
                 reply = conn.receive_message(None)
             else:
                 assert msg is not None
-                conn.send_message(msg, max_doc_size)
+                # Only enforce the client-side document size limit for
+                # unacknowledged writes (where the server cannot report an
+                # error). For acknowledged writes, pass 0 so an oversized
+                # document is sent and the server returns an OperationFailure,
+                # matching the historical behavior.
+                conn.send_message(msg, max_doc_size if unacknowledged else 0)
                 if unacknowledged:
                     # Unacknowledged write: fake a successful command response.
                     docs = [{"ok": 1}]  # type: ignore[list-item]
@@ -139,6 +144,7 @@ def _network_command_core(
                         conn.max_wire_version,
                         allowable_errors,
                         parse_write_concern_error=parse_write_concern_error,
+                        pool_opts=conn.opts,
                     )
         except Exception as exc:
             duration = cmd_telemetry.handle_failed(exc)
