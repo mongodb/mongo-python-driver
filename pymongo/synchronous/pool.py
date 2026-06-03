@@ -1139,21 +1139,21 @@ class Pool:
 
         conn = self._get_conn(checkout_started_time, handler=handler)
 
-        duration = time.monotonic() - checkout_started_time
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_checked_out(self.address, conn.id, duration)
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-                driverConnectionId=conn.id,
-                durationMS=duration,
-            )
         try:
+            duration = time.monotonic() - checkout_started_time
+            if self.enabled_for_cmap:
+                assert listeners is not None
+                listeners.publish_connection_checked_out(self.address, conn.id, duration)
+            if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
+                    clientId=self._client_id,
+                    serverHost=self.address[0],
+                    serverPort=self.address[1],
+                    driverConnectionId=conn.id,
+                    durationMS=duration,
+                )
             with self.lock:
                 self.active_contexts.add(conn.cancel_context)
             yield conn
@@ -1170,7 +1170,12 @@ class Pool:
                 exc_type, exc_val, _ = sys.exc_info()
                 handler.handle(exc_type, exc_val)
             if not pinned and conn.active:
-                self.checkin(conn)
+                try:
+                    self.checkin(conn)
+                except BaseException:
+                    # If checkin is interrupted, the conn is orphaned. Abort to avoid leaking the socket
+                    conn.conn.abort()
+                    raise
             raise
         if conn.pinned_txn:
             with self.lock:

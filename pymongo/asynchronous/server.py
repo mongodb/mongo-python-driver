@@ -114,8 +114,14 @@ class Server:
                 serverPort=self._description.address[1],
             )
 
-        await self._monitor.close()
+        monitor_error: Optional[BaseException] = None
+        try:
+            await self._monitor.close()
+        except BaseException as exc:
+            monitor_error = exc
         await self._pool.close()
+        if monitor_error is not None:
+            raise monitor_error
 
     def request_check(self) -> None:
         """Check the server's state soon."""

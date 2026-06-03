@@ -722,8 +722,15 @@ class Topology:
         """
         async with self._lock:
             old_td = self._description
+            first_close_error: Optional[BaseException] = None
             for server in self._servers.values():
-                await server.close()
+                # Each server.close must run independently. A failure on one
+                # server must not skip the remaining servers
+                try:
+                    await server.close()
+                except BaseException as exc:
+                    if first_close_error is None:
+                        first_close_error = exc
                 if not _IS_SYNC:
                     self._monitor_tasks.append(server._monitor)
 
@@ -782,6 +789,9 @@ class Topology:
             self.__events_executor.close()
             await self.__events_executor.join(1)
             process_events_queue(weakref.ref(self._events))  # type: ignore[arg-type]
+
+        if first_close_error is not None:
+            raise first_close_error
 
     @property
     def description(self) -> TopologyDescription:
@@ -979,12 +989,23 @@ class Topology:
                 if was_writable != sd.is_writable:
                     await self._servers[address].pool.update_is_writable(sd.is_writable)
 
+        first_close_error: Optional[BaseException] = None
         for address, server in list(self._servers.items()):
             if not self._description.has_server(address):
-                await server.close()
+                # Each server.close must run independently. If one server's
+                # cleanup raises, we still need to remove it from _servers and
+                # add its monitor to _monitor_tasks, and we must process the
+                # remaining servers, otherwise their pool conns leak.
+                try:
+                    await server.close()
+                except BaseException as exc:
+                    first_close_error = exc
                 if not _IS_SYNC:
                     self._monitor_tasks.append(server._monitor)
                 self._servers.pop(address)
+
+        if first_close_error is not None:
+            raise first_close_error
 
     def _create_pool_for_server(self, address: _Address) -> Pool:
         return self._settings.pool_class(
