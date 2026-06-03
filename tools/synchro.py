@@ -190,7 +190,6 @@ def async_only_test(f: str) -> bool:
         "test_async_loop_safety.py",
         "test_async_contextvars_reset.py",
         "test_async_loop_unblocked.py",
-        "test_async_periodic_executor.py",
     ]
 
 

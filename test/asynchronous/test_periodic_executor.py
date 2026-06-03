@@ -142,6 +142,41 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
         await executor.join(timeout=2)
         self.assertGreaterEqual(called, 2)
 
+    async def test_target_exception_stops_executor(self):
+        call_count = 0
+
+        async def target():
+            nonlocal call_count
+            call_count += 1
+            raise RuntimeError("error")
+
+        executor = self._make_executor(target=target)
+
+        if _IS_SYNC:
+            # The exception re-raises on the executor's background thread,
+            # which would otherwise trigger threading.excepthook and print a
+            # noisy traceback. Swap it for a no-op for the duration of the test.
+            original_excepthook = threading.excepthook
+            threading.excepthook = lambda args: None
+            self.addCleanup(setattr, threading, "excepthook", original_excepthook)
+
+        executor.open()
+        await executor.join(timeout=2)
+        if not _IS_SYNC and executor._task is not None and executor._task.done():
+            # Retrieve the exception to avoid "Task exception was never
+            # retrieved" warnings when the task is garbage collected.
+            executor._task.exception()
+        self.assertEqual(call_count, 1, "target should stop after raising")
+
+        # Re-opening after an exception restarts the executor. For the threaded
+        # PeriodicExecutor this also exercises the _thread_will_exit join path
+        # in open().
+        executor.open()
+        await executor.join(timeout=2)
+        if not _IS_SYNC and executor._task is not None and executor._task.done():
+            executor._task.exception()
+        self.assertEqual(call_count, 2, "executor should run again after re-open")
+
 
 if __name__ == "__main__":
     unittest.main()
