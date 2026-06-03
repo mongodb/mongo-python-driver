@@ -30,16 +30,8 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo import _csot, helpers_shared, message
-from pymongo.command_helpers import (
-    _log_command_failed,
-    _log_command_started,
-    _log_command_succeeded,
-)
+from pymongo._telemetry import _CommandTelemetry
 from pymongo.compression_support import _NO_COMPRESSION
-from pymongo.errors import (
-    NotPrimaryError,
-    OperationFailure,
-)
 from pymongo.message import _OpMsg, _OpReply
 from pymongo.monitoring import _is_speculative_authenticate
 
@@ -95,119 +87,90 @@ async def _network_command_core(
     reply: Optional[Union[_OpReply, _OpMsg]] = None
     docs: list[_DocumentOut] = []
 
-    if client is not None:
-        _log_command_started(client, conn, spec, dbname, request_id, request_id)
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        listeners.publish_command_start(
-            orig if orig is not None else spec,
-            dbname,
-            request_id,
-            address,
-            conn.server_connection_id,
-            service_id=conn.service_id,
-        )
-
-    try:
-        if more_to_come:
-            reply = await conn.receive_message(None)
-        else:
-            assert msg is not None
-            await conn.send_message(msg, max_doc_size)
-            if unacknowledged:
-                # Unacknowledged write: fake a successful command response.
-                docs = [{"ok": 1}]  # type: ignore[list-item]
-            else:
-                reply = await conn.receive_message(request_id)
-
-        if reply is not None:
-            conn.more_to_come = reply.more_to_come
-            if unpack_res is not None:
-                docs = unpack_res(
-                    reply,
-                    cursor_id,
-                    codec_options,
-                    legacy_response=False,
-                    user_fields=_CURSOR_DOC_FIELDS,
-                )
-            else:
-                docs = list(
-                    reply.unpack_response(codec_options=codec_options, user_fields=user_fields)
-                )
-            response_doc = docs[0]
-            if not conn.ready:
-                cluster_time = response_doc.get("$clusterTime")
-                if cluster_time:
-                    conn._cluster_time = cluster_time
-            if client:
-                await client._process_response(response_doc, session)
-            if check:
-                helpers_shared._check_command_response(
-                    response_doc,
-                    conn.max_wire_version,
-                    allowable_errors,
-                    parse_write_concern_error=parse_write_concern_error,
-                )
-    except Exception as exc:
-        duration = datetime.datetime.now() - start
-        if isinstance(exc, (NotPrimaryError, OperationFailure)):
-            failure: _DocumentOut = exc.details  # type: ignore[assignment]
-        else:
-            failure = message._convert_exception(exc)
-        if client is not None:
-            _log_command_failed(
-                client,
-                conn,
-                spec,
-                dbname,
-                request_id,
-                request_id,
-                failure,
-                duration,
-                isinstance(exc, OperationFailure),
-            )
+    with _CommandTelemetry(client, conn, spec, dbname, request_id, start) as cmd_telemetry:
         if publish:
             assert listeners is not None
             assert address is not None
-            listeners.publish_command_failure(
+            listeners.publish_command_start(
+                orig if orig is not None else spec,
+                dbname,
+                request_id,
+                address,
+                conn.server_connection_id,
+                service_id=conn.service_id,
+            )
+
+        try:
+            if more_to_come:
+                reply = await conn.receive_message(None)
+            else:
+                assert msg is not None
+                await conn.send_message(msg, max_doc_size)
+                if unacknowledged:
+                    # Unacknowledged write: fake a successful command response.
+                    docs = [{"ok": 1}]  # type: ignore[list-item]
+                else:
+                    reply = await conn.receive_message(request_id)
+
+            if reply is not None:
+                conn.more_to_come = reply.more_to_come
+                if unpack_res is not None:
+                    docs = unpack_res(
+                        reply,
+                        cursor_id,
+                        codec_options,
+                        legacy_response=False,
+                        user_fields=_CURSOR_DOC_FIELDS,
+                    )
+                else:
+                    docs = list(
+                        reply.unpack_response(codec_options=codec_options, user_fields=user_fields)
+                    )
+                response_doc = docs[0]
+                if not conn.ready:
+                    cluster_time = response_doc.get("$clusterTime")
+                    if cluster_time:
+                        conn._cluster_time = cluster_time
+                if client:
+                    await client._process_response(response_doc, session)
+                if check:
+                    helpers_shared._check_command_response(
+                        response_doc,
+                        conn.max_wire_version,
+                        allowable_errors,
+                        parse_write_concern_error=parse_write_concern_error,
+                    )
+        except Exception as exc:
+            duration = cmd_telemetry.handle_failed(exc)
+            if publish:
+                assert listeners is not None
+                assert address is not None
+                listeners.publish_command_failure(
+                    duration,
+                    cmd_telemetry.failure,
+                    name,
+                    request_id,
+                    address,
+                    conn.server_connection_id,
+                    service_id=conn.service_id,
+                    database_name=dbname,
+                )
+            raise
+        duration = cmd_telemetry.handle_succeeded(docs[0], speculative_hello)
+        if publish:
+            assert listeners is not None
+            assert address is not None
+            listeners.publish_command_success(
                 duration,
-                failure,
+                docs[0],
                 name,
                 request_id,
                 address,
                 conn.server_connection_id,
                 service_id=conn.service_id,
+                speculative_hello=speculative_hello,
                 database_name=dbname,
             )
-        raise
-    duration = datetime.datetime.now() - start
-    if client is not None:
-        _log_command_succeeded(
-            client,
-            conn,
-            spec,
-            dbname,
-            request_id,
-            request_id,
-            docs[0],
-            duration,
-            speculative_hello,
-        )
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        listeners.publish_command_success(
-            duration,
-            docs[0],
-            name,
-            request_id,
-            address,
-            conn.server_connection_id,
-            service_id=conn.service_id,
-            speculative_hello=speculative_hello,
-            database_name=dbname,
-        )
 
     # Decrypt response.
     if client and client._encrypter and reply is not None:
