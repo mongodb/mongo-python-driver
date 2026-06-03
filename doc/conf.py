@@ -4,6 +4,7 @@
 # This file is execfile()d with the current directory set to its containing dir.
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -86,11 +87,6 @@ pygments_style = "sphinx"
 # sourceforge.net is giving a 403 error, but is still accessible from the browser.
 # Links to release notes in jira give 401 error: unauthorized. PYTHON-5585
 linkcheck_ignore = [
-    "https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-monitoring.md#requesting-an-immediate-check",
-    "https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback",
-    "https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.md",
-    "https://github.com/mongodb/specifications/blob/master/source/uri-options/uri-options.md",
-    "https://github.com/mongodb/libmongocrypt/blob/master/bindings/python/README.rst#installing-from-source",
     r"https://wiki.centos.org/[\w/]*",
     r"https://sourceforge.net/",
     r"https://jira\.mongodb\.org/secure/ReleaseNote\.jspa.*",
@@ -98,6 +94,21 @@ linkcheck_ignore = [
 
 # Allow for flaky links.
 linkcheck_retries = 3
+# Serialize requests to dochub.mongodb.org to avoid rate-limiting (PYTHON-5847).
+linkcheck_workers = 1
+# Give slow redirects more time before retrying.
+linkcheck_timeout = 60
+
+# Ignore anchors in links since they may not be added to the page right away.
+linkcheck_anchors_ignore_for_url = [r"https://github.com/.*"]
+
+# Pass GitHub token to avoid rate-limiting on GitHub links.
+if github_token := os.environ.get("GITHUB_TOKEN"):
+    linkcheck_request_headers = {
+        "https://github.com/": {"Authorization": f"token {github_token}"},
+        "https://api.github.com/": {"Authorization": f"token {github_token}"},
+    }
+
 
 # -- Options for extensions ----------------------------------------------------
 autoclass_content = "init"
