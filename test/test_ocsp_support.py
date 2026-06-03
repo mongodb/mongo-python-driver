@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for pymongo.ocsp_support."""
+"""Tests for pymongo.ocsp_support."""
 from __future__ import annotations
 
+import logging
+import os
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import cast
 from unittest.mock import MagicMock, Mock, patch
 
@@ -26,7 +29,49 @@ sys.path[0:0] = [""]
 
 from test import unittest
 
+import pymongo
+from pymongo.errors import ServerSelectionTimeoutError
+
 pytestmark = pytest.mark.ocsp
+
+CA_FILE = os.environ.get("CA_FILE")
+OCSP_TLS_SHOULD_SUCCEED = os.environ.get("OCSP_TLS_SHOULD_SUCCEED") == "true"
+
+FORMAT = "%(asctime)s %(levelname)s %(module)s %(message)s"
+logging.basicConfig(format=FORMAT, level=logging.DEBUG)
+
+
+def _connect(options):
+    assert CA_FILE is not None
+    uri = f"mongodb://localhost:27017/?serverSelectionTimeoutMS=10000&tlsCAFile={Path(CA_FILE).as_posix()}&{options}"
+    print(uri)
+    try:
+        client = pymongo.MongoClient(uri)
+        client.admin.command("ping")
+    finally:
+        client.close()
+
+
+class TestOCSP(unittest.TestCase):
+    def test_tls_insecure(self):
+        # Should always succeed
+        options = "tls=true&tlsInsecure=true"
+        _connect(options)
+
+    def test_allow_invalid_certificates(self):
+        # Should always succeed
+        options = "tls=true&tlsAllowInvalidCertificates=true"
+        _connect(options)
+
+    def test_tls(self):
+        options = "tls=true"
+        if not OCSP_TLS_SHOULD_SUCCEED:
+            self.assertRaisesRegex(
+                ServerSelectionTimeoutError, "invalid status response", _connect, options
+            )
+        else:
+            _connect(options)
+
 
 pytest.importorskip("cryptography")
 pytest.importorskip("requests")
