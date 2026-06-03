@@ -201,17 +201,22 @@ class TestCursor(IntegrationTest):
     def test_maxtime_ms_message(self):
         db = self.db
         db.t.insert_one({"x": 1})
-        with self.assertRaises(Exception) as error:
+        with self.assertRaises(OperationFailure) as error:
             db.t.find_one({"$where": delay(2)}, max_time_ms=1)
 
-        self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
+        # Newer MongoDB executes $where in WASM and returns Interrupted (11601) instead
+        # of MaxTimeMSExpired (50) when max_time_ms kills execution; only MaxTimeMSExpired
+        # errors get the configured timeout details appended.
+        if isinstance(error.exception, ExecutionTimeout):
+            self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
 
         client = self.rs_client(document_class=RawBSONDocument)
         client.db.t.insert_one({"x": 1})
-        with self.assertRaises(Exception) as error:
+        with self.assertRaises(OperationFailure) as error:
             client.db.t.find_one({"$where": delay(2)}, max_time_ms=1)
 
-        self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
+        if isinstance(error.exception, ExecutionTimeout):
+            self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
 
     def test_max_await_time_ms(self):
         db = self.db

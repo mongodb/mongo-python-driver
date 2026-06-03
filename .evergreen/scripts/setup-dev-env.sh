@@ -16,11 +16,11 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
-# Ensure dependencies are installed.
-bash $HERE/install-dependencies.sh
-
 # Handle the value for UV_PYTHON.
 . $HERE/setup-uv-python.sh
+
+# Ensure dependencies are installed.
+bash $HERE/install-dependencies.sh
 
 # Only run the next part if not running on CI.
 if [ -z "${CI:-}" ]; then
