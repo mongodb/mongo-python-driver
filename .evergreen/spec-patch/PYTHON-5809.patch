@@ -1,0 +1,97 @@
+PYMONGO DOES NOT IMPLEMENT afterClusterTime IN readConcern FOR TRANSACTIONS -- WE NEED THIS PATCH
+diff --git a/test/transactions-convenient-api/unified/callback-aborts.json b/test/transactions-convenient-api/unified/callback-aborts.json
+index dc8f7fb5..20642871 100644
+--- a/test/transactions-convenient-api/unified/callback-aborts.json
++++ b/test/transactions-convenient-api/unified/callback-aborts.json
+@@ -308,14 +308,12 @@
+                   "lsid": {
+                     "$$sessionLsid": "session0"
+                   },
+-                  "readConcern": {
+-                    "afterClusterTime": {
+-                      "$$exists": true
+-                    }
+-                  },
+                   "autocommit": {
+                     "$$exists": false
+                   },
++                  "readConcern": {
++                    "$$exists": false
++                  },
+                   "startTransaction": {
+                     "$$exists": false
+                   },
+diff --git a/test/transactions-convenient-api/unified/callback-commits.json b/test/transactions-convenient-api/unified/callback-commits.json
+index edda3864..06f791e9 100644
+--- a/test/transactions-convenient-api/unified/callback-commits.json
++++ b/test/transactions-convenient-api/unified/callback-commits.json
+@@ -381,14 +381,12 @@
+                   "lsid": {
+                     "$$sessionLsid": "session0"
+                   },
+-                  "readConcern": {
+-                    "afterClusterTime": {
+-                      "$$exists": true
+-                    }
+-                  },
+                   "autocommit": {
+                     "$$exists": false
+                   },
++                  "readConcern": {
++                    "$$exists": false
++                  },
+                   "startTransaction": {
+                     "$$exists": false
+                   },
+diff --git a/test/transactions/unified/commit.json b/test/transactions/unified/commit.json
+index f0339069..ab778d8d 100644
+--- a/test/transactions/unified/commit.json
++++ b/test/transactions/unified/commit.json
+@@ -1040,9 +1040,7 @@
+                   ],
+                   "ordered": true,
+                   "readConcern": {
+-                    "afterClusterTime": {
+-                      "$$exists": true
+-                    }
++                    "$$exists": false
+                   },
+                   "lsid": {
+                     "$$sessionLsid": "session1"
+@@ -1198,9 +1196,7 @@
+                   ],
+                   "ordered": true,
+                   "readConcern": {
+-                    "afterClusterTime": {
+-                      "$$exists": true
+-                    }
++                    "$$exists": false
+                   },
+                   "lsid": {
+                     "$$sessionLsid": "session1"
+diff --git a/test/transactions/unified/retryable-writes.json b/test/transactions/unified/retryable-writes.json
+index 21ef22b8..c196e686 100644
+--- a/test/transactions/unified/retryable-writes.json
++++ b/test/transactions/unified/retryable-writes.json
+@@ -217,9 +217,7 @@
+                   ],
+                   "ordered": true,
+                   "readConcern": {
+-                    "afterClusterTime": {
+-                      "$$exists": true
+-                    }
++                    "$$exists": false
+                   },
+                   "lsid": {
+                     "$$sessionLsid": "session0"
+@@ -308,9 +306,7 @@
+                   ],
+                   "ordered": true,
+                   "readConcern": {
+-                    "afterClusterTime": {
+-                      "$$exists": true
+-                    }
++                    "$$exists": false
+                   },
+                   "lsid": {
+                     "$$sessionLsid": "session0"

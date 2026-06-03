@@ -17,11 +17,13 @@
       ],
       "closeConnection": false,
       "blockConnection": true,
-      "blockTimeMS": 10000
+      "blockTimeMS": 10000,
+      "appName": "PoolClearInterruptingPendingConnections"
     }
   },
   "poolOptions": {
-    "minPoolSize": 0
+    "minPoolSize": 0,
+    "appName": "PoolClearInterruptingPendingConnections"
   },
   "operations": [
     {
