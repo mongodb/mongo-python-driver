@@ -110,6 +110,23 @@ class TestPeriodicExecutor(UnitTest):
         executor.join(timeout=3)
         self.assertGreaterEqual(call_count, 2)
 
+    def test_update_interval_changes_next_wait(self):
+        call_times = []
+
+        def target():
+            call_times.append(time.monotonic())
+            if len(call_times) == 1:
+                # Shorten the interval from 30s so the next run happens promptly.
+                executor.update_interval(0)
+                return True
+            return False
+
+        executor = self._make_executor(interval=30.0, min_interval=0.01, target=target)
+        executor.open()
+        executor.join(timeout=3)
+        self.assertGreaterEqual(len(call_times), 2)
+        self.assertLess(call_times[1] - call_times[0], 5.0)
+
     def test_open_after_target_returns_false(self):
         called = 0
 
