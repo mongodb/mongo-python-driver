@@ -594,7 +594,7 @@ class TestMultiServerTopology(TopologyTest):
                 "setName": "rs",
                 "hosts": ["a"],
                 "minWireVersion": 26,
-                "maxWireVersion": 27,
+                "maxWireVersion": 29,
             },
         )
 
