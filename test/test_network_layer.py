@@ -45,6 +45,10 @@ def _make_compression_header(op_code, uncompressed_size, compressor_id):
 def _make_conn():
     conn = MagicMock()
     conn.conn.gettimeout.return_value = None
+    # PyPy calls wait_for_read() before recv_into(), which checks fileno() == -1
+    # as an early-exit. Without this, sock.fileno() returns a MagicMock and the
+    # subsequent sock.pending() > 0 comparison raises TypeError on PyPy.
+    conn.conn.sock.fileno.return_value = -1
     return conn
 
 
