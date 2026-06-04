@@ -21,7 +21,6 @@ import threading
 from pathlib import Path
 from test import IntegrationTest, client_context, unittest
 from test.helpers import ConcurrentRunner
-from test.utils import flaky
 from test.utils_selection_tests import create_topology
 from test.utils_shared import (
     CMAPListener,
@@ -138,7 +137,6 @@ class TestProse(IntegrationTest):
 
     @client_context.require_failCommand_appName
     @client_context.require_multiple_mongoses
-    @flaky(reason="PYTHON-3689")
     def test_load_balancing(self):
         listener = OvertCommandListener()
         cmap_listener = CMAPListener()
@@ -165,12 +163,32 @@ class TestProse(IntegrationTest):
                 "appName": "loadBalancingTest",
             },
         }
+        coll = client.test.test
+        N_TASKS = 10
         with self.fail_point(delay_finds):
             nodes = client_context.client.nodes
             self.assertEqual(len(nodes), 1)
             delayed_server = next(iter(nodes))
+            # Start background tasks to build up op_count on the delayed server.
+            # This ensures the measurement phase sees a stable op_count imbalance
+            # rather than a 50/50 random distribution from equal initial counts.
+            background_tasks = [FinderTask(coll, 1) for _ in range(N_TASKS)]
+            for task in background_tasks:
+                task.start()
+            # Wait until all background finds are dispatched so the delayed
+            # server's finds are in-flight (each blocked for 500ms).
+            wait_until(
+                lambda: len(listener.started_events) >= N_TASKS,
+                "background tasks to dispatch finds",
+            )
+            # Measure distribution while the delayed server is busy.
+            listener.reset()
             freqs = self.frequencies(client, listener)
             self.assertLessEqual(freqs[delayed_server], 0.25)
+            for task in background_tasks:
+                task.join()
+            for task in background_tasks:
+                self.assertTrue(task.passed)
         listener.reset()
         freqs = self.frequencies(client, listener, n_finds=150)
         self.assertAlmostEqual(freqs[delayed_server], 0.50, delta=0.15)
