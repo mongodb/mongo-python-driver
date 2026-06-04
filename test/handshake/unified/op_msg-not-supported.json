@@ -1,5 +1,5 @@
 {
-  "description": "remove-op_query",
+  "description": "op_msg not supported",
   "schemaVersion": "1.3",
   "runOnRequirements": [
     {
