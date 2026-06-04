@@ -14,13 +14,13 @@
 
 """The single code path for executing a command over a connection.
 
-Every database operation -- standard commands, cursor ``find``/``getMore``
-operations, and (collection-level and client-level) bulk writes -- runs its
-network round trip through :func:`run_command`. The function owns the entire
-shared skeleton: command logging, APM event publishing, ``send``/``receive``,
-``$clusterTime`` gossip, ``_process_response``, ``_check_command_response``,
-failure conversion, and auto-encryption decryption. Callers supply only the
-parts that vary (the encoded message and a handful of transport/output hooks).
+Every database operation -- standard commands and cursor ``find``/``getMore``
+operations -- runs its network round trip through :func:`run_command`. The
+function owns the entire shared skeleton: command logging, APM event
+publishing, ``send``/``receive``, ``$clusterTime`` gossip,
+``_process_response``, ``_check_command_response``, failure conversion, and
+auto-encryption decryption. Callers supply only the parts that vary (the
+encoded message and a handful of transport/output hooks).
 """
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ import logging
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Mapping,
     MutableMapping,
     Optional,
@@ -51,6 +52,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.message import _OpMsg, _OpReply
     from pymongo.monitoring import _EventListeners
+    from pymongo.pool_options import PoolOptions
     from pymongo.typings import _Address, _DocumentOut, _DocumentType
 
 _IS_SYNC = False
@@ -72,11 +74,24 @@ async def run_command(
     user_fields: Optional[Mapping[str, Any]] = None,
     orig: Optional[MutableMapping[str, Any]] = None,
     op_id: Optional[int] = None,
+    command_name: Optional[str] = None,
     check: bool = True,
     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
     parse_write_concern_error: bool = False,
+    pool_opts: Optional[PoolOptions] = None,
     unacknowledged: bool = False,
     speculative_hello: bool = False,
+    ensure_db: bool = False,
+    use_conn_transport: bool = False,
+    max_doc_size: int = 0,
+    more_to_come: bool = False,
+    set_conn_more_to_come: bool = True,
+    is_command_response: bool = True,
+    unpack_res: Optional[Callable[..., Any]] = None,
+    cursor_id: Optional[int] = None,
+    reply_doc_builder: Optional[
+        Callable[[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]]], _DocumentOut]
+    ] = None,
 ) -> tuple[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
 
@@ -87,10 +102,11 @@ async def run_command(
     the reply when auto-encryption is enabled.
 
     :param conn: The AsyncConnection to send on.
-    :param cmd: The command document, used for the ``STARTED`` log event.
+    :param cmd: The command document, used for the ``STARTED`` log/APM event.
     :param dbname: The database the command runs against.
-    :param request_id: The request id of the encoded message.
-    :param msg: The encoded OP_MSG bytes to send.
+    :param request_id: The request id of the encoded message (``0`` when
+        ``more_to_come`` and no message is sent).
+    :param msg: The encoded bytes to send (ignored when ``more_to_come``).
     :param client: The AsyncMongoClient, for ``$clusterTime`` gossip, logging,
         and decryption. ``None`` disables those steps (e.g. during handshake).
     :param session: The session to update from the response.
@@ -103,15 +119,40 @@ async def run_command(
         defaults to ``cmd`` (differs only when the wire command was mutated,
         e.g. with a read preference or after encryption).
     :param op_id: The APM operation id; defaults to ``request_id``.
+    :param command_name: The command name for the ``SUCCEEDED``/``FAILED`` APM
+        events; defaults to the first key of ``cmd``.
     :param check: Raise OperationFailure on a command error.
     :param allowable_errors: Errors to ignore when ``check`` is True.
     :param parse_write_concern_error: Parse the ``writeConcernError`` field.
+    :param pool_opts: PoolOptions forwarded to ``_check_command_response`` (the
+        cursor path uses this in place of ``allowable_errors``).
     :param unacknowledged: True for an unacknowledged write: send only and fake
         an ``{"ok": 1}`` reply.
     :param speculative_hello: True if the command carried speculative auth, for
         APM redaction.
+    :param ensure_db: Add ``$db`` to the published command if missing (cursor
+        path), after the ``STARTED`` log has been emitted.
+    :param use_conn_transport: Send/receive via ``conn.send_message`` /
+        ``conn.receive_message`` (cursor path) instead of the raw
+        ``async_sendall`` / ``async_receive_message`` (network path).
+    :param max_doc_size: The largest document size, for ``conn.send_message``.
+    :param more_to_come: Receive only, without sending (exhaust ``getMore``).
+    :param set_conn_more_to_come: Store ``reply.more_to_come`` on ``conn`` (the
+        network/streaming-monitor path); the cursor path manages exhaust
+        separately and must leave ``conn.more_to_come`` untouched.
+    :param is_command_response: True if the reply is an OP_MSG command response
+        (``_process_response``/``_check_command_response``/decryption apply);
+        False for a legacy OP_QUERY cursor response.
+    :param unpack_res: A callable decoding the wire response (cursor path); when
+        ``None`` the reply's own ``unpack_response`` is used.
+    :param cursor_id: The cursor id passed to ``unpack_res``.
+    :param reply_doc_builder: Builds the reply document published in the
+        ``SUCCEEDED`` event from ``(docs, reply)`` (cursor find/getMore format);
+        when ``None`` the first decoded document is published.
     """
     name = next(iter(cmd))
+    if command_name is None:
+        command_name = name
     if orig is None:
         orig = cmd
     publish = listeners is not None and listeners.enabled_for_commands
@@ -135,6 +176,8 @@ async def run_command(
     if publish:
         assert listeners is not None
         assert address is not None
+        if ensure_db and "$db" not in orig:
+            orig["$db"] = dbname
         listeners.publish_command_start(
             orig,
             dbname,
@@ -145,30 +188,53 @@ async def run_command(
             service_id=conn.service_id,
         )
 
+    reply: Optional[Union[_OpReply, _OpMsg]]
     try:
-        await async_sendall(conn.conn.get_conn, msg)
-        if unacknowledged:
+        if more_to_come:
+            reply = await conn.receive_message(None)
+        elif use_conn_transport:
+            if session is not None and session._starting_transaction:
+                session._transaction.set_in_progress()
+            await conn.send_message(msg, max_doc_size)
+            reply = await conn.receive_message(request_id)
+        elif unacknowledged:
+            await async_sendall(conn.conn.get_conn, msg)
             # Unacknowledged, fake a successful command response.
             reply = None
             docs: list[dict[str, Any]] = [{"ok": 1}]
         else:
+            await async_sendall(conn.conn.get_conn, msg)
             reply = await async_receive_message(conn, request_id)
-            conn.more_to_come = reply.more_to_come
-            docs = reply.unpack_response(codec_options=codec_options, user_fields=user_fields)
-            response_doc = docs[0]
-            if not conn.ready:
-                cluster_time = response_doc.get("$clusterTime")
-                if cluster_time:
-                    conn._cluster_time = cluster_time
-            if client:
-                await client._process_response(response_doc, session)
-            if check:
-                helpers_shared._check_command_response(
-                    response_doc,
-                    conn.max_wire_version,
-                    allowable_errors,
-                    parse_write_concern_error=parse_write_concern_error,
+
+        if reply is not None:
+            if set_conn_more_to_come:
+                conn.more_to_come = reply.more_to_come
+            if unpack_res is not None:
+                docs = unpack_res(
+                    reply,
+                    cursor_id,
+                    codec_options,
+                    legacy_response=not is_command_response,
+                    user_fields=user_fields,
                 )
+            else:
+                docs = reply.unpack_response(codec_options=codec_options, user_fields=user_fields)
+            if is_command_response:
+                response_doc = docs[0]
+                if not conn.ready:
+                    cluster_time = response_doc.get("$clusterTime")
+                    if cluster_time:
+                        conn._cluster_time = cluster_time
+                if client:
+                    await client._process_response(response_doc, session)
+                if check:
+                    helpers_shared._check_command_response(
+                        response_doc,
+                        conn.max_wire_version,
+                        allowable_errors,
+                        parse_write_concern_error=parse_write_concern_error,
+                        pool_opts=pool_opts,
+                    )
     except Exception as exc:
         duration = datetime.datetime.now() - start
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
@@ -199,7 +265,7 @@ async def run_command(
             listeners.publish_command_failure(
                 duration,
                 failure,
-                name,
+                command_name,
                 request_id,
                 address,
                 conn.server_connection_id,
@@ -210,14 +276,18 @@ async def run_command(
         raise
 
     duration = datetime.datetime.now() - start
-    response_doc = docs[0]
+    published_reply: _DocumentOut
+    if reply_doc_builder is not None:
+        published_reply = reply_doc_builder(docs, reply)
+    else:
+        published_reply = docs[0]
     if client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
         _debug_log(
             _COMMAND_LOGGER,
             message=_CommandStatusMessage.SUCCEEDED,
             clientId=client._topology_settings._topology_id,
             durationMS=duration,
-            reply=response_doc,
+            reply=published_reply,
             commandName=name,
             databaseName=dbname,
             requestId=request_id,
@@ -234,8 +304,8 @@ async def run_command(
         assert address is not None
         listeners.publish_command_success(
             duration,
-            response_doc,
-            name,
+            published_reply,
+            command_name,
             request_id,
             address,
             conn.server_connection_id,
@@ -245,7 +315,7 @@ async def run_command(
             database_name=dbname,
         )
 
-    if client and client._encrypter and reply:
+    if client and client._encrypter and reply and is_command_response:
         decrypted = await client._encrypter.decrypt(reply.raw_command_response())
         docs = cast(
             "list[dict[str, Any]]", _decode_all_selective(decrypted, codec_options, user_fields)
