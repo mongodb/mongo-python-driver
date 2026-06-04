@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Internal network layer helper methods."""
+"""Encode a command and run it over a connection.
+
+This builds the wire-protocol message for a single command -- applying read
+preference, read concern, collation, ``$clusterTime``, auto-encryption, CSOT,
+and OP_MSG encoding -- then hands it to
+:func:`pymongo.command_runner.run_command` for the network round
+trip. The raw socket I/O lives in :mod:`pymongo.network_layer`.
+"""
 from __future__ import annotations
 
 import datetime
