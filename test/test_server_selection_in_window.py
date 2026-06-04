@@ -172,7 +172,7 @@ class TestProse(IntegrationTest):
             # Start background tasks to build up op_count on the delayed server.
             # This ensures the measurement phase sees a stable op_count imbalance
             # rather than a 50/50 random distribution from equal initial counts.
-            background_tasks = [FinderTask(coll, n_finds=1) for _ in range(N_TASKS)]
+            background_tasks = [FinderTask(coll, 1) for _ in range(N_TASKS)]
             for task in background_tasks:
                 task.start()
             # Wait until all background finds are dispatched so the delayed
