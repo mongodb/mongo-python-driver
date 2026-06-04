@@ -382,6 +382,13 @@ def handle_test_env() -> None:
         csfle_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/csfle")
         run_command(f"bash {csfle_dir.as_posix()}/setup-secrets.sh", cwd=csfle_dir)
         load_config_from_file(csfle_dir / "secrets-export.sh")
+
+        # Override CSFLE TLS cert paths with our AKI-enabled test/certificates/
+        # so mock servers use certs that Python 3.13 TLS validation accepts.
+        certs = ROOT / "test/certificates"
+        write_env("CSFLE_TLS_CA_FILE", certs / "ca.pem")
+        write_env("CSFLE_TLS_CERT_FILE", certs / "server.pem")
+
         run_command(f"bash {csfle_dir.as_posix()}/start-servers.sh")
 
     if sub_test_name == "pyopenssl":
