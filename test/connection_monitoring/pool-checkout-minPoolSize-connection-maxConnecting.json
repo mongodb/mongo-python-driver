@@ -17,13 +17,15 @@
       ],
       "closeConnection": false,
       "blockConnection": true,
-      "blockTimeMS": 500
+      "blockTimeMS": 500,
+      "appName": "PoolCheckoutMinPoolSizeConnectionMaxConnecting"
     }
   },
   "poolOptions": {
     "minPoolSize": 2,
     "maxPoolSize": 3,
-    "waitQueueTimeoutMS": 5000
+    "waitQueueTimeoutMS": 5000,
+    "appName": "PoolCheckoutMinPoolSizeConnectionMaxConnecting"
   },
   "operations": [
     {

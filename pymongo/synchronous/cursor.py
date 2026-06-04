@@ -1018,29 +1018,23 @@ class Cursor(_CursorBase[_DocumentType]):
 
         cmd_name = operation.name
         docs = response.docs
-        if response.from_command:
-            if cmd_name != "explain":
-                cursor = docs[0]["cursor"]
-                self._id = cursor["id"]
-                if cmd_name == "find":
-                    documents = cursor["firstBatch"]
-                    # Update the namespace used for future getMore commands.
-                    ns = cursor.get("ns")
-                    if ns:
-                        self._dbname, self._collname = ns.split(".", 1)
-                else:
-                    documents = cursor["nextBatch"]
-                self._data = deque(documents)
-                self._retrieved += len(documents)
+        if cmd_name != "explain":
+            cursor = docs[0]["cursor"]
+            self._id = cursor["id"]
+            if cmd_name == "find":
+                documents = cursor["firstBatch"]
+                # Update the namespace used for future getMore commands.
+                ns = cursor.get("ns")
+                if ns:
+                    self._dbname, self._collname = ns.split(".", 1)
             else:
-                self._id = 0
-                self._data = deque(docs)
-                self._retrieved += len(docs)
+                documents = cursor["nextBatch"]
+            self._data = deque(documents)
+            self._retrieved += len(documents)
         else:
-            assert isinstance(response.data, _OpReply)
-            self._id = response.data.cursor_id
+            self._id = 0
             self._data = deque(docs)
-            self._retrieved += response.data.number_returned
+            self._retrieved += len(docs)
 
         if self._id == 0:
             # Don't wait for garbage collection to call __del__, return the
