@@ -82,6 +82,8 @@ def run_command(
     unacknowledged: bool = False,
     speculative_hello: bool = False,
     ensure_db: bool = False,
+    process_response: bool = True,
+    decrypt_reply: bool = True,
     use_conn_transport: bool = False,
     max_doc_size: int = 0,
     more_to_come: bool = False,
@@ -132,9 +134,15 @@ def run_command(
         APM redaction.
     :param ensure_db: Add ``$db`` to the published command if missing (cursor
         path), after the ``STARTED`` log has been emitted.
+    :param process_response: Run ``client._process_response`` on success here;
+        the bulk paths pass False and process the reply at the call site to
+        keep their check -> APM-succeed -> process ordering.
+    :param decrypt_reply: Decrypt the reply when auto-encryption is enabled;
+        the bulk paths pass False (their commands are encrypted up front).
     :param use_conn_transport: Send/receive via ``conn.send_message`` /
-        ``conn.receive_message`` (cursor path) instead of the raw
-        ``sendall`` / ``receive_message`` (network path).
+        ``conn.receive_message`` (cursor path) or ``conn.unack_write`` (bulk
+        unacknowledged) instead of the raw ``sendall`` /
+        ``receive_message`` (network path).
     :param max_doc_size: The largest document size, for ``conn.send_message``.
     :param more_to_come: Receive only, without sending (exhaust ``getMore``).
     :param set_conn_more_to_come: Store ``reply.more_to_come`` on ``conn`` (the
@@ -192,16 +200,19 @@ def run_command(
     try:
         if more_to_come:
             reply = conn.receive_message(None)
+        elif unacknowledged:
+            if use_conn_transport:
+                conn.unack_write(msg, max_doc_size)
+            else:
+                sendall(conn.conn.get_conn, msg)
+            # Unacknowledged, fake a successful command response.
+            reply = None
+            docs: list[dict[str, Any]] = [{"ok": 1}]
         elif use_conn_transport:
             if session is not None and session._starting_transaction:
                 session._transaction.set_in_progress()
             conn.send_message(msg, max_doc_size)
             reply = conn.receive_message(request_id)
-        elif unacknowledged:
-            sendall(conn.conn.get_conn, msg)
-            # Unacknowledged, fake a successful command response.
-            reply = None
-            docs: list[dict[str, Any]] = [{"ok": 1}]
         else:
             sendall(conn.conn.get_conn, msg)
             reply = receive_message(conn, request_id)
@@ -225,7 +236,7 @@ def run_command(
                     cluster_time = response_doc.get("$clusterTime")
                     if cluster_time:
                         conn._cluster_time = cluster_time
-                if client:
+                if process_response and client:
                     client._process_response(response_doc, session)
                 if check:
                     helpers_shared._check_command_response(
@@ -315,7 +326,7 @@ def run_command(
             database_name=dbname,
         )
 
-    if client and client._encrypter and reply and is_command_response:
+    if client and client._encrypter and reply and is_command_response and decrypt_reply:
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
         docs = cast(
             "list[dict[str, Any]]", _decode_all_selective(decrypted, codec_options, user_fields)
