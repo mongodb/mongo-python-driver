@@ -1111,7 +1111,24 @@ class AsyncClientSession:
             return
         self._check_ended()
         self._materialize(conn.logical_session_timeout_minutes)
-        if self.options.snapshot:
+        # Add afterClusterTime on writes in casually-consistent sessions
+        if self.options.snapshot or (
+            self.options.causal_consistency
+            and not self.in_transaction
+            and operation
+            in [
+                "insert",
+                "update",
+                "findAndModify",
+                "delete",
+                "bulkWrite",
+                "create",
+                "createIndexes",
+                "drop",
+                "dropDatabase",
+                "dropIndexes",
+            ]
+        ):
             self._update_read_concern(command, conn)
 
         self._server_session.last_use = time.monotonic()

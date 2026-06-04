@@ -761,6 +761,12 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     async def _collectionOperation_createChangeStream(self, target, *args, **kwargs):
         return await self.__entityOperation_createChangeStream(target, *args, **kwargs)
 
+    async def _clientOperation_dropDatabase(self, target, **kwargs):
+        self.__raise_if_unsupported("dropDatabase", target, AsyncMongoClient)
+        return await target.drop_database(
+            name_or_database=kwargs.pop("database"), session=kwargs.pop("session", None)
+        )
+
     async def _databaseOperation_runCommand(self, target, **kwargs):
         self.__raise_if_unsupported("runCommand", target, AsyncDatabase)
         # Ensure the first key is the command name.
