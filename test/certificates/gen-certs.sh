@@ -151,7 +151,58 @@ openssl ca -config "$TMPDIR/ca.cnf" -gencrl -out "$SCRIPT_DIR/crl.pem" 2>/dev/nu
 echo "    crl.pem written"
 
 # ----------------------------------------------------------------------------
-# 6. Trusted Kernel Test CA (trusted-ca.pem)
+# 6. Wrong-host certificate (for KMS TLS tests — hostname deliberately wrong)
+# ----------------------------------------------------------------------------
+echo "==> Generating wrong-host certificate..."
+cat > "$TMPDIR/wrong_host_ext.cnf" << 'EOF'
+[ v3_wrong_host ]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+subjectAltName = DNS:wronghost.example.com
+EOF
+
+openssl genrsa -out "$TMPDIR/wrong_host.key" 2048 2>/dev/null
+openssl req -new \
+    -key "$TMPDIR/wrong_host.key" \
+    -out "$TMPDIR/wrong_host.csr" \
+    -subj "/C=US/ST=New York/L=New York City/O=MongoDB/OU=Drivers/CN=wronghost.example.com"
+openssl x509 -req -days $DAYS \
+    -in "$TMPDIR/wrong_host.csr" \
+    -CA "$TMPDIR/ca.pem" \
+    -CAkey "$TMPDIR/ca.key" \
+    -CAserial "$TMPDIR/ca.srl" \
+    -out "$TMPDIR/wrong_host.crt" \
+    -extfile "$TMPDIR/wrong_host_ext.cnf" \
+    -extensions v3_wrong_host 2>/dev/null
+
+cat "$TMPDIR/wrong_host.key" "$TMPDIR/wrong_host.crt" > "$SCRIPT_DIR/wrong-host.pem"
+echo "    wrong-host.pem written (SAN: wronghost.example.com)"
+
+# ----------------------------------------------------------------------------
+# 7. Expired certificate (for KMS TLS tests — validity window in the past)
+# ----------------------------------------------------------------------------
+echo "==> Generating expired certificate..."
+openssl genrsa -out "$TMPDIR/expired.key" 2048 2>/dev/null
+openssl req -new \
+    -key "$TMPDIR/expired.key" \
+    -out "$TMPDIR/expired.csr" \
+    -subj "/C=US/ST=New York/L=New York City/O=MongoDB/OU=Drivers/CN=localhost"
+openssl x509 -req \
+    -not_before 20000101000000Z \
+    -not_after  20010101000000Z \
+    -in "$TMPDIR/expired.csr" \
+    -CA "$TMPDIR/ca.pem" \
+    -CAkey "$TMPDIR/ca.key" \
+    -CAserial "$TMPDIR/ca.srl" \
+    -out "$TMPDIR/expired.crt" \
+    -extfile "$TMPDIR/ext.cnf" \
+    -extensions v3_server 2>/dev/null
+
+cat "$TMPDIR/expired.key" "$TMPDIR/expired.crt" > "$SCRIPT_DIR/expired.pem"
+echo "    expired.pem written (expired 2001-01-01)"
+
+# ----------------------------------------------------------------------------
+# 8. Trusted Kernel Test CA (trusted-ca.pem)
 #    A separate CA used in CA-bundle tests; does NOT sign server/client certs.
 # ----------------------------------------------------------------------------
 echo "==> Generating Trusted Kernel Test CA..."
@@ -176,7 +227,7 @@ echo "    trusted-ca.pem written"
 # ----------------------------------------------------------------------------
 echo ""
 echo "==> Verifying AKI is present..."
-for cert in ca.pem server.pem client.pem trusted-ca.pem; do
+for cert in ca.pem server.pem client.pem wrong-host.pem trusted-ca.pem; do
     result=$(openssl x509 -noout -text -in "$SCRIPT_DIR/$cert" 2>/dev/null | grep "Authority Key Identifier" | head -1)
     if [ -n "$result" ]; then
         echo "    $cert: OK ($result)"
