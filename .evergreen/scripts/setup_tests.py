@@ -341,8 +341,10 @@ def handle_test_env() -> None:
         run_command(cmd, cwd=DRIVERS_TOOLS)
 
     if SSL != "nossl":
-        write_env("CLIENT_PEM", ROOT / "test/certificates/client.pem")
-        write_env("CA_PEM", ROOT / "test/certificates/ca.pem")
+        if not DRIVERS_TOOLS:
+            raise RuntimeError("Missing DRIVERS_TOOLS")
+        write_env("CLIENT_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/client.pem")
+        write_env("CA_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/ca.pem")
 
     compressors = os.environ.get("COMPRESSORS") or opts.compressor
     if compressors == "snappy":
