@@ -758,6 +758,12 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def _collectionOperation_createChangeStream(self, target, *args, **kwargs):
         return self.__entityOperation_createChangeStream(target, *args, **kwargs)
 
+    def _clientOperation_dropDatabase(self, target, **kwargs):
+        self.__raise_if_unsupported("dropDatabase", target, MongoClient)
+        return target.drop_database(
+            name_or_database=kwargs.pop("database"), session=kwargs.pop("session", None)
+        )
+
     def _databaseOperation_runCommand(self, target, **kwargs):
         self.__raise_if_unsupported("runCommand", target, Database)
         # Ensure the first key is the command name.
