@@ -39,8 +39,8 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
+from pymongo.asynchronous.command_encoder import command
 from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.asynchronous.network import command
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
