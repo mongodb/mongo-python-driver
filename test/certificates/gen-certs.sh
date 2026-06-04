@@ -89,6 +89,8 @@ echo "    ca.pem written"
 
 # ----------------------------------------------------------------------------
 # 2. Server certificate
+#    Signed via `openssl ca` so the cert is tracked in the database and can
+#    be revoked, which is required for the tlsCRLFile test.
 # ----------------------------------------------------------------------------
 echo "==> Generating server certificate..."
 openssl genrsa -out "$TMPDIR/server.key" 2048 2>/dev/null
@@ -96,18 +98,21 @@ openssl req -new \
     -key "$TMPDIR/server.key" \
     -out "$TMPDIR/server.csr" \
     -subj "/C=US/ST=New York/L=New York City/O=MongoDB/OU=Drivers/CN=localhost"
-openssl x509 -req -days $DAYS \
+openssl ca -config "$TMPDIR/ca.cnf" \
     -in "$TMPDIR/server.csr" \
-    -CA "$TMPDIR/ca.pem" \
-    -CAkey "$TMPDIR/ca.key" \
-    -CAcreateserial \
     -out "$TMPDIR/server.crt" \
+    -extensions v3_server \
     -extfile "$TMPDIR/ext.cnf" \
-    -extensions v3_server 2>/dev/null
+    -days $DAYS \
+    -batch 2>/dev/null
 
 # server.pem = private key + certificate
 cat "$TMPDIR/server.key" "$TMPDIR/server.crt" > "$SCRIPT_DIR/server.pem"
 echo "    server.pem written"
+
+# Revoke the server cert so crl.pem will block connections when checked.
+# This is required by test_tlsCRLFile_support which verifies CRL enforcement.
+openssl ca -config "$TMPDIR/ca.cnf" -revoke "$TMPDIR/server.crt" 2>/dev/null
 
 # ----------------------------------------------------------------------------
 # 3. Client certificate
@@ -117,12 +122,12 @@ openssl genrsa -out "$TMPDIR/client.key" 2048 2>/dev/null
 openssl req -new \
     -key "$TMPDIR/client.key" \
     -out "$TMPDIR/client.csr" \
-    -subj "/C=US/ST=New York/L=New York City/O=MDB/OU=Drivers/CN=client"
+    -subj "/CN=client/OU=Drivers/O=MDB/L=New York City/ST=New York/C=US"
 openssl x509 -req -days $DAYS \
     -in "$TMPDIR/client.csr" \
     -CA "$TMPDIR/ca.pem" \
     -CAkey "$TMPDIR/ca.key" \
-    -CAserial "$TMPDIR/ca.srl" \
+    -CAcreateserial \
     -out "$TMPDIR/client.crt" \
     -extfile "$TMPDIR/ext.cnf" \
     -extensions v3_client 2>/dev/null
@@ -170,7 +175,7 @@ openssl x509 -req -days $DAYS \
     -in "$TMPDIR/wrong_host.csr" \
     -CA "$TMPDIR/ca.pem" \
     -CAkey "$TMPDIR/ca.key" \
-    -CAserial "$TMPDIR/ca.srl" \
+    -CAcreateserial \
     -out "$TMPDIR/wrong_host.crt" \
     -extfile "$TMPDIR/wrong_host_ext.cnf" \
     -extensions v3_wrong_host 2>/dev/null
@@ -193,7 +198,7 @@ openssl x509 -req \
     -in "$TMPDIR/expired.csr" \
     -CA "$TMPDIR/ca.pem" \
     -CAkey "$TMPDIR/ca.key" \
-    -CAserial "$TMPDIR/ca.srl" \
+    -CAcreateserial \
     -out "$TMPDIR/expired.crt" \
     -extfile "$TMPDIR/ext.cnf" \
     -extensions v3_server 2>/dev/null
