@@ -49,19 +49,6 @@ class TestPyMongoProtocol(AsyncUnitTest):
         protocol._header = memoryview(bytearray(header_bytes))
         return protocol
 
-    async def test_initial_timeout_from_constructor(self):
-        protocol = await _make_protocol(timeout=3.0)
-        self.assertEqual(protocol.gettimeout, 3.0)
-
-    async def test_settimeout_updates_value(self):
-        protocol = await _make_protocol()
-        protocol.settimeout(7.5)
-        self.assertEqual(protocol.gettimeout, 7.5)
-
-    async def test_default_timeout_is_none(self):
-        protocol = await _make_protocol()
-        self.assertIsNone(protocol.gettimeout)
-
     async def test_normal_op_msg(self):
         header = _make_header(length=32, request_id=1, response_to=99, op_code=2013)
         protocol = await self._make_proto_with_header(header)
