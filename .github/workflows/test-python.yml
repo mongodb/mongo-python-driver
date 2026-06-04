@@ -219,12 +219,16 @@ jobs:
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
       - name: Run tests
-        run:  |
+        run: |
           just integration-tests
       - id: setup-mongodb-ssl
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
           ssl: true
+        env:
+          TLS_PEM_KEY_FILE: ${{ github.workspace }}/test/certificates/server.pem
+          TLS_CA_FILE: ${{ github.workspace }}/test/certificates/ca.pem
+          TLS_CERT_KEY_FILE: ${{ github.workspace }}/test/certificates/client.pem
       - name: Run tests
         run: |
           just integration-tests
