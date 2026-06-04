@@ -32,7 +32,7 @@ from bson import _decode_all_selective
 from pymongo import _csot, helpers_shared, message
 from pymongo._telemetry import _CommandTelemetry
 from pymongo.compression_support import _NO_COMPRESSION
-from pymongo.message import _OpMsg, _OpReply
+from pymongo.message import _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 
 if TYPE_CHECKING:
@@ -75,7 +75,7 @@ async def _network_command_core(
     cursor_id: Optional[int] = None,
     orig: Optional[MutableMapping[str, Any]] = None,
     speculative_hello: bool = False,
-) -> tuple[list[_DocumentOut], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
+) -> tuple[list[_DocumentOut], Optional[_OpMsg], datetime.timedelta]:
     """Send/receive a command and return (docs, raw_reply, duration).
 
     Handles APM logging, send/receive, unpacking, response processing,
@@ -84,7 +84,7 @@ async def _network_command_core(
     """
     publish = listeners is not None and listeners.enabled_for_commands
     name = next(iter(spec))
-    reply: Optional[Union[_OpReply, _OpMsg]] = None
+    reply: Optional[_OpMsg] = None
     docs: list[_DocumentOut] = []
 
     with _CommandTelemetry(client, conn, spec, dbname, request_id, start) as cmd_telemetry:
@@ -205,7 +205,7 @@ async def command(
     parse_write_concern_error: bool = False,
     collation: Optional[_CollationIn] = None,
     compression_ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
-    use_op_msg: bool = False,
+    use_op_msg: bool = False,  # noqa: ARG001
     unacknowledged: bool = False,
     user_fields: Optional[Mapping[str, Any]] = None,
     exhaust_allowed: bool = False,
@@ -266,7 +266,6 @@ async def command(
     if client:
         conn.apply_timeout(client, spec)
     _csot.apply_write_concern(spec, write_concern)
-
 
     flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
     flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
