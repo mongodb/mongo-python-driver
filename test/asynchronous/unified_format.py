@@ -1470,7 +1470,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             ("PYTHON-5174", ".*Driver_extends_timeout_while_streaming"),
             ("PYTHON-5315", ".*TestSrvPolling.test_recover_from_initially_.*"),
             ("PYTHON-4987", ".*UnknownTransactionCommitResult_labels_to_connection_errors"),
-            ("PYTHON-3689", ".*TestProse.test_load_balancing"),
             ("PYTHON-3522", ".*csot.*"),
         ]
         for reason, flaky_test in flaky_tests:
