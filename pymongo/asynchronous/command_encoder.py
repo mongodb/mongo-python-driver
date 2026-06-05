@@ -34,7 +34,7 @@ from typing import (
 )
 
 from pymongo import _csot, message
-from pymongo.asynchronous.command_runner import run_command
+from pymongo.asynchronous.command_runner import run_command, run_unacknowledged_command
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.message import _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
@@ -144,24 +144,41 @@ async def command(
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-    docs, _, _ = await run_command(
-        conn,
-        spec,
-        dbname,
-        request_id,
-        msg,
-        client=client,
-        session=session,
-        listeners=listeners,
-        address=address,
-        start=start,
-        codec_options=codec_options,
-        user_fields=user_fields,
-        orig=orig,
-        check=check,
-        allowable_errors=allowable_errors,
-        parse_write_concern_error=parse_write_concern_error,
-        unacknowledged=unacknowledged,
-        speculative_hello=speculative_hello,
-    )
+    if unacknowledged:
+        docs, _, _ = await run_unacknowledged_command(
+            conn,
+            spec,
+            dbname,
+            request_id,
+            msg,
+            client=client,
+            session=session,
+            listeners=listeners,
+            address=address,
+            start=start,
+            codec_options=codec_options,
+            user_fields=user_fields,
+            orig=orig,
+            speculative_hello=speculative_hello,
+        )
+    else:
+        docs, _, _ = await run_command(
+            conn,
+            spec,
+            dbname,
+            request_id,
+            msg,
+            client=client,
+            session=session,
+            listeners=listeners,
+            address=address,
+            start=start,
+            codec_options=codec_options,
+            user_fields=user_fields,
+            orig=orig,
+            check=check,
+            allowable_errors=allowable_errors,
+            parse_write_concern_error=parse_write_concern_error,
+            speculative_hello=speculative_hello,
+        )
     return docs[0]  # type: ignore[return-value]

@@ -473,24 +473,6 @@ class AsyncConnection:
         self._raise_if_not_writable(True)
         await self.send_message(msg, max_doc_size)
 
-    async def write_command(
-        self, request_id: int, msg: bytes, codec_options: CodecOptions[Mapping[str, Any]]
-    ) -> dict[str, Any]:
-        """Send "insert" etc. command, returning response as a dict.
-
-        Can raise ConnectionFailure or OperationFailure.
-
-        :param request_id: an int.
-        :param msg: bytes, the command message.
-        """
-        await self.send_message(msg, 0)
-        reply = await self.receive_message(request_id)
-        result = reply.command_response(codec_options)
-
-        # Raises NotPrimaryError or OperationFailure.
-        helpers_shared._check_command_response(result, self.max_wire_version)
-        return result
-
     async def authenticate(self, reauthenticate: bool = False) -> None:
         """Authenticate to the server if needed.
 

@@ -39,7 +39,7 @@ from pymongo.asynchronous.client_session import (
 )
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
-from pymongo.asynchronous.command_runner import run_command
+from pymongo.asynchronous.command_runner import run_command, run_unacknowledged_command
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import _handle_reauth
 
@@ -289,7 +289,7 @@ class _AsyncClientBulk:
         published["nsInfo"] = ns_docs
         reply: Mapping[str, Any] = {"ok": 1}
         try:
-            await run_command(
+            await run_unacknowledged_command(
                 bwc.conn,  # type: ignore[arg-type]
                 cmd,
                 bwc.db_name,
@@ -304,11 +304,8 @@ class _AsyncClientBulk:
                 op_id=bwc.op_id,
                 command_name=bwc.name,
                 orig=published,
-                unacknowledged=True,
                 use_conn_transport=True,
                 max_doc_size=bwc.max_bson_size,
-                process_response=False,
-                decrypt_reply=False,
             )
         except Exception as exc:
             # Top-level error will be embedded in ClientBulkWriteException.
@@ -409,7 +406,7 @@ class _AsyncClientBulk:
         listeners = self.client._event_listeners
 
         # AsyncConnection.command validates the session, but we use
-        # AsyncConnection.write_command
+        # run_command/run_unacknowledged_command.
         conn.validate_session(self.client, session)
 
         bwc = self.bulk_ctx_class(
