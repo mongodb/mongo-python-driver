@@ -205,7 +205,6 @@ async def command(
     parse_write_concern_error: bool = False,
     collation: Optional[_CollationIn] = None,
     compression_ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
-    use_op_msg: bool = False,  # noqa: ARG001
     unacknowledged: bool = False,
     user_fields: Optional[Mapping[str, Any]] = None,
     exhaust_allowed: bool = False,
@@ -231,7 +230,6 @@ async def command(
         field in the command response.
     :param collation: The collation for this command.
     :param compression_ctx: optional compression Context.
-    :param use_op_msg: True if we should use OP_MSG.
     :param unacknowledged: True if this is an unacknowledged command.
     :param user_fields: Response fields that should be decoded
         using the TypeDecoders from codec_options, passed to

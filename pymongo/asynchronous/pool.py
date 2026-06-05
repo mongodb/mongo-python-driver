@@ -146,7 +146,6 @@ class AsyncConnection:
         self.supports_sessions = False
         self.hello_ok: bool = False
         self.is_mongos = False
-        self.op_msg_enabled = False
         self.listeners = pool.opts._event_listeners
         self.enabled_for_cmap = pool.enabled_for_cmap
         self.enabled_for_logging = pool.enabled_for_logging
@@ -237,7 +236,6 @@ class AsyncConnection:
     def hello_cmd(self) -> dict[str, Any]:
         # As of PYTHON-5713, always use OP_MSG for the handshake since all
         # supported servers (MongoDB 4.2+, wire version >= 8) support it.
-        self.op_msg_enabled = True
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
             return {HelloCompat.CMD: 1}
         return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
@@ -313,7 +311,6 @@ class AsyncConnection:
             ctx = self.compression_settings.get_compression_context(hello.compressors)
             self.compression_context = ctx
 
-        self.op_msg_enabled = True
         self.server_connection_id = hello.connection_id
         if creds:
             self.negotiated_mechs = hello.sasl_supported_mechs
@@ -396,8 +393,7 @@ class AsyncConnection:
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
-        if self.op_msg_enabled:
-            self._raise_if_not_writable(unacknowledged)
+        self._raise_if_not_writable(unacknowledged)
         try:
             return await command(
                 self,
@@ -417,7 +413,6 @@ class AsyncConnection:
                 parse_write_concern_error=parse_write_concern_error,
                 collation=collation,
                 compression_ctx=self.compression_context,
-                use_op_msg=self.op_msg_enabled,
                 unacknowledged=unacknowledged,
                 user_fields=user_fields,
                 exhaust_allowed=exhaust_allowed,
