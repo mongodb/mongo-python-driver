@@ -23,15 +23,16 @@ cat > "$TMPDIR/ext.cnf" << 'EOF'
 [ v3_ca ]
 subjectKeyIdentifier = hash
 basicConstraints = critical, CA:TRUE
+keyUsage = critical, keyCertSign, cRLSign
 
 [ v3_server ]
 subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid,issuer
+authorityKeyIdentifier = keyid
 subjectAltName = DNS:localhost, IP:127.0.0.1, IP:::1
 
 [ v3_client ]
 subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid,issuer
+authorityKeyIdentifier = keyid
 keyUsage = digitalSignature
 extendedKeyUsage = clientAuth
 EOF
@@ -214,6 +215,7 @@ cat > "$TMPDIR/trusted_ext.cnf" << 'EOF'
 [ v3_trusted_ca ]
 subjectKeyIdentifier = hash
 basicConstraints = critical, CA:TRUE
+keyUsage = critical, keyCertSign, cRLSign
 EOF
 
 openssl genrsa -out "$TMPDIR/trusted_ca.key" 2048 2>/dev/null
