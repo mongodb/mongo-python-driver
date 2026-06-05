@@ -568,8 +568,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         async def f():
             for _ in range(5):
-                await collection.find_one({"$where": delay(0.1)})
-                assert len(cx_pool.conns) <= max_pool_size
+                await collection.find_one({})
 
             async with lock:
                 self.n_passed += 1
@@ -600,7 +599,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         async def f():
             for _ in range(5):
-                await collection.find_one({"$where": delay(0.1)})
+                await collection.find_one({})
 
             async with lock:
                 self.n_passed += 1

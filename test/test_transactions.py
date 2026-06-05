@@ -16,6 +16,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import platform
 import random
 import sys
 import time
@@ -570,6 +572,10 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         self.assertTrue(context.exception.has_error_label("UnknownTransactionCommitResult"))
 
     @client_context.require_transactions
+    @unittest.skipIf(
+        sys.platform == "darwin" and platform.machine() == "arm64" and "CI" in os.environ,
+        "PYTHON-5861: Transaction operations too slow on macOS ARM64 CI",
+    )
     def test_callback_not_retried_after_csot_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
