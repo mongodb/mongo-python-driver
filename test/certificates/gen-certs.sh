@@ -22,7 +22,6 @@ DAYS=7300  # ~20 years
 cat > "$TMPDIR/ext.cnf" << 'EOF'
 [ v3_ca ]
 subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid:always,issuer
 basicConstraints = critical, CA:TRUE
 
 [ v3_server ]
@@ -214,7 +213,6 @@ echo "==> Generating Trusted Kernel Test CA..."
 cat > "$TMPDIR/trusted_ext.cnf" << 'EOF'
 [ v3_trusted_ca ]
 subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid:always,issuer
 basicConstraints = critical, CA:TRUE
 EOF
 
@@ -231,8 +229,8 @@ echo "    trusted-ca.pem written"
 # Verify
 # ----------------------------------------------------------------------------
 echo ""
-echo "==> Verifying AKI is present..."
-for cert in ca.pem server.pem client.pem wrong-host.pem trusted-ca.pem; do
+echo "==> Verifying AKI is present on leaf certs..."
+for cert in server.pem client.pem wrong-host.pem; do
     result=$(openssl x509 -noout -text -in "$SCRIPT_DIR/$cert" 2>/dev/null | grep "Authority Key Identifier" | head -1)
     if [ -n "$result" ]; then
         echo "    $cert: OK ($result)"

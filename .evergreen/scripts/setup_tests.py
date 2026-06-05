@@ -380,15 +380,22 @@ def handle_test_env() -> None:
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")
         csfle_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/csfle")
+
+        # Set CSFLE TLS cert paths to our AKI-enabled test/certificates/ before
+        # setup-secrets.sh runs. setup-secrets.sh uses ${VAR:-default} so
+        # pre-setting these vars causes them to flow into secrets-export.sh via
+        # csfle/setup_secrets.py (which reads os.environ for these keys).
+        # load_config_from_file then persists all vars from that file for the
+        # test runner, so no separate write_env calls are needed.
+        certs = ROOT / "test/certificates"
+        os.environ["CSFLE_TLS_CA_FILE"] = str(certs / "ca.pem")
+        os.environ["CSFLE_TLS_CERT_FILE"] = str(certs / "server.pem")
+        os.environ["CSFLE_TLS_CLIENT_CERT_FILE"] = str(certs / "client.pem")
+        os.environ["CSFLE_TLS_WRONG_HOST_FILE"] = str(certs / "wrong-host.pem")
+        os.environ["CSFLE_TLS_EXPIRED_FILE"] = str(certs / "expired.pem")
+
         run_command(f"bash {csfle_dir.as_posix()}/setup-secrets.sh", cwd=csfle_dir)
         load_config_from_file(csfle_dir / "secrets-export.sh")
-
-        # Override CSFLE TLS cert paths with our AKI-enabled test/certificates/
-        # so mock servers use certs that Python 3.13 TLS validation accepts.
-        certs = ROOT / "test/certificates"
-        write_env("CSFLE_TLS_CA_FILE", certs / "ca.pem")
-        write_env("CSFLE_TLS_CERT_FILE", certs / "server.pem")
-
         run_command(f"bash {csfle_dir.as_posix()}/start-servers.sh")
 
     if sub_test_name == "pyopenssl":
