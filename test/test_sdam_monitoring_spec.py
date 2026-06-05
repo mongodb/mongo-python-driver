@@ -296,6 +296,7 @@ class TestSdamMonitoring(IntegrationTest):
             event_listeners=[self.listener], retryWrites=retry_writes
         )
         self.coll = self.test_client[self.client.db.name].test
+        self.coll.drop()  # necessary for first test run
         self.coll.database.create_collection(self.coll.name)
         self.listener.reset()
 
