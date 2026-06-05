@@ -117,6 +117,9 @@ do
     apm|APM|command-monitoring|command_monitoring)
       cpjson command-logging-and-monitoring/tests/monitoring command_monitoring
       ;;
+    causal|causal-consistency|causal_consistency)
+      cpjson causal-consistency/tests/ causal_consistency
+      ;;
     command-logging|command_logging)
       cpjson command-logging-and-monitoring/tests/logging command_logging
       ;;

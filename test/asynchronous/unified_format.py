@@ -761,6 +761,12 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     async def _collectionOperation_createChangeStream(self, target, *args, **kwargs):
         return await self.__entityOperation_createChangeStream(target, *args, **kwargs)
 
+    async def _clientOperation_dropDatabase(self, target, **kwargs):
+        self.__raise_if_unsupported("dropDatabase", target, AsyncMongoClient)
+        return await target.drop_database(
+            name_or_database=kwargs.pop("database"), session=kwargs.pop("session", None)
+        )
+
     async def _databaseOperation_runCommand(self, target, **kwargs):
         self.__raise_if_unsupported("runCommand", target, AsyncDatabase)
         # Ensure the first key is the command name.
@@ -1470,7 +1476,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             ("PYTHON-5174", ".*Driver_extends_timeout_while_streaming"),
             ("PYTHON-5315", ".*TestSrvPolling.test_recover_from_initially_.*"),
             ("PYTHON-4987", ".*UnknownTransactionCommitResult_labels_to_connection_errors"),
-            ("PYTHON-3689", ".*TestProse.test_load_balancing"),
             ("PYTHON-3522", ".*csot.*"),
         ]
         for reason, flaky_test in flaky_tests:
