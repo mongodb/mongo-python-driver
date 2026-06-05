@@ -35,7 +35,10 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
 from pymongo.asynchronous.client_session import AsyncClientSession, _validate_session_write_concern
-from pymongo.asynchronous.command_runner import run_command, run_unacknowledged_command
+from pymongo.asynchronous.command_runner import (
+    run_acknowledged_command,
+    run_unacknowledged_command,
+)
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.bulk_shared import (
     _COMMANDS,
@@ -249,7 +252,7 @@ class _AsyncBulk:
         """Run a batch write command, returning the response as a dict."""
         cmd[bwc.field] = docs
         try:
-            result_docs, _, _ = await run_command(
+            result_docs, _, _ = await run_acknowledged_command(
                 bwc.conn,  # type: ignore[arg-type]
                 cmd,
                 bwc.db_name,
@@ -383,7 +386,7 @@ class _AsyncBulk:
         run = self.current_run
 
         # AsyncConnection.command validates the session, but we use
-        # run_command/run_unacknowledged_command.
+        # run_acknowledged_command/run_unacknowledged_command.
         conn.validate_session(client, session)
         last_run = False
 

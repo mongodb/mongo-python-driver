@@ -66,7 +66,10 @@ from pymongo.message import (
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
-from pymongo.synchronous.command_runner import run_command, run_unacknowledged_command
+from pymongo.synchronous.command_runner import (
+    run_acknowledged_command,
+    run_unacknowledged_command,
+)
 from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.write_concern import WriteConcern
 
@@ -252,7 +255,7 @@ class _Bulk:
         """Run a batch write command, returning the response as a dict."""
         cmd[bwc.field] = docs
         try:
-            result_docs, _, _ = run_command(
+            result_docs, _, _ = run_acknowledged_command(
                 bwc.conn,  # type: ignore[arg-type]
                 cmd,
                 bwc.db_name,
@@ -386,7 +389,7 @@ class _Bulk:
         run = self.current_run
 
         # Connection.command validates the session, but we use
-        # run_command/run_unacknowledged_command.
+        # run_acknowledged_command/run_unacknowledged_command.
         conn.validate_session(client, session)
         last_run = False
 
