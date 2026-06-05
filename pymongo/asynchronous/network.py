@@ -136,7 +136,6 @@ async def command(
         conn.apply_timeout(client, spec)
     _csot.apply_write_concern(spec, write_concern)
 
-
     flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
     flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
     request_id, msg, size, max_doc_size = message._op_msg(
