@@ -39,7 +39,10 @@ from pymongo.asynchronous.client_session import (
 )
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
-from pymongo.asynchronous.command_runner import run_command, run_unacknowledged_command
+from pymongo.asynchronous.command_runner import (
+    run_acknowledged_command,
+    run_unacknowledged_command,
+)
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import _handle_reauth
 
@@ -239,7 +242,7 @@ class _AsyncClientBulk:
         cmd["ops"] = op_docs
         cmd["nsInfo"] = ns_docs
         try:
-            result_docs, _, _ = await run_command(
+            result_docs, _, _ = await run_acknowledged_command(
                 bwc.conn,  # type: ignore[arg-type]
                 cmd,
                 bwc.db_name,
@@ -406,7 +409,7 @@ class _AsyncClientBulk:
         listeners = self.client._event_listeners
 
         # AsyncConnection.command validates the session, but we use
-        # run_command/run_unacknowledged_command.
+        # run_acknowledged_command/run_unacknowledged_command.
         conn.validate_session(self.client, session)
 
         bwc = self.bulk_ctx_class(

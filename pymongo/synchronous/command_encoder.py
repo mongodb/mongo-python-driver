@@ -17,7 +17,8 @@
 This builds the wire-protocol message for a single command -- applying read
 preference, read concern, collation, ``$clusterTime``, auto-encryption, CSOT,
 and OP_MSG encoding -- then hands it to
-:func:`pymongo.command_runner.run_command` for the network round
+:func:`pymongo.command_runner.run_acknowledged_command` for the
+network round
 trip. The raw socket I/O lives in :mod:`pymongo.network_layer`.
 """
 from __future__ import annotations
@@ -37,7 +38,10 @@ from pymongo import _csot, message
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.message import _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
-from pymongo.synchronous.command_runner import run_command, run_unacknowledged_command
+from pymongo.synchronous.command_runner import (
+    run_acknowledged_command,
+    run_unacknowledged_command,
+)
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -162,7 +166,7 @@ def command(
             speculative_hello=speculative_hello,
         )
     else:
-        docs, _, _ = run_command(
+        docs, _, _ = run_acknowledged_command(
             conn,
             spec,
             dbname,

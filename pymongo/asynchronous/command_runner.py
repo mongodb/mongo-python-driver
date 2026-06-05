@@ -15,8 +15,9 @@
 """The shared code path for executing a command over a connection.
 
 Every database operation runs its network round trip through one of three
-public entry points -- :func:`run_command` (acknowledged commands and bulk
-write batches), :func:`run_unacknowledged_command` (unacknowledged writes), and
+public entry points -- :func:`run_acknowledged_command` (acknowledged commands
+and bulk write batches), :func:`run_unacknowledged_command` (unacknowledged
+writes), and
 :func:`run_cursor_command` (cursor ``find``/``getMore`` operations) -- each of
 which wraps the private :func:`_run_command`. ``_run_command`` owns the entire
 shared skeleton: command logging, APM event publishing, ``send``/``receive``,
@@ -100,7 +101,7 @@ async def _run_command(
 ) -> tuple[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
 
-    This is the shared implementation behind :func:`run_command`,
+    This is the shared implementation behind :func:`run_acknowledged_command`,
     :func:`run_unacknowledged_command`, and :func:`run_cursor_command`. Those
     three public entry points each fix the transport and response-shaping flags
     for their command type; the bare kwargs here should not be set directly by
@@ -344,7 +345,7 @@ async def _run_command(
     return docs, reply, duration
 
 
-async def run_command(
+async def run_acknowledged_command(
     conn: AsyncConnection,
     cmd: MutableMapping[str, Any],
     dbname: str,
