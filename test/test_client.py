@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the mongo_client module."""
+
 from __future__ import annotations
 
 import _thread as thread
@@ -33,7 +34,8 @@ import sys
 import threading
 import time
 import uuid
-from typing import Any, Iterable, Type, no_type_check
+from collections.abc import Iterable
+from typing import Any, no_type_check
 from unittest import mock, skipIf
 from unittest.mock import patch
 
@@ -43,38 +45,6 @@ from bson.binary import CSHARP_LEGACY, JAVA_LEGACY, PYTHON_LEGACY, Binary, UuidR
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
-
-from test import (
-    HAVE_IPADDRESS,
-    IntegrationTest,
-    MockClientTest,
-    SkipTest,
-    UnitTest,
-    client_context,
-    client_knobs,
-    connected,
-    db_pwd,
-    db_user,
-    remove_all_users,
-    unittest,
-)
-from test.pymongo_mocks import MockClient
-from test.test_binary import BinaryData
-from test.utils import (
-    assertRaisesExactly,
-    get_pool,
-    wait_until,
-)
-from test.utils_shared import (
-    NTHREADS,
-    CMAPListener,
-    FunctionCallRecorder,
-    delay,
-    gevent_monkey_patched,
-    is_greenthread_patched,
-    lazy_client_trial,
-    one,
-)
 
 import bson
 import pymongo
@@ -123,6 +93,37 @@ from pymongo.synchronous.settings import TOPOLOGY_TYPE
 from pymongo.synchronous.topology import _ErrorContext
 from pymongo.topology_description import TopologyDescription
 from pymongo.write_concern import WriteConcern
+from test import (
+    HAVE_IPADDRESS,
+    IntegrationTest,
+    MockClientTest,
+    SkipTest,
+    UnitTest,
+    client_context,
+    client_knobs,
+    connected,
+    db_pwd,
+    db_user,
+    remove_all_users,
+    unittest,
+)
+from test.pymongo_mocks import MockClient
+from test.test_binary import BinaryData
+from test.utils import (
+    assertRaisesExactly,
+    get_pool,
+    wait_until,
+)
+from test.utils_shared import (
+    NTHREADS,
+    CMAPListener,
+    FunctionCallRecorder,
+    delay,
+    gevent_monkey_patched,
+    is_greenthread_patched,
+    lazy_client_trial,
+    one,
+)
 
 _IS_SYNC = True
 
@@ -430,7 +431,7 @@ class ClientUnitTest(UnitTest):
                 return int(value)
 
         # Ensure codec options are passed in correctly
-        document_class: Type[SON] = SON
+        document_class: type[SON] = SON
         type_registry = TypeRegistry([MyFloatAsIntEncoder()])
         tz_aware = True
         uuid_representation_label = "javaLegacy"

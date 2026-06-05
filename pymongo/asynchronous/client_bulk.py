@@ -16,19 +16,18 @@
 
 .. versionadded:: 4.9
 """
+
 from __future__ import annotations
 
 import copy
 import datetime
 import logging
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from itertools import islice
 from typing import (
     TYPE_CHECKING,
     Any,
-    Mapping,
     Optional,
-    Type,
     Union,
 )
 
@@ -119,7 +118,7 @@ class _AsyncClientBulk:
         self.started_retryable_write = False
 
     @property
-    def bulk_ctx_class(self) -> Type[_ClientBulkWriteContext]:
+    def bulk_ctx_class(self) -> type[_ClientBulkWriteContext]:
         return _ClientBulkWriteContext
 
     def add_insert(self, namespace: str, document: _DocumentOut) -> None:

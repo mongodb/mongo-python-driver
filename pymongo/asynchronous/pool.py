@@ -24,15 +24,12 @@ import ssl
 import sys
 import time
 import weakref
+from collections.abc import AsyncGenerator, Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncGenerator,
-    Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
-    Sequence,
     Union,
 )
 
@@ -437,8 +434,8 @@ class AsyncConnection:
         """
         if self.max_bson_size is not None and max_doc_size > self.max_bson_size:
             raise DocumentTooLarge(
-                "BSON document too large (%d bytes) - the connected server "
-                "supports BSON document sizes up to %d bytes." % (max_doc_size, self.max_bson_size)
+                f"BSON document too large ({max_doc_size} bytes) - the connected server "
+                f"supports BSON document sizes up to {self.max_bson_size} bytes."
             )
 
         try:
@@ -634,7 +631,7 @@ class AsyncConnection:
             details = _get_timeout_details(self.opts)
             _raise_connection_failure(self.address, error, timeout_details=details)
         else:
-            raise
+            raise error
 
     def __eq__(self, other: Any) -> bool:
         return self.conn == other.conn
@@ -648,7 +645,7 @@ class AsyncConnection:
     def __repr__(self) -> str:
         return "AsyncConnection({}){} at {}".format(
             repr(self.conn),
-            self.closed and " CLOSED" or "",
+            (self.closed and " CLOSED") or "",
             id(self),
         )
 
@@ -1464,15 +1461,9 @@ class Pool:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
             raise WaitQueueTimeoutError(
                 "Timeout waiting for connection from the connection pool. "
-                "maxPoolSize: {}, connections in use by cursors: {}, "
-                "connections in use by transactions: {}, connections in use "
-                "by other operations: {}, timeout: {}".format(
-                    self.opts.max_pool_size,
-                    self.ncursors,
-                    self.ntxns,
-                    other_ops,
-                    timeout,
-                )
+                f"maxPoolSize: {self.opts.max_pool_size}, connections in use by cursors: {self.ncursors}, "
+                f"connections in use by transactions: {self.ntxns}, connections in use "
+                f"by other operations: {other_ops}, timeout: {timeout}"
             )
         raise WaitQueueTimeoutError(
             "Timed out while checking out a connection from connection pool. "

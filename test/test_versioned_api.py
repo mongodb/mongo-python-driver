@@ -14,14 +14,14 @@
 from __future__ import annotations
 
 import sys
+
 from test import UnitTest
 
 sys.path[0:0] = [""]
 
-from test import unittest
-
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi, ServerApiVersion
+from test import unittest
 
 
 class TestServerApi(UnitTest):

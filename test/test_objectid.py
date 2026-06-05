@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for the objectid module."""
+
 from __future__ import annotations
 
 import datetime
@@ -22,12 +23,11 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import SkipTest, unittest
-from test.utils_shared import oid_generated_on_process
-
 from bson.errors import InvalidId
 from bson.objectid import _MAX_COUNTER_VALUE, ObjectId
 from bson.tz_util import FixedOffset, utc
+from test import SkipTest, unittest
+from test.utils_shared import oid_generated_on_process
 
 
 def oid(x):

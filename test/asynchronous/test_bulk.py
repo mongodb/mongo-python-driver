@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the bulk API."""
+
 from __future__ import annotations
 
 import sys
@@ -23,9 +24,6 @@ from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, async_client_context, remove_all_users, unittest
-from test.utils_shared import async_wait_until
-
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
@@ -34,6 +32,8 @@ from pymongo.common import partition_node
 from pymongo.errors import BulkWriteError, ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import *
 from pymongo.write_concern import WriteConcern
+from test.asynchronous import AsyncIntegrationTest, async_client_context, remove_all_users, unittest
+from test.utils_shared import async_wait_until
 
 _IS_SYNC = False
 

@@ -23,9 +23,8 @@ import time
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncUnitTest, unittest
-
 from pymongo.periodic_executor import AsyncPeriodicExecutor
+from test.asynchronous import AsyncUnitTest, unittest
 
 _IS_SYNC = False
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the client_session module."""
+
 from __future__ import annotations
 
 import copy
@@ -20,11 +21,22 @@ import sys
 import time
 from inspect import iscoroutinefunction
 from io import BytesIO
+from typing import Any, Callable
+
 from test.asynchronous.helpers import ExceptionCatchingTask
-from typing import Any, Callable, List, Set, Tuple
 
 sys.path[0:0] = [""]
 
+from bson import DBRef
+from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
+from pymongo import ASCENDING, AsyncMongoClient, monitoring
+from pymongo.asynchronous.command_cursor import AsyncCommandCursor
+from pymongo.asynchronous.cursor import AsyncCursor
+from pymongo.asynchronous.helpers import anext
+from pymongo.common import _MAX_END_SESSIONS
+from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
+from pymongo.operations import IndexModel, InsertOne, UpdateOne
+from pymongo.read_concern import ReadConcern
 from test.asynchronous import (
     AsyncIntegrationTest,
     AsyncUnitTest,
@@ -39,17 +51,6 @@ from test.utils_shared import (
     OvertCommandListener,
     async_wait_until,
 )
-
-from bson import DBRef
-from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
-from pymongo import ASCENDING, AsyncMongoClient, monitoring
-from pymongo.asynchronous.command_cursor import AsyncCommandCursor
-from pymongo.asynchronous.cursor import AsyncCursor
-from pymongo.asynchronous.helpers import anext
-from pymongo.common import _MAX_END_SESSIONS
-from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
-from pymongo.operations import IndexModel, InsertOne, UpdateOne
-from pymongo.read_concern import ReadConcern
 
 _IS_SYNC = False
 
@@ -80,7 +81,7 @@ def session_ids(client):
 
 class TestSession(AsyncIntegrationTest):
     client2: AsyncMongoClient
-    sensitive_commands: Set[str]
+    sensitive_commands: set[str]
 
     @async_client_context.require_sessions
     async def asyncSetUp(self):
@@ -243,7 +244,7 @@ class TestSession(AsyncIntegrationTest):
         # sessions to be used: connection check in happens before session check in
         for _ in range(10):
             cursor = client.db.test.find({})
-            ops: List[Tuple[Callable, List[Any]]] = [
+            ops: list[tuple[Callable, list[Any]]] = [
                 (client.db.test.find_one, [{"_id": 1}]),
                 (client.db.test.delete_one, [{}]),
                 (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),

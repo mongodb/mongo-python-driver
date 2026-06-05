@@ -13,23 +13,17 @@
 # limitations under the License.
 
 """Test the database module."""
+
 from __future__ import annotations
 
 import re
 import sys
-from typing import Any, Iterable, List, Mapping, Union
+from collections.abc import Iterable, Mapping
+from typing import Any, Union
 
 from pymongo.synchronous.command_cursor import CommandCursor
 
 sys.path[0:0] = [""]
-
-from test import IntegrationTest, client_context, unittest
-from test.test_custom_types import DECIMAL_CODECOPTS
-from test.utils_shared import (
-    IMPOSSIBLE_WRITE_CONCERN,
-    OvertCommandListener,
-    wait_until,
-)
 
 from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
@@ -54,6 +48,13 @@ from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
+from test import IntegrationTest, client_context, unittest
+from test.test_custom_types import DECIMAL_CODECOPTS
+from test.utils_shared import (
+    IMPOSSIBLE_WRITE_CONCERN,
+    OvertCommandListener,
+    wait_until,
+)
 
 _IS_SYNC = True
 
@@ -683,7 +684,7 @@ class TestDatabase(IntegrationTest):
 class TestDatabaseAggregation(IntegrationTest):
     def setUp(self):
         super().setUp()
-        self.pipeline: List[Mapping[str, Any]] = [
+        self.pipeline: list[Mapping[str, Any]] = [
             {"$listLocalSessions": {}},
             {"$limit": 1},
             {"$addFields": {"dummy": "dummy field"}},

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Internal network layer helper methods."""
+
 from __future__ import annotations
 
 import asyncio
@@ -362,9 +363,11 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
                 if (
                     _PYPY
                     or _WINDOWS
-                    or not conn.is_sdam
-                    and deadline is not None
-                    and deadline - time.monotonic() < 0
+                    or (
+                        not conn.is_sdam
+                        and deadline is not None
+                        and deadline - time.monotonic() < 0
+                    )
                 ):
                     # We reached the true deadline.
                     raise

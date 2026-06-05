@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for the son module."""
+
 from __future__ import annotations
 
 import copy
@@ -23,9 +24,9 @@ import sys
 sys.path[0:0] = [""]
 
 from collections import OrderedDict
-from test import unittest
 
 from bson.son import SON
+from test import unittest
 
 
 class TestSON(unittest.TestCase):
@@ -177,8 +178,7 @@ class TestSON(unittest.TestCase):
                 d - i().keys()
             except TypeError:
                 self.fail(
-                    "SON().keys() is not returning an object compatible "
-                    "with %s objects" % (str(i))
+                    "SON().keys() is not returning an object compatible with %s objects" % (str(i))
                 )
         # Test to verify correctness
         d = SON({"k": "v"}).keys()

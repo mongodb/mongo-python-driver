@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the client_session module."""
+
 from __future__ import annotations
 
 import copy
@@ -20,11 +21,22 @@ import sys
 import time
 from inspect import iscoroutinefunction
 from io import BytesIO
+from typing import Any, Callable
+
 from test.helpers import ExceptionCatchingTask
-from typing import Any, Callable, List, Set, Tuple
 
 sys.path[0:0] = [""]
 
+from bson import DBRef
+from gridfs.synchronous.grid_file import GridFS, GridFSBucket
+from pymongo import ASCENDING, MongoClient, monitoring
+from pymongo.common import _MAX_END_SESSIONS
+from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
+from pymongo.operations import IndexModel, InsertOne, UpdateOne
+from pymongo.read_concern import ReadConcern
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.cursor import Cursor
+from pymongo.synchronous.helpers import next
 from test import (
     IntegrationTest,
     SkipTest,
@@ -39,17 +51,6 @@ from test.utils_shared import (
     OvertCommandListener,
     wait_until,
 )
-
-from bson import DBRef
-from gridfs.synchronous.grid_file import GridFS, GridFSBucket
-from pymongo import ASCENDING, MongoClient, monitoring
-from pymongo.common import _MAX_END_SESSIONS
-from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
-from pymongo.operations import IndexModel, InsertOne, UpdateOne
-from pymongo.read_concern import ReadConcern
-from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.cursor import Cursor
-from pymongo.synchronous.helpers import next
 
 _IS_SYNC = True
 
@@ -80,7 +81,7 @@ def session_ids(client):
 
 class TestSession(IntegrationTest):
     client2: MongoClient
-    sensitive_commands: Set[str]
+    sensitive_commands: set[str]
 
     @client_context.require_sessions
     def setUp(self):
@@ -243,7 +244,7 @@ class TestSession(IntegrationTest):
         # sessions to be used: connection check in happens before session check in
         for _ in range(10):
             cursor = client.db.test.find({})
-            ops: List[Tuple[Callable, List[Any]]] = [
+            ops: list[tuple[Callable, list[Any]]] = [
                 (client.db.test.find_one, [{"_id": 1}]),
                 (client.db.test.delete_one, [{}]),
                 (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),

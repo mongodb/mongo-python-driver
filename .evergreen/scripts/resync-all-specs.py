@@ -20,8 +20,8 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
         if spec.name in ["asynchronous"]:
             continue
         try:
-            subprocess.run(
-                ["bash", "./.evergreen/resync-specs.sh", spec.name],  # noqa: S603, S607
+            subprocess.run(  # noqa: S603
+                ["bash", "./.evergreen/resync-specs.sh", spec.name],  # noqa: S607
                 capture_output=True,
                 text=True,
                 check=True,
@@ -34,7 +34,7 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
 def apply_patches(errored):
     print("Beginning to apply patches")
     subprocess.run(
-        ["bash", "./.evergreen/remove-unimplemented-tests.sh"],  # noqa: S603, S607
+        ["bash", "./.evergreen/remove-unimplemented-tests.sh"],  # noqa: S607
         check=True,
     )
     try:
@@ -44,8 +44,8 @@ def apply_patches(errored):
         patches = [str(p) for p in spec_patch_dir.glob("*.patch")]
         patches += [str(p) for p in spec_patch_dir.glob("permanent/*.patch")]
         if patches:
-            subprocess.run(
-                [  # noqa: S603, S607
+            subprocess.run(  # noqa: S603
+                [  # noqa: S607
                     "git",
                     "apply",
                     "--allow-empty",
@@ -93,7 +93,7 @@ def write_summary(errored: dict[str, str], new: list[str], filename: str | None)
     pr_body = ""
     # Avoid shell=True and complex pipes by using Python to process git output
     process = subprocess.run(
-        ["git", "diff", "--name-only"],  # noqa: S603, S607
+        ["git", "diff", "--name-only"],  # noqa: S607
         capture_output=True,
         text=True,
         check=True,

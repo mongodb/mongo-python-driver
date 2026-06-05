@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the pymongo common module."""
+
 from __future__ import annotations
 
 import sys
@@ -20,13 +21,12 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, async_client_context, connected, unittest
-
 from bson.binary import PYTHON_LEGACY, STANDARD, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
+from test.asynchronous import AsyncIntegrationTest, async_client_context, connected, unittest
 
 _IS_SYNC = False
 

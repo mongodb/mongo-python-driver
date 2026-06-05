@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Run the auth spec tests."""
+
 from __future__ import annotations
 
 import asyncio
@@ -21,20 +22,20 @@ import pathlib
 import sys
 import time
 import uuid
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 import pytest
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, unittest
-from test.asynchronous.unified_format import generate_test_classes, get_test_path
-from test.utils_shared import AllowListEventListener, OvertCommandListener
-
 from pymongo.errors import OperationFailure
 from pymongo.operations import SearchIndexModel
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
+from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, unittest
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
+from test.utils_shared import AllowListEventListener, OvertCommandListener
 
 _IS_SYNC = False
 

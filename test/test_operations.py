@@ -13,14 +13,14 @@
 # limitations under the License.
 
 """Test the operations module."""
-from __future__ import annotations
 
-from test import UnitTest, unittest
+from __future__ import annotations
 
 from pymongo import ASCENDING, DESCENDING
 from pymongo.collation import Collation
 from pymongo.errors import OperationFailure
 from pymongo.operations import IndexModel, SearchIndexModel
+from test import UnitTest, unittest
 
 
 class TestOperationsBase(UnitTest):

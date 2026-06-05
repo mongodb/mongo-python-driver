@@ -13,24 +13,24 @@
 # limitations under the License.
 
 """Test AsyncMongoClient's mongos load balancing using a mock."""
+
 from __future__ import annotations
 
 import asyncio
 import sys
 import threading
-from test.asynchronous.helpers import ConcurrentRunner
 
 from pymongo.operations import _Op
+from test.asynchronous.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
-
-from test.asynchronous import AsyncMockClientTest, async_client_context, connected, unittest
-from test.asynchronous.pymongo_mocks import AsyncMockClient
-from test.utils_shared import async_wait_until
 
 from pymongo.errors import AutoReconnect, InvalidOperation
 from pymongo.server_selectors import writable_server_selector
 from pymongo.topology_description import TOPOLOGY_TYPE
+from test.asynchronous import AsyncMockClientTest, async_client_context, connected, unittest
+from test.asynchronous.pymongo_mocks import AsyncMockClient
+from test.utils_shared import async_wait_until
 
 _IS_SYNC = False
 

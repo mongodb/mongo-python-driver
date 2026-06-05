@@ -133,7 +133,7 @@ class LogMessage:
 
     def __str__(self) -> str:
         self._redact()
-        return "%s" % (
+        return "{}".format(
             json_util.dumps(
                 self._kwargs, json_options=_JSON_OPTIONS, default=lambda o: o.__repr__()
             )

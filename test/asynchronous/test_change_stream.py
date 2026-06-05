@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the change_stream module."""
+
 from __future__ import annotations
 
 import asyncio
@@ -28,21 +29,6 @@ from typing import no_type_check
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import (
-    AsyncIntegrationTest,
-    AsyncPyMongoTestCase,
-    Version,
-    async_client_context,
-    unittest,
-)
-from test.asynchronous.unified_format import generate_test_classes, get_test_path
-from test.utils_shared import (
-    AllowListEventListener,
-    EventListener,
-    OvertCommandListener,
-    async_wait_until,
-)
-
 from bson import SON, ObjectId, Timestamp, encode
 from bson.binary import ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY, STANDARD, Binary
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
@@ -57,6 +43,20 @@ from pymongo.errors import (
 from pymongo.message import _CursorAddress
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    Version,
+    async_client_context,
+    unittest,
+)
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
+from test.utils_shared import (
+    AllowListEventListener,
+    EventListener,
+    OvertCommandListener,
+    async_wait_until,
+)
 
 _IS_SYNC = False
 

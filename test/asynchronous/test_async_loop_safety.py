@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test that the asynchronous API detects event loop changes and fails correctly."""
+
 from __future__ import annotations
 
 import asyncio

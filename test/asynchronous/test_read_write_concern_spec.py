@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Run the read and write concern tests."""
+
 from __future__ import annotations
 
 import json
@@ -22,10 +23,6 @@ import warnings
 from pathlib import Path
 
 sys.path[0:0] = [""]
-
-from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.asynchronous.unified_format import generate_test_classes, get_test_path
-from test.utils_shared import OvertCommandListener
 
 from pymongo import DESCENDING
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
@@ -39,6 +36,9 @@ from pymongo.errors import (
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
+from test.utils_shared import OvertCommandListener
 
 _IS_SYNC = False
 
