@@ -26,7 +26,7 @@ from typing import (
     Union,
 )
 
-from pymongo.asynchronous.command_runner import run_command
+from pymongo.asynchronous.command_runner import run_cursor_command
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.logger import (
     _SDAM_LOGGER,
@@ -187,7 +187,7 @@ class Server:
                 res["cursor"]["nextBatch"] = docs
             return res
 
-        docs, reply, duration = await run_command(
+        docs, reply, duration = await run_cursor_command(
             conn,
             cmd,
             dbn,
@@ -202,11 +202,8 @@ class Server:
             user_fields=user_fields,
             command_name=operation.name,
             pool_opts=conn.opts,
-            ensure_db=True,
-            use_conn_transport=True,
             max_doc_size=max_doc_size,
             more_to_come=bool(more_to_come),
-            set_conn_more_to_come=False,
             is_command_response=use_cmd,
             unpack_res=unpack_res,
             cursor_id=operation.cursor_id,

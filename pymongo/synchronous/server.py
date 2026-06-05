@@ -35,6 +35,8 @@ from pymongo.logger import (
 )
 from pymongo.message import _GetMore, _OpMsg, _OpReply, _Query
 from pymongo.response import PinnedResponse, Response
+from pymongo.synchronous.command_runner import run_cursor_command
+from pymongo.synchronous.helpers import _handle_reauth
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -187,7 +189,7 @@ class Server:
                 res["cursor"]["nextBatch"] = docs
             return res
 
-        docs, reply, duration = run_command(
+        docs, reply, duration = run_cursor_command(
             conn,
             cmd,
             dbn,
@@ -202,11 +204,8 @@ class Server:
             user_fields=user_fields,
             command_name=operation.name,
             pool_opts=conn.opts,
-            ensure_db=True,
-            use_conn_transport=True,
             max_doc_size=max_doc_size,
             more_to_come=bool(more_to_come),
-            set_conn_more_to_come=False,
             is_command_response=use_cmd,
             unpack_res=unpack_res,
             cursor_id=operation.cursor_id,

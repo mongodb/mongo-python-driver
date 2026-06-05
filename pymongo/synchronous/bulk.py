@@ -65,6 +65,9 @@ from pymongo.message import (
     _randint,
 )
 from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
+from pymongo.synchronous.command_runner import run_command, run_unacknowledged_command
+from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -293,7 +296,7 @@ class _Bulk:
         # carrying the ``docs`` field.
         published = dict(cmd)
         published[bwc.field] = docs
-        run_command(
+        run_unacknowledged_command(
             bwc.conn,  # type: ignore[arg-type]
             cmd,
             bwc.db_name,
@@ -308,11 +311,8 @@ class _Bulk:
             op_id=bwc.op_id,
             command_name=bwc.name,
             orig=published,
-            unacknowledged=True,
             use_conn_transport=True,
             max_doc_size=max_doc_size,
-            process_response=False,
-            decrypt_reply=False,
         )
         return None
 
@@ -386,7 +386,7 @@ class _Bulk:
         run = self.current_run
 
         # Connection.command validates the session, but we use
-        # Connection.write_command
+        # run_command/run_unacknowledged_command.
         conn.validate_session(client, session)
         last_run = False
 

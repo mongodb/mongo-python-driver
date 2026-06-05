@@ -35,7 +35,7 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
 from pymongo.asynchronous.client_session import AsyncClientSession, _validate_session_write_concern
-from pymongo.asynchronous.command_runner import run_command
+from pymongo.asynchronous.command_runner import run_command, run_unacknowledged_command
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.bulk_shared import (
     _COMMANDS,
@@ -293,7 +293,7 @@ class _AsyncBulk:
         # carrying the ``docs`` field.
         published = dict(cmd)
         published[bwc.field] = docs
-        await run_command(
+        await run_unacknowledged_command(
             bwc.conn,  # type: ignore[arg-type]
             cmd,
             bwc.db_name,
@@ -308,11 +308,8 @@ class _AsyncBulk:
             op_id=bwc.op_id,
             command_name=bwc.name,
             orig=published,
-            unacknowledged=True,
             use_conn_transport=True,
             max_doc_size=max_doc_size,
-            process_response=False,
-            decrypt_reply=False,
         )
         return None
 
@@ -386,7 +383,7 @@ class _AsyncBulk:
         run = self.current_run
 
         # AsyncConnection.command validates the session, but we use
-        # AsyncConnection.write_command
+        # run_command/run_unacknowledged_command.
         conn.validate_session(client, session)
         last_run = False
 

@@ -37,7 +37,7 @@ from pymongo import _csot, message
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.message import _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
-from pymongo.synchronous.command_runner import run_command
+from pymongo.synchronous.command_runner import run_command, run_unacknowledged_command
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -144,25 +144,41 @@ def command(
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-    docs, _, _ = run_command(
-        conn,
-        spec,
-        dbname,
-        request_id,
-        msg,
-        client=client,
-        session=session,
-        listeners=listeners,
-        address=address,
-        start=start,
-        codec_options=codec_options,
-        user_fields=user_fields,
-        orig=orig,
-        check=check,
-        allowable_errors=allowable_errors,
-        parse_write_concern_error=parse_write_concern_error,
-        unacknowledged=unacknowledged,
-        speculative_hello=speculative_hello,
-    )
+    if unacknowledged:
+        docs, _, _ = run_unacknowledged_command(
+            conn,
+            spec,
+            dbname,
+            request_id,
+            msg,
+            client=client,
+            session=session,
+            listeners=listeners,
+            address=address,
+            start=start,
+            codec_options=codec_options,
+            user_fields=user_fields,
+            orig=orig,
+            speculative_hello=speculative_hello,
+        )
+    else:
+        docs, _, _ = run_command(
+            conn,
+            spec,
+            dbname,
+            request_id,
+            msg,
+            client=client,
+            session=session,
+            listeners=listeners,
+            address=address,
+            start=start,
+            codec_options=codec_options,
+            user_fields=user_fields,
+            orig=orig,
+            check=check,
+            allowable_errors=allowable_errors,
+            parse_write_concern_error=parse_write_concern_error,
+            speculative_hello=speculative_hello,
+        )
     return docs[0]  # type: ignore[return-value]
->>>>>>> 0d7dedb0 (PYTHON-5676 Add command_runner.run_command; route network.command() through it)

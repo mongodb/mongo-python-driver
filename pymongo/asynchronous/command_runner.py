@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The single code path for executing a command over a connection.
+"""The shared code path for executing a command over a connection.
 
-Every database operation -- standard commands and cursor ``find``/``getMore``
-operations -- runs its network round trip through :func:`run_command`. The
-function owns the entire shared skeleton: command logging, APM event
-publishing, ``send``/``receive``, ``$clusterTime`` gossip,
-``_process_response``, ``_check_command_response``, failure conversion, and
-auto-encryption decryption. Callers supply only the parts that vary (the
-encoded message and a handful of transport/output hooks).
+Every database operation runs its network round trip through one of three
+public entry points -- :func:`run_command` (acknowledged commands and bulk
+write batches), :func:`run_unacknowledged_command` (unacknowledged writes), and
+:func:`run_cursor_command` (cursor ``find``/``getMore`` operations) -- each of
+which wraps the private :func:`_run_command`. ``_run_command`` owns the entire
+shared skeleton: command logging, APM event publishing, ``send``/``receive``,
+``$clusterTime`` gossip, ``_process_response``, ``_check_command_response``,
+failure conversion, and auto-encryption decryption. The three wrappers fix the
+transport and response-shaping flags for their command type so call sites pass
+only the parts that vary (the encoded message and a handful of hooks).
 """
 from __future__ import annotations
 
@@ -58,7 +61,7 @@ if TYPE_CHECKING:
 _IS_SYNC = False
 
 
-async def run_command(
+async def _run_command(
     conn: AsyncConnection,
     cmd: MutableMapping[str, Any],
     dbname: str,
@@ -97,7 +100,13 @@ async def run_command(
 ) -> tuple[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
 
-    This is the single code path for command execution. It publishes the
+    This is the shared implementation behind :func:`run_command`,
+    :func:`run_unacknowledged_command`, and :func:`run_cursor_command`. Those
+    three public entry points each fix the transport and response-shaping flags
+    for their command type; the bare kwargs here should not be set directly by
+    new call sites.
+
+    It publishes the
     ``STARTED``/``SUCCEEDED``/``FAILED`` command log and APM events, performs
     the network round trip, gossips ``$clusterTime``, runs
     ``client._process_response`` and ``_check_command_response``, and decrypts
@@ -333,3 +342,197 @@ async def run_command(
         )
 
     return docs, reply, duration
+
+
+async def run_command(
+    conn: AsyncConnection,
+    cmd: MutableMapping[str, Any],
+    dbname: str,
+    request_id: int,
+    msg: bytes,
+    *,
+    client: Optional[AsyncMongoClient[Any]],
+    session: Optional[AsyncClientSession],
+    listeners: Optional[_EventListeners],
+    address: Optional[_Address],
+    start: datetime.datetime,
+    codec_options: CodecOptions[_DocumentType],
+    user_fields: Optional[Mapping[str, Any]] = None,
+    orig: Optional[MutableMapping[str, Any]] = None,
+    op_id: Optional[int] = None,
+    command_name: Optional[str] = None,
+    check: bool = True,
+    allowable_errors: Optional[Sequence[Union[str, int]]] = None,
+    parse_write_concern_error: bool = False,
+    speculative_hello: bool = False,
+    use_conn_transport: bool = False,
+    process_response: bool = True,
+    decrypt_reply: bool = True,
+) -> tuple[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
+    """Send an acknowledged command and return ``(docs, reply, duration)``.
+
+    This is the entry point for standard commands and bulk write batches: it
+    sends ``msg``, receives the reply, runs ``_process_response`` and
+    ``_check_command_response``, decrypts the reply when auto-encryption is
+    enabled, and publishes the command log/APM events.
+
+    :param use_conn_transport: Send/receive via ``conn.send_message`` /
+        ``conn.receive_message`` (bulk path) instead of the raw
+        ``async_sendall`` / ``async_receive_message`` (standard command path).
+    :param process_response: Run ``client._process_response`` here; the bulk
+        paths pass False and process the reply at the call site to keep their
+        check -> APM-succeed -> process ordering.
+    :param decrypt_reply: Decrypt the reply when auto-encryption is enabled; the
+        bulk paths pass False (their commands are encrypted up front).
+
+    See :func:`_run_command` for the remaining parameters.
+    """
+    return await _run_command(
+        conn,
+        cmd,
+        dbname,
+        request_id,
+        msg,
+        client=client,
+        session=session,
+        listeners=listeners,
+        address=address,
+        start=start,
+        codec_options=codec_options,
+        user_fields=user_fields,
+        orig=orig,
+        op_id=op_id,
+        command_name=command_name,
+        check=check,
+        allowable_errors=allowable_errors,
+        parse_write_concern_error=parse_write_concern_error,
+        speculative_hello=speculative_hello,
+        use_conn_transport=use_conn_transport,
+        process_response=process_response,
+        decrypt_reply=decrypt_reply,
+    )
+
+
+async def run_unacknowledged_command(
+    conn: AsyncConnection,
+    cmd: MutableMapping[str, Any],
+    dbname: str,
+    request_id: int,
+    msg: bytes,
+    *,
+    client: Optional[AsyncMongoClient[Any]],
+    session: Optional[AsyncClientSession],
+    listeners: Optional[_EventListeners],
+    address: Optional[_Address],
+    start: datetime.datetime,
+    codec_options: CodecOptions[_DocumentType],
+    user_fields: Optional[Mapping[str, Any]] = None,
+    orig: Optional[MutableMapping[str, Any]] = None,
+    op_id: Optional[int] = None,
+    command_name: Optional[str] = None,
+    speculative_hello: bool = False,
+    use_conn_transport: bool = False,
+    max_doc_size: int = 0,
+) -> tuple[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
+    """Send an unacknowledged command and fake an ``{"ok": 1}`` reply.
+
+    The message is sent only -- no reply is received -- so the response
+    processing, command checking, and decryption steps are skipped.
+
+    :param use_conn_transport: Send via ``conn.unack_write`` (bulk path) instead
+        of the raw ``async_sendall`` (standard command path).
+    :param max_doc_size: The largest document size, for ``conn.unack_write``.
+
+    See :func:`_run_command` for the remaining parameters.
+    """
+    return await _run_command(
+        conn,
+        cmd,
+        dbname,
+        request_id,
+        msg,
+        client=client,
+        session=session,
+        listeners=listeners,
+        address=address,
+        start=start,
+        codec_options=codec_options,
+        user_fields=user_fields,
+        orig=orig,
+        op_id=op_id,
+        command_name=command_name,
+        speculative_hello=speculative_hello,
+        unacknowledged=True,
+        use_conn_transport=use_conn_transport,
+        max_doc_size=max_doc_size,
+        process_response=False,
+        decrypt_reply=False,
+    )
+
+
+async def run_cursor_command(
+    conn: AsyncConnection,
+    cmd: MutableMapping[str, Any],
+    dbname: str,
+    request_id: int,
+    msg: bytes,
+    *,
+    client: Optional[AsyncMongoClient[Any]],
+    session: Optional[AsyncClientSession],
+    listeners: Optional[_EventListeners],
+    address: Optional[_Address],
+    start: datetime.datetime,
+    codec_options: CodecOptions[_DocumentType],
+    command_name: str,
+    user_fields: Optional[Mapping[str, Any]] = None,
+    pool_opts: Optional[PoolOptions] = None,
+    max_doc_size: int = 0,
+    more_to_come: bool = False,
+    is_command_response: bool = True,
+    unpack_res: Optional[Callable[..., Any]] = None,
+    cursor_id: Optional[int] = None,
+    reply_doc_builder: Optional[
+        Callable[[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]]], _DocumentOut]
+    ] = None,
+) -> tuple[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
+    """Run a cursor ``find``/``getMore`` operation over ``conn``.
+
+    Uses the connection transport, leaves ``conn.more_to_come`` untouched (the
+    cursor path manages exhaust separately), and shapes the published reply in
+    the find/getMore command response format.
+
+    :param more_to_come: Receive only, without sending (exhaust ``getMore``).
+    :param is_command_response: True for an OP_MSG command response; False for a
+        legacy OP_QUERY cursor response.
+    :param unpack_res: A callable decoding the wire response.
+    :param cursor_id: The cursor id passed to ``unpack_res``.
+    :param reply_doc_builder: Builds the reply document published in the
+        ``SUCCEEDED`` event from ``(docs, reply)``.
+
+    See :func:`_run_command` for the remaining parameters.
+    """
+    return await _run_command(
+        conn,
+        cmd,
+        dbname,
+        request_id,
+        msg,
+        client=client,
+        session=session,
+        listeners=listeners,
+        address=address,
+        start=start,
+        codec_options=codec_options,
+        user_fields=user_fields,
+        command_name=command_name,
+        pool_opts=pool_opts,
+        ensure_db=True,
+        use_conn_transport=True,
+        max_doc_size=max_doc_size,
+        more_to_come=more_to_come,
+        set_conn_more_to_come=False,
+        is_command_response=is_command_response,
+        unpack_res=unpack_res,
+        cursor_id=cursor_id,
+        reply_doc_builder=reply_doc_builder,
+    )
