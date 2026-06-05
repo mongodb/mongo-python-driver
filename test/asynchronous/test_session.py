@@ -675,7 +675,7 @@ class TestSession(AsyncIntegrationTest):
         coll = client.pymongo_test.collection
         # 3.6.0 mongos only validates the aggregate pipeline when the
         # database exists.
-        await coll.insert_one({})
+        await coll.database.create_collection(coll.name)
         listener.reset()
 
         with self.assertRaises(OperationFailure):
@@ -827,7 +827,7 @@ class TestSession(AsyncIntegrationTest):
 
     async def test_unacknowledged_writes(self):
         # Ensure the collection exists.
-        await self.client.pymongo_test.test_unacked_writes.insert_one({})
+        await self.client.pymongo_test.create_collection("test_unacked_writes")
         client = await self.async_rs_or_single_client(w=0, event_listeners=[self.listener])
         db = client.pymongo_test
         coll = db.test_unacked_writes

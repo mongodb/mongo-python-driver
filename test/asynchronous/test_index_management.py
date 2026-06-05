@@ -118,8 +118,7 @@ class TestSearchIndexIntegration(SearchIndexIntegrationBase):
 
     async def test_comment_field(self):
         # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
-        coll0 = self.db[f"col{uuid.uuid4()}"]
-        await coll0.insert_one({})
+        coll0 = await self.db.create_collection(f"col{uuid.uuid4()}")
 
         # Create a new search index on ``coll0`` that implicitly passes its type.
         search_definition = {"mappings": {"dynamic": False}}
@@ -144,11 +143,10 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         """Driver can successfully create and list search indexes."""
 
         # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
-        coll0 = self.db[f"col{uuid.uuid4()}"]
+        coll0 = await self.db.create_collection(f"col{uuid.uuid4()}")
 
         # Create a new search index on ``coll0`` with the ``createSearchIndex`` helper.  Use the following definition:
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
-        await coll0.insert_one({})
         resp = await coll0.create_search_index(model)
 
         # Assert that the command returns the name of the index: ``"test-search-index"``.
@@ -166,8 +164,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         """Driver can successfully create multiple indexes in batch."""
 
         # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
-        coll0 = self.db[f"col{uuid.uuid4()}"]
-        await coll0.insert_one({})
+        coll0 = await self.db.create_collection(f"col{uuid.uuid4()}")
 
         # Create two new search indexes on ``coll0`` with the ``createSearchIndexes`` helper.
         name1 = "test-search-index-1"
@@ -202,8 +199,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         """Driver can successfully drop search indexes."""
 
         # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
-        coll0 = self.db[f"col{uuid.uuid4()}"]
-        await coll0.insert_one({})
+        coll0 = await self.db.create_collection(f"col{uuid.uuid4()}")
 
         # Create a new search index on ``coll0``.
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
@@ -232,8 +228,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
     async def test_case_4(self):
         """Driver can update a search index."""
         # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
-        coll0 = self.db[f"col{uuid.uuid4()}"]
-        await coll0.insert_one({})
+        coll0 = await self.db.create_collection(f"col{uuid.uuid4()}")
 
         # Create a new search index on ``coll0``.
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
@@ -273,8 +268,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
     async def test_case_6(self):
         """Driver can successfully create and list search indexes with non-default readConcern and writeConcern."""
         # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
-        coll0 = self.db[f"col{uuid.uuid4()}"]
-        await coll0.insert_one({})
+        coll0 = await self.db.create_collection(f"col{uuid.uuid4()}")
 
         # Apply a write concern ``WriteConcern(w=1)`` and a read concern with ``ReadConcern(level="majority")`` to ``coll0``.
         coll0 = coll0.with_options(
@@ -301,8 +295,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         """Driver handles index types."""
 
         # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
-        coll0 = self.db[f"col{uuid.uuid4()}"]
-        await coll0.insert_one({})
+        coll0 = await self.db.create_collection(f"col{uuid.uuid4()}")
 
         # Use these search and vector search definitions for indexes.
         search_definition = {"mappings": {"dynamic": False}}
