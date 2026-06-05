@@ -978,6 +978,12 @@ class TestCausalConsistency(AsyncUnitTest):
         await super().asyncSetUp()
         self.listener = SessionTestListener()
         self.client = await self.async_rs_or_single_client(event_listeners=[self.listener])
+        await self.client.pymongo_test.drop_collection("test")
+        await self.client.pymongo_test.create_collection("test")
+
+    async def asyncTearDown(self):
+        await self.client.pymongo_test.drop_collection("test")
+        await super().asyncTearDown()
 
     @async_client_context.require_no_standalone
     async def test_core(self):
@@ -1048,9 +1054,6 @@ class TestCausalConsistency(AsyncUnitTest):
 
     @async_client_context.require_no_standalone
     async def test_reads(self):
-        # Make sure the collection exists.
-        await self.client.pymongo_test.test.insert_one({})
-
         async def aggregate(coll, session):
             return await (await coll.aggregate([], session=session)).to_list()
 
@@ -1206,7 +1209,6 @@ class TestCausalConsistency(AsyncUnitTest):
 
     @async_client_context.require_no_standalone
     async def test_cluster_time_with_server_support(self):
-        await self.client.pymongo_test.test.insert_one({})
         self.listener.reset()
         await self.client.pymongo_test.test.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")
@@ -1214,7 +1216,6 @@ class TestCausalConsistency(AsyncUnitTest):
 
     @async_client_context.require_standalone
     async def test_cluster_time_no_server_support(self):
-        await self.client.pymongo_test.test.insert_one({})
         self.listener.reset()
         await self.client.pymongo_test.test.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")

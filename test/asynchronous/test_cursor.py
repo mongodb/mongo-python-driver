@@ -1516,11 +1516,6 @@ class TestRawBatchCursor(AsyncIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
         await self.db.test.drop()
-        await self.db.create_collection("test")
-
-    async def asyncTearDown(self):
-        await self.db.test.drop()
-        await super().asyncTearDown()
 
     async def test_find_raw(self):
         c = self.db.test

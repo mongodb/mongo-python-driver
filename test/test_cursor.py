@@ -1507,11 +1507,6 @@ class TestRawBatchCursor(IntegrationTest):
     def setUp(self):
         super().setUp()
         self.db.test.drop()
-        self.db.create_collection("test")
-
-    def tearDown(self):
-        self.db.test.drop()
-        super().tearDown()
 
     def test_find_raw(self):
         c = self.db.test

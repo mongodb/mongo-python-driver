@@ -978,6 +978,12 @@ class TestCausalConsistency(UnitTest):
         super().setUp()
         self.listener = SessionTestListener()
         self.client = self.rs_or_single_client(event_listeners=[self.listener])
+        self.client.pymongo_test.drop_collection("test")
+        self.client.pymongo_test.create_collection("test")
+
+    def tearDown(self):
+        self.client.pymongo_test.drop_collection("test")
+        super().tearDown()
 
     @client_context.require_no_standalone
     def test_core(self):
@@ -1048,9 +1054,6 @@ class TestCausalConsistency(UnitTest):
 
     @client_context.require_no_standalone
     def test_reads(self):
-        # Make sure the collection exists.
-        self.client.pymongo_test.test.insert_one({})
-
         def aggregate(coll, session):
             return (coll.aggregate([], session=session)).to_list()
 
@@ -1200,7 +1203,6 @@ class TestCausalConsistency(UnitTest):
 
     @client_context.require_no_standalone
     def test_cluster_time_with_server_support(self):
-        self.client.pymongo_test.test.insert_one({})
         self.listener.reset()
         self.client.pymongo_test.test.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")
@@ -1208,7 +1210,6 @@ class TestCausalConsistency(UnitTest):
 
     @client_context.require_standalone
     def test_cluster_time_no_server_support(self):
-        self.client.pymongo_test.test.insert_one({})
         self.listener.reset()
         self.client.pymongo_test.test.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")
