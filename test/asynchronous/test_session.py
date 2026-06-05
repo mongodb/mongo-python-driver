@@ -981,10 +981,6 @@ class TestCausalConsistency(AsyncUnitTest):
         await self.client.pymongo_test.drop_collection("test")
         await self.client.pymongo_test.create_collection("test")
 
-    async def asyncTearDown(self):
-        await self.client.pymongo_test.drop_collection("test")
-        await super().asyncTearDown()
-
     @async_client_context.require_no_standalone
     async def test_core(self):
         async with self.client.start_session() as sess:

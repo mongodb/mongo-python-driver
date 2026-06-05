@@ -981,10 +981,6 @@ class TestCausalConsistency(UnitTest):
         self.client.pymongo_test.drop_collection("test")
         self.client.pymongo_test.create_collection("test")
 
-    def tearDown(self):
-        self.client.pymongo_test.drop_collection("test")
-        super().tearDown()
-
     @client_context.require_no_standalone
     def test_core(self):
         with self.client.start_session() as sess:

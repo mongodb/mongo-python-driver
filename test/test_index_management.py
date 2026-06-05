@@ -98,9 +98,6 @@ class SearchIndexIntegrationBase(PyMongoTestCase):
         self.db = self.client[self.db_name]
         self.coll0 = self.db.create_collection(f"col{uuid.uuid4()}")
 
-    def tearDown(self):
-        self.client.drop_database(_NAME)
-
     def wait_for_ready(self, coll, name=_NAME, predicate=None):
         """Wait for a search index to be ready."""
         indices: list[Mapping[str, Any]] = []
