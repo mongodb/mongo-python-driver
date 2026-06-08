@@ -96,6 +96,7 @@ class SearchIndexIntegrationBase(PyMongoTestCase):
         )
         self.client.drop_database(_NAME)
         self.db = self.client[self.db_name]
+        # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
         self.coll0 = self.db.create_collection(f"col{uuid.uuid4()}")
 
     def wait_for_ready(self, coll, name=_NAME, predicate=None):

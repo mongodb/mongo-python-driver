@@ -96,6 +96,7 @@ class SearchIndexIntegrationBase(AsyncPyMongoTestCase):
         )
         await self.client.drop_database(_NAME)
         self.db = self.client[self.db_name]
+        # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
         self.coll0 = await self.db.create_collection(f"col{uuid.uuid4()}")
 
     async def wait_for_ready(self, coll, name=_NAME, predicate=None):
