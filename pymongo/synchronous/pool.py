@@ -837,6 +837,32 @@ class Pool:
 
             if close:
                 self.state = PoolState.CLOSED
+
+            # Publish PoolClearedEvent while holding the lock and before
+            # notify_all(). This guarantees it is recorded before any waiting
+            # thread wakes up and emits ConnectionCheckOutFailedEvent, which
+            # also requires size_cond. Without this ordering, a race on PyPy
+            # and free-threaded Python causes ConnectionCheckOutFailedEvent to
+            # arrive before PoolClearedEvent (PYTHON-3519).
+            if not close and old_state != PoolState.PAUSED:
+                _listeners = self.opts._event_listeners
+                if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _CONNECTION_LOGGER,
+                        message=_ConnectionStatusMessage.POOL_CLEARED,
+                        clientId=self._client_id,
+                        serverHost=self.address[0],
+                        serverPort=self.address[1],
+                        serviceId=service_id,
+                    )
+                if self.enabled_for_cmap:
+                    assert _listeners is not None
+                    _listeners.publish_pool_cleared(
+                        self.address,
+                        service_id=service_id,
+                        interrupt_connections=interrupt_connections,
+                    )
+
             # Clear the wait queue
             self._max_connecting_cond.notify_all()
             self.size_cond.notify_all()
@@ -870,23 +896,6 @@ class Pool:
                 assert listeners is not None
                 listeners.publish_pool_closed(self.address)
         else:
-            if old_state != PoolState.PAUSED:
-                if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _CONNECTION_LOGGER,
-                        message=_ConnectionStatusMessage.POOL_CLEARED,
-                        clientId=self._client_id,
-                        serverHost=self.address[0],
-                        serverPort=self.address[1],
-                        serviceId=service_id,
-                    )
-                if self.enabled_for_cmap:
-                    assert listeners is not None
-                    listeners.publish_pool_cleared(
-                        self.address,
-                        service_id=service_id,
-                        interrupt_connections=interrupt_connections,
-                    )
             if not _IS_SYNC:
                 asyncio.gather(
                     *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
