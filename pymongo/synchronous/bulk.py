@@ -67,7 +67,11 @@ from pymongo.message import (
     _randint,
 )
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
+from pymongo.synchronous.client_session import (
+    ClientSession,
+    _TxnState,
+    _validate_session_write_concern,
+)
 from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.write_concern import WriteConcern
 
@@ -271,6 +275,11 @@ class _Bulk:
         if bwc.publish:
             bwc._start(cmd, request_id, docs)
         try:
+            if bwc.session is not None and bwc.session._starting_transaction:
+                # Mark the transaction as in progress once the first
+                # transactional bulk message is about to go on the wire.
+                bwc.session._transaction.has_sent_command = True
+                bwc.session._transaction.state = _TxnState.IN_PROGRESS
             reply = bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc]
             duration = datetime.datetime.now() - bwc.start_time
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
