@@ -401,7 +401,7 @@ class AsyncConnection:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            result = result = cast(
+            result = cast(
                 dict[str, Any],
                 await command(
                     self,
