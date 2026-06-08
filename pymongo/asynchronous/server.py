@@ -27,6 +27,7 @@ from typing import (
 )
 
 from bson import _decode_all_selective
+from pymongo.asynchronous.client_session import _TxnState
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.helpers_shared import _check_command_response
@@ -204,8 +205,10 @@ class Server:
             if more_to_come:
                 reply = await conn.receive_message(None)
             else:
+                # Mark the transaction as in progress once the first transactional message is about to be sent,
+                # so local validation errors keep the session in STARTING, but post-send failures do not.
                 if operation.session is not None and operation.session._starting_transaction:
-                    operation.session._advance_transaction_state_on_send()
+                    operation.session._transaction.state = _TxnState.IN_PROGRESS
                 await conn.send_message(data, max_doc_size)
                 reply = await conn.receive_message(request_id)
 
