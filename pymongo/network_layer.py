@@ -437,6 +437,16 @@ class AsyncNetworkingInterface(NetworkingInterfaceBase):
     def sock(self) -> socket.socket:
         return self.conn[0].get_extra_info("socket")
 
+    def __del__(self) -> None:
+        # Synchronously release the raw socket in case the event loop is already closed
+        # or this connection was orphaned.
+        # Safe even if asyncio has already closed the socket.
+        try:
+            if self.sock is not None:
+                self.sock.close()
+        except Exception:  # noqa: S110
+            pass
+
 
 class NetworkingInterface(NetworkingInterfaceBase):
     def __init__(self, conn: Union[socket.socket, _sslConn]):

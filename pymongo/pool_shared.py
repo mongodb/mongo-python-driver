@@ -182,7 +182,8 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
             sock.setblocking(False)
             await asyncio.get_running_loop().sock_connect(sock, host)
             return sock
-        except OSError:
+        except BaseException:
+            # Protect against cancellation or interruption where the raw socket would otherwise leak
             sock.close()
             raise
 
@@ -231,6 +232,10 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
         except OSError as e:
             sock.close()
             err = e  # type: ignore[assignment]
+        except BaseException:
+            # Protect against cancellation or interruption where the raw socket would otherwise leak
+            sock.close()
+            raise
 
     if err is not None:
         raise err
@@ -282,19 +287,25 @@ async def _async_configured_socket(
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
         details = _get_timeout_details(options)
         _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
-    if (
-        ssl_context.verify_mode
-        and not ssl_context.check_hostname
-        and not options.tls_allow_invalid_hostnames
-    ):
-        try:
+    except BaseException:
+        # Protect against cancellation or interruption where the raw socket would otherwise leak
+        sock.close()
+        raise
+    try:
+        if (
+            ssl_context.verify_mode
+            and not ssl_context.check_hostname
+            and not options.tls_allow_invalid_hostnames
+        ):
             ssl.match_hostname(ssl_sock.getpeercert(), hostname=host)  # type:ignore[attr-defined, unused-ignore]
-        except _CertificateError:
-            ssl_sock.close()
-            raise
 
-    ssl_sock.settimeout(options.socket_timeout)
-    return ssl_sock
+        ssl_sock.settimeout(options.socket_timeout)
+        return ssl_sock
+    except BaseException:
+        # Protect against cancellation, _CertificateError, or interruption
+        # where the raw socket would otherwise leak.
+        ssl_sock.close()
+        raise
 
 
 async def _configured_protocol_interface(
@@ -311,11 +322,16 @@ async def _configured_protocol_interface(
     timeout = options.socket_timeout
 
     if ssl_context is None:
-        return AsyncNetworkingInterface(
-            await asyncio.get_running_loop().create_connection(
-                lambda: PyMongoProtocol(timeout=timeout), sock=sock
+        try:
+            return AsyncNetworkingInterface(
+                await asyncio.get_running_loop().create_connection(
+                    lambda: PyMongoProtocol(timeout=timeout), sock=sock
+                )
             )
-        )
+        except BaseException:
+            # Protect against cancellation or interruption where the raw socket would otherwise leak
+            sock.close()
+            raise
 
     host = address[0]
     try:
@@ -337,18 +353,23 @@ async def _configured_protocol_interface(
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
         details = _get_timeout_details(options)
         _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
-    if (
-        ssl_context.verify_mode
-        and not ssl_context.check_hostname
-        and not options.tls_allow_invalid_hostnames
-    ):
-        try:
+    except BaseException:
+        # Protect against cancellation or interruption where the raw socket would otherwise leak
+        sock.close()
+        raise
+    try:
+        if (
+            ssl_context.verify_mode
+            and not ssl_context.check_hostname
+            and not options.tls_allow_invalid_hostnames
+        ):
             ssl.match_hostname(transport.get_extra_info("peercert"), hostname=host)  # type:ignore[attr-defined,unused-ignore]
-        except _CertificateError:
-            transport.abort()
-            raise
-
-    return AsyncNetworkingInterface((transport, protocol))
+        return AsyncNetworkingInterface((transport, protocol))
+    except BaseException:
+        # Protect against cancellation, _CertificateError, or interruption
+        # where the transport would otherwise leak.
+        transport.abort()
+        raise
 
 
 def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
