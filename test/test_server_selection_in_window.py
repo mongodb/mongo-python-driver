@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+import platform
+import sys
 import threading
 from pathlib import Path
 from test import IntegrationTest, client_context, unittest
@@ -137,6 +139,10 @@ class TestProse(IntegrationTest):
 
     @client_context.require_failCommand_appName
     @client_context.require_multiple_mongoses
+    @unittest.skipIf(
+        sys.platform == "darwin" and platform.machine() == "arm64" and "CI" in os.environ,
+        "PYTHON-5861: Load balancing frequency assertion is timing-sensitive on macOS ARM64 CI",
+    )
     def test_load_balancing(self):
         listener = OvertCommandListener()
         cmap_listener = CMAPListener()

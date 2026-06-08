@@ -42,7 +42,7 @@ def apply_patches(errored):
         # Note: glob expansion doesn't work in shell=False, so we use a list of files.
         spec_patch_dir = pathlib.Path("./.evergreen/spec-patch/")
         patches = [str(p) for p in spec_patch_dir.glob("*.patch")]
-        patches += [str(p) for p in spec_patch_dir.glob("permanent/*.patch")]
+        patches += [str(p) for p in (spec_patch_dir / "permanent").glob("*.patch")]
         if patches:
             subprocess.run(
                 [  # noqa: S603, S607

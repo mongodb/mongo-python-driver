@@ -16,8 +16,11 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import platform
+import sys
 import time
-from test.asynchronous import AsyncIntegrationTest, async_client_context
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils_shared import delay
 
 _IS_SYNC = False
@@ -27,6 +30,10 @@ class TestAsyncConcurrency(AsyncIntegrationTest):
     async def _task(self, client):
         await client.db.test.find_one({"$where": delay(0.20)})
 
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     async def test_concurrency(self):
         tasks = []
         iterations = 5

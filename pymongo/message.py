@@ -39,14 +39,12 @@ from typing import (
 
 import bson
 from bson import CodecOptions, _dict_to_bson, _make_c_string
-from bson.int64 import Int64
 from bson.raw_bson import (
     _RAW_ARRAY_BSON_OPTIONS,
     DEFAULT_RAW_BSON_OPTIONS,
     RawBSONDocument,
     _inflate_bson,
 )
-from pymongo.hello import HelloCompat
 from pymongo.monitoring import _EventListeners
 
 try:
@@ -57,12 +55,8 @@ except ImportError:
     _use_c = False
 from pymongo.errors import (
     ConfigurationError,
-    CursorNotFound,
     DocumentTooLarge,
-    ExecutionTimeout,
     InvalidOperation,
-    NotPrimaryError,
-    OperationFailure,
     ProtocolError,
 )
 from pymongo.read_preferences import ReadPreference, _ServerMode
@@ -421,96 +415,6 @@ def _op_msg(
         # Add the field back to the command.
         if identifier:
             command[identifier] = docs
-
-
-def _query_impl(
-    options: int,
-    collection_name: str,
-    num_to_skip: int,
-    num_to_return: int,
-    query: Mapping[str, Any],
-    field_selector: Optional[Mapping[str, Any]],
-    opts: CodecOptions[Any],
-) -> tuple[bytes, int]:
-    """Get an OP_QUERY message."""
-    encoded = _dict_to_bson(query, False, opts)
-    if field_selector:
-        efs = _dict_to_bson(field_selector, False, opts)
-    else:
-        efs = b""
-    max_bson_size = max(len(encoded), len(efs))
-    return (
-        b"".join(
-            [
-                _pack_int(options),
-                bson._make_c_string(collection_name),
-                _pack_int(num_to_skip),
-                _pack_int(num_to_return),
-                encoded,
-                efs,
-            ]
-        ),
-        max_bson_size,
-    )
-
-
-def _query_compressed(
-    options: int,
-    collection_name: str,
-    num_to_skip: int,
-    num_to_return: int,
-    query: Mapping[str, Any],
-    field_selector: Optional[Mapping[str, Any]],
-    opts: CodecOptions[Any],
-    ctx: Union[SnappyContext, ZlibContext, ZstdContext],
-) -> tuple[int, bytes, int]:
-    """Internal compressed query message helper."""
-    op_query, max_bson_size = _query_impl(
-        options, collection_name, num_to_skip, num_to_return, query, field_selector, opts
-    )
-    rid, msg = _compress(2004, op_query, ctx)
-    return rid, msg, max_bson_size
-
-
-def _query_uncompressed(
-    options: int,
-    collection_name: str,
-    num_to_skip: int,
-    num_to_return: int,
-    query: Mapping[str, Any],
-    field_selector: Optional[Mapping[str, Any]],
-    opts: CodecOptions[Any],
-) -> tuple[int, bytes, int]:
-    """Internal query message helper."""
-    op_query, max_bson_size = _query_impl(
-        options, collection_name, num_to_skip, num_to_return, query, field_selector, opts
-    )
-    rid, msg = __pack_message(2004, op_query)
-    return rid, msg, max_bson_size
-
-
-if _use_c:
-    _query_uncompressed = _cmessage._query_message
-
-
-def _query(
-    options: int,
-    collection_name: str,
-    num_to_skip: int,
-    num_to_return: int,
-    query: Mapping[str, Any],
-    field_selector: Optional[Mapping[str, Any]],
-    opts: CodecOptions[Any],
-    ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
-) -> tuple[int, bytes, int]:
-    """Get a **query** message."""
-    if ctx:
-        return _query_compressed(
-            options, collection_name, num_to_skip, num_to_return, query, field_selector, opts, ctx
-        )
-    return _query_uncompressed(
-        options, collection_name, num_to_skip, num_to_return, query, field_selector, opts
-    )
 
 
 _pack_long_long = struct.Struct("<q").pack
@@ -1342,121 +1246,6 @@ def _batched_write_command_impl(
     return to_send, length
 
 
-class _OpReply:
-    """A MongoDB OP_REPLY response message."""
-
-    __slots__ = ("flags", "cursor_id", "number_returned", "documents")
-
-    UNPACK_FROM = struct.Struct("<iqii").unpack_from
-    OP_CODE = 1
-
-    def __init__(
-        self, flags: int, cursor_id: int, number_returned: int, documents: bytes | memoryview
-    ):
-        self.flags = flags
-        self.cursor_id = Int64(cursor_id)
-        self.number_returned = number_returned
-        self.documents = documents
-
-    def raw_response(
-        self, cursor_id: Optional[int] = None, user_fields: Optional[Mapping[str, Any]] = None
-    ) -> list[bytes | memoryview]:
-        """Check the response header from the database, without decoding BSON.
-
-        Check the response for errors and unpack.
-
-        Can raise CursorNotFound, NotPrimaryError, ExecutionTimeout, or
-        OperationFailure.
-
-        :param cursor_id: cursor_id we sent to get this response -
-            used for raising an informative exception when we get cursor id not
-            valid at server response.
-        """
-        if self.flags & 1:
-            # Shouldn't get this response if we aren't doing a getMore
-            if cursor_id is None:
-                raise ProtocolError("No cursor id for getMore operation")
-
-            # Fake a getMore command response. OP_GET_MORE provides no
-            # document.
-            msg = "Cursor not found, cursor id: %d" % (cursor_id,)
-            errobj = {"ok": 0, "errmsg": msg, "code": 43}
-            raise CursorNotFound(msg, 43, errobj)
-        elif self.flags & 2:
-            error_object: dict[str, Any] = bson.BSON(self.documents).decode()
-            # Fake the ok field if it doesn't exist.
-            error_object.setdefault("ok", 0)
-            if error_object["$err"].startswith(HelloCompat.LEGACY_ERROR):
-                raise NotPrimaryError(error_object["$err"], error_object)
-            elif error_object.get("code") == 50:
-                default_msg = "operation exceeded time limit"
-                raise ExecutionTimeout(
-                    error_object.get("$err", default_msg), error_object.get("code"), error_object
-                )
-            raise OperationFailure(
-                "database error: %s" % error_object.get("$err"),
-                error_object.get("code"),
-                error_object,
-            )
-        if self.documents:
-            return [self.documents]
-        return []
-
-    def unpack_response(
-        self,
-        cursor_id: Optional[int] = None,
-        codec_options: CodecOptions[Any] = _UNICODE_REPLACE_CODEC_OPTIONS,
-        user_fields: Optional[Mapping[str, Any]] = None,
-        legacy_response: bool = False,
-    ) -> list[dict[str, Any]]:
-        """Unpack a response from the database and decode the BSON document(s).
-
-        Check the response for errors and unpack, returning a dictionary
-        containing the response data.
-
-        Can raise CursorNotFound, NotPrimaryError, ExecutionTimeout, or
-        OperationFailure.
-
-        :param cursor_id: cursor_id we sent to get this response -
-            used for raising an informative exception when we get cursor id not
-            valid at server response
-        :param codec_options: an instance of
-            :class:`~bson.codec_options.CodecOptions`
-        :param user_fields: Response fields that should be decoded
-            using the TypeDecoders from codec_options, passed to
-            bson._decode_all_selective.
-        """
-        self.raw_response(cursor_id)
-        if legacy_response:
-            return bson.decode_all(self.documents, codec_options)
-        return bson._decode_all_selective(self.documents, codec_options, user_fields)
-
-    def command_response(self, codec_options: CodecOptions[Any]) -> dict[str, Any]:
-        """Unpack a command response."""
-        docs = self.unpack_response(codec_options=codec_options)
-        assert self.number_returned == 1
-        return docs[0]
-
-    def raw_command_response(self) -> NoReturn:
-        """Return the bytes of the command response."""
-        # This should never be called on _OpReply.
-        raise NotImplementedError
-
-    @property
-    def more_to_come(self) -> bool:
-        """Is the moreToCome bit set on this response?"""
-        return False
-
-    @classmethod
-    def unpack(cls, msg: bytes | memoryview) -> _OpReply:
-        """Construct an _OpReply from raw bytes."""
-        # PYTHON-945: ignore starting_from field.
-        flags, cursor_id, _, number_returned = cls.UNPACK_FROM(msg)
-
-        documents = msg[20:]
-        return cls(flags, cursor_id, number_returned, documents)
-
-
 class _OpMsg:
     """A MongoDB OP_MSG response message."""
 
@@ -1541,8 +1330,7 @@ class _OpMsg:
         return cls(flags, payload_document)
 
 
-_UNPACK_REPLY: dict[int, Callable[[bytes | memoryview], Union[_OpReply, _OpMsg]]] = {
-    _OpReply.OP_CODE: _OpReply.unpack,
+_UNPACK_REPLY: dict[int, Callable[[bytes | memoryview], _OpMsg]] = {
     _OpMsg.OP_CODE: _OpMsg.unpack,
 }
 
@@ -1680,54 +1468,20 @@ class _Query:
     def get_message(
         self, read_preference: _ServerMode, conn: _AgnosticConnection, use_cmd: bool = False
     ) -> tuple[int, bytes, int]:
-        """Get a query message, possibly setting the secondaryOk bit."""
+        """Get a query message"""
         # Use the read_preference decided by _socket_from_server.
         self.read_preference = read_preference
-        if read_preference.mode:
-            # Set the secondaryOk bit.
-            flags = self.flags | 4
-        else:
-            flags = self.flags
 
-        ns = self.namespace()
-        spec = self.spec
-
-        if use_cmd:
-            spec = self.as_command(conn)[0]
-            request_id, msg, size, _ = _op_msg(
-                0,
-                spec,
-                self.db,
-                read_preference,
-                self.codec_options,
-                ctx=conn.compression_context,
-            )
-            return request_id, msg, size
-
-        # OP_QUERY treats ntoreturn of -1 and 1 the same, return
-        # one document and close the cursor. We have to use 2 for
-        # batch size if 1 is specified.
-        ntoreturn = self.batch_size == 1 and 2 or self.batch_size
-        if self.limit:
-            if ntoreturn:
-                ntoreturn = min(self.limit, ntoreturn)
-            else:
-                ntoreturn = self.limit
-
-        if conn.is_mongos:
-            assert isinstance(spec, MutableMapping)
-            spec = _maybe_add_read_preference(spec, read_preference)
-
-        return _query(
-            flags,
-            ns,
-            self.ntoskip,
-            ntoreturn,
+        spec = self.as_command(conn)[0]
+        request_id, msg, size, _ = _op_msg(
+            0,
             spec,
-            None if use_cmd else self.fields,
+            self.db,
+            read_preference,
             self.codec_options,
             ctx=conn.compression_context,
         )
+        return request_id, msg, size
 
 
 class _GetMore:

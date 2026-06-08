@@ -243,6 +243,7 @@ converted_tests = [
     "test_gridfs.py",
     "test_gridfs_bucket.py",
     "test_gridfs_spec.py",
+    "test_handshake_unified.py",
     "test_heartbeat_monitoring.py",
     "test_index_management.py",
     "test_json_util_integration.py",
