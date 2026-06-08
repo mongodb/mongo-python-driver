@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import gc
+import os
+import platform
 import random
 import socket
 import sys
@@ -546,6 +548,10 @@ class TestPooling(_TestPoolingBase):
 
 
 class TestPoolMaxSize(_TestPoolingBase):
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     def test_max_pool_size(self):
         max_pool_size = 4
         c = self.rs_or_single_client(maxPoolSize=max_pool_size)
@@ -582,6 +588,10 @@ class TestPoolMaxSize(_TestPoolingBase):
         self.assertGreater(len(cx_pool.conns), 1)
         self.assertEqual(0, cx_pool.requests)
 
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     def test_max_pool_size_none(self):
         c = self.rs_or_single_client(maxPoolSize=None)
         collection = c[DB].test

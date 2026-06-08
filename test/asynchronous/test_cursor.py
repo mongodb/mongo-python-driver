@@ -19,6 +19,7 @@ import copy
 import gc
 import itertools
 import os
+import platform
 import random
 import re
 import sys
@@ -832,6 +833,10 @@ class TestCursor(AsyncIntegrationTest):
             break
         self.assertRaises(InvalidOperation, a.sort, "x", ASCENDING)
 
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     async def test_where(self):
         db = self.db
         await db.test.drop()
