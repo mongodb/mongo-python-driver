@@ -2861,14 +2861,14 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._attempt_number += 1
 
                         # Revert back to starting state only if the first
-                        # transactional command was never sent.
+                        # transactional command was never completed.
                         if (
                             overloaded
                             and self._session is not None
                             and self._session.in_transaction
                         ):
                             transaction = self._session._transaction
-                            if not transaction.has_sent_command:
+                            if not transaction.has_completed_command:
                                 transaction.set_starting()
                             transaction.attempt = 0
                     else:
@@ -2912,10 +2912,10 @@ class _ClientConnectionRetryable(Generic[T]):
                     if self._last_error is None:
                         self._last_error = exc
                     # Revert back to starting state only if the first
-                    # transactional command was never sent.
+                    # transactional command was never completed.
                     if overloaded and self._session is not None and self._session.in_transaction:
                         transaction = self._session._transaction
-                        if not transaction.has_sent_command:
+                        if not transaction.has_completed_command:
                             transaction.set_starting()
                         transaction.attempt = 0
 

@@ -35,7 +35,11 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
+from pymongo.synchronous.client_session import (
+    ClientSession,
+    _TxnState,
+    _validate_session_write_concern,
+)
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.database import Database
@@ -258,6 +262,9 @@ class _ClientBulk:
         if bwc.publish:
             bwc._start(cmd, request_id, op_docs, ns_docs)
         try:
+            if bwc.session is not None and bwc.session._starting_transaction:
+                bwc.session._transaction.has_sent_command = True
+                bwc.session._transaction.state = _TxnState.IN_PROGRESS
             reply = bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc, arg-type]
             duration = datetime.datetime.now() - bwc.start_time
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
