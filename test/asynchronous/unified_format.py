@@ -1465,15 +1465,15 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     async def run_scenario(self, spec, uri=None):
-        # Skip tests that rely on $where performance on macOS ARM64 CI.
-        if sys.platform == "darwin" and platform.machine() == "arm64" and "CI" in os.environ:
-            arm64_skip_tests = [
+        # Skip tests that rely on $where performance on macOS CI.
+        if sys.platform == "darwin" and "CI" in os.environ:
+            macos_skip_tests = [
                 ("PYTHON-5861", ".*InterruptInUsePoolClear.*is_retryable"),
                 ("PYTHON-5861", ".*timeoutms_can_be_overridden_for_upload"),
             ]
-            for reason, skip_pattern in arm64_skip_tests:
+            for reason, skip_pattern in macos_skip_tests:
                 if re.match(skip_pattern.lower(), self.id().lower()) is not None:
-                    self.skipTest(f"{reason}: $where is too slow on macOS ARM64 CI")
+                    self.skipTest(f"{reason}: $where is too slow on macOS CI")
 
         # Handle flaky tests.
         flaky_tests = [

@@ -825,8 +825,8 @@ class TestCursor(IntegrationTest):
         self.assertRaises(InvalidOperation, a.sort, "x", ASCENDING)
 
     @unittest.skipIf(
-        sys.platform == "darwin" and platform.machine() == "arm64" and "CI" in os.environ,
-        "PYTHON-5861: $where is too slow on macOS ARM64 CI",
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
     )
     def test_where(self):
         db = self.db

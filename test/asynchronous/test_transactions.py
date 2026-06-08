@@ -585,8 +585,8 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
 
     @async_client_context.require_transactions
     @unittest.skipIf(
-        sys.platform == "darwin" and platform.machine() == "arm64" and "CI" in os.environ,
-        "PYTHON-5861: Transaction operations too slow on macOS ARM64 CI",
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
     )
     async def test_callback_not_retried_after_csot_timeout(self):
         listener = OvertCommandListener()
