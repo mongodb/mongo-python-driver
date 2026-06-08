@@ -401,7 +401,7 @@ class Connection:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            result = cast(
+            result = result = cast(
                 dict[str, Any],
                 command(
                     self,
