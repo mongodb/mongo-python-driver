@@ -204,6 +204,8 @@ class Server:
             if more_to_come:
                 reply = conn.receive_message(None)
             else:
+                if operation.session is not None and operation.session._starting_transaction:
+                    operation.session._advance_transaction_state_on_send()
                 conn.send_message(data, max_doc_size)
                 reply = conn.receive_message(request_id)
 
