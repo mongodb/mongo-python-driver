@@ -400,7 +400,7 @@ class Connection:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            return command(
+            result = command(
                 self,
                 dbname,
                 spec,
@@ -424,7 +424,17 @@ class Connection:
                 exhaust_allowed=exhaust_allowed,
                 write_concern=write_concern,
             )
-        except (OperationFailure, NotPrimaryError):
+            if session and session.in_transaction:
+                session._advance_transaction_state_on_response()
+            return result
+        except (OperationFailure, NotPrimaryError) as exc:
+            if (
+                session
+                and session.in_transaction
+                and session._starting_transaction
+                and not exc.has_error_label("RetryableWriteError")
+            ):
+                session._advance_transaction_state_on_response()
             raise
         # Catch socket.error, KeyboardInterrupt, CancelledError, etc. and close ourselves.
         except BaseException as error:

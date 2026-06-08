@@ -1056,6 +1056,14 @@ class ClientSession:
         return self._transaction.starting()
 
     @property
+    def _advance_transaction_state_on_response(self) -> None:
+        """Advance STARTING -> IN_PROGRESS after the first command has reached
+        the server response stage. Client-side errors must not advance transaction state.
+        """
+        if self._transaction.state == _TxnState.STARTING:
+            self._transaction.state = _TxnState.IN_PROGRESS
+
+    @property
     def _pinned_address(self) -> Optional[_Address]:
         """The mongos address this transaction was created on."""
         if self._transaction.active():
@@ -1131,7 +1139,6 @@ class ClientSession:
 
             if self._transaction.state == _TxnState.STARTING:
                 # First command begins a new transaction.
-                self._transaction.state = _TxnState.IN_PROGRESS
                 command["startTransaction"] = True
 
                 assert self._transaction.opts
