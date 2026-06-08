@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import gc
+import os
+import platform
 import random
 import socket
 import sys
@@ -548,6 +550,10 @@ class TestPooling(_TestPoolingBase):
 
 
 class TestPoolMaxSize(_TestPoolingBase):
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     async def test_max_pool_size(self):
         max_pool_size = 4
         c = await self.async_rs_or_single_client(maxPoolSize=max_pool_size)
@@ -568,7 +574,8 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         async def f():
             for _ in range(5):
-                await collection.find_one({})
+                await collection.find_one({"$where": delay(0.1)})
+                assert len(cx_pool.conns) <= max_pool_size
 
             async with lock:
                 self.n_passed += 1
@@ -581,9 +588,12 @@ class TestPoolMaxSize(_TestPoolingBase):
         await async_joinall(tasks)
         self.assertEqual(ntasks, self.n_passed)
         self.assertGreater(len(cx_pool.conns), 1)
-        self.assertLessEqual(len(cx_pool.conns), max_pool_size)
         self.assertEqual(0, cx_pool.requests)
 
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     async def test_max_pool_size_none(self):
         c = await self.async_rs_or_single_client(maxPoolSize=None)
         collection = c[DB].test
@@ -600,7 +610,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         async def f():
             for _ in range(5):
-                await collection.find_one({})
+                await collection.find_one({"$where": delay(0.1)})
 
             async with lock:
                 self.n_passed += 1
