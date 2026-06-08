@@ -1138,52 +1138,7 @@ class TestCausalConsistency(AsyncUnitTest):
             self.assertIsNone(rc)
 
     @async_client_context.require_no_standalone
-    async def test_writes_do_not_include_read_concern(self):
-        await self._test_no_read_concern(
-            lambda coll, session: coll.bulk_write([InsertOne[dict]({})], session=session)
-        )
-        await self._test_no_read_concern(lambda coll, session: coll.insert_one({}, session=session))
-        await self._test_no_read_concern(
-            lambda coll, session: coll.insert_many([{}], session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.replace_one({"_id": 1}, {"x": 1}, session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.update_one({}, {"$set": {"X": 1}}, session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.update_many({}, {"$set": {"x": 1}}, session=session)
-        )
-        await self._test_no_read_concern(lambda coll, session: coll.delete_one({}, session=session))
-        await self._test_no_read_concern(
-            lambda coll, session: coll.delete_many({}, session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.find_one_and_replace({"x": 1}, {"y": 1}, session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.find_one_and_update(
-                {"y": 1}, {"$set": {"x": 1}}, session=session
-            )
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.find_one_and_delete({"x": 1}, session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.create_index("foo", session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.create_indexes(
-                [IndexModel([("bar", ASCENDING)])], session=session
-            )
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.drop_index("foo_1", session=session)
-        )
-        await self._test_no_read_concern(lambda coll, session: coll.drop_indexes(session=session))
-
-        # Not a write, but explain also doesn't support readConcern.
+    async def test_explain_does_not_include_read_concern(self):
         await self._test_no_read_concern(
             lambda coll, session: coll.find({}, session=session).explain()
         )

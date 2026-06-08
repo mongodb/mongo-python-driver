@@ -223,7 +223,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         t0 = time.time()
         while True:
             indices = (coll0.list_search_indexes()).to_list()
-            if indices:
+            if not indices:
                 break
             if (time.time() - t0) / 60 > 5:
                 raise TimeoutError("Timed out waiting for index deletion")
