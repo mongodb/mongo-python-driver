@@ -581,6 +581,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         await async_joinall(tasks)
         self.assertEqual(ntasks, self.n_passed)
         self.assertGreater(len(cx_pool.conns), 1)
+        self.assertLessEqual(len(cx_pool.conns), max_pool_size)
         self.assertEqual(0, cx_pool.requests)
 
     async def test_max_pool_size_none(self):
