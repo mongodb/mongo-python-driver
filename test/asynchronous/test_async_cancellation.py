@@ -16,13 +16,17 @@
 from __future__ import annotations
 
 import asyncio
+import socket as _socket
 import sys
 from test.asynchronous.utils import async_get_pool
 from test.utils_shared import delay, one
+from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
 from test.asynchronous import AsyncIntegrationTest, async_client_context, connected
+
+from pymongo import pool_shared
 
 
 class TestAsyncCancellation(AsyncIntegrationTest):
@@ -127,3 +131,41 @@ class TestAsyncCancellation(AsyncIntegrationTest):
             await task
 
         self.assertTrue(change_stream._closed)
+
+    async def test_cancellation_closes_socket_during_create_connection(self):
+        address = (await async_client_context.host, await async_client_context.port)
+        options = (await async_get_pool(self.client)).opts
+
+        created_sockets: list[_socket.socket] = []
+        real_socket_cls = _socket.socket
+
+        def tracking_socket(*args, **kwargs):
+            s = real_socket_cls(*args, **kwargs)
+            created_sockets.append(s)
+            return s
+
+        loop = asyncio.get_running_loop()
+        started = asyncio.Event()
+        block_forever = asyncio.Event()
+
+        async def slow_sock_connect(sock, addr):
+            started.set()
+            await block_forever.wait()
+
+        with (
+            patch.object(_socket, "socket", tracking_socket),
+            patch.object(loop, "sock_connect", slow_sock_connect),
+        ):
+            task = asyncio.create_task(pool_shared._async_create_connection(address, options))
+            await asyncio.wait_for(started.wait(), timeout=5)
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+
+        self.assertTrue(created_sockets, "expected at least one socket to be created")
+        for sock in created_sockets:
+            self.assertEqual(
+                sock.fileno(),
+                -1,
+                f"socket leaked across cancellation: {sock!r}",
+            )
