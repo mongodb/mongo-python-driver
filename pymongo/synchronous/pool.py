@@ -34,6 +34,7 @@ from typing import (
     Optional,
     Sequence,
     Union,
+    cast,
 )
 
 from bson import DEFAULT_CODEC_OPTIONS
@@ -400,29 +401,32 @@ class Connection:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            result = command(
-                self,
-                dbname,
-                spec,
-                self.is_mongos,
-                read_preference,
-                codec_options,  # type: ignore[arg-type]
-                session,
-                client,
-                check,
-                allowable_errors,
-                self.address,
-                listeners,
-                self.max_bson_size,
-                read_concern,
-                parse_write_concern_error=parse_write_concern_error,
-                collation=collation,
-                compression_ctx=self.compression_context,
-                use_op_msg=self.op_msg_enabled,
-                unacknowledged=unacknowledged,
-                user_fields=user_fields,
-                exhaust_allowed=exhaust_allowed,
-                write_concern=write_concern,
+            result = cast(
+                dict[str, Any],
+                command(
+                    self,
+                    dbname,
+                    spec,
+                    self.is_mongos,
+                    read_preference,
+                    codec_options,  # type: ignore[arg-type]
+                    session,
+                    client,
+                    check,
+                    allowable_errors,
+                    self.address,
+                    listeners,
+                    self.max_bson_size,
+                    read_concern,
+                    parse_write_concern_error=parse_write_concern_error,
+                    collation=collation,
+                    compression_ctx=self.compression_context,
+                    use_op_msg=self.op_msg_enabled,
+                    unacknowledged=unacknowledged,
+                    user_fields=user_fields,
+                    exhaust_allowed=exhaust_allowed,
+                    write_concern=write_concern,
+                ),
             )
             if session and session.in_transaction:
                 session._advance_transaction_state_on_response()

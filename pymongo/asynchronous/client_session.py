@@ -1059,7 +1059,6 @@ class AsyncClientSession:
         """True if this session is starting a multi-statement transaction."""
         return self._transaction.starting()
 
-    @property
     def _advance_transaction_state_on_response(self) -> None:
         """Advance STARTING -> IN_PROGRESS after the first command has reached
         the server response stage. Client-side errors must not advance transaction state.
