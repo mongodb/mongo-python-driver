@@ -675,7 +675,7 @@ class TestSession(IntegrationTest):
         coll = client.pymongo_test.collection
         # 3.6.0 mongos only validates the aggregate pipeline when the
         # database exists.
-        coll.insert_one({})
+        coll.database.create_collection(coll.name)
         listener.reset()
 
         with self.assertRaises(OperationFailure):
@@ -827,7 +827,7 @@ class TestSession(IntegrationTest):
 
     def test_unacknowledged_writes(self):
         # Ensure the collection exists.
-        self.client.pymongo_test.test_unacked_writes.insert_one({})
+        self.client.pymongo_test.create_collection("test_unacked_writes")
         client = self.rs_or_single_client(w=0, event_listeners=[self.listener])
         db = client.pymongo_test
         coll = db.test_unacked_writes
@@ -978,6 +978,8 @@ class TestCausalConsistency(UnitTest):
         super().setUp()
         self.listener = SessionTestListener()
         self.client = self.rs_or_single_client(event_listeners=[self.listener])
+        self.client.pymongo_test.drop_collection("test")
+        self.client.pymongo_test.create_collection("test")
 
     @client_context.require_no_standalone
     def test_core(self):
@@ -1048,9 +1050,6 @@ class TestCausalConsistency(UnitTest):
 
     @client_context.require_no_standalone
     def test_reads(self):
-        # Make sure the collection exists.
-        self.client.pymongo_test.test.insert_one({})
-
         def aggregate(coll, session):
             return (coll.aggregate([], session=session)).to_list()
 
@@ -1200,7 +1199,6 @@ class TestCausalConsistency(UnitTest):
 
     @client_context.require_no_standalone
     def test_cluster_time_with_server_support(self):
-        self.client.pymongo_test.test.insert_one({})
         self.listener.reset()
         self.client.pymongo_test.test.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")
@@ -1208,7 +1206,6 @@ class TestCausalConsistency(UnitTest):
 
     @client_context.require_standalone
     def test_cluster_time_no_server_support(self):
-        self.client.pymongo_test.test.insert_one({})
         self.listener.reset()
         self.client.pymongo_test.test.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")

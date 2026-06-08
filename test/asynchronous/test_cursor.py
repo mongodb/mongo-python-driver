@@ -1513,9 +1513,12 @@ class TestCursor(AsyncIntegrationTest):
 
 
 class TestRawBatchCursor(AsyncIntegrationTest):
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        await self.db.test.drop()
+
     async def test_find_raw(self):
         c = self.db.test
-        await c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
         batches = await c.find_raw_batches().sort("_id").to_list()
@@ -1525,7 +1528,6 @@ class TestRawBatchCursor(AsyncIntegrationTest):
     @async_client_context.require_transactions
     async def test_find_raw_transaction(self):
         c = self.db.test
-        await c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
 
@@ -1555,7 +1557,6 @@ class TestRawBatchCursor(AsyncIntegrationTest):
     @async_client_context.require_failCommand_fail_point
     async def test_find_raw_retryable_reads(self):
         c = self.db.test
-        await c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
 
@@ -1576,7 +1577,6 @@ class TestRawBatchCursor(AsyncIntegrationTest):
     @async_client_context.require_no_standalone
     async def test_find_raw_snapshot_reads(self):
         c = self.db.get_collection("test", write_concern=WriteConcern(w="majority"))
-        await c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
 
@@ -1595,12 +1595,10 @@ class TestRawBatchCursor(AsyncIntegrationTest):
 
     async def test_explain(self):
         c = self.db.test
-        await c.insert_one({})
         explanation = await c.find_raw_batches().explain()
         self.assertIsInstance(explanation, dict)
 
     async def test_empty(self):
-        await self.db.test.drop()
         cursor = self.db.test.find_raw_batches()
         with self.assertRaises(StopAsyncIteration):
             await anext(cursor)
@@ -1615,7 +1613,6 @@ class TestRawBatchCursor(AsyncIntegrationTest):
     @async_client_context.require_no_mongos
     async def test_exhaust(self):
         c = self.db.test
-        await c.drop()
         await c.insert_many({"_id": i} for i in range(200))
         result = b"".join(await c.find_raw_batches(cursor_type=CursorType.EXHAUST).to_list())
         self.assertEqual([{"_id": i} for i in range(200)], decode_all(result))
@@ -1632,6 +1629,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
             self.db.test.find_raw_batches()[0]
 
     async def test_collation(self):
+        await self.db.test.insert_one({})
         await anext(self.db.test.find_raw_batches(collation=Collation("en_US")))
 
     async def test_read_concern(self):
@@ -1645,7 +1643,6 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
-        await c.drop()
         await c.insert_many([{"_id": i} for i in range(10)])
 
         listener.reset()
