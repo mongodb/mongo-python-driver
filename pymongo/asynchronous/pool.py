@@ -38,7 +38,7 @@ from typing import (
 
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
-from pymongo.asynchronous.client_session import _validate_session_write_concern
+from pymongo.asynchronous.client_session import _TxnState, _validate_session_write_concern
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.asynchronous.network import command
 from pymongo.common import (
@@ -400,8 +400,9 @@ class AsyncConnection:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            if session and session.in_transaction:
-                session._advance_transaction_state_on_response()
+            if session is not None and session._starting_transaction:
+                session._transaction.has_sent_command = True
+                session._transaction.state = _TxnState.IN_PROGRESS
             return await command(
                 self,
                 dbname,
@@ -426,14 +427,7 @@ class AsyncConnection:
                 exhaust_allowed=exhaust_allowed,
                 write_concern=write_concern,
             )
-        except (OperationFailure, NotPrimaryError) as exc:
-            if (
-                session
-                and session.in_transaction
-                and session._starting_transaction
-                and not exc.has_error_label("RetryableWriteError")
-            ):
-                session._advance_transaction_state_on_response()
+        except (OperationFailure, NotPrimaryError):
             raise
         # Catch socket.error, KeyboardInterrupt, CancelledError, etc. and close ourselves.
         except BaseException as error:

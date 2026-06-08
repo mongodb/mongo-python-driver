@@ -87,7 +87,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
-from pymongo.synchronous.client_session import _validate_session_write_concern
+from pymongo.synchronous.client_session import _TxnState, _validate_session_write_concern
 from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.synchronous.network import command
 
@@ -400,8 +400,9 @@ class Connection:
         if self.op_msg_enabled:
             self._raise_if_not_writable(unacknowledged)
         try:
-            if session and session.in_transaction:
-                session._advance_transaction_state_on_response()
+            if session is not None and session._starting_transaction:
+                session._transaction.has_sent_command = True
+                session._transaction.state = _TxnState.IN_PROGRESS
             return command(
                 self,
                 dbname,
@@ -426,14 +427,7 @@ class Connection:
                 exhaust_allowed=exhaust_allowed,
                 write_concern=write_concern,
             )
-        except (OperationFailure, NotPrimaryError) as exc:
-            if (
-                session
-                and session.in_transaction
-                and session._starting_transaction
-                and not exc.has_error_label("RetryableWriteError")
-            ):
-                session._advance_transaction_state_on_response()
+        except (OperationFailure, NotPrimaryError):
             raise
         # Catch socket.error, KeyboardInterrupt, CancelledError, etc. and close ourselves.
         except BaseException as error:

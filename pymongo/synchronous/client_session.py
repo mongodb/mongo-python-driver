@@ -431,6 +431,7 @@ class _Transaction:
         self.attempt = 0
         self.client = client
         self.has_completed_command = False
+        self.has_sent_command = False
 
     def active(self) -> bool:
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
@@ -467,6 +468,7 @@ class _Transaction:
         self.recovery_token = None
         self.attempt = 0
         self.has_completed_command = False
+        self.has_sent_command = False
 
     def __del__(self) -> None:
         if self.conn_mgr:
@@ -1054,13 +1056,6 @@ class ClientSession:
     def _starting_transaction(self) -> bool:
         """True if this session is starting a multi-statement transaction."""
         return self._transaction.starting()
-
-    def _advance_transaction_state_on_response(self) -> None:
-        """Advance STARTING -> IN_PROGRESS after the first command has reached
-        the server response stage. Client-side errors must not advance transaction state.
-        """
-        if self._transaction.state == _TxnState.STARTING:
-            self._transaction.state = _TxnState.IN_PROGRESS
 
     @property
     def _pinned_address(self) -> Optional[_Address]:
