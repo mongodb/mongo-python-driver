@@ -133,10 +133,7 @@ ca_cert = (
     .serial_number(100)
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
-    # basicConstraints without critical flag, no SKI — matches old x509gen CA
-    # structure.  Omitting SKI prevents macOS SecTrust from resolving the CA
-    # via AKI keyid, so it skips OCSP revocation checking for inter-node TLS.
-    .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=False)
+    .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "ca.pem").write_bytes(cert_pem(ca_cert))
@@ -158,6 +155,11 @@ server_cert = (
     .not_valid_after(NOT_AFTER)
     .add_extension(server_san(), critical=False)
     .add_extension(aki_from_ca(ca_key), critical=False)
+    # OCSPNoCheck tells macOS SecTrust to skip OCSP revocation checking for
+    # this cert.  Without it, MongoDB Enterprise's hard-fail OCSP policy
+    # (kSecRevocationRequirePositiveResponse) causes CSSMERR_TP_CERT_SUSPENDED
+    # during replica-set inter-node TLS on macOS when AKI is present.
+    .add_extension(x509.OCSPNoCheck(), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "server.pem").write_bytes(key_pem(server_key) + cert_pem(server_cert))
@@ -196,6 +198,7 @@ client_cert = (
         critical=False,
     )
     .add_extension(aki_from_ca(ca_key), critical=False)
+    .add_extension(x509.OCSPNoCheck(), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "client.pem").write_bytes(key_pem(client_key) + cert_pem(client_cert))
@@ -299,7 +302,7 @@ trusted_ca_cert = (
     .serial_number(200)
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
-    .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=False)
+    .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
     .sign(trusted_ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "trusted-ca.pem").write_bytes(cert_pem(trusted_ca_cert))
