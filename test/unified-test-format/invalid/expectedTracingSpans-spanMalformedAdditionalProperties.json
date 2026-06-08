@@ -1,0 +1,28 @@
+{
+  "description": "expectedTracingSpans-spanMalformedAdditionalProperties",
+  "schemaVersion": "1.26",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "Span must not have additional properties",
+      "operations": [],
+      "expectTracingMessages": {
+        "client": "client0",
+        "spans": [
+          {
+            "name": "foo",
+            "tags": {},
+            "nested": [],
+            "foo": "bar"
+          }
+        ]
+      }
+    }
+  ]
+}

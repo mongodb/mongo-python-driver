@@ -373,6 +373,9 @@
               "connectionCreatedEvent": {}
             },
             {
+              "poolClearedEvent": {}
+            },
+            {
               "connectionClosedEvent": {
                 "reason": "error"
               }
@@ -381,9 +384,6 @@
               "connectionCheckOutFailedEvent": {
                 "reason": "connectionError"
               }
-            },
-            {
-              "poolClearedEvent": {}
             }
           ]
         }

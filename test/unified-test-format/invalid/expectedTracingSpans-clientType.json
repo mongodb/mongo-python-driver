@@ -1,0 +1,28 @@
+{
+  "description": "expectedTracingSpans-clientType",
+  "schemaVersion": "1.26",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "client type must be string",
+      "operations": [],
+      "expectTracingMessages": {
+        "client": 0,
+        "spans": [
+          {
+            "name": "command",
+            "tags": {
+              "db.system": "mongodb"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

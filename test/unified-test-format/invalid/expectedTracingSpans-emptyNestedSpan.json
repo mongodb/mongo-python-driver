@@ -1,0 +1,29 @@
+{
+  "description": "expectedTracingSpans-emptyNestedSpan",
+  "schemaVersion": "1.26",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "nested spans must not have fewer than 1 items'",
+      "operations": [],
+      "expectTracingMessages": {
+        "client": "client0",
+        "spans": [
+          {
+            "name": "command",
+            "tags": {
+              "db.system": "mongodb"
+            },
+            "nested": []
+          }
+        ]
+      }
+    }
+  ]
+}
