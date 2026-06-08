@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Thin wrapper — delegates certificate generation to gen-certs.py.
-# Using Python's cryptography library gives precise extension control;
-# in particular it lets us add AKI to leaf certs without adding SKI to
-# the CA cert, which avoids the macOS SecTrust hard-fail OCSP check.
+# See gen-certs.py for full documentation on the cert design.
 #
 # Usage: bash gen-certs.sh  (run from test/certificates/)
 # Requires: pip install cryptography

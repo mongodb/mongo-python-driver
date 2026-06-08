@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 """Generate TLS test certificates for the PyMongo test suite.
 
-Certificates include AKI on leaf certs (required by Python 3.13 / OpenSSL 3.x
-chain building) but deliberately omit SKI on the CA cert.  Without an explicit
-SKI on the CA, macOS SecTrust cannot perform keyid-based chain lookup and
-therefore does not trigger its hard-fail OCSP check, which was causing
-CSSMERR_TP_CERT_SUSPENDED errors during MongoDB replica-set inter-node TLS.
+Leaf certs carry AKI in the *issuer* form (DirName + serial, no keyid).
+Python 3.13 / OpenSSL 3.x requires AKI to be present for chain building.
+The issuer form satisfies that requirement while avoiding the *keyid* form,
+which would enable macOS SecTrust's keyid-based chain verification and trigger
+its hard-fail OCSP check (CSSMERR_TP_CERT_SUSPENDED) against test certs that
+have no OCSP URL.  MongoDB's own jstests/libs certs use the same approach.
+
+The CA cert carries keyUsage (keyCertSign + cRLSign, critical), required by
+Python 3.13 on Windows (OpenSSL 3.x enforces keyUsage on CA certs).
+
+Using Python's cryptography library gives precise control over extensions —
+in particular it lets us add AKI without OpenSSL 3.x auto-adding SKI.
 
 Usage:
     pip install cryptography
@@ -22,7 +29,7 @@ from pathlib import Path
 
 try:
     from cryptography import x509
-    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import rsa
     from cryptography.hazmat.primitives.serialization import (
         BestAvailableEncryption,
@@ -54,11 +61,18 @@ def cert_pem(cert) -> bytes:
     return cert.public_bytes(Encoding.PEM)
 
 
-def aki_from_ca(ca_key) -> x509.AuthorityKeyIdentifier:
-    # Derives keyid from the CA's public key directly — no SKI extension needed
-    # on the CA cert.  Python 3.13 / OpenSSL 3.x require AKI to be present on
-    # leaf certs; the keyid form satisfies that without requiring CA SKI.
-    return x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key())
+def aki_from_ca(ca_cert: x509.Certificate) -> x509.AuthorityKeyIdentifier:
+    # Use the issuer form (DirName + serial) rather than the keyid form.
+    # The keyid form enables macOS SecTrust keyid-based chain verification, which
+    # then triggers hard-fail OCSP (CSSMERR_TP_CERT_SUSPENDED) because our test
+    # certs have no OCSP URL.  The issuer form satisfies Python 3.13 / OpenSSL
+    # 3.x's AKI requirement without providing a keyid, so macOS falls back to
+    # name-based chain matching and does not attempt OCSP at all.
+    return x509.AuthorityKeyIdentifier(
+        key_identifier=None,
+        authority_cert_issuer=[x509.DirectoryName(ca_cert.subject)],
+        authority_cert_serial_number=ca_cert.serial_number,
+    )
 
 
 def server_san() -> x509.SubjectAlternativeName:
@@ -134,6 +148,20 @@ ca_cert = (
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
     .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+    .add_extension(
+        x509.KeyUsage(
+            digital_signature=False,
+            content_commitment=False,
+            key_encipherment=False,
+            data_encipherment=False,
+            key_agreement=False,
+            key_cert_sign=True,
+            crl_sign=True,
+            encipher_only=False,
+            decipher_only=False,
+        ),
+        critical=True,
+    )
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "ca.pem").write_bytes(cert_pem(ca_cert))
@@ -154,12 +182,7 @@ server_cert = (
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
     .add_extension(server_san(), critical=False)
-    .add_extension(aki_from_ca(ca_key), critical=False)
-    # OCSPNoCheck tells macOS SecTrust to skip OCSP revocation checking for
-    # this cert.  Without it, MongoDB Enterprise's hard-fail OCSP policy
-    # (kSecRevocationRequirePositiveResponse) causes CSSMERR_TP_CERT_SUSPENDED
-    # during replica-set inter-node TLS on macOS when AKI is present.
-    .add_extension(x509.OCSPNoCheck(), critical=False)
+    .add_extension(aki_from_ca(ca_cert), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "server.pem").write_bytes(key_pem(server_key) + cert_pem(server_cert))
@@ -197,8 +220,7 @@ client_cert = (
         x509.ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH]),
         critical=False,
     )
-    .add_extension(aki_from_ca(ca_key), critical=False)
-    .add_extension(x509.OCSPNoCheck(), critical=False)
+    .add_extension(aki_from_ca(ca_cert), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "client.pem").write_bytes(key_pem(client_key) + cert_pem(client_cert))
@@ -261,7 +283,7 @@ wrong_host_cert = (
         x509.SubjectAlternativeName([x509.DNSName("wronghost.example.com")]),
         critical=False,
     )
-    .add_extension(aki_from_ca(ca_key), critical=False)
+    .add_extension(aki_from_ca(ca_cert), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "wrong-host.pem").write_bytes(key_pem(wrong_host_key) + cert_pem(wrong_host_cert))
@@ -282,7 +304,7 @@ expired_cert = (
     .not_valid_before(datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc))
     .not_valid_after(datetime.datetime(2001, 1, 1, tzinfo=datetime.timezone.utc))
     .add_extension(server_san(), critical=False)
-    .add_extension(aki_from_ca(ca_key), critical=False)
+    .add_extension(aki_from_ca(ca_cert), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "expired.pem").write_bytes(key_pem(expired_key) + cert_pem(expired_cert))
@@ -303,6 +325,20 @@ trusted_ca_cert = (
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
     .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+    .add_extension(
+        x509.KeyUsage(
+            digital_signature=False,
+            content_commitment=False,
+            key_encipherment=False,
+            data_encipherment=False,
+            key_agreement=False,
+            key_cert_sign=True,
+            crl_sign=True,
+            encipher_only=False,
+            decipher_only=False,
+        ),
+        critical=True,
+    )
     .sign(trusted_ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "trusted-ca.pem").write_bytes(cert_pem(trusted_ca_cert))
