@@ -150,8 +150,7 @@ async def _run_command(
     :param decrypt_reply: Decrypt the reply when auto-encryption is enabled;
         the bulk paths pass False (their commands are encrypted up front).
     :param use_conn_transport: Send/receive via ``conn.send_message`` /
-        ``conn.receive_message`` (cursor path) or ``conn.unack_write`` (bulk
-        unacknowledged) instead of the raw ``async_sendall`` /
+        ``conn.receive_message`` instead of the raw ``async_sendall`` /
         ``async_receive_message`` (network path).
     :param max_doc_size: The largest document size, for ``conn.send_message``.
     :param more_to_come: Receive only, without sending (exhaust ``getMore``).
@@ -212,7 +211,11 @@ async def _run_command(
             reply = await conn.receive_message(None)
         elif unacknowledged:
             if use_conn_transport:
-                await conn.unack_write(msg, max_doc_size)
+                if not conn.is_writable:
+                    raise NotPrimaryError(
+                        "not primary", {"ok": 0, "errmsg": "not primary", "code": 10107}
+                    )
+                await conn.send_message(msg, max_doc_size)
             else:
                 await async_sendall(conn.conn.get_conn, msg)
             # Unacknowledged, fake a successful command response.
@@ -380,9 +383,7 @@ async def run_acknowledged_command(
     :param use_conn_transport: Send/receive via ``conn.send_message`` /
         ``conn.receive_message`` (bulk path) instead of the raw
         ``async_sendall`` / ``async_receive_message`` (standard command path).
-    :param process_response: Run ``client._process_response`` here; the bulk
-        paths pass False and process the reply at the call site to keep their
-        check -> APM-succeed -> process ordering.
+    :param process_response: Run ``client._process_response`` here.
     :param decrypt_reply: Decrypt the reply when auto-encryption is enabled; the
         bulk paths pass False (their commands are encrypted up front).
 
@@ -440,9 +441,9 @@ async def run_unacknowledged_command(
     The message is sent only -- no reply is received -- so the response
     processing, command checking, and decryption steps are skipped.
 
-    :param use_conn_transport: Send via ``conn.unack_write`` (bulk path) instead
+    :param use_conn_transport: Send via ``conn.send_message`` (bulk path) instead
         of the raw ``async_sendall`` (standard command path).
-    :param max_doc_size: The largest document size, for ``conn.unack_write``.
+    :param max_doc_size: The largest document size, for ``conn.send_message``.
 
     See :func:`_run_command` for the remaining parameters.
     """

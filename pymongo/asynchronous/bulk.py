@@ -267,14 +267,10 @@ class _AsyncBulk:
                 op_id=bwc.op_id,
                 command_name=bwc.name,
                 use_conn_transport=True,
-                process_response=False,
                 decrypt_reply=False,
             )
             reply = result_docs[0]
-            # Process the response from the server.
-            await client._process_response(reply, bwc.session)  # type: ignore[arg-type]
         except Exception as exc:
-            # Process the response from the server.
             if isinstance(exc, (NotPrimaryError, OperationFailure)):
                 await client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
             raise

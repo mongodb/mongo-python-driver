@@ -257,16 +257,12 @@ class _AsyncClientBulk:
                 op_id=bwc.op_id,
                 command_name=bwc.name,
                 use_conn_transport=True,
-                process_response=False,
                 decrypt_reply=False,
             )
             reply = result_docs[0]
-            # Process the response from the server.
-            await self.client._process_response(reply, bwc.session)  # type: ignore[arg-type]
         except Exception as exc:
             # Top-level error will be embedded in ClientBulkWriteException.
             reply = {"error": exc}
-            # Process the response from the server.
             if isinstance(exc, OperationFailure):
                 await self.client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
             else:
@@ -290,9 +286,8 @@ class _AsyncClientBulk:
         published = dict(cmd)
         published["ops"] = op_docs
         published["nsInfo"] = ns_docs
-        reply: Mapping[str, Any] = {"ok": 1}
         try:
-            await run_unacknowledged_command(
+            result_docs, _, _ = await run_unacknowledged_command(
                 bwc.conn,  # type: ignore[arg-type]
                 cmd,
                 bwc.db_name,
@@ -310,6 +305,7 @@ class _AsyncClientBulk:
                 use_conn_transport=True,
                 max_doc_size=bwc.max_bson_size,
             )
+            reply: Mapping[str, Any] = result_docs[0]
         except Exception as exc:
             # Top-level error will be embedded in ClientBulkWriteException.
             reply = {"error": exc}
