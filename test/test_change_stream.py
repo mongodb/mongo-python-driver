@@ -908,7 +908,7 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin, ProseSpecT
         super().setUp()
         # Use a new collection for each test.
         self.watched_collection().drop()
-        self.watched_collection().insert_one({})
+        self.db.create_collection(self.watched_collection().name)
 
     def change_stream_with_client(self, client, *args, **kwargs):
         return (

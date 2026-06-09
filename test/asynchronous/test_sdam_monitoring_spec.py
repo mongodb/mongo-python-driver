@@ -296,10 +296,12 @@ class TestSdamMonitoring(AsyncIntegrationTest):
             event_listeners=[self.listener], retryWrites=retry_writes
         )
         self.coll = self.test_client[self.client.db.name].test
-        await self.coll.insert_one({})
+        await self.coll.drop()  # necessary for first test run
+        await self.coll.database.create_collection(self.coll.name)
         self.listener.reset()
 
     async def asyncTearDown(self):
+        await self.coll.drop()
         await super().asyncTearDown()
 
     async def _test_app_error(self, fail_command_opts, expected_error):

@@ -62,7 +62,7 @@ def command(
     conn: Connection,
     dbname: str,
     spec: MutableMapping[str, Any],
-    is_mongos: bool,
+    is_mongos: bool,  # noqa: ARG001
     read_preference: Optional[_ServerMode],
     codec_options: CodecOptions[_DocumentType],
     session: Optional[ClientSession],
@@ -76,7 +76,6 @@ def command(
     parse_write_concern_error: bool = False,
     collation: Optional[_CollationIn] = None,
     compression_ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
-    use_op_msg: bool = False,
     unacknowledged: bool = False,
     user_fields: Optional[Mapping[str, Any]] = None,
     exhaust_allowed: bool = False,
@@ -102,7 +101,6 @@ def command(
         field in the command response.
     :param collation: The collation for this command.
     :param compression_ctx: optional compression Context.
-    :param use_op_msg: True if we should use OP_MSG.
     :param unacknowledged: True if this is an unacknowledged command.
     :param user_fields: Response fields that should be decoded
         using the TypeDecoders from codec_options, passed to
@@ -110,14 +108,10 @@ def command(
     :param exhaust_allowed: True if we should enable OP_MSG exhaustAllowed.
     """
     name = next(iter(spec))
-    ns = dbname + ".$cmd"
     speculative_hello = False
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
-    if is_mongos and not use_op_msg:
-        assert read_preference is not None
-        spec = message._maybe_add_read_preference(spec, read_preference)
     if read_concern and not (session and session.in_transaction):
         if read_concern.level:
             spec["readConcern"] = read_concern.document
@@ -142,20 +136,15 @@ def command(
         conn.apply_timeout(client, spec)
     _csot.apply_write_concern(spec, write_concern)
 
-    if use_op_msg:
-        flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
-        flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
-        request_id, msg, size, max_doc_size = message._op_msg(
-            flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
-        )
-        # If this is an unacknowledged write then make sure the encoded doc(s)
-        # are small enough, otherwise rely on the server to return an error.
-        if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
-            message._raise_document_too_large(name, size, max_bson_size)
-    else:
-        request_id, msg, size = message._query(
-            0, ns, 0, -1, spec, None, codec_options, compression_ctx
-        )
+    flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
+    flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
+    request_id, msg, size, max_doc_size = message._op_msg(
+        flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+    )
+    # If this is an unacknowledged write then make sure the encoded doc(s)
+    # are small enough, otherwise rely on the server to return an error.
+    if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
+        message._raise_document_too_large(name, size, max_bson_size)
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
@@ -190,7 +179,7 @@ def command(
 
     try:
         sendall(conn.conn.get_conn, msg)
-        if use_op_msg and unacknowledged:
+        if unacknowledged:
             # Unacknowledged, fake a successful command response.
             reply = None
             response_doc: _DocumentOut = {"ok": 1}
