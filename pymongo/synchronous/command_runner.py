@@ -211,10 +211,7 @@ def _run_command(
             reply = conn.receive_message(None)
         elif unacknowledged:
             if use_conn_transport:
-                if not conn.is_writable:
-                    raise NotPrimaryError(
-                        "not primary", {"ok": 0, "errmsg": "not primary", "code": 10107}
-                    )
+                conn._raise_if_not_writable()
                 conn.send_message(msg, max_doc_size)
             else:
                 sendall(conn.conn.get_conn, msg)

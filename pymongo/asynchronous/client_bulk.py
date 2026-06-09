@@ -263,10 +263,6 @@ class _AsyncClientBulk:
         except Exception as exc:
             # Top-level error will be embedded in ClientBulkWriteException.
             reply = {"error": exc}
-            if isinstance(exc, OperationFailure):
-                await self.client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
-            else:
-                await self.client._process_response({}, bwc.session)  # type: ignore[arg-type]
         return reply  # type: ignore[return-value]
 
     async def unack_write(
