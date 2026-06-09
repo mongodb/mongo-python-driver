@@ -54,7 +54,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
-    from pymongo.message import _OpMsg, _OpReply
+    from pymongo.message import _OpMsg
     from pymongo.monitoring import _EventListeners
     from pymongo.pool_options import PoolOptions
     from pymongo.typings import _Address, _DocumentOut, _DocumentType
@@ -96,9 +96,9 @@ async def _run_command(
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
     reply_doc_builder: Optional[
-        Callable[[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]]], _DocumentOut]
+        Callable[[list[dict[str, Any]], Optional[_OpMsg]], _DocumentOut]
     ] = None,
-) -> tuple[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
+) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
 
     This is the shared implementation behind :func:`run_acknowledged_command`,
@@ -205,7 +205,7 @@ async def _run_command(
             service_id=conn.service_id,
         )
 
-    reply: Optional[Union[_OpReply, _OpMsg]]
+    reply: Optional[_OpMsg]
     try:
         if more_to_come:
             reply = await conn.receive_message(None)
@@ -372,7 +372,7 @@ async def run_acknowledged_command(
     use_conn_transport: bool = False,
     process_response: bool = True,
     decrypt_reply: bool = True,
-) -> tuple[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
+) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send an acknowledged command and return ``(docs, reply, duration)``.
 
     This is the entry point for standard commands and bulk write batches: it
@@ -435,7 +435,7 @@ async def run_unacknowledged_command(
     speculative_hello: bool = False,
     use_conn_transport: bool = False,
     max_doc_size: int = 0,
-) -> tuple[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
+) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send an unacknowledged command and fake an ``{"ok": 1}`` reply.
 
     The message is sent only -- no reply is received -- so the response
@@ -494,9 +494,9 @@ async def run_cursor_command(
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
     reply_doc_builder: Optional[
-        Callable[[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]]], _DocumentOut]
+        Callable[[list[dict[str, Any]], Optional[_OpMsg]], _DocumentOut]
     ] = None,
-) -> tuple[list[dict[str, Any]], Optional[Union[_OpReply, _OpMsg]], datetime.timedelta]:
+) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Run a cursor ``find``/``getMore`` operation over ``conn``.
 
     Uses the connection transport, leaves ``conn.more_to_come`` untouched (the

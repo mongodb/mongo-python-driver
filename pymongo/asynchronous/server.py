@@ -33,7 +33,7 @@ from pymongo.logger import (
     _debug_log,
     _SDAMStatusMessage,
 )
-from pymongo.message import _GetMore, _OpMsg, _OpReply, _Query
+from pymongo.message import _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
@@ -169,9 +169,7 @@ class Server:
 
         user_fields = _CURSOR_DOC_FIELDS if use_cmd else None
 
-        def _build_reply_doc(
-            docs: list[dict[str, Any]], reply: Optional[Union[_OpReply, _OpMsg]]
-        ) -> _DocumentOut:
+        def _build_reply_doc(docs: list[dict[str, Any]], reply: Optional[_OpMsg]) -> _DocumentOut:
             # Must publish in find / getMore / explain command response format.
             if use_cmd:
                 return docs[0]

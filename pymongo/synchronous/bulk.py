@@ -35,7 +35,10 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
 from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
-from pymongo.synchronous.command_runner import run_command
+from pymongo.synchronous.command_runner import (
+    run_acknowledged_command,
+    run_unacknowledged_command,
+)
 from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.bulk_shared import (
     _COMMANDS,
@@ -65,12 +68,6 @@ from pymongo.message import (
     _randint,
 )
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
-from pymongo.synchronous.command_runner import (
-    run_acknowledged_command,
-    run_unacknowledged_command,
-)
-from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
