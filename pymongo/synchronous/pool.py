@@ -393,8 +393,8 @@ class Connection:
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
-        if unacknowledged and not self.is_writable:
-            raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
+        if unacknowledged:
+            self._raise_if_not_writable()
         try:
             if session is not None and session._starting_transaction:
                 session._transaction.set_in_progress()
@@ -426,6 +426,11 @@ class Connection:
         # Catch socket.error, KeyboardInterrupt, CancelledError, etc. and close ourselves.
         except BaseException as error:
             self._raise_connection_failure(error)
+
+    def _raise_if_not_writable(self) -> None:
+        """Raise NotPrimaryError if this connection is not writable."""
+        if not self.is_writable:
+            raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
 
     def send_message(self, message: bytes, max_doc_size: int) -> None:
         """Send a raw BSON message or raise ConnectionFailure.

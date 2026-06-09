@@ -55,7 +55,6 @@ from pymongo.common import (
 from pymongo.errors import (
     ConfigurationError,
     InvalidOperation,
-    NotPrimaryError,
     OperationFailure,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
@@ -251,30 +250,24 @@ class _AsyncBulk:
     ) -> dict[str, Any]:
         """Run a batch write command, returning the response as a dict."""
         cmd[bwc.field] = docs
-        try:
-            result_docs, _, _ = await run_acknowledged_command(
-                bwc.conn,  # type: ignore[arg-type]
-                cmd,
-                bwc.db_name,
-                request_id,
-                msg,
-                client=client,
-                session=bwc.session,  # type: ignore[arg-type]
-                listeners=bwc.listeners,
-                address=bwc.conn.address,
-                start=bwc.start_time,
-                codec_options=bwc.codec,
-                op_id=bwc.op_id,
-                command_name=bwc.name,
-                use_conn_transport=True,
-                decrypt_reply=False,
-            )
-            reply = result_docs[0]
-        except Exception as exc:
-            if isinstance(exc, (NotPrimaryError, OperationFailure)):
-                await client._process_response(exc.details, bwc.session)  # type: ignore[arg-type]
-            raise
-        return reply
+        result_docs, _, _ = await run_acknowledged_command(
+            bwc.conn,  # type: ignore[arg-type]
+            cmd,
+            bwc.db_name,
+            request_id,
+            msg,
+            client=client,
+            session=bwc.session,  # type: ignore[arg-type]
+            listeners=bwc.listeners,
+            address=bwc.conn.address,
+            start=bwc.start_time,
+            codec_options=bwc.codec,
+            op_id=bwc.op_id,
+            command_name=bwc.name,
+            use_conn_transport=True,
+            decrypt_reply=False,
+        )
+        return result_docs[0]
 
     async def unack_write(
         self,
