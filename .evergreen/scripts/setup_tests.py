@@ -389,7 +389,7 @@ def handle_test_env() -> None:
         # test runner, so no separate write_env calls are needed.
         certs = ROOT / "test/certificates"
         os.environ["CSFLE_TLS_CA_FILE"] = str(certs / "ca.pem")
-        os.environ["CSFLE_TLS_CERT_FILE"] = str(certs / "server.pem")
+        os.environ["CSFLE_TLS_CERT_FILE"] = str(certs / "server-kms.pem")
         os.environ["CSFLE_TLS_CLIENT_CERT_FILE"] = str(certs / "client.pem")
         os.environ["CSFLE_TLS_WRONG_HOST_FILE"] = str(certs / "wrong-host.pem")
         os.environ["CSFLE_TLS_EXPIRED_FILE"] = str(certs / "expired.pem")
