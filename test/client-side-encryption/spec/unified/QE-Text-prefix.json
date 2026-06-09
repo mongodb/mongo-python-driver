@@ -1,17 +1,16 @@
 {
-  "description": "QE-Text-suffixPreview",
+  "description": "QE-Text-prefix",
   "schemaVersion": "1.25",
   "runOnRequirements": [
     {
-      "minServerVersion": "8.2.0",
-      "maxServerVersion": "8.99.99",
+      "minServerVersion": "9.0.0",
       "topologies": [
         "replicaset",
         "sharded",
         "load-balanced"
       ],
       "csfle": {
-        "minLibmongocryptVersion": "1.15.0"
+        "minLibmongocryptVersion": "1.19.0"
       }
     }
   ],
@@ -102,7 +101,7 @@
               "bsonType": "string",
               "queries": [
                 {
-                  "queryType": "suffixPreview",
+                  "queryType": "prefix",
                   "contention": {
                     "$numberLong": "0"
                   },
@@ -124,7 +123,7 @@
   ],
   "tests": [
     {
-      "description": "Insert QE suffixPreview",
+      "description": "Insert QE prefix",
       "operations": [
         {
           "name": "insertOne",
@@ -224,9 +223,9 @@
           "arguments": {
             "filter": {
               "$expr": {
-                "$encStrEndsWith": {
+                "$encStrStartsWith": {
                   "input": "$encryptedText",
-                  "suffix": "bar"
+                  "prefix": "foo"
                 }
               }
             }
@@ -247,55 +246,55 @@
                 },
                 {
                   "$binary": {
-                    "base64": "uDCWsucUsJemUP7pmeb+Kd8B9qupVzI8wnLFqX1rkiU=",
+                    "base64": "fmUMXTMV/XRiN0IL3VXxSEn6SQG9E6Po30kJKB8JJlQ=",
                     "subType": "00"
                   }
                 },
                 {
                   "$binary": {
-                    "base64": "W3E1x4bHZ8SEHFz4zwXM0G5Z5WSwBhnxE8x5/qdP6JM=",
+                    "base64": "vZIDMiFDgjmLNYVrrbnq1zT4hg7sGpe/PMtighSsnRc=",
                     "subType": "00"
                   }
                 },
                 {
                   "$binary": {
-                    "base64": "6g/TXVDDf6z+ntResIvTKWdmIy4ajQ1rhwdNZIiEG7A=",
+                    "base64": "26Z5G+sHTzV3D7F8Y0m08389USZ2afinyFV3ez9UEBQ=",
                     "subType": "00"
                   }
                 },
                 {
                   "$binary": {
-                    "base64": "hU+u/T3D6dHDpT3d/v5AlgtRoAufCXCAyO2jQlgsnCw=",
+                    "base64": "q/JEq8of7bE0QE5Id0XuOsNQ4qVpANYymcPQDUL2Ywk=",
                     "subType": "00"
                   }
                 },
                 {
                   "$binary": {
-                    "base64": "vrPnq0AtBIURNgNGA6HJL+5/p5SBWe+qz8505TRo/dE=",
+                    "base64": "Uvvv46LkfbgLoPqZ6xTBzpgoYRTM6FUgRdqZ9eaVojI=",
                     "subType": "00"
                   }
                 },
                 {
                   "$binary": {
-                    "base64": "W5pylBxdv2soY2NcBfPiHDVLTS6tx+0ULkI8gysBeFY=",
+                    "base64": "nMxdq2lladuBJA3lv3JC2MumIUtRJBNJVLp3PVE6nQk=",
                     "subType": "00"
                   }
                 },
                 {
                   "$binary": {
-                    "base64": "oWO3xX3x0bYUJGK2S1aPAmlU3Xtfsgb9lTZ6flGAlsg=",
+                    "base64": "hS3V0qq5CF/SkTl3ZWWWgXcAJ8G5yGtkY2RwcHNc5Oc=",
                     "subType": "00"
                   }
                 },
                 {
                   "$binary": {
-                    "base64": "SjZGucTEUbdpd86O8yj1pyMyBOOKxvAQ9C8ngZ9C5UE=",
+                    "base64": "McgwYUxfKj5+4D0vskZymy4KA82s71MR25iV/Enutww=",
                     "subType": "00"
                   }
                 },
                 {
                   "$binary": {
-                    "base64": "CEaMZkxVDVbnXr+To0DOyvsva04UQkIYP3KtgYVVwf8=",
+                    "base64": "Ciqdk1b+t+Vrr6oIlFFk0Zdym5BPmwN3glQ0/VcsVdM=",
                     "subType": "00"
                   }
                 }
@@ -306,7 +305,7 @@
       ]
     },
     {
-      "description": "Query with non-matching $encStrEndsWith",
+      "description": "Query with non-matching $encStrStartsWith",
       "operations": [
         {
           "name": "insertOne",
@@ -323,9 +322,9 @@
           "arguments": {
             "filter": {
               "$expr": {
-                "$encStrEndsWith": {
+                "$encStrStartsWith": {
                   "input": "$encryptedText",
-                  "suffix": "foo"
+                  "prefix": "bar"
                 }
               }
             }

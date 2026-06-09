@@ -1,6 +1,6 @@
 {
-  "fields": [
-    {
+    "fields": [
+        {
             "keyId": {
                 "$binary": {
                     "base64": "EjRWeBI0mHYSNBI0VniQEg==",
@@ -11,7 +11,7 @@
             "bsonType": "string",
             "queries": [
                 {
-                    "queryType": "prefixPreview",
+                    "queryType": "prefix",
                     "strMinQueryLength": {
                         "$numberInt": "2"
                     },
@@ -22,7 +22,7 @@
                     "diacriticSensitive": true
                 },
                 {
-                    "queryType": "suffixPreview",
+                    "queryType": "suffix",
                     "strMinQueryLength": {
                         "$numberInt": "2"
                     },
@@ -34,5 +34,5 @@
                 }
             ]
         }
-  ]
+    ]
 }
