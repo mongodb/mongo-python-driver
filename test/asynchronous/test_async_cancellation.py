@@ -138,30 +138,36 @@ class TestAsyncCancellation(AsyncIntegrationTest):
 
         created_sockets: list[_socket.socket] = []
         real_socket_cls = _socket.socket
+        target_task = None
 
         def tracking_socket(*args, **kwargs):
             s = real_socket_cls(*args, **kwargs)
-            created_sockets.append(s)
+            if asyncio.current_task() is target_task:
+                created_sockets.append(s)
             return s
 
         loop = asyncio.get_running_loop()
+        real_sock_connect = loop.sock_connect
         started = asyncio.Event()
         block_forever = asyncio.Event()
 
         async def slow_sock_connect(sock, addr):
-            started.set()
-            await block_forever.wait()
+            if asyncio.current_task() is target_task:
+                started.set()
+                await block_forever.wait()
+                return None
+            return await real_sock_connect(sock, addr)
 
         with (
             patch.object(_socket, "socket", tracking_socket),
             patch.object(loop, "sock_connect", slow_sock_connect),
         ):
             task = asyncio.create_task(pool_shared._async_create_connection(address, options))
+            target_task = task
             await asyncio.wait_for(started.wait(), timeout=5)
             task.cancel()
             with self.assertRaises(asyncio.CancelledError):
                 await task
-
         self.assertTrue(created_sockets, "expected at least one socket to be created")
         for sock in created_sockets:
             self.assertEqual(
