@@ -1,0 +1,27 @@
+{
+  "description": "expectedTracingSpans-spanMalformedNestedMustBeArray",
+  "schemaVersion": "1.26",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "nested spans must be an array",
+      "operations": [],
+      "expectTracingMessages": {
+        "client": "client0",
+        "spans": [
+          {
+            "name": "foo",
+            "tags": {},
+            "nested": {}
+          }
+        ]
+      }
+    }
+  ]
+}

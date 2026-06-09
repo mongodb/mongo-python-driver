@@ -1,0 +1,26 @@
+{
+  "description": "expectedTracingSpans-spanMalformedNestedMustBeObject",
+  "schemaVersion": "1.26",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "span tags must be an object",
+      "operations": [],
+      "expectTracingMessages": {
+        "client": "client0",
+        "spans": [
+          {
+            "name": "foo",
+            "tags": []
+          }
+        ]
+      }
+    }
+  ]
+}

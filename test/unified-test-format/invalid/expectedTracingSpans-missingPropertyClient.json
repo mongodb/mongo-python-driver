@@ -1,0 +1,27 @@
+{
+  "description": "expectedTracingSpans-missingPropertyClient",
+  "schemaVersion": "1.26",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "missing required property client",
+      "operations": [],
+      "expectTracingMessages": {
+        "spans": [
+          {
+            "name": "command",
+            "tags": {
+              "db.system": "mongodb"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
