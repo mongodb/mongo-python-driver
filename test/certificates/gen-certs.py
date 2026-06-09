@@ -74,14 +74,10 @@ def cert_pem(cert) -> bytes:
 
 
 def aki_from_ca(ca_cert: x509.Certificate) -> x509.AuthorityKeyIdentifier:
-    # Issuer form (DirName + serial, no keyid).  Provides the AKI that
-    # Python 3.13 / OpenSSL 3.x requires without including a keyid that would
-    # separately trigger macOS SecTrust's keyid-based OCSP lookup.
-    return x509.AuthorityKeyIdentifier(
-        key_identifier=None,
-        authority_cert_issuer=[x509.DirectoryName(ca_cert.subject)],
-        authority_cert_serial_number=ca_cert.serial_number,
-    )
+    # keyid form: SHA-1 hash of the CA's public key.  Required by Python 3.14 /
+    # OpenSSL 3.x strict chain building.  macOS OCSP enforcement on the server
+    # side is bypassed via --tlsAllowInvalidCertificates, so keyid form is safe.
+    return x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_cert.public_key())
 
 
 def server_san() -> x509.SubjectAlternativeName:
