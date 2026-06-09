@@ -1,0 +1,18 @@
+{
+  "description": "entity-client-observeTracingMessages-type",
+  "schemaVersion": "1.26",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "observeTracingMessages": "foo"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "observeTracingMessages must be an object",
+      "operations": []
+    }
+  ]
+}

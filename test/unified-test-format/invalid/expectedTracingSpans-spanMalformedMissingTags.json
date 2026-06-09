@@ -1,0 +1,25 @@
+{
+  "description": "expectedTracingSpans-spanMalformedMissingTags",
+  "schemaVersion": "1.26",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "missing required span tags",
+      "operations": [],
+      "expectTracingMessages": {
+        "client": "client0",
+        "spans": [
+          {
+            "name": "foo"
+          }
+        ]
+      }
+    }
+  ]
+}

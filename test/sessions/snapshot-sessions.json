@@ -988,6 +988,810 @@
           }
         }
       ]
+    },
+    {
+      "description": "Find operation with snapshot and snapshot time",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "session": "session0",
+            "filter": {}
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": 11
+            },
+            {
+              "_id": 2,
+              "x": 11
+            }
+          ]
+        },
+        {
+          "name": "getSnapshotTime",
+          "object": "session0",
+          "saveResultAsEntity": "savedSnapshotTime"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 3,
+              "x": 33
+            }
+          }
+        },
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "session": {
+                  "id": "session2",
+                  "client": "client0",
+                  "sessionOptions": {
+                    "snapshot": true,
+                    "snapshotTime": "savedSnapshotTime"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "session": "session2",
+            "filter": {}
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": 11
+            },
+            {
+              "_id": 2,
+              "x": 11
+            }
+          ]
+        },
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "session": "session2",
+            "filter": {}
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": 11
+            },
+            {
+              "_id": 2,
+              "x": 11
+            }
+          ]
+        },
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {}
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": 11
+            },
+            {
+              "_id": 2,
+              "x": 11
+            },
+            {
+              "_id": 3,
+              "x": 33
+            }
+          ]
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$exists": false
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$matchesEntity": "savedSnapshotTime"
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$matchesEntity": "savedSnapshotTime"
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collection0",
+                  "readConcern": {
+                    "$$exists": false
+                  }
+                },
+                "databaseName": "database0"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Distinct operation with snapshot and snapshot time",
+      "operations": [
+        {
+          "name": "distinct",
+          "object": "collection0",
+          "arguments": {
+            "session": "session0",
+            "filter": {},
+            "fieldName": "x"
+          },
+          "expectResult": [
+            11
+          ]
+        },
+        {
+          "name": "getSnapshotTime",
+          "object": "session0",
+          "saveResultAsEntity": "savedSnapshotTime"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 3,
+              "x": 33
+            }
+          }
+        },
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "session": {
+                  "id": "session2",
+                  "client": "client0",
+                  "sessionOptions": {
+                    "snapshot": true,
+                    "snapshotTime": "savedSnapshotTime"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "distinct",
+          "object": "collection0",
+          "arguments": {
+            "session": "session2",
+            "filter": {},
+            "fieldName": "x"
+          },
+          "expectResult": [
+            11
+          ]
+        },
+        {
+          "name": "distinct",
+          "object": "collection0",
+          "arguments": {
+            "session": "session2",
+            "filter": {},
+            "fieldName": "x"
+          },
+          "expectResult": [
+            11
+          ]
+        },
+        {
+          "name": "distinct",
+          "object": "collection0",
+          "arguments": {
+            "filter": {},
+            "fieldName": "x"
+          },
+          "expectResult": [
+            11,
+            33
+          ]
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "distinct": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$exists": false
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "distinct": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$matchesEntity": "savedSnapshotTime"
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "distinct": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$matchesEntity": "savedSnapshotTime"
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "distinct": "collection0",
+                  "readConcern": {
+                    "$$exists": false
+                  }
+                },
+                "databaseName": "database0"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Aggregate operation with snapshot and snapshot time",
+      "operations": [
+        {
+          "name": "aggregate",
+          "object": "collection0",
+          "arguments": {
+            "session": "session0",
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": 1
+                }
+              }
+            ]
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": 11
+            }
+          ]
+        },
+        {
+          "name": "getSnapshotTime",
+          "object": "session0",
+          "saveResultAsEntity": "savedSnapshotTime"
+        },
+        {
+          "name": "findOneAndUpdate",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "update": {
+              "$inc": {
+                "x": 1
+              }
+            },
+            "returnDocument": "After"
+          },
+          "expectResult": {
+            "_id": 1,
+            "x": 12
+          }
+        },
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "session": {
+                  "id": "session2",
+                  "client": "client0",
+                  "sessionOptions": {
+                    "snapshot": true,
+                    "snapshotTime": "savedSnapshotTime"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "aggregate",
+          "object": "collection0",
+          "arguments": {
+            "session": "session2",
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": 1
+                }
+              }
+            ]
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": 11
+            }
+          ]
+        },
+        {
+          "name": "aggregate",
+          "object": "collection0",
+          "arguments": {
+            "session": "session2",
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": 1
+                }
+              }
+            ]
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": 11
+            }
+          ]
+        },
+        {
+          "name": "aggregate",
+          "object": "collection0",
+          "arguments": {
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": 1
+                }
+              }
+            ]
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": 12
+            }
+          ]
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$exists": false
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$matchesEntity": "savedSnapshotTime"
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$matchesEntity": "savedSnapshotTime"
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "collection0",
+                  "readConcern": {
+                    "$$exists": false
+                  }
+                },
+                "databaseName": "database0"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "countDocuments operation with snapshot and snapshot time",
+      "operations": [
+        {
+          "name": "countDocuments",
+          "object": "collection0",
+          "arguments": {
+            "session": "session0",
+            "filter": {}
+          },
+          "expectResult": 2
+        },
+        {
+          "name": "getSnapshotTime",
+          "object": "session0",
+          "saveResultAsEntity": "savedSnapshotTime"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 3,
+              "x": 33
+            }
+          }
+        },
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "session": {
+                  "id": "session2",
+                  "client": "client0",
+                  "sessionOptions": {
+                    "snapshot": true,
+                    "snapshotTime": "savedSnapshotTime"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "countDocuments",
+          "object": "collection0",
+          "arguments": {
+            "session": "session2",
+            "filter": {}
+          },
+          "expectResult": 2
+        },
+        {
+          "name": "countDocuments",
+          "object": "collection0",
+          "arguments": {
+            "session": "session2",
+            "filter": {}
+          },
+          "expectResult": 2
+        },
+        {
+          "name": "countDocuments",
+          "object": "collection0",
+          "arguments": {
+            "filter": {}
+          },
+          "expectResult": 3
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$exists": false
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$matchesEntity": "savedSnapshotTime"
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$matchesEntity": "savedSnapshotTime"
+                    }
+                  }
+                },
+                "databaseName": "database0"
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "collection0",
+                  "readConcern": {
+                    "$$exists": false
+                  }
+                },
+                "databaseName": "database0"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "Mixed operation with snapshot and snapshotTime",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "session": "session0",
+            "filter": {
+              "_id": 1
+            }
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": 11
+            }
+          ]
+        },
+        {
+          "name": "getSnapshotTime",
+          "object": "session0",
+          "saveResultAsEntity": "savedSnapshotTime"
+        },
+        {
+          "name": "findOneAndUpdate",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "update": {
+              "$inc": {
+                "x": 1
+              }
+            },
+            "returnDocument": "After"
+          },
+          "expectResult": {
+            "_id": 1,
+            "x": 12
+          }
+        },
+        {
+          "name": "createEntities",
+          "object": "testRunner",
+          "arguments": {
+            "entities": [
+              {
+                "session": {
+                  "id": "session2",
+                  "client": "client0",
+                  "sessionOptions": {
+                    "snapshot": true,
+                    "snapshotTime": "savedSnapshotTime"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            }
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": 12
+            }
+          ]
+        },
+        {
+          "name": "aggregate",
+          "object": "collection0",
+          "arguments": {
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": 1
+                }
+              }
+            ],
+            "session": "session2"
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": 11
+            }
+          ]
+        },
+        {
+          "name": "distinct",
+          "object": "collection0",
+          "arguments": {
+            "fieldName": "x",
+            "filter": {},
+            "session": "session2"
+          },
+          "expectResult": [
+            11
+          ]
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$exists": false
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "find": "collection0",
+                  "readConcern": {
+                    "$$exists": false
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$matchesEntity": "savedSnapshotTime"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "distinct": "collection0",
+                  "readConcern": {
+                    "level": "snapshot",
+                    "atClusterTime": {
+                      "$$matchesEntity": "savedSnapshotTime"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

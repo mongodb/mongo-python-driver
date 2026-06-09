@@ -1,0 +1,20 @@
+{
+  "description": "entity-client-observeTracingMessages-additionalProperties",
+  "schemaVersion": "1.26",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "observeTracingMessages": {
+          "foo": "bar"
+        }
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "observeTracingMessages must not have additional properties'",
+      "operations": []
+    }
+  ]
+}
