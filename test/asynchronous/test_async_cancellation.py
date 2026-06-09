@@ -152,7 +152,7 @@ class TestAsyncCancellation(AsyncIntegrationTest):
         block_forever = asyncio.Event()
 
         async def slow_sock_connect(sock, addr):
-            if asyncio.current_task() is target_task:
+            if sock in created_sockets:
                 started.set()
                 await block_forever.wait()
                 return None
