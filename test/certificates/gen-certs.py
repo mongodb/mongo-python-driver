@@ -138,11 +138,13 @@ TRUSTED_CA_NAME = x509.Name(
 
 
 # ---------------------------------------------------------------------------
-# 0. Drivers Testing CA — minimal profile matching the original 2019 cert.
-#    Only basicConstraints: CA:TRUE.  No keyUsage, no SAN, no SKI, no AKI.
-#    Adding any of those to a CA cert that is NOT in the macOS system keychain
-#    causes Apple SecTrust to treat it as a leaf cert needing OCSP, which then
-#    fails (CSSMERR_TP_CERT_SUSPENDED) because the CA has no OCSP URL.
+# 0. Drivers Testing CA — minimal profile.
+#    Only basicConstraints: CA:TRUE (critical).  No keyUsage, no SAN, no SKI,
+#    no AKI.  Adding SKI/AKI/SAN to a CA cert that is NOT in the macOS system
+#    keychain causes Apple SecTrust to treat it as a leaf cert needing OCSP,
+#    which then fails (CSSMERR_TP_CERT_SUSPENDED) because the CA has no OCSP
+#    URL.  RFC 5280 §4.2.1.9 requires basicConstraints to be critical on CA
+#    certs; Python 3.14 / OpenSSL 3.x strict mode enforces this.
 # ---------------------------------------------------------------------------
 print("==> Generating Drivers Testing CA...")
 ca_key = make_key()
@@ -154,7 +156,7 @@ ca_cert = (
     .serial_number(480006)
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
-    .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=False)
+    .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "ca.pem").write_bytes(cert_pem(ca_cert))
@@ -381,13 +383,23 @@ def cert_text(path: Path) -> str:
 
 errors = 0
 
-# CA cert must NOT have AKI, SKI, or SAN (would trigger macOS SecTrust OCSP).
+# CA cert must have critical basicConstraints and must NOT have AKI/SKI/SAN.
 ca_text = cert_text(SCRIPT_DIR / "ca.pem")
+ca_errors = 0
+if "Basic Constraints: critical" not in ca_text:
+    print(
+        "    ca.pem: ERROR — basicConstraints not critical (required by RFC 5280 / Python 3.14)",
+        file=sys.stderr,
+    )
+    ca_errors += 1
 for ext in ("Authority Key Identifier", "Subject Key Identifier", "Subject Alternative Name"):
     if ext in ca_text:
         print(f"    ca.pem: ERROR — has {ext} (would cause macOS OCSP issues)", file=sys.stderr)
-        errors += 1
-print("    ca.pem: OK") if not errors else None
+        ca_errors += 1
+if ca_errors:
+    errors += ca_errors
+else:
+    print("    ca.pem: OK")
 
 # MongoDB certs must NOT have AKI.
 for name in ("server.pem", "client.pem"):
