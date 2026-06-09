@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
 """Generate TLS test certificates for the PyMongo test suite.
 
-Leaf certs carry AKI in the *issuer* form (DirName + serial, no keyid).
-Python 3.13 / OpenSSL 3.x requires AKI to be present for chain building.
-The issuer form satisfies that requirement while avoiding the *keyid* form,
-which would enable macOS SecTrust's keyid-based chain verification and trigger
-its hard-fail OCSP check (CSSMERR_TP_CERT_SUSPENDED) against test certs that
-have no OCSP URL.  MongoDB's own jstests/libs certs use the same approach.
+Two classes of leaf cert are generated:
 
-The CA cert carries keyUsage (keyCertSign + cRLSign, critical), required by
-Python 3.13 on Windows (OpenSSL 3.x enforces keyUsage on CA certs).
+  MongoDB certs (server.pem, client.pem, password_protected.pem):
+    No AKI extension.  MongoDB Enterprise on macOS uses Apple SecTrust with
+    kSecRevocationRequirePositiveResponse.  When AKI is present, SecTrust uses
+    it to identify the issuer, then attempts OCSP.  Because our CA is not in
+    the macOS system keychain on Evergreen driver CI hosts, OCSP fails and
+    SecTrust returns CSSMERR_TP_CERT_SUSPENDED.  Without AKI, SecTrust cannot
+    identify the issuer and skips the OCSP attempt.
 
-Using Python's cryptography library gives precise control over extensions —
-in particular it lets us add AKI without OpenSSL 3.x auto-adding SKI.
+  KMS certs (server-kms.pem, wrong-host.pem, expired.pem):
+    Carry AKI in the issuer form (DirName + serial, no keyid).  These certs
+    are verified by Python's ssl module (OpenSSL), not by MongoDB Enterprise.
+    Python 3.13 / OpenSSL 3.x requires AKI on non-root certs.  The issuer
+    form satisfies that requirement.  Using the issuer form (not keyid) avoids
+    providing a keyid, which would separately enable macOS SecTrust's
+    keyid-based OCSP lookup on any path that does use SecTrust.
+
+The CA (ca.pem) intentionally has only basicConstraints: CA:TRUE and no other
+extensions.  The original test CA shipped in this directory (from 2019) used
+exactly this minimal profile and worked fine on macOS.  Adding keyUsage,
+subjectAltName, or SKI/AKI to the CA cert causes macOS SecTrust to treat it
+like a leaf cert requiring its own OCSP check, which then fails
+(CSSMERR_TP_CERT_SUSPENDED) because the CA is not in the system keychain.
 
 Usage:
     pip install cryptography
@@ -29,7 +41,7 @@ from pathlib import Path
 
 try:
     from cryptography import x509
-    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
     from cryptography.hazmat.primitives.serialization import (
         BestAvailableEncryption,
@@ -62,12 +74,9 @@ def cert_pem(cert) -> bytes:
 
 
 def aki_from_ca(ca_cert: x509.Certificate) -> x509.AuthorityKeyIdentifier:
-    # Use the issuer form (DirName + serial) rather than the keyid form.
-    # The keyid form enables macOS SecTrust keyid-based chain verification, which
-    # then triggers hard-fail OCSP (CSSMERR_TP_CERT_SUSPENDED) because our test
-    # certs have no OCSP URL.  The issuer form satisfies Python 3.13 / OpenSSL
-    # 3.x's AKI requirement without providing a keyid, so macOS falls back to
-    # name-based chain matching and does not attempt OCSP at all.
+    # Issuer form (DirName + serial, no keyid).  Provides the AKI that
+    # Python 3.13 / OpenSSL 3.x requires without including a keyid that would
+    # separately trigger macOS SecTrust's keyid-based OCSP lookup.
     return x509.AuthorityKeyIdentifier(
         key_identifier=None,
         authority_cert_issuer=[x509.DirectoryName(ca_cert.subject)],
@@ -85,32 +94,30 @@ def server_san() -> x509.SubjectAlternativeName:
     )
 
 
-# Canonical names — kept stable so tests that hard-code DN strings keep passing.
 CA_NAME = x509.Name(
     [
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "New York"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, "New York City"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MongoDB"),
-        x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Drivers"),
         x509.NameAttribute(NameOID.COMMON_NAME, "Drivers Testing CA"),
+        x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Drivers"),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MongoDB"),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, "New York City"),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "New York"),
+        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
     ]
 )
 
 SERVER_NAME = x509.Name(
     [
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "New York"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, "New York City"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MongoDB"),
-        x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Drivers"),
         x509.NameAttribute(NameOID.COMMON_NAME, "localhost"),
+        x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Drivers"),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MongoDB"),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, "New York City"),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "New York"),
+        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
     ]
 )
 
 # Attribute order must be CN→OU→O→L→ST→C so that MongoDB's reversed-order
 # x509 username string is "C=US,ST=New York,L=New York City,O=MDB,OU=Drivers,CN=client"
-# (see MONGODB_X509_USERNAME in test/test_ssl.py).
 CLIENT_NAME = x509.Name(
     [
         x509.NameAttribute(NameOID.COMMON_NAME, "client"),
@@ -124,18 +131,22 @@ CLIENT_NAME = x509.Name(
 
 TRUSTED_CA_NAME = x509.Name(
     [
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "New York"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, "New York City"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MongoDB"),
-        x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Kernel"),
         x509.NameAttribute(NameOID.COMMON_NAME, "Trusted Kernel Test CA"),
+        x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Kernel"),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MongoDB"),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, "New York City"),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "New York"),
+        x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
     ]
 )
 
 
 # ---------------------------------------------------------------------------
-# 1. Drivers Testing CA
+# 0. Drivers Testing CA — minimal profile matching the original 2019 cert.
+#    Only basicConstraints: CA:TRUE.  No keyUsage, no SAN, no SKI, no AKI.
+#    Adding any of those to a CA cert that is NOT in the macOS system keychain
+#    causes Apple SecTrust to treat it as a leaf cert needing OCSP, which then
+#    fails (CSSMERR_TP_CERT_SUSPENDED) because the CA has no OCSP URL.
 # ---------------------------------------------------------------------------
 print("==> Generating Drivers Testing CA...")
 ca_key = make_key()
@@ -144,34 +155,21 @@ ca_cert = (
     .subject_name(CA_NAME)
     .issuer_name(CA_NAME)
     .public_key(ca_key.public_key())
-    .serial_number(100)
+    .serial_number(480006)
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
-    .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
-    .add_extension(
-        x509.KeyUsage(
-            digital_signature=False,
-            content_commitment=False,
-            key_encipherment=False,
-            data_encipherment=False,
-            key_agreement=False,
-            key_cert_sign=True,
-            crl_sign=True,
-            encipher_only=False,
-            decipher_only=False,
-        ),
-        critical=True,
-    )
+    .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "ca.pem").write_bytes(cert_pem(ca_cert))
-print("    ca.pem written")
+print("    ca.pem written (subject:", ca_cert.subject.rfc4514_string(), ")")
 
 
 # ---------------------------------------------------------------------------
-# 2. Server certificate — serial 1, revoked in crl.pem for test_tlsCRLFile_support
+# 1. Server certificate — serial 1, revoked in crl.pem for test_tlsCRLFile_support
+#    No AKI: presented to MongoDB Enterprise (Apple SecTrust on macOS).
 # ---------------------------------------------------------------------------
-print("==> Generating server certificate...")
+print("==> Generating server certificate (no AKI)...")
 server_key = make_key()
 server_cert = (
     x509.CertificateBuilder()
@@ -182,7 +180,6 @@ server_cert = (
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
     .add_extension(server_san(), critical=False)
-    .add_extension(aki_from_ca(ca_cert), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "server.pem").write_bytes(key_pem(server_key) + cert_pem(server_cert))
@@ -190,9 +187,34 @@ print("    server.pem written")
 
 
 # ---------------------------------------------------------------------------
-# 3. Client certificate — serial 2
+# 1b. KMS server certificate — serial 5, with AKI.
+#     Used by kms_failpoint_server.py (port 9003).  Verified by Python's ssl
+#     module (OpenSSL), NOT by MongoDB Enterprise — so AKI is safe here and
+#     is required for Python 3.13 / OpenSSL 3.x chain building.
 # ---------------------------------------------------------------------------
-print("==> Generating client certificate...")
+print("==> Generating KMS server certificate (with AKI)...")
+server_kms_key = make_key()
+server_kms_cert = (
+    x509.CertificateBuilder()
+    .subject_name(SERVER_NAME)
+    .issuer_name(CA_NAME)
+    .public_key(server_kms_key.public_key())
+    .serial_number(5)
+    .not_valid_before(NOT_BEFORE)
+    .not_valid_after(NOT_AFTER)
+    .add_extension(server_san(), critical=False)
+    .add_extension(aki_from_ca(ca_cert), critical=False)
+    .sign(ca_key, hashes.SHA256())
+)
+(SCRIPT_DIR / "server-kms.pem").write_bytes(key_pem(server_kms_key) + cert_pem(server_kms_cert))
+print("    server-kms.pem written")
+
+
+# ---------------------------------------------------------------------------
+# 2. Client certificate — serial 2
+#    No AKI: presented to MongoDB Enterprise during x509 auth.
+# ---------------------------------------------------------------------------
+print("==> Generating client certificate (no AKI)...")
 client_key = make_key()
 client_cert = (
     x509.CertificateBuilder()
@@ -220,7 +242,6 @@ client_cert = (
         x509.ExtendedKeyUsage([ExtendedKeyUsageOID.CLIENT_AUTH]),
         critical=False,
     )
-    .add_extension(aki_from_ca(ca_cert), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "client.pem").write_bytes(key_pem(client_key) + cert_pem(client_cert))
@@ -228,7 +249,7 @@ print("    client.pem written")
 
 
 # ---------------------------------------------------------------------------
-# 4. Password-protected client certificate (same cert, encrypted key)
+# 3. Password-protected client certificate (same cert, encrypted key)
 # ---------------------------------------------------------------------------
 print("==> Generating password-protected client certificate...")
 (SCRIPT_DIR / "password_protected.pem").write_bytes(
@@ -238,7 +259,7 @@ print("    password_protected.pem written (password: qwerty)")
 
 
 # ---------------------------------------------------------------------------
-# 5. CRL — revokes the server cert (serial 1) for test_tlsCRLFile_support
+# 4. CRL — revokes the server cert (serial 1) for test_tlsCRLFile_support
 # ---------------------------------------------------------------------------
 print("==> Generating CRL...")
 crl = (
@@ -256,21 +277,21 @@ print("    crl.pem written")
 
 
 # ---------------------------------------------------------------------------
-# 6. Wrong-host certificate (serial 3) — used in KMS TLS tests
+# 5. Wrong-host certificate (serial 3) — used in KMS TLS tests (with AKI)
 # ---------------------------------------------------------------------------
-print("==> Generating wrong-host certificate...")
+print("==> Generating wrong-host certificate (with AKI)...")
 wrong_host_key = make_key()
 wrong_host_cert = (
     x509.CertificateBuilder()
     .subject_name(
         x509.Name(
             [
-                x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-                x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "New York"),
-                x509.NameAttribute(NameOID.LOCALITY_NAME, "New York City"),
-                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MongoDB"),
-                x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Drivers"),
                 x509.NameAttribute(NameOID.COMMON_NAME, "wronghost.example.com"),
+                x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "Drivers"),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MongoDB"),
+                x509.NameAttribute(NameOID.LOCALITY_NAME, "New York City"),
+                x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "New York"),
+                x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
             ]
         )
     )
@@ -291,9 +312,9 @@ print("    wrong-host.pem written (SAN: wronghost.example.com)")
 
 
 # ---------------------------------------------------------------------------
-# 7. Expired certificate (serial 4) — used in KMS TLS tests
+# 6. Expired certificate (serial 4) — used in KMS TLS tests (with AKI)
 # ---------------------------------------------------------------------------
-print("==> Generating expired certificate...")
+print("==> Generating expired certificate (with AKI)...")
 expired_key = make_key()
 expired_cert = (
     x509.CertificateBuilder()
@@ -312,7 +333,8 @@ print("    expired.pem written (expired 2001-01-01)")
 
 
 # ---------------------------------------------------------------------------
-# 8. Trusted Kernel Test CA — separate CA, used in CA-bundle tests
+# 7. Trusted Kernel Test CA — separate CA used in CA-bundle tests only.
+#    This is an independent CA unrelated to the main Drivers Testing CA.
 # ---------------------------------------------------------------------------
 print("==> Generating Trusted Kernel Test CA...")
 trusted_ca_key = make_key()
@@ -349,12 +371,12 @@ print("    trusted-ca.pem written")
 # Verification
 # ---------------------------------------------------------------------------
 print()
-print("==> Verifying AKI on leaf certs and no SKI on CA...")
+print("==> Verifying cert properties...")
 
 import subprocess
 
 
-def cert_extensions(path: Path) -> str:
+def cert_text(path: Path) -> str:
     return subprocess.check_output(
         ["openssl", "x509", "-noout", "-text", "-in", str(path)],
         stderr=subprocess.DEVNULL,
@@ -362,24 +384,35 @@ def cert_extensions(path: Path) -> str:
 
 
 errors = 0
-for name in ("server.pem", "client.pem", "wrong-host.pem", "expired.pem"):
-    text = cert_extensions(SCRIPT_DIR / name)
-    has_aki = "Authority Key Identifier" in text
-    has_ski = "Subject Key Identifier" in text
-    if not has_aki:
-        print(f"    {name}: MISSING AKI", file=sys.stderr)
-        errors += 1
-    elif has_ski:
-        print(f"    {name}: OK (AKI present, but unexpected SKI also present)")
-    else:
-        print(f"    {name}: OK")
 
-ca_text = cert_extensions(SCRIPT_DIR / "ca.pem")
-if "Subject Key Identifier" in ca_text:
-    print("    ca.pem: UNEXPECTED SKI — OpenSSL auto-added it", file=sys.stderr)
-    errors += 1
-else:
-    print("    ca.pem: OK (no SKI)")
+# CA cert must NOT have AKI, SKI, or SAN (would trigger macOS SecTrust OCSP).
+ca_text = cert_text(SCRIPT_DIR / "ca.pem")
+for ext in ("Authority Key Identifier", "Subject Key Identifier", "Subject Alternative Name"):
+    if ext in ca_text:
+        print(f"    ca.pem: ERROR — has {ext} (would cause macOS OCSP issues)", file=sys.stderr)
+        errors += 1
+print("    ca.pem: OK") if not errors else None
+
+# MongoDB certs must NOT have AKI.
+for name in ("server.pem", "client.pem"):
+    text = cert_text(SCRIPT_DIR / name)
+    if "Authority Key Identifier" in text:
+        print(
+            f"    {name}: ERROR — has AKI (would cause CSSMERR_TP_CERT_SUSPENDED on macOS)",
+            file=sys.stderr,
+        )
+        errors += 1
+    else:
+        print(f"    {name}: OK (no AKI)")
+
+# KMS certs MUST have AKI.
+for name in ("server-kms.pem", "wrong-host.pem", "expired.pem"):
+    text = cert_text(SCRIPT_DIR / name)
+    if "Authority Key Identifier" not in text:
+        print(f"    {name}: ERROR — missing AKI (required for Python 3.13)", file=sys.stderr)
+        errors += 1
+    else:
+        print(f"    {name}: OK (has AKI)")
 
 if errors:
     sys.exit(1)
