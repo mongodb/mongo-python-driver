@@ -442,6 +442,11 @@ class _Transaction:
     def set_starting(self) -> None:
         self.state = _TxnState.STARTING
 
+    def set_in_progress(self) -> None:
+        if self.state == _TxnState.STARTING:
+            self.has_sent_command = True
+            self.state = _TxnState.IN_PROGRESS
+
     @property
     def pinned_conn(self) -> Optional[Connection]:
         if self.active() and self.conn_mgr:

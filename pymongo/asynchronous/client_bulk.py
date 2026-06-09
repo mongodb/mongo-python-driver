@@ -37,7 +37,6 @@ from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
 from pymongo.asynchronous.client_session import (
     AsyncClientSession,
-    _TxnState,
     _validate_session_write_concern,
 )
 from pymongo.asynchronous.collection import AsyncCollection
@@ -263,8 +262,7 @@ class _AsyncClientBulk:
             bwc._start(cmd, request_id, op_docs, ns_docs)
         try:
             if bwc.session is not None and bwc.session._starting_transaction:
-                bwc.session._transaction.has_sent_command = True
-                bwc.session._transaction.state = _TxnState.IN_PROGRESS
+                bwc.session._transaction.set_in_progress()
             reply = await bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc, arg-type]
             duration = datetime.datetime.now() - bwc.start_time
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):

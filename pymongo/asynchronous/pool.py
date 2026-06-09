@@ -38,7 +38,7 @@ from typing import (
 
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
-from pymongo.asynchronous.client_session import _TxnState, _validate_session_write_concern
+from pymongo.asynchronous.client_session import _validate_session_write_concern
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.asynchronous.network import command
 from pymongo.common import (
@@ -401,8 +401,7 @@ class AsyncConnection:
             self._raise_if_not_writable(unacknowledged)
         try:
             if session is not None and session._starting_transaction:
-                session._transaction.has_sent_command = True
-                session._transaction.state = _TxnState.IN_PROGRESS
+                session._transaction.set_in_progress()
             return await command(
                 self,
                 dbname,

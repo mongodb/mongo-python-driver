@@ -87,7 +87,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
-from pymongo.synchronous.client_session import _TxnState, _validate_session_write_concern
+from pymongo.synchronous.client_session import _validate_session_write_concern
 from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.synchronous.network import command
 
@@ -401,8 +401,7 @@ class Connection:
             self._raise_if_not_writable(unacknowledged)
         try:
             if session is not None and session._starting_transaction:
-                session._transaction.has_sent_command = True
-                session._transaction.state = _TxnState.IN_PROGRESS
+                session._transaction.set_in_progress()
             return command(
                 self,
                 dbname,
