@@ -10,18 +10,32 @@ Run the generation script from this directory:
 bash gen-certs.sh
 ```
 
-**Prerequisites:** OpenSSL 1.1+ or LibreSSL 3+
+**Prerequisites:** Python 3 with the `cryptography` package (`pip install cryptography`).
 
 ## Certificate details
 
-| File | Subject | Signed by | Purpose |
-|---|---|---|---|
-| `ca.pem` | `CN=Drivers Testing CA, ...` | Self (CA) | Root CA for test certs |
-| `server.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | MongoDB server cert (key + cert) |
-| `client.pem` | `CN=client, O=MDB, ...` | Drivers Testing CA | Client auth cert (key + cert) |
-| `password_protected.pem` | Same as client | Drivers Testing CA | Client cert with AES-256 encrypted key |
-| `crl.pem` | — | Drivers Testing CA | Empty Certificate Revocation List |
-| `trusted-ca.pem` | `CN=Trusted Kernel Test CA, OU=Kernel, ...` | Self (CA) | Separate CA for bundle tests |
+Two classes of leaf certificate are generated, with different extension profiles to satisfy
+conflicting requirements from Python's ssl module and macOS's SecTrust framework:
+
+**MongoDB certs** — presented to MongoDB Enterprise, verified by Apple SecTrust on macOS.
+No AKI or SKI.  Adding AKI causes SecTrust to attempt OCSP revocation checks; because our
+CA is not in the macOS system keychain, those checks fail with `CSSMERR_TP_CERT_SUSPENDED`.
+
+**KMS certs** — presented by KMS mock servers, verified by Python's ssl module (OpenSSL).
+Carry both AKI and SKI.  Python 3.13 requires AKI on non-root certs; Python 3.14 enables
+`X509_V_FLAG_X509_STRICT` in `ssl.create_default_context()`, which requires SKI too.
+
+| File | Subject | Signed by | Extensions | Purpose |
+|---|---|---|---|---|
+| `ca.pem` | `CN=Drivers Testing CA, ...` | Self (CA) | basicConstraints critical, keyUsage critical | Root CA for all test certs |
+| `server.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN only | MongoDB server cert (key + cert) |
+| `client.pem` | `CN=client, O=MDB, ...` | Drivers Testing CA | keyUsage, extKeyUsage | Client auth cert (key + cert) |
+| `password_protected.pem` | Same as client | Drivers Testing CA | keyUsage, extKeyUsage | Client cert with AES-256 encrypted key |
+| `crl.pem` | — | Drivers Testing CA | — | CRL revoking serial 1 (server.pem) |
+| `server-kms.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN, AKI, SKI | KMS mock server cert (key + cert) |
+| `wrong-host.pem` | `CN=wronghost.example.com` | Drivers Testing CA | SAN, AKI, SKI | KMS wrong-host test cert |
+| `expired.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN, AKI, SKI | KMS expired cert (validity 2000–2001) |
+| `trusted-ca.pem` | `CN=Trusted Kernel Test CA, ...` | Self (CA) | basicConstraints critical, keyUsage critical | Separate CA for CA-bundle tests |
 
 **Password** for `password_protected.pem`: `qwerty`
 
@@ -37,4 +51,16 @@ The following values are hardcoded in tests and **must not change**:
 
 ## Background
 
-Certificates were regenerated to add the **Authority Key Identifier (AKI)** extension, which Python 3.13 requires for TLS certificate chain validation (PYTHON-5040). Prior to regeneration, certs were missing AKI, causing `ssl.SSLCertVerificationError: Missing Authority Key Identifier` on macOS and Windows with Python 3.13.
+Certificates were regenerated for PYTHON-5040 to fix `ssl.SSLCertVerificationError` failures on
+macOS and Windows with Python 3.13+.  The root causes were:
+
+1. Python 3.13 / OpenSSL 3.x requires **AKI** on non-root certs.  The original 2019 certs had none.
+2. Python 3.14 enables `X509_V_FLAG_X509_STRICT` in `ssl.create_default_context()`, which
+   additionally requires **SKI** on non-root certs and `basicConstraints`/`keyUsage` to be critical
+   on CA certs.
+
+The CA cert intentionally omits SKI even though strict mode would normally require it on all
+certs: adding SKI to the CA triggers macOS SecTrust OCSP revocation checks on the MongoDB server
+startup path (MongoDB 4.2 Enterprise uses Apple SecTrust), causing ~67-second connection
+timeouts.  KMS connections bypass this by using `ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)` instead
+of `ssl.create_default_context()`, which does not enable strict mode.

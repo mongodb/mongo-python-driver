@@ -44,6 +44,8 @@ def start_server():
             set_env("TLS_PEM_KEY_FILE", certs / "server.pem")
             set_env("TLS_CA_FILE", certs / "ca.pem")
             if sys.platform == "darwin":
+                # macOS MongoDB Enterprise uses Apple SecTrust, which rejects our
+                # test CA and certs.  See test/certificates/README.md for details.
                 extra_opts.append("--tls-allow-invalid-certificates")
 
     if opts.auth:
