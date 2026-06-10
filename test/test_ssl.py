@@ -138,7 +138,7 @@ class TestClientSSL(PyMongoTestCase):
         cache.set("new_session")
         self.assertEqual(cache.get(), "new_session")
 
-    @unittest.skipUnless(_IS_SYNC, "Session reuse only applies to sync path")
+    @unittest.skipUnless(_IS_SYNC, "Tests sync wrap_socket path only")
     def test_tls_session_reused_on_second_connection(self):
         """Cached TLS session is passed to wrap_socket on subsequent connections."""
         import unittest.mock as mock
