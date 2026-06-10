@@ -2,7 +2,7 @@ Changelog
 =========
 
 Changes in Version 4.18.0
-------------------------
+-------------------------
 
 - Improved TLS connection performance by reusing TLS sessions across connections
   to the same server, avoiding a full handshake on each new connection.
