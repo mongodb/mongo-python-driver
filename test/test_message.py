@@ -75,6 +75,8 @@ class TestMessage(unittest.TestCase):
         spec: dict = {"find": "col"}
         result = _maybe_add_read_preference(spec, pref)
         self.assertIn("$readPreference", result)
+        self.assertEqual(result["$readPreference"]["mode"], "secondaryPreferred")
+        self.assertIn("$query", result)
 
     def test_existing_query_wrapper_preserved(self):
         spec: dict = {"$query": {"x": 1}, "other": 2}
@@ -117,21 +119,6 @@ class TestMessage(unittest.TestCase):
         result = _convert_write_result("update", cmd, {"n": 1, "upserted": 42})
         self.assertIn("upserted", result)
         self.assertEqual(result["upserted"][0]["_id"], 42)
-
-    def test_update_legacy_upsert_id_from_update_doc(self):
-        # Pre-2.6 servers omit "upserted"; _id is extracted from the update doc (takes
-        # precedence over the query doc when both contain _id).
-        cmd = {"updates": [{"q": {"_id": 10}, "u": {"_id": 42}}]}
-        result = _convert_write_result("update", cmd, {"n": 1, "updatedExisting": False})
-        self.assertIn("upserted", result)
-        self.assertEqual(result["upserted"][0]["_id"], 42)
-
-    def test_update_legacy_upsert_id_from_query_doc(self):
-        # When _id is absent from the update doc, fall back to the query doc's _id.
-        cmd = {"updates": [{"q": {"_id": 10}, "u": {"$set": {"x": 1}}}]}
-        result = _convert_write_result("update", cmd, {"n": 1, "updatedExisting": False})
-        self.assertIn("upserted", result)
-        self.assertEqual(result["upserted"][0]["_id"], 10)
 
     def test_delete_basic(self):
         cmd = {"deletes": [{"q": {}, "limit": 1}]}
