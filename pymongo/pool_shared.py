@@ -73,7 +73,9 @@ def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:
     return getattr(ssl_sock, "session", None)
 
 
-# asyncio's SSLProtocol does not expose a session= parameter in create_connection.
+# asyncio's create_connection does not support TLS session resumption natively.
+# https://github.com/python/cpython/issues/79152 tracks this; a patch was submitted
+# in 2018 but never merged, and the issue is now closed.
 # On Python 3.11+, wrap_bio() is called in SSLProtocol.__init__ and the handshake
 # starts later in connection_made(), so we can set sslobj.session between the two.
 # On older Python, _SSLPipe.do_handshake calls wrap_bio and starts the handshake
