@@ -81,6 +81,12 @@ def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:
 # On older Python, _SSLPipe.do_handshake calls wrap_bio and starts the handshake
 # atomically; session injection there requires copying private internals, so we skip it.
 _ASYNCIO_SSL_SESSION_SUPPORTED = sys.version_info >= (3, 11)
+if _ASYNCIO_SSL_SESSION_SUPPORTED:
+    import asyncio.sslproto as _asyncio_sslproto
+
+    # Capture the true original once at import time so concurrent connections
+    # always restore to it, not to a locally-captured (possibly stale) reference.
+    _ORIGINAL_SSL_PROTOCOL = _asyncio_sslproto.SSLProtocol
 
 
 def _make_session_ssl_protocol(session: Any) -> Any:
@@ -376,16 +382,15 @@ async def _configured_protocol_interface(
     # instantiates SSLProtocol) is called synchronously inside
     # create_connection before the first await, so the swap is race-free in a
     # single-threaded event loop when the socket is pre-connected.
-    import asyncio.sslproto as _sslproto
-
+    # Always restore to _ORIGINAL_SSL_PROTOCOL (not a locally captured value)
+    # so that concurrent connections can't leave a stale subclass in place.
     session = (
         ssl_session_cache.get()
         if ssl_session_cache is not None and _ASYNCIO_SSL_SESSION_SUPPORTED
         else None
     )
-    original_ssl_protocol = _sslproto.SSLProtocol
     if session is not None:
-        _sslproto.SSLProtocol = _make_session_ssl_protocol(session)  # type: ignore[misc]
+        _asyncio_sslproto.SSLProtocol = _make_session_ssl_protocol(session)  # type: ignore[misc]
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
@@ -406,8 +411,8 @@ async def _configured_protocol_interface(
         details = _get_timeout_details(options)
         _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
     finally:
-        if session is not None:
-            _sslproto.SSLProtocol = original_ssl_protocol  # type: ignore[misc]
+        if _ASYNCIO_SSL_SESSION_SUPPORTED:
+            _asyncio_sslproto.SSLProtocol = _ORIGINAL_SSL_PROTOCOL  # type: ignore[misc]
 
     if (
         ssl_context.verify_mode
