@@ -73,6 +73,28 @@ def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:
     return getattr(ssl_sock, "session", None)
 
 
+# asyncio's SSLProtocol does not expose a session= parameter in create_connection.
+# On Python 3.11+, wrap_bio() is called in SSLProtocol.__init__ and the handshake
+# starts later in connection_made(), so we can set sslobj.session between the two.
+# On older Python, _SSLPipe.do_handshake calls wrap_bio and starts the handshake
+# atomically; session injection there requires copying private internals, so we skip it.
+_ASYNCIO_SSL_SESSION_SUPPORTED = sys.version_info >= (3, 11)
+
+
+def _make_session_ssl_protocol(session: Any) -> Any:
+    """Return an SSLProtocol subclass that injects *session* before the handshake."""
+    import asyncio.sslproto as _sslproto
+
+    class _SessionSSLProtocol(_sslproto.SSLProtocol):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            sslobj = getattr(self, "_sslobj", None)
+            if sslobj is not None:
+                sslobj.session = session
+
+    return _SessionSSLProtocol
+
+
 try:
     from fcntl import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
 
@@ -327,7 +349,7 @@ async def _async_configured_socket(
 async def _configured_protocol_interface(
     address: _Address,
     options: PoolOptions,
-    ssl_session_cache: Optional[_SSLSessionCache] = None,  # noqa: ARG001
+    ssl_session_cache: Optional[_SSLSessionCache] = None,
 ) -> AsyncNetworkingInterface:
     """Given (host, port) and PoolOptions, return a configured AsyncNetworkingInterface.
 
@@ -347,6 +369,21 @@ async def _configured_protocol_interface(
         )
 
     host = address[0]
+    # On Python 3.11+, temporarily patch asyncio's SSLProtocol to inject the
+    # cached session before the handshake.  _make_ssl_transport (which
+    # instantiates SSLProtocol) is called synchronously inside
+    # create_connection before the first await, so the swap is race-free in a
+    # single-threaded event loop when the socket is pre-connected.
+    import asyncio.sslproto as _sslproto
+
+    session = (
+        ssl_session_cache.get()
+        if ssl_session_cache is not None and _ASYNCIO_SSL_SESSION_SUPPORTED
+        else None
+    )
+    original_ssl_protocol = _sslproto.SSLProtocol
+    if session is not None:
+        _sslproto.SSLProtocol = _make_session_ssl_protocol(session)  # type: ignore[misc]
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
@@ -366,6 +403,10 @@ async def _configured_protocol_interface(
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
         details = _get_timeout_details(options)
         _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
+    finally:
+        if session is not None:
+            _sslproto.SSLProtocol = original_ssl_protocol  # type: ignore[misc]
+
     if (
         ssl_context.verify_mode
         and not ssl_context.check_hostname
@@ -376,6 +417,13 @@ async def _configured_protocol_interface(
         except _CertificateError:
             transport.abort()
             raise
+
+    if ssl_session_cache is not None and _ASYNCIO_SSL_SESSION_SUPPORTED:
+        ssl_obj = transport.get_extra_info("ssl_object")
+        if ssl_obj is not None:
+            new_session = ssl_obj.session
+            if new_session is not None:
+                ssl_session_cache.set(new_session)
 
     return AsyncNetworkingInterface((transport, protocol))
 

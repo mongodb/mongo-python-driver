@@ -170,6 +170,29 @@ class TestClientSSL(PyMongoTestCase):
         _, kwargs = mock_ssl_context.wrap_socket.call_args
         self.assertIs(kwargs.get("session"), fake_session)
 
+    @unittest.skipUnless(
+        not _IS_SYNC and sys.version_info >= (3, 11),
+        "Async session injection requires Python 3.11+",
+    )
+    def test_async_tls_session_injected_into_sslobj(self):
+        """Cached TLS session is set on SSLObject before the handshake on Python 3.11+."""
+        import asyncio.sslproto as _sslproto
+        import unittest.mock as mock
+
+        from pymongo.pool_shared import _make_session_ssl_protocol, _SSLSessionCache
+
+        fake_session = mock.MagicMock()
+        patched_cls = _make_session_ssl_protocol(fake_session)
+
+        mock_sslobj = mock.MagicMock()
+        instance = patched_cls.__new__(patched_cls)
+        instance._sslobj = mock_sslobj
+        # Call __init__ via the patched class, bypassing the real SSLProtocol init.
+        with mock.patch.object(_sslproto.SSLProtocol, "__init__", lambda *a, **kw: None):
+            patched_cls.__init__(instance)
+
+        self.assertEqual(mock_sslobj.session, fake_session)
+
 
 class TestSSL(IntegrationTest):
     saved_port: int
