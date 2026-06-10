@@ -44,10 +44,13 @@ def apply_patches(errored):
         patches = [str(p) for p in spec_patch_dir.glob("*.patch")]
         patches += [str(p) for p in (spec_patch_dir / "permanent").glob("*.patch")]
         if patches:
+            for patch in patches:
+                print(f"Applying patch {patch}")
             subprocess.run(
                 [  # noqa: S603, S607
                     "git",
                     "apply",
+                    "-R",
                     "--allow-empty",
                     "--whitespace=fix",
                     *patches,
