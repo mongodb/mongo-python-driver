@@ -144,9 +144,8 @@ def _run_command(
         APM redaction.
     :param ensure_db: Add ``$db`` to the published command if missing (cursor
         path), after the ``STARTED`` log has been emitted.
-    :param process_response: Run ``client._process_response`` on success here;
-        the bulk paths pass False and process the reply at the call site to
-        keep their check -> APM-succeed -> process ordering.
+    :param process_response: Run ``client._process_response`` on the response
+        document before ``_check_command_response`` and APM/log events.
     :param decrypt_reply: Decrypt the reply when auto-encryption is enabled;
         the bulk paths pass False (their commands are encrypted up front).
     :param use_conn_transport: Send/receive via ``conn.send_message`` /
