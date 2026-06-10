@@ -171,14 +171,6 @@ def _convert_write_result(
     elif operation == "update":
         if "upserted" in result:
             res["upserted"] = [{"index": 0, "_id": result["upserted"]}]
-        # Versions of MongoDB before 2.6 don't return the _id for an
-        # upsert if _id is not an ObjectId.
-        elif result.get("updatedExisting") is False and affected == 1:
-            # If _id is in both the update document *and* the query spec
-            # the update document _id takes precedence.
-            update = command["updates"][0]
-            _id = update["u"].get("_id", update["q"].get("_id"))
-            res["upserted"] = [{"index": 0, "_id": _id}]
     return res
 
 
