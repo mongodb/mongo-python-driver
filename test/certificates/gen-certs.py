@@ -138,13 +138,13 @@ TRUSTED_CA_NAME = x509.Name(
 
 
 # ---------------------------------------------------------------------------
-# 0. Drivers Testing CA — minimal profile.
-#    Only basicConstraints: CA:TRUE (critical).  No keyUsage, no SAN, no SKI,
-#    no AKI.  Adding SKI/AKI/SAN to a CA cert that is NOT in the macOS system
-#    keychain causes Apple SecTrust to treat it as a leaf cert needing OCSP,
-#    which then fails (CSSMERR_TP_CERT_SUSPENDED) because the CA has no OCSP
-#    URL.  RFC 5280 §4.2.1.9 requires basicConstraints to be critical on CA
-#    certs; Python 3.14 / OpenSSL 3.x strict mode enforces this.
+# 0. Drivers Testing CA.
+#    Has basicConstraints (critical) and keyUsage (critical, keyCertSign +
+#    crlSign) as required by RFC 5280 and enforced by Python 3.14 / OpenSSL
+#    3.x strict mode (ssl.create_default_context).  No SAN, no SKI, no AKI —
+#    adding those to a CA that is NOT in the macOS system keychain causes
+#    Apple SecTrust to enable OCSP for that CA, which then fails because the
+#    CA has no OCSP URL.  keyUsage alone does not trigger that behaviour.
 # ---------------------------------------------------------------------------
 print("==> Generating Drivers Testing CA...")
 ca_key = make_key()
@@ -157,6 +157,20 @@ ca_cert = (
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
     .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+    .add_extension(
+        x509.KeyUsage(
+            digital_signature=False,
+            content_commitment=False,
+            key_encipherment=False,
+            data_encipherment=False,
+            key_agreement=False,
+            key_cert_sign=True,
+            crl_sign=True,
+            encipher_only=False,
+            decipher_only=False,
+        ),
+        critical=True,
+    )
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "ca.pem").write_bytes(cert_pem(ca_cert))
@@ -383,12 +397,18 @@ def cert_text(path: Path) -> str:
 
 errors = 0
 
-# CA cert must have critical basicConstraints and must NOT have AKI/SKI/SAN.
+# CA cert must have critical basicConstraints + keyUsage; must NOT have AKI/SKI/SAN.
 ca_text = cert_text(SCRIPT_DIR / "ca.pem")
 ca_errors = 0
 if "Basic Constraints: critical" not in ca_text:
     print(
         "    ca.pem: ERROR — basicConstraints not critical (required by RFC 5280 / Python 3.14)",
+        file=sys.stderr,
+    )
+    ca_errors += 1
+if "Key Usage: critical" not in ca_text:
+    print(
+        "    ca.pem: ERROR — keyUsage missing or not critical (required by Python 3.14)",
         file=sys.stderr,
     )
     ca_errors += 1
