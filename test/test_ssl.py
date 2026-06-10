@@ -128,6 +128,16 @@ class TestClientSSL(PyMongoTestCase):
     def test_use_pyopenssl_when_available(self):
         self.assertTrue(HAVE_PYSSL)
 
+    def test_ssl_session_cache(self):
+        from pymongo.pool_shared import _SSLSessionCache
+
+        cache = _SSLSessionCache()
+        self.assertIsNone(cache.get())
+        cache.set("session")
+        self.assertEqual(cache.get(), "session")
+        cache.set("new_session")
+        self.assertEqual(cache.get(), "new_session")
+
 
 class TestSSL(IntegrationTest):
     saved_port: int
@@ -670,6 +680,23 @@ class TestSSL(IntegrationTest):
         client = MongoClient("mongodb://localhost:27017?tls=true&tlsAllowInvalidCertificates=true")
         client.admin.command("ping")  # command doesn't matter, just needs it to connect
         client.close()
+
+    @client_context.require_tls
+    def test_pool_has_ssl_session_cache(self):
+        from pymongo.pool_shared import _SSLSessionCache
+
+        pool = list(self.client._topology._servers.values())[0].pool
+        self.assertIsInstance(pool._ssl_session_cache, _SSLSessionCache)
+
+    @client_context.require_tls
+    @unittest.skipUnless(
+        _IS_SYNC and _HAVE_PYOPENSSL, "Session caching only applies to PyOpenSSL sync path"
+    )
+    def test_tls_session_cached_after_connect(self):
+        self.client.admin.command("ping")
+        pool = list(self.client._topology._servers.values())[0].pool
+        self.assertIsNotNone(pool._ssl_session_cache)
+        self.assertIsNotNone(pool._ssl_session_cache.get())
 
 
 if __name__ == "__main__":

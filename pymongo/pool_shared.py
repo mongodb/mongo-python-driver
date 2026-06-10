@@ -20,6 +20,7 @@ import functools
 import socket
 import ssl
 import sys
+import threading
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -45,6 +46,32 @@ SSLErrors = (PYSSLError, SSLError)
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
+
+
+class _SSLSessionCache:
+    """Thread-safe cache for a single TLS session per pool, enabling session resumption."""
+
+    __slots__ = ("_session", "_lock")
+
+    def __init__(self) -> None:
+        self._session: Optional[Any] = None
+        self._lock = threading.Lock()
+
+    def get(self) -> Optional[Any]:
+        with self._lock:
+            return self._session
+
+    def set(self, session: Any) -> None:
+        with self._lock:
+            self._session = session
+
+
+def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:
+    """Return the TLS session from an SSL socket, handling both PyOpenSSL and stdlib ssl."""
+    if hasattr(ssl_sock, "get_session"):
+        return ssl_sock.get_session()
+    return getattr(ssl_sock, "session", None)
+
 
 try:
     from fcntl import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
@@ -298,7 +325,9 @@ async def _async_configured_socket(
 
 
 async def _configured_protocol_interface(
-    address: _Address, options: PoolOptions
+    address: _Address,
+    options: PoolOptions,
+    ssl_session_cache: Optional[_SSLSessionCache] = None,  # noqa: ARG001
 ) -> AsyncNetworkingInterface:
     """Given (host, port) and PoolOptions, return a configured AsyncNetworkingInterface.
 
@@ -470,7 +499,11 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
     return ssl_sock
 
 
-def _configured_socket_interface(address: _Address, options: PoolOptions) -> NetworkingInterface:
+def _configured_socket_interface(
+    address: _Address,
+    options: PoolOptions,
+    ssl_session_cache: Optional[_SSLSessionCache] = None,
+) -> NetworkingInterface:
     """Given (host, port) and PoolOptions, return a NetworkingInterface wrapping a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
@@ -485,13 +518,14 @@ def _configured_socket_interface(address: _Address, options: PoolOptions) -> Net
         return NetworkingInterface(sock)
 
     host = address[0]
+    session = ssl_session_cache.get() if ssl_session_cache is not None else None
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
         if _has_sni(True):
-            ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
+            ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host, session=session)
         else:
-            ssl_sock = ssl_context.wrap_socket(sock)
+            ssl_sock = ssl_context.wrap_socket(sock, session=session)
     except _CertificateError:
         sock.close()
         # Raise _CertificateError directly like we do after match_hostname
@@ -514,6 +548,11 @@ def _configured_socket_interface(address: _Address, options: PoolOptions) -> Net
         except _CertificateError:
             ssl_sock.close()
             raise
+
+    if ssl_session_cache is not None:
+        new_session = _get_ssl_session(ssl_sock)
+        if new_session is not None:
+            ssl_session_cache.set(new_session)
 
     ssl_sock.settimeout(options.socket_timeout)
     return NetworkingInterface(ssl_sock)

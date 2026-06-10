@@ -85,6 +85,7 @@ from pymongo.pool_shared import (
     _CancellationContext,
     _configured_protocol_interface,
     _raise_connection_failure,
+    _SSLSessionCache,
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
@@ -754,6 +755,9 @@ class Pool:
         self._pending = 0
         self._max_connecting = self.opts.max_connecting
         self._client_id = client_id
+        self._ssl_session_cache: Optional[_SSLSessionCache] = (
+            _SSLSessionCache() if self.opts._ssl_context is not None else None
+        )
         # Log before publishing event to prevent potential listener preemption in tests
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
@@ -1040,7 +1044,9 @@ class Pool:
             )
 
         try:
-            networking_interface = await _configured_protocol_interface(self.address, self.opts)
+            networking_interface = await _configured_protocol_interface(
+                self.address, self.opts, self._ssl_session_cache
+            )
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             async with self.lock:
