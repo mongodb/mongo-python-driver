@@ -41,7 +41,15 @@ from pymongo.read_preferences import ReadPreference, SecondaryPreferred
 _OPTS = CodecOptions()
 
 
-class TestMaybeAddReadPreference(unittest.TestCase):
+class TestMessage(unittest.TestCase):
+    # _gen_get_more_command helper
+    def _make_conn(self, max_wire_version=9):
+        conn = MagicMock()
+        conn.max_wire_version = max_wire_version
+        return conn
+
+    # _maybe_add_read_preference
+
     def test_primary_no_read_preference_added(self):
         spec: dict = {"find": "col"}
         result = _maybe_add_read_preference(spec, ReadPreference.PRIMARY)
@@ -72,8 +80,8 @@ class TestMaybeAddReadPreference(unittest.TestCase):
         self.assertIn("$readPreference", result)
         self.assertEqual(result["$query"], {"x": 1})
 
+    # _convert_exception / _convert_client_bulk_exception
 
-class TestConvertException(unittest.TestCase):
     def test_basic_exception(self):
         exc = ValueError("bad value")
         doc = _convert_exception(exc)
@@ -87,12 +95,8 @@ class TestConvertException(unittest.TestCase):
         self.assertEqual(doc["code"], 11000)
         self.assertEqual(doc["errtype"], "OperationFailure")
 
-
-class TestConvertWriteResult(unittest.TestCase):
-    """Tests for _convert_write_result.
-
-    In the update command spec, `q` is the query/filter and `u` is the update document.
-    """
+    # _convert_write_result
+    # In the update command spec, `q` is the query/filter and `u` is the update document.
 
     def test_insert_basic(self):
         cmd = {"documents": [{"_id": 1}, {"_id": 2}]}
@@ -139,146 +143,141 @@ class TestConvertWriteResult(unittest.TestCase):
         result = _convert_write_result("insert", cmd, gle)
         self.assertIn("errInfo", result["writeErrors"][0])
 
+    # _op_msg
 
-class TestOpMsg(unittest.TestCase):
-    def test_max_doc_size_zero_without_docs(self):
+    def test_op_msg_max_doc_size_zero_without_docs(self):
         max_doc_size = _op_msg(0, {"ping": 1}, "testdb", None, _OPTS)[3]
         self.assertEqual(max_doc_size, 0)
 
-    def test_max_doc_size_matches_largest_encoded_doc(self):
+    def test_op_msg_max_doc_size_matches_largest_encoded_doc(self):
         docs = [{"_id": 1, "x": 2}, {"_id": 3, "x": 4}]
         cmd: dict = {"insert": "col", "documents": docs}
         max_doc_size = _op_msg(0, cmd, "testdb", None, _OPTS)[3]
         self.assertEqual(max_doc_size, max(len(encode(d)) for d in docs))
 
-    def test_read_preference_added_for_non_primary(self):
+    def test_op_msg_read_preference_added_for_non_primary(self):
         cmd: dict = {"find": "col"}
         _op_msg(0, cmd, "testdb", ReadPreference.SECONDARY, _OPTS)
         self.assertIn("$readPreference", cmd)
 
-    def test_read_preference_skipped_if_already_present(self):
+    def test_op_msg_read_preference_skipped_if_already_present(self):
         cmd: dict = {"find": "col", "$readPreference": {"mode": "nearest"}}
         _op_msg(0, cmd, "testdb", ReadPreference.SECONDARY, _OPTS)
         self.assertEqual(cmd["$readPreference"]["mode"], "nearest")
 
-    def test_command_with_documents_field_is_restored(self):
+    def test_op_msg_documents_field_is_restored(self):
         docs = [{"_id": 1}]
         cmd: dict = {"insert": "col", "documents": docs}
         _op_msg(0, cmd, "testdb", None, _OPTS)
         self.assertIn("documents", cmd)
         self.assertEqual(cmd["documents"], docs)
 
+    # _raise_document_too_large
 
-class TestRaiseDocumentTooLarge(unittest.TestCase):
-    def test_insert_includes_sizes(self):
+    def test_raise_document_too_large_insert_includes_sizes(self):
         with self.assertRaises(DocumentTooLarge) as ctx:
             _raise_document_too_large("insert", 2_000_000, 1_000_000)
         msg = str(ctx.exception)
         self.assertIn("2000000", msg)
         self.assertIn("1000000", msg)
 
-    def test_update_generic_message(self):
+    def test_raise_document_too_large_update_generic_message(self):
         with self.assertRaises(DocumentTooLarge) as ctx:
             _raise_document_too_large("update", 2_000_000, 1_000_000)
         self.assertIn("update", str(ctx.exception))
 
+    # _gen_find_command
 
-class TestGenFindCommand(unittest.TestCase):
-    def test_basic(self):
+    def test_find_basic(self):
         cmd = _gen_find_command("col", {}, None, 0, 0, None, None, ReadConcern())
         self.assertEqual(cmd["find"], "col")
         self.assertEqual(cmd["filter"], {})
 
-    def test_with_projection(self):
+    def test_find_with_projection(self):
         cmd = _gen_find_command("col", {}, {"x": 1}, 0, 0, None, None, ReadConcern())
         self.assertEqual(cmd["projection"], {"x": 1})
 
-    def test_with_skip(self):
+    def test_find_with_skip(self):
         cmd = _gen_find_command("col", {}, None, 5, 0, None, None, ReadConcern())
         self.assertEqual(cmd["skip"], 5)
 
-    def test_with_positive_limit(self):
+    def test_find_with_positive_limit(self):
         cmd = _gen_find_command("col", {}, None, 0, 10, None, None, ReadConcern())
         self.assertEqual(cmd["limit"], 10)
         self.assertNotIn("singleBatch", cmd)
 
-    def test_with_negative_limit_sets_single_batch(self):
+    def test_find_with_negative_limit_sets_single_batch(self):
         cmd = _gen_find_command("col", {}, None, 0, -5, None, None, ReadConcern())
         self.assertEqual(cmd["limit"], 5)
         self.assertTrue(cmd["singleBatch"])
 
-    def test_batch_size_adjusted_when_equal_to_limit(self):
+    def test_find_batch_size_adjusted_when_equal_to_limit(self):
         cmd = _gen_find_command("col", {}, None, 0, 10, 10, None, ReadConcern())
         self.assertEqual(cmd["batchSize"], 11)
 
-    def test_batch_size_not_adjusted_when_different(self):
+    def test_find_batch_size_not_adjusted_when_different(self):
         # Covers the False branch of `if limit == batch_size:` — distinct from the True branch above.
         cmd = _gen_find_command("col", {}, None, 0, 10, 5, None, ReadConcern())
         self.assertEqual(cmd["batchSize"], 5)
 
-    def test_read_concern_level_included(self):
+    def test_find_read_concern_level_included(self):
         cmd = _gen_find_command("col", {}, None, 0, 0, None, None, ReadConcern("majority"))
         self.assertEqual(cmd["readConcern"], {"level": "majority"})
 
-    def test_query_with_dollar_query_modifier(self):
+    def test_find_query_with_dollar_query_modifier(self):
         spec = {"$query": {"x": 1}, "$orderby": {"x": 1}}
         cmd = _gen_find_command("col", spec, None, 0, 0, None, None, ReadConcern())
         self.assertIn("sort", cmd)
         self.assertNotIn("$orderby", cmd)
         self.assertNotIn("$query", cmd)
 
-    def test_allow_disk_use(self):
+    def test_find_allow_disk_use(self):
         cmd = _gen_find_command(
             "col", {}, None, 0, 0, None, None, ReadConcern(), allow_disk_use=True
         )
         self.assertTrue(cmd["allowDiskUse"])
 
-    def test_collation(self):
+    def test_find_collation(self):
         cmd = _gen_find_command(
             "col", {}, None, 0, 0, None, None, ReadConcern(), collation={"locale": "en"}
         )
         self.assertEqual(cmd["collation"]["locale"], "en")
 
-    def test_options_tailable(self):
+    def test_find_options_tailable(self):
         cmd = _gen_find_command("col", {}, None, 0, 0, None, 2, ReadConcern())
         self.assertTrue(cmd.get("tailable"))
 
-    def test_dollar_query_with_explain_removed(self):
+    def test_find_dollar_query_with_explain_removed(self):
         spec = {"$query": {"x": 1}, "$explain": 1}
         cmd = _gen_find_command("col", spec, None, 0, 0, None, None, ReadConcern())
         self.assertNotIn("$explain", cmd)
 
-    def test_dollar_query_with_read_preference_removed(self):
+    def test_find_dollar_query_with_read_preference_removed(self):
         # Covers the separate `if "$readPreference" in cmd:` branch — not entered by test_dollar_query_with_explain_removed.
         spec = {"$query": {"x": 1}, "$readPreference": {"mode": "secondary"}}
         cmd = _gen_find_command("col", spec, None, 0, 0, None, None, ReadConcern())
         self.assertNotIn("$readPreference", cmd)
 
+    # _gen_get_more_command
 
-class TestGenGetMoreCommand(unittest.TestCase):
-    def _make_conn(self, max_wire_version=9):
-        conn = MagicMock()
-        conn.max_wire_version = max_wire_version
-        return conn
-
-    def test_basic(self):
+    def test_get_more_basic(self):
         cmd = _gen_get_more_command(12345, "col", None, None, None, self._make_conn())
         self.assertEqual(cmd["getMore"], 12345)
         self.assertEqual(cmd["collection"], "col")
 
-    def test_with_batch_size(self):
+    def test_get_more_with_batch_size(self):
         cmd = _gen_get_more_command(1, "col", 100, None, None, self._make_conn())
         self.assertEqual(cmd["batchSize"], 100)
 
-    def test_with_max_await_time_ms(self):
+    def test_get_more_with_max_await_time_ms(self):
         cmd = _gen_get_more_command(1, "col", None, 500, None, self._make_conn())
         self.assertEqual(cmd["maxTimeMS"], 500)
 
-    def test_comment_added_on_high_wire_version(self):
+    def test_get_more_comment_added_on_high_wire_version(self):
         cmd = _gen_get_more_command(1, "col", None, None, "my comment", self._make_conn(9))
         self.assertEqual(cmd["comment"], "my comment")
 
-    def test_comment_not_added_on_low_wire_version(self):
+    def test_get_more_comment_not_added_on_low_wire_version(self):
         cmd = _gen_get_more_command(1, "col", None, None, "my comment", self._make_conn(8))
         self.assertNotIn("comment", cmd)
 
