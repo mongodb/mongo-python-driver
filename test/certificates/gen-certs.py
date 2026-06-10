@@ -141,10 +141,12 @@ TRUSTED_CA_NAME = x509.Name(
 # 0. Drivers Testing CA.
 #    Has basicConstraints (critical) and keyUsage (critical, keyCertSign +
 #    crlSign) as required by RFC 5280 and enforced by Python 3.14 / OpenSSL
-#    3.x strict mode (ssl.create_default_context).  No SAN, no SKI, no AKI —
-#    adding those to a CA that is NOT in the macOS system keychain causes
-#    Apple SecTrust to enable OCSP for that CA, which then fails because the
-#    CA has no OCSP URL.  keyUsage alone does not trigger that behaviour.
+#    3.x strict mode (ssl.create_default_context).
+#    No SKI, no AKI, no SAN.  Adding SKI to the CA triggers a macOS
+#    SecTrust OCSP sweep on the server startup path even when
+#    --tlsAllowInvalidCertificates is set, causing connection timeouts
+#    on MongoDB 4.2 sharded-cluster tests.  Python 3.14 only requires SKI
+#    on non-root (leaf) certs, so the CA can safely omit it.
 # ---------------------------------------------------------------------------
 print("==> Generating Drivers Testing CA...")
 ca_key = make_key()
@@ -216,6 +218,9 @@ server_kms_cert = (
     .not_valid_after(NOT_AFTER)
     .add_extension(server_san(), critical=False)
     .add_extension(aki_from_ca(ca_cert), critical=False)
+    .add_extension(
+        x509.SubjectKeyIdentifier.from_public_key(server_kms_key.public_key()), critical=False
+    )
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "server-kms.pem").write_bytes(key_pem(server_kms_key) + cert_pem(server_kms_cert))
@@ -317,6 +322,9 @@ wrong_host_cert = (
         critical=False,
     )
     .add_extension(aki_from_ca(ca_cert), critical=False)
+    .add_extension(
+        x509.SubjectKeyIdentifier.from_public_key(wrong_host_key.public_key()), critical=False
+    )
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "wrong-host.pem").write_bytes(key_pem(wrong_host_key) + cert_pem(wrong_host_cert))
@@ -338,6 +346,9 @@ expired_cert = (
     .not_valid_after(datetime.datetime(2001, 1, 1, tzinfo=datetime.timezone.utc))
     .add_extension(server_san(), critical=False)
     .add_extension(aki_from_ca(ca_cert), critical=False)
+    .add_extension(
+        x509.SubjectKeyIdentifier.from_public_key(expired_key.public_key()), critical=False
+    )
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "expired.pem").write_bytes(key_pem(expired_key) + cert_pem(expired_cert))
@@ -398,6 +409,9 @@ def cert_text(path: Path) -> str:
 errors = 0
 
 # CA cert must have critical basicConstraints + keyUsage; must NOT have AKI/SKI/SAN.
+# SKI is intentionally omitted from the CA: adding it causes macOS SecTrust to
+# attempt OCSP on the MongoDB server startup path, producing 67-second timeouts.
+# Python 3.14 only requires SKI on non-root leaf certs, not on the root CA.
 ca_text = cert_text(SCRIPT_DIR / "ca.pem")
 ca_errors = 0
 if "Basic Constraints: critical" not in ca_text:
@@ -433,14 +447,20 @@ for name in ("server.pem", "client.pem"):
     else:
         print(f"    {name}: OK (no AKI)")
 
-# KMS certs MUST have AKI.
+# KMS certs MUST have AKI and SKI.
 for name in ("server-kms.pem", "wrong-host.pem", "expired.pem"):
     text = cert_text(SCRIPT_DIR / name)
+    cert_errors = 0
     if "Authority Key Identifier" not in text:
         print(f"    {name}: ERROR — missing AKI (required for Python 3.13)", file=sys.stderr)
-        errors += 1
+        cert_errors += 1
+    if "Subject Key Identifier" not in text:
+        print(f"    {name}: ERROR — missing SKI (required for Python 3.14)", file=sys.stderr)
+        cert_errors += 1
+    if cert_errors:
+        errors += cert_errors
     else:
-        print(f"    {name}: OK (has AKI)")
+        print(f"    {name}: OK (has AKI + SKI)")
 
 if errors:
     sys.exit(1)
