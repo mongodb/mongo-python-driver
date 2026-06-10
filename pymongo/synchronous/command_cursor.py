@@ -24,13 +24,12 @@ from typing import (
     NoReturn,
     Optional,
     Sequence,
-    Union,
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
-from pymongo.message import _GetMore, _OpMsg, _OpReply, _RawBatchGetMore
+from pymongo.message import _GetMore, _OpMsg, _RawBatchGetMore
 from pymongo.response import PinnedResponse
 from pymongo.synchronous.cursor_base import _ConnectionManager, _CursorBase
 from pymongo.typings import _Address, _DocumentOut, _DocumentType
@@ -145,7 +144,7 @@ class CommandCursor(_CursorBase[_DocumentType]):
 
     def _unpack_response(
         self,
-        response: Union[_OpReply, _OpMsg],
+        response: _OpMsg,
         cursor_id: Optional[int],
         codec_options: CodecOptions[Mapping[str, Any]],
         user_fields: Optional[Mapping[str, Any]] = None,
@@ -328,7 +327,7 @@ class RawBatchCommandCursor(CommandCursor[_DocumentType]):
 
     def _unpack_response(  # type: ignore[override]
         self,
-        response: Union[_OpReply, _OpMsg],
+        response: _OpMsg,
         cursor_id: Optional[int],
         codec_options: CodecOptions[dict[str, Any]],
         user_fields: Optional[Mapping[str, Any]] = None,

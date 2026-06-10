@@ -19,6 +19,7 @@ import copy
 import gc
 import itertools
 import os
+import platform
 import random
 import re
 import sys
@@ -823,6 +824,10 @@ class TestCursor(IntegrationTest):
             break
         self.assertRaises(InvalidOperation, a.sort, "x", ASCENDING)
 
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     def test_where(self):
         db = self.db
         db.test.drop()
@@ -1504,9 +1509,12 @@ class TestCursor(IntegrationTest):
 
 
 class TestRawBatchCursor(IntegrationTest):
+    def setUp(self):
+        super().setUp()
+        self.db.test.drop()
+
     def test_find_raw(self):
         c = self.db.test
-        c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         c.insert_many(docs)
         batches = c.find_raw_batches().sort("_id").to_list()
@@ -1516,7 +1524,6 @@ class TestRawBatchCursor(IntegrationTest):
     @client_context.require_transactions
     def test_find_raw_transaction(self):
         c = self.db.test
-        c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         c.insert_many(docs)
 
@@ -1546,7 +1553,6 @@ class TestRawBatchCursor(IntegrationTest):
     @client_context.require_failCommand_fail_point
     def test_find_raw_retryable_reads(self):
         c = self.db.test
-        c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         c.insert_many(docs)
 
@@ -1567,7 +1573,6 @@ class TestRawBatchCursor(IntegrationTest):
     @client_context.require_no_standalone
     def test_find_raw_snapshot_reads(self):
         c = self.db.get_collection("test", write_concern=WriteConcern(w="majority"))
-        c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         c.insert_many(docs)
 
@@ -1586,12 +1591,10 @@ class TestRawBatchCursor(IntegrationTest):
 
     def test_explain(self):
         c = self.db.test
-        c.insert_one({})
         explanation = c.find_raw_batches().explain()
         self.assertIsInstance(explanation, dict)
 
     def test_empty(self):
-        self.db.test.drop()
         cursor = self.db.test.find_raw_batches()
         with self.assertRaises(StopIteration):
             next(cursor)
@@ -1606,7 +1609,6 @@ class TestRawBatchCursor(IntegrationTest):
     @client_context.require_no_mongos
     def test_exhaust(self):
         c = self.db.test
-        c.drop()
         c.insert_many({"_id": i} for i in range(200))
         result = b"".join(c.find_raw_batches(cursor_type=CursorType.EXHAUST).to_list())
         self.assertEqual([{"_id": i} for i in range(200)], decode_all(result))
@@ -1623,6 +1625,7 @@ class TestRawBatchCursor(IntegrationTest):
             self.db.test.find_raw_batches()[0]
 
     def test_collation(self):
+        self.db.test.insert_one({})
         next(self.db.test.find_raw_batches(collation=Collation("en_US")))
 
     def test_read_concern(self):
@@ -1634,7 +1637,6 @@ class TestRawBatchCursor(IntegrationTest):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
         c = client.pymongo_test.test
-        c.drop()
         c.insert_many([{"_id": i} for i in range(10)])
 
         listener.reset()

@@ -1,4 +1,4 @@
-# Copyright 2009-present MongoDB, Inc.
+# Copyright 2021-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Remove built C extensions from the source tree.
-
-Used as cibuildwheel's before-build hook so artifacts from one Python
-version do not leak into the wheel built for the next.
-"""
+"""Test the causal consistency unified spec tests."""
 from __future__ import annotations
 
-from pathlib import Path
+import os
+import pathlib
+import sys
 
-for pkg in ("bson", "pymongo"):
-    for pattern in ("*.so", "*.pyd"):
-        for path in Path(pkg).glob(pattern):
-            path.unlink()
-            print(f"removed {path}")
+sys.path[0:0] = [""]
+
+from test import unittest
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
+
+_IS_SYNC = False
+
+# Generate unified tests.
+globals().update(generate_test_classes(get_test_path("causal_consistency"), module=__name__))
+
+if __name__ == "__main__":
+    unittest.main()

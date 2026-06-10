@@ -108,3 +108,4 @@ The following is a list of people who have contributed to
 - Steven Silvester (blink1073)
 - Noah Stapp (NoahStapp)
 - Cal Jacobson (cj81499)
+- Sophia Yang (sophiayangDB)

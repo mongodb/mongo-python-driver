@@ -229,7 +229,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         self.assertRaises(ValueError, IndexModel, [])
 
         await db.test.drop_indexes()
-        await db.test.insert_one({})
+        await db.create_collection("test")
         self.assertEqual(len(await db.test.index_information()), 1)
 
         await db.test.create_indexes([IndexModel("hello")])
@@ -292,7 +292,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
             await db.test.create_index([])
 
         await db.test.drop_indexes()
-        await db.test.insert_one({})
+        await db.create_collection("test")
         self.assertEqual(len(await db.test.index_information()), 1)
 
         await db.test.create_index("hello")
@@ -392,7 +392,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_list_indexes(self):
         db = self.db
         await db.test.drop()
-        await db.test.insert_one({})  # create collection
+        await db.create_collection("test")
 
         def map_indexes(indexes):
             return {index["name"]: index for index in indexes}
@@ -426,7 +426,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_index_info(self):
         db = self.db
         await db.test.drop()
-        await db.test.insert_one({})  # create collection
+        await db.create_collection("test")
         self.assertEqual(len(await db.test.index_information()), 1)
         self.assertIn("_id_", await db.test.index_information())
 

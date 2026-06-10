@@ -1,0 +1,232 @@
+diff --git a/test/client-side-encryption/etc/data/encryptedFields-prefix-suffix-ci-di.json b/test/client-side-encryption/etc/data/encryptedFields-prefix-suffix-ci-di.json
+index c43bf9390..3002c642b 100644
+--- a/test/client-side-encryption/etc/data/encryptedFields-prefix-suffix-ci-di.json
++++ b/test/client-side-encryption/etc/data/encryptedFields-prefix-suffix-ci-di.json
+@@ -11,7 +11,7 @@
+       "bsonType": "string",
+       "queries": [
+         {
+-          "queryType": "prefixPreview",
++          "queryType": "prefix",
+           "strMinQueryLength": {
+             "$numberInt": "2"
+           },
+@@ -23,7 +23,7 @@
+           "diacriticSensitive": false
+         },
+         {
+-          "queryType": "suffixPreview",
++          "queryType": "suffix",
+           "strMinQueryLength": {
+             "$numberInt": "2"
+           },
+diff --git a/test/client-side-encryption/etc/data/encryptedFields-prefix-suffix.json b/test/client-side-encryption/etc/data/encryptedFields-prefix-suffix.json
+index ec4489fa0..141c372db 100644
+--- a/test/client-side-encryption/etc/data/encryptedFields-prefix-suffix.json
++++ b/test/client-side-encryption/etc/data/encryptedFields-prefix-suffix.json
+@@ -1,6 +1,6 @@
+ {
+-  "fields": [
+-    {
++    "fields": [
++        {
+             "keyId": {
+                 "$binary": {
+                     "base64": "EjRWeBI0mHYSNBI0VniQEg==",
+@@ -11,7 +11,7 @@
+             "bsonType": "string",
+             "queries": [
+                 {
+-                    "queryType": "prefixPreview",
++                    "queryType": "prefix",
+                     "strMinQueryLength": {
+                         "$numberInt": "2"
+                     },
+@@ -22,7 +22,7 @@
+                     "diacriticSensitive": true
+                 },
+                 {
+-                    "queryType": "suffixPreview",
++                    "queryType": "suffix",
+                     "strMinQueryLength": {
+                         "$numberInt": "2"
+                     },
+@@ -34,5 +34,5 @@
+                 }
+             ]
+         }
+-  ]
++    ]
+ }
+diff --git a/test/client-side-encryption/spec/unified/QE-Text-cleanupStructuredEncryptionData.json b/test/client-side-encryption/spec/unified/QE-Text-cleanupStructuredEncryptionData.json
+index fd74573ea..dc979b501 100644
+--- a/test/client-side-encryption/spec/unified/QE-Text-cleanupStructuredEncryptionData.json
++++ b/test/client-side-encryption/spec/unified/QE-Text-cleanupStructuredEncryptionData.json
+@@ -3,15 +3,14 @@
+   "schemaVersion": "1.25",
+   "runOnRequirements": [
+     {
+-      "minServerVersion": "8.2.0",
+-      "maxServerVersion": "8.99.99",
++      "minServerVersion": "9.0.0",
+       "topologies": [
+         "replicaset",
+         "sharded",
+         "load-balanced"
+       ],
+       "csfle": {
+-        "minLibmongocryptVersion": "1.15.0"
++        "minLibmongocryptVersion": "1.19.0"
+       }
+     }
+   ],
+@@ -102,7 +101,7 @@
+               "bsonType": "string",
+               "queries": [
+                 {
+-                  "queryType": "suffixPreview",
++                  "queryType": "suffix",
+                   "contention": {
+                     "$numberLong": "0"
+                   },
+diff --git a/test/client-side-encryption/spec/unified/QE-Text-compactStructuredEncryptionData.json b/test/client-side-encryption/spec/unified/QE-Text-compactStructuredEncryptionData.json
+index a89ab96fc..1c3c6cc0d 100644
+--- a/test/client-side-encryption/spec/unified/QE-Text-compactStructuredEncryptionData.json
++++ b/test/client-side-encryption/spec/unified/QE-Text-compactStructuredEncryptionData.json
+@@ -3,15 +3,14 @@
+   "schemaVersion": "1.25",
+   "runOnRequirements": [
+     {
+-      "minServerVersion": "8.2.0",
+-      "maxServerVersion": "8.99.99",
++      "minServerVersion": "9.0.0",
+       "topologies": [
+         "replicaset",
+         "sharded",
+         "load-balanced"
+       ],
+       "csfle": {
+-        "minLibmongocryptVersion": "1.15.0"
++        "minLibmongocryptVersion": "1.19.0"
+       }
+     }
+   ],
+@@ -102,7 +101,7 @@
+               "bsonType": "string",
+               "queries": [
+                 {
+-                  "queryType": "suffixPreview",
++                  "queryType": "suffix",
+                   "contention": {
+                     "$numberLong": "0"
+                   },
+@@ -210,7 +209,7 @@
+                             "bsonType": "string",
+                             "queries": [
+                               {
+-                                "queryType": "suffixPreview",
++                                "queryType": "suffix",
+                                 "contention": {
+                                   "$numberLong": "0"
+                                 },
+diff --git a/test/client-side-encryption/spec/unified/QE-Text-prefixPreview.json b/test/client-side-encryption/spec/unified/QE-Text-prefix.json
+similarity index 97%
+rename from test/client-side-encryption/spec/unified/QE-Text-prefixPreview.json
+rename to test/client-side-encryption/spec/unified/QE-Text-prefix.json
+index c193608e8..25475e2c3 100644
+--- a/test/client-side-encryption/spec/unified/QE-Text-prefixPreview.json
++++ b/test/client-side-encryption/spec/unified/QE-Text-prefix.json
+@@ -1,17 +1,16 @@
+ {
+-  "description": "QE-Text-prefixPreview",
++  "description": "QE-Text-prefix",
+   "schemaVersion": "1.25",
+   "runOnRequirements": [
+     {
+-      "minServerVersion": "8.2.0",
+-      "maxServerVersion": "8.99.99",
++      "minServerVersion": "9.0.0",
+       "topologies": [
+         "replicaset",
+         "sharded",
+         "load-balanced"
+       ],
+       "csfle": {
+-        "minLibmongocryptVersion": "1.15.0"
++        "minLibmongocryptVersion": "1.19.0"
+       }
+     }
+   ],
+@@ -102,7 +101,7 @@
+               "bsonType": "string",
+               "queries": [
+                 {
+-                  "queryType": "prefixPreview",
++                  "queryType": "prefix",
+                   "contention": {
+                     "$numberLong": "0"
+                   },
+@@ -124,7 +123,7 @@
+   ],
+   "tests": [
+     {
+-      "description": "Insert QE prefixPreview",
++      "description": "Insert QE prefix",
+       "operations": [
+         {
+           "name": "insertOne",
+diff --git a/test/client-side-encryption/spec/unified/QE-Text-suffixPreview.json b/test/client-side-encryption/spec/unified/QE-Text-suffix.json
+similarity index 96%
+rename from test/client-side-encryption/spec/unified/QE-Text-suffixPreview.json
+rename to test/client-side-encryption/spec/unified/QE-Text-suffix.json
+index 2de5cde4a..ad6cdc06c 100644
+--- a/test/client-side-encryption/spec/unified/QE-Text-suffixPreview.json
++++ b/test/client-side-encryption/spec/unified/QE-Text-suffix.json
+@@ -1,17 +1,16 @@
+ {
+-  "description": "QE-Text-suffixPreview",
++  "description": "QE-Text-suffix",
+   "schemaVersion": "1.25",
+   "runOnRequirements": [
+     {
+-      "minServerVersion": "8.2.0",
+-      "maxServerVersion": "8.99.99",
++      "minServerVersion": "9.0.0",
+       "topologies": [
+         "replicaset",
+         "sharded",
+         "load-balanced"
+       ],
+       "csfle": {
+-        "minLibmongocryptVersion": "1.15.0"
++        "minLibmongocryptVersion": "1.19.0"
+       }
+     }
+   ],
+@@ -102,7 +101,7 @@
+               "bsonType": "string",
+               "queries": [
+                 {
+-                  "queryType": "suffixPreview",
++                  "queryType": "suffix",
+                   "contention": {
+                     "$numberLong": "0"
+                   },
+@@ -124,7 +123,7 @@
+   ],
+   "tests": [
+     {
+-      "description": "Insert QE suffixPreview",
++      "description": "Insert QE suffix",
+       "operations": [
+         {
+           "name": "insertOne",
+@@ -207,7 +206,7 @@
+       ]
+     },
+     {
+-      "description": "Query with matching $encStrStartsWith",
++      "description": "Query with matching $encStrEndsWith",
+       "operations": [
+         {
+           "name": "insertOne",

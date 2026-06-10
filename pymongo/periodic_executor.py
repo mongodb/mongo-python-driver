@@ -87,7 +87,7 @@ class AsyncPeriodicExecutor:
         """Execute the target function soon."""
         self._event = True
 
-    def update_interval(self, new_interval: int) -> None:
+    def update_interval(self, new_interval: float) -> None:
         self._interval = new_interval
 
     def skip_sleep(self) -> None:
@@ -217,7 +217,7 @@ class PeriodicExecutor:
         """Execute the target function soon."""
         self._event = True
 
-    def update_interval(self, new_interval: int) -> None:
+    def update_interval(self, new_interval: float) -> None:
         self._interval = new_interval
 
     def skip_sleep(self) -> None:

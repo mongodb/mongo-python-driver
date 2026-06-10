@@ -46,7 +46,6 @@ from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import (
     _GetMore,
     _OpMsg,
-    _OpReply,
     _Query,
     _RawBatchGetMore,
     _RawBatchQuery,
@@ -862,7 +861,7 @@ class Cursor(_CursorBase[_DocumentType]):
 
     def _unpack_response(
         self,
-        response: Union[_OpReply, _OpMsg],
+        response: _OpMsg,
         cursor_id: Optional[int],
         codec_options: CodecOptions,  # type: ignore[type-arg]
         user_fields: Optional[Mapping[str, Any]] = None,
@@ -1185,7 +1184,7 @@ class RawBatchCursor(Cursor[_DocumentType]):
 
     def _unpack_response(
         self,
-        response: Union[_OpReply, _OpMsg],
+        response: _OpMsg,
         cursor_id: Optional[int],
         codec_options: CodecOptions[Mapping[str, Any]],
         user_fields: Optional[Mapping[str, Any]] = None,
