@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 from test import unittest
 
 from bson import CodecOptions, encode
-from pymongo.compression_support import ZlibContext
+from pymongo.compression_support import ZlibContext, _have_zlib
 from pymongo.errors import DocumentTooLarge, OperationFailure
 from pymongo.message import (
     _convert_client_bulk_exception,
@@ -189,6 +189,7 @@ class TestMessage(unittest.TestCase):
         self.assertIn("documents", cmd)
         self.assertEqual(cmd["documents"], docs)
 
+    @unittest.skipUnless(_have_zlib(), "zlib not available")
     def test_op_msg_compressed_zlib_header(self):
         # Verify the compressed path is taken and produces a valid OP_COMPRESSED frame.
         # Header layout (little-endian): [msgLen(4), reqId(4), responseTo(4), opCode(4),
