@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import struct
 import sys
 from unittest.mock import MagicMock
 
@@ -24,6 +25,7 @@ sys.path[0:0] = [""]
 from test import unittest
 
 from bson import CodecOptions, encode
+from pymongo.compression_support import ZlibContext
 from pymongo.errors import DocumentTooLarge, OperationFailure
 from pymongo.message import (
     _convert_client_bulk_exception,
@@ -116,6 +118,21 @@ class TestMessage(unittest.TestCase):
         self.assertIn("upserted", result)
         self.assertEqual(result["upserted"][0]["_id"], 42)
 
+    def test_update_legacy_upsert_id_from_update_doc(self):
+        # Pre-2.6 servers omit "upserted"; _id is extracted from the update doc (takes
+        # precedence over the query doc when both contain _id).
+        cmd = {"updates": [{"q": {"_id": 10}, "u": {"_id": 42}}]}
+        result = _convert_write_result("update", cmd, {"n": 1, "updatedExisting": False})
+        self.assertIn("upserted", result)
+        self.assertEqual(result["upserted"][0]["_id"], 42)
+
+    def test_update_legacy_upsert_id_from_query_doc(self):
+        # When _id is absent from the update doc, fall back to the query doc's _id.
+        cmd = {"updates": [{"q": {"_id": 10}, "u": {"$set": {"x": 1}}}]}
+        result = _convert_write_result("update", cmd, {"n": 1, "updatedExisting": False})
+        self.assertIn("upserted", result)
+        self.assertEqual(result["upserted"][0]["_id"], 10)
+
     def test_delete_basic(self):
         cmd = {"deletes": [{"q": {}, "limit": 1}]}
         result = _convert_write_result("delete", cmd, {"n": 1})
@@ -171,6 +188,18 @@ class TestMessage(unittest.TestCase):
         _op_msg(0, cmd, "testdb", None, _OPTS)
         self.assertIn("documents", cmd)
         self.assertEqual(cmd["documents"], docs)
+
+    def test_op_msg_compressed_zlib_header(self):
+        # Verify the compressed path is taken and produces a valid OP_COMPRESSED frame.
+        # Header layout (little-endian): [msgLen(4), reqId(4), responseTo(4), opCode(4),
+        #   originalOpcode(4), uncompressedSize(4), compressorId(1)]
+        ctx = ZlibContext(6)
+        _, msg, _, _ = _op_msg(0, {"ping": 1}, "testdb", None, _OPTS, ctx=ctx)
+        (opcode,) = struct.unpack_from("<i", msg, 12)
+        self.assertEqual(opcode, 2012)  # OP_COMPRESSED
+        (original_opcode,) = struct.unpack_from("<i", msg, 16)
+        self.assertEqual(original_opcode, 2013)  # OP_MSG
+        self.assertEqual(msg[24], ZlibContext.compressor_id)  # compressor_id == 2
 
     # _raise_document_too_large
 
