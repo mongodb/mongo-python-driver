@@ -431,7 +431,6 @@ class _Transaction:
         self.attempt = 0
         self.client = client
         self.has_completed_command = False
-        self.has_sent_command = False
 
     def active(self) -> bool:
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
@@ -444,7 +443,6 @@ class _Transaction:
 
     def set_in_progress(self) -> None:
         if self.state == _TxnState.STARTING:
-            self.has_sent_command = True
             self.state = _TxnState.IN_PROGRESS
 
     @property
@@ -473,7 +471,6 @@ class _Transaction:
         self.recovery_token = None
         self.attempt = 0
         self.has_completed_command = False
-        self.has_sent_command = False
 
     def __del__(self) -> None:
         if self.conn_mgr:
