@@ -81,12 +81,10 @@ def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:
 # On older Python, _SSLPipe.do_handshake calls wrap_bio and starts the handshake
 # atomically; session injection there requires copying private internals, so we skip it.
 _ASYNCIO_SSL_SESSION_SUPPORTED = sys.version_info >= (3, 11)
-if _ASYNCIO_SSL_SESSION_SUPPORTED:
-    import asyncio.sslproto as _asyncio_sslproto
-
-    # Capture the true original once at import time so concurrent connections
-    # always restore to it, not to a locally-captured (possibly stale) reference.
-    _ORIGINAL_SSL_PROTOCOL = _asyncio_sslproto.SSLProtocol
+# Captured lazily on first SSL async connection; never reset thereafter so
+# concurrent connections always restore to the true original, not a locally-
+# captured (possibly stale) reference.
+_ORIGINAL_SSL_PROTOCOL: Any = None
 
 
 def _make_session_ssl_protocol(session: Any) -> Any:
@@ -389,8 +387,14 @@ async def _configured_protocol_interface(
         if ssl_session_cache is not None and _ASYNCIO_SSL_SESSION_SUPPORTED
         else None
     )
-    if session is not None:
-        _asyncio_sslproto.SSLProtocol = _make_session_ssl_protocol(session)  # type: ignore[misc]
+    if _ASYNCIO_SSL_SESSION_SUPPORTED:
+        import asyncio.sslproto as _asyncio_sslproto
+
+        global _ORIGINAL_SSL_PROTOCOL  # noqa: PLW0603
+        if _ORIGINAL_SSL_PROTOCOL is None:
+            _ORIGINAL_SSL_PROTOCOL = _asyncio_sslproto.SSLProtocol
+        if session is not None:
+            _asyncio_sslproto.SSLProtocol = _make_session_ssl_protocol(session)  # type: ignore[misc]
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
