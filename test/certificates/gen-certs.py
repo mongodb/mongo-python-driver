@@ -77,7 +77,7 @@ def aki_from_ca(ca_cert: x509.Certificate) -> x509.AuthorityKeyIdentifier:
     # keyid form: SHA-1 hash of the CA's public key.  Required by Python 3.14 /
     # OpenSSL 3.x strict chain building.  macOS OCSP enforcement on the server
     # side is bypassed via --tlsAllowInvalidCertificates, so keyid form is safe.
-    return x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_cert.public_key())
+    return x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_cert.public_key())  # type: ignore[arg-type]
 
 
 def server_san() -> x509.SubjectAlternativeName:
