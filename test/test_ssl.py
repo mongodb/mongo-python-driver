@@ -138,6 +138,38 @@ class TestClientSSL(PyMongoTestCase):
         cache.set("new_session")
         self.assertEqual(cache.get(), "new_session")
 
+    @unittest.skipUnless(_IS_SYNC, "Session reuse only applies to sync path")
+    def test_tls_session_reused_on_second_connection(self):
+        """Cached TLS session is passed to wrap_socket on subsequent connections."""
+        import unittest.mock as mock
+
+        from pymongo.pool_shared import _configured_socket_interface, _SSLSessionCache
+
+        fake_session = object()
+        cache = _SSLSessionCache()
+        cache.set(fake_session)
+
+        fake_ssl_sock = mock.MagicMock()
+        fake_ssl_sock.getpeercert.return_value = {}
+
+        mock_ssl_context = mock.MagicMock()
+        mock_ssl_context.wrap_socket.return_value = fake_ssl_sock
+        mock_ssl_context.verify_mode = False
+        mock_ssl_context.check_hostname = False
+
+        mock_opts = mock.MagicMock()
+        mock_opts._ssl_context = mock_ssl_context
+        mock_opts.socket_timeout = None
+        mock_opts.tls_allow_invalid_hostnames = True
+
+        with mock.patch("pymongo.pool_shared._create_connection") as mock_create:
+            mock_create.return_value = mock.MagicMock()
+            _configured_socket_interface(("localhost", 27017), mock_opts, cache)
+
+        mock_ssl_context.wrap_socket.assert_called_once()
+        _, kwargs = mock_ssl_context.wrap_socket.call_args
+        self.assertIs(kwargs.get("session"), fake_session)
+
 
 class TestSSL(IntegrationTest):
     saved_port: int
