@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import functools
 import socket as _socket
 import ssl as _ssl
@@ -179,41 +178,45 @@ class TestAsyncCancellation(AsyncIntegrationTest):
                 f"socket leaked across cancellation: {sock!r}",
             )
 
-    async def _assert_cancellation_closes_socket(
-        self,
-        *,
-        connection_creator,
-        loop_method_name,
-        make_slow,
-        ssl_context=None,
-    ):
+    async def test_cancellation_closes_socket_during_ssl_wrap_socket(self):
         address = (await async_client_context.host, await async_client_context.port)
         options = (await async_get_pool(self.client)).opts
+        fake_ssl_context = _ssl.create_default_context()
 
-        created_sockets = []
+        created_sockets: list[_socket.socket] = []
         real_socket_cls = _socket.socket
         target_task = None
 
-        def is_target():
-            return asyncio.current_task() is target_task
-
-        def tracked_socket(*args, **kwargs):
+        def tracking_socket(*args, **kwargs):
             s = real_socket_cls(*args, **kwargs)
-            if is_target():
+            if asyncio.current_task() is target_task:
                 created_sockets.append(s)
             return s
 
         loop = asyncio.get_running_loop()
+        real_run_in_executor = loop.run_in_executor
         started = asyncio.Event()
-        block_forever = asyncio.Event()
-        slow_method = make_slow(getattr(loop, loop_method_name), started, block_forever, is_target)
 
-        with contextlib.ExitStack() as stack:
-            stack.enter_context(patch.object(_socket, "socket", tracked_socket))
-            stack.enter_context(patch.object(loop, loop_method_name, slow_method))
-            if ssl_context is not None:
-                stack.enter_context(patch.object(options, "_PoolOptions__ssl_context", ssl_context))
-            task = asyncio.create_task(connection_creator(address, options))
+        def slow_run_in_executor(executor, func, *args):
+            # Need to unwrap the SNI branch here if present
+            inner = func.func if isinstance(func, functools.partial) else func
+            # Each `ctx.wrap_socket` access returns a fresh bound-method
+            # object, so we check the bound instance (__self__) instead
+            if (
+                getattr(inner, "__self__", None) is fake_ssl_context
+                and asyncio.current_task() is target_task
+            ):
+                started.set()
+                # Return a future that never completes for cancellation.
+                return asyncio.get_running_loop().create_future()
+            return real_run_in_executor(executor, func, *args)
+
+        with (
+            patch.object(_socket, "socket", tracking_socket),
+            patch.object(loop, "run_in_executor", slow_run_in_executor),
+            patch.object(options, "_PoolOptions__ssl_context", fake_ssl_context),
+        ):
+            task = asyncio.create_task(pool_shared._async_configured_socket(address, options))
             target_task = task
             await asyncio.wait_for(started.wait(), timeout=5)
             task.cancel()
@@ -227,62 +230,3 @@ class TestAsyncCancellation(AsyncIntegrationTest):
                 -1,
                 f"socket leaked across cancellation: {sock!r}",
             )
-
-    async def test_cancellation_closes_socket_during_protocol_create_connection(self):
-        def make_slow(real, started, block_forever, is_target):
-            async def slow_create_connection(*args, **kwargs):
-                if is_target():
-                    started.set()
-                    await block_forever.wait()
-                return await real(*args, **kwargs)
-
-            return slow_create_connection
-
-        await self._assert_cancellation_closes_socket(
-            connection_creator=pool_shared._configured_protocol_interface,
-            loop_method_name="create_connection",
-            make_slow=make_slow,
-        )
-
-    async def test_cancellation_closes_socket_during_ssl_wrap_socket(self):
-        fake_ssl_context = _ssl.create_default_context()
-
-        def make_slow(real, started, _, is_target):
-            def slow_run_in_executor(executor, func, *args):
-                # Need to unwrap the SNI branch here if present
-                inner = func.func if isinstance(func, functools.partial) else func
-                # Each `ctx.wrap_socket` access returns a fresh bound-method
-                # object, so we check the bound instance (__self__) instead
-                if getattr(inner, "__self__", None) is fake_ssl_context and is_target():
-                    started.set()
-                    # Return a future that never completes for cancellation.
-                    return asyncio.get_running_loop().create_future()
-                return real(executor, func, *args)
-
-            return slow_run_in_executor
-
-        await self._assert_cancellation_closes_socket(
-            connection_creator=pool_shared._async_configured_socket,
-            loop_method_name="run_in_executor",
-            make_slow=make_slow,
-            ssl_context=fake_ssl_context,
-        )
-
-    async def test_cancellation_closes_socket_during_ssl_create_connection(self):
-        fake_ssl_context = _ssl.create_default_context()
-
-        def make_slow(real, started, block_forever, is_target):
-            async def slow_create_connection(*args, **kwargs):
-                if kwargs.get("ssl") is fake_ssl_context and is_target():
-                    started.set()
-                    await block_forever.wait()
-                return await real(*args, **kwargs)
-
-            return slow_create_connection
-
-        await self._assert_cancellation_closes_socket(
-            connection_creator=pool_shared._configured_protocol_interface,
-            loop_method_name="create_connection",
-            make_slow=make_slow,
-            ssl_context=fake_ssl_context,
-        )

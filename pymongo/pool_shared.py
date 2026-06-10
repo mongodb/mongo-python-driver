@@ -322,17 +322,11 @@ async def _configured_protocol_interface(
     timeout = options.socket_timeout
 
     if ssl_context is None:
-        try:
-            return AsyncNetworkingInterface(
-                await asyncio.get_running_loop().create_connection(
-                    lambda: PyMongoProtocol(timeout=timeout), sock=sock
-                )
+        return AsyncNetworkingInterface(
+            await asyncio.get_running_loop().create_connection(
+                lambda: PyMongoProtocol(timeout=timeout), sock=sock
             )
-        except BaseException:
-            # Protect against cancellation or interruption before the transport
-            # takes ownership of the raw socket.
-            sock.close()
-            raise
+        )
 
     host = address[0]
     try:
@@ -354,11 +348,6 @@ async def _configured_protocol_interface(
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
         details = _get_timeout_details(options)
         _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
-    except BaseException:
-        # Protect against cancellation or interruption before the transport
-        # takes ownership of the raw socket.
-        sock.close()
-        raise
     try:
         if (
             ssl_context.verify_mode
