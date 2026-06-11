@@ -328,9 +328,7 @@ class _ClientBulk:
     ) -> tuple[dict[str, Any], list[Mapping[str, Any]], list[Mapping[str, Any]]]:
         """Executes a batch of bulkWrite server commands (ack)."""
         request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(cmd, ops, namespaces)
-        result = self.write_command(
-            bwc, cmd, request_id, msg, to_send_ops, to_send_ns, self.client
-        )  # type: ignore[arg-type]
+        result = self.write_command(bwc, cmd, request_id, msg, to_send_ops, to_send_ns, self.client)  # type: ignore[arg-type]
         return result, to_send_ops, to_send_ns  # type: ignore[return-value]
 
     def _process_results_cursor(

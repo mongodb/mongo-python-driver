@@ -34,12 +34,6 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
-from pymongo.synchronous.command_runner import (
-    run_acknowledged_command,
-    run_unacknowledged_command,
-)
-from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.bulk_shared import (
     _COMMANDS,
     _DELETE_ALL,
@@ -67,6 +61,12 @@ from pymongo.message import (
     _randint,
 )
 from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
+from pymongo.synchronous.command_runner import (
+    run_acknowledged_command,
+    run_unacknowledged_command,
+)
+from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -505,9 +505,7 @@ class _Bulk:
             _raise_bulk_write_error(full_result)
         return full_result
 
-    def execute_op_msg_no_results(
-        self, conn: Connection, generator: Iterator[Any]
-    ) -> None:
+    def execute_op_msg_no_results(self, conn: Connection, generator: Iterator[Any]) -> None:
         """Execute write commands with OP_MSG and w=0 writeConcern, unordered."""
         db_name = self.collection.database.name
         client = self.collection.database.client
