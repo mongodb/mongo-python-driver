@@ -51,7 +51,7 @@ class TestPyMongoProtocol(AsyncUnitTest):
         protocol._header = memoryview(bytearray(header_bytes))
         return protocol
 
-    async def test_normal_op_msg(self):
+    def test_normal_op_msg(self):
         header = _make_header(length=32, request_id=1, response_to=99, op_code=2013)
         protocol = self._make_proto_with_header(header)
         body_len, op_code, response_to, expecting_compression = protocol.process_header()
@@ -60,7 +60,7 @@ class TestPyMongoProtocol(AsyncUnitTest):
         self.assertEqual(response_to, 99)
         self.assertFalse(expecting_compression)
 
-    async def test_op_compressed(self):
+    def test_op_compressed(self):
         # OP_COMPRESSED=2012; process_header strips the 9-byte compression sub-header
         # (op code + uncompressed size + compressor id), then the 16-byte standard header.
         # length=35 → after compression sub-header: 26 → body: 10
@@ -71,19 +71,19 @@ class TestPyMongoProtocol(AsyncUnitTest):
         self.assertEqual(op_code, 2012)
         self.assertTrue(expecting_compression)
 
-    async def test_op_compressed_length_too_small_raises(self):
+    def test_op_compressed_length_too_small_raises(self):
         header = _make_header(length=25, request_id=1, response_to=0, op_code=2012)
         protocol = self._make_proto_with_header(header)
         with self.assertRaises(ProtocolError):
             protocol.process_header()
 
-    async def test_non_compressed_length_too_small_raises(self):
+    def test_non_compressed_length_too_small_raises(self):
         header = _make_header(length=16, request_id=1, response_to=0, op_code=2013)
         protocol = self._make_proto_with_header(header)
         with self.assertRaises(ProtocolError):
             protocol.process_header()
 
-    async def test_length_exceeds_max_raises(self):
+    def test_length_exceeds_max_raises(self):
         header = _make_header(
             length=MAX_MESSAGE_SIZE + 1, request_id=1, response_to=0, op_code=2013
         )
@@ -91,7 +91,7 @@ class TestPyMongoProtocol(AsyncUnitTest):
         with self.assertRaises(ProtocolError):
             protocol.process_header()
 
-    async def test_op_reply_op_code(self):
+    def test_op_reply_op_code(self):
         header = _make_header(length=20, request_id=0, response_to=0, op_code=1)
         protocol = self._make_proto_with_header(header)
         body_len, op_code, _response_to, expecting_compression = protocol.process_header()
@@ -99,7 +99,7 @@ class TestPyMongoProtocol(AsyncUnitTest):
         self.assertEqual(op_code, 1)
         self.assertFalse(expecting_compression)
 
-    async def test_compression_header_snappy_compressor_id(self):
+    def test_compression_header_snappy_compressor_id(self):
         protocol = _make_protocol()
         # <iiB: little-endian, i32 op code=2013, i32 uncompressed size=0, u8 compressor id=1 (snappy)
         data = struct.pack("<iiB", 2013, 0, 1)
@@ -108,19 +108,19 @@ class TestPyMongoProtocol(AsyncUnitTest):
         self.assertEqual(op_code, 2013)
         self.assertEqual(compressor_id, 1)
 
-    async def test_compression_header_zlib_compressor_id(self):
+    def test_compression_header_zlib_compressor_id(self):
         protocol = _make_protocol()
         data = struct.pack("<iiB", 2013, 0, 2)
         protocol._compression_header = memoryview(bytearray(data))
         _, compressor_id = protocol.process_compression_header()
         self.assertEqual(compressor_id, 2)
 
-    async def test_close_aborts_transport(self):
+    def test_close_aborts_transport(self):
         protocol = _make_protocol()
         protocol.close()
         self.assertTrue(protocol.transport.abort.called)
 
-    async def test_connection_lost_twice_does_not_raise(self):
+    def test_connection_lost_twice_does_not_raise(self):
         protocol = _make_protocol()
         protocol.connection_lost(None)
         protocol.connection_lost(None)
