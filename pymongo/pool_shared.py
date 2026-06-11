@@ -350,12 +350,9 @@ async def _configured_protocol_interface(
     # asyncio does not support TLS session resumption natively (cpython#79152,
     # closed without a fix).  On Python 3.11+ SSLProtocol.__init__ calls
     # wrap_bio() synchronously before the first event-loop yield, so setting
-    # sslobject_class here is race-free; we skip injection on older versions.
-    if (
-        ssl_session_cache is not None
-        and sys.version_info >= (3, 11)
-        and isinstance(ssl_context, ssl.SSLContext)
-    ):
+    # sslobject_class is race-free.  Session injection is skipped on older
+    # Python versions.  (The async path always uses stdlib ssl, never PyOpenSSL.)
+    if ssl_session_cache is not None and sys.version_info >= (3, 11):
         session = ssl_session_cache.get()
         if session is not None:
             _session = session
@@ -365,7 +362,7 @@ async def _configured_protocol_interface(
                     super().__init__(*args, **kwargs)
                     self.session = _session
 
-            ssl_context.sslobject_class = _SessionSSLObject
+            ssl_context.sslobject_class = _SessionSSLObject  # type: ignore[attr-defined]
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
