@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.8"
+# dependencies = ["cryptography"]
+# ///
 """Generate TLS test certificates for the PyMongo test suite.
 
 Two classes of leaf cert are generated:
@@ -27,8 +30,7 @@ like a leaf cert requiring its own OCSP check, which then fails
 (CSSMERR_TP_CERT_SUSPENDED) because the CA is not in the system keychain.
 
 Usage:
-    pip install cryptography
-    python gen-certs.py    # run from test/certificates/
+    uv run gen-certs.py    # run from test/certificates/
 
 Password for password_protected.pem: qwerty
 """
@@ -39,19 +41,16 @@ import ipaddress
 import sys
 from pathlib import Path
 
-try:
-    from cryptography import x509
-    from cryptography.hazmat.primitives import hashes, serialization
-    from cryptography.hazmat.primitives.asymmetric import rsa
-    from cryptography.hazmat.primitives.serialization import (
-        BestAvailableEncryption,
-        Encoding,
-        NoEncryption,
-        PrivateFormat,
-    )
-    from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
-except ImportError:
-    sys.exit("cryptography package is required: pip install cryptography")
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import (
+    BestAvailableEncryption,
+    Encoding,
+    NoEncryption,
+    PrivateFormat,
+)
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 DAYS = 7300  # ~20 years

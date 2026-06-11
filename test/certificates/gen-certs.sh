@@ -3,8 +3,8 @@
 # See gen-certs.py for full documentation on the cert design.
 #
 # Usage: bash gen-certs.sh  (run from test/certificates/)
-# Requires: pip install cryptography
+# Requires: uv
 
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
-python3 gen-certs.py
+uv run gen-certs.py

@@ -7,10 +7,10 @@ These certificates are used by the PyMongo test suite for TLS/SSL integration te
 Run the generation script from this directory:
 
 ```bash
-bash gen-certs.sh
+uv run gen-certs.py
 ```
 
-**Prerequisites:** Python 3 with the `cryptography` package (`pip install cryptography`).
+**Prerequisites:** Python 3 and [uv](https://docs.astral.sh/uv/). The script declares its own dependency on `cryptography` via PEP 723 inline metadata, so `uv` installs it automatically.
 
 ## Certificate details
 
