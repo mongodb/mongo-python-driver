@@ -170,28 +170,35 @@ class TestClientSSL(PyMongoTestCase):
         _, kwargs = mock_ssl_context.wrap_socket.call_args
         self.assertIs(kwargs.get("session"), fake_session)
 
-    @unittest.skipUnless(
-        not _IS_SYNC and sys.version_info >= (3, 11),
-        "Async session injection requires Python 3.11+",
-    )
-    def test_async_tls_session_injected_into_sslobj(self):
-        """Cached TLS session is set on SSLObject before the handshake on Python 3.11+."""
-        import asyncio.sslproto as _sslproto
+    @unittest.skipUnless(not _IS_SYNC, "Tests async sslobject_class injection path only")
+    def test_async_tls_session_injected_via_sslobject_class(self):
+        """_SessionSSLContext sets sslobject_class on the real context for the wrap_bio() call."""
+        import ssl
         import unittest.mock as mock
 
-        from pymongo.pool_shared import _make_session_ssl_protocol, _SSLSessionCache
+        from pymongo.pool_shared import _SessionSSLContext
 
         fake_session = mock.MagicMock()
-        patched_cls = _make_session_ssl_protocol(fake_session)
+        real_ctx = mock.MagicMock()
+        real_ctx.sslobject_class = ssl.SSLObject
+        wrapped = _SessionSSLContext(real_ctx, fake_session)
 
-        mock_sslobj = mock.MagicMock()
-        instance = patched_cls.__new__(patched_cls)
-        instance._sslobj = mock_sslobj
-        # Call __init__ via the patched class, bypassing the real SSLProtocol init.
-        with mock.patch.object(_sslproto.SSLProtocol, "__init__", lambda *a, **kw: None):
-            patched_cls.__init__(instance)
+        observed_class = None
 
-        self.assertEqual(mock_sslobj.session, fake_session)
+        def capture_class(*args, **kwargs):
+            nonlocal observed_class
+            observed_class = real_ctx.sslobject_class
+            return mock.MagicMock()
+
+        real_ctx.wrap_bio.side_effect = capture_class
+        wrapped.wrap_bio("incoming", "outgoing", server_side=False)
+
+        # sslobject_class was our session-injecting subclass during the call
+        assert observed_class is not None
+        self.assertTrue(issubclass(observed_class, ssl.SSLObject))
+        self.assertIsNot(observed_class, ssl.SSLObject)
+        # sslobject_class was restored to the original after the call
+        self.assertIs(real_ctx.sslobject_class, ssl.SSLObject)
 
 
 class TestSSL(IntegrationTest):
@@ -745,7 +752,8 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_tls
     @unittest.skipUnless(
-        _IS_SYNC and _HAVE_PYOPENSSL, "Session caching only applies to PyOpenSSL sync path"
+        _IS_SYNC and _HAVE_PYOPENSSL,
+        "Sync stdlib ssl may return None for session on TLS 1.3; test limited to PyOpenSSL",
     )
     def test_tls_session_cached_after_connect(self):
         self.client.admin.command("ping")
