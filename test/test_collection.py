@@ -229,7 +229,7 @@ class TestCollection(IntegrationTest):
         self.assertRaises(ValueError, IndexModel, [])
 
         db.test.drop_indexes()
-        db.test.insert_one({})
+        db.create_collection("test")
         self.assertEqual(len(db.test.index_information()), 1)
 
         db.test.create_indexes([IndexModel("hello")])
@@ -292,7 +292,7 @@ class TestCollection(IntegrationTest):
             db.test.create_index([])
 
         db.test.drop_indexes()
-        db.test.insert_one({})
+        db.create_collection("test")
         self.assertEqual(len(db.test.index_information()), 1)
 
         db.test.create_index("hello")
@@ -386,7 +386,7 @@ class TestCollection(IntegrationTest):
     def test_list_indexes(self):
         db = self.db
         db.test.drop()
-        db.test.insert_one({})  # create collection
+        db.create_collection("test")
 
         def map_indexes(indexes):
             return {index["name"]: index for index in indexes}
@@ -420,7 +420,7 @@ class TestCollection(IntegrationTest):
     def test_index_info(self):
         db = self.db
         db.test.drop()
-        db.test.insert_one({})  # create collection
+        db.create_collection("test")
         self.assertEqual(len(db.test.index_information()), 1)
         self.assertIn("_id_", db.test.index_information())
 

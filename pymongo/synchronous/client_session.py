@@ -169,6 +169,7 @@ from pymongo.errors import (
     WTimeoutError,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
+from pymongo.operations import _WRITES_WITH_CLUSTER_TIME
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.server_type import SERVER_TYPE
@@ -439,6 +440,10 @@ class _Transaction:
 
     def set_starting(self) -> None:
         self.state = _TxnState.STARTING
+
+    def set_in_progress(self) -> None:
+        if self.state == _TxnState.STARTING:
+            self.state = _TxnState.IN_PROGRESS
 
     @property
     def pinned_conn(self) -> Optional[Connection]:
@@ -1107,7 +1112,12 @@ class ClientSession:
             return
         self._check_ended()
         self._materialize(conn.logical_session_timeout_minutes)
-        if self.options.snapshot:
+        # Add afterClusterTime on snapshot reads or writes in causally-consistent sessions
+        if self.options.snapshot or (
+            self.options.causal_consistency
+            and not self.in_transaction
+            and operation in _WRITES_WITH_CLUSTER_TIME
+        ):
             self._update_read_concern(command, conn)
 
         self._server_session.last_use = time.monotonic()
@@ -1125,7 +1135,6 @@ class ClientSession:
 
             if self._transaction.state == _TxnState.STARTING:
                 # First command begins a new transaction.
-                self._transaction.state = _TxnState.IN_PROGRESS
                 command["startTransaction"] = True
 
                 assert self._transaction.opts

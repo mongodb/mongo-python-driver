@@ -2305,10 +2305,10 @@ class TestExhaustCursor(AsyncIntegrationTest):
             # Discard the actual server response.
             await AsyncConnection.receive_message(conn, request_id)
 
-            # responseFlags bit 1 is QueryFailure.
-            msg = struct.pack("<iiiii", 1 << 1, 0, 0, 0, 0)
-            msg += encode({"$err": "mock err", "code": 0})
-            return message._OpReply.unpack(msg)
+            # Construct a valid OP_MSG error response.
+            doc = encode({"ok": 0, "errmsg": "mock err", "code": 0})
+            msg = struct.pack("<IB", 0, 0) + doc
+            return message._OpMsg.unpack(msg)
 
         conn.receive_message = receive_message
         with self.assertRaises(OperationFailure):

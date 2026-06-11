@@ -69,8 +69,8 @@ MAX_WRITE_BATCH_SIZE = 100000
 # What this version of PyMongo supports.
 MIN_SUPPORTED_SERVER_VERSION = "4.2"
 MIN_SUPPORTED_WIRE_VERSION = 8
-# MongoDB 8.0
-MAX_SUPPORTED_WIRE_VERSION = 25
+# MongoDB 9.0
+MAX_SUPPORTED_WIRE_VERSION = 29
 
 # Frequency to call hello on servers, in seconds.
 HEARTBEAT_FREQUENCY = 10

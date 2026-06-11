@@ -16,6 +16,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import platform
 import random
 import sys
 import time
@@ -582,6 +584,10 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
         self.assertTrue(context.exception.has_error_label("UnknownTransactionCommitResult"))
 
     @async_client_context.require_transactions
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     async def test_callback_not_retried_after_csot_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])

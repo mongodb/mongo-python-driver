@@ -82,6 +82,22 @@ class _Op(str, enum.Enum):
     TEST = "testOperation"
 
 
+_WRITES_WITH_CLUSTER_TIME = frozenset(
+    {
+        _Op.INSERT.value,
+        _Op.UPDATE.value,
+        _Op.FIND_AND_MODIFY.value,
+        _Op.DELETE.value,
+        _Op.BULK_WRITE.value,
+        _Op.CREATE.value,
+        _Op.CREATE_INDEXES.value,
+        _Op.DROP.value,
+        _Op.DROP_DATABASE.value,
+        _Op.DROP_INDEXES.value,
+    }
+)
+
+
 class InsertOne(Generic[_DocumentType]):
     """Represents an insert_one operation."""
 
