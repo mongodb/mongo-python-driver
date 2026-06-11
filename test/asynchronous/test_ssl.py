@@ -269,6 +269,157 @@ class TestClientSSL(AsyncPyMongoTestCase):
         asyncio.run(run())
         self.assertIs(cache[0], fake_session)
 
+    @unittest.skipUnless(
+        not _IS_SYNC and sys.version_info >= (3, 11),
+        "Tests async session injection on Python 3.11+",
+    )
+    def test_async_configured_protocol_injects_session_via_sslobject_class(self):
+        """When the cache has a session, sslobject_class is set and its __init__ body runs."""
+        import asyncio
+        import ssl
+        import unittest.mock as mock
+
+        from pymongo.pool_shared import _configured_protocol_interface
+
+        initial_session = object()
+        cache: list = [initial_session]
+
+        mock_transport = mock.MagicMock()
+        mock_transport.get_extra_info.return_value = None  # no ssl_object → save block skips
+
+        real_ctx = ssl.create_default_context()
+        real_ctx.check_hostname = False
+        real_ctx.verify_mode = ssl.CERT_NONE
+
+        mock_opts = mock.MagicMock()
+        mock_opts._ssl_context = real_ctx
+        mock_opts.socket_timeout = None
+        mock_opts.tls_allow_invalid_hostnames = True
+
+        mock_loop = mock.MagicMock()
+        mock_loop.create_connection = mock.AsyncMock(
+            return_value=(mock_transport, mock.MagicMock())
+        )
+
+        async def run():
+            with (
+                mock.patch(
+                    "pymongo.pool_shared._async_create_connection",
+                    new=mock.AsyncMock(return_value=mock.MagicMock()),
+                ),
+                mock.patch(
+                    "pymongo.pool_shared.asyncio.get_running_loop",
+                    return_value=mock_loop,
+                ),
+            ):
+                await _configured_protocol_interface(("localhost", 27017), mock_opts, cache)
+
+        asyncio.run(run())
+
+        session_cls = real_ctx.sslobject_class  # type: ignore[attr-defined]
+        self.assertIsNot(session_cls, ssl.SSLObject)
+        self.assertTrue(issubclass(session_cls, ssl.SSLObject))
+
+        # Exercise the __init__ body (super().__init__ + self.session = _session) by
+        # calling wrap_bio, patching the session setter to accept non-SSLSession objects.
+        incoming = ssl.MemoryBIO()
+        outgoing = ssl.MemoryBIO()
+        no_op_session = property(lambda s: None, lambda s, v: None)
+        with mock.patch.object(ssl.SSLObject, "session", no_op_session):
+            ssl_obj = real_ctx.wrap_bio(incoming, outgoing, server_side=False)
+        self.assertIsInstance(ssl_obj, ssl.SSLObject)
+
+    @unittest.skipUnless(not _IS_SYNC, "Tests async _configured_protocol_interface only")
+    def test_async_configured_protocol_no_cache(self):
+        """When ssl_session_cache is None, no injection or save occurs."""
+        import asyncio
+        import ssl
+        import unittest.mock as mock
+
+        from pymongo.pool_shared import _configured_protocol_interface
+
+        real_ctx = ssl.create_default_context()
+        real_ctx.check_hostname = False
+        real_ctx.verify_mode = ssl.CERT_NONE
+
+        mock_opts = mock.MagicMock()
+        mock_opts._ssl_context = real_ctx
+        mock_opts.socket_timeout = None
+        mock_opts.tls_allow_invalid_hostnames = True
+
+        mock_transport = mock.MagicMock()
+        mock_transport.get_extra_info.return_value = None
+
+        mock_loop = mock.MagicMock()
+        mock_loop.create_connection = mock.AsyncMock(
+            return_value=(mock_transport, mock.MagicMock())
+        )
+
+        async def run():
+            with (
+                mock.patch(
+                    "pymongo.pool_shared._async_create_connection",
+                    new=mock.AsyncMock(return_value=mock.MagicMock()),
+                ),
+                mock.patch(
+                    "pymongo.pool_shared.asyncio.get_running_loop",
+                    return_value=mock_loop,
+                ),
+            ):
+                await _configured_protocol_interface(("localhost", 27017), mock_opts, None)
+
+        asyncio.run(run())
+        self.assertIs(real_ctx.sslobject_class, ssl.SSLObject)  # type: ignore[attr-defined]
+
+    @unittest.skipUnless(not _IS_SYNC, "Tests async _configured_protocol_interface only")
+    def test_async_configured_protocol_new_session_is_none(self):
+        """When ssl_object.session is None after connect, the cache is not updated."""
+        import asyncio
+        import ssl
+        import unittest.mock as mock
+
+        from pymongo.pool_shared import _configured_protocol_interface
+
+        cache: list = [None]
+
+        mock_ssl_obj = mock.MagicMock()
+        mock_ssl_obj.session = None
+
+        mock_transport = mock.MagicMock()
+        mock_transport.get_extra_info.side_effect = lambda key: (
+            mock_ssl_obj if key == "ssl_object" else None
+        )
+
+        real_ctx = ssl.create_default_context()
+        real_ctx.check_hostname = False
+        real_ctx.verify_mode = ssl.CERT_NONE
+
+        mock_opts = mock.MagicMock()
+        mock_opts._ssl_context = real_ctx
+        mock_opts.socket_timeout = None
+        mock_opts.tls_allow_invalid_hostnames = True
+
+        mock_loop = mock.MagicMock()
+        mock_loop.create_connection = mock.AsyncMock(
+            return_value=(mock_transport, mock.MagicMock())
+        )
+
+        async def run():
+            with (
+                mock.patch(
+                    "pymongo.pool_shared._async_create_connection",
+                    new=mock.AsyncMock(return_value=mock.MagicMock()),
+                ),
+                mock.patch(
+                    "pymongo.pool_shared.asyncio.get_running_loop",
+                    return_value=mock_loop,
+                ),
+            ):
+                await _configured_protocol_interface(("localhost", 27017), mock_opts, cache)
+
+        asyncio.run(run())
+        self.assertIsNone(cache[0])
+
 
 class TestSSL(AsyncIntegrationTest):
     saved_port: int
