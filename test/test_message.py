@@ -154,7 +154,7 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(max_doc_size, 0)
 
     def test_op_msg_max_doc_size_matches_largest_encoded_doc(self):
-        docs = [{"_id": 1, "x": 2}, {"_id": 3, "x": 4}]
+        docs = [{"_id": 1}, {"_id": 2, "data": "a" * 100}]
         cmd: dict = {"insert": "col", "documents": docs}
         max_doc_size = _op_msg(0, cmd, "testdb", None, _OPTS)[3]
         self.assertEqual(max_doc_size, max(len(encode(d)) for d in docs))
@@ -199,103 +199,251 @@ class TestMessage(unittest.TestCase):
         self.assertIn("1000000", msg)
 
     def test_raise_document_too_large_update_generic_message(self):
-        with self.assertRaises(DocumentTooLarge) as ctx:
+        with self.assertRaisesRegex(DocumentTooLarge, "update command document too large"):
             _raise_document_too_large("update", 2_000_000, 1_000_000)
-        self.assertIn("update", str(ctx.exception))
 
     # _gen_find_command
 
     def test_find_basic(self):
-        cmd = _gen_find_command("col", {}, None, 0, 0, None, None, ReadConcern())
+        cmd = _gen_find_command(
+            "col",
+            {},
+            projection=None,
+            skip=0,
+            limit=0,
+            batch_size=None,
+            options=None,
+            read_concern=ReadConcern(),
+        )
         self.assertEqual(cmd["find"], "col")
         self.assertEqual(cmd["filter"], {})
 
     def test_find_with_projection(self):
-        cmd = _gen_find_command("col", {}, {"x": 1}, 0, 0, None, None, ReadConcern())
+        cmd = _gen_find_command(
+            "col",
+            {},
+            projection={"x": 1},
+            skip=0,
+            limit=0,
+            batch_size=None,
+            options=None,
+            read_concern=ReadConcern(),
+        )
         self.assertEqual(cmd["projection"], {"x": 1})
 
     def test_find_with_skip(self):
-        cmd = _gen_find_command("col", {}, None, 5, 0, None, None, ReadConcern())
+        cmd = _gen_find_command(
+            "col",
+            {},
+            projection=None,
+            skip=5,
+            limit=0,
+            batch_size=None,
+            options=None,
+            read_concern=ReadConcern(),
+        )
         self.assertEqual(cmd["skip"], 5)
 
     def test_find_with_positive_limit(self):
-        cmd = _gen_find_command("col", {}, None, 0, 10, None, None, ReadConcern())
+        cmd = _gen_find_command(
+            "col",
+            {},
+            projection=None,
+            skip=0,
+            limit=10,
+            batch_size=None,
+            options=None,
+            read_concern=ReadConcern(),
+        )
         self.assertEqual(cmd["limit"], 10)
         self.assertNotIn("singleBatch", cmd)
 
     def test_find_with_negative_limit_sets_single_batch(self):
-        cmd = _gen_find_command("col", {}, None, 0, -5, None, None, ReadConcern())
+        cmd = _gen_find_command(
+            "col",
+            {},
+            projection=None,
+            skip=0,
+            limit=-5,
+            batch_size=None,
+            options=None,
+            read_concern=ReadConcern(),
+        )
         self.assertEqual(cmd["limit"], 5)
         self.assertTrue(cmd["singleBatch"])
 
     def test_find_batch_size_adjusted_when_equal_to_limit(self):
-        cmd = _gen_find_command("col", {}, None, 0, 10, 10, None, ReadConcern())
+        cmd = _gen_find_command(
+            "col",
+            {},
+            projection=None,
+            skip=0,
+            limit=10,
+            batch_size=10,
+            options=None,
+            read_concern=ReadConcern(),
+        )
         self.assertEqual(cmd["batchSize"], 11)
 
     def test_find_batch_size_not_adjusted_when_different(self):
         # Covers the False branch of `if limit == batch_size:` — distinct from the True branch above.
-        cmd = _gen_find_command("col", {}, None, 0, 10, 5, None, ReadConcern())
+        cmd = _gen_find_command(
+            "col",
+            {},
+            projection=None,
+            skip=0,
+            limit=10,
+            batch_size=5,
+            options=None,
+            read_concern=ReadConcern(),
+        )
         self.assertEqual(cmd["batchSize"], 5)
 
     def test_find_read_concern_level_included(self):
-        cmd = _gen_find_command("col", {}, None, 0, 0, None, None, ReadConcern("majority"))
+        cmd = _gen_find_command(
+            "col",
+            {},
+            projection=None,
+            skip=0,
+            limit=0,
+            batch_size=None,
+            options=None,
+            read_concern=ReadConcern("majority"),
+        )
         self.assertEqual(cmd["readConcern"], {"level": "majority"})
 
     def test_find_query_with_dollar_query_modifier(self):
         spec = {"$query": {"x": 1}, "$orderby": {"x": 1}}
-        cmd = _gen_find_command("col", spec, None, 0, 0, None, None, ReadConcern())
+        cmd = _gen_find_command(
+            "col",
+            spec,
+            projection=None,
+            skip=0,
+            limit=0,
+            batch_size=None,
+            options=None,
+            read_concern=ReadConcern(),
+        )
         self.assertIn("sort", cmd)
         self.assertNotIn("$orderby", cmd)
         self.assertNotIn("$query", cmd)
 
     def test_find_allow_disk_use(self):
         cmd = _gen_find_command(
-            "col", {}, None, 0, 0, None, None, ReadConcern(), allow_disk_use=True
+            "col",
+            {},
+            projection=None,
+            skip=0,
+            limit=0,
+            batch_size=None,
+            options=None,
+            read_concern=ReadConcern(),
+            allow_disk_use=True,
         )
         self.assertTrue(cmd["allowDiskUse"])
 
     def test_find_collation(self):
         cmd = _gen_find_command(
-            "col", {}, None, 0, 0, None, None, ReadConcern(), collation={"locale": "en"}
+            "col",
+            {},
+            projection=None,
+            skip=0,
+            limit=0,
+            batch_size=None,
+            options=None,
+            read_concern=ReadConcern(),
+            collation={"locale": "en"},
         )
         self.assertEqual(cmd["collation"]["locale"], "en")
 
     def test_find_options_tailable(self):
-        cmd = _gen_find_command("col", {}, None, 0, 0, None, 2, ReadConcern())
+        cmd = _gen_find_command(
+            "col",
+            {},
+            projection=None,
+            skip=0,
+            limit=0,
+            batch_size=None,
+            options=2,
+            read_concern=ReadConcern(),
+        )
         self.assertTrue(cmd.get("tailable"))
 
     def test_find_dollar_query_with_explain_removed(self):
         spec = {"$query": {"x": 1}, "$explain": 1}
-        cmd = _gen_find_command("col", spec, None, 0, 0, None, None, ReadConcern())
+        cmd = _gen_find_command(
+            "col",
+            spec,
+            projection=None,
+            skip=0,
+            limit=0,
+            batch_size=None,
+            options=None,
+            read_concern=ReadConcern(),
+        )
         self.assertNotIn("$explain", cmd)
 
     def test_find_dollar_query_with_read_preference_removed(self):
         # Covers the separate `if "$readPreference" in cmd:` branch — not entered by test_dollar_query_with_explain_removed.
         spec = {"$query": {"x": 1}, "$readPreference": {"mode": "secondary"}}
-        cmd = _gen_find_command("col", spec, None, 0, 0, None, None, ReadConcern())
+        cmd = _gen_find_command(
+            "col",
+            spec,
+            projection=None,
+            skip=0,
+            limit=0,
+            batch_size=None,
+            options=None,
+            read_concern=ReadConcern(),
+        )
         self.assertNotIn("$readPreference", cmd)
 
     # _gen_get_more_command
 
     def test_get_more_basic(self):
-        cmd = _gen_get_more_command(12345, "col", None, None, None, self._make_conn())
+        cmd = _gen_get_more_command(
+            12345,
+            "col",
+            batch_size=None,
+            max_await_time_ms=None,
+            comment=None,
+            conn=self._make_conn(),
+        )
         self.assertEqual(cmd["getMore"], 12345)
         self.assertEqual(cmd["collection"], "col")
 
     def test_get_more_with_batch_size(self):
-        cmd = _gen_get_more_command(1, "col", 100, None, None, self._make_conn())
+        cmd = _gen_get_more_command(
+            1, "col", batch_size=100, max_await_time_ms=None, comment=None, conn=self._make_conn()
+        )
         self.assertEqual(cmd["batchSize"], 100)
 
     def test_get_more_with_max_await_time_ms(self):
-        cmd = _gen_get_more_command(1, "col", None, 500, None, self._make_conn())
+        cmd = _gen_get_more_command(
+            1, "col", batch_size=None, max_await_time_ms=500, comment=None, conn=self._make_conn()
+        )
         self.assertEqual(cmd["maxTimeMS"], 500)
 
     def test_get_more_comment_added_on_high_wire_version(self):
-        cmd = _gen_get_more_command(1, "col", None, None, "my comment", self._make_conn(9))
+        cmd = _gen_get_more_command(
+            1,
+            "col",
+            batch_size=None,
+            max_await_time_ms=None,
+            comment="my comment",
+            conn=self._make_conn(9),
+        )
         self.assertEqual(cmd["comment"], "my comment")
 
     def test_get_more_comment_not_added_on_low_wire_version(self):
-        cmd = _gen_get_more_command(1, "col", None, None, "my comment", self._make_conn(8))
+        cmd = _gen_get_more_command(
+            1,
+            "col",
+            batch_size=None,
+            max_await_time_ms=None,
+            comment="my comment",
+            conn=self._make_conn(8),
+        )
         self.assertNotIn("comment", cmd)
 
 

@@ -652,7 +652,7 @@ def _raise_document_too_large(operation: str, doc_size: int, max_size: int) -> N
     else:
         # There's nothing intelligent we can say
         # about size for update and delete
-        raise DocumentTooLarge(f"{operation!r} command document too large")
+        raise DocumentTooLarge(f"{operation} command document too large")
 
 
 # From the Client Side Encryption spec:
