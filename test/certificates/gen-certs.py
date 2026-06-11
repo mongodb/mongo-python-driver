@@ -1,13 +1,13 @@
 # /// script
 # requires-python = ">=3.8"
-# dependencies = ["cryptography"]
+# dependencies = ["cryptography>=44.0.0"]
 # ///
 """Generate TLS test certificates for the PyMongo test suite.
 
 Two classes of leaf cert are generated:
 
   MongoDB certs (server.pem, client.pem, password_protected.pem):
-    No AKI extension.  MongoDB Enterprise on macOS uses Apple SecTrust with
+    No Authority Key Identifier (AKI) extension.  MongoDB Enterprise on macOS uses Apple SecTrust with
     kSecRevocationRequirePositiveResponse.  When AKI is present, SecTrust uses
     it to identify the issuer, then attempts OCSP.  Because our CA is not in
     the macOS system keychain on Evergreen driver CI hosts, OCSP fails and
@@ -25,7 +25,7 @@ Two classes of leaf cert are generated:
 The CA (ca.pem) intentionally has only basicConstraints: CA:TRUE and no other
 extensions.  The original test CA shipped in this directory (from 2019) used
 exactly this minimal profile and worked fine on macOS.  Adding keyUsage,
-subjectAltName, or SKI/AKI to the CA cert causes macOS SecTrust to treat it
+subjectAltName, or Subject Key Identifier (SKI)/AKI to the CA cert causes macOS SecTrust to treat it
 like a leaf cert requiring its own OCSP check, which then fails
 (CSSMERR_TP_CERT_SUSPENDED) because the CA is not in the system keychain.
 

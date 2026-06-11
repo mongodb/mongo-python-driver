@@ -3025,7 +3025,8 @@ class TestKmsRetryProse(EncryptionIntegrationTest):
             # macOS/Windows: use PROTOCOL_TLS_CLIENT instead of
             # create_default_context so that X509_V_FLAG_X509_STRICT is not
             # set.  Python 3.14 enables strict mode in create_default_context,
-            # which requires SKI on the root CA cert.  The CA cert omits SKI
+            # which requires a Subject Key Identifier (SKI) on the root CA cert.
+            # The CA cert omits SKI
             # to prevent macOS SecTrust from triggering OCSP revocation checks
             # during MongoDB server startup; the same cert is used on all
             # platforms, so Windows inherits the same constraint.
