@@ -18,7 +18,7 @@ Two classes of leaf certificate are generated, with different extension profiles
 conflicting requirements from Python's ssl module and macOS's SecTrust framework:
 
 **MongoDB certs** — presented to MongoDB Enterprise, verified by Apple SecTrust on macOS.
-No AKI or SKI.  Adding AKI causes SecTrust to attempt OCSP revocation checks; because our
+No Authority Key Identifier (AKI) or Subject Key Identifier (SKI).  Adding AKI causes SecTrust to attempt OCSP revocation checks; because our
 CA is not in the macOS system keychain, those checks fail with `CSSMERR_TP_CERT_SUSPENDED`.
 
 **KMS certs** — presented by KMS mock servers, verified by Python's ssl module (OpenSSL).
