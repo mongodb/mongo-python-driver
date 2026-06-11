@@ -25,7 +25,7 @@ Two classes of leaf cert are generated:
 The CA (ca.pem) intentionally has only basicConstraints: CA:TRUE and no other
 extensions.  The original test CA shipped in this directory (from 2019) used
 exactly this minimal profile and worked fine on macOS.  Adding keyUsage,
-subjectAltName, or Subject Key Identifier (SKI)/AKI to the CA cert causes macOS SecTrust to treat it
+subjectAltName, Subject Key Identifier (SKI), or AKI to the CA cert causes macOS SecTrust to treat it
 like a leaf cert requiring its own OCSP check, which then fails
 (CSSMERR_TP_CERT_SUSPENDED) because the CA is not in the system keychain.
 
@@ -144,14 +144,18 @@ TRUSTED_CA_NAME = x509.Name(
 
 # ---------------------------------------------------------------------------
 # 0. Drivers Testing CA.
-#    Has basicConstraints (critical) and keyUsage (critical, keyCertSign +
-#    crlSign) as required by RFC 5280 and enforced by Python 3.14 / OpenSSL
-#    3.x strict mode (ssl.create_default_context).
-#    No SKI, no AKI, no SAN.  Adding SKI to the CA triggers a macOS
-#    SecTrust OCSP sweep on the server startup path even when
-#    --tlsAllowInvalidCertificates is set, causing connection timeouts
-#    on MongoDB 4.2 sharded-cluster tests.  Python 3.14 only requires SKI
-#    on non-root (leaf) certs, so the CA can safely omit it.
+#    Has only basicConstraints (critical, CA:TRUE).  No keyUsage, no SKI,
+#    no AKI, no SAN.
+#
+#    keyUsage is intentionally omitted: on Windows Python 3.13, OpenSSL 3.3+
+#    raises "certificate signature failure" when a CA cert has a critical
+#    keyUsage with digital_signature=False, even though keyCertSign is set.
+#    Python 3.14 strict mode only requires keyUsage to include keyCertSign
+#    IF keyUsage is present — it does not require keyUsage to be present.
+#
+#    SKI/AKI are intentionally omitted: adding them causes macOS SecTrust to
+#    trigger OCSP revocation checks on the MongoDB server startup path,
+#    causing ~67-second connection timeouts.
 # ---------------------------------------------------------------------------
 print("==> Generating Drivers Testing CA...")
 ca_key = make_key()
@@ -164,20 +168,6 @@ ca_cert = (
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
     .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
-    .add_extension(
-        x509.KeyUsage(
-            digital_signature=False,
-            content_commitment=False,
-            key_encipherment=False,
-            data_encipherment=False,
-            key_agreement=False,
-            key_cert_sign=True,
-            crl_sign=True,
-            encipher_only=False,
-            decipher_only=False,
-        ),
-        critical=True,
-    )
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "ca.pem").write_bytes(cert_pem(ca_cert))
@@ -413,27 +403,26 @@ def cert_text(path: Path) -> str:
 
 errors = 0
 
-# CA cert must have critical basicConstraints + keyUsage; must NOT have AKI/SKI/SAN.
-# SKI is intentionally omitted from the CA: adding it causes macOS SecTrust to
-# attempt OCSP on the MongoDB server startup path, producing 67-second timeouts.
-# Python 3.14 only requires SKI on non-root leaf certs, not on the root CA.
+# CA cert must have critical basicConstraints; must NOT have keyUsage, AKI, SKI, or SAN.
 ca_text = cert_text(SCRIPT_DIR / "ca.pem")
 ca_errors = 0
 if "Basic Constraints: critical" not in ca_text:
     print(
-        "    ca.pem: ERROR — basicConstraints not critical (required by RFC 5280 / Python 3.14)",
+        "    ca.pem: ERROR — basicConstraints not critical (required by Python 3.14 strict mode)",
         file=sys.stderr,
     )
     ca_errors += 1
-if "Key Usage: critical" not in ca_text:
-    print(
-        "    ca.pem: ERROR — keyUsage missing or not critical (required by Python 3.14)",
-        file=sys.stderr,
-    )
-    ca_errors += 1
-for ext in ("Authority Key Identifier", "Subject Key Identifier", "Subject Alternative Name"):
+for ext in (
+    "Key Usage",
+    "Authority Key Identifier",
+    "Subject Key Identifier",
+    "Subject Alternative Name",
+):
     if ext in ca_text:
-        print(f"    ca.pem: ERROR — has {ext} (would cause macOS OCSP issues)", file=sys.stderr)
+        print(
+            f"    ca.pem: ERROR — has {ext} (would cause issues on Windows or macOS)",
+            file=sys.stderr,
+        )
         ca_errors += 1
 if ca_errors:
     errors += ca_errors
