@@ -73,10 +73,16 @@ def cert_pem(cert) -> bytes:
 
 
 def aki_from_ca(ca_cert: x509.Certificate) -> x509.AuthorityKeyIdentifier:
-    # keyid form: SHA-1 hash of the CA's public key.  Required by Python 3.14 /
-    # OpenSSL 3.x strict chain building.  macOS OCSP enforcement on the server
-    # side is bypassed via --tlsAllowInvalidCertificates, so keyid form is safe.
-    return x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_cert.public_key())  # type: ignore[arg-type]
+    # Issuer form (DirName + serial, no keyid).  OpenSSL 3.3+ (bundled with
+    # Windows Python 3.13+) requires the issuer cert to have SKI when the leaf
+    # uses keyid-form AKI.  Our CA intentionally omits SKI, so we use issuer
+    # form to avoid that requirement.  Issuer form still satisfies Python 3.13+
+    # which requires AKI to be present on non-root certs.
+    return x509.AuthorityKeyIdentifier(
+        key_identifier=None,
+        authority_cert_issuer=[x509.DirectoryName(ca_cert.issuer)],
+        authority_cert_serial_number=ca_cert.serial_number,
+    )
 
 
 def server_san() -> x509.SubjectAlternativeName:
