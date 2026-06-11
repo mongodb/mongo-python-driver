@@ -204,6 +204,8 @@ class Server:
             if more_to_come:
                 reply = await conn.receive_message(None)
             else:
+                if operation.session is not None and operation.session._starting_transaction:
+                    operation.session._transaction.set_in_progress()
                 await conn.send_message(data, max_doc_size)
                 reply = await conn.receive_message(request_id)
 
@@ -265,16 +267,7 @@ class Server:
         duration = datetime.now() - start
         # Must publish in find / getMore / explain command response
         # format.
-        if use_cmd:
-            res = docs[0]
-        elif operation.name == "explain":
-            res = docs[0] if docs else {}
-        else:
-            res = {"cursor": {"id": reply.cursor_id, "ns": operation.namespace()}, "ok": 1}  # type: ignore[union-attr]
-            if operation.name == "find":
-                res["cursor"]["firstBatch"] = docs
-            else:
-                res["cursor"]["nextBatch"] = docs
+        res = docs[0]
         if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _COMMAND_LOGGER,

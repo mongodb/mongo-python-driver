@@ -40,8 +40,12 @@ def apply_patches(errored):
     try:
         # Avoid shell=True by passing arguments as a list.
         # Note: glob expansion doesn't work in shell=False, so we use a list of files.
-        patches = [str(p) for p in pathlib.Path("./.evergreen/spec-patch/").glob("*")]
+        spec_patch_dir = pathlib.Path("./.evergreen/spec-patch/")
+        patches = [str(p) for p in spec_patch_dir.glob("*.patch")]
+        patches += [str(p) for p in (spec_patch_dir / "permanent").glob("*.patch")]
         if patches:
+            for patch in patches:
+                print(f"Applying patch {patch}")
             subprocess.run(
                 [  # noqa: S603, S607
                     "git",

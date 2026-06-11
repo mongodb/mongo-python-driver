@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections import namedtuple
 
 try:
-    from mockupdb import OpMsgReply, OpReply
+    from mockupdb import OpMsgReply
 
     _HAVE_MOCKUPDB = True
 except ImportError:
@@ -107,7 +107,7 @@ if _HAVE_MOCKUPDB:
             lambda client: client.db.command("foo", read_preference=ReadPreference.SECONDARY),
             reply={"ok": 1},
             op_type="always-use-secondary",
-            not_master=OpReply(ok=0, errmsg="node is recovering"),
+            not_master=OpMsgReply(ok=0, errmsg="node is recovering"),
         ),
         Operation(
             "listIndexes",

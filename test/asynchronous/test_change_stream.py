@@ -926,7 +926,7 @@ class TestAsyncCollectionAsyncChangeStream(
         await super().asyncSetUp()
         # Use a new collection for each test.
         await self.watched_collection().drop()
-        await self.watched_collection().insert_one({})
+        await self.db.create_collection(self.watched_collection().name)
 
     async def change_stream_with_client(self, client, *args, **kwargs):
         return (

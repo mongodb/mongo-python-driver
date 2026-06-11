@@ -50,14 +50,17 @@ class TestLB(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
     def test_connections_are_only_returned_once(self):
-        if "PyPy" in sys.version:
-            # Tracked in PYTHON-3011
-            self.skipTest("Test is flaky on PyPy")
         pool = get_pool(self.client)
         n_conns = len(pool.conns)
         self.db.test.find_one({})
+        # On PyPy it can take a few rounds to collect the cursor.
+        for _ in range(3):
+            gc.collect()
         self.assertEqual(len(pool.conns), n_conns)
         (self.db.test.aggregate([{"$limit": 1}])).to_list()
+        # On PyPy it can take a few rounds to collect the cursor.
+        for _ in range(3):
+            gc.collect()
         self.assertEqual(len(pool.conns), n_conns)
 
     @client_context.require_load_balancer
