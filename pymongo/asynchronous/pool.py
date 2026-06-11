@@ -427,11 +427,6 @@ class AsyncConnection:
         except BaseException as error:
             await self._raise_connection_failure(error)
 
-    def _raise_if_not_writable(self) -> None:
-        """Raise NotPrimaryError if this connection is not writable."""
-        if not self.is_writable:
-            raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
-
     async def send_message(self, message: bytes, max_doc_size: int) -> None:
         """Send a raw BSON message or raise ConnectionFailure.
 
@@ -448,6 +443,11 @@ class AsyncConnection:
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             await self._raise_connection_failure(error)
+
+    def _raise_if_not_writable(self) -> None:
+        """Raise NotPrimaryError if this connection is not writable."""
+        if not self.is_writable:
+            raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
 
     async def receive_message(self, request_id: Optional[int]) -> _OpMsg:
         """Receive a raw BSON message or raise ConnectionFailure.
