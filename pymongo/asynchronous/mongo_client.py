@@ -808,6 +808,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         fqdn = None
         srv_service_name = keyword_opts.get("srvservicename")
         srv_max_hosts = keyword_opts.get("srvmaxhosts")
+        srv_allowed_hosts_suffix = keyword_opts.get("srvallowedhostssuffix")
         if len([h for h in self._host if "/" in h]) > 1:
             raise ConfigurationError("host must not contain multiple MongoDB URIs")
         for entity in self._host:
@@ -858,6 +859,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
 
         srv_max_hosts = srv_max_hosts or opts.get("srvmaxhosts")
+        if srv_allowed_hosts_suffix is None:
+            srv_allowed_hosts_suffix = opts.get("srvallowedhostssuffix")
         opts = self._normalize_and_validate_options(opts, self._seeds)
 
         # Username and password passed as kwargs override user info in URI.
@@ -895,7 +898,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         self._retry_policy = _RetryPolicy(attempts=self._options.max_adaptive_retries)
 
-        self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
+        self._init_based_on_options(
+            self._seeds, srv_max_hosts, srv_service_name, srv_allowed_hosts_suffix
+        )
 
         self._opened = False
         self._closed = False
@@ -913,6 +918,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         opts = common._CaseInsensitiveDictionary()
         srv_service_name = keyword_opts.get("srvservicename")
         srv_max_hosts = keyword_opts.get("srvmaxhosts")
+        srv_allowed_hosts_suffix = keyword_opts.get("srvallowedhostssuffix")
         for entity in self._host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
             # it must be a URI,
@@ -933,6 +939,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     connect_timeout=timeout,
                     srv_service_name=srv_service_name,
                     srv_max_hosts=srv_max_hosts,
+                    srv_allowed_hosts_suffix=srv_allowed_hosts_suffix,
                 )
                 seeds.update(res["nodelist"])
                 opts = res["options"]
@@ -965,6 +972,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 srv_service_name = opts.get("srvServiceName", common.SRV_SERVICE_NAME)
 
             srv_max_hosts = srv_max_hosts or opts.get("srvmaxhosts")
+            if srv_allowed_hosts_suffix is None:
+                srv_allowed_hosts_suffix = opts.get("srvAllowedHostsSuffix")
             opts = self._normalize_and_validate_options(opts, seeds)
 
             # Username and password passed as kwargs override user info in URI.
@@ -974,10 +983,16 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 username, password, self._resolve_srv_info["dbase"], opts, _IS_SYNC
             )
 
-            self._init_based_on_options(seeds, srv_max_hosts, srv_service_name)
+            self._init_based_on_options(
+                seeds, srv_max_hosts, srv_service_name, srv_allowed_hosts_suffix
+            )
 
     def _init_based_on_options(
-        self, seeds: Collection[tuple[str, int]], srv_max_hosts: Any, srv_service_name: Any
+        self,
+        seeds: Collection[tuple[str, int]],
+        srv_max_hosts: Any,
+        srv_service_name: Any,
+        srv_allowed_hosts_suffix: Any,
     ) -> None:
         self._event_listeners = self._options.pool_options._event_listeners
         self._topology_settings = TopologySettings(
@@ -996,6 +1011,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             load_balanced=self._options.load_balanced,
             srv_service_name=srv_service_name,
             srv_max_hosts=srv_max_hosts,
+            srv_allowed_hosts_suffix=srv_allowed_hosts_suffix,
             server_monitoring_mode=self._options.server_monitoring_mode,
             topology_id=self._topology_settings._topology_id if self._topology_settings else None,
         )
