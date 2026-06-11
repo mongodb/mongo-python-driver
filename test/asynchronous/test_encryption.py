@@ -3049,7 +3049,7 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
         # X509_V_FLAG_X509_STRICT is not set.  Python 3.14 enables strict mode
         # in create_default_context, which requires SKI on the root CA cert.
         # We intentionally omit SKI from the CA cert to prevent macOS SecTrust
-        # from triggering OCSP revocation checks during MongoDB 4.2 server startup.
+        # from triggering OCSP revocation checks during MongoDB server startup.
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ctx.load_verify_locations(cafile=CA_PEM)
         ctx.load_cert_chain(CLIENT_PEM)
