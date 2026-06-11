@@ -395,6 +395,8 @@ class Connection:
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
         self._raise_if_not_writable(unacknowledged)
         try:
+            if session is not None and session._starting_transaction:
+                session._transaction.set_in_progress()
             return command(
                 self,
                 dbname,

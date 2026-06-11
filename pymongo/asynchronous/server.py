@@ -204,6 +204,8 @@ class Server:
             if more_to_come:
                 reply = await conn.receive_message(None)
             else:
+                if operation.session is not None and operation.session._starting_transaction:
+                    operation.session._transaction.set_in_progress()
                 await conn.send_message(data, max_doc_size)
                 reply = await conn.receive_message(request_id)
 
