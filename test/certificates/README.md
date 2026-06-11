@@ -61,6 +61,6 @@ macOS and Windows with Python 3.13+.  The root causes were:
 
 The CA cert intentionally omits SKI even though strict mode would normally require it on all
 certs: adding SKI to the CA triggers macOS SecTrust OCSP revocation checks on the MongoDB server
-startup path (MongoDB 4.2 Enterprise uses Apple SecTrust), causing ~67-second connection
+startup path (MongoDB Enterprise on macOS uses Apple SecTrust), causing ~67-second connection
 timeouts.  KMS connections bypass this by using `ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)` instead
 of `ssl.create_default_context()`, which does not enable strict mode.
