@@ -129,25 +129,22 @@ class TestClientSSL(PyMongoTestCase):
         self.assertTrue(HAVE_PYSSL)
 
     def test_ssl_session_cache(self):
-        from pymongo.pool_shared import _SSLSessionCache
-
-        cache = _SSLSessionCache()
-        self.assertIsNone(cache.get())
-        cache.set("session")
-        self.assertEqual(cache.get(), "session")
-        cache.set("new_session")
-        self.assertEqual(cache.get(), "new_session")
+        cache: list = [None]
+        self.assertIsNone(cache[0])
+        cache[0] = "session"
+        self.assertEqual(cache[0], "session")
+        cache[0] = "new_session"
+        self.assertEqual(cache[0], "new_session")
 
     @unittest.skipUnless(_IS_SYNC, "Tests sync wrap_socket path only")
     def test_tls_session_reused_on_second_connection(self):
         """Cached TLS session is passed to wrap_socket on subsequent connections."""
         import unittest.mock as mock
 
-        from pymongo.pool_shared import _configured_socket_interface, _SSLSessionCache
+        from pymongo.pool_shared import _configured_socket_interface
 
         fake_session = object()
-        cache = _SSLSessionCache()
-        cache.set(fake_session)
+        cache: list = [fake_session]
 
         fake_ssl_sock = mock.MagicMock()
         fake_ssl_sock.getpeercert.return_value = {}
@@ -177,19 +174,15 @@ class TestClientSSL(PyMongoTestCase):
     def test_async_tls_session_injected_via_sslobject_class(self):
         """On Python 3.11+, a cached session is injected by setting sslobject_class."""
         import ssl
-        import unittest.mock as mock
 
-        from pymongo.pool_shared import _SSLSessionCache
-
-        fake_session = mock.MagicMock()
-        cache = _SSLSessionCache()
-        cache.set(fake_session)
+        fake_session = object()
+        cache: list = [fake_session]
 
         real_ctx = ssl.create_default_context()
         self.assertIs(real_ctx.sslobject_class, ssl.SSLObject)
 
         # Simulate what _configured_socket_interface does
-        session = cache.get()
+        session = cache[0]
         assert session is not None
         _session = session
 
@@ -748,10 +741,8 @@ class TestSSL(IntegrationTest):
 
     @client_context.require_tls
     def test_pool_has_ssl_session_cache(self):
-        from pymongo.pool_shared import _SSLSessionCache
-
         pool = list(self.client._topology._servers.values())[0].pool
-        self.assertIsInstance(pool._ssl_session_cache, _SSLSessionCache)
+        self.assertIsInstance(pool._ssl_session_cache, list)
 
     @client_context.require_tls
     @unittest.skipUnless(
@@ -762,7 +753,7 @@ class TestSSL(IntegrationTest):
         self.client.admin.command("ping")
         pool = list(self.client._topology._servers.values())[0].pool
         self.assertIsNotNone(pool._ssl_session_cache)
-        self.assertIsNotNone(pool._ssl_session_cache.get())
+        self.assertIsNotNone(pool._ssl_session_cache[0])
 
 
 if __name__ == "__main__":

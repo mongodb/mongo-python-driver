@@ -20,7 +20,6 @@ import functools
 import socket
 import ssl
 import sys
-import threading
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -46,24 +45,6 @@ SSLErrors = (PYSSLError, SSLError)
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
-
-
-class _SSLSessionCache:
-    """Thread-safe cache for a single TLS session per pool, enabling session resumption."""
-
-    __slots__ = ("_session", "_lock")
-
-    def __init__(self) -> None:
-        self._session: Optional[Any] = None
-        self._lock = threading.Lock()
-
-    def get(self) -> Optional[Any]:
-        with self._lock:
-            return self._session
-
-    def set(self, session: Any) -> None:
-        with self._lock:
-            self._session = session
 
 
 def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:
@@ -327,7 +308,7 @@ async def _async_configured_socket(
 async def _configured_protocol_interface(
     address: _Address,
     options: PoolOptions,
-    ssl_session_cache: Optional[_SSLSessionCache] = None,
+    ssl_session_cache: Optional[list[Any]] = None,
 ) -> AsyncNetworkingInterface:
     """Given (host, port) and PoolOptions, return a configured AsyncNetworkingInterface.
 
@@ -353,7 +334,7 @@ async def _configured_protocol_interface(
     # sslobject_class is race-free.  Session injection is skipped on older
     # Python versions.  (The async path always uses stdlib ssl, never PyOpenSSL.)
     if ssl_session_cache is not None and sys.version_info >= (3, 11):
-        session = ssl_session_cache.get()
+        session = ssl_session_cache[0]
         if session is not None:
             _session = session
 
@@ -399,7 +380,7 @@ async def _configured_protocol_interface(
         if ssl_obj is not None:
             new_session = ssl_obj.session
             if new_session is not None:
-                ssl_session_cache.set(new_session)
+                ssl_session_cache[0] = new_session
 
     return AsyncNetworkingInterface((transport, protocol))
 
@@ -526,7 +507,7 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
 def _configured_socket_interface(
     address: _Address,
     options: PoolOptions,
-    ssl_session_cache: Optional[_SSLSessionCache] = None,
+    ssl_session_cache: Optional[list[Any]] = None,
 ) -> NetworkingInterface:
     """Given (host, port) and PoolOptions, return a NetworkingInterface wrapping a configured socket.
 
@@ -542,7 +523,7 @@ def _configured_socket_interface(
         return NetworkingInterface(sock)
 
     host = address[0]
-    session = ssl_session_cache.get() if ssl_session_cache is not None else None
+    session = ssl_session_cache[0] if ssl_session_cache is not None else None
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
@@ -576,7 +557,7 @@ def _configured_socket_interface(
     if ssl_session_cache is not None:
         new_session = _get_ssl_session(ssl_sock)
         if new_session is not None:
-            ssl_session_cache.set(new_session)
+            ssl_session_cache[0] = new_session
 
     ssl_sock.settimeout(options.socket_timeout)
     return NetworkingInterface(ssl_sock)
