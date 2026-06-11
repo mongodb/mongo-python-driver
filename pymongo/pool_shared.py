@@ -73,48 +73,6 @@ def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:
     return getattr(ssl_sock, "session", None)
 
 
-# asyncio's create_connection does not support TLS session resumption natively.
-# https://github.com/python/cpython/issues/79152 tracks this; a patch was submitted
-# in 2018 but never merged, and the issue is now closed.
-# We work around this by wrapping the SSLContext to intercept wrap_bio(), which
-# asyncio always calls before the TLS handshake regardless of Python version.
-
-
-class _SessionSSLContext:
-    """Wraps an SSLContext to inject a cached TLS session via sslobject_class.
-
-    ssl.SSLContext.sslobject_class (Python 3.7+) controls the type returned by
-    wrap_bio().  We create a per-connection subclass of ssl.SSLObject that sets
-    self.session after __init__, then temporarily apply it inside wrap_bio().
-    The patch-and-restore is race-free because wrap_bio() is synchronous.
-    """
-
-    __slots__ = ("_ctx", "_session_class")
-
-    def __init__(self, ctx: Any, session: Any) -> None:
-        self._ctx = ctx
-        base = ctx.sslobject_class
-        _session = session  # captured by inner class; avoids any name clash with outer self
-
-        class _SessionSSLObject(base):  # type: ignore[misc,valid-type]
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                super().__init__(*args, **kwargs)
-                self.session = _session
-
-        self._session_class = _SessionSSLObject
-
-    def wrap_bio(self, *args: Any, **kwargs: Any) -> Any:
-        orig = self._ctx.sslobject_class
-        self._ctx.sslobject_class = self._session_class
-        try:
-            return self._ctx.wrap_bio(*args, **kwargs)
-        finally:
-            self._ctx.sslobject_class = orig
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._ctx, name)
-
-
 try:
     from fcntl import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
 
@@ -389,12 +347,25 @@ async def _configured_protocol_interface(
         )
 
     host = address[0]
-    session = ssl_session_cache.get() if ssl_session_cache is not None else None
-    # Wrap the SSL context to inject the cached session via wrap_bio(), which
-    # asyncio calls before the TLS handshake on all supported Python versions.
-    effective_ssl_context = (
-        _SessionSSLContext(ssl_context, session) if session is not None else ssl_context
-    )
+    # asyncio does not support TLS session resumption natively (cpython#79152,
+    # closed without a fix).  On Python 3.11+ SSLProtocol.__init__ calls
+    # wrap_bio() synchronously before the first event-loop yield, so setting
+    # sslobject_class here is race-free; we skip injection on older versions.
+    if (
+        ssl_session_cache is not None
+        and sys.version_info >= (3, 11)
+        and isinstance(ssl_context, ssl.SSLContext)
+    ):
+        session = ssl_session_cache.get()
+        if session is not None:
+            _session = session
+
+            class _SessionSSLObject(ssl.SSLObject):
+                def __init__(self, *args: Any, **kwargs: Any) -> None:
+                    super().__init__(*args, **kwargs)
+                    self.session = _session
+
+            ssl_context.sslobject_class = _SessionSSLObject
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
@@ -402,7 +373,7 @@ async def _configured_protocol_interface(
             lambda: PyMongoProtocol(timeout=timeout),
             sock=sock,
             server_hostname=host,
-            ssl=effective_ssl_context,
+            ssl=ssl_context,
         )
     except _CertificateError:
         # Raise _CertificateError directly like we do after match_hostname

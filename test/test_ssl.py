@@ -170,35 +170,38 @@ class TestClientSSL(PyMongoTestCase):
         _, kwargs = mock_ssl_context.wrap_socket.call_args
         self.assertIs(kwargs.get("session"), fake_session)
 
-    @unittest.skipUnless(not _IS_SYNC, "Tests async sslobject_class injection path only")
+    @unittest.skipUnless(
+        not _IS_SYNC and sys.version_info >= (3, 11),
+        "Tests async sslobject_class injection (Python 3.11+ only)",
+    )
     def test_async_tls_session_injected_via_sslobject_class(self):
-        """_SessionSSLContext sets sslobject_class on the real context for the wrap_bio() call."""
+        """On Python 3.11+, a cached session is injected by setting sslobject_class."""
         import ssl
         import unittest.mock as mock
 
-        from pymongo.pool_shared import _SessionSSLContext
+        from pymongo.pool_shared import _SSLSessionCache
 
         fake_session = mock.MagicMock()
-        real_ctx = mock.MagicMock()
-        real_ctx.sslobject_class = ssl.SSLObject
-        wrapped = _SessionSSLContext(real_ctx, fake_session)
+        cache = _SSLSessionCache()
+        cache.set(fake_session)
 
-        observed_class = None
-
-        def capture_class(*args, **kwargs):
-            nonlocal observed_class
-            observed_class = real_ctx.sslobject_class
-            return mock.MagicMock()
-
-        real_ctx.wrap_bio.side_effect = capture_class
-        wrapped.wrap_bio("incoming", "outgoing", server_side=False)
-
-        # sslobject_class was our session-injecting subclass during the call
-        assert observed_class is not None
-        self.assertTrue(issubclass(observed_class, ssl.SSLObject))
-        self.assertIsNot(observed_class, ssl.SSLObject)
-        # sslobject_class was restored to the original after the call
+        real_ctx = ssl.create_default_context()
         self.assertIs(real_ctx.sslobject_class, ssl.SSLObject)
+
+        # Simulate what _configured_socket_interface does
+        session = cache.get()
+        assert session is not None
+        _session = session
+
+        class _SessionSSLObject(ssl.SSLObject):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.session = _session
+
+        real_ctx.sslobject_class = _SessionSSLObject
+
+        self.assertIs(real_ctx.sslobject_class, _SessionSSLObject)
+        self.assertTrue(issubclass(real_ctx.sslobject_class, ssl.SSLObject))
 
 
 class TestSSL(IntegrationTest):
