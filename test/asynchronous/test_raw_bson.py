@@ -45,6 +45,7 @@ class TestRawBSONDocument(AsyncIntegrationTest):
     async def asyncTearDown(self):
         if async_client_context.connected:
             await self.client.db.coll.drop()
+            await self.client.db.test_raw.drop()
 
     def test_decode(self):
         self.assertEqual("Sherlock", self.document["name"])

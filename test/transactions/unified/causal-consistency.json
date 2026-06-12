@@ -131,7 +131,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -177,7 +177,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -312,7 +312,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 2
@@ -342,7 +342,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {

@@ -312,7 +312,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertEqualCommand(
             SON(
                 [
-                    ("aggregate", "test"),
+                    ("aggregate", "coll"),
                     ("pipeline", [{"$project": {"_id": False, "x": 1}}]),
                     ("cursor", {"batchSize": 4}),
                 ]

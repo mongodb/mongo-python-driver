@@ -381,7 +381,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "cursor": {
                     "batchSize": 1
                   },
@@ -402,7 +402,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "cursor": {
                     "batchSize": 1
                   },
@@ -426,7 +426,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "cursor": {
                     "batchSize": 1
                   },

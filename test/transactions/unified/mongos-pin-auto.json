@@ -135,7 +135,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 3
@@ -164,7 +164,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 4
@@ -318,7 +318,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 3
@@ -347,7 +347,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 4
@@ -1963,7 +1963,7 @@
             "session": "session0",
             "commandName": "insert",
             "command": {
-              "insert": "test",
+              "insert": "coll",
               "documents": [
                 {
                   "_id": 1
@@ -5142,7 +5142,7 @@
             "session": "session0",
             "commandName": "insert",
             "command": {
-              "insert": "test",
+              "insert": "coll",
               "documents": [
                 {
                   "_id": 1
@@ -5233,7 +5233,7 @@
             "session": "session0",
             "commandName": "insert",
             "command": {
-              "insert": "test",
+              "insert": "coll",
               "documents": [
                 {
                   "_id": 1

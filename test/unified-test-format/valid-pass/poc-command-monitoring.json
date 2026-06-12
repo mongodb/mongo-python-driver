@@ -93,7 +93,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "filter": {
                     "_id": {
                       "$gte": 1
@@ -201,7 +201,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "filter": {
                     "$or": true
                   }

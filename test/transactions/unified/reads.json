@@ -121,7 +121,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "level": "majority"
                   },
@@ -231,7 +231,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "batchSize": 3,
                   "readConcern": {
                     "$$exists": false
@@ -278,7 +278,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "batchSize": 3,
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -444,7 +444,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$project": {
@@ -500,7 +500,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$project": {

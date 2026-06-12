@@ -97,7 +97,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -216,7 +216,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -332,7 +332,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -448,7 +448,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -571,7 +571,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -748,7 +748,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -777,7 +777,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -799,7 +799,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$project": {
@@ -950,7 +950,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -1122,7 +1122,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -1251,7 +1251,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -1416,7 +1416,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -1572,7 +1572,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -1705,7 +1705,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -1845,7 +1845,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -1874,7 +1874,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$project": {
@@ -2006,7 +2006,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -2171,7 +2171,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1

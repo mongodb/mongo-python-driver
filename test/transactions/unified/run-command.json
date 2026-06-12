@@ -68,7 +68,7 @@
           "arguments": {
             "session": "session0",
             "command": {
-              "insert": "test",
+              "insert": "coll",
               "documents": [
                 {
                   "_id": 1
@@ -93,7 +93,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -195,7 +195,7 @@
           "arguments": {
             "session": "session1",
             "command": {
-              "insert": "test",
+              "insert": "coll",
               "documents": [
                 {
                   "_id": 1
@@ -220,7 +220,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -284,7 +284,7 @@
           "arguments": {
             "session": "session0",
             "command": {
-              "insert": "test",
+              "insert": "coll",
               "documents": [
                 {
                   "_id": 1
@@ -312,7 +312,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -376,7 +376,7 @@
           "arguments": {
             "session": "session0",
             "command": {
-              "find": "test"
+              "find": "coll"
             },
             "readPreference": {
               "mode": "secondary"
@@ -407,7 +407,7 @@
           "arguments": {
             "session": "session0",
             "command": {
-              "find": "test"
+              "find": "coll"
             },
             "commandName": "find"
           },

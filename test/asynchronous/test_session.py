@@ -359,7 +359,7 @@ class TestSession(AsyncIntegrationTest):
         db = client.db
         ops: list = [
             (db.command, ["ping"], {}),
-            (db.create_coll, ["collection"], {}),
+            (db.create_collection, ["coll"], {}),
             (db.list_collection_names, [], {}),
             (db.validate_collection, ["coll"], {}),
             (db.drop_collection, ["coll"], {}),

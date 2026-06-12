@@ -257,7 +257,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -286,7 +286,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {
@@ -317,7 +317,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1
@@ -345,7 +345,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -400,7 +400,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 3
@@ -440,7 +440,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -493,7 +493,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {
@@ -530,7 +530,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -571,7 +571,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {

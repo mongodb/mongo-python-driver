@@ -120,7 +120,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$changeStream": {
@@ -197,7 +197,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$changeStream": {
@@ -277,7 +277,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$changeStream": {
@@ -346,7 +346,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$changeStream": {
@@ -425,7 +425,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$changeStream": {
@@ -502,7 +502,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$changeStream": {
@@ -581,7 +581,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$changeStream": {
@@ -650,7 +650,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$changeStream": {
@@ -729,7 +729,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$changeStream": {
@@ -808,7 +808,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$changeStream": {

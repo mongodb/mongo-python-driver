@@ -105,7 +105,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test",
+                  "drop": "coll",
                   "writeConcern": {
                     "$$exists": false
                   }
@@ -231,7 +231,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test",
+                  "drop": "coll",
                   "writeConcern": {
                     "$$exists": false
                   }
@@ -243,7 +243,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "create": "test",
+                  "create": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },

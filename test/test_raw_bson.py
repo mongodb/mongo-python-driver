@@ -45,6 +45,7 @@ class TestRawBSONDocument(IntegrationTest):
     def tearDown(self):
         if client_context.connected:
             self.client.db.coll.drop()
+            self.client.db.test_raw.drop()
 
     def test_decode(self):
         self.assertEqual("Sherlock", self.document["name"])
