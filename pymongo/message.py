@@ -69,7 +69,6 @@ if TYPE_CHECKING:
         _AgnosticClientSession,
         _AgnosticConnection,
         _AgnosticMongoClient,
-        _DocumentOut,
     )
 
 
@@ -144,42 +143,6 @@ def _convert_client_bulk_exception(exception: Exception) -> dict[str, Any]:
         "code": exception.code,  # type: ignore[attr-defined]
         "errtype": exception.__class__.__name__,
     }
-
-
-def _convert_write_result(
-    operation: str, command: Mapping[str, Any], result: Mapping[str, Any]
-) -> dict[str, Any]:
-    """Convert a legacy write result to write command format."""
-    # Based on _merge_legacy from bulk.py
-    affected = result.get("n", 0)
-    res = {"ok": 1, "n": affected}
-    errmsg = result.get("errmsg", result.get("err", ""))
-    if errmsg:
-        # The write was successful on at least the primary so don't return.
-        if result.get("wtimeout"):
-            res["writeConcernError"] = {"errmsg": errmsg, "code": 64, "errInfo": {"wtimeout": True}}
-        else:
-            # The write failed.
-            error = {"index": 0, "code": result.get("code", 8), "errmsg": errmsg}
-            if "errInfo" in result:
-                error["errInfo"] = result["errInfo"]
-            res["writeErrors"] = [error]
-            return res
-    if operation == "insert":
-        # GLE result for insert is always 0 in most MongoDB versions.
-        res["n"] = len(command["documents"])
-    elif operation == "update":
-        if "upserted" in result:
-            res["upserted"] = [{"index": 0, "_id": result["upserted"]}]
-        # Versions of MongoDB before 2.6 don't return the _id for an
-        # upsert if _id is not an ObjectId.
-        elif result.get("updatedExisting") is False and affected == 1:
-            # If _id is in both the update document *and* the query spec
-            # the update document _id takes precedence.
-            update = command["updates"][0]
-            _id = update["u"].get("_id", update["q"].get("_id"))
-            res["upserted"] = [{"index": 0, "_id": _id}]
-    return res
 
 
 _OPTIONS = {
@@ -484,7 +447,6 @@ class _BulkWriteContextBase:
         "op_id",
         "name",
         "field",
-        "publish",
         "start_time",
         "listeners",
         "session",
@@ -508,7 +470,6 @@ class _BulkWriteContextBase:
         self.conn = conn
         self.op_id = operation_id
         self.listeners = listeners
-        self.publish = listeners.enabled_for_commands
         self.name = cmd_name
         self.field = _FIELD_MAP[self.name]
         self.start_time = datetime.datetime.now()
@@ -539,34 +500,6 @@ class _BulkWriteContextBase:
     def max_split_size(self) -> int:
         """The maximum size of a BSON command before batch splitting."""
         return self.max_bson_size
-
-    def _succeed(self, request_id: int, reply: _DocumentOut, duration: datetime.timedelta) -> None:
-        """Publish a CommandSucceededEvent."""
-        self.listeners.publish_command_success(
-            duration,
-            reply,
-            self.name,
-            request_id,
-            self.conn.address,
-            self.conn.server_connection_id,
-            self.op_id,
-            self.conn.service_id,
-            database_name=self.db_name,
-        )
-
-    def _fail(self, request_id: int, failure: _DocumentOut, duration: datetime.timedelta) -> None:
-        """Publish a CommandFailedEvent."""
-        self.listeners.publish_command_failure(
-            duration,
-            failure,
-            self.name,
-            request_id,
-            self.conn.address,
-            self.conn.server_connection_id,
-            self.op_id,
-            self.conn.service_id,
-            database_name=self.db_name,
-        )
 
 
 class _BulkWriteContext(_BulkWriteContextBase):
@@ -606,22 +539,6 @@ class _BulkWriteContext(_BulkWriteContextBase):
         if not to_send:
             raise InvalidOperation("cannot do an empty bulk write")
         return request_id, msg, to_send
-
-    def _start(
-        self, cmd: MutableMapping[str, Any], request_id: int, docs: list[Mapping[str, Any]]
-    ) -> MutableMapping[str, Any]:
-        """Publish a CommandStartedEvent."""
-        cmd[self.field] = docs
-        self.listeners.publish_command_start(
-            cmd,
-            self.db_name,
-            request_id,
-            self.conn.address,
-            self.conn.server_connection_id,
-            self.op_id,
-            self.conn.service_id,
-        )
-        return cmd
 
 
 class _EncryptedBulkWriteContext(_BulkWriteContext):
@@ -868,27 +785,6 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
         if not to_send_ops:
             raise InvalidOperation("cannot do an empty bulk write")
         return request_id, msg, to_send_ops, to_send_ns
-
-    def _start(
-        self,
-        cmd: MutableMapping[str, Any],
-        request_id: int,
-        op_docs: list[Mapping[str, Any]],
-        ns_docs: list[Mapping[str, Any]],
-    ) -> MutableMapping[str, Any]:
-        """Publish a CommandStartedEvent."""
-        cmd["ops"] = op_docs
-        cmd["nsInfo"] = ns_docs
-        self.listeners.publish_command_start(
-            cmd,
-            self.db_name,
-            request_id,
-            self.conn.address,
-            self.conn.server_connection_id,
-            self.op_id,
-            self.conn.service_id,
-        )
-        return cmd
 
 
 _OP_MSG_OVERHEAD = 1000
