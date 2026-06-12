@@ -709,7 +709,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "count": "test",
+                  "count": "coll",
                   "apiVersion": "1",
                   "apiStrict": {
                     "$$unsetOrMatches": false

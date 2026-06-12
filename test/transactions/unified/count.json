@@ -104,7 +104,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "count": "test",
+                  "count": "coll",
                   "query": {
                     "_id": 1
                   },

@@ -161,7 +161,7 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(0, len(self.listener.failed_events))
             self.assertIsInstance(started, monitoring.CommandStartedEvent)
             self.assertEqualCommand(
-                SON([("getMore", cursor_id), ("collection", "db.coll"), ("batchSize", 4)]),
+                SON([("getMore", cursor_id), ("collection", "coll"), ("batchSize", 4)]),
                 started.command,
             )
             self.assertEqual("getMore", started.command_name)
@@ -341,7 +341,7 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(0, len(self.listener.failed_events))
             self.assertIsInstance(started, monitoring.CommandStartedEvent)
             self.assertEqualCommand(
-                SON([("getMore", cursor_id), ("collection", "db.coll"), ("batchSize", 4)]),
+                SON([("getMore", cursor_id), ("collection", "coll"), ("batchSize", 4)]),
                 started.command,
             )
             self.assertEqual("getMore", started.command_name)
@@ -381,7 +381,7 @@ class TestCommandMonitoring(IntegrationTest):
         failed = self.listener.failed_events[0]
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqualCommand(
-            SON([("getMore", cursor_id), ("collection", "db.coll")]), started.command
+            SON([("getMore", cursor_id), ("collection", "coll")]), started.command
         )
         self.assertEqual("getMore", started.command_name)
         self.assertEqual(self.client.address, started.connection_id)
@@ -464,7 +464,7 @@ class TestCommandMonitoring(IntegrationTest):
         for event in self.listener.started_events:
             self.assertIsInstance(event, monitoring.CommandStartedEvent)
             self.assertEqualCommand(
-                SON([("getMore", cursor_id), ("collection", "db.coll"), ("batchSize", 5)]),
+                SON([("getMore", cursor_id), ("collection", "coll"), ("batchSize", 5)]),
                 event.command,
             )
             self.assertEqual("getMore", event.command_name)
