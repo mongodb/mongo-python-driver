@@ -14,7 +14,7 @@ Two classes of leaf cert are generated:
     SecTrust returns CSSMERR_TP_CERT_SUSPENDED.  Without AKI, SecTrust cannot
     identify the issuer and skips the OCSP attempt.
 
-  KMS certs (server-kms.pem, wrong-host.pem, expired.pem):
+  KMS certs (kms-server.pem, kms-wrong-host.pem, kms-expired.pem):
     Carry AKI in the issuer form (DirName + serial, no keyid).  These certs
     are verified by Python's ssl module (OpenSSL), not by MongoDB Enterprise.
     Python 3.13 / OpenSSL 3.x requires AKI on non-root certs.  The issuer
@@ -218,8 +218,8 @@ server_kms_cert = (
     )
     .sign(ca_key, hashes.SHA256())
 )
-(SCRIPT_DIR / "server-kms.pem").write_bytes(key_pem(server_kms_key) + cert_pem(server_kms_cert))
-print("    server-kms.pem written")
+(SCRIPT_DIR / "kms-server.pem").write_bytes(key_pem(server_kms_key) + cert_pem(server_kms_cert))
+print("    kms-server.pem written")
 
 
 # ---------------------------------------------------------------------------
@@ -322,8 +322,8 @@ wrong_host_cert = (
     )
     .sign(ca_key, hashes.SHA256())
 )
-(SCRIPT_DIR / "wrong-host.pem").write_bytes(key_pem(wrong_host_key) + cert_pem(wrong_host_cert))
-print("    wrong-host.pem written (SAN: wronghost.example.com)")
+(SCRIPT_DIR / "kms-wrong-host.pem").write_bytes(key_pem(wrong_host_key) + cert_pem(wrong_host_cert))
+print("    kms-wrong-host.pem written (SAN: wronghost.example.com)")
 
 
 # ---------------------------------------------------------------------------
@@ -346,8 +346,8 @@ expired_cert = (
     )
     .sign(ca_key, hashes.SHA256())
 )
-(SCRIPT_DIR / "expired.pem").write_bytes(key_pem(expired_key) + cert_pem(expired_cert))
-print("    expired.pem written (expired 2001-01-01)")
+(SCRIPT_DIR / "kms-expired.pem").write_bytes(key_pem(expired_key) + cert_pem(expired_cert))
+print("    kms-expired.pem written (expired 2001-01-01)")
 
 
 # ---------------------------------------------------------------------------
@@ -442,7 +442,7 @@ for name in ("server.pem", "client.pem"):
         print(f"    {name}: OK (no AKI)")
 
 # KMS certs MUST have AKI and SKI.
-for name in ("server-kms.pem", "wrong-host.pem", "expired.pem"):
+for name in ("kms-server.pem", "kms-wrong-host.pem", "kms-expired.pem"):
     text = cert_text(SCRIPT_DIR / name)
     cert_errors = 0
     if "Authority Key Identifier" not in text:
