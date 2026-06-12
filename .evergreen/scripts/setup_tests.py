@@ -389,10 +389,10 @@ def handle_test_env() -> None:
         # test runner, so no separate write_env calls are needed.
         certs = ROOT / "test/certificates"
         os.environ["CSFLE_TLS_CA_FILE"] = str(certs / "ca.pem")
-        os.environ["CSFLE_TLS_CERT_FILE"] = str(certs / "server-kms.pem")
+        os.environ["CSFLE_TLS_CERT_FILE"] = str(certs / "kms-server.pem")
         os.environ["CSFLE_TLS_CLIENT_CERT_FILE"] = str(certs / "client.pem")
-        os.environ["CSFLE_TLS_WRONG_HOST_FILE"] = str(certs / "wrong-host.pem")
-        os.environ["CSFLE_TLS_EXPIRED_FILE"] = str(certs / "expired.pem")
+        os.environ["CSFLE_TLS_WRONG_HOST_FILE"] = str(certs / "kms-wrong-host.pem")
+        os.environ["CSFLE_TLS_EXPIRED_FILE"] = str(certs / "kms-expired.pem")
 
         run_command(f"bash {csfle_dir.as_posix()}/setup-secrets.sh", cwd=csfle_dir)
         load_config_from_file(csfle_dir / "secrets-export.sh")

@@ -32,9 +32,9 @@ Carry both AKI and SKI.  Python 3.13 requires AKI on non-root certs; Python 3.14
 | `client.pem` | `CN=client, O=MDB, ...` | Drivers Testing CA | keyUsage, extKeyUsage | Client auth cert (key + cert) |
 | `password_protected.pem` | Same as client | Drivers Testing CA | keyUsage, extKeyUsage | Client cert with AES-256 encrypted key |
 | `crl.pem` | — | Drivers Testing CA | — | CRL revoking serial 1 (server.pem) |
-| `server-kms.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN, AKI, SKI | KMS mock server cert (key + cert) |
-| `wrong-host.pem` | `CN=wronghost.example.com` | Drivers Testing CA | SAN, AKI, SKI | KMS wrong-host test cert |
-| `expired.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN, AKI, SKI | KMS expired cert (validity 2000–2001) |
+| `kms-server.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN, AKI, SKI | KMS mock server cert (key + cert) |
+| `kms-wrong-host.pem` | `CN=wronghost.example.com` | Drivers Testing CA | SAN, AKI, SKI | KMS wrong-host test cert |
+| `kms-expired.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN, AKI, SKI | KMS expired cert (validity 2000–2001) |
 | `trusted-ca.pem` | `CN=Trusted Kernel Test CA, ...` | Self (CA) | basicConstraints critical, keyUsage critical | Separate CA for CA-bundle tests |
 
 **Password** for `password_protected.pem`: `qwerty`
