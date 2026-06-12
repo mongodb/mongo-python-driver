@@ -447,7 +447,6 @@ class _BulkWriteContextBase:
         "op_id",
         "name",
         "field",
-        "publish",
         "start_time",
         "listeners",
         "session",
@@ -471,7 +470,6 @@ class _BulkWriteContextBase:
         self.conn = conn
         self.op_id = operation_id
         self.listeners = listeners
-        self.publish = listeners.enabled_for_commands
         self.name = cmd_name
         self.field = _FIELD_MAP[self.name]
         self.start_time = datetime.datetime.now()

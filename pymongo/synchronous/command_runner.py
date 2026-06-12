@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The shared code path for executing a command over a connection.
+"""Encoding and execution of commands over a connection.
+
+The public :func:`command` entry point applies read preference, read concern,
+collation, ``$clusterTime``, auto-encryption, and CSOT to a command spec,
+encodes it as an OP_MSG message, and then delegates to one of three lower-level
+runners.
 
 Every database operation runs its network round trip through one of three
 public entry points -- :func:`run_acknowledged_command` (acknowledged commands
@@ -43,21 +48,26 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo import helpers_shared
+from pymongo import _csot, helpers_shared, message
+from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo.message import _convert_exception
+from pymongo.message import _convert_exception, _OpMsg
+from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import receive_message, sendall
 
 if TYPE_CHECKING:
     from bson import CodecOptions
-    from pymongo.message import _OpMsg
+    from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.monitoring import _EventListeners
     from pymongo.pool_options import PoolOptions
+    from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
-    from pymongo.typings import _Address, _DocumentOut, _DocumentType
+    from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
+    from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
 
@@ -92,7 +102,6 @@ def _run_command(
     max_doc_size: int = 0,
     more_to_come: bool = False,
     set_conn_more_to_come: bool = True,
-    is_command_response: bool = True,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
     reply_doc_builder: Optional[
@@ -156,9 +165,6 @@ def _run_command(
     :param set_conn_more_to_come: Store ``reply.more_to_come`` on ``conn`` (the
         network/streaming-monitor path); the cursor path manages exhaust
         separately and must leave ``conn.more_to_come`` untouched.
-    :param is_command_response: True if the reply is an OP_MSG command response
-        (``_process_response``/``_check_command_response``/decryption apply);
-        False for a legacy OP_QUERY cursor response.
     :param unpack_res: A callable decoding the wire response (cursor path); when
         ``None`` the reply's own ``unpack_response`` is used.
     :param cursor_id: The cursor id passed to ``unpack_res``.
@@ -234,27 +240,25 @@ def _run_command(
                     reply,
                     cursor_id,
                     codec_options,
-                    legacy_response=not is_command_response,
                     user_fields=user_fields,
                 )
             else:
                 docs = reply.unpack_response(codec_options=codec_options, user_fields=user_fields)
-            if is_command_response:
-                response_doc = docs[0]
-                if not conn.ready:
-                    cluster_time = response_doc.get("$clusterTime")
-                    if cluster_time:
-                        conn._cluster_time = cluster_time
-                if process_response and client:
-                    client._process_response(response_doc, session)
-                if check:
-                    helpers_shared._check_command_response(
-                        response_doc,
-                        conn.max_wire_version,
-                        allowable_errors,
-                        parse_write_concern_error=parse_write_concern_error,
-                        pool_opts=pool_opts,
-                    )
+            response_doc = docs[0]
+            if not conn.ready:
+                cluster_time = response_doc.get("$clusterTime")
+                if cluster_time:
+                    conn._cluster_time = cluster_time
+            if process_response and client:
+                client._process_response(response_doc, session)
+            if check:
+                helpers_shared._check_command_response(
+                    response_doc,
+                    conn.max_wire_version,
+                    allowable_errors,
+                    parse_write_concern_error=parse_write_concern_error,
+                    pool_opts=pool_opts,
+                )
     except Exception as exc:
         duration = datetime.datetime.now() - start
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
@@ -335,7 +339,7 @@ def _run_command(
             database_name=dbname,
         )
 
-    if client and client._encrypter and reply and is_command_response and decrypt_reply:
+    if client and client._encrypter and reply and decrypt_reply:
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
         docs = cast(
             "list[dict[str, Any]]", _decode_all_selective(decrypted, codec_options, user_fields)
@@ -486,7 +490,6 @@ def run_cursor_command(
     pool_opts: Optional[PoolOptions] = None,
     max_doc_size: int = 0,
     more_to_come: bool = False,
-    is_command_response: bool = True,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
     reply_doc_builder: Optional[
@@ -500,8 +503,6 @@ def run_cursor_command(
     the find/getMore command response format.
 
     :param more_to_come: Receive only, without sending (exhaust ``getMore``).
-    :param is_command_response: True for an OP_MSG command response; False for a
-        legacy OP_QUERY cursor response.
     :param unpack_res: A callable decoding the wire response.
     :param cursor_id: The cursor id passed to ``unpack_res``.
     :param reply_doc_builder: Builds the reply document published in the
@@ -529,8 +530,142 @@ def run_cursor_command(
         max_doc_size=max_doc_size,
         more_to_come=more_to_come,
         set_conn_more_to_come=False,
-        is_command_response=is_command_response,
         unpack_res=unpack_res,
         cursor_id=cursor_id,
         reply_doc_builder=reply_doc_builder,
     )
+
+
+def command(
+    conn: Connection,
+    dbname: str,
+    spec: MutableMapping[str, Any],
+    is_mongos: bool,  # noqa: ARG001
+    read_preference: Optional[_ServerMode],
+    codec_options: CodecOptions[_DocumentType],
+    session: Optional[ClientSession],
+    client: Optional[MongoClient[Any]],
+    check: bool = True,
+    allowable_errors: Optional[Sequence[Union[str, int]]] = None,
+    address: Optional[_Address] = None,
+    listeners: Optional[_EventListeners] = None,
+    max_bson_size: Optional[int] = None,
+    read_concern: Optional[ReadConcern] = None,
+    parse_write_concern_error: bool = False,
+    collation: Optional[_CollationIn] = None,
+    compression_ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
+    unacknowledged: bool = False,
+    user_fields: Optional[Mapping[str, Any]] = None,
+    exhaust_allowed: bool = False,
+    write_concern: Optional[WriteConcern] = None,
+) -> _DocumentType:
+    """Encode and execute a command over ``conn``, or raise socket.error.
+
+    Applies read preference, read concern, collation, ``$clusterTime``,
+    auto-encryption, and CSOT to ``spec``, encodes it as an OP_MSG message,
+    and then delegates the network round trip and response processing to
+    :func:`run_acknowledged_command` or :func:`run_unacknowledged_command`.
+
+    :param conn: a Connection instance
+    :param dbname: name of the database on which to run the command
+    :param spec: a command document as an ordered dict type, eg SON.
+    :param is_mongos: are we connected to a mongos?
+    :param read_preference: a read preference
+    :param codec_options: a CodecOptions instance
+    :param session: optional ClientSession instance.
+    :param client: optional MongoClient instance for updating $clusterTime.
+    :param check: raise OperationFailure if there are errors
+    :param allowable_errors: errors to ignore if `check` is True
+    :param address: the (host, port) of `conn`
+    :param listeners: An instance of :class:`~pymongo.monitoring.EventListeners`
+    :param max_bson_size: The maximum encoded bson size for this server
+    :param read_concern: The read concern for this command.
+    :param parse_write_concern_error: Whether to parse the ``writeConcernError``
+        field in the command response.
+    :param collation: The collation for this command.
+    :param compression_ctx: optional compression Context.
+    :param unacknowledged: True if this is an unacknowledged command.
+    :param user_fields: Response fields that should be decoded
+        using the TypeDecoders from codec_options, passed to
+        bson._decode_all_selective.
+    :param exhaust_allowed: True if we should enable OP_MSG exhaustAllowed.
+    """
+    name = next(iter(spec))
+    speculative_hello = False
+
+    # Publish the original command document, perhaps with lsid and $clusterTime.
+    orig = spec
+    if read_concern and not (session and session.in_transaction):
+        if read_concern.level:
+            spec["readConcern"] = read_concern.document
+        if session:
+            session._update_read_concern(spec, conn)
+    if collation is not None:
+        spec["collation"] = collation
+
+    publish = listeners is not None and listeners.enabled_for_commands
+    start = datetime.datetime.now()
+    if publish:
+        speculative_hello = _is_speculative_authenticate(name, spec)
+
+    if compression_ctx and name.lower() in _NO_COMPRESSION:
+        compression_ctx = None
+
+    if client and client._encrypter and not client._encrypter._bypass_auto_encryption:
+        spec = orig = client._encrypter.encrypt(dbname, spec, codec_options)
+
+    # Support CSOT
+    if client:
+        conn.apply_timeout(client, spec)
+    _csot.apply_write_concern(spec, write_concern)
+
+    flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
+    flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
+    request_id, msg, size, max_doc_size = message._op_msg(
+        flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
+    )
+    # If this is an unacknowledged write then make sure the encoded doc(s)
+    # are small enough, otherwise rely on the server to return an error.
+    if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
+        message._raise_document_too_large(name, size, max_bson_size)
+
+    if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
+        message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
+    if unacknowledged:
+        docs, _, _ = run_unacknowledged_command(
+            conn,
+            spec,
+            dbname,
+            request_id,
+            msg,
+            client=client,
+            session=session,
+            listeners=listeners,
+            address=address,
+            start=start,
+            codec_options=codec_options,
+            user_fields=user_fields,
+            orig=orig,
+            speculative_hello=speculative_hello,
+        )
+    else:
+        docs, _, _ = run_acknowledged_command(
+            conn,
+            spec,
+            dbname,
+            request_id,
+            msg,
+            client=client,
+            session=session,
+            listeners=listeners,
+            address=address,
+            start=start,
+            codec_options=codec_options,
+            user_fields=user_fields,
+            orig=orig,
+            check=check,
+            allowable_errors=allowable_errors,
+            parse_write_concern_error=parse_write_concern_error,
+            speculative_hello=speculative_hello,
+        )
+    return docs[0]  # type: ignore[return-value]
