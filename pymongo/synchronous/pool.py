@@ -395,6 +395,8 @@ class Connection:
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
         self._raise_if_not_writable(unacknowledged)
         try:
+            if session is not None and session._starting_transaction:
+                session._transaction.set_in_progress()
             return command(
                 self,
                 dbname,
@@ -509,9 +511,7 @@ class Connection:
                 auth.authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
             duration = time.monotonic() - self.creation_time
-            if self.enabled_for_cmap:
-                assert self.listeners is not None
-                self.listeners.publish_connection_ready(self.address, self.id, duration)
+            # Log before publishing event to prevent potential listener preemption in tests
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
@@ -522,6 +522,9 @@ class Connection:
                     driverConnectionId=self.id,
                     durationMS=duration,
                 )
+            if self.enabled_for_cmap:
+                assert self.listeners is not None
+                self.listeners.publish_connection_ready(self.address, self.id, duration)
 
     def validate_session(
         self, client: Optional[MongoClient[Any]], session: Optional[ClientSession]
@@ -1022,9 +1025,7 @@ class Pool:
             self.active_contexts.add(tmp_context)
 
         listeners = self.opts._event_listeners
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_created(self.address, conn_id)
+        # Log before publishing event to prevent potential listener preemption in tests
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
@@ -1034,6 +1035,9 @@ class Pool:
                 serverPort=self.address[1],
                 driverConnectionId=conn_id,
             )
+        if self.enabled_for_cmap:
+            assert listeners is not None
+            listeners.publish_connection_created(self.address, conn_id)
 
         try:
             networking_interface = _configured_socket_interface(self.address, self.opts)
