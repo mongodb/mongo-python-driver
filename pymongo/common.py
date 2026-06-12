@@ -426,6 +426,31 @@ _MECHANISM_PROPS = frozenset(
 )
 
 
+_SAFE_AUTH_MECHANISM_PROPS_FOR_REPR = frozenset(
+    [
+        "ALLOWED_HOSTS",
+        "CANONICALIZE_HOST_NAME",
+        "ENVIRONMENT",
+        "SERVICE_HOST",
+        "SERVICE_NAME",
+        "SERVICE_REALM",
+        "TOKEN_RESOURCE",
+    ]
+)
+
+
+def redact_auth_mechanism_properties_for_repr(value: Any) -> Any:
+    """Redact sensitive auth mechanism properties before including them in repr."""
+    if not isinstance(value, dict):
+        return value
+
+    redacted = value.copy()
+    for key in redacted:
+        if str(key).upper() not in _SAFE_AUTH_MECHANISM_PROPS_FOR_REPR:
+            redacted[key] = "<redacted>"
+    return redacted
+
+
 def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Union[bool, str]]:
     """Validate authMechanismProperties."""
     props: dict[str, Any] = {}
