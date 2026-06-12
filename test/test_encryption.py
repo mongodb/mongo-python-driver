@@ -3021,18 +3021,12 @@ class TestKmsRetryProse(EncryptionIntegrationTest):
     def http_post(self, path, data=None):
         # Note, the connection to the mock server needs to be closed after
         # each request because the server is single threaded.
-        if sys.platform in ("darwin", "win32"):
-            # macOS/Windows: use PROTOCOL_TLS_CLIENT instead of
-            # create_default_context so that X509_V_FLAG_X509_STRICT is not
-            # set.  Python 3.14 enables strict mode in create_default_context,
-            # which requires a Subject Key Identifier (SKI) on the root CA cert.
-            # The CA cert omits SKI
-            # to prevent macOS SecTrust from triggering OCSP revocation checks
-            # during MongoDB server startup; the same cert is used on all
-            # platforms, so Windows inherits the same constraint.
-            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        else:
-            ctx = ssl.create_default_context()
+        ctx = ssl.create_default_context()
+        if sys.platform == "darwin":
+            # Python 3.14 enables X509_V_FLAG_X509_STRICT in create_default_context,
+            # which requires SKI on the root CA cert.  The CA cert intentionally omits
+            # SKI to prevent macOS SecTrust OCSP revocation checks.
+            ctx.verify_flags &= ~getattr(ssl, "VERIFY_X509_STRICT", 0)
         ctx.load_verify_locations(cafile=CA_PEM)
         ctx.load_cert_chain(CLIENT_PEM)
         conn = http.client.HTTPSConnection("127.0.0.1:9003", context=ctx)
