@@ -1591,7 +1591,7 @@ class TestClient(AsyncIntegrationTest):
         await async_wait_until(predicate, "update one document")
 
         client = await self.async_rs_or_single_client(connect=False, w=0)
-        await client.test_lazy_connect_w0.list_collection_names.delete_one({})
+        await client.test_lazy_connect_w0.coll.delete_one({})
 
         async def predicate():
             return await client.test_lazy_connect_w0.coll.count_documents({}) == 0

@@ -999,7 +999,7 @@ class TestCollection(IntegrationTest):
         db = self.db
         db.coll.drop()
         db.coll.insert_one({"z": 5})
-        db.command(SON([("collMod", "test"), ("validator", {"z": {"$gte": 0}})]))
+        db.command(SON([("collMod", "coll"), ("validator", {"z": {"$gte": 0}})]))
         db_w0 = self.db.client.get_database(self.db.name, write_concern=WriteConcern(w=0))
 
         # Test update_one

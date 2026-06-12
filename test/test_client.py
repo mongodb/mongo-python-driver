@@ -1548,7 +1548,7 @@ class TestClient(IntegrationTest):
         wait_until(predicate, "update one document")
 
         client = self.rs_or_single_client(connect=False, w=0)
-        client.test_lazy_connect_w0.list_collection_names.delete_one({})
+        client.test_lazy_connect_w0.coll.delete_one({})
 
         def predicate():
             return client.test_lazy_connect_w0.coll.count_documents({}) == 0

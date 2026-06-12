@@ -1011,7 +1011,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         db = self.db
         await db.coll.drop()
         await db.coll.insert_one({"z": 5})
-        await db.command(SON([("collMod", "test"), ("validator", {"z": {"$gte": 0}})]))
+        await db.command(SON([("collMod", "coll"), ("validator", {"z": {"$gte": 0}})]))
         db_w0 = self.db.client.get_database(self.db.name, write_concern=WriteConcern(w=0))
 
         # Test update_one
