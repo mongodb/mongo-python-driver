@@ -58,7 +58,7 @@
     }
   ],
   "_yamlAnchors": {
-    "namespace": "command-monitoring-tests.test"
+    "namespace": "command-monitoring-tests.coll"
   },
   "tests": [
     {
@@ -71,7 +71,7 @@
             "models": [
               {
                 "insertOne": {
-                  "namespace": "command-monitoring-tests.test",
+                  "namespace": "command-monitoring-tests.coll",
                   "document": {
                     "_id": 4,
                     "x": 44
@@ -80,7 +80,7 @@
               },
               {
                 "updateOne": {
-                  "namespace": "command-monitoring-tests.test",
+                  "namespace": "command-monitoring-tests.coll",
                   "filter": {
                     "_id": 3
                   },
@@ -188,7 +188,7 @@
                   ],
                   "nsInfo": [
                     {
-                      "ns": "command-monitoring-tests.test"
+                      "ns": "command-monitoring-tests.coll"
                     }
                   ]
                 }

@@ -95,7 +95,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {},

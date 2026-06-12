@@ -918,10 +918,10 @@ class TestCollection(IntegrationTest):
         self.assertIsInstance(result, InsertOneResult)
         self.assertEqual(2, result.inserted_id)
 
-        db_w0.test.insert_one({"y": 1}, bypass_document_validation=True)
+        db_w0.coll.insert_one({"y": 1}, bypass_document_validation=True)
 
         def async_lambda():
-            return db_w0.test.find_one({"y": 1})
+            return db_w0.coll.find_one({"y": 1})
 
         wait_until(async_lambda, "find w:0 inserted document")
 
@@ -950,7 +950,7 @@ class TestCollection(IntegrationTest):
         self.assertTrue(result.acknowledged)
 
         with self.assertRaises(OperationFailure):
-            db_w0.test.insert_many(
+            db_w0.coll.insert_many(
                 [{"x": 1}, {"x": 2}],
                 bypass_document_validation=True,
             )
@@ -988,10 +988,10 @@ class TestCollection(IntegrationTest):
         self.assertEqual(1, db.coll.count_documents({"a": 103}))
 
         db.coll.insert_one({"y": 1}, bypass_document_validation=True)
-        db_w0.test.replace_one({"y": 1}, {"x": 1}, bypass_document_validation=True)
+        db_w0.coll.replace_one({"y": 1}, {"x": 1}, bypass_document_validation=True)
 
         def predicate():
-            return db_w0.test.find_one({"x": 1})
+            return db_w0.coll.find_one({"x": 1})
 
         wait_until(predicate, "find w:0 replaced document")
 
@@ -1027,10 +1027,10 @@ class TestCollection(IntegrationTest):
         self.assertEqual(1, db.coll.count_documents({"z": 0}))
 
         db.coll.insert_one({"y": 1, "x": 0}, bypass_document_validation=True)
-        db_w0.test.update_one({"y": 1}, {"$inc": {"x": 1}}, bypass_document_validation=True)
+        db_w0.coll.update_one({"y": 1}, {"$inc": {"x": 1}}, bypass_document_validation=True)
 
         def async_lambda():
-            return db_w0.test.find_one({"y": 1, "x": 1})
+            return db_w0.coll.find_one({"y": 1, "x": 1})
 
         wait_until(async_lambda, "find w:0 updated document")
 
@@ -1071,10 +1071,10 @@ class TestCollection(IntegrationTest):
 
         db.coll.insert_one({"m": 1, "x": 0}, bypass_document_validation=True)
         db.coll.insert_one({"m": 1, "x": 0}, bypass_document_validation=True)
-        db_w0.test.update_many({"m": 1}, {"$inc": {"x": 1}}, bypass_document_validation=True)
+        db_w0.coll.update_many({"m": 1}, {"$inc": {"x": 1}}, bypass_document_validation=True)
 
         def async_lambda():
-            return db_w0.test.count_documents({"m": 1, "x": 1}) == 2
+            return db_w0.coll.count_documents({"m": 1, "x": 1}) == 2
 
         wait_until(async_lambda, "find w:0 updated documents")
 
@@ -1105,7 +1105,7 @@ class TestCollection(IntegrationTest):
                 db.coll.bulk_write([op])
 
         with self.assertRaises(OperationFailure):
-            db_w0.test.bulk_write(ops, bypass_document_validation=True)
+            db_w0.coll.bulk_write(ops, bypass_document_validation=True)
 
     def test_find_by_default_dct(self):
         db = self.db

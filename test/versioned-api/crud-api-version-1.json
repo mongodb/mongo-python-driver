@@ -113,7 +113,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$sort": {
@@ -276,7 +276,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 6,
@@ -294,7 +294,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -324,7 +324,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {
@@ -349,7 +349,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -379,7 +379,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {
@@ -399,7 +399,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -529,7 +529,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "aggregate": "test",
+                  "aggregate": "coll",
                   "pipeline": [
                     {
                       "$match": {
@@ -584,7 +584,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {
@@ -630,7 +630,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {
@@ -766,7 +766,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "apiVersion": "1",
                   "apiStrict": {
                     "$$unsetOrMatches": false
@@ -948,7 +948,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 6,
@@ -992,7 +992,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 6,
@@ -1036,7 +1036,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -1091,7 +1091,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -1147,7 +1147,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {

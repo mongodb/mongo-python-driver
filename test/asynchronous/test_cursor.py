@@ -1304,7 +1304,7 @@ class TestCursor(AsyncIntegrationTest):
 
         listener = AllowListEventListener("killCursors")
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        coll = client[self.db.name].test_close_kills_cursors
+        coll = client[self.db.name].coll
 
         # Add some test data.
         docs_inserted = 1000
@@ -1342,7 +1342,7 @@ class TestCursor(AsyncIntegrationTest):
     async def test_timeout_kills_cursor_asynchronously(self):
         listener = AllowListEventListener("killCursors")
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        coll = client[self.db.name].test_timeout_kills_cursor
+        coll = client[self.db.name].coll_timeout_kills_cursor
 
         # Add some test data.
         docs_inserted = 10
@@ -1539,7 +1539,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         async with client.start_session() as session:
             async with await session.start_transaction():
                 batches = await (
-                    client[self.db.name].test.find_raw_batches(session=session).sort("_id")
+                    client[self.db.name].coll.find_raw_batches(session=session).sort("_id")
                 ).to_list()
                 cmd = listener.started_events[0]
                 self.assertEqual(cmd.command_name, "find")
@@ -1568,7 +1568,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         async with self.fail_point(
             {"mode": {"times": 1}, "data": {"failCommands": ["find"], "closeConnection": True}}
         ):
-            batches = await client[self.db.name].test.find_raw_batches().sort("_id").to_list()
+            batches = await client[self.db.name].coll.find_raw_batches().sort("_id").to_list()
 
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1709,7 +1709,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         async with client.start_session() as session:
             async with await session.start_transaction():
                 batches = await (
-                    await client[self.db.name].test.aggregate_raw_batches(
+                    await client[self.db.name].coll.aggregate_raw_batches(
                         [{"$sort": {"_id": 1}}], session=session
                     )
                 ).to_list()
@@ -1741,7 +1741,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
             {"mode": {"times": 1}, "data": {"failCommands": ["aggregate"], "closeConnection": True}}
         ):
             batches = await (
-                await client[self.db.name].test.aggregate_raw_batches([{"$sort": {"_id": 1}}])
+                await client[self.db.name].coll.aggregate_raw_batches([{"$sort": {"_id": 1}}])
             ).to_list()
 
         self.assertEqual(1, len(batches))

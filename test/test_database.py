@@ -133,10 +133,10 @@ class TestDatabase(IntegrationTest):
 
     def test_get_coll(self):
         db = Database(self.client, "db")
-        self.assertEqual(db.coll, db["test"])
-        self.assertEqual(db.coll, Collection(db, "test"))
+        self.assertEqual(db.coll, db["coll"])
+        self.assertEqual(db.coll, Collection(db, "coll"))
         self.assertNotEqual(db.coll, Collection(db, "mike"))
-        self.assertEqual(db.coll.mike, db["test.mike"])
+        self.assertEqual(db.coll.mike, db["coll.mike"])
 
     def test_repr(self):
         name = "Database"
@@ -497,18 +497,18 @@ class TestDatabase(IntegrationTest):
         with self.assertRaises(TypeError):
             db.dereference(None)  # type: ignore[arg-type]
 
-        self.assertEqual(None, db.dereference(DBRef("test", ObjectId())))
+        self.assertEqual(None, db.dereference(DBRef("coll", ObjectId())))
         obj: dict[str, Any] = {"x": True}
         key = (db.coll.insert_one(obj)).inserted_id
-        self.assertEqual(obj, db.dereference(DBRef("test", key)))
-        self.assertEqual(obj, db.dereference(DBRef("test", key, "db")))
+        self.assertEqual(obj, db.dereference(DBRef("coll", key)))
+        self.assertEqual(obj, db.dereference(DBRef("coll", key, "db")))
         with self.assertRaises(ValueError):
-            db.dereference(DBRef("test", key, "foo"))
+            db.dereference(DBRef("coll", key, "foo"))
 
-        self.assertEqual(None, db.dereference(DBRef("test", 4)))
+        self.assertEqual(None, db.dereference(DBRef("coll", 4)))
         obj = {"_id": 4}
         db.coll.insert_one(obj)
-        self.assertEqual(obj, db.dereference(DBRef("test", 4)))
+        self.assertEqual(obj, db.dereference(DBRef("coll", 4)))
 
     def test_deref_kwargs(self):
         db = self.client.db
@@ -519,7 +519,7 @@ class TestDatabase(IntegrationTest):
             "db", codec_options=CodecOptions(document_class=SON[str, Any])
         )
         self.assertEqual(
-            SON([("foo", "bar")]), db.dereference(DBRef("test", 4), projection={"_id": False})
+            SON([("foo", "bar")]), db.dereference(DBRef("coll", 4), projection={"_id": False})
         )
 
     # TODO some of these tests belong in the collection level testing.

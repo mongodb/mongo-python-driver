@@ -28,7 +28,7 @@
     }
   ],
   "_yamlAnchors": {
-    "namespace": "command-monitoring-tests.test"
+    "namespace": "command-monitoring-tests.coll"
   },
   "initialData": [
     {
@@ -94,7 +94,7 @@
                   "ok": 1,
                   "cursor": {
                     "id": 0,
-                    "ns": "command-monitoring-tests.test",
+                    "ns": "command-monitoring-tests.coll",
                     "firstBatch": [
                       {
                         "_id": 1,
@@ -188,7 +188,7 @@
                   "ok": 1,
                   "cursor": {
                     "id": 0,
-                    "ns": "command-monitoring-tests.test",
+                    "ns": "command-monitoring-tests.coll",
                     "firstBatch": [
                       {
                         "x": 33
@@ -244,7 +244,7 @@
                   "ok": 1,
                   "cursor": {
                     "id": 0,
-                    "ns": "command-monitoring-tests.test",
+                    "ns": "command-monitoring-tests.coll",
                     "firstBatch": [
                       {
                         "_id": 1
@@ -324,7 +324,7 @@
                         "long"
                       ]
                     },
-                    "ns": "command-monitoring-tests.test",
+                    "ns": "command-monitoring-tests.coll",
                     "firstBatch": [
                       {
                         "_id": 1,
@@ -367,7 +367,7 @@
                   "ok": 1,
                   "cursor": {
                     "id": 0,
-                    "ns": "command-monitoring-tests.test",
+                    "ns": "command-monitoring-tests.coll",
                     "nextBatch": [
                       {
                         "_id": 4,
@@ -452,7 +452,7 @@
                         "long"
                       ]
                     },
-                    "ns": "command-monitoring-tests.test",
+                    "ns": "command-monitoring-tests.coll",
                     "firstBatch": [
                       {
                         "_id": 1,
@@ -495,7 +495,7 @@
                   "ok": 1,
                   "cursor": {
                     "id": 0,
-                    "ns": "command-monitoring-tests.test",
+                    "ns": "command-monitoring-tests.coll",
                     "nextBatch": [
                       {
                         "_id": 4,
