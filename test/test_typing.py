@@ -207,7 +207,7 @@ class TestPymongo(IntegrationTest):
         result.items()
 
     def test_list_collections(self) -> None:
-        cursor = self.client.test.list_collections()
+        cursor = self.client.db.list_collections()
         value = cursor.next()
         value.items()
 

@@ -368,7 +368,7 @@ class TestSession(IntegrationTest):
         self._test_ops(client, *ops)
 
     @staticmethod
-    def test_write_ops(coll):
+    def collection_write_ops(coll):
         """Generate database write ops for tests."""
         return [
             (coll.drop, [], {}),
@@ -398,7 +398,7 @@ class TestSession(IntegrationTest):
         coll = client.db.coll
 
         # Test some collection methods - the rest are in test_cursor.
-        ops = self.test_write_ops(coll)
+        ops = self.collection_write_ops(coll)
         ops.extend(
             [
                 (coll.distinct, ["a"], {}),
@@ -836,7 +836,7 @@ class TestSession(IntegrationTest):
             (db.create_collection, ["coll"], {}),
             (db.drop_collection, ["coll"], {}),
         ]
-        ops.extend(self.test_write_ops(coll))
+        ops.extend(self.collection_write_ops(coll))
         self._test_unacknowledged_ops(client, *ops)
 
         def drop_db():

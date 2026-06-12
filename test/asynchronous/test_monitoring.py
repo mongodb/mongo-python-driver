@@ -113,7 +113,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqualCommand(
-            SON([("find", "test"), ("filter", {}), ("limit", 1), ("singleBatch", True)]),
+            SON([("find", "coll"), ("filter", {}), ("limit", 1), ("singleBatch", True)]),
             started.command,
         )
         self.assertEqual("find", started.command_name)
@@ -135,7 +135,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqualCommand(
             SON(
-                [("find", "test"), ("filter", {}), ("projection", {"_id": False}), ("batchSize", 4)]
+                [("find", "coll"), ("filter", {}), ("projection", {"_id": False}), ("batchSize", 4)]
             ),
             started.command,
         )
@@ -184,7 +184,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             tuple(await cursor.to_list())
 
     async def test_find_with_explain(self):
-        cmd = SON([("explain", SON([("find", "test"), ("filter", {})]))])
+        cmd = SON([("explain", SON([("find", "coll"), ("filter", {})]))])
         await self.client.db.coll.drop()
         await self.client.db.coll.insert_one({})
         self.listener.reset()
@@ -437,7 +437,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqualCommand(
             SON(
-                [("find", "test"), ("filter", {}), ("projection", {"_id": False}), ("batchSize", 5)]
+                [("find", "coll"), ("filter", {}), ("projection", {"_id": False}), ("batchSize", 5)]
             ),
             started.command,
         )
