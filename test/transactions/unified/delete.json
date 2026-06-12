@@ -131,7 +131,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {
@@ -163,7 +163,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {
@@ -196,7 +196,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {
@@ -333,7 +333,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {
@@ -365,7 +365,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "deletes": [
                     {
                       "q": {

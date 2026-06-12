@@ -113,7 +113,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -127,7 +127,7 @@
               "commandStartedEvent": {
                 "commandName": "insert",
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -189,7 +189,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -203,7 +203,7 @@
               "commandStartedEvent": {
                 "commandName": "insert",
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -270,7 +270,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -284,7 +284,7 @@
               "commandStartedEvent": {
                 "commandName": "update",
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -353,7 +353,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -367,7 +367,7 @@
               "commandStartedEvent": {
                 "commandName": "update",
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -432,7 +432,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -446,7 +446,7 @@
               "commandStartedEvent": {
                 "commandName": "update",
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -506,7 +506,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -520,7 +520,7 @@
               "commandStartedEvent": {
                 "commandName": "delete",
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -582,7 +582,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -596,7 +596,7 @@
               "commandStartedEvent": {
                 "commandName": "delete",
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -662,7 +662,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -737,7 +737,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -815,7 +815,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -911,7 +911,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -925,7 +925,7 @@
               "commandStartedEvent": {
                 "commandName": "insert",
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -944,7 +944,7 @@
               "commandStartedEvent": {
                 "commandName": "update",
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -963,7 +963,7 @@
               "commandStartedEvent": {
                 "commandName": "delete",
                 "command": {
-                  "delete": "test",
+                  "delete": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -1026,7 +1026,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -1109,7 +1109,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -1178,7 +1178,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -1192,7 +1192,7 @@
               "commandStartedEvent": {
                 "commandName": "drop",
                 "command": {
-                  "drop": "test",
+                  "drop": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -1247,7 +1247,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -1316,7 +1316,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },
@@ -1378,7 +1378,7 @@
               "commandStartedEvent": {
                 "commandName": "insert",
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },

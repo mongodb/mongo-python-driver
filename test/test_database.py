@@ -412,7 +412,7 @@ class TestDatabase(IntegrationTest):
         db.coll.insert_one({"r": re.compile(".*")})
         db.coll.insert_one({"r": Regex(".*")})
 
-        result = db.command("aggregate", "test", pipeline=[], cursor={})
+        result = db.command("aggregate", "coll", pipeline=[], cursor={})
         for doc in result["cursor"]["firstBatch"]:
             self.assertIsInstance(doc["r"], Regex)
 
@@ -438,7 +438,7 @@ class TestDatabase(IntegrationTest):
         docs = [{"_id": i, "doc": i} for i in range(3)]
         db.coll.insert_many(docs)
 
-        cursor = db.cursor_command("find", "test")
+        cursor = db.cursor_command("find", "coll")
 
         self.assertIsInstance(cursor, CommandCursor)
 

@@ -79,7 +79,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test"
+                  "drop": "coll"
                 },
                 "databaseName": "ci-tests"
               }
@@ -87,7 +87,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "create": "test",
+                  "create": "coll",
                   "clusteredIndex": {
                     "key": {
                       "_id": 1
@@ -133,13 +133,13 @@
           "arguments": {
             "filter": {
               "name": {
-                "$eq": "test"
+                "$eq": "coll"
               }
             }
           },
           "expectResult": [
             {
-              "name": "test",
+              "name": "coll",
               "options": {
                 "clusteredIndex": {
                   "key": {
@@ -166,7 +166,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test"
+                  "drop": "coll"
                 },
                 "databaseName": "ci-tests"
               }
@@ -174,7 +174,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "create": "test",
+                  "create": "coll",
                   "clusteredIndex": {
                     "key": {
                       "_id": 1
@@ -192,7 +192,7 @@
                   "listCollections": 1,
                   "filter": {
                     "name": {
-                      "$eq": "test"
+                      "$eq": "coll"
                     }
                   }
                 },
@@ -255,7 +255,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test"
+                  "drop": "coll"
                 },
                 "databaseName": "ci-tests"
               }
@@ -263,7 +263,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "create": "test",
+                  "create": "coll",
                   "clusteredIndex": {
                     "key": {
                       "_id": 1
@@ -278,7 +278,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "listIndexes": "test"
+                  "listIndexes": "coll"
                 },
                 "databaseName": "ci-tests"
               }

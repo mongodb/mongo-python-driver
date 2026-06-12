@@ -415,7 +415,7 @@ class TestDatabase(AsyncIntegrationTest):
         await db.coll.insert_one({"r": re.compile(".*")})
         await db.coll.insert_one({"r": Regex(".*")})
 
-        result = await db.command("aggregate", "test", pipeline=[], cursor={})
+        result = await db.command("aggregate", "coll", pipeline=[], cursor={})
         for doc in result["cursor"]["firstBatch"]:
             self.assertIsInstance(doc["r"], Regex)
 
@@ -441,7 +441,7 @@ class TestDatabase(AsyncIntegrationTest):
         docs = [{"_id": i, "doc": i} for i in range(3)]
         await db.coll.insert_many(docs)
 
-        cursor = await db.cursor_command("find", "test")
+        cursor = await db.cursor_command("find", "coll")
 
         self.assertIsInstance(cursor, AsyncCommandCursor)
 

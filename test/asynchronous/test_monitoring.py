@@ -261,7 +261,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         }
 
         cmd = {
-            "find": "test",
+            "find": "coll",
             "filter": {},
             "hint": SON([("x", 1)]),
             "comment": "this is a test",
@@ -289,7 +289,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         # Test "snapshot" parameter separately, can't combine with "sort".
         query = {"filter": {}, "snapshot": True}
 
-        cmd = {"find": "test", "filter": {}, "snapshot": True}
+        cmd = {"find": "coll", "filter": {}, "snapshot": True}
 
         await self._test_find_options(query, cmd)
 

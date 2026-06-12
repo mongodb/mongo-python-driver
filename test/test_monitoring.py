@@ -259,7 +259,7 @@ class TestCommandMonitoring(IntegrationTest):
         }
 
         cmd = {
-            "find": "test",
+            "find": "coll",
             "filter": {},
             "hint": SON([("x", 1)]),
             "comment": "this is a test",
@@ -287,7 +287,7 @@ class TestCommandMonitoring(IntegrationTest):
         # Test "snapshot" parameter separately, can't combine with "sort".
         query = {"filter": {}, "snapshot": True}
 
-        cmd = {"find": "test", "filter": {}, "snapshot": True}
+        cmd = {"find": "coll", "filter": {}, "snapshot": True}
 
         self._test_find_options(query, cmd)
 

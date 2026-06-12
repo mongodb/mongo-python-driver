@@ -77,7 +77,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test"
+                  "drop": "coll"
                 },
                 "databaseName": "ts-tests"
               }
@@ -85,7 +85,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "create": "test",
+                  "create": "coll",
                   "expireAfterSeconds": 604800,
                   "timeseries": {
                     "timeField": "time",
@@ -191,7 +191,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test"
+                  "drop": "coll"
                 },
                 "databaseName": "ts-tests"
               }
@@ -199,7 +199,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "create": "test",
+                  "create": "coll",
                   "expireAfterSeconds": 604800,
                   "timeseries": {
                     "timeField": "time",
@@ -213,7 +213,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1,
@@ -238,7 +238,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "filter": {},
                   "sort": {
                     "time": 1
@@ -294,7 +294,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test"
+                  "drop": "coll"
                 },
                 "databaseName": "ts-tests"
               }
@@ -302,7 +302,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "create": "test",
+                  "create": "coll",
                   "timeseries": {
                     "timeField": "time",
                     "bucketMaxSpanSeconds": 3600,

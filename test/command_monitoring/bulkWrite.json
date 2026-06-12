@@ -87,7 +87,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 4,
@@ -112,7 +112,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {

@@ -329,7 +329,7 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
         await async_wait_until(count_documents, "insert documents with w=0")
 
         # Database.command auto decrypts.
-        res = await client.db.command("find", "test", filter={"ssn": "000"})
+        res = await client.db.command("find", "coll", filter={"ssn": "000"})
         decrypted_docs = res["cursor"]["firstBatch"]
         self.assertEqual(decrypted_docs, [{"_id": 0, "ssn": "000"}])
 

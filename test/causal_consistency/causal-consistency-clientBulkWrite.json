@@ -114,7 +114,7 @@
               "commandStartedEvent": {
                 "commandName": "find",
                 "command": {
-                  "find": "test",
+                  "find": "coll",
                   "readConcern": {
                     "$$exists": false
                   },

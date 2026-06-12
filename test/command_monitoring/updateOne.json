@@ -75,7 +75,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -141,7 +141,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {
@@ -213,7 +213,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "update": "test",
+                  "update": "coll",
                   "updates": [
                     {
                       "q": {

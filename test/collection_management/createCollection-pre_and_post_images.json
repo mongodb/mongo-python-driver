@@ -68,7 +68,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test"
+                  "drop": "coll"
                 },
                 "databaseName": "papi-tests"
               }
@@ -76,7 +76,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "create": "test",
+                  "create": "coll",
                   "changeStreamPreAndPostImages": {
                     "enabled": true
                   }
