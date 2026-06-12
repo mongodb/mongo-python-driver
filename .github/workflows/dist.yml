@@ -46,7 +46,7 @@ jobs:
 
     steps:
       - name: Checkout pymongo
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -78,6 +78,9 @@ jobs:
       - name: Build wheels
         env:
           CIBW_BUILD: ${{ matrix.buildplat[2] }}
+          # Strip any in-place C extensions from previous builds
+          # so they don't leak into the next wheel.
+          CIBW_BEFORE_BUILD: python ./tools/clean.py
         run: python -m cibuildwheel --output-dir wheelhouse
 
       - name: Assert all versions in wheelhouse
@@ -102,7 +105,7 @@ jobs:
     name: Make SDist
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 0
           persist-credentials: false

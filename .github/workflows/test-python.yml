@@ -22,11 +22,11 @@ jobs:
   static:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
           python-version: "3.10"
@@ -59,16 +59,16 @@ jobs:
       matrix:
         # Tests currently only pass on ubuntu on GitHub Actions.
         os: [ubuntu-latest]
-        python-version: ["3.10", "pypy-3.11", "3.13t"]
+        python-version: ["3.10", "pypy-3.11", "3.13t", "3.15"]
         mongodb-version: ["8.0"]
 
-    name: CPython ${{ matrix.python-version }}-${{ matrix.os }}
+    name: Python ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -86,11 +86,11 @@ jobs:
 
     name: Coverage
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
           python-version: "3.10"
@@ -114,11 +114,11 @@ jobs:
     runs-on: ubuntu-latest
     name: DocTest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
           python-version: "3.10"
@@ -139,11 +139,11 @@ jobs:
     name: Docs Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
           python-version: "3.10"
@@ -158,11 +158,11 @@ jobs:
     name: Link Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
           python-version: "3.10"
@@ -182,11 +182,11 @@ jobs:
       matrix:
         python: ["3.10", "3.11"]
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
           python-version: "${{matrix.python}}"
@@ -203,11 +203,11 @@ jobs:
     runs-on: ubuntu-latest
     name: Integration Tests
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
           python-version: "3.10"
@@ -233,7 +233,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "Make an sdist"
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           persist-credentials: false
       - uses: actions/setup-python@v6
@@ -293,11 +293,11 @@ jobs:
       runs-on: ubuntu-latest
       name: Test minimum dependencies and Python
       steps:
-        - uses: actions/checkout@v6.0.2
+        - uses: actions/checkout@v6.0.3
           with:
             persist-credentials: false
         - name: Install uv
-          uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+          uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
           with:
             python-version: "3.9"
         - id: setup-mongodb
