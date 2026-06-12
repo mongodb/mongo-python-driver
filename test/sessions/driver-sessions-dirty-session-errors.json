@@ -338,7 +338,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "query": {
                     "_id": 1
                   },
@@ -368,7 +368,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "query": {
                     "_id": 1
                   },
@@ -622,7 +622,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "query": {
                     "_id": 1
                   },
@@ -652,7 +652,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "query": {
                     "_id": 1
                   },

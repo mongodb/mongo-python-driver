@@ -1317,7 +1317,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "query": {
                     "_id": 0
                   },
@@ -1410,7 +1410,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "query": {
                     "_id": 0
                   },
@@ -1515,7 +1515,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "query": {
                     "_id": 0
                   },

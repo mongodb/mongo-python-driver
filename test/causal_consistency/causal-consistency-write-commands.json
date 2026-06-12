@@ -676,7 +676,7 @@
               "commandStartedEvent": {
                 "commandName": "findAndModify",
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -751,7 +751,7 @@
               "commandStartedEvent": {
                 "commandName": "findAndModify",
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -829,7 +829,7 @@
               "commandStartedEvent": {
                 "commandName": "findAndModify",
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },

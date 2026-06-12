@@ -86,7 +86,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "update": [
                     {
                       "$project": {

@@ -461,7 +461,7 @@ class TestCollection(IntegrationTest):
             db.command(
                 SON(
                     [
-                        ("geoSearch", "test"),
+                        ("geoSearch", "coll"),
                         ("near", [33, 33]),
                         ("maxDistance", 6),
                         ("search", {"type": "restaurant"}),

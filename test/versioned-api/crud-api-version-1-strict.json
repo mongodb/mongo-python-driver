@@ -597,7 +597,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "distinct": "test",
+                  "distinct": "coll",
                   "key": "x",
                   "apiVersion": "1",
                   "apiStrict": true,
@@ -743,7 +743,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "query": {
                     "_id": 1
                   },
@@ -783,7 +783,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "query": {
                     "_id": 1
                   },
@@ -827,7 +827,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "findAndModify": "test",
+                  "findAndModify": "coll",
                   "query": {
                     "_id": 1
                   },

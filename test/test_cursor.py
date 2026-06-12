@@ -222,7 +222,7 @@ class TestCursor(IntegrationTest):
     def test_max_await_time_ms(self):
         db = self.db
         db.coll.drop()
-        coll = db.create_collection("db", capped=True, size=4096)
+        coll = db.create_collection("coll", capped=True, size=4096)
 
         with self.assertRaises(TypeError):
             coll.find().max_await_time_ms("foo")  # type: ignore[arg-type]

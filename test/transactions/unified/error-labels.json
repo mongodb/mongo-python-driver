@@ -829,7 +829,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "distinct": "test",
+                  "distinct": "coll",
                   "key": "_id",
                   "lsid": {
                     "$$sessionLsid": "session0"

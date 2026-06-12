@@ -163,7 +163,7 @@ class TestDatabase(AsyncIntegrationTest):
             await db.create_collection("coll..ection")  # type: ignore[arg-type]
 
         test = await db.create_collection("coll")
-        self.assertIn("test", await db.list_collection_names())
+        self.assertIn("coll", await db.list_collection_names())
         await test.insert_one({"hello": "world"})
         self.assertEqual((await db.coll.find_one())["hello"], "world")
 
@@ -179,8 +179,8 @@ class TestDatabase(AsyncIntegrationTest):
         await db.coll.mike.insert_one({"dummy": "object"})
 
         colls = await db.list_collection_names()
-        self.assertIn("test", colls)
-        self.assertIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertIn("coll.mike", colls)
         for coll in colls:
             self.assertNotIn("$", coll)
 
@@ -252,8 +252,8 @@ class TestDatabase(AsyncIntegrationTest):
         colls = [result["name"] async for result in results]
 
         # All the collections present.
-        self.assertIn("test", colls)
-        self.assertIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertIn("coll.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
@@ -271,13 +271,13 @@ class TestDatabase(AsyncIntegrationTest):
         coll_cnt: dict = {}
 
         # Check if there are any collections which don't exist.
-        self.assertLessEqual(set(colls), {"test", "test.mike", "system.indexes"})
+        self.assertLessEqual(set(colls), {"coll", "coll.mike", "system.indexes"})
 
-        colls = await (await db.list_collections(filter={"name": {"$regex": "^test$"}})).to_list()
+        colls = await (await db.list_collections(filter={"name": {"$regex": "^coll$"}})).to_list()
         self.assertEqual(1, len(colls))
 
         colls = await (
-            await db.list_collections(filter={"name": {"$regex": "^test.mike$"}})
+            await db.list_collections(filter={"name": {"$regex": "^coll\\.mike$"}})
         ).to_list()
         self.assertEqual(1, len(colls))
 
@@ -288,8 +288,8 @@ class TestDatabase(AsyncIntegrationTest):
         colls = [result["name"] async for result in results]
 
         # Checking only capped collections are present
-        self.assertIn("test", colls)
-        self.assertNotIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertNotIn("coll.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
@@ -307,7 +307,7 @@ class TestDatabase(AsyncIntegrationTest):
         coll_cnt = {}
 
         # Check if there are any collections which don't exist.
-        self.assertLessEqual(set(colls), {"test", "system.indexes"})
+        self.assertLessEqual(set(colls), {"coll", "system.indexes"})
 
         await self.client.drop_database("db")
 
@@ -330,24 +330,24 @@ class TestDatabase(AsyncIntegrationTest):
             await db.drop_collection(None)  # type: ignore[arg-type]
 
         await db.coll.insert_one({"dummy": "object"})
-        self.assertIn("test", await db.list_collection_names())
+        self.assertIn("coll", await db.list_collection_names())
         await db.drop_collection("coll")
-        self.assertNotIn("test", await db.list_collection_names())
+        self.assertNotIn("coll", await db.list_collection_names())
 
         await db.coll.insert_one({"dummy": "object"})
-        self.assertIn("test", await db.list_collection_names())
+        self.assertIn("coll", await db.list_collection_names())
         await db.drop_collection("coll")
-        self.assertNotIn("test", await db.list_collection_names())
+        self.assertNotIn("coll", await db.list_collection_names())
 
         await db.coll.insert_one({"dummy": "object"})
-        self.assertIn("test", await db.list_collection_names())
+        self.assertIn("coll", await db.list_collection_names())
         await db.drop_collection(db.coll)
-        self.assertNotIn("test", await db.list_collection_names())
+        self.assertNotIn("coll", await db.list_collection_names())
 
         await db.coll.insert_one({"dummy": "object"})
-        self.assertIn("test", await db.list_collection_names())
+        self.assertIn("coll", await db.list_collection_names())
         await db.coll.drop()
-        self.assertNotIn("test", await db.list_collection_names())
+        self.assertNotIn("coll", await db.list_collection_names())
         await db.coll.drop()
 
         await db.drop_collection(db.coll.doesnotexist)

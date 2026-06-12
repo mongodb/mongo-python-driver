@@ -162,7 +162,7 @@ class TestDatabase(IntegrationTest):
             db.create_collection("coll..ection")  # type: ignore[arg-type]
 
         test = db.create_collection("coll")
-        self.assertIn("test", db.list_collection_names())
+        self.assertIn("coll", db.list_collection_names())
         test.insert_one({"hello": "world"})
         self.assertEqual((db.coll.find_one())["hello"], "world")
 
@@ -178,8 +178,8 @@ class TestDatabase(IntegrationTest):
         db.coll.mike.insert_one({"dummy": "object"})
 
         colls = db.list_collection_names()
-        self.assertIn("test", colls)
-        self.assertIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertIn("coll.mike", colls)
         for coll in colls:
             self.assertNotIn("$", coll)
 
@@ -251,8 +251,8 @@ class TestDatabase(IntegrationTest):
         colls = [result["name"] for result in results]
 
         # All the collections present.
-        self.assertIn("test", colls)
-        self.assertIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertIn("coll.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
@@ -270,12 +270,12 @@ class TestDatabase(IntegrationTest):
         coll_cnt: dict = {}
 
         # Check if there are any collections which don't exist.
-        self.assertLessEqual(set(colls), {"test", "test.mike", "system.indexes"})
+        self.assertLessEqual(set(colls), {"coll", "coll.mike", "system.indexes"})
 
-        colls = (db.list_collections(filter={"name": {"$regex": "^test$"}})).to_list()
+        colls = (db.list_collections(filter={"name": {"$regex": "^coll$"}})).to_list()
         self.assertEqual(1, len(colls))
 
-        colls = (db.list_collections(filter={"name": {"$regex": "^test.mike$"}})).to_list()
+        colls = (db.list_collections(filter={"name": {"$regex": "^coll\\.mike$"}})).to_list()
         self.assertEqual(1, len(colls))
 
         db.drop_collection("coll")
@@ -285,8 +285,8 @@ class TestDatabase(IntegrationTest):
         colls = [result["name"] for result in results]
 
         # Checking only capped collections are present
-        self.assertIn("test", colls)
-        self.assertNotIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertNotIn("coll.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
@@ -304,7 +304,7 @@ class TestDatabase(IntegrationTest):
         coll_cnt = {}
 
         # Check if there are any collections which don't exist.
-        self.assertLessEqual(set(colls), {"test", "system.indexes"})
+        self.assertLessEqual(set(colls), {"coll", "system.indexes"})
 
         self.client.drop_database("db")
 
@@ -327,24 +327,24 @@ class TestDatabase(IntegrationTest):
             db.drop_collection(None)  # type: ignore[arg-type]
 
         db.coll.insert_one({"dummy": "object"})
-        self.assertIn("test", db.list_collection_names())
+        self.assertIn("coll", db.list_collection_names())
         db.drop_collection("coll")
-        self.assertNotIn("test", db.list_collection_names())
+        self.assertNotIn("coll", db.list_collection_names())
 
         db.coll.insert_one({"dummy": "object"})
-        self.assertIn("test", db.list_collection_names())
+        self.assertIn("coll", db.list_collection_names())
         db.drop_collection("coll")
-        self.assertNotIn("test", db.list_collection_names())
+        self.assertNotIn("coll", db.list_collection_names())
 
         db.coll.insert_one({"dummy": "object"})
-        self.assertIn("test", db.list_collection_names())
+        self.assertIn("coll", db.list_collection_names())
         db.drop_collection(db.coll)
-        self.assertNotIn("test", db.list_collection_names())
+        self.assertNotIn("coll", db.list_collection_names())
 
         db.coll.insert_one({"dummy": "object"})
-        self.assertIn("test", db.list_collection_names())
+        self.assertIn("coll", db.list_collection_names())
         db.coll.drop()
-        self.assertNotIn("test", db.list_collection_names())
+        self.assertNotIn("coll", db.list_collection_names())
         db.coll.drop()
 
         db.drop_collection(db.coll.doesnotexist)

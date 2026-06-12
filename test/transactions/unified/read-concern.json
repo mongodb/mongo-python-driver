@@ -779,7 +779,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "distinct": "test",
+                  "distinct": "coll",
                   "key": "_id",
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -803,7 +803,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "distinct": "test",
+                  "distinct": "coll",
                   "key": "_id",
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -1689,7 +1689,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "distinct": "test",
+                  "distinct": "coll",
                   "key": "_id",
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -1713,7 +1713,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "distinct": "test",
+                  "distinct": "coll",
                   "key": "_id",
                   "lsid": {
                     "$$sessionLsid": "session0"
