@@ -27,7 +27,7 @@ Carry both AKI and SKI.  Python 3.13 requires AKI on non-root certs; Python 3.14
 
 | File | Subject | Signed by | Extensions | Purpose |
 |---|---|---|---|---|
-| `ca.pem` | `CN=Drivers Testing CA, ...` | Self (CA) | basicConstraints critical, keyUsage critical | Root CA for all test certs |
+| `ca.pem` | `CN=Drivers Testing CA, ...` | Self (CA) | basicConstraints critical | Root CA for all test certs |
 | `server.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN only | MongoDB server cert (key + cert) |
 | `client.pem` | `CN=client, O=MDB, ...` | Drivers Testing CA | keyUsage, extKeyUsage | Client auth cert (key + cert) |
 | `password_protected.pem` | Same as client | Drivers Testing CA | keyUsage, extKeyUsage | Client cert with AES-256 encrypted key |
@@ -56,11 +56,10 @@ macOS and Windows with Python 3.13+.  The root causes were:
 
 1. Python 3.13 / OpenSSL 3.x requires **AKI** on non-root certs.  The original 2019 certs had none.
 2. Python 3.14 enables `X509_V_FLAG_X509_STRICT` in `ssl.create_default_context()`, which
-   additionally requires **SKI** on non-root certs and `basicConstraints`/`keyUsage` to be critical
-   on CA certs.
+   additionally requires **SKI** on non-root certs.
 
-The CA cert intentionally omits SKI even though strict mode would normally require it on all
-certs: adding SKI to the CA triggers macOS SecTrust OCSP revocation checks on the MongoDB server
-startup path (MongoDB Enterprise on macOS uses Apple SecTrust), causing ~67-second connection
-timeouts.  KMS connections bypass this by using `ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)` instead
-of `ssl.create_default_context()`, which does not enable strict mode.
+The CA cert intentionally omits SKI: adding SKI to the CA triggers macOS SecTrust OCSP
+revocation checks on the MongoDB server startup path (MongoDB Enterprise on macOS uses Apple
+SecTrust), causing ~67-second connection timeouts.  KMS connections use
+`ssl.create_default_context()` but clear `ssl.VERIFY_X509_STRICT` on macOS so that the missing
+CA SKI does not cause a verification failure.
