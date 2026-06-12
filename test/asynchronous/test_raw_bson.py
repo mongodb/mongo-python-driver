@@ -44,7 +44,7 @@ class TestRawBSONDocument(AsyncIntegrationTest):
 
     async def asyncTearDown(self):
         if async_client_context.connected:
-            await self.db.coll.drop()
+            await self.client.db.coll.drop()
 
     def test_decode(self):
         self.assertEqual("Sherlock", self.document["name"])
@@ -170,7 +170,7 @@ class TestRawBSONDocument(AsyncIntegrationTest):
         await db.coll.drop()
         await db.coll.insert_one(rbd)
         result = await db.get_collection(
-            "test_raw", codec_options=CodecOptions(uuid_representation=JAVA_LEGACY)
+            "coll", codec_options=CodecOptions(uuid_representation=JAVA_LEGACY)
         ).find_one()
         assert result is not None
         self.assertEqual(rbd["embedded"][0]["_id"], result["embedded"][0]["_id"])

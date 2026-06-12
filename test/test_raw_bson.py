@@ -44,7 +44,7 @@ class TestRawBSONDocument(IntegrationTest):
 
     def tearDown(self):
         if client_context.connected:
-            self.db.coll.drop()
+            self.client.db.coll.drop()
 
     def test_decode(self):
         self.assertEqual("Sherlock", self.document["name"])
@@ -170,7 +170,7 @@ class TestRawBSONDocument(IntegrationTest):
         db.coll.drop()
         db.coll.insert_one(rbd)
         result = db.get_collection(
-            "test_raw", codec_options=CodecOptions(uuid_representation=JAVA_LEGACY)
+            "coll", codec_options=CodecOptions(uuid_representation=JAVA_LEGACY)
         ).find_one()
         assert result is not None
         self.assertEqual(rbd["embedded"][0]["_id"], result["embedded"][0]["_id"])
