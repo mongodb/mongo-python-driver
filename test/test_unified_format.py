@@ -39,9 +39,6 @@ globals().update(
         os.path.join(TEST_PATH, "valid-pass"),
         module=__name__,
         class_name_prefix="UnifiedTestFormat",
-        expected_failures=[
-            "Client side error in command starting transaction",  # PYTHON-1894
-        ],
     )
 )
 
