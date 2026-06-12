@@ -1063,10 +1063,16 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
-            self._handle_connection_error(error)
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
-                _raise_connection_failure(self.address, error, timeout_details=details)
+                # Wrap to AutoReconnect/NetworkTimeout BEFORE labeling so the
+                # SystemOverloadedError label lands on the propagated exception.
+                try:
+                    _raise_connection_failure(self.address, error, timeout_details=details)
+                except (AutoReconnect, NetworkTimeout) as wrapped:
+                    self._handle_connection_error(wrapped)
+                    raise
+            self._handle_connection_error(error)
             raise
 
         conn = AsyncConnection(networking_interface, self, self.address, conn_id, self.is_sdam)  # type: ignore[arg-type]
