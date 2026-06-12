@@ -762,7 +762,7 @@ class TestClusterChangeStream(TestChangeStreamBase, APITestsMixin):
     @client_context.require_change_streams  # type:ignore[untyped-decorator]
     def setUp(self) -> None:
         super().setUp()
-        self.dbs = [self.db, self.client.pymongo_test_2]
+        self.dbs = [self.db, self.client.db2]
 
     def tearDown(self):
         for db in self.dbs:
@@ -893,7 +893,7 @@ class TestDatabaseChangeStream(TestChangeStreamBase, APITestsMixin):
 
     def test_isolation(self):
         # Ensure inserts to other dbs don't show up in our ChangeStream.
-        other_db = self.client.pymongo_test_temp
+        other_db = self.client.coll
         self.assertNotEqual(other_db, self.db, msg="Isolation must be tested on separate DBs")
         collname = self.id()
         with self.change_stream() as change_stream:

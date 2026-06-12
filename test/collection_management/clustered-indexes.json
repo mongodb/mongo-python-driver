@@ -27,13 +27,13 @@
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     }
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "ci-tests",
       "documents": []
     }
@@ -46,14 +46,14 @@
           "name": "dropCollection",
           "object": "database0",
           "arguments": {
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
           "name": "createCollection",
           "object": "database0",
           "arguments": {
-            "collection": "test",
+            "collection": "coll",
             "clusteredIndex": {
               "key": {
                 "_id": 1
@@ -68,7 +68,7 @@
           "object": "testRunner",
           "arguments": {
             "databaseName": "ci-tests",
-            "collectionName": "test"
+            "collectionName": "coll"
           }
         }
       ],
@@ -110,14 +110,14 @@
           "name": "dropCollection",
           "object": "database0",
           "arguments": {
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
           "name": "createCollection",
           "object": "database0",
           "arguments": {
-            "collection": "test",
+            "collection": "coll",
             "clusteredIndex": {
               "key": {
                 "_id": 1
@@ -210,14 +210,14 @@
           "name": "dropCollection",
           "object": "database0",
           "arguments": {
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
           "name": "createCollection",
           "object": "database0",
           "arguments": {
-            "collection": "test",
+            "collection": "coll",
             "clusteredIndex": {
               "key": {
                 "_id": 1

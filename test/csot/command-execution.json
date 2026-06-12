@@ -23,12 +23,12 @@
   "initialData": [
     {
       "collectionName": "coll",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": []
     },
     {
       "collectionName": "timeoutColl",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": []
     }
   ],
@@ -82,7 +82,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -129,7 +129,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "timeoutColl"
                 }
@@ -138,7 +138,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "timeoutColl",
                   "maxTimeMS": {
@@ -200,7 +200,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -274,7 +274,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "timeoutColl"
                 }
@@ -333,7 +333,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -373,7 +373,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "timeoutColl"
                 }
@@ -382,7 +382,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "timeoutColl",
                   "maxTimeMS": {

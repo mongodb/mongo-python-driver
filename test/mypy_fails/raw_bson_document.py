@@ -4,7 +4,7 @@ from bson.raw_bson import RawBSONDocument
 from pymongo import MongoClient
 
 client = MongoClient(document_class=RawBSONDocument)
-coll = client.test.test
+coll = client.db.coll
 doc = {"my": "doc"}
 coll.insert_one(doc)
 retrieved = coll.find_one({"_id": doc["_id"]})

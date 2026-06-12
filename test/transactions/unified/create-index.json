@@ -32,7 +32,7 @@
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     },
     {
@@ -44,7 +44,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "transaction-tests",
       "documents": []
     }
@@ -57,7 +57,7 @@
           "object": "database0",
           "name": "dropCollection",
           "arguments": {
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
@@ -80,7 +80,7 @@
           "name": "assertIndexNotExists",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test",
+            "collectionName": "coll",
             "indexName": "t_1"
           }
         },
@@ -93,7 +93,7 @@
           "name": "assertIndexExists",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test",
+            "collectionName": "coll",
             "indexName": "t_1"
           }
         }
@@ -175,7 +175,7 @@
           "object": "database0",
           "name": "dropCollection",
           "arguments": {
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
@@ -187,7 +187,7 @@
           "name": "createCollection",
           "arguments": {
             "session": "session0",
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
@@ -206,7 +206,7 @@
           "name": "assertIndexNotExists",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test",
+            "collectionName": "coll",
             "indexName": "t_1"
           }
         },
@@ -219,7 +219,7 @@
           "name": "assertIndexExists",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test",
+            "collectionName": "coll",
             "indexName": "t_1"
           }
         }

@@ -14,7 +14,7 @@
       "database": {
         "id": "database0",
         "client": "client0",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -73,7 +73,7 @@
                   "aggregate": "driverdata"
                 },
                 "commandName": "aggregate",
-                "databaseName": "test"
+                "databaseName": "db"
               }
             }
           ]

@@ -97,7 +97,7 @@ class TestPoolPausedError(IntegrationTest):
         for _ in range(10):
             cmap_listener.reset()
             cmd_listener.reset()
-            threads = [FindThread(client.pymongo_test.test) for _ in range(2)]
+            threads = [FindThread(client.db.coll) for _ in range(2)]
             fail_command = {
                 "mode": {"times": 1},
                 "data": {
@@ -183,7 +183,7 @@ class TestRetryableReads(IntegrationTest):
         )
 
         with self.assertRaises(OperationFailure):
-            client.t.t.find_one({})
+            client.db.coll.find_one({})
 
         # Disable failpoints on each mongos
         for client in mongos_clients:
@@ -217,7 +217,7 @@ class TestRetryableReads(IntegrationTest):
             retryReads=True,
         )
 
-        client.t.t.find_one({})
+        client.db.coll.find_one({})
 
         # Disable failpoint.
         fail_command["mode"] = "off"
@@ -239,17 +239,17 @@ class TestRetryableReads(IntegrationTest):
             retryReads=True,
         )
 
-        client.t.t.insert_one({"x": 1})
+        client.db.coll.insert_one({"x": 1})
 
         commands = [
-            ("aggregate", lambda: client.t.t.count_documents({})),
-            ("aggregate", lambda: client.t.t.aggregate([{"$match": {}}])),
-            ("count", lambda: client.t.t.estimated_document_count()),
-            ("distinct", lambda: client.t.t.distinct("x")),
-            ("find", lambda: client.t.t.find_one({})),
+            ("aggregate", lambda: client.db.coll.count_documents({})),
+            ("aggregate", lambda: client.db.coll.aggregate([{"$match": {}}])),
+            ("count", lambda: client.db.coll.estimated_document_count()),
+            ("distinct", lambda: client.db.coll.distinct("x")),
+            ("find", lambda: client.db.coll.find_one({})),
             ("listDatabases", lambda: client.list_databases()),
-            ("listCollections", lambda: client.t.list_collections()),
-            ("listIndexes", lambda: client.t.t.list_indexes()),
+            ("listCollections", lambda: client.db.list_collections()),
+            ("listIndexes", lambda: client.db.coll.list_indexes()),
         ]
 
         for command_name, operation in commands:
@@ -309,7 +309,7 @@ class TestRetryableReads(IntegrationTest):
         listener.reset()
 
         # 4. Execute a `find` command with `client`.
-        client.t.t.find_one({})
+        client.db.coll.find_one({})
 
         # 5. Assert that one failed command event and one successful command event occurred.
         self.assertEqual(len(listener.failed_events), 1)
@@ -351,7 +351,7 @@ class TestRetryableReads(IntegrationTest):
         listener.reset()
 
         # 4. Execute a `find` command with `client`.
-        client.t.t.find_one({})
+        client.db.coll.find_one({})
 
         # 5. Assert that one failed command event and one successful command event occurred.
         self.assertEqual(len(listener.failed_events), 1)
@@ -395,7 +395,7 @@ class TestRetryableReads(IntegrationTest):
         listener.reset()
 
         # 4. Execute a `find` command with `client`.
-        client.t.t.find_one({})
+        client.db.coll.find_one({})
 
         # 5. Assert that one failed command event and one successful command event occurred.
         self.assertEqual(len(listener.failed_events), 1)
@@ -445,13 +445,13 @@ class TestRetryableReads(IntegrationTest):
         listener.failed = failed
 
         client = self.rs_client(event_listeners=[listener])
-        client.test.test.insert_one({})
+        client.db.coll.insert_one({})
 
         self.configure_fail_point_sync(overload_fail_point)
         self.addCleanup(self.configure_fail_point_sync, {}, off=True)
 
         with self.assertRaises(PyMongoError):
-            client.test.test.find_one()
+            client.db.coll.find_one()
 
         started_finds = [e for e in listener.started_events if e.command_name == "find"]
         self.assertEqual(len(started_finds), MAX_ADAPTIVE_RETRIES + 1)
@@ -502,7 +502,7 @@ class TestRetryableReads(IntegrationTest):
         listener.failed = failed
 
         client = self.rs_client(event_listeners=[listener])
-        client.test.test.insert_one({})
+        client.db.coll.insert_one({})
 
         self.configure_fail_point_sync(overload_fail_point)
         self.addCleanup(self.configure_fail_point_sync, {}, off=True)
@@ -510,7 +510,7 @@ class TestRetryableReads(IntegrationTest):
         # Perform a findOne operation with coll. Expect the operation to fail.
         with mock.patch(mock_target, return_value=0) as mock_backoff:
             with self.assertRaises(PyMongoError):
-                client.test.test.find_one()
+                client.db.coll.find_one()
 
         # Assert that backoff was applied only once for the initial overload error and not for the subsequent non-overload retryable errors.
         self.assertEqual(mock_backoff.call_count, 1)

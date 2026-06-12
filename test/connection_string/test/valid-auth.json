@@ -34,7 +34,7 @@
       "auth": {
         "username": "alice",
         "password": "foo",
-        "db": "test"
+        "db": "db"
       },
       "options": null
     },

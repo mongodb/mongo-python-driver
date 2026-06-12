@@ -293,7 +293,7 @@ class TestHandshake(unittest.TestCase):
             password="password",
         )
         self.addCleanup(client.close)
-        self.assertRaises(OperationFailure, client.db.collection.find_one, {"a": 1})
+        self.assertRaises(OperationFailure, client.db.coll.find_one, {"a": 1})
         self.assertTrue(
             self.found_auth_msg, "Could not find authentication command with correct protocol"
         )

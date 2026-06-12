@@ -30,7 +30,7 @@
       "database": {
         "id": "database",
         "client": "client",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -57,7 +57,7 @@
   "initialData": [
     {
       "collectionName": "fs.files",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": [
         {
           "_id": {
@@ -77,7 +77,7 @@
     },
     {
       "collectionName": "fs.chunks",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": [
         {
           "_id": {
@@ -155,7 +155,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "fs.files",
                   "maxTimeMS": {
@@ -215,7 +215,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "fs.files",
                   "maxTimeMS": {
@@ -301,7 +301,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "drop",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "drop": "fs.files",
                   "maxTimeMS": {

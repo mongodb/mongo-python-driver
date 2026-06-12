@@ -561,7 +561,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
         To get a single document use an integral index, e.g.::
 
-          >>> db.test.find()[50]
+          >>> db.coll.find()[50]
 
         An :class:`IndexError` will be raised if the index is negative
         or greater than the amount of documents in this cursor. Any
@@ -569,7 +569,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
         To get a slice of documents use a slice index, e.g.::
 
-          >>> db.test.find()[20:25]
+          >>> db.coll.find()[20:25]
 
         This will return this cursor with a limit of ``5`` and skip of
         ``20`` applied.  Using a slice index will override any prior
@@ -707,7 +707,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
         Text search results can be sorted by relevance::
 
-            cursor = db.test.find(
+            cursor = db.coll.find(
                 {'$text': {'$search': 'some words'}},
                 {'score': {'$meta': 'textScore'}})
 
@@ -815,7 +815,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
         to the object currently being scanned. For example::
 
             # Find all documents where field "a" is less than "b" plus "c".
-            async for doc in db.test.find().where('this.a < (this.b + this.c)'):
+            async for doc in db.coll.find().where('this.a < (this.b + this.c)'):
                 print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of

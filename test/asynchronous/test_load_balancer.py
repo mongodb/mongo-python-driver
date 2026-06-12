@@ -52,12 +52,12 @@ class TestLB(AsyncIntegrationTest):
     async def test_connections_are_only_returned_once(self):
         pool = await async_get_pool(self.client)
         n_conns = len(pool.conns)
-        await self.db.test.find_one({})
+        await self.db.coll.find_one({})
         # On PyPy it can take a few rounds to collect the cursor.
         for _ in range(3):
             gc.collect()
         self.assertEqual(len(pool.conns), n_conns)
-        await (await self.db.test.aggregate([{"$limit": 1}])).to_list()
+        await (await self.db.coll.aggregate([{"$limit": 1}])).to_list()
         # On PyPy it can take a few rounds to collect the cursor.
         for _ in range(3):
             gc.collect()
@@ -67,7 +67,7 @@ class TestLB(AsyncIntegrationTest):
     async def test_unpin_committed_transaction(self):
         client = await self.async_rs_client()
         pool = await async_get_pool(client)
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         async with client.start_session() as session:
             async with await session.start_transaction():
                 self.assertEqual(pool.active_sockets, 0)
@@ -97,7 +97,7 @@ class TestLB(AsyncIntegrationTest):
     async def _test_no_gc_deadlock(self, create_resource):
         client = await self.async_rs_client()
         pool = await async_get_pool(client)
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         await coll.insert_many([{} for _ in range(10)])
         self.assertEqual(pool.active_sockets, 0)
         # Cause the initial find attempt to fail to induce a reference cycle.
@@ -137,7 +137,7 @@ class TestLB(AsyncIntegrationTest):
         pool = await async_get_pool(client)
         session = client.start_session()
         await session.start_transaction()
-        await client.test_session_gc.test.find_one({}, session=session)
+        await client.test_session_gc.coll.find_one({}, session=session)
         # Cleanup the transaction left open on the server
         self.addAsyncCleanup(self.client.admin.command, "killSessions", [session.session_id])
         if async_client_context.load_balancer:
@@ -159,7 +159,7 @@ class TestLB(AsyncIntegrationTest):
 
         await async_wait_until(lambda: pool.active_sockets == 0, "return socket")
         # Run another operation to ensure the socket still works.
-        await client[self.db.name].test.delete_many({})
+        await client[self.db.name].coll.delete_many({})
 
 
 class PoolLocker(ExceptionCatchingTask):

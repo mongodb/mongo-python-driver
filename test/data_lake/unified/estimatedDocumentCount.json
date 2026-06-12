@@ -14,7 +14,7 @@
       "database": {
         "id": "database0",
         "client": "client0",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -45,7 +45,7 @@
                   "count": "driverdata"
                 },
                 "commandName": "count",
-                "databaseName": "test"
+                "databaseName": "db"
               }
             }
           ]

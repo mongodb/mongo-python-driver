@@ -76,7 +76,7 @@ class TestClusterTime(PyMongoTestCase):
 
     def test_bulk(self):
         def callback(client: MongoClient[dict]) -> None:
-            client.db.collection.bulk_write(
+            client.db.coll.bulk_write(
                 [InsertOne({}), InsertOne({}), UpdateOne({}, {"$inc": {"x": 1}}), DeleteMany({})]
             )
 
@@ -93,19 +93,19 @@ class TestClusterTime(PyMongoTestCase):
 
     def test_cursor(self):
         def callback(client):
-            list(client.db.collection.find())
+            list(client.db.coll.find())
 
         self.cluster_time_conversation(callback, self.batches)
 
     def test_aggregate(self):
         def callback(client):
-            list(client.db.collection.aggregate([]))
+            list(client.db.coll.aggregate([]))
 
         self.cluster_time_conversation(callback, self.batches)
 
     def test_explain(self):
         def callback(client):
-            client.db.collection.find().explain()
+            client.db.coll.find().explain()
 
         self.cluster_time_conversation(callback, [{"ok": 1}])
 
@@ -133,7 +133,7 @@ class TestClusterTime(PyMongoTestCase):
     def test_collection_bulk_error(self):
         def callback(client: MongoClient[dict]) -> None:
             with self.assertRaises(OperationFailure):
-                client.db.collection.bulk_write([InsertOne({}), InsertOne({})])
+                client.db.coll.bulk_write([InsertOne({}), InsertOne({})])
 
         self.cluster_time_conversation(
             callback,
@@ -145,8 +145,8 @@ class TestClusterTime(PyMongoTestCase):
             with self.assertRaises(OperationFailure):
                 client.bulk_write(
                     [
-                        InsertOne({}, namespace="db.collection"),
-                        InsertOne({}, namespace="db.collection"),
+                        InsertOne({}, namespace="db.coll"),
+                        InsertOne({}, namespace="db.coll"),
                     ]
                 )
 

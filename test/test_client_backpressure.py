@@ -60,36 +60,36 @@ class TestBackpressure(IntegrationTest):
 
     @client_context.require_failCommand_appName
     def test_retry_overload_error_command(self):
-        self.db.t.insert_one({"x": 1})
+        self.db.coll.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
-            self.db.command("find", "t")
+            self.db.command("find", "coll")
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                self.db.command("find", "t")
+                self.db.command("find", "coll")
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
     @client_context.require_failCommand_appName
     def test_retry_overload_error_find(self):
-        self.db.t.insert_one({"x": 1})
+        self.db.coll.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
-            self.db.t.find_one()
+            self.db.coll.find_one()
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                self.db.t.find_one()
+                self.db.coll.find_one()
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
@@ -99,13 +99,13 @@ class TestBackpressure(IntegrationTest):
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
-            self.db.t.insert_one({"x": 1})
+            self.db.coll.insert_one({"x": 1})
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                self.db.t.insert_one({"x": 1})
+                self.db.coll.insert_one({"x": 1})
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
@@ -114,25 +114,25 @@ class TestBackpressure(IntegrationTest):
     def test_retry_overload_error_update_many(self):
         # Even though update_many is not a retryable write operation, it will
         # still be retried via the "RetryableError" error label.
-        self.db.t.insert_one({"x": 1})
+        self.db.coll.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         with self.fail_point(fail_many):
-            self.db.t.update_many({}, {"$set": {"x": 2}})
+            self.db.coll.update_many({}, {"$set": {"x": 2}})
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                self.db.t.update_many({}, {"$set": {"x": 2}})
+                self.db.coll.update_many({}, {"$set": {"x": 2}})
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
     @client_context.require_failCommand_appName
     def test_retry_overload_error_getMore(self):
-        coll = self.db.t
+        coll = self.db.coll
         coll.insert_many([{"x": 1} for _ in range(10)])
 
         # Ensure command is retried on overload error.
@@ -189,7 +189,7 @@ class TestClientBackpressure(IntegrationTest):
         client = self.client
 
         # 2. let `collection` be a collection
-        collection = client.test.test
+        collection = client.db.coll
 
         # 3. Now, run transactions without backoff:
 
@@ -234,7 +234,7 @@ class TestClientBackpressure(IntegrationTest):
         # 1. Let `client` be a `MongoClient`.
         client = self.client
         # 2. Let `coll` be a collection.
-        coll = client.pymongo_test.coll
+        coll = client.db.coll
 
         # 3. Configure the following failpoint:
         failpoint = {
@@ -267,7 +267,7 @@ class TestClientBackpressure(IntegrationTest):
         # 1. Let `client` be a `MongoClient` with `maxAdaptiveRetries=1` and command event monitoring enabled.
         client = self.single_client(maxAdaptiveRetries=max_retries, event_listeners=[self.listener])
         # 2. Let `coll` be a collection.
-        coll = client.pymongo_test.coll
+        coll = client.db.coll
 
         # 3. Configure the following failpoint:
         failpoint = {

@@ -48,7 +48,7 @@ class TestServerApiIntegration(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(
             server_api=ServerApi("1"), event_listeners=[listener]
         )
-        coll = client.test.test
+        coll = client.db.coll
         await coll.insert_many([{} for _ in range(100)])
         self.addAsyncCleanup(coll.delete_many, {})
         await coll.find(batch_size=25).to_list()
@@ -62,7 +62,7 @@ class TestServerApiIntegration(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(
             server_api=ServerApi("1"), event_listeners=[listener]
         )
-        coll = client.test.test
+        coll = client.db.coll
         await coll.insert_many([{} for _ in range(100)])
         self.addAsyncCleanup(coll.delete_many, {})
 
@@ -70,7 +70,7 @@ class TestServerApiIntegration(AsyncIntegrationTest):
         async with client.start_session() as s, await s.start_transaction():
             await coll.insert_many([{} for _ in range(100)], session=s)
             await coll.find(batch_size=25, session=s).to_list()
-            await client.test.command("find", "test", session=s)
+            await client.db.command("find", "db", session=s)
             self.assertServerApiInAllCommands(listener.started_events)
 
 

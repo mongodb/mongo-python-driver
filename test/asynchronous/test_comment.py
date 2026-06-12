@@ -92,7 +92,7 @@ class AsyncTestComment(AsyncIntegrationTest):
             (db.list_collections, []),
             (db.list_collection_names, []),
             (db.drop_collection, ["hello"]),
-            (db.validate_collection, ["test"]),
+            (db.validate_collection, ["coll"]),
             (db.dereference, [DBRef("collection", 1)]),
         ]
         already_supported = [db.command, db.list_collections, db.list_collection_names]
@@ -107,7 +107,7 @@ class AsyncTestComment(AsyncIntegrationTest):
             (cli.watch, []),
             (cli.list_databases, []),
             (cli.list_database_names, []),
-            (cli.drop_database, ["test"]),
+            (cli.drop_database, ["db"]),
         ]
         already_supported = [
             cli.list_databases,
@@ -118,7 +118,7 @@ class AsyncTestComment(AsyncIntegrationTest):
     async def test_collection_helpers(self):
         listener = OvertCommandListener()
         db = (await self.async_rs_or_single_client(event_listeners=[listener]))[self.db.name]
-        coll = db.get_collection("test")
+        coll = db.get_collection("coll")
 
         helpers = [
             (coll.list_indexes, []),

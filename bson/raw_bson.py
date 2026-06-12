@@ -28,14 +28,14 @@ Example: Moving a document between different databases/collections
   >>> client.drop_database("db")
   >>> client.drop_database("replica_db")
   >>> db = client.db
-  >>> result = db.test.insert_many(
+  >>> result = db.coll.insert_many(
   ...     [{"_id": 1, "a": 1}, {"_id": 2, "b": 1}, {"_id": 3, "c": 1}, {"_id": 4, "d": 1}]
   ... )
   >>> replica_db = client.replica_db
-  >>> for doc in db.test.find():
+  >>> for doc in db.coll.find():
   ...     print(f"raw document: {doc.raw}")
   ...     print(f"decoded document: {bson.decode(doc.raw)}")
-  ...     result = replica_db.test.insert_one(doc)
+  ...     result = replica_db.coll.insert_one(doc)
   ...
   raw document: b'...'
   decoded document: {'_id': 1, 'a': 1}

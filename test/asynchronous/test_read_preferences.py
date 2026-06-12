@@ -105,16 +105,16 @@ class TestReadPreferencesBase(AsyncIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
         # Insert some data so we can use cursors in read_from_which_host
-        await self.client.pymongo_test.test.drop()
+        await self.client.db.coll.drop()
         await self.client.get_database(
-            "pymongo_test", write_concern=WriteConcern(w=async_client_context.w)
-        ).test.insert_many([{"_id": i} for i in range(10)])
+            "db", write_concern=WriteConcern(w=async_client_context.w)
+        ).coll.insert_many([{"_id": i} for i in range(10)])
 
-        self.addAsyncCleanup(self.client.pymongo_test.test.drop)
+        self.addAsyncCleanup(self.client.db.coll.drop)
 
     async def read_from_which_host(self, client):
         """Do a find() on the client and return which host was used"""
-        cursor = client.pymongo_test.test.find()
+        cursor = client.db.coll.find()
         await anext(cursor)
         return cursor.address
 
@@ -157,8 +157,8 @@ class TestSingleSecondaryOk(TestReadPreferencesBase):
         # See server-selection.rst#topology-type-single.
         self.assertEqual(client.read_preference, ReadPreference.PRIMARY)
 
-        db = client.pymongo_test
-        coll = db.test
+        db = client.db
+        coll = db.coll
 
         # Test find and find_one.
         self.assertIsNotNone(await coll.find_one())
@@ -166,7 +166,7 @@ class TestSingleSecondaryOk(TestReadPreferencesBase):
 
         # Test some database helpers.
         self.assertIsNotNone(await db.list_collection_names())
-        self.assertIsNotNone(await db.validate_collection("test"))
+        self.assertIsNotNone(await db.validate_collection("coll"))
         self.assertIsNotNone(await db.command("ping"))
 
         # Test some collection helpers.
@@ -367,13 +367,13 @@ class TestCommandAndReadPreference(AsyncIntegrationTest):
         )
         self.client_version = await Version.async_from_client(self.c)
         # mapReduce fails if the collection does not exist.
-        coll = self.c.pymongo_test.get_collection(
-            "test", write_concern=WriteConcern(w=async_client_context.w)
+        coll = self.c.db.get_collection(
+            "coll", write_concern=WriteConcern(w=async_client_context.w)
         )
         await coll.insert_one({})
 
     async def asyncTearDown(self):
-        await self.c.drop_database("pymongo_test")
+        await self.c.drop_database("db")
         await self.c.close()
 
     async def executed_on_which_server(self, client, fn, *args, **kwargs):
@@ -429,7 +429,7 @@ class TestCommandAndReadPreference(AsyncIntegrationTest):
         for mode, server_type in _PREF_MAP:
 
             async def func():
-                return await self.c.pymongo_test.command("dbStats", read_preference=mode())
+                return await self.c.db.command("dbStats", read_preference=mode())
 
             await self._test_fn(server_type, func)
 
@@ -437,32 +437,30 @@ class TestCommandAndReadPreference(AsyncIntegrationTest):
         # create_collection runs listCollections on the primary to check if
         # the collection already exists.
         async def func():
-            return await self.c.pymongo_test.create_collection(
+            return await self.c.db.create_collection(
                 "some_collection%s" % random.randint(0, sys.maxsize)
             )
 
         await self._test_primary_helper(func)
 
     async def test_count_documents(self):
-        await self._test_coll_helper(True, self.c.pymongo_test.test, "count_documents", {})
+        await self._test_coll_helper(True, self.c.db.coll, "count_documents", {})
 
     async def test_estimated_document_count(self):
-        await self._test_coll_helper(True, self.c.pymongo_test.test, "estimated_document_count")
+        await self._test_coll_helper(True, self.c.db.coll, "estimated_document_count")
 
     async def test_distinct(self):
-        await self._test_coll_helper(True, self.c.pymongo_test.test, "distinct", "a")
+        await self._test_coll_helper(True, self.c.db.coll, "distinct", "a")
 
     async def test_aggregate(self):
-        await self._test_coll_helper(
-            True, self.c.pymongo_test.test, "aggregate", [{"$project": {"_id": 1}}]
-        )
+        await self._test_coll_helper(True, self.c.db.coll, "aggregate", [{"$project": {"_id": 1}}])
 
     async def test_aggregate_write(self):
         # 5.0 servers support $out on secondaries.
         secondary_ok = async_client_context.version.at_least(5, 0)
         await self._test_coll_helper(
             secondary_ok,
-            self.c.pymongo_test.test,
+            self.c.db.coll,
             "aggregate",
             [{"$project": {"_id": 1}}, {"$out": "agg_write_test"}],
         )
@@ -596,7 +594,7 @@ class TestMongosAndReadPreference(AsyncIntegrationTest):
         for _mode, cls in cases.items():
             with _ignore_deprecations():
                 pref = cls(hedge={"enabled": True})
-            coll = client.test.get_collection("test", read_preference=pref)
+            coll = client.coll.get_collection("coll", read_preference=pref)
             listener.reset()
             await coll.find_one()
             started = listener.started_events
@@ -680,8 +678,8 @@ class TestMongosAndReadPreference(AsyncIntegrationTest):
         num_members = shard.count(",") + 1
         if num_members == 1:
             raise SkipTest("Need a replica set shard to test.")
-        coll = async_client_context.client.pymongo_test.get_collection(
-            "test", write_concern=WriteConcern(w=num_members)
+        coll = async_client_context.client.db.get_collection(
+            "coll", write_concern=WriteConcern(w=num_members)
         )
         await coll.drop()
         res = await coll.insert_many([{} for _ in range(5)])
@@ -702,14 +700,14 @@ class TestMongosAndReadPreference(AsyncIntegrationTest):
     @async_client_context.require_mongos
     async def test_mongos_max_staleness(self):
         # Sanity check that we're sending maxStalenessSeconds
-        coll = async_client_context.client.pymongo_test.get_collection(
-            "test", read_preference=SecondaryPreferred(max_staleness=120)
+        coll = async_client_context.client.db.get_collection(
+            "coll", read_preference=SecondaryPreferred(max_staleness=120)
         )
         # No error
         await coll.find_one()
 
-        coll = async_client_context.client.pymongo_test.get_collection(
-            "test", read_preference=SecondaryPreferred(max_staleness=10)
+        coll = async_client_context.client.db.get_collection(
+            "coll", read_preference=SecondaryPreferred(max_staleness=10)
         )
         try:
             await coll.find_one()
@@ -722,7 +720,7 @@ class TestMongosAndReadPreference(AsyncIntegrationTest):
             await self.async_single_client(
                 readPreference="secondaryPreferred", maxStalenessSeconds=120
             )
-        ).pymongo_test.test
+        ).db.coll
         # No error
         await coll.find_one()
 
@@ -730,7 +728,7 @@ class TestMongosAndReadPreference(AsyncIntegrationTest):
             await self.async_single_client(
                 readPreference="secondaryPreferred", maxStalenessSeconds=10
             )
-        ).pymongo_test.test
+        ).db.coll
         try:
             await coll.find_one()
         except OperationFailure as exc:

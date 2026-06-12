@@ -56,7 +56,7 @@ class TestGetmoreSharded(PyMongoTestCase):
             "mongodb://%s:%d,%s:%d"
             % (servers[0].host, servers[0].port, servers[1].host, servers[1].port)
         )
-        collection = client.db.collection
+        collection = client.db.coll
         cursor = collection.find()
         with going(next, cursor):
             query = q.get(timeout=1)

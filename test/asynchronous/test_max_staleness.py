@@ -124,7 +124,7 @@ class TestMaxStaleness(AsyncPyMongoTestCase):
     async def test_last_write_date(self):
         # From max-staleness-tests.rst, "Parse lastWriteDate".
         client = await self.async_rs_or_single_client(heartbeatFrequencyMS=500)
-        await client.pymongo_test.test.insert_one({})
+        await client.db.coll.insert_one({})
         # Wait for the server description to be updated.
         await asyncio.sleep(1)
         server = await client._topology.select_server(writable_server_selector, _Op.TEST)
@@ -133,7 +133,7 @@ class TestMaxStaleness(AsyncPyMongoTestCase):
         # The first last_write_date may correspond to a internal server write,
         # sleep so that the next write does not occur within the same second.
         await asyncio.sleep(1)
-        await client.pymongo_test.test.insert_one({})
+        await client.db.coll.insert_one({})
         # Wait for the server description to be updated.
         await asyncio.sleep(1)
         server = await client._topology.select_server(writable_server_selector, _Op.TEST)

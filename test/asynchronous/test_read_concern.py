@@ -38,11 +38,11 @@ class TestReadConcern(AsyncIntegrationTest):
         await super().asyncSetUp()
         self.listener = OvertCommandListener()
         self.client = await self.async_rs_or_single_client(event_listeners=[self.listener])
-        self.db = self.client.pymongo_test
-        await async_client_context.client.pymongo_test.create_collection("coll")
+        self.db = self.client.db
+        await async_client_context.client.db.create_collection("coll")
 
     async def asyncTearDown(self):
-        await async_client_context.client.pymongo_test.drop_collection("coll")
+        await async_client_context.client.db.drop_collection("coll")
 
     def test_read_concern(self):
         rc = ReadConcern()

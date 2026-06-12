@@ -36,7 +36,7 @@
       "database": {
         "id": "database",
         "client": "client",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -50,7 +50,7 @@
   "initialData": [
     {
       "collectionName": "coll",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": []
     }
   ],
@@ -95,7 +95,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -104,7 +104,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -157,7 +157,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -166,7 +166,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -218,7 +218,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -227,7 +227,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -282,7 +282,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -291,7 +291,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -339,7 +339,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "delete",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "delete": "coll"
                 }
@@ -348,7 +348,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "delete",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "delete": "coll"
                 }
@@ -399,7 +399,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "delete",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "delete": "coll"
                 }
@@ -408,7 +408,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "delete",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "delete": "coll"
                 }
@@ -459,7 +459,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll"
                 }
@@ -468,7 +468,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll"
                 }
@@ -522,7 +522,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll"
                 }
@@ -531,7 +531,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll"
                 }
@@ -584,7 +584,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll"
                 }
@@ -593,7 +593,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll"
                 }
@@ -649,7 +649,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll"
                 }
@@ -658,7 +658,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll"
                 }
@@ -706,7 +706,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -715,7 +715,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -766,7 +766,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -775,7 +775,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -826,7 +826,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -835,7 +835,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -889,7 +889,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -898,7 +898,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -951,7 +951,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -960,7 +960,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -1016,7 +1016,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -1025,7 +1025,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll"
                 }
@@ -1081,7 +1081,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -1090,7 +1090,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -1149,7 +1149,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -1158,7 +1158,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll"
                 }
@@ -1558,7 +1558,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1
                 }
@@ -1567,7 +1567,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1
                 }
@@ -1625,7 +1625,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1
                 }
@@ -1634,7 +1634,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1
                 }
@@ -1682,7 +1682,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1
                 }
@@ -1691,7 +1691,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1
                 }
@@ -1742,7 +1742,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1
                 }
@@ -1751,7 +1751,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1
                 }
@@ -1799,7 +1799,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1
                 }
@@ -1808,7 +1808,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1
                 }
@@ -1859,7 +1859,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1
                 }
@@ -1868,7 +1868,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1
                 }
@@ -1916,7 +1916,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1
                 }
@@ -1925,7 +1925,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1
                 }
@@ -1976,7 +1976,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1
                 }
@@ -1985,7 +1985,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1
                 }
@@ -2033,7 +2033,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }
@@ -2042,7 +2042,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }
@@ -2093,7 +2093,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }
@@ -2102,7 +2102,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }
@@ -2150,7 +2150,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll"
                 }
@@ -2159,7 +2159,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll"
                 }
@@ -2210,7 +2210,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll"
                 }
@@ -2219,7 +2219,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll"
                 }
@@ -2267,7 +2267,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }
@@ -2276,7 +2276,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }
@@ -2327,7 +2327,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }
@@ -2336,7 +2336,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }
@@ -2381,7 +2381,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll"
                 }
@@ -2390,7 +2390,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll"
                 }
@@ -2438,7 +2438,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll"
                 }
@@ -2447,7 +2447,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll"
                 }
@@ -2496,7 +2496,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "distinct",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "distinct": "coll"
                 }
@@ -2505,7 +2505,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "distinct",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "distinct": "coll"
                 }
@@ -2557,7 +2557,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "distinct",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "distinct": "coll"
                 }
@@ -2566,7 +2566,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "distinct",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "distinct": "coll"
                 }
@@ -2614,7 +2614,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll"
                 }
@@ -2623,7 +2623,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll"
                 }
@@ -2674,7 +2674,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll"
                 }
@@ -2683,7 +2683,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll"
                 }
@@ -2731,7 +2731,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll"
                 }
@@ -2740,7 +2740,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll"
                 }
@@ -2791,7 +2791,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll"
                 }
@@ -2800,7 +2800,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll"
                 }
@@ -2845,7 +2845,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listIndexes": "coll"
                 }
@@ -2854,7 +2854,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listIndexes": "coll"
                 }
@@ -2902,7 +2902,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listIndexes": "coll"
                 }
@@ -2911,7 +2911,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listIndexes": "coll"
                 }
@@ -2959,7 +2959,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }
@@ -2968,7 +2968,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }
@@ -3019,7 +3019,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }
@@ -3028,7 +3028,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll"
                 }

@@ -411,7 +411,7 @@ class TestGridfs(IntegrationTest):
     def test_unacknowledged(self):
         # w=0 is prohibited.
         with self.assertRaises(ConfigurationError):
-            gridfs.GridFSBucket((self.rs_or_single_client(w=0)).pymongo_test)
+            gridfs.GridFSBucket((self.rs_or_single_client(w=0)).db)
 
     def test_rename(self):
         _id = self.fs.upload_from_stream("first_name", b"testing")

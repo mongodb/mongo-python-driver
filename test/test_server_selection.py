@@ -129,14 +129,14 @@ class TestCustomServerSelectorFunction(IntegrationTest):
 
         # Client setup.
         mongo_client = self.rs_or_single_client(server_selector=selector)
-        test_collection = mongo_client.testdb.test_collection
-        self.addCleanup(mongo_client.drop_database, "testdb")
+        coll = mongo_client.db.coll
+        self.addCleanup(mongo_client.drop_database, "db")
 
         # Do N operations and test selector is called at least N-1 times due to fast path.
-        test_collection.insert_one({"age": 20, "name": "John"})
-        test_collection.insert_one({"age": 31, "name": "Jane"})
-        test_collection.update_one({"name": "Jane"}, {"$set": {"age": 21}})
-        test_collection.find_one({"name": "Roe"})
+        coll.insert_one({"age": 20, "name": "John"})
+        coll.insert_one({"age": 31, "name": "Jane"})
+        coll.update_one({"name": "Jane"}, {"$set": {"age": 21}})
+        coll.find_one({"name": "Roe"})
         self.assertGreaterEqual(selector.call_count, 3)
 
     @client_context.require_replica_set
@@ -214,7 +214,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         client = self.rs_client(
             event_listeners=[hb_listener], heartbeatFrequencyMS=500, appName="heartbeatFailedClient"
         )
-        coll = client.db.test
+        coll = client.db.coll
         coll.drop()
         docs = [{"x": 1} for _ in range(5)]
         coll.insert_many(docs)

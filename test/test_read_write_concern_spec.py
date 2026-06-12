@@ -50,36 +50,34 @@ class TestReadWriteConcernSpec(IntegrationTest):
         listener = OvertCommandListener()
         # Client with default readConcern and writeConcern
         client = self.rs_or_single_client(event_listeners=[listener])
-        collection = client.pymongo_test.collection
+        coll = client.db.coll
         # Prepare for tests of find() and aggregate().
-        collection.insert_many([{} for _ in range(10)])
-        self.addCleanup(collection.drop)
-        self.addCleanup(client.pymongo_test.collection2.drop)
+        coll.insert_many([{} for _ in range(10)])
+        self.addCleanup(coll.drop)
+        self.addCleanup(client.db.coll2.drop)
         # Commands MUST NOT send the default read/write concern to the server.
 
         def rename_and_drop():
-            # Ensure collection exists.
-            collection.insert_one({})
-            collection.rename("collection2")
-            client.pymongo_test.collection2.drop()
+            # Ensure coll exists.
+            coll.insert_one({})
+            coll.rename("coll2")
+            client.db.coll2.drop()
 
         def insert_command_default_write_concern():
-            collection.database.command(
-                "insert", "collection", documents=[{}], write_concern=WriteConcern()
-            )
+            coll.database.command("insert", "coll", documents=[{}], write_concern=WriteConcern())
 
         def aggregate_op():
-            (collection.aggregate([])).to_list()
+            (coll.aggregate([])).to_list()
 
         ops = [
             ("aggregate", aggregate_op),
-            ("find", lambda: collection.find().to_list()),
-            ("insert_one", lambda: collection.insert_one({})),
-            ("update_one", lambda: collection.update_one({}, {"$set": {"x": 1}})),
-            ("update_many", lambda: collection.update_many({}, {"$set": {"x": 1}})),
-            ("delete_one", lambda: collection.delete_one({})),
-            ("delete_many", lambda: collection.delete_many({})),
-            ("bulk_write", lambda: collection.bulk_write([InsertOne({})])),
+            ("find", lambda: coll.find().to_list()),
+            ("insert_one", lambda: coll.insert_one({})),
+            ("update_one", lambda: coll.update_one({}, {"$set": {"x": 1}})),
+            ("update_many", lambda: coll.update_many({}, {"$set": {"x": 1}})),
+            ("delete_one", lambda: coll.delete_one({})),
+            ("delete_many", lambda: coll.delete_many({})),
+            ("bulk_write", lambda: coll.bulk_write([InsertOne({})])),
             ("rename_and_drop", rename_and_drop),
             ("command", insert_command_default_write_concern),
         ]
@@ -107,8 +105,8 @@ class TestReadWriteConcernSpec(IntegrationTest):
         client = self.rs_or_single_client(
             w=wc["w"], wTimeoutMS=wc["wtimeout"], socketTimeoutMS=30000
         )
-        db = client.get_database("pymongo_test")
-        coll = db.test
+        db = client.get_database("db")
+        coll = db.coll
 
         def insert_command():
             coll.database.command(
@@ -159,7 +157,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
 
     @client_context.require_replica_set
     def test_raise_write_concern_error(self):
-        self.addCleanup(client_context.client.drop_database, "pymongo_test")
+        self.addCleanup(client_context.client.drop_database, "db")
         assert client_context.w is not None
         self.assertWriteOpsRaise(
             WriteConcern(w=client_context.w + 1, wtimeout=1), WriteConcernError
@@ -168,7 +166,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
     @client_context.require_secondaries_count(1)
     @client_context.require_test_commands
     def test_raise_wtimeout(self):
-        self.addCleanup(client_context.client.drop_database, "pymongo_test")
+        self.addCleanup(client_context.client.drop_database, "db")
         self.addCleanup(self.enable_replication, client_context.client)
         # Disable replication to guarantee a wtimeout error.
         self.disable_replication(client_context.client)
@@ -192,12 +190,12 @@ class TestReadWriteConcernSpec(IntegrationTest):
         with self.fail_point(cause_wce):
             # Write concern error on insert includes errInfo.
             with self.assertRaises(WriteConcernError) as ctx:
-                self.db.test.insert_one({})
+                self.db.coll.insert_one({})
             self.assertEqual(ctx.exception.details, expected_wce)
 
             # Test bulk_write as well.
             with self.assertRaises(BulkWriteError) as ctx:
-                self.db.test.bulk_write([InsertOne({})])
+                self.db.coll.bulk_write([InsertOne({})])
             expected_details = {
                 "writeErrors": [],
                 "writeConcernErrors": [expected_wce],
@@ -219,9 +217,9 @@ class TestReadWriteConcernSpec(IntegrationTest):
         db = client.errinfotest
         self.addCleanup(client.drop_database, "errinfotest")
         validator = {"x": {"$type": "string"}}
-        db.create_collection("test", validator=validator)
+        db.create_collection("coll", validator=validator)
         with self.assertRaises(WriteError) as ctx:
-            db.test.insert_one({"x": 1})
+            db.coll.insert_one({"x": 1})
         self.assertEqual(ctx.exception.code, 121)
         self.assertIsNotNone(ctx.exception.details)
         assert ctx.exception.details is not None

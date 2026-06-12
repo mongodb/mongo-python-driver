@@ -13,7 +13,7 @@ class TestJsonUtilRoundtrip(AsyncIntegrationTest):
     async def test_cursor(self):
         db = self.db
 
-        await db.drop_collection("test")
+        await db.drop_collection("coll")
         docs: List[MutableMapping[str, Any]] = [
             {"foo": [1, 2]},
             {"bar": {"hello": "world"}},
@@ -22,7 +22,7 @@ class TestJsonUtilRoundtrip(AsyncIntegrationTest):
             {"dbref": {"_ref": DBRef("simple", ObjectId("509b8db456c02c5ab7e63c34"))}},
         ]
 
-        await db.test.insert_many(docs)
-        reloaded_docs = json_util.loads(json_util.dumps(await (db.test.find()).to_list()))
+        await db.coll.insert_many(docs)
+        reloaded_docs = json_util.loads(json_util.dumps(await (db.coll.find()).to_list()))
         for doc in docs:
             self.assertIn(doc, reloaded_docs)

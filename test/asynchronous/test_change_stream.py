@@ -776,7 +776,7 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
     @async_client_context.require_change_streams  # type:ignore[untyped-decorator]
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
-        self.dbs = [self.db, self.client.pymongo_test_2]
+        self.dbs = [self.db, self.client.db2]
 
     async def asyncTearDown(self):
         for db in self.dbs:
@@ -907,7 +907,7 @@ class TestAsyncDatabaseAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixi
 
     async def test_isolation(self):
         # Ensure inserts to other dbs don't show up in our AsyncChangeStream.
-        other_db = self.client.pymongo_test_temp
+        other_db = self.client.coll
         self.assertNotEqual(other_db, self.db, msg="Isolation must be tested on separate DBs")
         collname = self.id()
         async with await self.change_stream() as change_stream:

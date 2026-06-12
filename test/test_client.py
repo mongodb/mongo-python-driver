@@ -849,13 +849,13 @@ class TestClient(IntegrationTest):
         bad_host = "somedomainthatdoesntexist.org"
         c = self.simple_client(bad_host, port, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
         with self.assertRaises(ConnectionFailure):
-            c.pymongo_test.test.find_one()
+            c.db.coll.find_one()
 
     def test_init_disconnected_with_auth(self):
         uri = "mongodb://user:pass@somedomainthatdoesntexist"
         c = self.simple_client(uri, connectTimeoutMS=1, serverSelectionTimeoutMS=10)
         with self.assertRaises(ConnectionFailure):
-            c.pymongo_test.test.find_one()
+            c.db.coll.find_one()
 
     @client_context.require_replica_set
     @client_context.require_no_load_balancer
@@ -1020,7 +1020,7 @@ class TestClient(IntegrationTest):
         for doc in client.list_databases():
             self.assertIs(type(doc), dict)
 
-        self.client.pymongo_test.test.insert_one({})
+        self.client.db.coll.insert_one({})
         cursor = self.client.list_databases(filter={"name": "admin"})
         docs = cursor.to_list()
         self.assertEqual(1, len(docs))
@@ -1031,14 +1031,14 @@ class TestClient(IntegrationTest):
             self.assertEqual(["name"], list(doc))
 
     def test_list_database_names(self):
-        self.client.pymongo_test.test.insert_one({"dummy": "object"})
-        self.client.pymongo_test_mike.test.insert_one({"dummy": "object"})
+        self.client.db.coll.insert_one({"dummy": "object"})
+        self.client.db_mike.test.insert_one({"dummy": "object"})
         cmd_docs = (self.client.admin.command("listDatabases"))["databases"]
         cmd_names = [doc["name"] for doc in cmd_docs]
 
         db_names = self.client.list_database_names()
-        self.assertIn("pymongo_test", db_names)
-        self.assertIn("pymongo_test_mike", db_names)
+        self.assertIn("db", db_names)
+        self.assertIn("db_mike", db_names)
         self.assertCountEqual(db_names, cmd_names)
 
     def test_drop_database(self):
@@ -1047,26 +1047,26 @@ class TestClient(IntegrationTest):
         with self.assertRaises(TypeError):
             self.client.drop_database(None)  # type: ignore[arg-type]
 
-        self.client.pymongo_test.test.insert_one({"dummy": "object"})
-        self.client.pymongo_test2.test.insert_one({"dummy": "object"})
+        self.client.db.coll.insert_one({"dummy": "object"})
+        self.client.db2.coll.insert_one({"dummy": "object"})
         dbs = self.client.list_database_names()
-        self.assertIn("pymongo_test", dbs)
-        self.assertIn("pymongo_test2", dbs)
-        self.client.drop_database("pymongo_test")
+        self.assertIn("db", dbs)
+        self.assertIn("db2", dbs)
+        self.client.drop_database("db")
 
         if client_context.is_rs:
             wc_client = self.rs_or_single_client(w=len(client_context.nodes) + 1)
             with self.assertRaises(WriteConcernError):
-                wc_client.drop_database("pymongo_test2")
+                wc_client.drop_database("db2")
 
-        self.client.drop_database(self.client.pymongo_test2)
+        self.client.drop_database(self.client.db2)
         dbs = self.client.list_database_names()
-        self.assertNotIn("pymongo_test", dbs)
-        self.assertNotIn("pymongo_test2", dbs)
+        self.assertNotIn("db", dbs)
+        self.assertNotIn("db2", dbs)
 
     def test_close(self):
         test_client = self.rs_or_single_client()
-        coll = test_client.pymongo_test.bar
+        coll = test_client.db.coll
         test_client.close()
         with self.assertRaises(InvalidOperation):
             coll.count_documents({})
@@ -1078,7 +1078,7 @@ class TestClient(IntegrationTest):
         test_client._process_periodic_tasks()
 
         # Add some test data.
-        coll = test_client.pymongo_test.test_close_kills_cursors
+        coll = test_client.db.coll_close_kills_cursors
         docs_inserted = 1000
         coll.insert_many([{"i": i} for i in range(docs_inserted)])
 
@@ -1106,7 +1106,7 @@ class TestClient(IntegrationTest):
 
     def test_close_stops_kill_cursors_thread(self):
         client = self.rs_client()
-        client.test.test.find_one()
+        client.db.coll.find_one()
         self.assertFalse(client._kill_cursors_executor._stopped)
 
         # Closing the client should stop the thread.
@@ -1150,7 +1150,7 @@ class TestClient(IntegrationTest):
 
     def test_close_closes_sockets(self):
         client = self.rs_client()
-        client.test.test.find_one()
+        client.db.coll.find_one()
         topology = client._topology
         client.close()
         for server in topology._servers.values():
@@ -1170,9 +1170,9 @@ class TestClient(IntegrationTest):
         host, port = client_context.host, client_context.port
         client_context.create_user("admin", "admin", "pass")
         self.addCleanup(client_context.drop_user, "admin", "admin")
-        self.addCleanup(remove_all_users, self.client.pymongo_test)
+        self.addCleanup(remove_all_users, self.client.db)
 
-        client_context.create_user("pymongo_test", "user", "pass", roles=["userAdmin", "readWrite"])
+        client_context.create_user("db", "user", "pass", roles=["userAdmin", "readWrite"])
 
         with self.assertRaises(OperationFailure):
             connected(self.rs_or_single_client_noauth("mongodb://a:b@%s:%d" % (host, port)))
@@ -1181,29 +1181,27 @@ class TestClient(IntegrationTest):
         connected(self.rs_or_single_client_noauth("mongodb://admin:pass@%s:%d" % (host, port)))
 
         # Wrong database.
-        uri = "mongodb://admin:pass@%s:%d/pymongo_test" % (host, port)
+        uri = "mongodb://admin:pass@%s:%d/db" % (host, port)
         with self.assertRaises(OperationFailure):
             connected(self.rs_or_single_client_noauth(uri))
 
         # No error.
-        connected(
-            self.rs_or_single_client_noauth("mongodb://user:pass@%s:%d/pymongo_test" % (host, port))
-        )
+        connected(self.rs_or_single_client_noauth("mongodb://user:pass@%s:%d/db" % (host, port)))
 
         # Auth with lazy connection.
         (
             self.rs_or_single_client_noauth(
-                "mongodb://user:pass@%s:%d/pymongo_test" % (host, port), connect=False
+                "mongodb://user:pass@%s:%d/db" % (host, port), connect=False
             )
-        ).pymongo_test.test.find_one()
+        ).db.coll.find_one()
 
         # Wrong password.
         bad_client = self.rs_or_single_client_noauth(
-            "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port), connect=False
+            "mongodb://user:wrong@%s:%d/db" % (host, port), connect=False
         )
 
         with self.assertRaises(OperationFailure):
-            bad_client.pymongo_test.test.find_one()
+            bad_client.db.coll.find_one()
 
     @client_context.require_auth
     def test_username_and_password(self):
@@ -1229,10 +1227,10 @@ class TestClient(IntegrationTest):
     def test_lazy_auth_raises_operation_failure(self):
         host = client_context.host
         lazy_client = self.rs_or_single_client_noauth(
-            f"mongodb://user:wrong@{host}/pymongo_test", connect=False
+            f"mongodb://user:wrong@{host}/db", connect=False
         )
 
-        assertRaisesExactly(OperationFailure, lazy_client.test.collection.find_one)
+        assertRaisesExactly(OperationFailure, lazy_client.db.coll.find_one)
 
     @client_context.require_no_tls
     def test_unix_socket(self):
@@ -1247,9 +1245,9 @@ class TestClient(IntegrationTest):
         uri = "mongodb://%s" % encoded_socket
         # Confirm we can do operations via the socket.
         client = self.rs_or_single_client(uri)
-        client.pymongo_test.test.insert_one({"dummy": "object"})
+        client.db.coll.insert_one({"dummy": "object"})
         dbs = client.list_database_names()
-        self.assertIn("pymongo_test", dbs)
+        self.assertIn("db", dbs)
 
         self.assertIn(mongodb_socket, repr(client))
 
@@ -1262,19 +1260,19 @@ class TestClient(IntegrationTest):
 
     def test_document_class(self):
         c = self.client
-        db = c.pymongo_test
-        db.test.insert_one({"x": 1})
+        db = c.db
+        db.coll.insert_one({"x": 1})
 
         self.assertEqual(dict, c.codec_options.document_class)
-        self.assertIsInstance(db.test.find_one(), dict)
-        self.assertNotIsInstance(db.test.find_one(), SON)
+        self.assertIsInstance(db.coll.find_one(), dict)
+        self.assertNotIsInstance(db.coll.find_one(), SON)
 
         c = self.rs_or_single_client(document_class=SON)
 
-        db = c.pymongo_test
+        db = c.db
 
         self.assertEqual(SON, c.codec_options.document_class)
-        self.assertIsInstance(db.test.find_one(), SON)
+        self.assertIsInstance(db.coll.find_one(), SON)
 
     def test_timeouts(self):
         client = self.rs_or_single_client(
@@ -1316,19 +1314,19 @@ class TestClient(IntegrationTest):
         timeout_sec = 1
         timeout = self.rs_or_single_client(socketTimeoutMS=1000 * timeout_sec)
 
-        no_timeout.pymongo_test.drop_collection("test")
-        no_timeout.pymongo_test.test.insert_one({"x": 1})
+        no_timeout.db.drop_collection("coll")
+        no_timeout.db.coll.insert_one({"x": 1})
 
         # A $where clause that takes a second longer than the timeout
         where_func = delay(timeout_sec + 1)
 
         def get_x(db):
-            doc = next(db.test.find().where(where_func))
+            doc = next(db.coll.find().where(where_func))
             return doc["x"]
 
-        self.assertEqual(1, get_x(no_timeout.pymongo_test))
+        self.assertEqual(1, get_x(no_timeout.db))
         with self.assertRaises(NetworkTimeout):
-            get_x(timeout.pymongo_test)
+            get_x(timeout.db)
 
     def test_server_selection_timeout(self):
         client = MongoClient(serverSelectionTimeoutMS=100, connect=False)
@@ -1387,16 +1385,16 @@ class TestClient(IntegrationTest):
         aware = self.rs_or_single_client(tz_aware=True)
         self.addCleanup(aware.close)
         naive = self.client
-        aware.pymongo_test.drop_collection("test")
+        aware.db.drop_collection("coll")
 
         now = datetime.datetime.now(tz=datetime.timezone.utc)
-        aware.pymongo_test.test.insert_one({"x": now})
+        aware.db.coll.insert_one({"x": now})
 
-        self.assertEqual(None, (naive.pymongo_test.test.find_one())["x"].tzinfo)
-        self.assertEqual(utc, (aware.pymongo_test.test.find_one())["x"].tzinfo)
+        self.assertEqual(None, (naive.db.coll.find_one())["x"].tzinfo)
+        self.assertEqual(utc, (aware.db.coll.find_one())["x"].tzinfo)
         self.assertEqual(
-            (aware.pymongo_test.test.find_one())["x"].replace(tzinfo=None),
-            (naive.pymongo_test.test.find_one())["x"],
+            (aware.db.coll.find_one())["x"].replace(tzinfo=None),
+            (naive.db.coll.find_one())["x"],
         )
 
     @client_context.require_ipv6
@@ -1415,17 +1413,17 @@ class TestClient(IntegrationTest):
             uri += "/?replicaSet=" + (client_context.replica_set_name or "")
 
         client = self.rs_or_single_client_noauth(uri)
-        client.pymongo_test.test.insert_one({"dummy": "object"})
-        client.pymongo_test_bernie.test.insert_one({"dummy": "object"})
+        client.db.coll.insert_one({"dummy": "object"})
+        client.db_bernie.coll.insert_one({"dummy": "object"})
 
         dbs = client.list_database_names()
-        self.assertIn("pymongo_test", dbs)
-        self.assertIn("pymongo_test_bernie", dbs)
+        self.assertIn("db", dbs)
+        self.assertIn("db_bernie", dbs)
 
     def test_contextlib(self):
         client = self.rs_or_single_client()
-        client.pymongo_test.drop_collection("test")
-        client.pymongo_test.test.insert_one({"foo": "bar"})
+        client.db.drop_collection("coll")
+        client.db.coll.insert_one({"foo": "bar"})
 
         # The socket used for the previous commands has been returned to the
         # pool
@@ -1434,14 +1432,14 @@ class TestClient(IntegrationTest):
         # contextlib async support was added in Python 3.10
         if _IS_SYNC or sys.version_info >= (3, 10):
             with contextlib.closing(client):
-                self.assertEqual("bar", (client.pymongo_test.test.find_one())["foo"])
+                self.assertEqual("bar", (client.db.coll.find_one())["foo"])
             with self.assertRaises(InvalidOperation):
-                client.pymongo_test.test.find_one()
+                client.db.coll.find_one()
             client = self.rs_or_single_client()
             with client as client:
-                self.assertEqual("bar", (client.pymongo_test.test.find_one())["foo"])
+                self.assertEqual("bar", (client.db.coll.find_one())["foo"])
             with self.assertRaises(InvalidOperation):
-                client.pymongo_test.test.find_one()
+                client.db.coll.find_one()
 
     @client_context.require_sync
     def test_interrupt_signal(self):
@@ -1450,7 +1448,7 @@ class TestClient(IntegrationTest):
 
         # Test fix for PYTHON-294 -- make sure MongoClient closes its
         # socket if it gets an interrupt while waiting to recv() from it.
-        db = self.client.pymongo_test
+        db = self.client.db
 
         # A $where clause which takes 1.5 sec to execute
         where = delay(1.5)
@@ -1510,15 +1508,15 @@ class TestClient(IntegrationTest):
         # to avoid race conditions caused by replica set failover or idle
         # socket reaping.
         client = self.single_client()
-        client.pymongo_test.test.find_one()
+        client.db.coll.find_one()
         pool = get_pool(client)
         socket_count = len(pool.conns)
         self.assertGreaterEqual(socket_count, 1)
         old_conn = next(iter(pool.conns))
-        client.pymongo_test.test.drop()
-        client.pymongo_test.test.insert_one({"_id": "foo"})
+        client.db.coll.drop()
+        client.db.coll.insert_one({"_id": "foo"})
         with self.assertRaises(OperationFailure):
-            client.pymongo_test.test.insert_one({"_id": "foo"})
+            client.db.coll.insert_one({"_id": "foo"})
 
         self.assertEqual(socket_count, len(pool.conns))
         new_con = next(iter(pool.conns))
@@ -1534,26 +1532,26 @@ class TestClient(IntegrationTest):
         self.addCleanup(client_context.client.drop_database, "test_lazy_connect_w0")
 
         client = self.rs_or_single_client(connect=False, w=0)
-        client.test_lazy_connect_w0.test.insert_one({})
+        client.test_lazy_connect_w0.coll.insert_one({})
 
         def predicate():
-            return client.test_lazy_connect_w0.test.count_documents({}) == 1
+            return client.test_lazy_connect_w0.coll.count_documents({}) == 1
 
         wait_until(predicate, "find one document")
 
         client = self.rs_or_single_client(connect=False, w=0)
-        client.test_lazy_connect_w0.test.update_one({}, {"$set": {"x": 1}})
+        client.test_lazy_connect_w0.coll.update_one({}, {"$set": {"x": 1}})
 
         def predicate():
-            return (client.test_lazy_connect_w0.test.find_one()).get("x") == 1
+            return (client.test_lazy_connect_w0.coll.find_one()).get("x") == 1
 
         wait_until(predicate, "update one document")
 
         client = self.rs_or_single_client(connect=False, w=0)
-        client.test_lazy_connect_w0.test.delete_one({})
+        client.test_lazy_connect_w0.list_collection_names.delete_one({})
 
         def predicate():
-            return client.test_lazy_connect_w0.test.count_documents({}) == 0
+            return client.test_lazy_connect_w0.coll.count_documents({}) == 0
 
         wait_until(predicate, "delete one document")
 
@@ -1562,7 +1560,7 @@ class TestClient(IntegrationTest):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
         client = self.rs_or_single_client(maxPoolSize=1, retryReads=False)
-        collection = client.pymongo_test.test
+        collection = client.db.coll
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
 
@@ -1599,16 +1597,16 @@ class TestClient(IntegrationTest):
         # Connection.authenticate logs, but gets a socket.error. Should be
         # reraised as AutoReconnect.
         with self.assertRaises(AutoReconnect):
-            c.test.collection.find_one()
+            c.db.coll.find_one()
 
         # No semaphore leak, the pool is allowed to make a new socket.
-        c.test.collection.find_one()
+        c.db.coll.find_one()
 
     @client_context.require_no_replica_set
     def test_connect_to_standalone_using_replica_set_name(self):
         client = self.single_client(replicaSet="anything", serverSelectionTimeoutMS=100)
         with self.assertRaises(AutoReconnect):
-            client.test.test.find_one()
+            client.db.coll.find_one()
 
     @client_context.require_replica_set
     def test_stale_getmore(self):
@@ -1619,8 +1617,8 @@ class TestClient(IntegrationTest):
             client = self.rs_client(connect=False, serverSelectionTimeoutMS=100)
             client._run_operation(
                 operation=message._GetMore(
-                    "pymongo_test",
-                    "collection",
+                    "db",
+                    "coll",
                     101,
                     1234,
                     client.codec_options,
@@ -1632,7 +1630,7 @@ class TestClient(IntegrationTest):
                     False,
                     None,
                 ),
-                unpack_res=Cursor(client.pymongo_test.collection)._unpack_response,
+                unpack_res=Cursor(client.db.coll)._unpack_response,
                 address=("not-a-member", 27017),
             )
 
@@ -1766,7 +1764,7 @@ class TestClient(IntegrationTest):
             for level in range(-1, 10):
                 client = self.single_client(zlibcompressionlevel=level)
                 # No error
-                client.pymongo_test.test.find_one()
+                client.db.coll.find_one()
 
     @client_context.require_sync
     def test_reset_during_update_pool(self):
@@ -1905,7 +1903,7 @@ class TestClient(IntegrationTest):
             )
             initial_count = server_description_count()
             with self.assertRaises(ServerSelectionTimeoutError):
-                client.test.test.find_one()
+                client.db.coll.find_one()
             gc.collect()
             final_count = server_description_count()
             client.close()
@@ -1924,12 +1922,12 @@ class TestClient(IntegrationTest):
             assert client.address is not None
             expected = "{}:{}: ".format(*(client.address))
             with self.assertRaisesRegex(AutoReconnect, expected):
-                client.pymongo_test.test.find_one({})
+                client.db.coll.find_one({})
 
     @unittest.skipIf("PyPy" in sys.version, "PYTHON-2938 could fail on PyPy")
     def test_process_periodic_tasks(self):
         client = self.rs_or_single_client()
-        coll = client.db.collection
+        coll = client.db.coll
         coll.insert_many([{} for _ in range(5)])
         cursor = coll.find(batch_size=2)
         cursor.next()
@@ -2126,23 +2124,23 @@ class TestClient(IntegrationTest):
         )
 
     def test_dict_hints(self):
-        self.db.t.find(hint={"x": 1})
+        self.db.coll.find(hint={"x": 1})
 
     def test_dict_hints_sort(self):
-        result = self.db.t.find()
+        result = self.db.coll.find()
         result.sort({"x": 1})
 
-        self.db.t.find(sort={"x": 1})
+        self.db.coll.find(sort={"x": 1})
 
     def test_dict_hints_create_index(self):
-        self.db.t.create_index({"x": pymongo.ASCENDING})
+        self.db.coll.create_index({"x": pymongo.ASCENDING})
 
     def test_legacy_java_uuid_roundtrip(self):
         data = BinaryData.java_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
 
-        client_context.client.pymongo_test.drop_collection("java_uuid")
-        db = client_context.client.pymongo_test
+        client_context.client.db.drop_collection("java_uuid")
+        db = client_context.client.db
         coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=JAVA_LEGACY))
 
         coll.insert_many(docs)
@@ -2153,14 +2151,14 @@ class TestClient(IntegrationTest):
         coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         for d in coll.find():
             self.assertNotEqual(d["newguid"], d["newguidstring"])
-        client_context.client.pymongo_test.drop_collection("java_uuid")
+        client_context.client.db.drop_collection("java_uuid")
 
     def test_legacy_csharp_uuid_roundtrip(self):
         data = BinaryData.csharp_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
 
-        client_context.client.pymongo_test.drop_collection("csharp_uuid")
-        db = client_context.client.pymongo_test
+        client_context.client.db.drop_collection("csharp_uuid")
+        db = client_context.client.db
         coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=CSHARP_LEGACY))
 
         coll.insert_many(docs)
@@ -2171,16 +2169,16 @@ class TestClient(IntegrationTest):
         coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         for d in coll.find():
             self.assertNotEqual(d["newguid"], d["newguidstring"])
-        client_context.client.pymongo_test.drop_collection("csharp_uuid")
+        client_context.client.db.drop_collection("csharp_uuid")
 
     def test_uri_to_uuid(self):
         uri = "mongodb://foo/?uuidrepresentation=csharpLegacy"
         client = self.single_client(uri, connect=False)
-        self.assertEqual(client.pymongo_test.test.codec_options.uuid_representation, CSHARP_LEGACY)
+        self.assertEqual(client.db.coll.codec_options.uuid_representation, CSHARP_LEGACY)
 
     def test_uuid_queries(self):
-        db = client_context.client.pymongo_test
-        coll = db.test
+        db = client_context.client.db
+        coll = db.coll
         coll.drop()
 
         uu = uuid.uuid4()
@@ -2189,7 +2187,7 @@ class TestClient(IntegrationTest):
 
         # Test regular UUID queries (using subtype 4).
         coll = db.get_collection(
-            "test", CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+            "coll", CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
         )
         self.assertEqual(0, coll.count_documents({"uuid": uu}))
         coll.insert_one({"uuid": uu})
@@ -2220,7 +2218,7 @@ class TestExhaustCursor(IntegrationTest):
         # but must be checked in on error to avoid semaphore leaks.
         client = connected(self.rs_or_single_client(maxPoolSize=1))
 
-        collection = client.pymongo_test.test
+        collection = client.db.coll
         pool = get_pool(client)
         conn = one(pool.conns)
 
@@ -2242,11 +2240,11 @@ class TestExhaustCursor(IntegrationTest):
         # When doing a getmore on an exhaust cursor, the socket stays checked
         # out on success but it's checked in on error to avoid semaphore leaks.
         client = self.rs_or_single_client(maxPoolSize=1)
-        collection = client.pymongo_test.test
+        collection = client.db.coll
         collection.drop()
 
         collection.insert_many([{} for _ in range(200)])
-        self.addCleanup(client_context.client.pymongo_test.test.drop)
+        self.addCleanup(client_context.client.db.coll.drop)
 
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -2281,7 +2279,7 @@ class TestExhaustCursor(IntegrationTest):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
         client = connected(self.rs_or_single_client(maxPoolSize=1, retryReads=False))
-        collection = client.pymongo_test.test
+        collection = client.db.coll
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
 
@@ -2302,7 +2300,7 @@ class TestExhaustCursor(IntegrationTest):
         # When doing a getmore on an exhaust cursor, the socket stays checked
         # out on success but it's checked in on error to avoid semaphore leaks.
         client = self.rs_or_single_client(maxPoolSize=1)
-        collection = client.pymongo_test.test
+        collection = client.db.coll
         collection.drop()
         collection.insert_many([{} for _ in range(200)])  # More than one batch.
         pool = get_pool(client)
@@ -2338,7 +2336,7 @@ class TestExhaustCursor(IntegrationTest):
 
         def poller():
             while True:
-                client_context.client.pymongo_test.test.insert_one({})
+                client_context.client.db.coll.insert_one({})
 
         task = spawn(poller)
         task.kill()
@@ -2351,7 +2349,7 @@ class TestExhaustCursor(IntegrationTest):
         from gevent import Timeout, spawn
 
         client = self.rs_or_single_client(maxPoolSize=1)
-        coll = client.pymongo_test.test
+        coll = client.db.coll
         coll.insert_one({})
 
         def contentious_task():
@@ -2384,7 +2382,7 @@ class TestExhaustCursor(IntegrationTest):
 
         client = self.rs_or_single_client()
         self.addCleanup(client.close)
-        coll = client.pymongo_test.test
+        coll = client.db.coll
         pool = get_pool(client)  # type:ignore
 
         # Patch the pool to delay the connect method.
@@ -2531,7 +2529,7 @@ class TestMongoClientFailover(MockClientTest):
         # ServerSelectionTimeoutError or AutoReconnect (from
         # MockPool.get_socket).
         with self.assertRaises(AutoReconnect):
-            c.db.collection.find_one()
+            c.db.coll.find_one()
 
         # But it can reconnect.
         c.revive_host("a:1")
@@ -2588,31 +2586,31 @@ class TestMongoClientFailover(MockClientTest):
 
     def test_network_error_on_query(self):
         def callback(client):
-            return client.db.collection.find_one()
+            return client.db.coll.find_one()
 
         self._test_network_error(callback)
 
     def test_network_error_on_insert(self):
         def callback(client):
-            return client.db.collection.insert_one({})
+            return client.db.coll.insert_one({})
 
         self._test_network_error(callback)
 
     def test_network_error_on_update(self):
         def callback(client):
-            return client.db.collection.update_one({}, {"$unset": "x"})
+            return client.db.coll.update_one({}, {"$unset": "x"})
 
         self._test_network_error(callback)
 
     def test_network_error_on_replace(self):
         def callback(client):
-            return client.db.collection.replace_one({}, {})
+            return client.db.coll.replace_one({}, {})
 
         self._test_network_error(callback)
 
     def test_network_error_on_delete(self):
         def callback(client):
-            return client.db.collection.delete_many({})
+            return client.db.coll.delete_many({})
 
         self._test_network_error(callback)
 

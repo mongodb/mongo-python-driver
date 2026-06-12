@@ -154,7 +154,7 @@ def lambda_handler(event, context):
     """
     print("initializing")
     db = client.lambdaTest
-    collection = db.test
+    collection = db.coll
     result = collection.insert_one({"n": 1})
     collection.delete_one({"_id": result.inserted_id})
     # Create the response and then reset the numbers.

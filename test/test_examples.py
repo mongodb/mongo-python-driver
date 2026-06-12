@@ -47,7 +47,7 @@ class TestSampleShellCommands(IntegrationTest):
     def tearDown(self):
         # Run after every test.
         self.db.inventory.drop()
-        self.client.drop_database("pymongo_test")
+        self.client.drop_database("db")
 
     def test_first_three_examples(self):
         db = self.db
@@ -923,11 +923,11 @@ class TestSampleShellCommands(IntegrationTest):
     def test_misc(self):
         # Marketing examples
         client = self.client
-        self.addCleanup(client.drop_database, "test")
-        self.addCleanup(client.drop_database, "my_database")
+        self.addCleanup(client.drop_database, "db")
+        self.addCleanup(client.drop_database, "db2")
 
         # 2. Tunable consistency controls
-        collection = client.my_database.my_collection
+        collection = client.db2.coll
         with client.start_session() as session:
             collection.insert_one({"_id": 1}, session=session)
             collection.update_one({"_id": 1}, {"$set": {"a": 1}}, session=session)
@@ -935,7 +935,7 @@ class TestSampleShellCommands(IntegrationTest):
                 pass
 
         # 3. Exploiting the power of arrays
-        collection = client.test.array_updates_test
+        collection = client.db.array_updates_test
         collection.update_one({"_id": 1}, {"$set": {"a.$[i].b": 2}}, array_filters=[{"i.b": 0}])
 
 
@@ -1163,9 +1163,9 @@ class TestCausalConsistencyExamples(IntegrationTest):
     def test_causal_consistency(self):
         # Causal consistency examples
         client = self.client
-        self.addCleanup(client.drop_database, "test")
-        client.test.drop_collection("items")
-        client.test.items.insert_one(
+        self.addCleanup(client.drop_database, "db")
+        client.db.drop_collection("items")
+        client.db.items.insert_one(
             {"sku": "111", "name": "Peanuts", "start": datetime.datetime.today()}
         )
 
@@ -1173,7 +1173,7 @@ class TestCausalConsistencyExamples(IntegrationTest):
         with client.start_session(causal_consistency=True) as s1:
             current_date = datetime.datetime.today()
             items = client.get_database(
-                "test",
+                "db",
                 read_concern=ReadConcern("majority"),
                 write_concern=WriteConcern("majority", wtimeout=1000),
             ).items
@@ -1194,7 +1194,7 @@ class TestCausalConsistencyExamples(IntegrationTest):
             s2.advance_operation_time(s1.operation_time)
 
             items = client.get_database(
-                "test",
+                "db",
                 read_preference=ReadPreference.SECONDARY,
                 read_concern=ReadConcern("majority"),
                 write_concern=WriteConcern("majority", wtimeout=1000),

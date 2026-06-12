@@ -30,7 +30,7 @@
       "database": {
         "id": "database",
         "client": "client",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -57,7 +57,7 @@
   "initialData": [
     {
       "collectionName": "fs.files",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": [
         {
           "_id": {
@@ -77,7 +77,7 @@
     },
     {
       "collectionName": "fs.chunks",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": [
         {
           "_id": {
@@ -191,7 +191,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "fs.files",
                   "maxTimeMS": {
@@ -250,7 +250,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "fs.files",
                   "maxTimeMS": {
@@ -265,7 +265,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "fs.chunks",
                   "maxTimeMS": {
@@ -324,7 +324,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "fs.files",
                   "maxTimeMS": {
@@ -339,7 +339,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "fs.chunks",
                   "maxTimeMS": {

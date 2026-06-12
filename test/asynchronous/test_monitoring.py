@@ -64,7 +64,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         )
 
     async def test_started_simple(self):
-        await self.client.pymongo_test.command("ping")
+        await self.client.db.command("ping")
         started = self.listener.started_events[0]
         succeeded = self.listener.succeeded_events[0]
         self.assertEqual(0, len(self.listener.failed_events))
@@ -73,11 +73,11 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertEqualCommand(SON([("ping", 1)]), started.command)
         self.assertEqual("ping", started.command_name)
         self.assertEqual(await self.client.address, started.connection_id)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertIsInstance(started.request_id, int)
 
     async def test_succeeded_simple(self):
-        await self.client.pymongo_test.command("ping")
+        await self.client.db.command("ping")
         started = self.listener.started_events[0]
         succeeded = self.listener.succeeded_events[0]
         self.assertEqual(0, len(self.listener.failed_events))
@@ -91,7 +91,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
     async def test_failed_simple(self):
         try:
-            await self.client.pymongo_test.command("oops!")
+            await self.client.db.command("oops!")
         except OperationFailure:
             pass
         started = self.listener.started_events[0]
@@ -106,7 +106,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertIsInstance(failed.duration_micros, int)
 
     async def test_find_one(self):
-        await self.client.pymongo_test.test.find_one()
+        await self.client.db.coll.find_one()
         started = self.listener.started_events[0]
         succeeded = self.listener.succeeded_events[0]
         self.assertEqual(0, len(self.listener.failed_events))
@@ -118,14 +118,14 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         )
         self.assertEqual("find", started.command_name)
         self.assertEqual(await self.client.address, started.connection_id)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertIsInstance(started.request_id, int)
 
     async def test_find_and_get_more(self):
-        await self.client.pymongo_test.test.drop()
-        await self.client.pymongo_test.test.insert_many([{} for _ in range(10)])
+        await self.client.db.coll.drop()
+        await self.client.db.coll.insert_many([{} for _ in range(10)])
         self.listener.reset()
-        cursor = self.client.pymongo_test.test.find(projection={"_id": False}, batch_size=4)
+        cursor = self.client.db.coll.find(projection={"_id": False}, batch_size=4)
         for _ in range(4):
             await anext(cursor)
         cursor_id = cursor.cursor_id
@@ -141,7 +141,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         )
         self.assertEqual("find", started.command_name)
         self.assertEqual(await self.client.address, started.connection_id)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertIsInstance(started.request_id, int)
         self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
         self.assertIsInstance(succeeded.duration_micros, int)
@@ -150,7 +150,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertEqual(cursor.address, succeeded.connection_id)
         csr = succeeded.reply["cursor"]
         self.assertEqual(csr["id"], cursor_id)
-        self.assertEqual(csr["ns"], "pymongo_test.test")
+        self.assertEqual(csr["ns"], "db.coll")
         self.assertEqual(csr["firstBatch"], [{} for _ in range(4)])
 
         self.listener.reset()
@@ -163,12 +163,12 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             self.assertEqual(0, len(self.listener.failed_events))
             self.assertIsInstance(started, monitoring.CommandStartedEvent)
             self.assertEqualCommand(
-                SON([("getMore", cursor_id), ("collection", "test"), ("batchSize", 4)]),
+                SON([("getMore", cursor_id), ("collection", "db.coll"), ("batchSize", 4)]),
                 started.command,
             )
             self.assertEqual("getMore", started.command_name)
             self.assertEqual(await self.client.address, started.connection_id)
-            self.assertEqual("pymongo_test", started.database_name)
+            self.assertEqual("db", started.database_name)
             self.assertIsInstance(started.request_id, int)
             self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
             self.assertIsInstance(succeeded.duration_micros, int)
@@ -177,7 +177,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             self.assertEqual(cursor.address, succeeded.connection_id)
             csr = succeeded.reply["cursor"]
             self.assertEqual(csr["id"], cursor_id)
-            self.assertEqual(csr["ns"], "pymongo_test.test")
+            self.assertEqual(csr["ns"], "db.coll")
             self.assertEqual(csr["nextBatch"], [{} for _ in range(4)])
         finally:
             # Exhaust the cursor to avoid kill cursors.
@@ -185,10 +185,10 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
     async def test_find_with_explain(self):
         cmd = SON([("explain", SON([("find", "test"), ("filter", {})]))])
-        await self.client.pymongo_test.test.drop()
-        await self.client.pymongo_test.test.insert_one({})
+        await self.client.db.coll.drop()
+        await self.client.db.coll.insert_one({})
         self.listener.reset()
-        coll = self.client.pymongo_test.test
+        coll = self.client.db.coll
         # Test that we publish the unwrapped command.
         if await self.client.is_mongos:
             coll = coll.with_options(read_preference=ReadPreference.PRIMARY_PREFERRED)
@@ -200,7 +200,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertEqualCommand(cmd, started.command)
         self.assertEqual("explain", started.command_name)
         self.assertEqual(await self.client.address, started.connection_id)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertIsInstance(started.request_id, int)
         self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
         self.assertIsInstance(succeeded.duration_micros, int)
@@ -210,7 +210,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertEqual(res, succeeded.reply)
 
     async def _test_find_options(self, query, expected_cmd):
-        coll = self.client.pymongo_test.test
+        coll = self.client.db.coll
         await coll.drop()
         await coll.create_index("x")
         await coll.insert_many([{"x": i} for i in range(5)])
@@ -231,7 +231,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             self.assertEqualCommand(expected_cmd, started.command)
             self.assertEqual("find", started.command_name)
             self.assertEqual(await self.client.address, started.connection_id)
-            self.assertEqual("pymongo_test", started.database_name)
+            self.assertEqual("db", started.database_name)
             self.assertIsInstance(started.request_id, int)
             self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
             self.assertIsInstance(succeeded.duration_micros, int)
@@ -294,10 +294,10 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         await self._test_find_options(query, cmd)
 
     async def test_command_and_get_more(self):
-        await self.client.pymongo_test.test.drop()
-        await self.client.pymongo_test.test.insert_many([{"x": 1} for _ in range(10)])
+        await self.client.db.coll.drop()
+        await self.client.db.coll.insert_many([{"x": 1} for _ in range(10)])
         self.listener.reset()
-        coll = self.client.pymongo_test.test
+        coll = self.client.db.coll
         # Test that we publish the unwrapped command.
         if await self.client.is_mongos:
             coll = coll.with_options(read_preference=ReadPreference.PRIMARY_PREFERRED)
@@ -321,7 +321,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         )
         self.assertEqual("aggregate", started.command_name)
         self.assertEqual(await self.client.address, started.connection_id)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertIsInstance(started.request_id, int)
         self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
         self.assertIsInstance(succeeded.duration_micros, int)
@@ -330,7 +330,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertEqual(cursor.address, succeeded.connection_id)
         expected_cursor = {
             "id": cursor_id,
-            "ns": "pymongo_test.test",
+            "ns": "db.coll",
             "firstBatch": [{"x": 1} for _ in range(4)],
         }
         self.assertEqualCommand(expected_cursor, succeeded.reply.get("cursor"))
@@ -343,12 +343,12 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             self.assertEqual(0, len(self.listener.failed_events))
             self.assertIsInstance(started, monitoring.CommandStartedEvent)
             self.assertEqualCommand(
-                SON([("getMore", cursor_id), ("collection", "test"), ("batchSize", 4)]),
+                SON([("getMore", cursor_id), ("collection", "db.coll"), ("batchSize", 4)]),
                 started.command,
             )
             self.assertEqual("getMore", started.command_name)
             self.assertEqual(await self.client.address, started.connection_id)
-            self.assertEqual("pymongo_test", started.database_name)
+            self.assertEqual("db", started.database_name)
             self.assertIsInstance(started.request_id, int)
             self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
             self.assertIsInstance(succeeded.duration_micros, int)
@@ -358,7 +358,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             expected_result = {
                 "cursor": {
                     "id": cursor_id,
-                    "ns": "pymongo_test.test",
+                    "ns": "db.coll",
                     "nextBatch": [{"x": 1} for _ in range(4)],
                 },
                 "ok": 1.0,
@@ -370,7 +370,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
     async def test_get_more_failure(self):
         address = await self.client.address
-        coll = self.client.pymongo_test.test
+        coll = self.client.db.coll
         cursor_id = Int64(12345)
         cursor_doc = {"id": cursor_id, "firstBatch": [], "ns": coll.full_name}
         cursor = AsyncCommandCursor(coll, cursor_doc, address)
@@ -383,11 +383,11 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         failed = self.listener.failed_events[0]
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqualCommand(
-            SON([("getMore", cursor_id), ("collection", "test")]), started.command
+            SON([("getMore", cursor_id), ("collection", "db.coll")]), started.command
         )
         self.assertEqual("getMore", started.command_name)
         self.assertEqual(await self.client.address, started.connection_id)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertIsInstance(started.request_id, int)
         self.assertIsInstance(failed, monitoring.CommandFailedEvent)
         self.assertIsInstance(failed.duration_micros, int)
@@ -406,7 +406,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.listener.reset()
         error = None
         try:
-            await client.pymongo_test.test.find_one_and_delete({})
+            await client.db.coll.find_one_and_delete({})
         except NotPrimaryError as exc:
             error = exc.errors
         started = self.listener.started_events[0]
@@ -423,10 +423,10 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
     @async_client_context.require_no_mongos
     async def test_exhaust(self):
-        await self.client.pymongo_test.test.drop()
-        await self.client.pymongo_test.test.insert_many([{} for _ in range(11)])
+        await self.client.db.coll.drop()
+        await self.client.db.coll.insert_many([{} for _ in range(11)])
         self.listener.reset()
-        cursor = self.client.pymongo_test.test.find(
+        cursor = self.client.db.coll.find(
             projection={"_id": False}, batch_size=5, cursor_type=CursorType.EXHAUST
         )
         await anext(cursor)
@@ -443,7 +443,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         )
         self.assertEqual("find", started.command_name)
         self.assertEqual(cursor.address, started.connection_id)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertIsInstance(started.request_id, int)
         self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
         self.assertIsInstance(succeeded.duration_micros, int)
@@ -453,7 +453,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         expected_result = {
             "cursor": {
                 "id": cursor_id,
-                "ns": "pymongo_test.test",
+                "ns": "db.coll",
                 "firstBatch": [{} for _ in range(5)],
             },
             "ok": 1,
@@ -466,12 +466,12 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         for event in self.listener.started_events:
             self.assertIsInstance(event, monitoring.CommandStartedEvent)
             self.assertEqualCommand(
-                SON([("getMore", cursor_id), ("collection", "test"), ("batchSize", 5)]),
+                SON([("getMore", cursor_id), ("collection", "db.coll"), ("batchSize", 5)]),
                 event.command,
             )
             self.assertEqual("getMore", event.command_name)
             self.assertEqual(cursor.address, event.connection_id)
-            self.assertEqual("pymongo_test", event.database_name)
+            self.assertEqual("db", event.database_name)
             self.assertIsInstance(event.request_id, int)
         for event in self.listener.succeeded_events:
             self.assertIsInstance(event, monitoring.CommandSucceededEvent)
@@ -484,9 +484,9 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
     async def test_kill_cursors(self):
         with client_knobs(kill_cursor_frequency=0.01):
-            await self.client.pymongo_test.test.drop()
-            await self.client.pymongo_test.test.insert_many([{} for _ in range(10)])
-            cursor = self.client.pymongo_test.test.find().batch_size(5)
+            await self.client.db.coll.drop()
+            await self.client.db.coll.insert_many([{} for _ in range(10)])
+            cursor = self.client.db.coll.find().batch_size(5)
             await anext(cursor)
             cursor_id = cursor.cursor_id
             self.listener.reset()
@@ -502,7 +502,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             self.assertEqual("killCursors", started.command_name)
             self.assertIs(type(started.connection_id), tuple)
             self.assertEqual(cursor.address, started.connection_id)
-            self.assertEqual("pymongo_test", started.database_name)
+            self.assertEqual("db", started.database_name)
             self.assertIsInstance(started.request_id, int)
             self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
             self.assertIsInstance(succeeded.duration_micros, int)
@@ -517,7 +517,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             )
 
     async def test_non_bulk_writes(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.db.coll
         await coll.drop()
         self.listener.reset()
 
@@ -535,7 +535,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             ]
         )
         self.assertEqualCommand(expected, started.command)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("insert", started.command_name)
         self.assertIsInstance(started.request_id, int)
         self.assertEqual(await self.client.address, started.connection_id)
@@ -565,7 +565,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             ]
         )
         self.assertEqualCommand(expected, started.command)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("insert", started.command_name)
         self.assertIsInstance(started.request_id, int)
         self.assertEqual(await self.client.address, started.connection_id)
@@ -593,7 +593,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             ]
         )
         self.assertEqualCommand(expected, started.command)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("insert", started.command_name)
         self.assertIsInstance(started.request_id, int)
         self.assertEqual(await self.client.address, started.connection_id)
@@ -622,7 +622,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             ]
         )
         self.assertEqualCommand(expected, started.command)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("delete", started.command_name)
         self.assertIsInstance(started.request_id, int)
         self.assertEqual(await self.client.address, started.connection_id)
@@ -664,7 +664,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             ]
         )
         self.assertEqualCommand(expected, started.command)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("update", started.command_name)
         self.assertIsInstance(started.request_id, int)
         self.assertEqual(await self.client.address, started.connection_id)
@@ -706,7 +706,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             ]
         )
         self.assertEqualCommand(expected, started.command)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("update", started.command_name)
         self.assertIsInstance(started.request_id, int)
         self.assertEqual(await self.client.address, started.connection_id)
@@ -747,7 +747,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             ]
         )
         self.assertEqualCommand(expected, started.command)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("update", started.command_name)
         self.assertIsInstance(started.request_id, int)
         self.assertEqual(await self.client.address, started.connection_id)
@@ -776,7 +776,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             ]
         )
         self.assertEqualCommand(expected, started.command)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("delete", started.command_name)
         self.assertIsInstance(started.request_id, int)
         self.assertEqual(await self.client.address, started.connection_id)
@@ -811,7 +811,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             ]
         )
         self.assertEqualCommand(expected, started.command)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("insert", started.command_name)
         self.assertIsInstance(started.request_id, int)
         self.assertEqual(await self.client.address, started.connection_id)
@@ -832,7 +832,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
     async def test_insert_many(self):
         # This always uses the bulk API.
-        coll = self.client.pymongo_test.test
+        coll = self.client.db.coll
         await coll.drop()
         self.listener.reset()
 
@@ -853,7 +853,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             self.assertEqual(coll.name, cmd["insert"])
             self.assertIs(True, cmd["ordered"])
             documents.extend(cmd["documents"])
-            self.assertEqual("pymongo_test", start.database_name)
+            self.assertEqual("db", start.database_name)
             self.assertEqual("insert", start.command_name)
             self.assertIsInstance(start.request_id, int)
             self.assertEqual(await self.client.address, start.connection_id)
@@ -871,7 +871,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertEqual(6, count)
 
     async def test_insert_many_unacknowledged(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.db.coll
         await coll.drop()
         unack_coll = coll.with_options(write_concern=WriteConcern(w=0))
         self.listener.reset()
@@ -894,7 +894,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             self.assertEqual(coll.name, cmd["insert"])
             self.assertIs(True, cmd["ordered"])
             documents.extend(cmd["documents"])
-            self.assertEqual("pymongo_test", start.database_name)
+            self.assertEqual("db", start.database_name)
             self.assertEqual("insert", start.command_name)
             self.assertIsInstance(start.request_id, int)
             self.assertEqual(await self.client.address, start.connection_id)
@@ -914,7 +914,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         await async_wait_until(check, "insert documents with w=0")
 
     async def test_bulk_write(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.db.coll
         await coll.drop()
         self.listener.reset()
 
@@ -933,7 +933,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertEqual(3, len(pairs))
         for start, succeed in pairs:
             self.assertIsInstance(start, monitoring.CommandStartedEvent)
-            self.assertEqual("pymongo_test", start.database_name)
+            self.assertEqual("db", start.database_name)
             self.assertIsInstance(start.request_id, int)
             self.assertEqual(await self.client.address, start.connection_id)
             self.assertIsInstance(succeed, monitoring.CommandSucceededEvent)
@@ -977,7 +977,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_fail_point
     async def test_bulk_write_command_network_error(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.db.coll
         self.listener.reset()
 
         insert_network_error = {
@@ -1001,7 +1001,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_fail_point
     async def test_bulk_write_command_error(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.db.coll
         self.listener.reset()
 
         insert_command_error = {
@@ -1025,7 +1025,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertTrue(event.failure["errmsg"])
 
     async def test_write_errors(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.db.coll
         await coll.drop()
         self.listener.reset()
 
@@ -1049,7 +1049,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         errors = []
         for start, succeed in pairs:
             self.assertIsInstance(start, monitoring.CommandStartedEvent)
-            self.assertEqual("pymongo_test", start.database_name)
+            self.assertEqual("db", start.database_name)
             self.assertIsInstance(start.request_id, int)
             self.assertEqual(await self.client.address, start.connection_id)
             self.assertIsInstance(succeed, monitoring.CommandSucceededEvent)
@@ -1071,14 +1071,14 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         # Regardless of server version and use of helpers._first_batch
         # this test should still pass.
         self.listener.reset()
-        tuple(await (await self.client.pymongo_test.test.list_indexes()).to_list())
+        tuple(await (await self.client.db.coll.list_indexes()).to_list())
         started = self.listener.started_events[0]
         succeeded = self.listener.succeeded_events[0]
         self.assertEqual(0, len(self.listener.failed_events))
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         expected = SON([("listIndexes", "test"), ("cursor", {})])
         self.assertEqualCommand(expected, started.command)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("listIndexes", started.command_name)
         self.assertIsInstance(started.request_id, int)
         self.assertEqual(await self.client.address, started.connection_id)
@@ -1100,7 +1100,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
 
         listener.reset()
         cmd = SON([("getnonce", 1)])
-        listeners.publish_command_start(cmd, "pymongo_test", 12345, await client.address, None)  # type: ignore[arg-type]
+        listeners.publish_command_start(cmd, "db", 12345, await client.address, None)  # type: ignore[arg-type]
         delta = datetime.timedelta(milliseconds=100)
         listeners.publish_command_success(
             delta,
@@ -1109,14 +1109,14 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             12345,
             await self.client.address,  # type: ignore[arg-type]
             None,
-            database_name="pymongo_test",
+            database_name="db",
         )
         started = listener.started_events[0]
         succeeded = listener.succeeded_events[0]
         self.assertEqual(0, len(listener.failed_events))
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqual({}, started.command)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("getnonce", started.command_name)
         self.assertIsInstance(started.request_id, int)
         self.assertEqual(await client.address, started.connection_id)
@@ -1145,14 +1145,14 @@ class AsyncTestGlobalListener(AsyncIntegrationTest):
         self.listener.reset()
         self.client = await self.async_single_client()
         # Get one (authenticated) socket in the pool.
-        await self.client.pymongo_test.command("ping")
+        await self.client.db.command("ping")
 
     @classmethod
     def tearDownClass(cls):
         monitoring._LISTENERS = cls.saved_listeners
 
     async def test_simple(self):
-        await self.client.pymongo_test.command("ping")
+        await self.client.db.command("ping")
         started = self.listener.started_events[0]
         succeeded = self.listener.succeeded_events[0]
         self.assertEqual(0, len(self.listener.failed_events))
@@ -1161,7 +1161,7 @@ class AsyncTestGlobalListener(AsyncIntegrationTest):
         self.assertEqualCommand(SON([("ping", 1)]), started.command)
         self.assertEqual("ping", started.command_name)
         self.assertEqual(await self.client.address, started.connection_id)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertIsInstance(started.request_id, int)
 
 

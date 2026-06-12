@@ -60,36 +60,36 @@ class TestBackpressure(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_command(self):
-        await self.db.t.insert_one({"x": 1})
+        await self.db.coll.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         async with self.fail_point(fail_many):
-            await self.db.command("find", "t")
+            await self.db.command("find", "coll")
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         async with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                await self.db.command("find", "t")
+                await self.db.command("find", "coll")
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_find(self):
-        await self.db.t.insert_one({"x": 1})
+        await self.db.coll.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         async with self.fail_point(fail_many):
-            await self.db.t.find_one()
+            await self.db.coll.find_one()
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         async with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                await self.db.t.find_one()
+                await self.db.coll.find_one()
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
@@ -99,13 +99,13 @@ class TestBackpressure(AsyncIntegrationTest):
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         async with self.fail_point(fail_many):
-            await self.db.t.insert_one({"x": 1})
+            await self.db.coll.insert_one({"x": 1})
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         async with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                await self.db.t.insert_one({"x": 1})
+                await self.db.coll.insert_one({"x": 1})
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
@@ -114,25 +114,25 @@ class TestBackpressure(AsyncIntegrationTest):
     async def test_retry_overload_error_update_many(self):
         # Even though update_many is not a retryable write operation, it will
         # still be retried via the "RetryableError" error label.
-        await self.db.t.insert_one({"x": 1})
+        await self.db.coll.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         async with self.fail_point(fail_many):
-            await self.db.t.update_many({}, {"$set": {"x": 2}})
+            await self.db.coll.update_many({}, {"$set": {"x": 2}})
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         async with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                await self.db.t.update_many({}, {"$set": {"x": 2}})
+                await self.db.coll.update_many({}, {"$set": {"x": 2}})
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_getMore(self):
-        coll = self.db.t
+        coll = self.db.coll
         await coll.insert_many([{"x": 1} for _ in range(10)])
 
         # Ensure command is retried on overload error.
@@ -189,7 +189,7 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
         client = self.client
 
         # 2. let `collection` be a collection
-        collection = client.test.test
+        collection = client.db.coll
 
         # 3. Now, run transactions without backoff:
 
@@ -234,7 +234,7 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
         # 1. Let `client` be a `MongoClient`.
         client = self.client
         # 2. Let `coll` be a collection.
-        coll = client.pymongo_test.coll
+        coll = client.db.coll
 
         # 3. Configure the following failpoint:
         failpoint = {
@@ -269,7 +269,7 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
             maxAdaptiveRetries=max_retries, event_listeners=[self.listener]
         )
         # 2. Let `coll` be a collection.
-        coll = client.pymongo_test.coll
+        coll = client.db.coll
 
         # 3. Configure the following failpoint:
         failpoint = {

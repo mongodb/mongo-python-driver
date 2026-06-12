@@ -36,7 +36,7 @@
       "database": {
         "id": "database",
         "client": "client",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     }
   ],
@@ -148,7 +148,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "ping",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "ping": 1
                 }
@@ -157,7 +157,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "hello",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "hello": 1
                 }

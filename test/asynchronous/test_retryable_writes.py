@@ -159,7 +159,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         self.client = await self.async_rs_or_single_client(
             retryWrites=True, event_listeners=[self.listener]
         )
-        self.db = self.client.pymongo_test
+        self.db = self.client.db
 
         if async_client_context.is_rs and async_client_context.test_commands_enabled:
             await self.client.admin.command(
@@ -385,7 +385,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         )
 
         with self.assertRaises(AutoReconnect):
-            await client.t.t.insert_one({"x": 1})
+            await client.db.coll.insert_one({"x": 1})
 
         # Disable failpoints on each mongos
         for client in mongos_clients:
@@ -420,11 +420,11 @@ class TestWriteConcernError(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(retryWrites=True, event_listeners=[listener])
 
         # Ensure collection exists.
-        await client.pymongo_test.testcoll.insert_one({})
+        await client.db.coll.insert_one({})
 
         async with self.fail_point(self.fail_insert):
             with self.assertRaises(WriteConcernError) as cm:
-                await client.pymongo_test.testcoll.insert_one({})
+                await client.db.coll.insert_one({})
             self.assertTrue(cm.exception.has_error_label("RetryableWriteError"))
 
         if async_client_context.version >= Version(4, 4):
@@ -437,9 +437,9 @@ class TestWriteConcernError(AsyncIntegrationTest):
         async with self.fail_point(self.fail_insert):
             async with self.client.start_session() as s:
                 s._start_retryable_write()
-                result = await self.client.pymongo_test.command(
+                result = await self.client.db.command(
                     "insert",
-                    "testcoll",
+                    "coll",
                     documents=[{"_id": 1}],
                     txnNumber=s._transaction_id,
                     session=s,
@@ -482,7 +482,7 @@ class TestPoolPausedError(AsyncIntegrationTest):
         for _ in range(10):
             cmap_listener.reset()
             cmd_listener.reset()
-            threads = [InsertThread(client.pymongo_test.test) for _ in range(2)]
+            threads = [InsertThread(client.db.coll) for _ in range(2)]
             fail_command = {
                 "mode": {"times": 1},
                 "data": {
@@ -543,7 +543,7 @@ class TestPoolPausedError(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(
             retryWrites=True, event_listeners=[cmd_listener]
         )
-        await client.test.test.drop()
+        await client.db.coll.drop()
         cmd_listener.reset()
         await client.admin.command(
             {
@@ -559,7 +559,7 @@ class TestPoolPausedError(AsyncIntegrationTest):
             }
         )
         with self.assertRaises(WriteConcernError) as exc:
-            await client.test.test.insert_one({"_id": 1})
+            await client.db.coll.insert_one({"_id": 1})
         self.assertEqual(exc.exception.code, 91)
         await client.admin.command(
             {
@@ -673,7 +673,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         # Attempt an insertOne operation on any record for any database and collection.
         # Expect the insertOne to fail with a server error.
         with self.assertRaises(NotPrimaryError) as exc:
-            await client.test.test.insert_one({})
+            await client.db.coll.insert_one({})
 
         # Assert that the error code of the server error is 10107.
         assert exc.exception.errors["code"] == 10107  # type:ignore[call-overload]
@@ -726,7 +726,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         # Attempt an insertOne operation on any record for any database and collection.
         # Expect the insertOne to fail with a server error.
         with self.assertRaises(NotPrimaryError) as exc:
-            await client.test.test.insert_one({})
+            await client.db.coll.insert_one({})
 
         # Assert that the error code of the server error is 91.
         assert exc.exception.errors["code"] == 91  # type:ignore[call-overload]
@@ -780,7 +780,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         # Attempt an insertOne operation on any record for any database and collection.
         # Expect the insertOne to fail with a server error.
         with self.assertRaises(PyMongoError) as exc:
-            await client.test.test.insert_one({})
+            await client.db.coll.insert_one({})
 
         # Assert that the error code of the server error is 91.
         assert exc.exception.errors["code"] == 91
@@ -831,7 +831,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         self.addCleanup(self.configure_fail_point_sync, {}, off=True)
 
         with self.assertRaises(PyMongoError):
-            await client.test.test.insert_one({"x": 1})
+            await client.db.coll.insert_one({"x": 1})
 
         started_inserts = [e for e in listener.started_events if e.command_name == "insert"]
         self.assertEqual(len(started_inserts), MAX_ADAPTIVE_RETRIES + 1)
@@ -887,7 +887,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         # Perform a findOne operation with coll. Expect the operation to fail.
         with mock.patch(mock_target, return_value=0) as mock_backoff:
             with self.assertRaises(PyMongoError):
-                await client.test.test.insert_one({})
+                await client.db.coll.insert_one({})
 
         # Assert that backoff was applied only once for the initial overload error and not for the subsequent non-overload retryable errors.
         self.assertEqual(mock_backoff.call_count, 1)

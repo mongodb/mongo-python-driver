@@ -231,7 +231,7 @@ class TestGSSAPI(PyMongoTestCase):
         # collection.find_one with a 1-second delay, forcing it to check out
         # multiple connections from the pool concurrently, proving that
         # auto-authentication works with GSSAPI.
-        collection = db.test
+        collection = db.coll
         if not collection.count_documents({}):
             try:
                 collection.drop()
@@ -402,10 +402,10 @@ class TestSCRAMSHA1(IntegrationTest):
     @client_context.require_auth
     def setUp(self):
         super().setUp()
-        client_context.create_user("pymongo_test", "user", "pass", roles=["userAdmin", "readWrite"])
+        client_context.create_user("db", "user", "pass", roles=["userAdmin", "readWrite"])
 
     def tearDown(self):
-        client_context.drop_user("pymongo_test", "user")
+        client_context.drop_user("db", "user")
         super().tearDown()
 
     @client_context.require_no_fips
@@ -413,19 +413,19 @@ class TestSCRAMSHA1(IntegrationTest):
         host, port = client_context.host, client_context.port
 
         client = self.rs_or_single_client_noauth(
-            "mongodb://user:pass@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1" % (host, port)
+            "mongodb://user:pass@%s:%d/db?authMechanism=SCRAM-SHA-1" % (host, port)
         )
-        client.pymongo_test.command("dbstats")
+        client.db.command("dbstats")
 
         if client_context.is_rs:
-            uri = (
-                "mongodb://user:pass"
-                "@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1"
-                "&replicaSet=%s" % (host, port, client_context.replica_set_name)
+            uri = "mongodb://user:pass" "@%s:%d/db?authMechanism=SCRAM-SHA-1" "&replicaSet=%s" % (
+                host,
+                port,
+                client_context.replica_set_name,
             )
             client = self.single_client_noauth(uri)
-            client.pymongo_test.command("dbstats")
-            db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
+            client.db.command("dbstats")
+            db = client.get_database("db", read_preference=ReadPreference.SECONDARY)
             db.command("dbstats")
 
 
@@ -650,13 +650,13 @@ class TestSCRAM(IntegrationTest):
 
     @client_context.require_sync
     def test_scram_threaded(self):
-        coll = client_context.client.db.test
+        coll = client_context.client.db.coll
         coll.drop()
         coll.insert_one({"_id": 1})
 
         # The first thread to call find() will authenticate
         client = self.rs_or_single_client()
-        coll = client.db.test
+        coll = client.db.coll
         threads = []
         for _ in range(4):
             threads.append(AutoAuthenticateThread(coll))
@@ -672,10 +672,10 @@ class TestAuthURIOptions(IntegrationTest):
     def setUp(self):
         super().setUp()
         client_context.create_user("admin", "admin", "pass")
-        client_context.create_user("pymongo_test", "user", "pass", ["userAdmin", "readWrite"])
+        client_context.create_user("db", "user", "pass", ["userAdmin", "readWrite"])
 
     def tearDown(self):
-        client_context.drop_user("pymongo_test", "user")
+        client_context.drop_user("db", "user")
         client_context.drop_user("admin", "admin")
         super().tearDown()
 
@@ -697,14 +697,14 @@ class TestAuthURIOptions(IntegrationTest):
             self.assertTrue(db.command("dbstats"))
 
         # Test explicit database
-        uri = "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)
+        uri = "mongodb://user:pass@%s:%d/db" % (host, port)
         client = self.rs_or_single_client_noauth(uri)
         with self.assertRaises(OperationFailure):
             client.admin.command("dbstats")
-        self.assertTrue(client.pymongo_test.command("dbstats"))
+        self.assertTrue(client.db.command("dbstats"))
 
         if client_context.is_rs:
-            uri = "mongodb://user:pass@%s:%d/pymongo_test?replicaSet=%s" % (
+            uri = "mongodb://user:pass@%s:%d/db?replicaSet=%s" % (
                 host,
                 port,
                 client_context.replica_set_name,
@@ -712,27 +712,28 @@ class TestAuthURIOptions(IntegrationTest):
             client = self.single_client_noauth(uri)
             with self.assertRaises(OperationFailure):
                 client.admin.command("dbstats")
-            self.assertTrue(client.pymongo_test.command("dbstats"))
-            db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
+            self.assertTrue(client.db.command("dbstats"))
+            db = client.get_database("db", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(db.command("dbstats"))
 
         # Test authSource
-        uri = "mongodb://user:pass@%s:%d/pymongo_test2?authSource=pymongo_test" % (host, port)
+        uri = "mongodb://user:pass@%s:%d/db2?authSource=db" % (host, port)
         client = self.rs_or_single_client_noauth(uri)
         with self.assertRaises(OperationFailure):
-            client.pymongo_test2.command("dbstats")
-        self.assertTrue(client.pymongo_test.command("dbstats"))
+            client.db2.command("dbstats")
+        self.assertTrue(client.db.command("dbstats"))
 
         if client_context.is_rs:
-            uri = (
-                "mongodb://user:pass@%s:%d/pymongo_test2?replicaSet="
-                "%s;authSource=pymongo_test" % (host, port, client_context.replica_set_name)
+            uri = "mongodb://user:pass@%s:%d/db2?replicaSet=" "%s;authSource=db" % (
+                host,
+                port,
+                client_context.replica_set_name,
             )
             client = self.single_client_noauth(uri)
             with self.assertRaises(OperationFailure):
-                client.pymongo_test2.command("dbstats")
-            self.assertTrue(client.pymongo_test.command("dbstats"))
-            db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
+                client.db2.command("dbstats")
+            self.assertTrue(client.db.command("dbstats"))
+            db = client.get_database("db", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(db.command("dbstats"))
 
 

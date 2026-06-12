@@ -266,7 +266,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
 
           >>> db.read_preference
           Primary()
-          >>> coll1 = db.test
+          >>> coll1 = db.coll
           >>> coll1.read_preference
           Primary()
           >>> from pymongo import ReadPreference

@@ -44,7 +44,7 @@ class BulkTestBase(IntegrationTest):
 
     def setUp(self):
         super().setUp()
-        self.coll = self.db.test
+        self.coll = self.db.coll
         self.coll.drop()
         self.coll_w0 = self.coll.with_options(write_concern=WriteConcern(w=0))
 
@@ -792,7 +792,7 @@ class BulkAuthorizationTestBase(BulkTestBase):
             privileges=[
                 {
                     "actions": ["insert", "update", "find"],
-                    "resource": {"db": "pymongo_test", "collection": "test"},
+                    "resource": {"db": "db", "collection": "coll"},
                 }
             ],
             roles=[],
@@ -896,10 +896,8 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
     def test_readonly(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = self.rs_or_single_client_noauth(
-            username="readonly", password="pw", authSource="pymongo_test"
-        )
-        coll = cli.pymongo_test.test
+        cli = self.rs_or_single_client_noauth(username="readonly", password="pw", authSource="db")
+        coll = cli.db.coll
         coll.find_one()
         with self.assertRaises(OperationFailure):
             coll.bulk_write([InsertOne({"x": 1})])
@@ -907,10 +905,8 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
     def test_no_remove(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        cli = self.rs_or_single_client_noauth(
-            username="noremove", password="pw", authSource="pymongo_test"
-        )
-        coll = cli.pymongo_test.test
+        cli = self.rs_or_single_client_noauth(username="noremove", password="pw", authSource="db")
+        coll = cli.db.coll
         coll.find_one()
         requests = [
             InsertOne({"x": 1}),

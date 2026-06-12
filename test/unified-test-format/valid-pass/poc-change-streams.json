@@ -31,7 +31,7 @@
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     },
     {
@@ -58,7 +58,7 @@
       "collection": {
         "id": "collection1",
         "database": "database1",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     },
     {
@@ -72,13 +72,13 @@
       "collection": {
         "id": "collection3",
         "database": "database2",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     }
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "change-stream-tests",
       "documents": []
     },
@@ -88,7 +88,7 @@
       "documents": []
     },
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "change-stream-tests-2",
       "documents": []
     }
@@ -200,7 +200,7 @@
             "operationType": "insert",
             "ns": {
               "db": "change-stream-tests-2",
-              "coll": "test"
+              "coll": "coll"
             },
             "fullDocument": {
               "_id": {
@@ -217,7 +217,7 @@
             "operationType": "insert",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "fullDocument": {
               "_id": {
@@ -329,7 +329,7 @@
             "operationType": "insert",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "fullDocument": {
               "_id": {
@@ -346,7 +346,7 @@
             "operationType": "insert",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "fullDocument": {
               "_id": {
@@ -363,7 +363,7 @@
             "operationType": "insert",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "fullDocument": {
               "_id": {

@@ -29,7 +29,7 @@
       "database": {
         "id": "database",
         "client": "client",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -43,7 +43,7 @@
   "initialData": [
     {
       "collectionName": "coll",
-      "databaseName": "test",
+      "databaseName": "db",
       "createOptions": {
         "capped": true,
         "size": 500
@@ -118,7 +118,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "tailable": true,
@@ -186,7 +186,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "tailable": true,
@@ -202,7 +202,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [
@@ -273,7 +273,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "tailable": true,
@@ -289,7 +289,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [

@@ -32,7 +32,7 @@
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     },
     {
@@ -44,7 +44,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "transaction-tests",
       "documents": []
     }
@@ -57,7 +57,7 @@
           "object": "database0",
           "name": "dropCollection",
           "arguments": {
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
@@ -69,7 +69,7 @@
           "name": "createCollection",
           "arguments": {
             "session": "session0",
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
@@ -77,7 +77,7 @@
           "name": "assertCollectionNotExists",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test"
+            "collectionName": "coll"
           }
         },
         {
@@ -89,7 +89,7 @@
           "name": "assertCollectionExists",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test"
+            "collectionName": "coll"
           }
         }
       ],
@@ -100,7 +100,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test",
+                  "drop": "coll",
                   "writeConcern": {
                     "$$exists": false
                   }
@@ -112,7 +112,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "create": "test",
+                  "create": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -162,7 +162,7 @@
           "object": "database0",
           "name": "dropCollection",
           "arguments": {
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
@@ -191,7 +191,7 @@
           "name": "assertCollectionNotExists",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test"
+            "collectionName": "coll"
           }
         },
         {
@@ -203,7 +203,7 @@
           "name": "assertCollectionExists",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test"
+            "collectionName": "coll"
           }
         }
       ],
@@ -214,7 +214,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test",
+                  "drop": "coll",
                   "writeConcern": {
                     "$$exists": false
                   }
@@ -226,7 +226,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "insert": "test",
+                  "insert": "coll",
                   "documents": [
                     {
                       "_id": 1

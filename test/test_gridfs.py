@@ -82,7 +82,7 @@ class TestGridfsNoConnect(unittest.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.db = MongoClient(connect=False).pymongo_test
+        self.db = MongoClient(connect=False).db
 
     def test_gridfs(self):
         self.assertRaises(TypeError, gridfs.GridFS, "foo")
@@ -519,7 +519,7 @@ class TestGridfs(IntegrationTest):
     def test_unacknowledged(self):
         # w=0 is prohibited.
         with self.assertRaises(ConfigurationError):
-            gridfs.GridFS((self.rs_or_single_client(w=0)).pymongo_test)
+            gridfs.GridFS((self.rs_or_single_client(w=0)).db)
 
     def test_md5(self):
         gin = self.fs.new_file()

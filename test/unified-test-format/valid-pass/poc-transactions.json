@@ -35,7 +35,7 @@
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     },
     {
@@ -47,7 +47,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "transaction-tests",
       "documents": []
     }
@@ -102,7 +102,7 @@
           "name": "dropCollection",
           "object": "database0",
           "arguments": {
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
@@ -114,7 +114,7 @@
           "object": "database0",
           "arguments": {
             "session": "session0",
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
@@ -122,7 +122,7 @@
           "object": "testRunner",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test"
+            "collectionName": "coll"
           }
         },
         {
@@ -134,7 +134,7 @@
           "object": "testRunner",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test"
+            "collectionName": "coll"
           }
         }
       ],
@@ -145,7 +145,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test",
+                  "drop": "coll",
                   "writeConcern": {
                     "$$exists": false
                   }
@@ -157,7 +157,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "create": "test",
+                  "create": "coll",
                   "lsid": {
                     "$$sessionLsid": "session0"
                   },
@@ -212,7 +212,7 @@
           "name": "dropCollection",
           "object": "database0",
           "arguments": {
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
@@ -235,7 +235,7 @@
           "object": "testRunner",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test",
+            "collectionName": "coll",
             "indexName": "x_1"
           }
         },
@@ -248,7 +248,7 @@
           "object": "testRunner",
           "arguments": {
             "databaseName": "transaction-tests",
-            "collectionName": "test",
+            "collectionName": "coll",
             "indexName": "x_1"
           }
         }
@@ -260,7 +260,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "drop": "test",
+                  "drop": "coll",
                   "writeConcern": {
                     "$$exists": false
                   }
@@ -272,7 +272,7 @@
             {
               "commandStartedEvent": {
                 "command": {
-                  "createIndexes": "test",
+                  "createIndexes": "coll",
                   "indexes": [
                     {
                       "name": "x_1",

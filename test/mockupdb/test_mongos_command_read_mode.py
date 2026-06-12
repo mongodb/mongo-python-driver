@@ -53,9 +53,9 @@ class TestMongosCommandReadMode(unittest.TestCase):
 
         client = MongoClient(server.uri)
         self.addCleanup(client.close)
-        collection = client.test.collection
+        collection = client.db.coll
         with going(collection.aggregate, []):
-            command = server.receives(aggregate="collection", pipeline=[])
+            command = server.receives(aggregate="coll", pipeline=[])
             self.assertFalse(command.slave_ok, "SlaveOkay set")
             command.ok(result=[{}])
 

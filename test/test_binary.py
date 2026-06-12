@@ -389,7 +389,7 @@ class TestUuidSpecImplicitCoding(IntegrationTest):
             uuid_representation=validate_uuid_representation(None, uuid_rep)
         )
         coll = self.db.get_collection(
-            "pymongo_test", codec_options=codec_options, write_concern=WriteConcern("majority")
+            "db", codec_options=codec_options, write_concern=WriteConcern("majority")
         )
         return coll
 

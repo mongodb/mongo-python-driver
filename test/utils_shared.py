@@ -390,11 +390,11 @@ def delay(sec):
     .. code-block:: python
 
         db.coll.insert_one({"x": 1})
-        db.test.find_one({"x": 1})
+        db.coll.find_one({"x": 1})
         # {'x': 1, '_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
 
         # The following will wait 2.5 seconds before returning.
-        db.test.find_one({"$where": delay(2.5)})
+        db.coll.find_one({"$where": delay(2.5)})
         # {'x': 1, '_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
 
     Using ``delay`` to provoke a KeyboardInterrupt
@@ -548,13 +548,13 @@ def lazy_client_trial(reset, target, test, get_client):
     `test` takes the lazily-connecting collection and asserts a
     post-condition to prove `target` succeeded.
     """
-    collection = client_context.client.pymongo_test.test
+    collection = client_context.client.db.coll
 
     with frequent_thread_switches():
         for _i in range(NTRIALS):
             reset(collection)
             lazy_client = get_client()
-            lazy_collection = lazy_client.pymongo_test.test
+            lazy_collection = lazy_client.db.coll
             run_threads(lazy_collection, target)
             test(lazy_collection)
 

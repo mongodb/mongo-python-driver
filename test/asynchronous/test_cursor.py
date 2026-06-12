@@ -60,7 +60,7 @@ _IS_SYNC = False
 
 class TestCursor(AsyncIntegrationTest):
     async def test_deepcopy_cursor_littered_with_regexes(self):
-        cursor = self.db.test.find(
+        cursor = self.db.coll.find(
             {
                 "x": re.compile("^hmmm.*"),
                 "y": [re.compile("^hmm.*")],
@@ -73,18 +73,18 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(cursor._spec, cursor2._spec)
 
     async def test_add_remove_option(self):
-        cursor = self.db.test.find()
+        cursor = self.db.coll.find()
         self.assertEqual(0, cursor._query_flags)
         await cursor.add_option(2)
-        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE)
+        cursor2 = self.db.coll.find(cursor_type=CursorType.TAILABLE)
         self.assertEqual(2, cursor2._query_flags)
         self.assertEqual(cursor._query_flags, cursor2._query_flags)
         await cursor.add_option(32)
-        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)
+        cursor2 = self.db.coll.find(cursor_type=CursorType.TAILABLE_AWAIT)
         self.assertEqual(34, cursor2._query_flags)
         self.assertEqual(cursor._query_flags, cursor2._query_flags)
         await cursor.add_option(128)
-        cursor2 = await self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT).add_option(128)
+        cursor2 = await self.db.coll.find(cursor_type=CursorType.TAILABLE_AWAIT).add_option(128)
         self.assertEqual(162, cursor2._query_flags)
         self.assertEqual(cursor._query_flags, cursor2._query_flags)
 
@@ -93,11 +93,11 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(162, cursor._query_flags)
 
         cursor.remove_option(128)
-        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)
+        cursor2 = self.db.coll.find(cursor_type=CursorType.TAILABLE_AWAIT)
         self.assertEqual(34, cursor2._query_flags)
         self.assertEqual(cursor._query_flags, cursor2._query_flags)
         cursor.remove_option(32)
-        cursor2 = self.db.test.find(cursor_type=CursorType.TAILABLE)
+        cursor2 = self.db.coll.find(cursor_type=CursorType.TAILABLE)
         self.assertEqual(2, cursor2._query_flags)
         self.assertEqual(cursor._query_flags, cursor2._query_flags)
 
@@ -106,25 +106,25 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(2, cursor._query_flags)
 
         # Timeout
-        cursor = self.db.test.find(no_cursor_timeout=True)
+        cursor = self.db.coll.find(no_cursor_timeout=True)
         self.assertEqual(16, cursor._query_flags)
-        cursor2 = await self.db.test.find().add_option(16)
+        cursor2 = await self.db.coll.find().add_option(16)
         self.assertEqual(cursor._query_flags, cursor2._query_flags)
         cursor.remove_option(16)
         self.assertEqual(0, cursor._query_flags)
 
         # Tailable / Await data
-        cursor = self.db.test.find(cursor_type=CursorType.TAILABLE_AWAIT)
+        cursor = self.db.coll.find(cursor_type=CursorType.TAILABLE_AWAIT)
         self.assertEqual(34, cursor._query_flags)
-        cursor2 = await self.db.test.find().add_option(34)
+        cursor2 = await self.db.coll.find().add_option(34)
         self.assertEqual(cursor._query_flags, cursor2._query_flags)
         cursor.remove_option(32)
         self.assertEqual(2, cursor._query_flags)
 
         # Partial
-        cursor = self.db.test.find(allow_partial_results=True)
+        cursor = self.db.coll.find(allow_partial_results=True)
         self.assertEqual(128, cursor._query_flags)
-        cursor2 = await self.db.test.find().add_option(128)
+        cursor2 = await self.db.coll.find().add_option(128)
         self.assertEqual(cursor._query_flags, cursor2._query_flags)
         cursor.remove_option(128)
         self.assertEqual(0, cursor._query_flags)
@@ -133,11 +133,11 @@ class TestCursor(AsyncIntegrationTest):
         # Exhaust - which mongos doesn't support
         if async_client_context.is_mongos:
             with self.assertRaises(InvalidOperation):
-                await anext(self.db.test.find(cursor_type=CursorType.EXHAUST))
+                await anext(self.db.coll.find(cursor_type=CursorType.EXHAUST))
         else:
-            cursor = self.db.test.find(cursor_type=CursorType.EXHAUST)
+            cursor = self.db.coll.find(cursor_type=CursorType.EXHAUST)
             self.assertEqual(64, cursor._query_flags)
-            cursor2 = await self.db.test.find().add_option(64)
+            cursor2 = await self.db.coll.find().add_option(64)
             self.assertEqual(cursor._query_flags, cursor2._query_flags)
             self.assertTrue(cursor._exhaust)
             cursor.remove_option(64)
@@ -146,8 +146,8 @@ class TestCursor(AsyncIntegrationTest):
 
     async def test_allow_disk_use(self):
         db = self.db
-        await db.pymongo_test.drop()
-        coll = db.pymongo_test
+        await db.coll.drop()
+        coll = db.coll
 
         with self.assertRaises(TypeError):
             coll.find().allow_disk_use("baz")  # type: ignore[arg-type]
@@ -159,8 +159,8 @@ class TestCursor(AsyncIntegrationTest):
 
     async def test_max_time_ms(self):
         db = self.db
-        await db.pymongo_test.drop()
-        coll = db.pymongo_test
+        await db.coll.drop()
+        coll = db.coll
         with self.assertRaises(TypeError):
             coll.find().max_time_ms("foo")  # type: ignore[arg-type]
         await coll.insert_one({"amalia": 1})
@@ -203,9 +203,9 @@ class TestCursor(AsyncIntegrationTest):
 
     async def test_maxtime_ms_message(self):
         db = self.db
-        await db.t.insert_one({"x": 1})
+        await db.coll.insert_one({"x": 1})
         with self.assertRaises(OperationFailure) as error:
-            await db.t.find_one({"$where": delay(2)}, max_time_ms=1)
+            await db.coll.find_one({"$where": delay(2)}, max_time_ms=1)
 
         # Newer MongoDB executes $where in WASM and returns Interrupted (11601) instead
         # of MaxTimeMSExpired (50) when max_time_ms kills execution; only MaxTimeMSExpired
@@ -214,17 +214,17 @@ class TestCursor(AsyncIntegrationTest):
             self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
 
         client = await self.async_rs_client(document_class=RawBSONDocument)
-        await client.db.t.insert_one({"x": 1})
+        await client.db.coll.insert_one({"x": 1})
         with self.assertRaises(OperationFailure) as error:
-            await client.db.t.find_one({"$where": delay(2)}, max_time_ms=1)
+            await client.db.coll.find_one({"$where": delay(2)}, max_time_ms=1)
 
         if isinstance(error.exception, ExecutionTimeout):
             self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
 
     async def test_max_await_time_ms(self):
         db = self.db
-        await db.pymongo_test.drop()
-        coll = await db.create_collection("pymongo_test", capped=True, size=4096)
+        await db.coll.drop()
+        coll = await db.create_collection("db", capped=True, size=4096)
 
         with self.assertRaises(TypeError):
             coll.find().max_await_time_ms("foo")  # type: ignore[arg-type]
@@ -256,9 +256,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(90, cursor._max_await_time_ms)
 
         listener = AllowListEventListener("find", "getMore")
-        coll = (await self.async_rs_or_single_client(event_listeners=[listener]))[
-            self.db.name
-        ].pymongo_test
+        coll = (await self.async_rs_or_single_client(event_listeners=[listener]))[self.db.name].coll
 
         # Tailable_await defaults.
         await coll.find(cursor_type=CursorType.TAILABLE_AWAIT).to_list()
@@ -344,7 +342,7 @@ class TestCursor(AsyncIntegrationTest):
     @async_client_context.require_no_mongos
     async def test_max_time_ms_getmore(self):
         # Test that Cursor handles server timeout error in response to getmore.
-        coll = self.db.pymongo_test
+        coll = self.db.coll
         await coll.insert_many([{} for _ in range(200)])
         cursor = coll.find().max_time_ms(100)
 
@@ -367,7 +365,7 @@ class TestCursor(AsyncIntegrationTest):
             )
 
     async def test_explain(self):
-        a = self.db.test.find()
+        a = self.db.coll.find()
         await a.explain()
         async for _ in a:
             break
@@ -378,7 +376,7 @@ class TestCursor(AsyncIntegrationTest):
         # Do not add readConcern level to explain.
         listener = AllowListEventListener("explain")
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        coll = client.pymongo_test.test.with_options(read_concern=ReadConcern(level="local"))
+        coll = client.db.coll.with_options(read_concern=ReadConcern(level="local"))
         self.assertTrue(await coll.find().explain())
         started = listener.started_events
         self.assertEqual(len(started), 1)
@@ -410,104 +408,104 @@ class TestCursor(AsyncIntegrationTest):
     async def test_hint(self):
         db = self.db
         with self.assertRaises(TypeError):
-            db.test.find().hint(5.5)  # type: ignore[arg-type]
-        await db.test.drop()
+            db.coll.find().hint(5.5)  # type: ignore[arg-type]
+        await db.coll.drop()
 
-        await db.test.insert_many([{"num": i, "foo": i} for i in range(100)])
+        await db.coll.insert_many([{"num": i, "foo": i} for i in range(100)])
 
         with self.assertRaises(OperationFailure):
-            await db.test.find({"num": 17, "foo": 17}).hint([("num", ASCENDING)]).explain()
+            await db.coll.find({"num": 17, "foo": 17}).hint([("num", ASCENDING)]).explain()
         with self.assertRaises(OperationFailure):
-            await db.test.find({"num": 17, "foo": 17}).hint([("foo", ASCENDING)]).explain()
+            await db.coll.find({"num": 17, "foo": 17}).hint([("foo", ASCENDING)]).explain()
 
         spec: list[Any] = [("num", DESCENDING)]
-        _ = await db.test.create_index(spec)
+        _ = await db.coll.create_index(spec)
 
-        first = await anext(db.test.find())
+        first = await anext(db.coll.find())
         self.assertEqual(0, first.get("num"))
-        first = await anext(db.test.find().hint(spec))
+        first = await anext(db.coll.find().hint(spec))
         self.assertEqual(99, first.get("num"))
         with self.assertRaises(OperationFailure):
-            await db.test.find({"num": 17, "foo": 17}).hint([("foo", ASCENDING)]).explain()
+            await db.coll.find({"num": 17, "foo": 17}).hint([("foo", ASCENDING)]).explain()
 
-        a = db.test.find({"num": 17})
+        a = db.coll.find({"num": 17})
         a.hint(spec)
         async for _ in a:
             break
         self.assertRaises(InvalidOperation, a.hint, spec)
 
-        await db.test.drop()
-        await db.test.insert_many([{"num": i, "foo": i} for i in range(100)])
+        await db.coll.drop()
+        await db.coll.insert_many([{"num": i, "foo": i} for i in range(100)])
         spec: _IndexList = ["num", ("foo", DESCENDING)]
-        await db.test.create_index(spec)
-        first = await anext(db.test.find().hint(spec))
+        await db.coll.create_index(spec)
+        first = await anext(db.coll.find().hint(spec))
         self.assertEqual(0, first.get("num"))
         self.assertEqual(0, first.get("foo"))
 
-        await db.test.drop()
-        await db.test.insert_many([{"num": i, "foo": i} for i in range(100)])
+        await db.coll.drop()
+        await db.coll.insert_many([{"num": i, "foo": i} for i in range(100)])
         spec = ["num"]
-        await db.test.create_index(spec)
-        first = await anext(db.test.find().hint(spec))
+        await db.coll.create_index(spec)
+        first = await anext(db.coll.find().hint(spec))
         self.assertEqual(0, first.get("num"))
 
     async def test_hint_by_name(self):
         db = self.db
-        await db.test.drop()
+        await db.coll.drop()
 
-        await db.test.insert_many([{"i": i} for i in range(100)])
+        await db.coll.insert_many([{"i": i} for i in range(100)])
 
-        await db.test.create_index([("i", DESCENDING)], name="fooindex")
-        first = await anext(db.test.find())
+        await db.coll.create_index([("i", DESCENDING)], name="fooindex")
+        first = await anext(db.coll.find())
         self.assertEqual(0, first.get("i"))
-        first = await anext(db.test.find().hint("fooindex"))
+        first = await anext(db.coll.find().hint("fooindex"))
         self.assertEqual(99, first.get("i"))
 
     async def test_limit(self):
         db = self.db
 
         with self.assertRaises(TypeError):
-            db.test.find().limit(None)  # type: ignore[arg-type]
+            db.coll.find().limit(None)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.test.find().limit("hello")  # type: ignore[arg-type]
+            db.coll.find().limit("hello")  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.test.find().limit(5.5)  # type: ignore[arg-type]
-        self.assertTrue((db.test.find()).limit(5))
+            db.coll.find().limit(5.5)  # type: ignore[arg-type]
+        self.assertTrue((db.coll.find()).limit(5))
 
-        await db.test.drop()
-        await db.test.insert_many([{"x": i} for i in range(100)])
+        await db.coll.drop()
+        await db.coll.insert_many([{"x": i} for i in range(100)])
 
         count = 0
-        async for _ in db.test.find():
+        async for _ in db.coll.find():
             count += 1
         self.assertEqual(count, 100)
 
         count = 0
-        async for _ in db.test.find().limit(20):
+        async for _ in db.coll.find().limit(20):
             count += 1
         self.assertEqual(count, 20)
 
         count = 0
-        async for _ in db.test.find().limit(99):
+        async for _ in db.coll.find().limit(99):
             count += 1
         self.assertEqual(count, 99)
 
         count = 0
-        async for _ in db.test.find().limit(1):
+        async for _ in db.coll.find().limit(1):
             count += 1
         self.assertEqual(count, 1)
 
         count = 0
-        async for _ in db.test.find().limit(0):
+        async for _ in db.coll.find().limit(0):
             count += 1
         self.assertEqual(count, 100)
 
         count = 0
-        async for _ in db.test.find().limit(0).limit(50).limit(10):
+        async for _ in db.coll.find().limit(0).limit(50).limit(10):
             count += 1
         self.assertEqual(count, 10)
 
-        a = db.test.find()
+        a = db.coll.find()
         a.limit(10)
         async for _ in a:
             break
@@ -516,14 +514,14 @@ class TestCursor(AsyncIntegrationTest):
 
     async def test_max(self):
         db = self.db
-        await db.test.drop()
+        await db.coll.drop()
         j_index = [("j", ASCENDING)]
-        await db.test.create_index(j_index)
+        await db.coll.create_index(j_index)
 
-        await db.test.insert_many([{"j": j, "k": j} for j in range(10)])
+        await db.coll.insert_many([{"j": j, "k": j} for j in range(10)])
 
         def find(max_spec, expected_index):
-            return db.test.find().max(max_spec).hint(expected_index)
+            return db.coll.find().max(max_spec).hint(expected_index)
 
         cursor = find([("j", 3)], j_index)
         self.assertEqual(len(await cursor.to_list()), 3)
@@ -534,7 +532,7 @@ class TestCursor(AsyncIntegrationTest):
 
         # Compound index.
         index_keys = [("j", ASCENDING), ("k", ASCENDING)]
-        await db.test.create_index(index_keys)
+        await db.coll.create_index(index_keys)
         cursor = find([("j", 3), ("k", 3)], index_keys)
         self.assertEqual(len(await cursor.to_list()), 3)
 
@@ -548,20 +546,20 @@ class TestCursor(AsyncIntegrationTest):
         with self.assertRaises(OperationFailure):
             await cursor.to_list()
         with self.assertRaises(TypeError):
-            db.test.find().max(10)  # type: ignore[arg-type]
+            db.coll.find().max(10)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.test.find().max({"j": 10})  # type: ignore[arg-type]
+            db.coll.find().max({"j": 10})  # type: ignore[arg-type]
 
     async def test_min(self):
         db = self.db
-        await db.test.drop()
+        await db.coll.drop()
         j_index = [("j", ASCENDING)]
-        await db.test.create_index(j_index)
+        await db.coll.create_index(j_index)
 
-        await db.test.insert_many([{"j": j, "k": j} for j in range(10)])
+        await db.coll.insert_many([{"j": j, "k": j} for j in range(10)])
 
         def find(min_spec, expected_index):
-            return db.test.find().min(min_spec).hint(expected_index)
+            return db.coll.find().min(min_spec).hint(expected_index)
 
         cursor = find([("j", 3)], j_index)
         self.assertEqual(len(await cursor.to_list()), 7)
@@ -572,7 +570,7 @@ class TestCursor(AsyncIntegrationTest):
 
         # Compound index.
         index_keys = [("j", ASCENDING), ("k", ASCENDING)]
-        await db.test.create_index(index_keys)
+        await db.coll.create_index(index_keys)
         cursor = find([("j", 3), ("k", 3)], index_keys)
         self.assertEqual(len(await cursor.to_list()), 7)
 
@@ -587,12 +585,12 @@ class TestCursor(AsyncIntegrationTest):
             await cursor.to_list()
 
         with self.assertRaises(TypeError):
-            db.test.find().min(10)  # type: ignore[arg-type]
+            db.coll.find().min(10)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.test.find().min({"j": 10})  # type: ignore[arg-type]
+            db.coll.find().min({"j": 10})  # type: ignore[arg-type]
 
     async def test_min_max_without_hint(self):
-        coll = self.db.test
+        coll = self.db.coll
         j_index = [("j", ASCENDING)]
         await coll.create_index(j_index)
 
@@ -603,19 +601,19 @@ class TestCursor(AsyncIntegrationTest):
 
     async def test_batch_size(self):
         db = self.db
-        await db.test.drop()
-        await db.test.insert_many([{"x": x} for x in range(200)])
+        await db.coll.drop()
+        await db.coll.insert_many([{"x": x} for x in range(200)])
 
         with self.assertRaises(TypeError):
-            db.test.find().batch_size(None)  # type: ignore[arg-type]
+            db.coll.find().batch_size(None)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.test.find().batch_size("hello")  # type: ignore[arg-type]
+            db.coll.find().batch_size("hello")  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.test.find().batch_size(5.5)  # type: ignore[arg-type]
+            db.coll.find().batch_size(5.5)  # type: ignore[arg-type]
         with self.assertRaises(ValueError):
-            db.test.find().batch_size(-1)
-        self.assertTrue((db.test.find()).batch_size(5))
-        a = db.test.find()
+            db.coll.find().batch_size(-1)
+        self.assertTrue((db.coll.find()).batch_size(5))
+        a = db.coll.find()
         async for _ in a:
             break
         self.assertRaises(InvalidOperation, a.batch_size, 5)
@@ -626,28 +624,28 @@ class TestCursor(AsyncIntegrationTest):
                 count += 1
             self.assertEqual(expected_count, count)
 
-        await cursor_count((db.test.find()).batch_size(0), 200)
-        await cursor_count((db.test.find()).batch_size(1), 200)
-        await cursor_count((db.test.find()).batch_size(2), 200)
-        await cursor_count((db.test.find()).batch_size(5), 200)
-        await cursor_count((db.test.find()).batch_size(100), 200)
-        await cursor_count((db.test.find()).batch_size(500), 200)
+        await cursor_count((db.coll.find()).batch_size(0), 200)
+        await cursor_count((db.coll.find()).batch_size(1), 200)
+        await cursor_count((db.coll.find()).batch_size(2), 200)
+        await cursor_count((db.coll.find()).batch_size(5), 200)
+        await cursor_count((db.coll.find()).batch_size(100), 200)
+        await cursor_count((db.coll.find()).batch_size(500), 200)
 
-        await cursor_count((db.test.find()).batch_size(0).limit(1), 1)
-        await cursor_count((db.test.find()).batch_size(1).limit(1), 1)
-        await cursor_count((db.test.find()).batch_size(2).limit(1), 1)
-        await cursor_count((db.test.find()).batch_size(5).limit(1), 1)
-        await cursor_count((db.test.find()).batch_size(100).limit(1), 1)
-        await cursor_count((db.test.find()).batch_size(500).limit(1), 1)
+        await cursor_count((db.coll.find()).batch_size(0).limit(1), 1)
+        await cursor_count((db.coll.find()).batch_size(1).limit(1), 1)
+        await cursor_count((db.coll.find()).batch_size(2).limit(1), 1)
+        await cursor_count((db.coll.find()).batch_size(5).limit(1), 1)
+        await cursor_count((db.coll.find()).batch_size(100).limit(1), 1)
+        await cursor_count((db.coll.find()).batch_size(500).limit(1), 1)
 
-        await cursor_count((db.test.find()).batch_size(0).limit(10), 10)
-        await cursor_count((db.test.find()).batch_size(1).limit(10), 10)
-        await cursor_count((db.test.find()).batch_size(2).limit(10), 10)
-        await cursor_count((db.test.find()).batch_size(5).limit(10), 10)
-        await cursor_count((db.test.find()).batch_size(100).limit(10), 10)
-        await cursor_count((db.test.find()).batch_size(500).limit(10), 10)
+        await cursor_count((db.coll.find()).batch_size(0).limit(10), 10)
+        await cursor_count((db.coll.find()).batch_size(1).limit(10), 10)
+        await cursor_count((db.coll.find()).batch_size(2).limit(10), 10)
+        await cursor_count((db.coll.find()).batch_size(5).limit(10), 10)
+        await cursor_count((db.coll.find()).batch_size(100).limit(10), 10)
+        await cursor_count((db.coll.find()).batch_size(500).limit(10), 10)
 
-        cur = db.test.find().batch_size(1)
+        cur = db.coll.find().batch_size(1)
         await anext(cur)
         # find command batchSize should be 1
         self.assertEqual(0, len(cur._data))
@@ -660,54 +658,54 @@ class TestCursor(AsyncIntegrationTest):
 
     async def test_limit_and_batch_size(self):
         db = self.db
-        await db.test.drop()
-        await db.test.insert_many([{"x": x} for x in range(500)])
+        await db.coll.drop()
+        await db.coll.insert_many([{"x": x} for x in range(500)])
 
-        curs = db.test.find().limit(0).batch_size(10)
+        curs = db.coll.find().limit(0).batch_size(10)
         await anext(curs)
         self.assertEqual(10, curs._retrieved)
 
-        curs = db.test.find(limit=0, batch_size=10)
+        curs = db.coll.find(limit=0, batch_size=10)
         await anext(curs)
         self.assertEqual(10, curs._retrieved)
 
-        curs = db.test.find().limit(-2).batch_size(0)
+        curs = db.coll.find().limit(-2).batch_size(0)
         await anext(curs)
         self.assertEqual(2, curs._retrieved)
 
-        curs = db.test.find(limit=-2, batch_size=0)
+        curs = db.coll.find(limit=-2, batch_size=0)
         await anext(curs)
         self.assertEqual(2, curs._retrieved)
 
-        curs = db.test.find().limit(-4).batch_size(5)
+        curs = db.coll.find().limit(-4).batch_size(5)
         await anext(curs)
         self.assertEqual(4, curs._retrieved)
 
-        curs = db.test.find(limit=-4, batch_size=5)
+        curs = db.coll.find(limit=-4, batch_size=5)
         await anext(curs)
         self.assertEqual(4, curs._retrieved)
 
-        curs = db.test.find().limit(50).batch_size(500)
+        curs = db.coll.find().limit(50).batch_size(500)
         await anext(curs)
         self.assertEqual(50, curs._retrieved)
 
-        curs = db.test.find(limit=50, batch_size=500)
+        curs = db.coll.find(limit=50, batch_size=500)
         await anext(curs)
         self.assertEqual(50, curs._retrieved)
 
-        curs = db.test.find().batch_size(500)
+        curs = db.coll.find().batch_size(500)
         await anext(curs)
         self.assertEqual(500, curs._retrieved)
 
-        curs = db.test.find(batch_size=500)
+        curs = db.coll.find(batch_size=500)
         await anext(curs)
         self.assertEqual(500, curs._retrieved)
 
-        curs = db.test.find().limit(50)
+        curs = db.coll.find().limit(50)
         await anext(curs)
         self.assertEqual(50, curs._retrieved)
 
-        curs = db.test.find(limit=50)
+        curs = db.coll.find(limit=50)
         await anext(curs)
         self.assertEqual(50, curs._retrieved)
 
@@ -715,15 +713,15 @@ class TestCursor(AsyncIntegrationTest):
         # is set by the server. as of 2.0.0-rc0, 101
         # or 1MB (whichever is smaller) is default
         # for queries without ntoreturn
-        curs = db.test.find()
+        curs = db.coll.find()
         await anext(curs)
         self.assertEqual(101, curs._retrieved)
 
-        curs = db.test.find().limit(0).batch_size(0)
+        curs = db.coll.find().limit(0).batch_size(0)
         await anext(curs)
         self.assertEqual(101, curs._retrieved)
 
-        curs = db.test.find(limit=0, batch_size=0)
+        curs = db.coll.find(limit=0, batch_size=0)
         await anext(curs)
         self.assertEqual(101, curs._retrieved)
 
@@ -731,47 +729,47 @@ class TestCursor(AsyncIntegrationTest):
         db = self.db
 
         with self.assertRaises(TypeError):
-            db.test.find().skip(None)  # type: ignore[arg-type]
+            db.coll.find().skip(None)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.test.find().skip("hello")  # type: ignore[arg-type]
+            db.coll.find().skip("hello")  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.test.find().skip(5.5)  # type: ignore[arg-type]
+            db.coll.find().skip(5.5)  # type: ignore[arg-type]
         with self.assertRaises(ValueError):
-            db.test.find().skip(-5)
-        self.assertTrue((db.test.find()).skip(5))
+            db.coll.find().skip(-5)
+        self.assertTrue((db.coll.find()).skip(5))
 
-        await db.drop_collection("test")
+        await db.drop_collection("coll")
 
-        await db.test.insert_many([{"x": i} for i in range(100)])
+        await db.coll.insert_many([{"x": i} for i in range(100)])
 
-        async for i in db.test.find():
+        async for i in db.coll.find():
             self.assertEqual(i["x"], 0)
             break
 
-        async for i in db.test.find().skip(20):
+        async for i in db.coll.find().skip(20):
             self.assertEqual(i["x"], 20)
             break
 
-        async for i in db.test.find().skip(99):
+        async for i in db.coll.find().skip(99):
             self.assertEqual(i["x"], 99)
             break
 
-        async for i in db.test.find().skip(1):
+        async for i in db.coll.find().skip(1):
             self.assertEqual(i["x"], 1)
             break
 
-        async for i in db.test.find().skip(0):
+        async for i in db.coll.find().skip(0):
             self.assertEqual(i["x"], 0)
             break
 
-        async for i in db.test.find().skip(0).skip(50).skip(10):
+        async for i in db.coll.find().skip(0).skip(50).skip(10):
             self.assertEqual(i["x"], 10)
             break
 
-        async for _ in db.test.find().skip(1000):
+        async for _ in db.coll.find().skip(1000):
             self.fail()
 
-        a = db.test.find()
+        a = db.coll.find()
         a.skip(10)
         async for _ in a:
             break
@@ -781,53 +779,53 @@ class TestCursor(AsyncIntegrationTest):
         db = self.db
 
         with self.assertRaises(TypeError):
-            db.test.find().sort(5)  # type: ignore[arg-type]
+            db.coll.find().sort(5)  # type: ignore[arg-type]
         with self.assertRaises(ValueError):
-            db.test.find().sort([])  # type: ignore[arg-type]
+            db.coll.find().sort([])  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.test.find().sort([], ASCENDING)  # type: ignore[arg-type]
+            db.coll.find().sort([], ASCENDING)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
-            db.test.find().sort([("hello", DESCENDING)], DESCENDING)  # type: ignore[arg-type]
+            db.coll.find().sort([("hello", DESCENDING)], DESCENDING)  # type: ignore[arg-type]
 
-        await db.test.drop()
+        await db.coll.drop()
 
         unsort = list(range(10))
         random.shuffle(unsort)
 
-        await db.test.insert_many([{"x": i} for i in unsort])
+        await db.coll.insert_many([{"x": i} for i in unsort])
 
-        asc = [i["x"] async for i in db.test.find().sort("x", ASCENDING)]
+        asc = [i["x"] async for i in db.coll.find().sort("x", ASCENDING)]
         self.assertEqual(asc, list(range(10)))
-        asc = [i["x"] async for i in db.test.find().sort("x")]
+        asc = [i["x"] async for i in db.coll.find().sort("x")]
         self.assertEqual(asc, list(range(10)))
-        asc = [i["x"] async for i in db.test.find().sort([("x", ASCENDING)])]
+        asc = [i["x"] async for i in db.coll.find().sort([("x", ASCENDING)])]
         self.assertEqual(asc, list(range(10)))
 
         expect = list(reversed(range(10)))
-        desc = [i["x"] async for i in db.test.find().sort("x", DESCENDING)]
+        desc = [i["x"] async for i in db.coll.find().sort("x", DESCENDING)]
         self.assertEqual(desc, expect)
-        desc = [i["x"] async for i in db.test.find().sort([("x", DESCENDING)])]
+        desc = [i["x"] async for i in db.coll.find().sort([("x", DESCENDING)])]
         self.assertEqual(desc, expect)
-        desc = [i["x"] async for i in db.test.find().sort("x", ASCENDING).sort("x", DESCENDING)]
+        desc = [i["x"] async for i in db.coll.find().sort("x", ASCENDING).sort("x", DESCENDING)]
         self.assertEqual(desc, expect)
 
         expected = [(1, 5), (2, 5), (0, 3), (7, 3), (9, 2), (2, 1), (3, 1)]
         shuffled = list(expected)
         random.shuffle(shuffled)
 
-        await db.test.drop()
+        await db.coll.drop()
         for a, b in shuffled:
-            await db.test.insert_one({"a": a, "b": b})
+            await db.coll.insert_one({"a": a, "b": b})
 
         result = [
             (i["a"], i["b"])
-            async for i in db.test.find().sort([("b", DESCENDING), ("a", ASCENDING)])
+            async for i in db.coll.find().sort([("b", DESCENDING), ("a", ASCENDING)])
         ]
         self.assertEqual(result, expected)
-        result = [(i["a"], i["b"]) async for i in db.test.find().sort([("b", DESCENDING), "a"])]
+        result = [(i["a"], i["b"]) async for i in db.coll.find().sort([("b", DESCENDING), "a"])]
         self.assertEqual(result, expected)
 
-        a = db.test.find()
+        a = db.coll.find()
         a.sort("x", ASCENDING)
         async for _ in a:
             break
@@ -839,9 +837,9 @@ class TestCursor(AsyncIntegrationTest):
     )
     async def test_where(self):
         db = self.db
-        await db.test.drop()
+        await db.coll.drop()
 
-        a = db.test.find()
+        a = db.coll.find()
         with self.assertRaises(TypeError):
             a.where(5)  # type: ignore[arg-type]
         with self.assertRaises(TypeError):
@@ -849,41 +847,41 @@ class TestCursor(AsyncIntegrationTest):
         with self.assertRaises(TypeError):
             a.where({})  # type: ignore[arg-type]
 
-        await db.test.insert_many([{"x": i} for i in range(10)])
+        await db.coll.insert_many([{"x": i} for i in range(10)])
 
-        self.assertEqual(3, len(await db.test.find().where("this.x < 3").to_list()))
-        self.assertEqual(3, len(await db.test.find().where(Code("this.x < 3")).to_list()))
+        self.assertEqual(3, len(await db.coll.find().where("this.x < 3").to_list()))
+        self.assertEqual(3, len(await db.coll.find().where(Code("this.x < 3")).to_list()))
 
         code_with_scope = Code("this.x < i", {"i": 3})
         if async_client_context.version.at_least(4, 3, 3):
             # MongoDB 4.4 removed support for Code with scope.
             with self.assertRaises(OperationFailure):
-                await db.test.find().where(code_with_scope).to_list()
+                await db.coll.find().where(code_with_scope).to_list()
 
             code_with_empty_scope = Code("this.x < 3", {})
             with self.assertRaises(OperationFailure):
-                await db.test.find().where(code_with_empty_scope).to_list()
+                await db.coll.find().where(code_with_empty_scope).to_list()
         else:
-            self.assertEqual(3, len(await db.test.find().where(code_with_scope).to_list()))
+            self.assertEqual(3, len(await db.coll.find().where(code_with_scope).to_list()))
 
-        self.assertEqual(10, len(await db.test.find().to_list()))
-        self.assertEqual([0, 1, 2], [a["x"] async for a in db.test.find().where("this.x < 3")])
-        self.assertEqual([], [a["x"] async for a in db.test.find({"x": 5}).where("this.x < 3")])
-        self.assertEqual([5], [a["x"] async for a in db.test.find({"x": 5}).where("this.x > 3")])
+        self.assertEqual(10, len(await db.coll.find().to_list()))
+        self.assertEqual([0, 1, 2], [a["x"] async for a in db.coll.find().where("this.x < 3")])
+        self.assertEqual([], [a["x"] async for a in db.coll.find({"x": 5}).where("this.x < 3")])
+        self.assertEqual([5], [a["x"] async for a in db.coll.find({"x": 5}).where("this.x > 3")])
 
-        cursor = db.test.find().where("this.x < 3").where("this.x > 7")
+        cursor = db.coll.find().where("this.x < 3").where("this.x > 7")
         self.assertEqual([8, 9], [a["x"] async for a in cursor])
 
-        a = db.test.find()
+        a = db.coll.find()
         _ = a.where("this.x > 3")
         async for _ in a:
             break
         self.assertRaises(InvalidOperation, a.where, "this.x < 3")
 
     async def test_rewind(self):
-        await self.db.test.insert_many([{"x": i} for i in range(1, 4)])
+        await self.db.coll.insert_many([{"x": i} for i in range(1, 4)])
 
-        cursor = self.db.test.find().limit(2)
+        cursor = self.db.coll.find().limit(2)
 
         count = 0
         async for _ in cursor:
@@ -915,9 +913,9 @@ class TestCursor(AsyncIntegrationTest):
     # oplog_reply, and snapshot are all deprecated.
     @ignore_deprecations
     async def test_clone(self):
-        await self.db.test.insert_many([{"x": i} for i in range(1, 4)])
+        await self.db.coll.insert_many([{"x": i} for i in range(1, 4)])
 
-        cursor = self.db.test.find().limit(2)
+        cursor = self.db.coll.find().limit(2)
 
         count = 0
         async for _ in cursor:
@@ -952,7 +950,7 @@ class TestCursor(AsyncIntegrationTest):
 
         # Just test attributes
         cursor = (
-            self.db.test.find(
+            self.db.coll.find(
                 {"x": re.compile("^hello.*")},
                 projection={"_id": False},
                 skip=1,
@@ -1000,7 +998,7 @@ class TestCursor(AsyncIntegrationTest):
         # Test memo when deepcopying queries
         query = {"hello": "world"}
         query["reflexive"] = query
-        cursor = self.db.test.find(query)
+        cursor = self.db.coll.find(query)
 
         cursor2 = copy.deepcopy(cursor)
 
@@ -1009,7 +1007,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(len(cursor2._spec), 2)
 
         # Ensure hints are cloned as the correct type
-        cursor = self.db.test.find().hint([("z", 1), ("a", 1)])
+        cursor = self.db.coll.find().hint([("z", 1), ("a", 1)])
         cursor2 = copy.deepcopy(cursor)
         # Internal types are now dict rather than SON by default
         self.assertIsInstance(cursor2._hint, dict)
@@ -1017,9 +1015,9 @@ class TestCursor(AsyncIntegrationTest):
 
     @async_client_context.require_sync
     def test_clone_empty(self):
-        self.db.test.delete_many({})
-        self.db.test.insert_many([{"x": i} for i in range(1, 4)])
-        cursor = self.db.test.find()[2:2]
+        self.db.coll.delete_many({})
+        self.db.coll.insert_many([{"x": i} for i in range(1, 4)])
+        cursor = self.db.coll.find()[2:2]
         cursor2 = cursor.clone()
         self.assertRaises(StopIteration, cursor.next)
         self.assertRaises(StopIteration, cursor2.next)
@@ -1027,130 +1025,130 @@ class TestCursor(AsyncIntegrationTest):
     # AsyncCursors don't support slicing
     @async_client_context.require_sync
     def test_bad_getitem(self):
-        self.assertRaises(TypeError, lambda x: self.db.test.find()[x], "hello")
-        self.assertRaises(TypeError, lambda x: self.db.test.find()[x], 5.5)
-        self.assertRaises(TypeError, lambda x: self.db.test.find()[x], None)
+        self.assertRaises(TypeError, lambda x: self.db.coll.find()[x], "hello")
+        self.assertRaises(TypeError, lambda x: self.db.coll.find()[x], 5.5)
+        self.assertRaises(TypeError, lambda x: self.db.coll.find()[x], None)
 
     # AsyncCursors don't support slicing
     @async_client_context.require_sync
     def test_getitem_slice_index(self):
-        self.db.drop_collection("test")
-        self.db.test.insert_many([{"i": i} for i in range(100)])
+        self.db.drop_collection("coll")
+        self.db.coll.insert_many([{"i": i} for i in range(100)])
 
         count = itertools.count
 
-        self.assertRaises(IndexError, lambda: self.db.test.find()[-1:])
-        self.assertRaises(IndexError, lambda: self.db.test.find()[1:2:2])
+        self.assertRaises(IndexError, lambda: self.db.coll.find()[-1:])
+        self.assertRaises(IndexError, lambda: self.db.coll.find()[1:2:2])
 
-        for a, b in zip(count(0), self.db.test.find()):  # type: ignore[call-overload]
+        for a, b in zip(count(0), self.db.coll.find()):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
-        self.assertEqual(100, len(list(self.db.test.find()[0:])))  # type: ignore[call-overload]
-        for a, b in zip(count(0), self.db.test.find()[0:]):  # type: ignore[call-overload]
+        self.assertEqual(100, len(list(self.db.coll.find()[0:])))  # type: ignore[call-overload]
+        for a, b in zip(count(0), self.db.coll.find()[0:]):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
-        self.assertEqual(80, len(list(self.db.test.find()[20:])))  # type: ignore[call-overload]
-        for a, b in zip(count(20), self.db.test.find()[20:]):  # type: ignore[call-overload]
+        self.assertEqual(80, len(list(self.db.coll.find()[20:])))  # type: ignore[call-overload]
+        for a, b in zip(count(20), self.db.coll.find()[20:]):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
-        for a, b in zip(count(99), self.db.test.find()[99:]):  # type: ignore[call-overload]
+        for a, b in zip(count(99), self.db.coll.find()[99:]):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
-        for _i in self.db.test.find()[1000:]:
+        for _i in self.db.coll.find()[1000:]:
             self.fail()
 
-        self.assertEqual(5, len(list(self.db.test.find()[20:25])))  # type: ignore[call-overload]
-        self.assertEqual(5, len(list(self.db.test.find()[20:25])))  # type: ignore[call-overload]
-        for a, b in zip(count(20), self.db.test.find()[20:25]):  # type: ignore[call-overload]
+        self.assertEqual(5, len(list(self.db.coll.find()[20:25])))  # type: ignore[call-overload]
+        self.assertEqual(5, len(list(self.db.coll.find()[20:25])))  # type: ignore[call-overload]
+        for a, b in zip(count(20), self.db.coll.find()[20:25]):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
-        self.assertEqual(80, len(list(self.db.test.find()[40:45][20:])))  # type: ignore[call-overload]
-        for a, b in zip(count(20), self.db.test.find()[40:45][20:]):  # type: ignore[call-overload]
+        self.assertEqual(80, len(list(self.db.coll.find()[40:45][20:])))  # type: ignore[call-overload]
+        for a, b in zip(count(20), self.db.coll.find()[40:45][20:]):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
-        self.assertEqual(80, len(list(self.db.test.find()[40:45].limit(0).skip(20))))  # type: ignore[call-overload]
-        for a, b in zip(count(20), self.db.test.find()[40:45].limit(0).skip(20)):  # type: ignore[call-overload]
+        self.assertEqual(80, len(list(self.db.coll.find()[40:45].limit(0).skip(20))))  # type: ignore[call-overload]
+        for a, b in zip(count(20), self.db.coll.find()[40:45].limit(0).skip(20)):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
-        self.assertEqual(80, len(list(self.db.test.find().limit(10).skip(40)[20:])))  # type: ignore[call-overload]
-        for a, b in zip(count(20), self.db.test.find().limit(10).skip(40)[20:]):  # type: ignore[call-overload]
+        self.assertEqual(80, len(list(self.db.coll.find().limit(10).skip(40)[20:])))  # type: ignore[call-overload]
+        for a, b in zip(count(20), self.db.coll.find().limit(10).skip(40)[20:]):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
-        self.assertEqual(1, len(list(self.db.test.find()[:1])))  # type: ignore[call-overload]
-        self.assertEqual(5, len(list(self.db.test.find()[:5])))  # type: ignore[call-overload]
+        self.assertEqual(1, len(list(self.db.coll.find()[:1])))  # type: ignore[call-overload]
+        self.assertEqual(5, len(list(self.db.coll.find()[:5])))  # type: ignore[call-overload]
 
-        self.assertEqual(1, len(list(self.db.test.find()[99:100])))  # type: ignore[call-overload]
-        self.assertEqual(1, len(list(self.db.test.find()[99:1000])))  # type: ignore[call-overload]
-        self.assertEqual(0, len(list(self.db.test.find()[10:10])))  # type: ignore[call-overload]
-        self.assertEqual(0, len(list(self.db.test.find()[:0])))  # type: ignore[call-overload]
-        self.assertEqual(80, len(list(self.db.test.find()[10:10].limit(0).skip(20))))  # type: ignore[call-overload]
+        self.assertEqual(1, len(list(self.db.coll.find()[99:100])))  # type: ignore[call-overload]
+        self.assertEqual(1, len(list(self.db.coll.find()[99:1000])))  # type: ignore[call-overload]
+        self.assertEqual(0, len(list(self.db.coll.find()[10:10])))  # type: ignore[call-overload]
+        self.assertEqual(0, len(list(self.db.coll.find()[:0])))  # type: ignore[call-overload]
+        self.assertEqual(80, len(list(self.db.coll.find()[10:10].limit(0).skip(20))))  # type: ignore[call-overload]
 
-        self.assertRaises(IndexError, lambda: self.db.test.find()[10:8])
+        self.assertRaises(IndexError, lambda: self.db.coll.find()[10:8])
 
     # AsyncCursors don't support slicing
     @async_client_context.require_sync
     def test_getitem_numeric_index(self):
-        self.db.drop_collection("test")
-        self.db.test.insert_many([{"i": i} for i in range(100)])
+        self.db.drop_collection("coll")
+        self.db.coll.insert_many([{"i": i} for i in range(100)])
 
-        self.assertEqual(0, self.db.test.find()[0]["i"])
-        self.assertEqual(50, self.db.test.find()[50]["i"])
-        self.assertEqual(50, self.db.test.find().skip(50)[0]["i"])
-        self.assertEqual(50, self.db.test.find().skip(49)[1]["i"])
-        self.assertEqual(50, self.db.test.find()[50]["i"])
-        self.assertEqual(99, self.db.test.find()[99]["i"])
+        self.assertEqual(0, self.db.coll.find()[0]["i"])
+        self.assertEqual(50, self.db.coll.find()[50]["i"])
+        self.assertEqual(50, self.db.coll.find().skip(50)[0]["i"])
+        self.assertEqual(50, self.db.coll.find().skip(49)[1]["i"])
+        self.assertEqual(50, self.db.coll.find()[50]["i"])
+        self.assertEqual(99, self.db.coll.find()[99]["i"])
 
-        self.assertRaises(IndexError, lambda x: self.db.test.find()[x], -1)
-        self.assertRaises(IndexError, lambda x: self.db.test.find()[x], 100)
-        self.assertRaises(IndexError, lambda x: self.db.test.find().skip(50)[x], 50)
+        self.assertRaises(IndexError, lambda x: self.db.coll.find()[x], -1)
+        self.assertRaises(IndexError, lambda x: self.db.coll.find()[x], 100)
+        self.assertRaises(IndexError, lambda x: self.db.coll.find().skip(50)[x], 50)
 
     @async_client_context.require_sync
     def test_iteration_with_list(self):
-        self.db.drop_collection("test")
-        self.db.test.insert_many([{"i": i} for i in range(100)])
+        self.db.drop_collection("coll")
+        self.db.coll.insert_many([{"i": i} for i in range(100)])
 
-        cur = self.db.test.find().batch_size(10)
+        cur = self.db.coll.find().batch_size(10)
 
         self.assertEqual(100, len(list(cur)))  # type: ignore[call-overload]
 
     def test_len(self):
         with self.assertRaises(TypeError):
-            len(self.db.test.find())  # type: ignore[arg-type]
+            len(self.db.coll.find())  # type: ignore[arg-type]
 
     def test_properties(self):
-        self.assertEqual(self.db.test, self.db.test.find().collection)
+        self.assertEqual(self.db.coll, self.db.coll.find().collection)
 
         with self.assertRaises(AttributeError):
-            self.db.test.find().collection = "hello"  # type: ignore
+            self.db.coll.find().collection = "hello"  # type: ignore
 
     async def test_get_more(self):
         db = self.db
-        await db.drop_collection("test")
-        await db.test.insert_many([{"i": i} for i in range(10)])
-        self.assertEqual(10, len(await db.test.find().batch_size(5).to_list()))
+        await db.drop_collection("coll")
+        await db.coll.insert_many([{"i": i} for i in range(10)])
+        self.assertEqual(10, len(await db.coll.find().batch_size(5).to_list()))
 
     async def test_tailable(self):
         db = self.db
-        await db.drop_collection("test")
-        await db.create_collection("test", capped=True, size=1000, max=3)
-        self.addAsyncCleanup(db.drop_collection, "test")
-        cursor = db.test.find(cursor_type=CursorType.TAILABLE)
+        await db.drop_collection("coll")
+        await db.create_collection("coll", capped=True, size=1000, max=3)
+        self.addAsyncCleanup(db.drop_collection, "coll")
+        cursor = db.coll.find(cursor_type=CursorType.TAILABLE)
 
-        await db.test.insert_one({"x": 1})
+        await db.coll.insert_one({"x": 1})
         count = 0
         async for doc in cursor:
             count += 1
             self.assertEqual(1, doc["x"])
         self.assertEqual(1, count)
 
-        await db.test.insert_one({"x": 2})
+        await db.coll.insert_one({"x": 2})
         count = 0
         async for doc in cursor:
             count += 1
             self.assertEqual(2, doc["x"])
         self.assertEqual(1, count)
 
-        await db.test.insert_one({"x": 3})
+        await db.coll.insert_one({"x": 3})
         count = 0
         async for doc in cursor:
             count += 1
@@ -1160,19 +1158,19 @@ class TestCursor(AsyncIntegrationTest):
         # Capped rollover - the collection can never
         # have more than 3 documents. Just make sure
         # this doesn't raise...
-        await db.test.insert_many([{"x": i} for i in range(4, 7)])
+        await db.coll.insert_many([{"x": i} for i in range(4, 7)])
         self.assertEqual(0, len(await cursor.to_list()))
 
         # and that the cursor doesn't think it's still alive.
         self.assertFalse(cursor.alive)
 
-        self.assertEqual(3, await db.test.count_documents({}))
+        self.assertEqual(3, await db.coll.count_documents({}))
 
         # __getitem__(index)
         if _IS_SYNC:
             for cursor in (
-                db.test.find(cursor_type=CursorType.TAILABLE),
-                db.test.find(cursor_type=CursorType.TAILABLE_AWAIT),
+                db.coll.find(cursor_type=CursorType.TAILABLE),
+                db.coll.find(cursor_type=CursorType.TAILABLE_AWAIT),
             ):
                 self.assertEqual(4, cursor[0]["x"])
                 self.assertEqual(5, cursor[1]["x"])
@@ -1196,10 +1194,10 @@ class TestCursor(AsyncIntegrationTest):
     def test_concurrent_close(self):
         """Ensure a tailable can be closed from another thread."""
         db = self.db
-        db.drop_collection("test")
-        db.create_collection("test", capped=True, size=1000, max=3)
-        self.addCleanup(db.drop_collection, "test")
-        cursor = db.test.find(cursor_type=CursorType.TAILABLE)
+        db.drop_collection("coll")
+        db.create_collection("coll", capped=True, size=1000, max=3)
+        self.addCleanup(db.drop_collection, "coll")
+        cursor = db.coll.find(cursor_type=CursorType.TAILABLE)
 
         def iterate_cursor():
             while cursor.alive:
@@ -1219,37 +1217,37 @@ class TestCursor(AsyncIntegrationTest):
         self.assertFalse(t.is_alive())
 
     async def test_distinct(self):
-        await self.db.drop_collection("test")
+        await self.db.drop_collection("coll")
 
-        await self.db.test.insert_many([{"a": 1}, {"a": 2}, {"a": 2}, {"a": 2}, {"a": 3}])
+        await self.db.coll.insert_many([{"a": 1}, {"a": 2}, {"a": 2}, {"a": 2}, {"a": 3}])
 
-        distinct = await self.db.test.find({"a": {"$lt": 3}}).distinct("a")
+        distinct = await self.db.coll.find({"a": {"$lt": 3}}).distinct("a")
         distinct.sort()
 
         self.assertEqual([1, 2], distinct)
 
-        await self.db.drop_collection("test")
+        await self.db.drop_collection("coll")
 
-        await self.db.test.insert_one({"a": {"b": "a"}, "c": 12})
-        await self.db.test.insert_one({"a": {"b": "b"}, "c": 8})
-        await self.db.test.insert_one({"a": {"b": "c"}, "c": 12})
-        await self.db.test.insert_one({"a": {"b": "c"}, "c": 8})
+        await self.db.coll.insert_one({"a": {"b": "a"}, "c": 12})
+        await self.db.coll.insert_one({"a": {"b": "b"}, "c": 8})
+        await self.db.coll.insert_one({"a": {"b": "c"}, "c": 12})
+        await self.db.coll.insert_one({"a": {"b": "c"}, "c": 8})
 
-        distinct = await self.db.test.find({"c": 8}).distinct("a.b")
+        distinct = await self.db.coll.find({"c": 8}).distinct("a.b")
         distinct.sort()
 
         self.assertEqual(["b", "c"], distinct)
 
     async def test_with_statement(self):
-        await self.db.drop_collection("test")
-        await self.db.test.insert_many([{} for _ in range(100)])
+        await self.db.drop_collection("coll")
+        await self.db.coll.insert_many([{} for _ in range(100)])
 
-        c1 = self.db.test.find()
-        async with self.db.test.find() as c2:
+        c1 = self.db.coll.find()
+        async with self.db.coll.find() as c2:
             self.assertTrue(c2.alive)
         self.assertFalse(c2.alive)
 
-        async with self.db.test.find() as c2:
+        async with self.db.coll.find() as c2:
             self.assertEqual(100, len(await c2.to_list()))
         self.assertFalse(c2.alive)
         self.assertTrue(c1.alive)
@@ -1259,18 +1257,18 @@ class TestCursor(AsyncIntegrationTest):
         await self.client.drop_database(self.db)
         await self.db.command("profile", 2)  # Profile ALL commands.
         try:
-            await self.db.test.find().comment("foo").to_list()
+            await self.db.coll.find().comment("foo").to_list()
             count = await self.db.system.profile.count_documents(
-                {"ns": "pymongo_test.test", "op": "query", "command.comment": "foo"}
+                {"ns": "db.coll", "op": "query", "command.comment": "foo"}
             )
             self.assertEqual(count, 1)
 
-            await self.db.test.find().comment("foo").distinct("type")
+            await self.db.coll.find().comment("foo").distinct("type")
             count = await self.db.system.profile.count_documents(
                 {
-                    "ns": "pymongo_test.test",
+                    "ns": "db.coll",
                     "op": "command",
-                    "command.distinct": "test",
+                    "command.distinct": "coll",
                     "command.comment": "foo",
                 }
             )
@@ -1279,16 +1277,16 @@ class TestCursor(AsyncIntegrationTest):
             await self.db.command("profile", 0)  # Turn off profiling.
             await self.db.system.profile.drop()
 
-        await self.db.test.insert_many([{}, {}])
-        cursor = self.db.test.find()
+        await self.db.coll.insert_many([{}, {}])
+        cursor = self.db.coll.find()
         await anext(cursor)
         self.assertRaises(InvalidOperation, cursor.comment, "hello")
 
     async def test_alive(self):
-        await self.db.test.delete_many({})
-        await self.db.test.insert_many([{} for _ in range(3)])
-        self.addAsyncCleanup(self.db.test.delete_many, {})
-        cursor = self.db.test.find().batch_size(2)
+        await self.db.coll.delete_many({})
+        await self.db.coll.insert_many([{} for _ in range(3)])
+        self.addAsyncCleanup(self.db.coll.delete_many, {})
+        cursor = self.db.coll.find().batch_size(2)
         n = 0
         while True:
             await cursor.next()
@@ -1403,7 +1401,7 @@ class TestCursor(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(event_listeners=[listener])
         # We never send primary read preference so override the default.
         coll = client[self.db.name].get_collection(
-            "test", read_preference=ReadPreference.PRIMARY_PREFERRED
+            "coll", read_preference=ReadPreference.PRIMARY_PREFERRED
         )
 
         await coll.delete_many({})
@@ -1443,7 +1441,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual([], docs)
 
     async def test_to_list_length(self):
-        coll = self.db.test
+        coll = self.db.coll
         await coll.insert_many([{} for _ in range(5)])
         self.addAsyncCleanup(coll.drop)
         c = coll.find()
@@ -1471,7 +1469,7 @@ class TestCursor(AsyncIntegrationTest):
     @async_client_context.require_change_streams
     async def test_command_cursor_to_list(self):
         # Set maxAwaitTimeMS=1 to speed up the test.
-        c = await self.db.test.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
+        c = await self.db.coll.aggregate([{"$changeStream": {}}], maxAwaitTimeMS=1)
         self.addAsyncCleanup(c.close)
         docs = await c.to_list()
         self.assertGreaterEqual(len(docs), 0)
@@ -1487,14 +1485,14 @@ class TestCursor(AsyncIntegrationTest):
     @async_client_context.require_change_streams
     async def test_command_cursor_to_list_length(self):
         db = self.db
-        await db.drop_collection("test")
-        await db.test.insert_many([{"foo": 1}, {"foo": 2}])
+        await db.drop_collection("coll")
+        await db.coll.insert_many([{"foo": 1}, {"foo": 2}])
 
         pipeline = {"$project": {"_id": False, "foo": True}}
-        result = await db.test.aggregate([pipeline])
+        result = await db.coll.aggregate([pipeline])
         self.assertEqual(len(await result.to_list()), 2)
 
-        result = await db.test.aggregate([pipeline])
+        result = await db.coll.aggregate([pipeline])
         self.assertEqual(len(await result.to_list(1)), 1)
 
     @async_client_context.require_failCommand_blockConnection
@@ -1520,10 +1518,10 @@ class TestCursor(AsyncIntegrationTest):
 class TestRawBatchCursor(AsyncIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
-        await self.db.test.drop()
+        await self.db.coll.drop()
 
     async def test_find_raw(self):
-        c = self.db.test
+        c = self.db.coll
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
         batches = await c.find_raw_batches().sort("_id").to_list()
@@ -1532,7 +1530,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
 
     @async_client_context.require_transactions
     async def test_find_raw_transaction(self):
-        c = self.db.test
+        c = self.db.coll
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
 
@@ -1561,7 +1559,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
     @async_client_context.require_sessions
     @async_client_context.require_failCommand_fail_point
     async def test_find_raw_retryable_reads(self):
-        c = self.db.test
+        c = self.db.coll
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
 
@@ -1581,7 +1579,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
     @async_client_context.require_version_min(5, 0, 0)
     @async_client_context.require_no_standalone
     async def test_find_raw_snapshot_reads(self):
-        c = self.db.get_collection("test", write_concern=WriteConcern(w="majority"))
+        c = self.db.get_collection("coll", write_concern=WriteConcern(w="majority"))
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
 
@@ -1589,8 +1587,8 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         db = client[self.db.name]
         async with client.start_session(snapshot=True) as session:
-            await db.test.distinct("x", {}, session=session)
-            batches = await db.test.find_raw_batches(session=session).sort("_id").to_list()
+            await db.coll.distinct("x", {}, session=session)
+            batches = await db.coll.find_raw_batches(session=session).sort("_id").to_list()
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
 
@@ -1599,55 +1597,55 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         self.assertIsNotNone(find_cmd["readConcern"]["atClusterTime"])
 
     async def test_explain(self):
-        c = self.db.test
+        c = self.db.coll
         explanation = await c.find_raw_batches().explain()
         self.assertIsInstance(explanation, dict)
 
     async def test_empty(self):
-        cursor = self.db.test.find_raw_batches()
+        cursor = self.db.coll.find_raw_batches()
         with self.assertRaises(StopAsyncIteration):
             await anext(cursor)
 
     async def test_clone(self):
-        await self.db.test.insert_one({})
-        cursor = self.db.test.find_raw_batches()
+        await self.db.coll.insert_one({})
+        cursor = self.db.coll.find_raw_batches()
         # Copy of a RawBatchCursor is also a RawBatchCursor, not a Cursor.
         self.assertIsInstance(await anext(cursor.clone()), bytes)
         self.assertIsInstance(await anext(copy.copy(cursor)), bytes)
 
     @async_client_context.require_no_mongos
     async def test_exhaust(self):
-        c = self.db.test
+        c = self.db.coll
         await c.insert_many({"_id": i} for i in range(200))
         result = b"".join(await c.find_raw_batches(cursor_type=CursorType.EXHAUST).to_list())
         self.assertEqual([{"_id": i} for i in range(200)], decode_all(result))
 
     async def test_server_error(self):
         with self.assertRaises(OperationFailure) as exc:
-            await anext(self.db.test.find_raw_batches({"x": {"$bad": 1}}))
+            await anext(self.db.coll.find_raw_batches({"x": {"$bad": 1}}))
 
         # The server response was decoded, not left raw.
         self.assertIsInstance(exc.exception.details, dict)
 
     async def test_get_item(self):
         with self.assertRaises(InvalidOperation):
-            self.db.test.find_raw_batches()[0]
+            self.db.coll.find_raw_batches()[0]
 
     async def test_collation(self):
-        await self.db.test.insert_one({})
-        await anext(self.db.test.find_raw_batches(collation=Collation("en_US")))
+        await self.db.coll.insert_one({})
+        await anext(self.db.coll.find_raw_batches(collation=Collation("en_US")))
 
     async def test_read_concern(self):
-        await self.db.get_collection("test", write_concern=WriteConcern(w="majority")).insert_one(
+        await self.db.get_collection("coll", write_concern=WriteConcern(w="majority")).insert_one(
             {}
         )
-        c = self.db.get_collection("test", read_concern=ReadConcern("majority"))
+        c = self.db.get_collection("coll", read_concern=ReadConcern("majority"))
         await anext(c.find_raw_batches())
 
     async def test_monitoring(self):
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        c = client.pymongo_test.test
+        c = client.db.coll
         await c.insert_many([{"_id": i} for i in range(10)])
 
         listener.reset()
@@ -1660,10 +1658,10 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         succeeded = listener.succeeded_events[0]
         self.assertEqual(0, len(listener.failed_events))
         self.assertEqual("find", started.command_name)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("find", succeeded.command_name)
         csr = succeeded.reply["cursor"]
-        self.assertEqual(csr["ns"], "pymongo_test.test")
+        self.assertEqual(csr["ns"], "db.coll")
 
         # The batch is a list of one raw bytes object.
         self.assertEqual(len(csr["firstBatch"]), 1)
@@ -1678,10 +1676,10 @@ class TestRawBatchCursor(AsyncIntegrationTest):
             succeeded = listener.succeeded_events[0]
             self.assertEqual(0, len(listener.failed_events))
             self.assertEqual("getMore", started.command_name)
-            self.assertEqual("pymongo_test", started.database_name)
+            self.assertEqual("db", started.database_name)
             self.assertEqual("getMore", succeeded.command_name)
             csr = succeeded.reply["cursor"]
-            self.assertEqual(csr["ns"], "pymongo_test.test")
+            self.assertEqual(csr["ns"], "db.coll")
             self.assertEqual(len(csr["nextBatch"]), 1)
             self.assertEqual(decode_all(csr["nextBatch"][0]), [{"_id": i} for i in range(4, 8)])
         finally:
@@ -1691,7 +1689,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
 
 class TestRawBatchCommandCursor(AsyncIntegrationTest):
     async def test_aggregate_raw(self):
-        c = self.db.test
+        c = self.db.coll
         await c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
@@ -1701,7 +1699,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
 
     @async_client_context.require_transactions
     async def test_aggregate_raw_transaction(self):
-        c = self.db.test
+        c = self.db.coll
         await c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
@@ -1732,7 +1730,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
     @async_client_context.require_sessions
     @async_client_context.require_failCommand_fail_point
     async def test_aggregate_raw_retryable_reads(self):
-        c = self.db.test
+        c = self.db.coll
         await c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
@@ -1756,7 +1754,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
     @async_client_context.require_version_min(5, 0, -1)
     @async_client_context.require_no_standalone
     async def test_aggregate_raw_snapshot_reads(self):
-        c = self.db.get_collection("test", write_concern=WriteConcern(w="majority"))
+        c = self.db.get_collection("coll", write_concern=WriteConcern(w="majority"))
         await c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
@@ -1765,9 +1763,9 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(event_listeners=[listener], retryReads=True)
         db = client[self.db.name]
         async with client.start_session(snapshot=True) as session:
-            await db.test.distinct("x", {}, session=session)
+            await db.coll.distinct("x", {}, session=session)
             batches = await (
-                await db.test.aggregate_raw_batches([{"$sort": {"_id": 1}}], session=session)
+                await db.coll.aggregate_raw_batches([{"$sort": {"_id": 1}}], session=session)
             ).to_list()
         self.assertEqual(1, len(batches))
         self.assertEqual(docs, decode_all(batches[0]))
@@ -1777,7 +1775,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         self.assertIsNotNone(find_cmd["readConcern"]["atClusterTime"])
 
     async def test_server_error(self):
-        c = self.db.test
+        c = self.db.coll
         await c.drop()
         docs = [{"_id": i, "x": 3.0 * i} for i in range(10)]
         await c.insert_many(docs)
@@ -1785,7 +1783,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
 
         with self.assertRaises(OperationFailure) as exc:
             await (
-                await self.db.test.aggregate_raw_batches(
+                await self.db.coll.aggregate_raw_batches(
                     [
                         {
                             "$sort": {"_id": 1},
@@ -1801,15 +1799,15 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
 
     async def test_get_item(self):
         with self.assertRaises(InvalidOperation):
-            (await self.db.test.aggregate_raw_batches([]))[0]
+            (await self.db.coll.aggregate_raw_batches([]))[0]
 
     async def test_collation(self):
-        await anext(await self.db.test.aggregate_raw_batches([], collation=Collation("en_US")))
+        await anext(await self.db.coll.aggregate_raw_batches([], collation=Collation("en_US")))
 
     async def test_monitoring(self):
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        c = client.pymongo_test.test
+        c = client.db.coll
         await c.drop()
         await c.insert_many([{"_id": i} for i in range(10)])
 
@@ -1821,10 +1819,10 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
         succeeded = listener.succeeded_events[0]
         self.assertEqual(0, len(listener.failed_events))
         self.assertEqual("aggregate", started.command_name)
-        self.assertEqual("pymongo_test", started.database_name)
+        self.assertEqual("db", started.database_name)
         self.assertEqual("aggregate", succeeded.command_name)
         csr = succeeded.reply["cursor"]
-        self.assertEqual(csr["ns"], "pymongo_test.test")
+        self.assertEqual(csr["ns"], "db.coll")
 
         # First batch is empty.
         self.assertEqual(len(csr["firstBatch"]), 0)
@@ -1837,10 +1835,10 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
             succeeded = listener.succeeded_events[0]
             self.assertEqual(0, len(listener.failed_events))
             self.assertEqual("getMore", started.command_name)
-            self.assertEqual("pymongo_test", started.database_name)
+            self.assertEqual("db", started.database_name)
             self.assertEqual("getMore", succeeded.command_name)
             csr = succeeded.reply["cursor"]
-            self.assertEqual(csr["ns"], "pymongo_test.test")
+            self.assertEqual(csr["ns"], "db.coll")
             self.assertEqual(len(csr["nextBatch"]), 1)
             self.assertEqual(csr["nextBatch"][0], batch)
             self.assertEqual(decode_all(batch), [{"_id": i} for i in range(n, min(n + 4, 10))])
@@ -1854,7 +1852,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
     async def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        c = client.pymongo_test.test
+        c = client.db.coll
         await c.delete_many({})
         await c.insert_many([{"_id": i} for i in range(3)])
 
@@ -1868,7 +1866,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
             listener.started_command_names(), ["find", "getMore", "getMore", "getMore"]
         )
         for cmd in listener.started_events:
-            self.assertEqual(cmd.command["$db"], "pymongo_test")
+            self.assertEqual(cmd.command["$db"], "db")
 
 
 if __name__ == "__main__":

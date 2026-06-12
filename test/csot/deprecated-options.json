@@ -21,7 +21,7 @@
   "initialData": [
     {
       "collectionName": "coll",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": []
     }
   ],
@@ -53,7 +53,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -164,7 +164,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -253,7 +253,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -344,7 +344,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -455,7 +455,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -544,7 +544,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -608,7 +608,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -665,7 +665,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -709,7 +709,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "writeConcern": {
@@ -767,7 +767,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -816,7 +816,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "writeConcern": {
@@ -868,7 +868,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -949,7 +949,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1030,7 +1030,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1110,7 +1110,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1190,7 +1190,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1271,7 +1271,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1352,7 +1352,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1440,7 +1440,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1488,7 +1488,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1,
                   "writeConcern": {
@@ -1531,7 +1531,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1580,7 +1580,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1,
                   "maxTimeMS": {
@@ -1614,7 +1614,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1695,7 +1695,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1736,7 +1736,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1,
                   "writeConcern": {
@@ -1776,7 +1776,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1857,7 +1857,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -1898,7 +1898,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1,
                   "writeConcern": {
@@ -1938,7 +1938,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2022,7 +2022,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2066,7 +2066,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "ping",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "ping": 1,
                   "writeConcern": {
@@ -2106,7 +2106,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2187,7 +2187,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2228,7 +2228,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1,
                   "writeConcern": {
@@ -2268,7 +2268,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2349,7 +2349,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2390,7 +2390,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "writeConcern": {
@@ -2433,7 +2433,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2475,7 +2475,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -2509,7 +2509,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2590,7 +2590,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2631,7 +2631,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll",
                   "writeConcern": {
@@ -2674,7 +2674,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2716,7 +2716,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll",
                   "maxTimeMS": {
@@ -2750,7 +2750,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2831,7 +2831,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2872,7 +2872,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "writeConcern": {
@@ -2912,7 +2912,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -2992,7 +2992,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3032,7 +3032,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll",
                   "writeConcern": {
@@ -3075,7 +3075,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3116,7 +3116,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll",
                   "maxTimeMS": {
@@ -3150,7 +3150,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3232,7 +3232,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3274,7 +3274,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "distinct",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "distinct": "coll",
                   "writeConcern": {
@@ -3317,7 +3317,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3360,7 +3360,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "distinct",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "distinct": "coll",
                   "maxTimeMS": {
@@ -3394,7 +3394,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3475,7 +3475,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3516,7 +3516,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "writeConcern": {
@@ -3559,7 +3559,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3601,7 +3601,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -3635,7 +3635,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3716,7 +3716,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3757,7 +3757,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "writeConcern": {
@@ -3800,7 +3800,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3842,7 +3842,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -3876,7 +3876,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3956,7 +3956,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -3996,7 +3996,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listIndexes": "coll",
                   "writeConcern": {
@@ -4036,7 +4036,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4116,7 +4116,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4156,7 +4156,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listIndexes": "coll",
                   "writeConcern": {
@@ -4196,7 +4196,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4277,7 +4277,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4318,7 +4318,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "writeConcern": {
@@ -4358,7 +4358,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4441,7 +4441,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4484,7 +4484,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "writeConcern": {
@@ -4524,7 +4524,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4609,7 +4609,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4654,7 +4654,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "writeConcern": {
@@ -4694,7 +4694,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4775,7 +4775,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4816,7 +4816,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "delete",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "delete": "coll",
                   "writeConcern": {
@@ -4856,7 +4856,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4937,7 +4937,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -4978,7 +4978,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "delete",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "delete": "coll",
                   "writeConcern": {
@@ -5018,7 +5018,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5102,7 +5102,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5146,7 +5146,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll",
                   "writeConcern": {
@@ -5186,7 +5186,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5272,7 +5272,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5318,7 +5318,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll",
                   "writeConcern": {
@@ -5358,7 +5358,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5444,7 +5444,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5490,7 +5490,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll",
                   "writeConcern": {
@@ -5530,7 +5530,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5611,7 +5611,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5652,7 +5652,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "writeConcern": {
@@ -5695,7 +5695,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5737,7 +5737,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "maxTimeMS": {
@@ -5771,7 +5771,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5855,7 +5855,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5899,7 +5899,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "writeConcern": {
@@ -5942,7 +5942,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -5987,7 +5987,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "maxTimeMS": {
@@ -6021,7 +6021,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -6107,7 +6107,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -6153,7 +6153,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "writeConcern": {
@@ -6196,7 +6196,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -6243,7 +6243,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "maxTimeMS": {
@@ -6277,7 +6277,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -6366,7 +6366,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -6415,7 +6415,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "writeConcern": {
@@ -6455,7 +6455,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -6539,7 +6539,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -6583,7 +6583,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "createIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "createIndexes": "coll",
                   "writeConcern": {
@@ -6626,7 +6626,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -6671,7 +6671,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "createIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "createIndexes": "coll",
                   "maxTimeMS": {
@@ -6705,7 +6705,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -6797,7 +6797,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -6849,13 +6849,13 @@
             {
               "commandStartedEvent": {
                 "commandName": "createIndexes",
-                "databaseName": "test"
+                "databaseName": "db"
               }
             },
             {
               "commandStartedEvent": {
                 "commandName": "dropIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "dropIndexes": "coll",
                   "writeConcern": {
@@ -6898,7 +6898,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -6950,13 +6950,13 @@
             {
               "commandStartedEvent": {
                 "commandName": "createIndexes",
-                "databaseName": "test"
+                "databaseName": "db"
               }
             },
             {
               "commandStartedEvent": {
                 "commandName": "dropIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "dropIndexes": "coll",
                   "maxTimeMS": {
@@ -6990,7 +6990,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -7081,7 +7081,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -7121,7 +7121,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "dropIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "dropIndexes": "coll",
                   "writeConcern": {
@@ -7164,7 +7164,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -7205,7 +7205,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "dropIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "dropIndexes": "coll",
                   "maxTimeMS": {

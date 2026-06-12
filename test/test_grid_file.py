@@ -61,7 +61,7 @@ class TestGridFileNoConnect(UnitTest):
 
     @classmethod
     def setUpClass(cls):
-        cls.db = MongoClient(connect=False).pymongo_test
+        cls.db = MongoClient(connect=False).db
 
     def test_grid_in_custom_opts(self):
         self.assertRaises(TypeError, GridIn, "foo")
@@ -802,7 +802,7 @@ Bye"""
     def test_unacknowledged(self):
         # w=0 is prohibited.
         with self.assertRaises(ConfigurationError):
-            GridIn((self.rs_or_single_client(w=0)).pymongo_test.fs)
+            GridIn((self.rs_or_single_client(w=0)).db.fs)
 
     def test_survive_cursor_not_found(self):
         # By default the find command returns 101 documents in the first batch.
@@ -811,7 +811,7 @@ Bye"""
         data = b"d" * (102 * chunk_size)
         listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
-        db = client.pymongo_test
+        db = client.db
         with GridIn(db.fs, chunk_size=chunk_size) as infile:
             infile.write(data)
 

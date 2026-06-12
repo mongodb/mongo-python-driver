@@ -61,7 +61,7 @@ class AsyncTestGridFileNoConnect(AsyncUnitTest):
 
     @classmethod
     def setUpClass(cls):
-        cls.db = AsyncMongoClient(connect=False).pymongo_test
+        cls.db = AsyncMongoClient(connect=False).db
 
     def test_grid_in_custom_opts(self):
         self.assertRaises(TypeError, AsyncGridIn, "foo")
@@ -804,7 +804,7 @@ Bye"""
     async def test_unacknowledged(self):
         # w=0 is prohibited.
         with self.assertRaises(ConfigurationError):
-            AsyncGridIn((await self.async_rs_or_single_client(w=0)).pymongo_test.fs)
+            AsyncGridIn((await self.async_rs_or_single_client(w=0)).db.fs)
 
     async def test_survive_cursor_not_found(self):
         # By default the find command returns 101 documents in the first batch.
@@ -813,7 +813,7 @@ Bye"""
         data = b"d" * (102 * chunk_size)
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        db = client.pymongo_test
+        db = client.db
         async with AsyncGridIn(db.fs, chunk_size=chunk_size) as infile:
             await infile.write(data)
 

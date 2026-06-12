@@ -433,7 +433,7 @@ class TestGridfs(AsyncIntegrationTest):
     async def test_unacknowledged(self):
         # w=0 is prohibited.
         with self.assertRaises(ConfigurationError):
-            gridfs.AsyncGridFSBucket((await self.async_rs_or_single_client(w=0)).pymongo_test)
+            gridfs.AsyncGridFSBucket((await self.async_rs_or_single_client(w=0)).db)
 
     async def test_rename(self):
         _id = await self.fs.upload_from_stream("first_name", b"testing")

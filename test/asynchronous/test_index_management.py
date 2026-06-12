@@ -47,7 +47,7 @@ class TestCreateSearchIndex(AsyncIntegrationTest):
     async def test_inputs(self):
         listener = AllowListEventListener("createSearchIndexes")
         client = self.simple_client(event_listeners=[listener])
-        coll = client.test.test
+        coll = client.db.coll
         await coll.drop()
         definition = dict(mappings=dict(dynamic=True))
         model_kwarg_list: list[Mapping[str, Any]] = [

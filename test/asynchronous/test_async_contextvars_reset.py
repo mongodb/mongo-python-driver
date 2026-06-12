@@ -30,7 +30,7 @@ class TestAsyncContextVarsReset(AsyncIntegrationTest):
         if sys.version_info < (3, 12):
             self.skipTest("Test requires asyncio.Task.get_context (added in Python 3.12)")
 
-        await self.client.db.test.insert_one({"x": 1})
+        await self.client.db.coll.insert_one({"x": 1})
         for server in self.client._topology._servers.values():
             for context in [
                 c
@@ -38,4 +38,4 @@ class TestAsyncContextVarsReset(AsyncIntegrationTest):
                 if c.name in ["TIMEOUT", "RTT", "DEADLINE"]
             ]:
                 self.assertIn(context.get(), [None, float("inf"), 0.0])
-        await self.client.db.test.delete_many({})
+        await self.client.db.coll.delete_many({})

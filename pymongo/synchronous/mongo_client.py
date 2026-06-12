@@ -2503,7 +2503,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :class:`~pymongo.operations.DeleteOne`, or
         :class:`~pymongo.operations.DeleteMany`).
 
-          >>> for doc in db.test.find({}):
+          >>> for doc in db.coll.find({}):
           ...     print(doc)
           ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
@@ -2516,10 +2516,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           ...
           >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
           >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
-          >>> models = [InsertOne(namespace="db.test", document={'y': 1}),
-          ...           DeleteOne(namespace="db.test", filter={'x': 1}),
+          >>> models = [InsertOne(namespace="db.coll", document={'y': 1}),
+          ...           DeleteOne(namespace="db.coll", filter={'x': 1}),
           ...           InsertOne(namespace="db.coll", document={'y': 2}),
-          ...           ReplaceOne(namespace="db.test", filter={'w': 1}, replacement={'z': 1}, upsert=True)]
+          ...           ReplaceOne(namespace="db.coll", filter={'w': 1}, replacement={'z': 1}, upsert=True)]
           >>> result = client.bulk_write(models=models)
           >>> result.inserted_count
           2
@@ -2529,7 +2529,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           0
           >>> result.upserted_count
           1
-          >>> for doc in db.test.find({}):
+          >>> for doc in db.coll.find({}):
           ...     print(doc)
           ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}

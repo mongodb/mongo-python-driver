@@ -36,7 +36,7 @@
       "database": {
         "id": "database",
         "client": "client",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -50,7 +50,7 @@
   "initialData": [
     {
       "collectionName": "coll",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": []
     }
   ],
@@ -420,7 +420,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1,
                   "maxTimeMS": {
@@ -482,7 +482,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1,
                   "maxTimeMS": {
@@ -534,7 +534,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1,
                   "maxTimeMS": {
@@ -589,7 +589,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1,
                   "maxTimeMS": {
@@ -641,7 +641,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1,
                   "maxTimeMS": {
@@ -696,7 +696,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listCollections",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listCollections": 1,
                   "maxTimeMS": {
@@ -751,7 +751,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "ping",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "ping": 1,
                   "maxTimeMS": {
@@ -809,7 +809,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "ping",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "ping": 1,
                   "maxTimeMS": {
@@ -861,7 +861,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1,
                   "maxTimeMS": {
@@ -916,7 +916,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": 1,
                   "maxTimeMS": {
@@ -968,7 +968,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -1023,7 +1023,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -1075,7 +1075,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll",
                   "maxTimeMS": {
@@ -1130,7 +1130,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll",
                   "maxTimeMS": {
@@ -1182,7 +1182,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -1237,7 +1237,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -1288,7 +1288,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll",
                   "maxTimeMS": {
@@ -1342,7 +1342,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll",
                   "maxTimeMS": {
@@ -1395,7 +1395,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "distinct",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "distinct": "coll",
                   "maxTimeMS": {
@@ -1451,7 +1451,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "distinct",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "distinct": "coll",
                   "maxTimeMS": {
@@ -1503,7 +1503,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -1558,7 +1558,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -1610,7 +1610,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -1665,7 +1665,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -1716,7 +1716,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listIndexes": "coll",
                   "maxTimeMS": {
@@ -1770,7 +1770,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listIndexes": "coll",
                   "maxTimeMS": {
@@ -1821,7 +1821,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listIndexes": "coll",
                   "maxTimeMS": {
@@ -1875,7 +1875,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "listIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "listIndexes": "coll",
                   "maxTimeMS": {
@@ -1927,7 +1927,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -1982,7 +1982,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -2036,7 +2036,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "maxTimeMS": {
@@ -2093,7 +2093,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "maxTimeMS": {
@@ -2149,7 +2149,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "maxTimeMS": {
@@ -2208,7 +2208,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "maxTimeMS": {
@@ -2260,7 +2260,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "delete",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "delete": "coll",
                   "maxTimeMS": {
@@ -2315,7 +2315,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "delete",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "delete": "coll",
                   "maxTimeMS": {
@@ -2367,7 +2367,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "delete",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "delete": "coll",
                   "maxTimeMS": {
@@ -2422,7 +2422,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "delete",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "delete": "coll",
                   "maxTimeMS": {
@@ -2477,7 +2477,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll",
                   "maxTimeMS": {
@@ -2535,7 +2535,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll",
                   "maxTimeMS": {
@@ -2592,7 +2592,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll",
                   "maxTimeMS": {
@@ -2652,7 +2652,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll",
                   "maxTimeMS": {
@@ -2709,7 +2709,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll",
                   "maxTimeMS": {
@@ -2769,7 +2769,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "update",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "update": "coll",
                   "maxTimeMS": {
@@ -2821,7 +2821,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "maxTimeMS": {
@@ -2876,7 +2876,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "maxTimeMS": {
@@ -2931,7 +2931,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "maxTimeMS": {
@@ -2989,7 +2989,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "maxTimeMS": {
@@ -3046,7 +3046,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "maxTimeMS": {
@@ -3106,7 +3106,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "findAndModify",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "findAndModify": "coll",
                   "maxTimeMS": {
@@ -3166,7 +3166,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "maxTimeMS": {
@@ -3229,7 +3229,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "maxTimeMS": {
@@ -3284,7 +3284,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "createIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "createIndexes": "coll",
                   "maxTimeMS": {
@@ -3342,7 +3342,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "createIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "createIndexes": "coll",
                   "maxTimeMS": {
@@ -3405,13 +3405,13 @@
             {
               "commandStartedEvent": {
                 "commandName": "createIndexes",
-                "databaseName": "test"
+                "databaseName": "db"
               }
             },
             {
               "commandStartedEvent": {
                 "commandName": "dropIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "dropIndexes": "coll",
                   "maxTimeMS": {
@@ -3477,13 +3477,13 @@
             {
               "commandStartedEvent": {
                 "commandName": "createIndexes",
-                "databaseName": "test"
+                "databaseName": "db"
               }
             },
             {
               "commandStartedEvent": {
                 "commandName": "dropIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "dropIndexes": "coll",
                   "maxTimeMS": {
@@ -3534,7 +3534,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "dropIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "dropIndexes": "coll",
                   "maxTimeMS": {
@@ -3588,7 +3588,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "dropIndexes",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "dropIndexes": "coll",
                   "maxTimeMS": {

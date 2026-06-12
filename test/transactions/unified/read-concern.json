@@ -49,7 +49,7 @@
       "collection": {
         "id": "collection_rc_majority",
         "database": "database0",
-        "collectionName": "test",
+        "collectionName": "coll",
         "collectionOptions": {
           "readConcern": {
             "level": "majority"
@@ -66,7 +66,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "transaction-tests",
       "documents": [
         {
@@ -240,7 +240,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -356,7 +356,7 @@
                       "long"
                     ]
                   },
-                  "collection": "test",
+                  "collection": "coll",
                   "batchSize": 3,
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -408,7 +408,7 @@
                       "long"
                     ]
                   },
-                  "collection": "test",
+                  "collection": "coll",
                   "batchSize": 3,
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -458,7 +458,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -595,7 +595,7 @@
                       "long"
                     ]
                   },
-                  "collection": "test",
+                  "collection": "coll",
                   "batchSize": 3,
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -656,7 +656,7 @@
                       "long"
                     ]
                   },
-                  "collection": "test",
+                  "collection": "coll",
                   "batchSize": 3,
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -706,7 +706,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -856,7 +856,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -996,7 +996,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -1165,7 +1165,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -1276,7 +1276,7 @@
                       "long"
                     ]
                   },
-                  "collection": "test",
+                  "collection": "coll",
                   "batchSize": 3,
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -1328,7 +1328,7 @@
                       "long"
                     ]
                   },
-                  "collection": "test",
+                  "collection": "coll",
                   "batchSize": 3,
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -1378,7 +1378,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -1510,7 +1510,7 @@
                       "long"
                     ]
                   },
-                  "collection": "test",
+                  "collection": "coll",
                   "batchSize": 3,
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -1571,7 +1571,7 @@
                       "long"
                     ]
                   },
-                  "collection": "test",
+                  "collection": "coll",
                   "batchSize": 3,
                   "lsid": {
                     "$$sessionLsid": "session0"
@@ -1621,7 +1621,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -1766,7 +1766,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -1901,7 +1901,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {

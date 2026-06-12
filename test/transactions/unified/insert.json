@@ -37,7 +37,7 @@
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     },
     {
@@ -55,7 +55,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "transaction-tests",
       "documents": []
     }
@@ -326,7 +326,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -571,7 +571,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -618,7 +618,7 @@
                 "collection": {
                   "id": "collection_wc_majority",
                   "database": "database1",
-                  "collectionName": "test",
+                  "collectionName": "coll",
                   "collectionOptions": {
                     "writeConcern": {
                       "w": "majority"
@@ -695,7 +695,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -717,7 +717,7 @@
                 "collection": {
                   "id": "collection_wc_majority",
                   "database": "database0",
-                  "collectionName": "test",
+                  "collectionName": "coll",
                   "collectionOptions": {
                     "writeConcern": {
                       "w": "majority"
@@ -875,7 +875,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {

@@ -102,7 +102,7 @@ class TestCollation(IntegrationTest):
         super().setUp()
         self.listener = OvertCommandListener()
         self.client = self.rs_or_single_client(event_listeners=[self.listener])
-        self.db = self.client.pymongo_test
+        self.db = self.client.db
         self.collation = Collation("en_US")
         self.warn_context = warnings.catch_warnings()
         self.warn_context.__enter__()
@@ -120,14 +120,14 @@ class TestCollation(IntegrationTest):
         self.assertEqual(self.collation.document, self.last_command_started()["collation"])
 
     def test_create_collection(self):
-        self.db.test.drop()
-        self.db.create_collection("test", collation=self.collation)
+        self.db.coll.drop()
+        self.db.create_collection("coll", collation=self.collation)
         self.assertCollationInLastCommand()
 
         # Test passing collation as a dict as well.
-        self.db.test.drop()
+        self.db.coll.drop()
         self.listener.reset()
-        self.db.create_collection("test", collation=self.collation.document)
+        self.db.create_collection("coll", collation=self.collation.document)
         self.assertCollationInLastCommand()
 
     def test_index_model(self):
@@ -135,81 +135,81 @@ class TestCollation(IntegrationTest):
         self.assertEqual(self.collation.document, model.document["collation"])
 
     def test_create_index(self):
-        self.db.test.create_index("foo", collation=self.collation)
+        self.db.coll.create_index("foo", collation=self.collation)
         ci_cmd = self.listener.started_events[0].command
         self.assertEqual(self.collation.document, ci_cmd["indexes"][0]["collation"])
 
     def test_aggregate(self):
-        self.db.test.aggregate([{"$group": {"_id": 42}}], collation=self.collation)
+        self.db.coll.aggregate([{"$group": {"_id": 42}}], collation=self.collation)
         self.assertCollationInLastCommand()
 
     def test_count_documents(self):
-        self.db.test.count_documents({}, collation=self.collation)
+        self.db.coll.count_documents({}, collation=self.collation)
         self.assertCollationInLastCommand()
 
     def test_distinct(self):
-        self.db.test.distinct("foo", collation=self.collation)
+        self.db.coll.distinct("foo", collation=self.collation)
         self.assertCollationInLastCommand()
 
         self.listener.reset()
-        self.db.test.find(collation=self.collation).distinct("foo")
+        self.db.coll.find(collation=self.collation).distinct("foo")
         self.assertCollationInLastCommand()
 
     def test_find_command(self):
-        self.db.test.insert_one({"is this thing on?": True})
+        self.db.coll.insert_one({"is this thing on?": True})
         self.listener.reset()
-        next(self.db.test.find(collation=self.collation))
+        next(self.db.coll.find(collation=self.collation))
         self.assertCollationInLastCommand()
 
     def test_explain_command(self):
         self.listener.reset()
-        self.db.test.find(collation=self.collation).explain()
+        self.db.coll.find(collation=self.collation).explain()
         # The collation should be part of the explained command.
         self.assertEqual(
             self.collation.document, self.last_command_started()["explain"]["collation"]
         )
 
     def test_delete(self):
-        self.db.test.delete_one({"foo": 42}, collation=self.collation)
+        self.db.coll.delete_one({"foo": 42}, collation=self.collation)
         command = self.listener.started_events[0].command
         self.assertEqual(self.collation.document, command["deletes"][0]["collation"])
 
         self.listener.reset()
-        self.db.test.delete_many({"foo": 42}, collation=self.collation)
+        self.db.coll.delete_many({"foo": 42}, collation=self.collation)
         command = self.listener.started_events[0].command
         self.assertEqual(self.collation.document, command["deletes"][0]["collation"])
 
     def test_update(self):
-        self.db.test.replace_one({"foo": 42}, {"foo": 43}, collation=self.collation)
+        self.db.coll.replace_one({"foo": 42}, {"foo": 43}, collation=self.collation)
         command = self.listener.started_events[0].command
         self.assertEqual(self.collation.document, command["updates"][0]["collation"])
 
         self.listener.reset()
-        self.db.test.update_one({"foo": 42}, {"$set": {"foo": 43}}, collation=self.collation)
+        self.db.coll.update_one({"foo": 42}, {"$set": {"foo": 43}}, collation=self.collation)
         command = self.listener.started_events[0].command
         self.assertEqual(self.collation.document, command["updates"][0]["collation"])
 
         self.listener.reset()
-        self.db.test.update_many({"foo": 42}, {"$set": {"foo": 43}}, collation=self.collation)
+        self.db.coll.update_many({"foo": 42}, {"$set": {"foo": 43}}, collation=self.collation)
         command = self.listener.started_events[0].command
         self.assertEqual(self.collation.document, command["updates"][0]["collation"])
 
     def test_find_and(self):
-        self.db.test.find_one_and_delete({"foo": 42}, collation=self.collation)
+        self.db.coll.find_one_and_delete({"foo": 42}, collation=self.collation)
         self.assertCollationInLastCommand()
 
         self.listener.reset()
-        self.db.test.find_one_and_update(
+        self.db.coll.find_one_and_update(
             {"foo": 42}, {"$set": {"foo": 43}}, collation=self.collation
         )
         self.assertCollationInLastCommand()
 
         self.listener.reset()
-        self.db.test.find_one_and_replace({"foo": 42}, {"foo": 43}, collation=self.collation)
+        self.db.coll.find_one_and_replace({"foo": 42}, {"foo": 43}, collation=self.collation)
         self.assertCollationInLastCommand()
 
     def test_bulk_write(self):
-        self.db.test.collection.bulk_write(
+        self.db.coll.collection.bulk_write(
             [
                 DeleteOne({"noCollation": 42}),
                 DeleteMany({"noCollation": 42}),
@@ -240,32 +240,32 @@ class TestCollation(IntegrationTest):
         check_ops(update_cmd["updates"])
 
     def test_indexes_same_keys_different_collations(self):
-        self.db.test.drop()
+        self.db.coll.drop()
         usa_collation = Collation("en_US")
         ja_collation = Collation("ja")
-        self.db.test.create_indexes(
+        self.db.coll.create_indexes(
             [
                 IndexModel("fieldname", collation=usa_collation),
                 IndexModel("fieldname", name="japanese_version", collation=ja_collation),
                 IndexModel("fieldname", name="simple"),
             ]
         )
-        indexes = self.db.test.index_information()
+        indexes = self.db.coll.index_information()
         self.assertEqual(
             usa_collation.document["locale"], indexes["fieldname_1"]["collation"]["locale"]
         )
         self.assertEqual(
             ja_collation.document["locale"], indexes["japanese_version"]["collation"]["locale"]
         )
-        self.db.test.drop_index("fieldname_1")
-        indexes = self.db.test.index_information()
+        self.db.coll.drop_index("fieldname_1")
+        indexes = self.db.coll.index_information()
         self.assertIn("japanese_version", indexes)
         self.assertIn("simple", indexes)
         self.assertNotIn("fieldname", indexes)
 
     def test_unacknowledged_write(self):
         unacknowledged = WriteConcern(w=0)
-        collection = self.db.get_collection("test", write_concern=unacknowledged)
+        collection = self.db.get_collection("coll", write_concern=unacknowledged)
         with self.assertRaises(ConfigurationError):
             collection.update_one(
                 {"hello": "world"}, {"$set": {"hello": "moon"}}, collation=self.collation
@@ -277,6 +277,6 @@ class TestCollation(IntegrationTest):
             collection.bulk_write([update_one])
 
     def test_cursor_collation(self):
-        self.db.test.insert_one({"hello": "world"})
-        next(self.db.test.find().collation(self.collation))
+        self.db.coll.insert_one({"hello": "world"})
+        next(self.db.coll.find().collation(self.collation))
         self.assertCollationInLastCommand()

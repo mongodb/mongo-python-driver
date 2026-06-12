@@ -82,7 +82,7 @@ class TestGridfsNoConnect(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         await super().asyncSetUp()
-        self.db = AsyncMongoClient(connect=False).pymongo_test
+        self.db = AsyncMongoClient(connect=False).db
 
     async def test_gridfs(self):
         self.assertRaises(TypeError, gridfs.AsyncGridFS, "foo")
@@ -527,7 +527,7 @@ class TestGridfs(AsyncIntegrationTest):
     async def test_unacknowledged(self):
         # w=0 is prohibited.
         with self.assertRaises(ConfigurationError):
-            gridfs.AsyncGridFS((await self.async_rs_or_single_client(w=0)).pymongo_test)
+            gridfs.AsyncGridFS((await self.async_rs_or_single_client(w=0)).db)
 
     async def test_md5(self):
         gin = self.fs.new_file()

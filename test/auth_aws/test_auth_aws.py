@@ -52,7 +52,7 @@ class TestAuthAWS(PyMongoTestCase):
         self.assertTrue(hosts)
         with MongoClient(hosts) as client:
             with self.assertRaises(OperationFailure):
-                client.aws.test.find_one()
+                client.aws.coll.find_one()
 
     def test_should_fail_incorrect_credentials(self):
         with MongoClient(

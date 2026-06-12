@@ -34,7 +34,7 @@
       "database": {
         "id": "database",
         "client": "client",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -48,7 +48,7 @@
   "initialData": [
     {
       "collectionName": "coll",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": [
         {
           "_id": 0
@@ -63,7 +63,7 @@
     },
     {
       "collectionName": "aggregateOutputColl",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": []
     }
   ],
@@ -110,7 +110,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -170,7 +170,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -185,7 +185,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [
@@ -249,7 +249,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -264,7 +264,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [
@@ -325,7 +325,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -380,7 +380,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -392,7 +392,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [
@@ -454,7 +454,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "coll",
                   "maxTimeMS": {
@@ -466,7 +466,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [

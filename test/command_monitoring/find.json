@@ -23,7 +23,7 @@
       "collection": {
         "id": "collection",
         "database": "database",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     }
   ],
@@ -32,7 +32,7 @@
   },
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "command-monitoring-tests",
       "documents": [
         {
@@ -354,7 +354,7 @@
                       "long"
                     ]
                   },
-                  "collection": "test",
+                  "collection": "coll",
                   "batchSize": 3
                 },
                 "commandName": "getMore",
@@ -482,7 +482,7 @@
                       "long"
                     ]
                   },
-                  "collection": "test",
+                  "collection": "coll",
                   "batchSize": 1
                 },
                 "commandName": "getMore",

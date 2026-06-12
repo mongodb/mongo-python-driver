@@ -106,15 +106,15 @@ class Update(threading.Thread):
 class TestThreads(IntegrationTest):
     def setUp(self):
         super().setUp()
-        self.db = self.client.pymongo_test
+        self.db = self.client.db
 
     def test_threading(self):
-        self.db.drop_collection("test")
-        self.db.test.insert_many([{"x": i} for i in range(1000)])
+        self.db.drop_collection("coll")
+        self.db.coll.insert_many([{"x": i} for i in range(1000)])
 
         threads = []
         for _i in range(10):
-            t = SaveAndFind(self.db.test)
+            t = SaveAndFind(self.db.coll)
             t.start()
             threads.append(t)
 
@@ -122,15 +122,15 @@ class TestThreads(IntegrationTest):
 
     def test_safe_insert(self):
         self.db.drop_collection("test1")
-        self.db.test1.insert_one({"test": "insert"})
+        self.db.coll1.insert_one({"test": "insert"})
         self.db.drop_collection("test2")
-        self.db.test2.insert_one({"test": "insert"})
+        self.db.coll2.insert_one({"test": "insert"})
 
-        self.db.test2.create_index("test", unique=True)
-        self.db.test2.find_one()
+        self.db.coll2.create_index("test", unique=True)
+        self.db.coll2.find_one()
 
-        okay = Insert(self.db.test1, 2000, False)
-        error = Insert(self.db.test2, 2000, True)
+        okay = Insert(self.db.coll1, 2000, False)
+        error = Insert(self.db.coll2, 2000, True)
 
         error.start()
         okay.start()
@@ -140,17 +140,17 @@ class TestThreads(IntegrationTest):
 
     def test_safe_update(self):
         self.db.drop_collection("test1")
-        self.db.test1.insert_one({"test": "update"})
-        self.db.test1.insert_one({"test": "unique"})
+        self.db.coll1.insert_one({"test": "update"})
+        self.db.coll1.insert_one({"test": "unique"})
         self.db.drop_collection("test2")
-        self.db.test2.insert_one({"test": "update"})
-        self.db.test2.insert_one({"test": "unique"})
+        self.db.coll2.insert_one({"test": "update"})
+        self.db.coll2.insert_one({"test": "unique"})
 
-        self.db.test2.create_index("test", unique=True)
-        self.db.test2.find_one()
+        self.db.coll2.create_index("test", unique=True)
+        self.db.coll2.find_one()
 
-        okay = Update(self.db.test1, 2000, False)
-        error = Update(self.db.test2, 2000, True)
+        okay = Update(self.db.coll1, 2000, False)
+        error = Update(self.db.coll2, 2000, True)
 
         error.start()
         okay.start()

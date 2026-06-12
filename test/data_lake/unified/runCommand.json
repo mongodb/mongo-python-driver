@@ -14,7 +14,7 @@
       "database": {
         "id": "database0",
         "client": "client0",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     }
   ],
@@ -43,7 +43,7 @@
                   "ping": 1
                 },
                 "commandName": "ping",
-                "databaseName": "test"
+                "databaseName": "db"
               }
             }
           ]

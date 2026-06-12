@@ -47,7 +47,7 @@ class TestSampleShellCommands(AsyncIntegrationTest):
     async def asyncTearDown(self):
         # Run after every test.
         await self.db.inventory.drop()
-        await self.client.drop_database("pymongo_test")
+        await self.client.drop_database("db")
 
     async def test_first_three_examples(self):
         db = self.db
@@ -923,11 +923,11 @@ class TestSampleShellCommands(AsyncIntegrationTest):
     async def test_misc(self):
         # Marketing examples
         client = self.client
-        self.addAsyncCleanup(client.drop_database, "test")
-        self.addAsyncCleanup(client.drop_database, "my_database")
+        self.addAsyncCleanup(client.drop_database, "db")
+        self.addAsyncCleanup(client.drop_database, "db2")
 
         # 2. Tunable consistency controls
-        collection = client.my_database.my_collection
+        collection = client.db2.coll
         async with client.start_session() as session:
             await collection.insert_one({"_id": 1}, session=session)
             await collection.update_one({"_id": 1}, {"$set": {"a": 1}}, session=session)
@@ -935,7 +935,7 @@ class TestSampleShellCommands(AsyncIntegrationTest):
                 pass
 
         # 3. Exploiting the power of arrays
-        collection = client.test.array_updates_test
+        collection = client.db.array_updates_test
         await collection.update_one(
             {"_id": 1}, {"$set": {"a.$[i].b": 2}}, array_filters=[{"i.b": 0}]
         )
@@ -1165,9 +1165,9 @@ class TestCausalConsistencyExamples(AsyncIntegrationTest):
     async def test_causal_consistency(self):
         # Causal consistency examples
         client = self.client
-        self.addAsyncCleanup(client.drop_database, "test")
-        await client.test.drop_collection("items")
-        await client.test.items.insert_one(
+        self.addAsyncCleanup(client.drop_database, "db")
+        await client.db.drop_collection("items")
+        await client.db.items.insert_one(
             {"sku": "111", "name": "Peanuts", "start": datetime.datetime.today()}
         )
 
@@ -1175,7 +1175,7 @@ class TestCausalConsistencyExamples(AsyncIntegrationTest):
         async with client.start_session(causal_consistency=True) as s1:
             current_date = datetime.datetime.today()
             items = client.get_database(
-                "test",
+                "db",
                 read_concern=ReadConcern("majority"),
                 write_concern=WriteConcern("majority", wtimeout=1000),
             ).items
@@ -1196,7 +1196,7 @@ class TestCausalConsistencyExamples(AsyncIntegrationTest):
             s2.advance_operation_time(s1.operation_time)
 
             items = client.get_database(
-                "test",
+                "db",
                 read_preference=ReadPreference.SECONDARY,
                 read_concern=ReadConcern("majority"),
                 write_concern=WriteConcern("majority", wtimeout=1000),

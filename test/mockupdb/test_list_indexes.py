@@ -40,12 +40,12 @@ class TestListIndexes(PyMongoTestCase):
         server.run()
         self.addCleanup(server.stop)
         client = self.simple_client(server.uri)
-        with going(client.test.collection.list_indexes) as cursor:
-            request = server.receives(listIndexes="collection", namespace="test")
+        with going(client.db.coll.list_indexes) as cursor:
+            request = server.receives(listIndexes="coll", namespace="db")
             request.reply({"cursor": {"firstBatch": [{"name": "index_0"}], "id": 123}})
 
         with going(list, cursor()) as indexes:
-            request = server.receives(getMore=123, namespace="test", collection="collection")
+            request = server.receives(getMore=123, namespace="db", collection="coll")
 
             request.reply({"cursor": {"nextBatch": [{"name": "index_1"}], "id": 0}})
 

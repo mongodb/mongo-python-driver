@@ -71,7 +71,7 @@ class TestQueryAndReadModeSharded(PyMongoTestCase):
             {"$query": {"a": 1}},
         ):
             for pref in read_prefs:
-                collection = client.db.get_collection("test", read_preference=pref)
+                collection = client.db.get_collection("coll", read_preference=pref)
                 cursor = collection.find(query.copy())
                 with going(next, cursor):
                     request = server.receives()

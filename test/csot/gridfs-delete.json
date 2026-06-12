@@ -30,7 +30,7 @@
       "database": {
         "id": "database",
         "client": "client",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -57,7 +57,7 @@
   "initialData": [
     {
       "collectionName": "fs.files",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": [
         {
           "_id": {
@@ -77,7 +77,7 @@
     },
     {
       "collectionName": "fs.chunks",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": [
         {
           "_id": {
@@ -191,7 +191,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "delete",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "delete": "fs.files",
                   "maxTimeMS": {

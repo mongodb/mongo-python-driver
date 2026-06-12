@@ -46,7 +46,7 @@ class TestServerApiIntegration(IntegrationTest):
     def test_command_options(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(server_api=ServerApi("1"), event_listeners=[listener])
-        coll = client.test.test
+        coll = client.db.coll
         coll.insert_many([{} for _ in range(100)])
         self.addCleanup(coll.delete_many, {})
         coll.find(batch_size=25).to_list()
@@ -58,7 +58,7 @@ class TestServerApiIntegration(IntegrationTest):
     def test_command_options_txn(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(server_api=ServerApi("1"), event_listeners=[listener])
-        coll = client.test.test
+        coll = client.db.coll
         coll.insert_many([{} for _ in range(100)])
         self.addCleanup(coll.delete_many, {})
 
@@ -66,7 +66,7 @@ class TestServerApiIntegration(IntegrationTest):
         with client.start_session() as s, s.start_transaction():
             coll.insert_many([{} for _ in range(100)], session=s)
             coll.find(batch_size=25, session=s).to_list()
-            client.test.command("find", "test", session=s)
+            client.db.command("find", "db", session=s)
             self.assertServerApiInAllCommands(listener.started_events)
 
 

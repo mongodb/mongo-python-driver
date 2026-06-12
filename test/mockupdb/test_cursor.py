@@ -79,8 +79,8 @@ class TestRetryableErrorCodeCatch(PyMongoTestCase):
 
         client = self.simple_client(server.uri)
 
-        with going(lambda: server.receives(OpMsg({"find": "collection"})).command_err(code=code)):
-            cursor = client.db.collection.find()
+        with going(lambda: server.receives(OpMsg({"find": "coll"})).command_err(code=code)):
+            cursor = client.db.coll.find()
             with self.assertRaises(OperationFailure) as ctx:
                 cursor.next()
             self.assertEqual(ctx.exception.code, code)

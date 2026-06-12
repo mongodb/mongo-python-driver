@@ -119,23 +119,23 @@ class TestCommon(IntegrationTest):
         self.assertEqual(wc, c.write_concern)
 
         # Can we override back to the server default?
-        db = c.get_database("pymongo_test", write_concern=WriteConcern())
+        db = c.get_database("db", write_concern=WriteConcern())
         self.assertEqual(db.write_concern, WriteConcern())
 
-        db = c.pymongo_test
+        db = c.db
         self.assertEqual(wc, db.write_concern)
-        coll = db.test
+        coll = db.coll
         self.assertEqual(wc, coll.write_concern)
 
         cwc = WriteConcern(j=True)
-        coll = db.get_collection("test", write_concern=cwc)
+        coll = db.get_collection("coll", write_concern=cwc)
         self.assertEqual(cwc, coll.write_concern)
         self.assertEqual(wc, db.write_concern)
 
     def test_mongo_client(self):
         pair = client_context.pair
         m = self.rs_or_single_client(w=0)
-        coll = m.pymongo_test.write_concern_test
+        coll = m.db.write_concern_test
         coll.drop()
         doc = {"_id": ObjectId()}
         coll.insert_one(doc)
@@ -145,7 +145,7 @@ class TestCommon(IntegrationTest):
             coll.insert_one(doc)
 
         m = self.rs_or_single_client()
-        coll = m.pymongo_test.write_concern_test
+        coll = m.db.write_concern_test
         new_coll = coll.with_options(write_concern=WriteConcern(w=0))
         self.assertTrue(new_coll.insert_one(doc))
         with self.assertRaises(OperationFailure):
@@ -155,14 +155,14 @@ class TestCommon(IntegrationTest):
             f"mongodb://{pair}/", replicaSet=client_context.replica_set_name
         )
 
-        coll = m.pymongo_test.write_concern_test
+        coll = m.db.write_concern_test
         with self.assertRaises(OperationFailure):
             coll.insert_one(doc)
         m = self.rs_or_single_client(
             f"mongodb://{pair}/?w=0", replicaSet=client_context.replica_set_name
         )
 
-        coll = m.pymongo_test.write_concern_test
+        coll = m.db.write_concern_test
         coll.insert_one(doc)
 
         # Equality tests
@@ -172,11 +172,11 @@ class TestCommon(IntegrationTest):
         self.assertFalse(direct != direct2)
 
     def test_validate_boolean(self):
-        self.db.test.update_one({}, {"$set": {"total": 1}}, upsert=True)
+        self.db.coll.update_one({}, {"$set": {"total": 1}}, upsert=True)
         with self.assertRaisesRegex(
             TypeError, "upsert must be True or False, was: upsert={'upsert': True}"
         ):
-            self.db.test.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
+            self.db.coll.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
 
 
 if __name__ == "__main__":

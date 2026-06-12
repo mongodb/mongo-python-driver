@@ -133,9 +133,7 @@ class TestSSL(IntegrationTest):
     saved_port: int
 
     def assertClientWorks(self, client):
-        coll = client.pymongo_test.ssl_test.with_options(
-            write_concern=WriteConcern(w=client_context.w)
-        )
+        coll = client.db.ssl_test.with_options(write_concern=WriteConcern(w=client_context.w))
         coll.drop()
         coll.insert_one({"ssl": True})
         self.assertTrue((coll.find_one())["ssl"])
@@ -559,7 +557,7 @@ class TestSSL(IntegrationTest):
         )
 
         with self.assertRaises(OperationFailure):
-            noauth.pymongo_test.test.find_one()
+            noauth.db.coll.find_one()
 
         listener = EventListener()
         auth = self.simple_client(
@@ -572,7 +570,7 @@ class TestSSL(IntegrationTest):
         )
 
         # No error
-        auth.pymongo_test.test.find_one()
+        auth.db.coll.find_one()
         names = listener.started_command_names()
         if client_context.version.at_least(4, 4, -1):
             # Speculative auth skips the authenticate command.
@@ -589,14 +587,14 @@ class TestSSL(IntegrationTest):
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
         # No error
-        client.pymongo_test.test.find_one()
+        client.db.coll.find_one()
 
         uri = "mongodb://%s:%d/?authMechanism=MONGODB-X509" % (host, port)
         client = self.simple_client(
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
         # No error
-        client.pymongo_test.test.find_one()
+        client.db.coll.find_one()
         # Auth should fail if username and certificate do not match
         uri = "mongodb://%s@%s:%d/?authMechanism=MONGODB-X509" % (
             quote_plus("not the username"),
@@ -609,7 +607,7 @@ class TestSSL(IntegrationTest):
         )
 
         with self.assertRaises(OperationFailure):
-            bad_client.pymongo_test.test.find_one()
+            bad_client.db.coll.find_one()
 
         bad_client = self.simple_client(
             client_context.pair,
@@ -621,7 +619,7 @@ class TestSSL(IntegrationTest):
         )
 
         with self.assertRaises(OperationFailure):
-            bad_client.pymongo_test.test.find_one()
+            bad_client.db.coll.find_one()
 
         # Invalid certificate (using CA certificate as client certificate)
         uri = "mongodb://%s@%s:%d/?authMechanism=MONGODB-X509" % (

@@ -231,7 +231,7 @@ class TestGSSAPI(AsyncPyMongoTestCase):
         # collection.find_one with a 1-second delay, forcing it to check out
         # multiple connections from the pool concurrently, proving that
         # auto-authentication works with GSSAPI.
-        collection = db.test
+        collection = db.coll
         if not await collection.count_documents({}):
             try:
                 await collection.drop()
@@ -403,11 +403,11 @@ class TestSCRAMSHA1(AsyncIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
         await async_client_context.create_user(
-            "pymongo_test", "user", "pass", roles=["userAdmin", "readWrite"]
+            "db", "user", "pass", roles=["userAdmin", "readWrite"]
         )
 
     async def asyncTearDown(self):
-        await async_client_context.drop_user("pymongo_test", "user")
+        await async_client_context.drop_user("db", "user")
         await super().asyncTearDown()
 
     @async_client_context.require_no_fips
@@ -415,19 +415,19 @@ class TestSCRAMSHA1(AsyncIntegrationTest):
         host, port = await async_client_context.host, await async_client_context.port
 
         client = await self.async_rs_or_single_client_noauth(
-            "mongodb://user:pass@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1" % (host, port)
+            "mongodb://user:pass@%s:%d/db?authMechanism=SCRAM-SHA-1" % (host, port)
         )
-        await client.pymongo_test.command("dbstats")
+        await client.db.command("dbstats")
 
         if async_client_context.is_rs:
-            uri = (
-                "mongodb://user:pass"
-                "@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1"
-                "&replicaSet=%s" % (host, port, async_client_context.replica_set_name)
+            uri = "mongodb://user:pass" "@%s:%d/db?authMechanism=SCRAM-SHA-1" "&replicaSet=%s" % (
+                host,
+                port,
+                async_client_context.replica_set_name,
             )
             client = await self.async_single_client_noauth(uri)
-            await client.pymongo_test.command("dbstats")
-            db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
+            await client.db.command("dbstats")
+            db = client.get_database("db", read_preference=ReadPreference.SECONDARY)
             await db.command("dbstats")
 
 
@@ -654,13 +654,13 @@ class TestSCRAM(AsyncIntegrationTest):
 
     @async_client_context.require_sync
     async def test_scram_threaded(self):
-        coll = async_client_context.client.db.test
+        coll = async_client_context.client.db.coll
         await coll.drop()
         await coll.insert_one({"_id": 1})
 
         # The first thread to call find() will authenticate
         client = await self.async_rs_or_single_client()
-        coll = client.db.test
+        coll = client.db.coll
         threads = []
         for _ in range(4):
             threads.append(AutoAuthenticateThread(coll))
@@ -676,12 +676,10 @@ class TestAuthURIOptions(AsyncIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
         await async_client_context.create_user("admin", "admin", "pass")
-        await async_client_context.create_user(
-            "pymongo_test", "user", "pass", ["userAdmin", "readWrite"]
-        )
+        await async_client_context.create_user("db", "user", "pass", ["userAdmin", "readWrite"])
 
     async def asyncTearDown(self):
-        await async_client_context.drop_user("pymongo_test", "user")
+        await async_client_context.drop_user("db", "user")
         await async_client_context.drop_user("admin", "admin")
         await super().asyncTearDown()
 
@@ -705,14 +703,14 @@ class TestAuthURIOptions(AsyncIntegrationTest):
             self.assertTrue(await db.command("dbstats"))
 
         # Test explicit database
-        uri = "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)
+        uri = "mongodb://user:pass@%s:%d/db" % (host, port)
         client = await self.async_rs_or_single_client_noauth(uri)
         with self.assertRaises(OperationFailure):
             await client.admin.command("dbstats")
-        self.assertTrue(await client.pymongo_test.command("dbstats"))
+        self.assertTrue(await client.db.command("dbstats"))
 
         if async_client_context.is_rs:
-            uri = "mongodb://user:pass@%s:%d/pymongo_test?replicaSet=%s" % (
+            uri = "mongodb://user:pass@%s:%d/db?replicaSet=%s" % (
                 host,
                 port,
                 async_client_context.replica_set_name,
@@ -720,27 +718,28 @@ class TestAuthURIOptions(AsyncIntegrationTest):
             client = await self.async_single_client_noauth(uri)
             with self.assertRaises(OperationFailure):
                 await client.admin.command("dbstats")
-            self.assertTrue(await client.pymongo_test.command("dbstats"))
-            db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
+            self.assertTrue(await client.db.command("dbstats"))
+            db = client.get_database("db", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(await db.command("dbstats"))
 
         # Test authSource
-        uri = "mongodb://user:pass@%s:%d/pymongo_test2?authSource=pymongo_test" % (host, port)
+        uri = "mongodb://user:pass@%s:%d/db2?authSource=db" % (host, port)
         client = await self.async_rs_or_single_client_noauth(uri)
         with self.assertRaises(OperationFailure):
-            await client.pymongo_test2.command("dbstats")
-        self.assertTrue(await client.pymongo_test.command("dbstats"))
+            await client.db2.command("dbstats")
+        self.assertTrue(await client.db.command("dbstats"))
 
         if async_client_context.is_rs:
-            uri = (
-                "mongodb://user:pass@%s:%d/pymongo_test2?replicaSet="
-                "%s;authSource=pymongo_test" % (host, port, async_client_context.replica_set_name)
+            uri = "mongodb://user:pass@%s:%d/db2?replicaSet=" "%s;authSource=db" % (
+                host,
+                port,
+                async_client_context.replica_set_name,
             )
             client = await self.async_single_client_noauth(uri)
             with self.assertRaises(OperationFailure):
-                await client.pymongo_test2.command("dbstats")
-            self.assertTrue(await client.pymongo_test.command("dbstats"))
-            db = client.get_database("pymongo_test", read_preference=ReadPreference.SECONDARY)
+                await client.db2.command("dbstats")
+            self.assertTrue(await client.db.command("dbstats"))
+            db = client.get_database("db", read_preference=ReadPreference.SECONDARY)
             self.assertTrue(await db.command("dbstats"))
 
 

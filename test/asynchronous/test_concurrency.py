@@ -28,7 +28,7 @@ _IS_SYNC = False
 
 class TestAsyncConcurrency(AsyncIntegrationTest):
     async def _task(self, client):
-        await client.db.test.find_one({"$where": delay(0.20)})
+        await client.db.coll.find_one({"$where": delay(0.20)})
 
     @unittest.skipIf(
         sys.platform == "darwin" and "CI" in os.environ,
@@ -39,8 +39,8 @@ class TestAsyncConcurrency(AsyncIntegrationTest):
         iterations = 5
 
         client = await self.async_single_client()
-        await client.db.test.drop()
-        await client.db.test.insert_one({"x": 1})
+        await client.db.coll.drop()
+        await client.db.coll.insert_one({"x": 1})
 
         start = time.time()
 

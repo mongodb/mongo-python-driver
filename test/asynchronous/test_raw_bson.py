@@ -44,7 +44,7 @@ class TestRawBSONDocument(AsyncIntegrationTest):
 
     async def asyncTearDown(self):
         if async_client_context.connected:
-            await self.client.pymongo_test.test_raw.drop()
+            await self.db.coll.drop()
 
     def test_decode(self):
         self.assertEqual("Sherlock", self.document["name"])
@@ -73,17 +73,17 @@ class TestRawBSONDocument(AsyncIntegrationTest):
     @async_client_context.require_connection
     async def test_round_trip(self):
         db = self.client.get_database(
-            "pymongo_test", codec_options=CodecOptions(document_class=RawBSONDocument)
+            "db", codec_options=CodecOptions(document_class=RawBSONDocument)
         )
-        await db.test_raw.insert_one(self.document)
-        result = await db.test_raw.find_one(self.document["_id"])
+        await db.coll.insert_one(self.document)
+        result = await db.coll.find_one(self.document["_id"])
         assert result is not None
         self.assertIsInstance(result, RawBSONDocument)
         self.assertEqual(dict(self.document.items()), dict(result.items()))
 
     @async_client_context.require_connection
     async def test_round_trip_raw_uuid(self):
-        coll = self.client.get_database("pymongo_test").test_raw
+        coll = self.client.get_database("db").test_raw
         uid = uuid.uuid4()
         doc = {"_id": 1, "bin4": Binary(uid.bytes, 4), "bin3": Binary(uid.bytes, 3)}
         raw = RawBSONDocument(encode(doc))
@@ -126,7 +126,7 @@ class TestRawBSONDocument(AsyncIntegrationTest):
             "date": datetime.datetime(2015, 6, 3, 18, 40, 50, 826000),
             "_id": uuid.UUID("026fab8f-975f-4965-9fbf-85ad874c60ff"),
         }
-        db = self.client.pymongo_test
+        db = self.client.db
         coll = db.get_collection(
             "test_raw", codec_options=CodecOptions(uuid_representation=JAVA_LEGACY)
         )
@@ -142,9 +142,9 @@ class TestRawBSONDocument(AsyncIntegrationTest):
     @async_client_context.require_connection
     async def test_raw_bson_document_embedded(self):
         doc = {"embedded": self.document}
-        db = self.client.pymongo_test
-        await db.test_raw.insert_one(doc)
-        result = await db.test_raw.find_one()
+        db = self.client.db
+        await db.coll.insert_one(doc)
+        result = await db.coll.find_one()
         assert result is not None
         self.assertEqual(decode(self.document.raw), result["embedded"])
 
@@ -167,8 +167,8 @@ class TestRawBSONDocument(AsyncIntegrationTest):
             ),
         )
 
-        await db.test_raw.drop()
-        await db.test_raw.insert_one(rbd)
+        await db.coll.drop()
+        await db.coll.insert_one(rbd)
         result = await db.get_collection(
             "test_raw", codec_options=CodecOptions(uuid_representation=JAVA_LEGACY)
         ).find_one()
@@ -178,7 +178,7 @@ class TestRawBSONDocument(AsyncIntegrationTest):
     @async_client_context.require_connection
     async def test_write_response_raw_bson(self):
         coll = self.client.get_database(
-            "pymongo_test", codec_options=CodecOptions(document_class=RawBSONDocument)
+            "db", codec_options=CodecOptions(document_class=RawBSONDocument)
         ).test_raw
 
         # No Exceptions raised while handling write response.
@@ -207,11 +207,11 @@ class TestRawBSONDocument(AsyncIntegrationTest):
         self.assertEqual(doc["value"].scope, RawBSONDocument(encode({})))
 
     def test_contains_dbref(self):
-        doc = RawBSONDocument(encode({"value": DBRef("test", "id")}))
-        raw = {"$ref": "test", "$id": "id"}
+        doc = RawBSONDocument(encode({"value": DBRef("coll", "id")}))
+        raw = {"$ref": "coll", "$id": "id"}
         raw_encoded = encode(decode(encode(raw)))
 
-        self.assertEqual(decode(encode(doc)), {"value": DBRef("test", "id")})
+        self.assertEqual(decode(encode(doc)), {"value": DBRef("coll", "id")})
         self.assertEqual(doc["value"].raw, raw_encoded)
 
 

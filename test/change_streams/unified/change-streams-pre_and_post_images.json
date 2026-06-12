@@ -39,13 +39,13 @@
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     }
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "change-stream-tests",
       "documents": [
         {
@@ -64,7 +64,7 @@
           "arguments": {
             "commandName": "collMod",
             "command": {
-              "collMod": "test",
+              "collMod": "coll",
               "changeStreamPreAndPostImages": {
                 "enabled": true
               }
@@ -101,7 +101,7 @@
             "operationType": "update",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "updateDescription": {
               "$$type": "object"
@@ -144,7 +144,7 @@
           "arguments": {
             "commandName": "collMod",
             "command": {
-              "collMod": "test",
+              "collMod": "coll",
               "changeStreamPreAndPostImages": {
                 "enabled": false
               }
@@ -181,7 +181,7 @@
             "operationType": "update",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "updateDescription": {
               "$$type": "object"
@@ -221,7 +221,7 @@
           "arguments": {
             "commandName": "collMod",
             "command": {
-              "collMod": "test",
+              "collMod": "coll",
               "changeStreamPreAndPostImages": {
                 "enabled": true
               }
@@ -258,7 +258,7 @@
             "operationType": "update",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "updateDescription": {
               "$$type": "object"
@@ -301,7 +301,7 @@
           "arguments": {
             "commandName": "collMod",
             "command": {
-              "collMod": "test",
+              "collMod": "coll",
               "changeStreamPreAndPostImages": {
                 "enabled": false
               }
@@ -370,7 +370,7 @@
           "arguments": {
             "commandName": "collMod",
             "command": {
-              "collMod": "test",
+              "collMod": "coll",
               "changeStreamPreAndPostImages": {
                 "enabled": true
               }
@@ -407,7 +407,7 @@
             "operationType": "update",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "updateDescription": {
               "$$type": "object"
@@ -449,7 +449,7 @@
           "arguments": {
             "commandName": "collMod",
             "command": {
-              "collMod": "test",
+              "collMod": "coll",
               "changeStreamPreAndPostImages": {
                 "enabled": false
               }
@@ -486,7 +486,7 @@
             "operationType": "update",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "updateDescription": {
               "$$type": "object"
@@ -526,7 +526,7 @@
           "arguments": {
             "commandName": "collMod",
             "command": {
-              "collMod": "test",
+              "collMod": "coll",
               "changeStreamPreAndPostImages": {
                 "enabled": true
               }
@@ -563,7 +563,7 @@
             "operationType": "update",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "updateDescription": {
               "$$type": "object"
@@ -605,7 +605,7 @@
           "arguments": {
             "commandName": "collMod",
             "command": {
-              "collMod": "test",
+              "collMod": "coll",
               "changeStreamPreAndPostImages": {
                 "enabled": false
               }
@@ -674,7 +674,7 @@
           "arguments": {
             "commandName": "collMod",
             "command": {
-              "collMod": "test",
+              "collMod": "coll",
               "changeStreamPreAndPostImages": {
                 "enabled": true
               }
@@ -711,7 +711,7 @@
             "operationType": "update",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "updateDescription": {
               "$$type": "object"
@@ -753,7 +753,7 @@
           "arguments": {
             "commandName": "collMod",
             "command": {
-              "collMod": "test",
+              "collMod": "coll",
               "changeStreamPreAndPostImages": {
                 "enabled": false
               }
@@ -790,7 +790,7 @@
             "operationType": "update",
             "ns": {
               "db": "change-stream-tests",
-              "coll": "test"
+              "coll": "coll"
             },
             "updateDescription": {
               "$$type": "object"

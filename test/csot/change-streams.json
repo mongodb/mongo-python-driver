@@ -33,7 +33,7 @@
       "database": {
         "id": "database",
         "client": "client",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -47,7 +47,7 @@
   "initialData": [
     {
       "collectionName": "coll",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": []
     }
   ],
@@ -128,7 +128,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -189,7 +189,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -204,7 +204,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [
@@ -270,7 +270,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -285,7 +285,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [
@@ -354,7 +354,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -369,7 +369,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [
@@ -387,7 +387,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -455,7 +455,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -470,7 +470,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [
@@ -485,7 +485,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -500,7 +500,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [
@@ -563,7 +563,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "aggregate",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "aggregate": "coll",
                   "maxTimeMS": {
@@ -578,7 +578,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "getMore",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "getMore": {
                     "$$type": [

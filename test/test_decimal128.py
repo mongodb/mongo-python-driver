@@ -29,7 +29,7 @@ from bson.decimal128 import Decimal128, create_decimal128_context
 class TestDecimal128(unittest.TestCase):
     @client_context.require_connection
     def test_round_trip(self):
-        coll = client_context.client.pymongo_test.test
+        coll = client_context.client.db.coll
         coll.drop()
 
         dec128 = Decimal128.from_bid(b"\x00@cR\xbf\xc6\x01\x00\x00\x00\x00\x00\x00\x00\x1c0")

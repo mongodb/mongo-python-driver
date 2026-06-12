@@ -331,7 +331,7 @@ class TestIgnoreStaleErrors(IntegrationTest):
 
         def insert_command(i):
             try:
-                client.test.command("insert", "test", documents=[{"i": i}])
+                client.coll.command("insert", "coll", documents=[{"i": i}])
             except AutoReconnect:
                 pass
 
@@ -402,7 +402,7 @@ class TestPoolManagement(IntegrationTest):
             "pool initialized with 10 connections",
         )
 
-        client.db.test.insert_one({"x": 1})
+        client.db.coll.insert_one({"x": 1})
         close_delay = 0.1
         latencies = []
         should_exit = []
@@ -410,7 +410,7 @@ class TestPoolManagement(IntegrationTest):
         def run_task():
             while True:
                 start_time = time.monotonic()
-                client.db.test.find_one({})
+                client.db.coll.find_one({})
                 elapsed = time.monotonic() - start_time
                 latencies.append(elapsed)
                 if should_exit:
@@ -483,13 +483,13 @@ class TestPoolBackpressure(IntegrationTest):
         self.addCleanup(teardown)
 
         # Make sure the collection has at least one document.
-        client.test.test.delete_many({})
-        client.test.test.insert_one({})
+        client.db.coll.delete_many({})
+        client.db.coll.insert_one({})
 
         # Run a slow operation to tie up the connection.
         def target():
             try:
-                client.test.test.find_one({"$where": delay(0.1)})
+                client.db.coll.find_one({"$where": delay(0.1)})
             except ConnectionFailure:
                 pass
 

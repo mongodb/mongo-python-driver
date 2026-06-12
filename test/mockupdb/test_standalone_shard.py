@@ -45,7 +45,7 @@ class TestStandaloneShard(unittest.TestCase):
         with self.assertRaisesRegex(
             OperationFailure, "This MongoDB deployment does not support retryable writes"
         ):
-            with going(client.db.collection.insert_many, [{}, {}]):
+            with going(client.db.coll.insert_many, [{}, {}]):
                 request = server.receives()
                 request.reply(
                     {

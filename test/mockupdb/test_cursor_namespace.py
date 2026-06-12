@@ -51,7 +51,7 @@ class TestCursorNamespace(PyMongoTestCase):
 
     def _test_cursor_namespace(self, cursor_op, command):
         with going(cursor_op) as docs:
-            request = self.server.receives(**{command: "collection", "namespace": "test"})
+            request = self.server.receives(**{command: "coll", "namespace": "db"})
             # Respond with a different namespace.
             request.reply(
                 {
@@ -73,19 +73,19 @@ class TestCursorNamespace(PyMongoTestCase):
 
     def test_aggregate_cursor(self):
         def op():
-            return list(self.client.test.collection.aggregate([]))
+            return list(self.client.db.coll.aggregate([]))
 
         self._test_cursor_namespace(op, "aggregate")
 
     def test_find_cursor(self):
         def op():
-            return list(self.client.test.collection.find())
+            return list(self.client.db.coll.find())
 
         self._test_cursor_namespace(op, "find")
 
     def test_list_indexes(self):
         def op():
-            return list(self.client.test.collection.list_indexes())
+            return list(self.client.db.coll.list_indexes())
 
         self._test_cursor_namespace(op, "listIndexes")
 
@@ -107,7 +107,7 @@ class TestKillCursorsNamespace(PyMongoTestCase):
 
     def _test_killCursors_namespace(self, cursor_op, command):
         with going(cursor_op):
-            request = self.server.receives(**{command: "collection", "namespace": "test"})
+            request = self.server.receives(**{command: "coll", "namespace": "db"})
             # Respond with a different namespace.
             request.reply(
                 {
@@ -134,7 +134,7 @@ class TestKillCursorsNamespace(PyMongoTestCase):
 
     def test_aggregate_killCursor(self):
         def op():
-            cursor = self.client.test.collection.aggregate([], batchSize=1)
+            cursor = self.client.db.coll.aggregate([], batchSize=1)
             next(cursor)
             cursor.close()
 
@@ -142,7 +142,7 @@ class TestKillCursorsNamespace(PyMongoTestCase):
 
     def test_find_killCursor(self):
         def op():
-            cursor = self.client.test.collection.find(batch_size=1)
+            cursor = self.client.db.coll.find(batch_size=1)
             next(cursor)
             cursor.close()
 

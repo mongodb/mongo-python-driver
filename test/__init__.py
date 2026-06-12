@@ -1163,7 +1163,7 @@ class IntegrationTest(PyMongoTestCase):
         if client_context.load_balancer and not getattr(self, "RUN_ON_LOAD_BALANCER", False):
             raise SkipTest("this test does not support load balancers")
         self.client = client_context.client
-        self.db = self.client.pymongo_test
+        self.db = self.client.db
         if client_context.auth_enabled:
             self.credentials = {"username": db_user, "password": db_pwd}
         else:

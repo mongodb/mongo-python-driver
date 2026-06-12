@@ -30,7 +30,7 @@
       "database": {
         "id": "database",
         "client": "client",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -57,12 +57,12 @@
   "initialData": [
     {
       "collectionName": "fs.files",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": []
     },
     {
       "collectionName": "fs.chunks",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": []
     }
   ],
@@ -106,7 +106,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "fs.files",
                   "maxTimeMS": {
@@ -163,7 +163,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "find",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "find": "fs.files",
                   "maxTimeMS": {

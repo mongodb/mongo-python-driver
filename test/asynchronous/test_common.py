@@ -119,23 +119,23 @@ class TestCommon(AsyncIntegrationTest):
         self.assertEqual(wc, c.write_concern)
 
         # Can we override back to the server default?
-        db = c.get_database("pymongo_test", write_concern=WriteConcern())
+        db = c.get_database("db", write_concern=WriteConcern())
         self.assertEqual(db.write_concern, WriteConcern())
 
-        db = c.pymongo_test
+        db = c.db
         self.assertEqual(wc, db.write_concern)
-        coll = db.test
+        coll = db.coll
         self.assertEqual(wc, coll.write_concern)
 
         cwc = WriteConcern(j=True)
-        coll = db.get_collection("test", write_concern=cwc)
+        coll = db.get_collection("coll", write_concern=cwc)
         self.assertEqual(cwc, coll.write_concern)
         self.assertEqual(wc, db.write_concern)
 
     async def test_mongo_client(self):
         pair = await async_client_context.pair
         m = await self.async_rs_or_single_client(w=0)
-        coll = m.pymongo_test.write_concern_test
+        coll = m.db.write_concern_test
         await coll.drop()
         doc = {"_id": ObjectId()}
         await coll.insert_one(doc)
@@ -145,7 +145,7 @@ class TestCommon(AsyncIntegrationTest):
             await coll.insert_one(doc)
 
         m = await self.async_rs_or_single_client()
-        coll = m.pymongo_test.write_concern_test
+        coll = m.db.write_concern_test
         new_coll = coll.with_options(write_concern=WriteConcern(w=0))
         self.assertTrue(await new_coll.insert_one(doc))
         with self.assertRaises(OperationFailure):
@@ -155,14 +155,14 @@ class TestCommon(AsyncIntegrationTest):
             f"mongodb://{pair}/", replicaSet=async_client_context.replica_set_name
         )
 
-        coll = m.pymongo_test.write_concern_test
+        coll = m.db.write_concern_test
         with self.assertRaises(OperationFailure):
             await coll.insert_one(doc)
         m = await self.async_rs_or_single_client(
             f"mongodb://{pair}/?w=0", replicaSet=async_client_context.replica_set_name
         )
 
-        coll = m.pymongo_test.write_concern_test
+        coll = m.db.write_concern_test
         await coll.insert_one(doc)
 
         # Equality tests
@@ -174,11 +174,11 @@ class TestCommon(AsyncIntegrationTest):
         self.assertFalse(direct != direct2)
 
     async def test_validate_boolean(self):
-        await self.db.test.update_one({}, {"$set": {"total": 1}}, upsert=True)
+        await self.db.coll.update_one({}, {"$set": {"total": 1}}, upsert=True)
         with self.assertRaisesRegex(
             TypeError, "upsert must be True or False, was: upsert={'upsert': True}"
         ):
-            await self.db.test.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
+            await self.db.coll.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
 
 
 if __name__ == "__main__":

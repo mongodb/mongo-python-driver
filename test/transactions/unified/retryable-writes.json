@@ -37,7 +37,7 @@
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     },
     {
@@ -49,7 +49,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "transaction-tests",
       "documents": []
     }
@@ -337,7 +337,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -462,7 +462,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": []
         }

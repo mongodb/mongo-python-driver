@@ -316,7 +316,7 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
             {"_id": 4, "ssn": "444"},
             {"_id": 5, "ssn": "555"},
         ]
-        encrypted_coll = client.pymongo_test.test
+        encrypted_coll = client.db.coll
         await encrypted_coll.insert_one(docs[0])
         await encrypted_coll.insert_many(docs[1:3])
         unack = encrypted_coll.with_options(write_concern=WriteConcern(w=0))
@@ -324,12 +324,12 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
         await unack.insert_many(docs[4:], ordered=False)
 
         async def count_documents():
-            return await self.db.test.count_documents({}) == len(docs)
+            return await self.db.coll.count_documents({}) == len(docs)
 
         await async_wait_until(count_documents, "insert documents with w=0")
 
         # Database.command auto decrypts.
-        res = await client.pymongo_test.command("find", "test", filter={"ssn": "000"})
+        res = await client.db.command("find", "test", filter={"ssn": "000"})
         decrypted_docs = res["cursor"]["firstBatch"]
         self.assertEqual(decrypted_docs, [{"_id": 0, "ssn": "000"}])
 
@@ -354,7 +354,7 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
         self.assertEqual(set(decrypted_ssns), {d["ssn"] for d in docs})
 
         # Make sure the field is actually encrypted.
-        async for encrypted_doc in self.db.test.find():
+        async for encrypted_doc in self.db.coll.find():
             self.assertIsInstance(encrypted_doc["_id"], int)
             self.assertEncrypted(encrypted_doc["ssn"])
 
@@ -365,15 +365,15 @@ class TestClientSimple(AsyncEncryptionIntegrationTest):
     async def test_auto_encrypt(self):
         # Configure the encrypted field via jsonSchema.
         json_schema = json_data("custom", "schema.json")
-        await create_with_schema(self.db.test, json_schema)
-        self.addAsyncCleanup(self.db.test.drop)
+        await create_with_schema(self.db.coll, json_schema)
+        self.addAsyncCleanup(self.db.coll.drop)
 
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         await self._test_auto_encrypt(opts)
 
     async def test_auto_encrypt_local_schema_map(self):
         # Configure the encrypted field via the local schema_map option.
-        schemas = {"pymongo_test.test": json_data("custom", "schema.json")}
+        schemas = {"db.coll": json_data("custom", "schema.json")}
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys", schema_map=schemas)
 
         await self._test_auto_encrypt(opts)
@@ -416,7 +416,7 @@ class TestEncryptedBulkWrite(AsyncBulkTestBase, AsyncEncryptionIntegrationTest):
         client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
 
         options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
-        encrypted_coll = client.pymongo_test.test
+        encrypted_coll = client.db.coll
         coll = encrypted_coll.with_options(codec_options=options)
         uuids = [uuid.uuid4() for _ in range(3)]
         result = await coll.bulk_write(
@@ -454,18 +454,18 @@ class TestClientMaxWireVersion(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(auto_encryption_opts=opts)
         msg = "find_raw_batches does not support auto encryption"
         with self.assertRaisesRegex(InvalidOperation, msg):
-            await client.test.test.find_raw_batches({})
+            await client.db.coll.find_raw_batches({})
 
         msg = "aggregate_raw_batches does not support auto encryption"
         with self.assertRaisesRegex(InvalidOperation, msg):
-            await client.test.test.aggregate_raw_batches([])
+            await client.db.coll.aggregate_raw_batches([])
 
         if async_client_context.is_mongos:
             msg = "Exhaust cursors are not supported by mongos"
         else:
             msg = "exhaust cursors do not support auto encryption"
         with self.assertRaisesRegex(InvalidOperation, msg):
-            await anext(client.test.test.find(cursor_type=CursorType.EXHAUST))
+            await anext(client.db.coll.find(cursor_type=CursorType.EXHAUST))
 
 
 class TestExplicitSimple(AsyncEncryptionIntegrationTest):
@@ -3600,12 +3600,12 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
     async def test_implicit_session_ignored_when_unsupported(self):
         self.listener.reset()
         with self.assertRaises(OperationFailure):
-            await self.mongocryptd_client.db.test.find_one()
+            await self.mongocryptd_client.db.coll.find_one()
 
         self.assertNotIn("lsid", self.listener.started_events[0].command)
 
         with self.assertRaises(OperationFailure):
-            await self.mongocryptd_client.db.test.insert_one({"x": 1})
+            await self.mongocryptd_client.db.coll.insert_one({"x": 1})
 
         self.assertNotIn("lsid", self.listener.started_events[1].command)
 
@@ -3617,11 +3617,11 @@ class TestNoSessionsSupport(AsyncEncryptionIntegrationTest):
             with self.assertRaisesRegex(
                 ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
             ):
-                await self.mongocryptd_client.db.test.find_one(session=s)
+                await self.mongocryptd_client.db.coll.find_one(session=s)
             with self.assertRaisesRegex(
                 ConfigurationError, r"Sessions are not supported by this MongoDB deployment"
             ):
-                await self.mongocryptd_client.db.test.insert_one({"x": 1}, session=s)
+                await self.mongocryptd_client.db.coll.insert_one({"x": 1}, session=s)
 
         await self.mongocryptd_client.close()
 

@@ -9,7 +9,7 @@
   "initialData": [
     {
       "collectionName": "coll",
-      "databaseName": "test",
+      "databaseName": "db",
       "documents": []
     }
   ],
@@ -37,7 +37,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -67,7 +67,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "maxTimeMS": {
@@ -103,7 +103,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -133,7 +133,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "maxTimeMS": {
@@ -169,7 +169,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -199,7 +199,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "maxTimeMS": {
@@ -235,7 +235,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -263,7 +263,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "count",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "count": "coll",
                   "maxTimeMS": 50000
@@ -302,7 +302,7 @@
                 "database": {
                   "id": "database",
                   "client": "client",
-                  "databaseName": "test"
+                  "databaseName": "db"
                 }
               },
               {
@@ -352,7 +352,7 @@
             {
               "commandStartedEvent": {
                 "commandName": "insert",
-                "databaseName": "test",
+                "databaseName": "db",
                 "command": {
                   "insert": "coll",
                   "maxTimeMS": {

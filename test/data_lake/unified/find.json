@@ -14,7 +14,7 @@
       "database": {
         "id": "database0",
         "client": "client0",
-        "databaseName": "test"
+        "databaseName": "db"
       }
     },
     {
@@ -85,7 +85,7 @@
                   "find": "driverdata"
                 },
                 "commandName": "find",
-                "databaseName": "test"
+                "databaseName": "db"
               }
             }
           ]

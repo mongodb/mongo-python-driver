@@ -129,14 +129,14 @@ class TestCustomServerSelectorFunction(AsyncIntegrationTest):
 
         # Client setup.
         mongo_client = await self.async_rs_or_single_client(server_selector=selector)
-        test_collection = mongo_client.testdb.test_collection
-        self.addAsyncCleanup(mongo_client.drop_database, "testdb")
+        coll = mongo_client.db.coll
+        self.addAsyncCleanup(mongo_client.drop_database, "db")
 
         # Do N operations and test selector is called at least N-1 times due to fast path.
-        await test_collection.insert_one({"age": 20, "name": "John"})
-        await test_collection.insert_one({"age": 31, "name": "Jane"})
-        await test_collection.update_one({"name": "Jane"}, {"$set": {"age": 21}})
-        await test_collection.find_one({"name": "Roe"})
+        await coll.insert_one({"age": 20, "name": "John"})
+        await coll.insert_one({"age": 31, "name": "Jane"})
+        await coll.update_one({"name": "Jane"}, {"$set": {"age": 21}})
+        await coll.find_one({"name": "Roe"})
         self.assertGreaterEqual(selector.call_count, 3)
 
     @async_client_context.require_replica_set
@@ -216,7 +216,7 @@ class TestCustomServerSelectorFunction(AsyncIntegrationTest):
         client = await self.async_rs_client(
             event_listeners=[hb_listener], heartbeatFrequencyMS=500, appName="heartbeatFailedClient"
         )
-        coll = client.db.test
+        coll = client.db.coll
         await coll.drop()
         docs = [{"x": 1} for _ in range(5)]
         await coll.insert_many(docs)

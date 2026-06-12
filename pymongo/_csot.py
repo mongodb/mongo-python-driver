@@ -74,7 +74,7 @@ class _TimeoutContext(AbstractContextManager[Any]):
     Use :func:`pymongo.timeout` instead::
 
       with pymongo.timeout(0.5):
-          client.test.test.insert_one({})
+          client.db.coll.insert_one({})
     """
 
     def __init__(self, timeout: Optional[float]):

@@ -18,13 +18,13 @@
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     }
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "crud-tests",
       "documents": [
         {
@@ -93,7 +93,7 @@
           "name": "modifyCollection",
           "object": "database0",
           "arguments": {
-            "collection": "test",
+            "collection": "coll",
             "validator": {
               "x": {
                 "$type": "string"

@@ -50,36 +50,36 @@ class TestReadWriteConcernSpec(AsyncIntegrationTest):
         listener = OvertCommandListener()
         # Client with default readConcern and writeConcern
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        collection = client.pymongo_test.collection
+        coll = client.db.coll
         # Prepare for tests of find() and aggregate().
-        await collection.insert_many([{} for _ in range(10)])
-        self.addAsyncCleanup(collection.drop)
-        self.addAsyncCleanup(client.pymongo_test.collection2.drop)
+        await coll.insert_many([{} for _ in range(10)])
+        self.addAsyncCleanup(coll.drop)
+        self.addAsyncCleanup(client.db.coll2.drop)
         # Commands MUST NOT send the default read/write concern to the server.
 
         async def rename_and_drop():
-            # Ensure collection exists.
-            await collection.insert_one({})
-            await collection.rename("collection2")
-            await client.pymongo_test.collection2.drop()
+            # Ensure coll exists.
+            await coll.insert_one({})
+            await coll.rename("coll2")
+            await client.db.coll2.drop()
 
         async def insert_command_default_write_concern():
-            await collection.database.command(
-                "insert", "collection", documents=[{}], write_concern=WriteConcern()
+            await coll.database.command(
+                "insert", "coll", documents=[{}], write_concern=WriteConcern()
             )
 
         async def aggregate_op():
-            await (await collection.aggregate([])).to_list()
+            await (await coll.aggregate([])).to_list()
 
         ops = [
             ("aggregate", aggregate_op),
-            ("find", lambda: collection.find().to_list()),
-            ("insert_one", lambda: collection.insert_one({})),
-            ("update_one", lambda: collection.update_one({}, {"$set": {"x": 1}})),
-            ("update_many", lambda: collection.update_many({}, {"$set": {"x": 1}})),
-            ("delete_one", lambda: collection.delete_one({})),
-            ("delete_many", lambda: collection.delete_many({})),
-            ("bulk_write", lambda: collection.bulk_write([InsertOne({})])),
+            ("find", lambda: coll.find().to_list()),
+            ("insert_one", lambda: coll.insert_one({})),
+            ("update_one", lambda: coll.update_one({}, {"$set": {"x": 1}})),
+            ("update_many", lambda: coll.update_many({}, {"$set": {"x": 1}})),
+            ("delete_one", lambda: coll.delete_one({})),
+            ("delete_many", lambda: coll.delete_many({})),
+            ("bulk_write", lambda: coll.bulk_write([InsertOne({})])),
             ("rename_and_drop", rename_and_drop),
             ("command", insert_command_default_write_concern),
         ]
@@ -107,8 +107,8 @@ class TestReadWriteConcernSpec(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client(
             w=wc["w"], wTimeoutMS=wc["wtimeout"], socketTimeoutMS=30000
         )
-        db = client.get_database("pymongo_test")
-        coll = db.test
+        db = client.get_database("db")
+        coll = db.coll
 
         async def insert_command():
             await coll.database.command(
@@ -159,7 +159,7 @@ class TestReadWriteConcernSpec(AsyncIntegrationTest):
 
     @async_client_context.require_replica_set
     async def test_raise_write_concern_error(self):
-        self.addAsyncCleanup(async_client_context.client.drop_database, "pymongo_test")
+        self.addAsyncCleanup(async_client_context.client.drop_database, "db")
         assert async_client_context.w is not None
         await self.assertWriteOpsRaise(
             WriteConcern(w=async_client_context.w + 1, wtimeout=1), WriteConcernError
@@ -168,7 +168,7 @@ class TestReadWriteConcernSpec(AsyncIntegrationTest):
     @async_client_context.require_secondaries_count(1)
     @async_client_context.require_test_commands
     async def test_raise_wtimeout(self):
-        self.addAsyncCleanup(async_client_context.client.drop_database, "pymongo_test")
+        self.addAsyncCleanup(async_client_context.client.drop_database, "db")
         self.addAsyncCleanup(self.enable_replication, async_client_context.client)
         # Disable replication to guarantee a wtimeout error.
         await self.disable_replication(async_client_context.client)
@@ -194,12 +194,12 @@ class TestReadWriteConcernSpec(AsyncIntegrationTest):
         async with self.fail_point(cause_wce):
             # Write concern error on insert includes errInfo.
             with self.assertRaises(WriteConcernError) as ctx:
-                await self.db.test.insert_one({})
+                await self.db.coll.insert_one({})
             self.assertEqual(ctx.exception.details, expected_wce)
 
             # Test bulk_write as well.
             with self.assertRaises(BulkWriteError) as ctx:
-                await self.db.test.bulk_write([InsertOne({})])
+                await self.db.coll.bulk_write([InsertOne({})])
             expected_details = {
                 "writeErrors": [],
                 "writeConcernErrors": [expected_wce],
@@ -221,9 +221,9 @@ class TestReadWriteConcernSpec(AsyncIntegrationTest):
         db = client.errinfotest
         self.addAsyncCleanup(client.drop_database, "errinfotest")
         validator = {"x": {"$type": "string"}}
-        await db.create_collection("test", validator=validator)
+        await db.create_collection("coll", validator=validator)
         with self.assertRaises(WriteError) as ctx:
-            await db.test.insert_one({"x": 1})
+            await db.coll.insert_one({"x": 1})
         self.assertEqual(ctx.exception.code, 121)
         self.assertIsNotNone(ctx.exception.details)
         assert ctx.exception.details is not None

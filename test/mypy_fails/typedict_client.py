@@ -11,7 +11,7 @@ class Movie(TypedDict):
 
 
 client: MongoClient[Movie] = MongoClient()
-coll = client.test.test
+coll = client.db.coll
 retrieved = coll.find_one({"_id": "foo"})
 assert retrieved is not None
 assert retrieved["year"] == 1

@@ -27,7 +27,7 @@
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     }
   ],
@@ -39,14 +39,14 @@
           "name": "dropCollection",
           "object": "database0",
           "arguments": {
-            "collection": "test"
+            "collection": "coll"
           }
         },
         {
           "name": "createCollection",
           "object": "database0",
           "arguments": {
-            "collection": "test",
+            "collection": "coll",
             "changeStreamPreAndPostImages": {
               "enabled": true
             }
@@ -57,7 +57,7 @@
           "object": "testRunner",
           "arguments": {
             "databaseName": "papi-tests",
-            "collectionName": "test"
+            "collectionName": "coll"
           }
         }
       ],

@@ -37,14 +37,14 @@
       "collection": {
         "id": "collection0",
         "database": "database0",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     },
     {
       "collection": {
         "id": "collection_w0",
         "database": "database0",
-        "collectionName": "test",
+        "collectionName": "coll",
         "collectionOptions": {
           "writeConcern": {
             "w": 0
@@ -61,7 +61,7 @@
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "transaction-tests",
       "documents": [
         {
@@ -165,7 +165,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -267,7 +267,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -374,7 +374,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -473,7 +473,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -626,7 +626,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -739,7 +739,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -856,7 +856,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -957,7 +957,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": []
         }
@@ -1051,7 +1051,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": []
         }
@@ -1161,7 +1161,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -1274,7 +1274,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -1368,7 +1368,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": []
         }
@@ -1466,7 +1466,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {
@@ -1573,7 +1573,7 @@
       ],
       "outcome": [
         {
-          "collectionName": "test",
+          "collectionName": "coll",
           "databaseName": "transaction-tests",
           "documents": [
             {

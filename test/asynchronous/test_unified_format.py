@@ -82,13 +82,13 @@ class TestMatchEvaluatorUtil(UnitTest):
         self.match_evaluator.match_result(
             {
                 "operationType": "insert",
-                "ns": {"db": "change-stream-tests", "coll": "test"},
+                "ns": {"db": "change-stream-tests", "coll": "coll"},
                 "fullDocument": {"_id": {"$$type": "objectId"}, "x": 1},
             },
             {
                 "operationType": "insert",
                 "fullDocument": {"_id": ObjectId("5fc93511ac93941052098f0c"), "x": 1},
-                "ns": {"db": "change-stream-tests", "coll": "test"},
+                "ns": {"db": "change-stream-tests", "coll": "coll"},
             },
         )
 

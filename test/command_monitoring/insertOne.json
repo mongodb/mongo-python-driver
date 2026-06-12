@@ -23,13 +23,13 @@
       "collection": {
         "id": "collection",
         "database": "database",
-        "collectionName": "test"
+        "collectionName": "coll"
       }
     }
   ],
   "initialData": [
     {
-      "collectionName": "test",
+      "collectionName": "coll",
       "databaseName": "command-monitoring-tests",
       "documents": [
         {
