@@ -169,21 +169,9 @@ class Server:
 
         user_fields = _CURSOR_DOC_FIELDS if use_cmd else None
 
-        def _build_reply_doc(docs: list[dict[str, Any]], reply: Optional[_OpMsg]) -> _DocumentOut:
+        def _build_reply_doc(docs: list[dict[str, Any]], reply: Optional[_OpMsg]) -> _DocumentOut:  # noqa: ARG001
             # Must publish in find / getMore / explain command response format.
-            if use_cmd:
-                return docs[0]
-            elif operation.name == "explain":
-                return docs[0] if docs else {}
-            res: dict[str, Any] = {
-                "cursor": {"id": reply.cursor_id, "ns": operation.namespace()},  # type: ignore[union-attr]
-                "ok": 1,
-            }
-            if operation.name == "find":
-                res["cursor"]["firstBatch"] = docs
-            else:
-                res["cursor"]["nextBatch"] = docs
-            return res
+            return docs[0]
 
         docs, reply, duration = run_cursor_command(
             conn,
@@ -202,7 +190,6 @@ class Server:
             pool_opts=conn.opts,
             max_doc_size=max_doc_size,
             more_to_come=bool(more_to_come),
-            is_command_response=use_cmd,
             unpack_res=unpack_res,
             cursor_id=operation.cursor_id,
             reply_doc_builder=_build_reply_doc,

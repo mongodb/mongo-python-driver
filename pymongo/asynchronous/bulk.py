@@ -266,6 +266,7 @@ class _AsyncBulk:
             command_name=bwc.name,
             use_conn_transport=True,
             decrypt_reply=False,
+            set_conn_more_to_come=False,
         )
         return result_docs[0]
 

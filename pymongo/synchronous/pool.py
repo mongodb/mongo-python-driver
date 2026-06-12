@@ -88,7 +88,7 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.client_session import _validate_session_write_concern
-from pymongo.synchronous.command_encoder import command
+from pymongo.synchronous.command_runner import command
 from pymongo.synchronous.helpers import _handle_reauth
 
 if TYPE_CHECKING:
