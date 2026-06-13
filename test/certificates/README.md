@@ -57,7 +57,8 @@ macOS and Windows with Python 3.13+.  The root causes were:
 1. Python 3.13 enables `X509_V_FLAG_X509_STRICT` in `ssl.create_default_context()`, which
    requires **AKI** on non-root certs.  The KMS mock-server connection (`http_post`) used
    `create_default_context()`, so the original 2019 KMS certs (no AKI) started failing.
-2. Python 3.14 tightened strict mode further, additionally requiring **SKI** on non-root certs.
+2. Python 3.14 sets OpenSSL's `X509_V_FLAG_X509_STRICT` (via `ssl.VERIFY_X509_STRICT`) in
+   `ssl.create_default_context()`, which additionally requires **SKI** on non-root certs.
 
 The MongoDB certs and CA cert intentionally carry no AKI or SKI: Apple SecTrust triggers OCSP
 revocation checks when any cert in the chain has AKI, and those checks fail with
@@ -66,9 +67,10 @@ the driver verifies MongoDB server certs without `X509_V_FLAG_X509_STRICT` (whic
 `pymongo.ssl_support.get_ssl_context` uses `PROTOCOL_SSLv23`), no AKI is required and macOS
 works without `--tls-allow-invalid-certificates`.
 
-KMS connections use `ssl.create_default_context()` (which enables `X509_V_FLAG_X509_STRICT`) but
-clear `ssl.VERIFY_X509_STRICT` on macOS so that the missing CA SKI does not cause a verification
-failure.  KMS leaf certs carry AKI and SKI for non-macOS strict-mode verification.
+KMS connections use `ssl.create_default_context()`, which sets OpenSSL's `X509_V_FLAG_X509_STRICT`
+via `ssl.VERIFY_X509_STRICT`.  On macOS that flag is cleared so that the missing CA SKI does not
+cause a verification failure.  KMS leaf certs carry AKI and SKI for non-macOS strict-mode
+verification.
 
 > **If the driver is changed to use `ssl.create_default_context()` for MongoDB connections**, the
 > MongoDB certs will need AKI and SKI.  Adding AKI will re-trigger macOS SecTrust OCSP failures;
