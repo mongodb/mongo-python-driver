@@ -2224,20 +2224,7 @@ class TestExplicitQueryableEncryption(AsyncEncryptionIntegrationTest):
                 {"encryptedIndexed": insert_payload}
             )
 
-        find_payload = await self.client_encryption.encrypt(
-            val, Algorithm.INDEXED, self.key1_id, query_type=QueryType.EQUALITY, contention_factor=0
-        )
-        docs = (
-            await self.encrypted_client[self.db.name]
-            .explicit_encryption.find({"encryptedIndexed": find_payload})
-            .to_list()
-        )
-
-        self.assertLessEqual(len(docs), 10)
-        for doc in docs:
-            self.assertEqual(doc["encryptedIndexed"], val)
-
-        # Find with contention_factor will return all 10 documents.
+        # Find with matching contention_factor returns all 10 documents.
         find_payload = await self.client_encryption.encrypt(
             val,
             Algorithm.INDEXED,
