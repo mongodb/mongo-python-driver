@@ -132,15 +132,15 @@ class TopologyDescription:
             )
 
             if server_too_new:
-                self._incompatible_err = (  # type: ignore
-                    f"Server at {s.address[0]}:{s.address[1] or 0} requires wire version "
+                self._incompatible_err = (
+                    f"Server at {s.address[0]}:{s.address[1] or 0} requires wire version "  # type: ignore[assignment]
                     f"{s.min_wire_version}, but this version of PyMongo only supports up to "
                     f"{common.MAX_SUPPORTED_WIRE_VERSION}."
                 )
 
             elif server_too_old:
-                self._incompatible_err = (  # type: ignore
-                    f"Server at {s.address[0]}:{s.address[1] or 0} reports wire version "
+                self._incompatible_err = (
+                    f"Server at {s.address[0]}:{s.address[1] or 0} reports wire version "  # type: ignore[assignment]
                     f"{s.max_wire_version}, but this version of PyMongo requires at least "
                     f"{common.MIN_SUPPORTED_WIRE_VERSION} (MongoDB "
                     f"{common.MIN_SUPPORTED_SERVER_VERSION})."

@@ -962,7 +962,7 @@ def _encode_maxkey(dummy0: Any, dummy1: Any) -> dict:  # type: ignore[type-arg]
 # Each encoder function's signature is:
 #   - obj: a Python data type, e.g. a Python int for _encode_int
 #   - json_options: a JSONOptions
-_ENCODERS: dict[type, Callable[[Any, JSONOptions], Any]] = {  # type: ignore[type-arg]
+_ENCODERS: dict[type, Callable[[Any, JSONOptions], Any]] = {
     bool: _encode_noop,
     bytes: _encode_bytes,
     datetime.datetime: _encode_datetime,

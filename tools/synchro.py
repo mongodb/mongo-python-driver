@@ -184,9 +184,9 @@ gridfs_files = [
 ]
 
 
-def async_only_test(f: str) -> bool:
+def async_only_test(f: Path) -> bool:
     """Return True for async tests that should not be converted to sync."""
-    return f in [
+    return str(f) in [
         "test_locks.py",
         "test_concurrency.py",
         "test_async_cancellation.py",
@@ -399,7 +399,7 @@ def translate_docstrings(lines: list[str]) -> list[str]:
             if f":param {k[1]}: **Not supported by {k[0]}**." in lines[i]:
                 lines[i] = lines[i].replace(
                     f"**Not supported by {k[0]}**.",
-                    value,  # type: ignore[index]
+                    value,
                 )
 
         for line in docstring_removals:

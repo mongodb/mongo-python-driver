@@ -302,7 +302,7 @@ class Primary(_ServerMode):
             return other.mode == _PRIMARY
         return NotImplemented
 
-    __hash__ = None  # type: ignore[assignment]
+    __hash__ = None
 
 
 class PrimaryPreferred(_ServerMode):

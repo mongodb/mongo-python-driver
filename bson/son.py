@@ -187,7 +187,7 @@ class SON(dict[_Key, _Value]):
             return len(self) == len(other) and list(self.items()) == list(other.items())
         return cast(bool, self.to_dict() == other)
 
-    __hash__ = None  # type: ignore[assignment]
+    __hash__ = None
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
