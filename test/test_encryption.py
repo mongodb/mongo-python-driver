@@ -2195,6 +2195,13 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         self.assertEqual(docs[0]["encryptedIndexed"], val)
 
     def test_02_insert_encrypted_indexed_and_find_contention(self):
+        # setUp creates the collection with contention=0 (from encryptedFields.json).
+        # This test uses contention_factor=10, so recreate the collection with contention=10.
+        self.db.drop_collection("explicit_encryption", encryptedFields=self.encrypted_fields)
+        encrypted_fields = copy.deepcopy(self.encrypted_fields)
+        encrypted_fields["fields"][0]["queries"]["contention"] = 10
+        self.db.command("create", "explicit_encryption", encryptedFields=encrypted_fields)
+
         val = "encrypted indexed value"
         contention = 10
         for _ in range(contention):
