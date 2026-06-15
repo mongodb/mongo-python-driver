@@ -27,7 +27,7 @@ Carry both AKI and SKI.  Python 3.13 requires AKI on non-root certs; Python 3.14
 
 | File | Subject | Signed by | Extensions | Purpose |
 |---|---|---|---|---|
-| `ca.pem` | `CN=Drivers Testing CA, ...` | Self (CA) | basicConstraints critical, SKI | Root CA for all test certs |
+| `ca.pem` | `CN=Drivers Testing CA, ...` | Self (CA) | basicConstraints critical, keyUsage critical, SKI | Root CA for all test certs |
 | `server.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN only | MongoDB server cert (key + cert) |
 | `client.pem` | `CN=client, O=MDB, ...` | Drivers Testing CA | keyUsage, extKeyUsage | Client auth cert (key + cert) |
 | `password_protected.pem` | Same as client | Drivers Testing CA | keyUsage, extKeyUsage | Client cert with AES-256 encrypted key |
@@ -58,7 +58,8 @@ macOS and Windows with Python 3.13+.  The root causes were:
    requires **AKI** on non-root certs.  The KMS mock-server connection (`http_post`) used
    `create_default_context()`, so the original 2019 KMS certs (no AKI) started failing.
 2. Python 3.14 sets OpenSSL's `X509_V_FLAG_X509_STRICT` (via `ssl.VERIFY_X509_STRICT`) in
-   `ssl.create_default_context()`, which additionally requires **SKI** on non-root certs.
+   `ssl.create_default_context()`, which additionally requires **SKI** on non-root certs and
+   **keyUsage** on CA certs.
 
 The MongoDB certs intentionally carry no AKI: Apple SecTrust triggers OCSP revocation checks when
 any cert in the chain has AKI, and those checks fail with `CSSMERR_TP_CERT_SUSPENDED` because our

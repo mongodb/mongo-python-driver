@@ -21,8 +21,11 @@ Two classes of leaf cert are generated:
     additionally enables X509_V_FLAG_X509_STRICT which requires the keyid field
     within AKI (issuer/serial form is not sufficient).
 
-The CA (ca.pem) carries basicConstraints (critical) and SKI.  SKI is needed
-so that keyid-form AKI on the KMS leaf certs can reference the CA's public key.
+The CA (ca.pem) carries basicConstraints (critical), keyUsage (critical,
+keyCertSign+cRLSign), and SKI.  keyUsage is required by Python 3.14
+X509_V_FLAG_X509_STRICT.  SKI is needed so that keyid-form AKI on the KMS
+leaf certs can reference the CA's public key (OpenSSL 3.3+ strict mode
+requires the keyIdentifier field in AKI; issuer/serial form is not recognised).
 macOS SecTrust OCSP is triggered by AKI on leaf certs, not by SKI on the CA:
 since the MongoDB leaf certs (server.pem, client.pem) carry no AKI, SecTrust
 cannot identify the issuer and skips the OCSP attempt — adding SKI to the CA
@@ -137,14 +140,11 @@ TRUSTED_CA_NAME = x509.Name(
 
 # ---------------------------------------------------------------------------
 # 0. Drivers Testing CA.
-#    Has basicConstraints (critical, CA:TRUE) and SKI.  No keyUsage, no AKI,
-#    no SAN.
+#    Has basicConstraints (critical, CA:TRUE), keyUsage (critical), and SKI.
+#    No AKI, no SAN.
 #
-#    keyUsage is intentionally omitted: on Windows Python 3.13, OpenSSL 3.3+
-#    raises "certificate signature failure" when a CA cert has a critical
-#    keyUsage with digital_signature=False, even though keyCertSign is set.
-#    Python 3.14 strict mode only requires keyUsage to include keyCertSign
-#    IF keyUsage is present — it does not require keyUsage to be present.
+#    keyUsage has keyCertSign and cRLSign set (critical).  Python 3.14
+#    X509_V_FLAG_X509_STRICT requires keyUsage to be present on CA certs.
 #
 #    SKI is present so that KMS leaf certs can use keyid-form AKI.  OpenSSL
 #    3.3+ strict mode requires the keyIdentifier field in AKI; issuer/serial
@@ -167,6 +167,20 @@ ca_cert = (
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
     .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+    .add_extension(
+        x509.KeyUsage(
+            digital_signature=False,
+            content_commitment=False,
+            key_encipherment=False,
+            data_encipherment=False,
+            key_agreement=False,
+            key_cert_sign=True,
+            crl_sign=True,
+            encipher_only=False,
+            decipher_only=False,
+        ),
+        critical=True,
+    )
     .add_extension(x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
@@ -403,12 +417,18 @@ def cert_text(path: Path) -> str:
 
 errors = 0
 
-# CA cert must have critical basicConstraints and SKI; must NOT have keyUsage, AKI, or SAN.
+# CA cert must have critical basicConstraints, critical keyUsage, and SKI; must NOT have AKI or SAN.
 ca_text = cert_text(SCRIPT_DIR / "ca.pem")
 ca_errors = 0
 if "Basic Constraints: critical" not in ca_text:
     print(
         "    ca.pem: ERROR — basicConstraints not critical (required by Python 3.14 strict mode)",
+        file=sys.stderr,
+    )
+    ca_errors += 1
+if "Key Usage: critical" not in ca_text:
+    print(
+        "    ca.pem: ERROR — missing critical keyUsage (required by Python 3.14 strict mode)",
         file=sys.stderr,
     )
     ca_errors += 1
@@ -418,7 +438,7 @@ if "Subject Key Identifier" not in ca_text:
         file=sys.stderr,
     )
     ca_errors += 1
-for ext in ("Key Usage", "Authority Key Identifier", "Subject Alternative Name"):
+for ext in ("Authority Key Identifier", "Subject Alternative Name"):
     if ext in ca_text:
         print(
             f"    ca.pem: ERROR — has {ext} (would cause issues on Windows or macOS)",
@@ -428,7 +448,7 @@ for ext in ("Key Usage", "Authority Key Identifier", "Subject Alternative Name")
 if ca_errors:
     errors += ca_errors
 else:
-    print("    ca.pem: OK (has SKI, no keyUsage/AKI/SAN)")
+    print("    ca.pem: OK (has basicConstraints critical, keyUsage critical, SKI; no AKI/SAN)")
 
 # MongoDB certs must NOT have AKI.
 for name in ("server.pem", "client.pem"):
