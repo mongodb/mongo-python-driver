@@ -24,6 +24,7 @@ import binascii
 import copy
 import functools
 import os
+import platform
 import re
 import sys
 import time
@@ -570,8 +571,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
 
-        if "client side error in command starting transaction" in description:
-            self.skipTest("Implement PYTHON-1894")
         if "type=symbol" in description:
             self.skipTest("PyMongo does not support the symbol type")
         if "timeoutms applied to entire download" in description:
@@ -1456,6 +1455,16 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     def run_scenario(self, spec, uri=None):
+        # Skip tests that rely on $where performance on macOS CI.
+        if sys.platform == "darwin" and "CI" in os.environ:
+            macos_skip_tests = [
+                ("PYTHON-5861", ".*InterruptInUsePoolClear.*is_retryable"),
+                ("PYTHON-5861", ".*timeoutms_can_be_overridden_for_upload"),
+            ]
+            for reason, skip_pattern in macos_skip_tests:
+                if re.match(skip_pattern.lower(), self.id().lower()) is not None:
+                    self.skipTest(f"{reason}: $where is too slow on macOS CI")
+
         # Handle flaky tests.
         flaky_tests = [
             ("PYTHON-5170", ".*test_discovery_and_monitoring.*"),

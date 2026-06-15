@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import platform
 import socketserver
 import sys
 import threading
@@ -304,6 +305,10 @@ class TestClusterTimeComparison(PyMongoTestCase):
 
 
 class TestIgnoreStaleErrors(IntegrationTest):
+    @unittest.skipIf(
+        sys.platform == "darwin" and platform.machine() == "arm64" and "CI" in os.environ,
+        "PYTHON-5861: asyncio.Barrier hangs on macOS ARM64 CI",
+    )
     def test_ignore_stale_connection_errors(self):
         if not _IS_SYNC and sys.version_info < (3, 11):
             self.skipTest("Test requires asyncio.Barrier (added in Python 3.11)")
@@ -450,6 +455,10 @@ class TestPoolManagement(IntegrationTest):
 
 class TestPoolBackpressure(IntegrationTest):
     @client_context.require_version_min(7, 0, 0)
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     def test_connection_pool_is_not_cleared(self):
         listener = CMAPListener()
 

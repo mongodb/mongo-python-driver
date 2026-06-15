@@ -36,6 +36,10 @@ from test.utils_shared import is_greenthread_patched
     is_greenthread_patched(),
     "gevent does not support POSIX-style forking.",
 )
+@unittest.skipIf(
+    sys.version_info >= (3, 15),
+    "fork() in multi-threaded processes is deprecated in Python 3.15+ (PYTHON-5874)",
+)
 class TestFork(IntegrationTest):
     def test_lock_client(self):
         # Forks the client with some items locked.

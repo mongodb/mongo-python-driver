@@ -296,10 +296,12 @@ class TestSdamMonitoring(IntegrationTest):
             event_listeners=[self.listener], retryWrites=retry_writes
         )
         self.coll = self.test_client[self.client.db.name].test
-        self.coll.insert_one({})
+        self.coll.drop()  # necessary for first test run
+        self.coll.database.create_collection(self.coll.name)
         self.listener.reset()
 
     def tearDown(self):
+        self.coll.drop()
         super().tearDown()
 
     def _test_app_error(self, fail_command_opts, expected_error):

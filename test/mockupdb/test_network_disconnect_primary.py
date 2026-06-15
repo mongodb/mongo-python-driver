@@ -18,7 +18,7 @@ import unittest
 import pytest
 
 try:
-    from mockupdb import Future, MockupDB, OpReply, going, wait_until
+    from mockupdb import Future, MockupDB, OpMsgReply, going, wait_until
 
     _HAVE_MOCKUPDB = True
 except ImportError:
@@ -44,7 +44,7 @@ class TestNetworkDisconnectPrimary(unittest.TestCase):
             self.addCleanup(server.stop)
 
         hosts = [server.address_string for server in (primary, secondary)]
-        primary_response = OpReply(
+        primary_response = OpMsgReply(
             ismaster=True,
             setName="rs",
             hosts=hosts,

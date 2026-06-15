@@ -436,6 +436,10 @@ class _Transaction:
     def set_starting(self) -> None:
         self.state = _TxnState.STARTING
 
+    def set_in_progress(self) -> None:
+        if self.state == _TxnState.STARTING:
+            self.state = _TxnState.IN_PROGRESS
+
     @property
     def pinned_conn(self) -> Optional[Connection]:
         if self.active() and self.conn_mgr:
@@ -1126,7 +1130,6 @@ class ClientSession:
 
             if self._transaction.state == _TxnState.STARTING:
                 # First command begins a new transaction.
-                self._transaction.state = _TxnState.IN_PROGRESS
                 command["startTransaction"] = True
 
                 assert self._transaction.opts

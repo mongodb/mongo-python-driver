@@ -99,7 +99,7 @@ if TYPE_CHECKING:
         ZlibContext,
         ZstdContext,
     )
-    from pymongo.message import _OpMsg, _OpReply
+    from pymongo.message import _OpMsg
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.typings import _Address, _CollationIn
@@ -143,7 +143,6 @@ class AsyncConnection:
         self.supports_sessions = False
         self.hello_ok: bool = False
         self.is_mongos = False
-        self.op_msg_enabled = False
         self.listeners = pool.opts._event_listeners
         self.enabled_for_cmap = pool.enabled_for_cmap
         self.enabled_for_logging = pool.enabled_for_logging
@@ -232,13 +231,11 @@ class AsyncConnection:
             await self.close_conn(ConnectionClosedReason.STALE)
 
     def hello_cmd(self) -> dict[str, Any]:
-        # Handshake spec requires us to use OP_MSG+hello command for the
-        # initial handshake in load balanced or stable API mode.
+        # As of PYTHON-5713, always use OP_MSG for the handshake since all
+        # supported servers (MongoDB 4.2+, wire version >= 8) support it.
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
-            self.op_msg_enabled = True
             return {HelloCompat.CMD: 1}
-        else:
-            return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
+        return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
 
     async def hello(self) -> Hello[dict[str, Any]]:
         return await self._hello(None, None)
@@ -311,7 +308,6 @@ class AsyncConnection:
             ctx = self.compression_settings.get_compression_context(hello.compressors)
             self.compression_context = ctx
 
-        self.op_msg_enabled = True
         self.server_connection_id = hello.connection_id
         if creds:
             self.negotiated_mechs = hello.sasl_supported_mechs
@@ -394,9 +390,10 @@ class AsyncConnection:
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
-        if self.op_msg_enabled:
-            self._raise_if_not_writable(unacknowledged)
+        self._raise_if_not_writable(unacknowledged)
         try:
+            if session is not None and session._starting_transaction:
+                session._transaction.set_in_progress()
             return await command(
                 self,
                 dbname,
@@ -415,7 +412,6 @@ class AsyncConnection:
                 parse_write_concern_error=parse_write_concern_error,
                 collation=collation,
                 compression_ctx=self.compression_context,
-                use_op_msg=self.op_msg_enabled,
                 unacknowledged=unacknowledged,
                 user_fields=user_fields,
                 exhaust_allowed=exhaust_allowed,
@@ -444,7 +440,7 @@ class AsyncConnection:
         except BaseException as error:
             await self._raise_connection_failure(error)
 
-    async def receive_message(self, request_id: Optional[int]) -> Union[_OpReply, _OpMsg]:
+    async def receive_message(self, request_id: Optional[int]) -> _OpMsg:
         """Receive a raw BSON message or raise ConnectionFailure.
 
         If any exception is raised, the socket is closed.
@@ -512,9 +508,7 @@ class AsyncConnection:
                 await auth.authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
             duration = time.monotonic() - self.creation_time
-            if self.enabled_for_cmap:
-                assert self.listeners is not None
-                self.listeners.publish_connection_ready(self.address, self.id, duration)
+            # Log before publishing event to prevent potential listener preemption in tests
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
@@ -525,6 +519,9 @@ class AsyncConnection:
                     driverConnectionId=self.id,
                     durationMS=duration,
                 )
+            if self.enabled_for_cmap:
+                assert self.listeners is not None
+                self.listeners.publish_connection_ready(self.address, self.id, duration)
 
     def validate_session(
         self, client: Optional[AsyncMongoClient[Any]], session: Optional[AsyncClientSession]
@@ -836,6 +833,32 @@ class Pool:
 
             if close:
                 self.state = PoolState.CLOSED
+
+            # Publish PoolClearedEvent while holding the lock and before
+            # notify_all(). This guarantees it is recorded before any waiting
+            # thread wakes up and emits ConnectionCheckOutFailedEvent, which
+            # also requires size_cond. Without this ordering, a race on PyPy
+            # and free-threaded Python causes ConnectionCheckOutFailedEvent to
+            # arrive before PoolClearedEvent (PYTHON-3519).
+            if not close and old_state != PoolState.PAUSED:
+                _listeners = self.opts._event_listeners
+                if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _CONNECTION_LOGGER,
+                        message=_ConnectionStatusMessage.POOL_CLEARED,
+                        clientId=self._client_id,
+                        serverHost=self.address[0],
+                        serverPort=self.address[1],
+                        serviceId=service_id,
+                    )
+                if self.enabled_for_cmap:
+                    assert _listeners is not None
+                    _listeners.publish_pool_cleared(
+                        self.address,
+                        service_id=service_id,
+                        interrupt_connections=interrupt_connections,
+                    )
+
             # Clear the wait queue
             self._max_connecting_cond.notify_all()
             self.size_cond.notify_all()
@@ -869,23 +892,6 @@ class Pool:
                 assert listeners is not None
                 listeners.publish_pool_closed(self.address)
         else:
-            if old_state != PoolState.PAUSED:
-                if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _CONNECTION_LOGGER,
-                        message=_ConnectionStatusMessage.POOL_CLEARED,
-                        clientId=self._client_id,
-                        serverHost=self.address[0],
-                        serverPort=self.address[1],
-                        serviceId=service_id,
-                    )
-                if self.enabled_for_cmap:
-                    assert listeners is not None
-                    listeners.publish_pool_cleared(
-                        self.address,
-                        service_id=service_id,
-                        interrupt_connections=interrupt_connections,
-                    )
             if not _IS_SYNC:
                 await asyncio.gather(
                     *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
@@ -1020,9 +1026,7 @@ class Pool:
             self.active_contexts.add(tmp_context)
 
         listeners = self.opts._event_listeners
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_created(self.address, conn_id)
+        # Log before publishing event to prevent potential listener preemption in tests
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
@@ -1032,6 +1036,9 @@ class Pool:
                 serverPort=self.address[1],
                 driverConnectionId=conn_id,
             )
+        if self.enabled_for_cmap:
+            assert listeners is not None
+            listeners.publish_connection_created(self.address, conn_id)
 
         try:
             networking_interface = await _configured_protocol_interface(self.address, self.opts)
@@ -1055,10 +1062,16 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
-            self._handle_connection_error(error)
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
-                _raise_connection_failure(self.address, error, timeout_details=details)
+                # Wrap to AutoReconnect/NetworkTimeout BEFORE labeling so the
+                # SystemOverloadedError label lands on the propagated exception.
+                try:
+                    _raise_connection_failure(self.address, error, timeout_details=details)
+                except (AutoReconnect, NetworkTimeout) as wrapped:
+                    self._handle_connection_error(wrapped)
+                    raise
+            self._handle_connection_error(error)
             raise
 
         conn = AsyncConnection(networking_interface, self, self.address, conn_id, self.is_sdam)  # type: ignore[arg-type]
