@@ -4,32 +4,7 @@
 # ///
 """Generate TLS test certificates for the PyMongo test suite.
 
-Two classes of leaf cert are generated:
-
-  MongoDB certs (server.pem, client.pem, password_protected.pem):
-    No Authority Key Identifier (AKI) extension.  MongoDB Enterprise on macOS uses Apple SecTrust with
-    kSecRevocationRequirePositiveResponse.  When AKI is present, SecTrust uses
-    it to identify the issuer, then attempts OCSP.  Because our CA is not in
-    the macOS system keychain on Evergreen driver CI hosts, OCSP fails and
-    SecTrust returns CSSMERR_TP_CERT_SUSPENDED.  Without AKI, SecTrust cannot
-    identify the issuer and skips the OCSP attempt.
-
-  KMS certs (kms-server.pem, kms-wrong-host.pem, kms-expired.pem):
-    Carry AKI in keyid form (keyIdentifier = SHA-1 of CA public key) and SKI.
-    These certs are verified by Python's ssl module (OpenSSL), not by MongoDB
-    Enterprise.  Python 3.13 requires AKI on non-root certs; Python 3.14
-    additionally enables X509_V_FLAG_X509_STRICT which requires the keyid field
-    within AKI (issuer/serial form is not sufficient).
-
-The CA (ca.pem) carries basicConstraints (critical), keyUsage (critical,
-keyCertSign+cRLSign), and SKI.  keyUsage is required by Python 3.14
-X509_V_FLAG_X509_STRICT.  SKI is needed so that keyid-form AKI on the KMS
-leaf certs can reference the CA's public key (OpenSSL 3.3+ strict mode
-requires the keyIdentifier field in AKI; issuer/serial form is not recognised).
-macOS SecTrust OCSP is triggered by AKI on leaf certs, not by SKI on the CA:
-since the MongoDB leaf certs (server.pem, client.pem) carry no AKI, SecTrust
-cannot identify the issuer and skips the OCSP attempt — adding SKI to the CA
-does not re-enable that check.
+See README.md in this directory for background on the certificate design.
 
 Usage:
     uv run gen-certs.py    # run from test/certificates/
@@ -139,22 +114,7 @@ TRUSTED_CA_NAME = x509.Name(
 
 
 # ---------------------------------------------------------------------------
-# 0. Drivers Testing CA.
-#    Has basicConstraints (critical, CA:TRUE), keyUsage (critical), and SKI.
-#    No AKI, no SAN.
-#
-#    keyUsage has keyCertSign and cRLSign set (critical).  Python 3.14
-#    X509_V_FLAG_X509_STRICT requires keyUsage to be present on CA certs.
-#
-#    SKI is present so that KMS leaf certs can use keyid-form AKI.  OpenSSL
-#    3.3+ strict mode requires the keyIdentifier field in AKI; issuer/serial
-#    form (the alternative) is NOT recognised.  The CA's SKI does not trigger
-#    macOS SecTrust OCSP checks: OCSP is triggered by AKI on LEAF certs
-#    identifying an issuer, and our MongoDB leaf certs (server.pem, client.pem)
-#    carry no AKI.
-#
-#    AKI is intentionally omitted from the CA: it is self-signed, so AKI
-#    would be redundant and adding it could confuse some validators.
+# 0. Drivers Testing CA — basicConstraints (critical), keyUsage (critical), SKI.
 # ---------------------------------------------------------------------------
 print("==> Generating Drivers Testing CA...")
 ca_key = make_key()
@@ -189,8 +149,8 @@ print("    ca.pem written (subject:", ca_cert.subject.rfc4514_string(), ")")
 
 
 # ---------------------------------------------------------------------------
-# 1. Server certificate — serial 1, revoked in crl.pem for test_tlsCRLFile_support
-#    No AKI: presented to MongoDB Enterprise (Apple SecTrust on macOS).
+# 1. Server certificate — serial 1, revoked in crl.pem for test_tlsCRLFile_support.
+#    No AKI (see README.md).
 # ---------------------------------------------------------------------------
 print("==> Generating server certificate (no AKI)...")
 server_key = make_key()
@@ -210,10 +170,8 @@ print("    server.pem written")
 
 
 # ---------------------------------------------------------------------------
-# 1b. KMS server certificate — serial 5, with AKI.
-#     Used by kms_failpoint_server.py (port 9003).  Verified by Python's ssl
-#     module (OpenSSL), NOT by MongoDB Enterprise — so AKI is safe here and
-#     is required for Python 3.13 / OpenSSL 3.x chain building.
+# 1b. KMS server certificate — serial 5, with AKI + SKI (see README.md).
+#     Used by kms_failpoint_server.py (port 9003).
 # ---------------------------------------------------------------------------
 print("==> Generating KMS server certificate (with AKI)...")
 server_kms_key = make_key()
@@ -237,8 +195,7 @@ print("    kms-server.pem written")
 
 
 # ---------------------------------------------------------------------------
-# 2. Client certificate — serial 2
-#    No AKI: presented to MongoDB Enterprise during x509 auth.
+# 2. Client certificate — serial 2, no AKI (see README.md).
 # ---------------------------------------------------------------------------
 print("==> Generating client certificate (no AKI)...")
 client_key = make_key()
