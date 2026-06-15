@@ -372,6 +372,7 @@ async def run_acknowledged_command(
     use_conn_transport: bool = False,
     process_response: bool = True,
     decrypt_reply: bool = True,
+    set_conn_more_to_come: bool = True,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send an acknowledged command and return ``(docs, reply, duration)``.
 
@@ -386,6 +387,8 @@ async def run_acknowledged_command(
     :param process_response: Run ``client._process_response`` here.
     :param decrypt_reply: Decrypt the reply when auto-encryption is enabled; the
         bulk paths pass False (their commands are encrypted up front).
+    :param set_conn_more_to_come: Store ``reply.more_to_come`` on ``conn``; the
+        bulk paths pass False (bulk write replies never set ``more_to_come``).
 
     See :func:`_run_command` for the remaining parameters.
     """
@@ -412,6 +415,7 @@ async def run_acknowledged_command(
         use_conn_transport=use_conn_transport,
         process_response=process_response,
         decrypt_reply=decrypt_reply,
+        set_conn_more_to_come=set_conn_more_to_come,
     )
 
 
