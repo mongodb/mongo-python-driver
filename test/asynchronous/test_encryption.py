@@ -3040,11 +3040,6 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
         # Note, the connection to the mock server needs to be closed after
         # each request because the server is single threaded.
         ctx = ssl.create_default_context()
-        if sys.platform == "darwin":
-            # Python 3.14 sets OpenSSL's X509_V_FLAG_X509_STRICT via ssl.VERIFY_X509_STRICT
-            # in create_default_context, which requires SKI on the root CA cert.  The CA cert
-            # intentionally omits SKI to prevent macOS SecTrust OCSP revocation checks.
-            ctx.verify_flags &= ~getattr(ssl, "VERIFY_X509_STRICT", 0)
         ctx.load_verify_locations(cafile=CA_PEM)
         ctx.load_cert_chain(CLIENT_PEM)
         conn = http.client.HTTPSConnection("127.0.0.1:9003", context=ctx)

@@ -15,19 +15,18 @@ Two classes of leaf cert are generated:
     identify the issuer and skips the OCSP attempt.
 
   KMS certs (kms-server.pem, kms-wrong-host.pem, kms-expired.pem):
-    Carry AKI in the issuer form (DirName + serial, no keyid).  These certs
-    are verified by Python's ssl module (OpenSSL), not by MongoDB Enterprise.
-    Python 3.13 / OpenSSL 3.x requires AKI on non-root certs.  The issuer
-    form satisfies that requirement.  Using the issuer form (not keyid) avoids
-    providing a keyid, which would separately enable macOS SecTrust's
-    keyid-based OCSP lookup on any path that does use SecTrust.
+    Carry AKI in keyid form (keyIdentifier = SHA-1 of CA public key) and SKI.
+    These certs are verified by Python's ssl module (OpenSSL), not by MongoDB
+    Enterprise.  Python 3.13 requires AKI on non-root certs; Python 3.14
+    additionally enables X509_V_FLAG_X509_STRICT which requires the keyid field
+    within AKI (issuer/serial form is not sufficient).
 
-The CA (ca.pem) intentionally has only basicConstraints: CA:TRUE and no other
-extensions.  The original test CA shipped in this directory (from 2019) used
-exactly this minimal profile and worked fine on macOS.  Adding keyUsage,
-subjectAltName, Subject Key Identifier (SKI), or AKI to the CA cert causes macOS SecTrust to treat it
-like a leaf cert requiring its own OCSP check, which then fails
-(CSSMERR_TP_CERT_SUSPENDED) because the CA is not in the system keychain.
+The CA (ca.pem) carries basicConstraints (critical) and SKI.  SKI is needed
+so that keyid-form AKI on the KMS leaf certs can reference the CA's public key.
+macOS SecTrust OCSP is triggered by AKI on leaf certs, not by SKI on the CA:
+since the MongoDB leaf certs (server.pem, client.pem) carry no AKI, SecTrust
+cannot identify the issuer and skips the OCSP attempt — adding SKI to the CA
+does not re-enable that check.
 
 Usage:
     uv run gen-certs.py    # run from test/certificates/
@@ -72,17 +71,11 @@ def cert_pem(cert) -> bytes:
     return cert.public_bytes(Encoding.PEM)
 
 
-def aki_from_ca(ca_cert: x509.Certificate) -> x509.AuthorityKeyIdentifier:
-    # Issuer form (DirName + serial, no keyid).  OpenSSL 3.3+ (bundled with
-    # Windows Python 3.13+) requires the issuer cert to have SKI when the leaf
-    # uses keyid-form AKI.  Our CA intentionally omits SKI, so we use issuer
-    # form to avoid that requirement.  Issuer form still satisfies Python 3.13+
-    # which requires AKI to be present on non-root certs.
-    return x509.AuthorityKeyIdentifier(
-        key_identifier=None,
-        authority_cert_issuer=[x509.DirectoryName(ca_cert.issuer)],
-        authority_cert_serial_number=ca_cert.serial_number,
-    )
+def aki_from_ca(ca_key_pub) -> x509.AuthorityKeyIdentifier:
+    # Keyid form: the keyIdentifier is the SHA-1 hash of the CA's public key
+    # (same value as the CA's SKI).  OpenSSL 3.3+ strict mode requires this
+    # form; issuer/serial form is not recognised as satisfying the AKI check.
+    return x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key_pub)
 
 
 def server_san() -> x509.SubjectAlternativeName:
@@ -144,8 +137,8 @@ TRUSTED_CA_NAME = x509.Name(
 
 # ---------------------------------------------------------------------------
 # 0. Drivers Testing CA.
-#    Has only basicConstraints (critical, CA:TRUE).  No keyUsage, no SKI,
-#    no AKI, no SAN.
+#    Has basicConstraints (critical, CA:TRUE) and SKI.  No keyUsage, no AKI,
+#    no SAN.
 #
 #    keyUsage is intentionally omitted: on Windows Python 3.13, OpenSSL 3.3+
 #    raises "certificate signature failure" when a CA cert has a critical
@@ -153,9 +146,15 @@ TRUSTED_CA_NAME = x509.Name(
 #    Python 3.14 strict mode only requires keyUsage to include keyCertSign
 #    IF keyUsage is present — it does not require keyUsage to be present.
 #
-#    SKI/AKI are intentionally omitted: adding them causes macOS SecTrust to
-#    trigger OCSP revocation checks on the MongoDB server startup path,
-#    causing ~67-second connection timeouts.
+#    SKI is present so that KMS leaf certs can use keyid-form AKI.  OpenSSL
+#    3.3+ strict mode requires the keyIdentifier field in AKI; issuer/serial
+#    form (the alternative) is NOT recognised.  The CA's SKI does not trigger
+#    macOS SecTrust OCSP checks: OCSP is triggered by AKI on LEAF certs
+#    identifying an issuer, and our MongoDB leaf certs (server.pem, client.pem)
+#    carry no AKI.
+#
+#    AKI is intentionally omitted from the CA: it is self-signed, so AKI
+#    would be redundant and adding it could confuse some validators.
 # ---------------------------------------------------------------------------
 print("==> Generating Drivers Testing CA...")
 ca_key = make_key()
@@ -168,6 +167,7 @@ ca_cert = (
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
     .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+    .add_extension(x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "ca.pem").write_bytes(cert_pem(ca_cert))
@@ -212,7 +212,7 @@ server_kms_cert = (
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
     .add_extension(server_san(), critical=False)
-    .add_extension(aki_from_ca(ca_cert), critical=False)
+    .add_extension(aki_from_ca(ca_key.public_key()), critical=False)
     .add_extension(
         x509.SubjectKeyIdentifier.from_public_key(server_kms_key.public_key()), critical=False
     )
@@ -316,7 +316,7 @@ wrong_host_cert = (
         x509.SubjectAlternativeName([x509.DNSName("wronghost.example.com")]),
         critical=False,
     )
-    .add_extension(aki_from_ca(ca_cert), critical=False)
+    .add_extension(aki_from_ca(ca_key.public_key()), critical=False)
     .add_extension(
         x509.SubjectKeyIdentifier.from_public_key(wrong_host_key.public_key()), critical=False
     )
@@ -340,7 +340,7 @@ expired_cert = (
     .not_valid_before(datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc))
     .not_valid_after(datetime.datetime(2001, 1, 1, tzinfo=datetime.timezone.utc))
     .add_extension(server_san(), critical=False)
-    .add_extension(aki_from_ca(ca_cert), critical=False)
+    .add_extension(aki_from_ca(ca_key.public_key()), critical=False)
     .add_extension(
         x509.SubjectKeyIdentifier.from_public_key(expired_key.public_key()), critical=False
     )
@@ -403,7 +403,7 @@ def cert_text(path: Path) -> str:
 
 errors = 0
 
-# CA cert must have critical basicConstraints; must NOT have keyUsage, AKI, SKI, or SAN.
+# CA cert must have critical basicConstraints and SKI; must NOT have keyUsage, AKI, or SAN.
 ca_text = cert_text(SCRIPT_DIR / "ca.pem")
 ca_errors = 0
 if "Basic Constraints: critical" not in ca_text:
@@ -412,12 +412,13 @@ if "Basic Constraints: critical" not in ca_text:
         file=sys.stderr,
     )
     ca_errors += 1
-for ext in (
-    "Key Usage",
-    "Authority Key Identifier",
-    "Subject Key Identifier",
-    "Subject Alternative Name",
-):
+if "Subject Key Identifier" not in ca_text:
+    print(
+        "    ca.pem: ERROR — missing SKI (required for keyid-form AKI on KMS leaf certs)",
+        file=sys.stderr,
+    )
+    ca_errors += 1
+for ext in ("Key Usage", "Authority Key Identifier", "Subject Alternative Name"):
     if ext in ca_text:
         print(
             f"    ca.pem: ERROR — has {ext} (would cause issues on Windows or macOS)",
@@ -427,7 +428,7 @@ for ext in (
 if ca_errors:
     errors += ca_errors
 else:
-    print("    ca.pem: OK")
+    print("    ca.pem: OK (has SKI, no keyUsage/AKI/SAN)")
 
 # MongoDB certs must NOT have AKI.
 for name in ("server.pem", "client.pem"):
@@ -441,20 +442,26 @@ for name in ("server.pem", "client.pem"):
     else:
         print(f"    {name}: OK (no AKI)")
 
-# KMS certs MUST have AKI and SKI.
+# KMS certs MUST have keyid-form AKI and SKI.
 for name in ("kms-server.pem", "kms-wrong-host.pem", "kms-expired.pem"):
     text = cert_text(SCRIPT_DIR / name)
     cert_errors = 0
     if "Authority Key Identifier" not in text:
-        print(f"    {name}: ERROR — missing AKI (required for Python 3.13)", file=sys.stderr)
+        print(f"    {name}: ERROR — missing AKI (required for Python 3.13+)", file=sys.stderr)
+        cert_errors += 1
+    elif "keyid:" not in text.lower() and "Key Identifier" not in text:
+        print(
+            f"    {name}: ERROR — AKI missing keyIdentifier (OpenSSL 3.3+ strict mode requires keyid form)",
+            file=sys.stderr,
+        )
         cert_errors += 1
     if "Subject Key Identifier" not in text:
-        print(f"    {name}: ERROR — missing SKI (required for Python 3.14)", file=sys.stderr)
+        print(f"    {name}: ERROR — missing SKI (required for Python 3.14+)", file=sys.stderr)
         cert_errors += 1
     if cert_errors:
         errors += cert_errors
     else:
-        print(f"    {name}: OK (has AKI + SKI)")
+        print(f"    {name}: OK (has keyid-form AKI + SKI)")
 
 if errors:
     sys.exit(1)

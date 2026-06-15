@@ -27,7 +27,7 @@ Carry both AKI and SKI.  Python 3.13 requires AKI on non-root certs; Python 3.14
 
 | File | Subject | Signed by | Extensions | Purpose |
 |---|---|---|---|---|
-| `ca.pem` | `CN=Drivers Testing CA, ...` | Self (CA) | basicConstraints critical | Root CA for all test certs |
+| `ca.pem` | `CN=Drivers Testing CA, ...` | Self (CA) | basicConstraints critical, SKI | Root CA for all test certs |
 | `server.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN only | MongoDB server cert (key + cert) |
 | `client.pem` | `CN=client, O=MDB, ...` | Drivers Testing CA | keyUsage, extKeyUsage | Client auth cert (key + cert) |
 | `password_protected.pem` | Same as client | Drivers Testing CA | keyUsage, extKeyUsage | Client cert with AES-256 encrypted key |
@@ -60,17 +60,26 @@ macOS and Windows with Python 3.13+.  The root causes were:
 2. Python 3.14 sets OpenSSL's `X509_V_FLAG_X509_STRICT` (via `ssl.VERIFY_X509_STRICT`) in
    `ssl.create_default_context()`, which additionally requires **SKI** on non-root certs.
 
-The MongoDB certs and CA cert intentionally carry no AKI or SKI: Apple SecTrust triggers OCSP
-revocation checks when any cert in the chain has AKI, and those checks fail with
-`CSSMERR_TP_CERT_SUSPENDED` because our test CA is not in the macOS system keychain.  As long as
-the driver verifies MongoDB server certs without `X509_V_FLAG_X509_STRICT` (which is the case —
-`pymongo.ssl_support.get_ssl_context` uses `PROTOCOL_SSLv23`), no AKI is required and macOS
-works without `--tls-allow-invalid-certificates`.
+The MongoDB certs intentionally carry no AKI: Apple SecTrust triggers OCSP revocation checks when
+any cert in the chain has AKI, and those checks fail with `CSSMERR_TP_CERT_SUSPENDED` because our
+test CA is not in the macOS system keychain.  The CA carries SKI (but not AKI); macOS SecTrust
+OCSP is triggered by AKI on leaf certs, so the CA's SKI does not re-enable OCSP.
+
+MongoDB Enterprise on macOS uses Apple SecTrust with `kSecRevocationRequirePositiveResponse`, which
+requires a positive OCSP response for every cert in the chain regardless of whether AKI is present.
+Because our test CA has no OCSP responder, the server startup always fails with
+`CSSMERR_TP_CERT_SUSPENDED` without `--tls-allow-invalid-certificates`.  This flag is set for
+macOS in `.evergreen/scripts/run_server.py`.
+
+As long as the driver verifies MongoDB server certs without `X509_V_FLAG_X509_STRICT` (which is
+the case — `pymongo.ssl_support.get_ssl_context` uses `PROTOCOL_SSLv23`), no AKI is required on
+the MongoDB leaf certs.
 
 KMS connections use `ssl.create_default_context()`, which sets OpenSSL's `X509_V_FLAG_X509_STRICT`
-via `ssl.VERIFY_X509_STRICT`.  On macOS that flag is cleared so that the missing CA SKI does not
-cause a verification failure.  KMS leaf certs carry AKI and SKI for non-macOS strict-mode
-verification.
+via `ssl.VERIFY_X509_STRICT`.  The CA cert carries SKI, enabling keyid-form AKI on the KMS leaf
+certs.  OpenSSL 3.3+ strict mode requires the `keyIdentifier` field within AKI (issuer/serial form
+is not sufficient).  macOS SecTrust OCSP is triggered by AKI on leaf certs that identify an issuer
+— since the MongoDB leaf certs carry no AKI, adding SKI to the CA does not re-enable OCSP checks.
 
 > **If the driver is changed to use `ssl.create_default_context()` for MongoDB connections**, the
 > MongoDB certs will need AKI and SKI.  Adding AKI will re-trigger macOS SecTrust OCSP failures;
