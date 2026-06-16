@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import struct
 import sys
+from typing import Any
 from unittest.mock import MagicMock
 
 sys.path[0:0] = [""]
@@ -154,7 +155,7 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(max_doc_size, 0)
 
     def test_op_msg_max_doc_size_matches_largest_encoded_doc(self):
-        docs = [{"_id": 1}, {"_id": 2, "data": "a" * 100}]
+        docs: list[dict[str, Any]] = [{"_id": 1}, {"_id": 2, "data": "a" * 100}]
         cmd: dict = {"insert": "col", "documents": docs}
         max_doc_size = _op_msg(0, cmd, "testdb", None, _OPTS)[3]
         self.assertEqual(max_doc_size, max(len(encode(d)) for d in docs))
