@@ -48,6 +48,7 @@ from typing import (
     Any,
     Callable,
     Optional,
+    Protocol,
     Union,
     cast,
 )
@@ -75,6 +76,19 @@ if TYPE_CHECKING:
     from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
+
+
+class _BulkWriteContextProto(Protocol):
+    """Structural interface for bulk write context objects passed to :func:`run_bulk_write_command`."""
+
+    conn: Connection
+    db_name: str
+    session: Optional[ClientSession]
+    listeners: Optional[_EventListeners]
+    start_time: datetime.datetime
+    codec: CodecOptions[Any]
+    op_id: int
+    name: str
 
 
 def run_command(
@@ -343,20 +357,12 @@ def run_command(
 
 
 def run_bulk_write_command(
-    conn: Connection,
+    bwc: _BulkWriteContextProto,
     cmd: MutableMapping[str, Any],
-    dbname: str,
     request_id: int,
     msg: bytes,
     *,
     client: Optional[MongoClient[Any]],
-    session: Optional[ClientSession],
-    listeners: Optional[_EventListeners],
-    address: Optional[_Address],
-    start: datetime.datetime,
-    codec_options: CodecOptions[_DocumentType],
-    op_id: Optional[int] = None,
-    command_name: Optional[str] = None,
     orig: Optional[MutableMapping[str, Any]] = None,
     max_doc_size: int = 0,
     unacknowledged: bool = False,
@@ -368,25 +374,24 @@ def run_bulk_write_command(
     bulk write replies never set ``more_to_come`` so ``set_conn_more_to_come``
     is ``False``.
 
+    :param bwc: A bulk write context supplying the connection, session, listeners, etc.
     :param max_doc_size: The largest document size; passed to ``conn.send_message``.
     :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
-
-    See :func:`run_command` for the remaining parameters.
     """
     return run_command(
-        conn,
+        bwc.conn,
         cmd,
-        dbname,
+        bwc.db_name,
         request_id,
         msg,
         client=client,
-        session=session,
-        listeners=listeners,
-        address=address,
-        start=start,
-        codec_options=codec_options,
-        op_id=op_id,
-        command_name=command_name,
+        session=bwc.session,
+        listeners=bwc.listeners,
+        address=bwc.conn.address,
+        start=bwc.start_time,
+        codec_options=bwc.codec,
+        op_id=bwc.op_id,
+        command_name=bwc.name,
         orig=orig,
         max_doc_size=max_doc_size,
         unacknowledged=unacknowledged,

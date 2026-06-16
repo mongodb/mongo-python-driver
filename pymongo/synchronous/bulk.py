@@ -248,19 +248,11 @@ class _Bulk:
         """Run a batch write command, returning the response as a dict."""
         cmd[bwc.field] = docs
         result_docs, _, _ = run_bulk_write_command(
-            bwc.conn,  # type: ignore[arg-type]
+            bwc,  # type: ignore[arg-type]
             cmd,
-            bwc.db_name,
             request_id,
             msg,
             client=client,
-            session=bwc.session,  # type: ignore[arg-type]
-            listeners=bwc.listeners,
-            address=bwc.conn.address,
-            start=bwc.start_time,
-            codec_options=bwc.codec,
-            op_id=bwc.op_id,
-            command_name=bwc.name,
         )
         return result_docs[0]
 
@@ -281,19 +273,11 @@ class _Bulk:
         published = dict(cmd)
         published[bwc.field] = docs
         run_bulk_write_command(
-            bwc.conn,  # type: ignore[arg-type]
+            bwc,  # type: ignore[arg-type]
             cmd,
-            bwc.db_name,
             request_id,
             msg,
             client=client,
-            session=bwc.session,  # type: ignore[arg-type]
-            listeners=bwc.listeners,
-            address=bwc.conn.address,
-            start=bwc.start_time,
-            codec_options=bwc.codec,
-            op_id=bwc.op_id,
-            command_name=bwc.name,
             orig=published,
             max_doc_size=max_doc_size,
             unacknowledged=True,

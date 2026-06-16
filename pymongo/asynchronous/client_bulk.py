@@ -241,19 +241,11 @@ class _AsyncClientBulk:
         cmd["nsInfo"] = ns_docs
         try:
             result_docs, _, _ = await run_bulk_write_command(
-                bwc.conn,  # type: ignore[arg-type]
+                bwc,  # type: ignore[arg-type]
                 cmd,
-                bwc.db_name,
                 request_id,
                 msg,  # type: ignore[arg-type]
                 client=client,
-                session=bwc.session,  # type: ignore[arg-type]
-                listeners=bwc.listeners,
-                address=bwc.conn.address,
-                start=bwc.start_time,
-                codec_options=bwc.codec,
-                op_id=bwc.op_id,
-                command_name=bwc.name,
             )
             reply = result_docs[0]
         except Exception as exc:
@@ -280,19 +272,11 @@ class _AsyncClientBulk:
         published["nsInfo"] = ns_docs
         try:
             result_docs, _, _ = await run_bulk_write_command(
-                bwc.conn,  # type: ignore[arg-type]
+                bwc,  # type: ignore[arg-type]
                 cmd,
-                bwc.db_name,
                 request_id,
                 msg,
                 client=client,
-                session=bwc.session,  # type: ignore[arg-type]
-                listeners=bwc.listeners,
-                address=bwc.conn.address,
-                start=bwc.start_time,
-                codec_options=bwc.codec,
-                op_id=bwc.op_id,
-                command_name=bwc.name,
                 orig=published,
                 max_doc_size=bwc.max_bson_size,
                 unacknowledged=True,
