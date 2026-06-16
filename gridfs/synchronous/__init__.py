@@ -19,6 +19,7 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 
 .. seealso:: The MongoDB documentation on `gridfs <https://dochub.mongodb.org/core/gridfs>`_.
 """
+
 from __future__ import annotations
 
 from gridfs.errors import NoFile
@@ -32,11 +33,11 @@ from gridfs.synchronous.grid_file import (
 )
 
 __all__ = [
+    "DEFAULT_CHUNK_SIZE",
     "GridFS",
     "GridFSBucket",
-    "NoFile",
-    "DEFAULT_CHUNK_SIZE",
     "GridIn",
     "GridOut",
     "GridOutCursor",
+    "NoFile",
 ]

@@ -18,13 +18,15 @@ PyMongo only attempts to spawn the mongocryptd daemon process when automatic
 client-side field level encryption is enabled. See
 `Client-side Field Level Encryption <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#client-side-field-level-encryption>`_ for more info.
 """
+
 from __future__ import annotations
 
 import os
 import subprocess
 import sys
 import warnings
-from typing import Any, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any, Optional
 
 # The maximum amount of time to wait for the intermediate subprocess.
 _WAIT_TIMEOUT = 10
@@ -62,8 +64,8 @@ if sys.platform == "win32":
         """Spawn a daemon process (Windows)."""
         try:
             with open(os.devnull, "r+b") as devnull:
-                popen = subprocess.Popen(
-                    args,  # noqa: S603
+                popen = subprocess.Popen(  # noqa: S603
+                    args,
                     creationflags=_DETACHED_PROCESS,
                     stdin=devnull,
                     stderr=devnull,
@@ -93,8 +95,8 @@ else:
         """Spawn the process and silence stdout/stderr."""
         try:
             with open(os.devnull, "r+b") as devnull:
-                return subprocess.Popen(
-                    args,  # noqa: S603
+                return subprocess.Popen(  # noqa: S603
+                    args,
                     close_fds=True,
                     stdin=devnull,
                     stderr=devnull,

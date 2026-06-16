@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Execute Transactions Spec tests."""
+
 from __future__ import annotations
 
 import asyncio
@@ -20,18 +21,10 @@ import os
 import sys
 import time
 from pathlib import Path
+
 from test.asynchronous.utils import async_get_pool, async_get_pools
 
 sys.path[0:0] = [""]
-
-from test.asynchronous import AsyncIntegrationTest, async_client_context, client_knobs, unittest
-from test.asynchronous.pymongo_mocks import DummyMonitor
-from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator, SpecRunnerTask
-from test.utils_shared import (
-    CMAPListener,
-    async_wait_until,
-    camel_to_snake,
-)
 
 from bson.objectid import ObjectId
 from bson.son import SON
@@ -59,6 +52,14 @@ from pymongo.monitoring import (
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.topology_description import updated_topology_description
+from test.asynchronous import AsyncIntegrationTest, async_client_context, client_knobs, unittest
+from test.asynchronous.pymongo_mocks import DummyMonitor
+from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator, SpecRunnerTask
+from test.utils_shared import (
+    CMAPListener,
+    async_wait_until,
+    camel_to_snake,
+)
 
 _IS_SYNC = False
 

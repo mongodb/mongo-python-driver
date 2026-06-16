@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the database module."""
+
 from __future__ import annotations
 
 import sys
@@ -20,15 +21,14 @@ import time
 
 sys.path[0:0] = [""]
 
+from pymongo import monitoring
+from pymongo.hello import HelloCompat
 from test import IntegrationTest, client_context, unittest
 from test.utils_shared import (
     HeartbeatEventListener,
     ServerEventListener,
     wait_until,
 )
-
-from pymongo import monitoring
-from pymongo.hello import HelloCompat
 
 _IS_SYNC = True
 

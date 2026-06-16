@@ -13,11 +13,13 @@
 # permissions and limitations under the License.
 
 """Represent MongoClient's configuration."""
+
 from __future__ import annotations
 
 import threading
 import traceback
-from typing import Any, Collection, Optional, Type, Union
+from collections.abc import Collection
+from typing import Any, Optional, Union
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -37,10 +39,10 @@ class TopologySettings:
         self,
         seeds: Optional[Collection[tuple[str, int]]] = None,
         replica_set_name: Optional[str] = None,
-        pool_class: Optional[Type[Pool]] = None,
+        pool_class: Optional[type[Pool]] = None,
         pool_options: Optional[PoolOptions] = None,
-        monitor_class: Optional[Type[monitor.Monitor]] = None,
-        condition_class: Optional[Type[threading.Condition]] = None,
+        monitor_class: Optional[type[monitor.Monitor]] = None,
+        condition_class: Optional[type[threading.Condition]] = None,
         local_threshold_ms: int = LOCAL_THRESHOLD_MS,
         server_selection_timeout: int = SERVER_SELECTION_TIMEOUT,
         heartbeat_frequency: int = common.HEARTBEAT_FREQUENCY,
@@ -59,16 +61,15 @@ class TopologySettings:
         """
         if heartbeat_frequency < common.MIN_HEARTBEAT_INTERVAL:
             raise ConfigurationError(
-                "heartbeatFrequencyMS cannot be less than %d"
-                % (common.MIN_HEARTBEAT_INTERVAL * 1000,)
+                f"heartbeatFrequencyMS cannot be less than {common.MIN_HEARTBEAT_INTERVAL * 1000}"
             )
 
         self._seeds: Collection[tuple[str, int]] = seeds or [("localhost", 27017)]
         self._replica_set_name = replica_set_name
-        self._pool_class: Type[Pool] = pool_class or pool.Pool
+        self._pool_class: type[Pool] = pool_class or pool.Pool
         self._pool_options: PoolOptions = pool_options or PoolOptions()
-        self._monitor_class: Type[monitor.Monitor] = monitor_class or monitor.Monitor
-        self._condition_class: Type[threading.Condition] = condition_class or threading.Condition
+        self._monitor_class: type[monitor.Monitor] = monitor_class or monitor.Monitor
+        self._condition_class: type[threading.Condition] = condition_class or threading.Condition
         self._local_threshold_ms = local_threshold_ms
         self._server_selection_timeout = server_selection_timeout
         self._server_selector = server_selector
@@ -97,7 +98,7 @@ class TopologySettings:
         return self._replica_set_name
 
     @property
-    def pool_class(self) -> Type[Pool]:
+    def pool_class(self) -> type[Pool]:
         return self._pool_class
 
     @property
@@ -105,11 +106,11 @@ class TopologySettings:
         return self._pool_options
 
     @property
-    def monitor_class(self) -> Type[monitor.Monitor]:
+    def monitor_class(self) -> type[monitor.Monitor]:
         return self._monitor_class
 
     @property
-    def condition_class(self) -> Type[threading.Condition]:
+    def condition_class(self) -> type[threading.Condition]:
         return self._condition_class
 
     @property

@@ -13,18 +13,18 @@
 # limitations under the License.
 
 """Test clients and replica set configuration changes, using mocks."""
+
 from __future__ import annotations
 
 import sys
 
 sys.path[0:0] = [""]
 
+from pymongo import ReadPreference
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from test import MockClientTest, client_context, client_knobs, unittest
 from test.pymongo_mocks import MockClient
 from test.utils_shared import wait_until
-
-from pymongo import ReadPreference
-from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
 
 @client_context.require_connection

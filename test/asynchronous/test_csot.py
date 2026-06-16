@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the CSOT unified spec tests."""
+
 from __future__ import annotations
 
 import os
@@ -21,13 +22,12 @@ from pathlib import Path
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.asynchronous.unified_format import generate_test_classes, get_test_path
-from test.asynchronous.utils import flaky
-
 import pymongo
 from pymongo import _csot
 from pymongo.errors import PyMongoError
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
+from test.asynchronous.utils import flaky
 
 _IS_SYNC = False
 

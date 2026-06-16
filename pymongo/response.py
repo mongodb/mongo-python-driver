@@ -13,9 +13,11 @@
 # limitations under the License.
 
 """Represent a response from the server."""
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -25,7 +27,7 @@ if TYPE_CHECKING:
 
 
 class Response:
-    __slots__ = ("_data", "_address", "_request_id", "_duration", "_from_command", "_docs")
+    __slots__ = ("_address", "_data", "_docs", "_duration", "_from_command", "_request_id")
 
     def __init__(
         self,

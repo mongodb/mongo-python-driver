@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Tools for representing MongoDB regular expressions."""
+
 from __future__ import annotations
 
 import re
-from typing import Any, Generic, Pattern, Type, TypeVar, Union
+from re import Pattern
+from typing import Any, Generic, TypeVar, Union
 
 from bson._helpers import _getstate_slots, _setstate_slots
 from bson.son import RE_TYPE
@@ -46,7 +48,7 @@ _T = TypeVar("_T", str, bytes)
 class Regex(Generic[_T]):
     """BSON regular expression data."""
 
-    __slots__ = ("pattern", "flags")
+    __slots__ = ("flags", "pattern")
 
     __getstate__ = _getstate_slots
     __setstate__ = _setstate_slots
@@ -54,7 +56,7 @@ class Regex(Generic[_T]):
     _type_marker = 11
 
     @classmethod
-    def from_native(cls: Type[Regex[Any]], regex: Pattern[_T]) -> Regex[_T]:
+    def from_native(cls: type[Regex[Any]], regex: Pattern[_T]) -> Regex[_T]:
         """Convert a Python regular expression into a ``Regex`` instance.
 
         Note that in Python 3, a regular expression compiled from a
@@ -78,7 +80,7 @@ class Regex(Generic[_T]):
         .. _PCRE: http://www.pcre.org/
         """
         if not isinstance(regex, RE_TYPE):
-            raise TypeError("regex must be a compiled regular expression, not %s" % type(regex))
+            raise TypeError(f"regex must be a compiled regular expression, not {type(regex)}")
 
         return Regex(regex.pattern, regex.flags)
 
@@ -93,7 +95,7 @@ class Regex(Generic[_T]):
             characters like "im" for IGNORECASE and MULTILINE
         """
         if not isinstance(pattern, (str, bytes)):
-            raise TypeError("pattern must be a string, not %s" % type(pattern))
+            raise TypeError(f"pattern must be a string, not {type(pattern)}")
         self.pattern: _T = pattern
 
         if isinstance(flags, str):
@@ -101,7 +103,7 @@ class Regex(Generic[_T]):
         elif isinstance(flags, int):
             self.flags = flags
         else:
-            raise TypeError("flags must be a string or int, not %s" % type(flags))
+            raise TypeError(f"flags must be a string or int, not {type(flags)}")
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Regex):

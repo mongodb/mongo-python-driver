@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Re-import of synchronous Pool API for compatibility."""
+
 from __future__ import annotations
 
 from pymongo.synchronous.pool import *  # noqa: F403

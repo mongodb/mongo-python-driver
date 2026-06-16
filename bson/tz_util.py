@@ -13,10 +13,11 @@
 # limitations under the License.
 
 """Timezone related utilities for BSON."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, tzinfo
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 ZERO: timedelta = timedelta(0)
 
@@ -36,7 +37,7 @@ class FixedOffset(tzinfo):
             self.__offset = timedelta(minutes=offset)
         self.__name = name
 
-    def __getinitargs__(self) -> Tuple[timedelta, str]:
+    def __getinitargs__(self) -> tuple[timedelta, str]:
         return self.__offset, self.__name
 
     def __repr__(self) -> str:

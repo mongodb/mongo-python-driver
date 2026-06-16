@@ -14,13 +14,13 @@
 from __future__ import annotations
 
 import os
-from test import unittest
-from test.asynchronous import AsyncIntegrationTest, async_client_context
 from unittest.mock import patch
 
 from bson import json_util
 from pymongo.errors import OperationFailure
 from pymongo.logger import _DEFAULT_DOCUMENT_LENGTH
+from test import unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context
 
 _IS_SYNC = False
 

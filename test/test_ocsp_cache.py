@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the pymongo ocsp_support module."""
+
 from __future__ import annotations
 
 import random
@@ -25,9 +26,8 @@ from typing import Any
 
 sys.path[0:0] = [""]
 
-from test import unittest
-
 from pymongo.ocsp_cache import _OCSPCache
+from test import unittest
 
 
 class TestOcspCache(unittest.TestCase):
