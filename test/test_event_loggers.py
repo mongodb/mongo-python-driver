@@ -13,14 +13,13 @@
 # limitations under the License.
 
 """Tests for pymongo.event_loggers."""
+
 from __future__ import annotations
 
 import sys
 from unittest.mock import MagicMock, patch
 
 sys.path[0:0] = [""]
-
-from test import unittest
 
 from pymongo.event_loggers import (
     CommandLogger,
@@ -29,6 +28,7 @@ from pymongo.event_loggers import (
     ServerLogger,
     TopologyLogger,
 )
+from test import unittest
 
 
 class TestCommandLogger(unittest.TestCase):

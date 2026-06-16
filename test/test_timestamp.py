@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for the Timestamp class."""
+
 from __future__ import annotations
 
 import copy
@@ -22,10 +23,9 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import unittest
-
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
+from test import unittest
 
 
 class TestTimestamp(unittest.TestCase):

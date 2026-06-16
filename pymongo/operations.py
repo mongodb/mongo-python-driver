@@ -16,17 +16,16 @@
 
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
+
 from __future__ import annotations
 
 import enum
+from collections.abc import Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
-    Mapping,
     Optional,
-    Sequence,
-    Tuple,
     Union,
 )
 
@@ -45,7 +44,7 @@ if TYPE_CHECKING:
 
 # Hint supports index name, "myIndex", a list of either strings or index pairs: [('x', 1), ('y', -1), 'z''], or a dictionary
 _IndexList = Union[
-    Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
+    Sequence[Union[str, tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
 ]
 _IndexKeyHint = Union[str, _IndexList]
 
@@ -143,9 +142,11 @@ class InsertOne(Generic[_DocumentType]):
         return f"{self.__class__.__name__}({self._doc!r})"
 
     def __eq__(self, other: Any) -> bool:
-        if type(other) == type(self):
+        if type(other) is type(self):
             return other._doc == self._doc and other._namespace == self._namespace
         return NotImplemented
+
+    __hash__ = None  # type: ignore[assignment]
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
@@ -155,8 +156,8 @@ class _DeleteOp:
     """Private base class for delete operations."""
 
     __slots__ = (
-        "_filter",
         "_collation",
+        "_filter",
         "_hint",
         "_namespace",
     )
@@ -180,7 +181,7 @@ class _DeleteOp:
         self._namespace = namespace
 
     def __eq__(self, other: Any) -> bool:
-        if type(other) == type(self):
+        if type(other) is type(self):
             return (
                 other._filter,
                 other._collation,
@@ -194,18 +195,14 @@ class _DeleteOp:
             )
         return NotImplemented
 
+    __hash__ = None  # type: ignore[assignment]
+
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __repr__(self) -> str:
         if self._namespace:
-            return "{}({!r}, {!r}, {!r}, {!r})".format(
-                self.__class__.__name__,
-                self._filter,
-                self._collation,
-                self._hint,
-                self._namespace,
-            )
+            return f"{self.__class__.__name__}({self._filter!r}, {self._collation!r}, {self._hint!r}, {self._namespace!r})"
         return f"{self.__class__.__name__}({self._filter!r}, {self._collation!r}, {self._hint!r})"
 
 
@@ -335,13 +332,13 @@ class ReplaceOne(Generic[_DocumentType]):
     """Represents a replace_one operation."""
 
     __slots__ = (
-        "_filter",
-        "_doc",
-        "_upsert",
         "_collation",
+        "_doc",
+        "_filter",
         "_hint",
         "_namespace",
         "_sort",
+        "_upsert",
     )
 
     def __init__(
@@ -428,7 +425,7 @@ class ReplaceOne(Generic[_DocumentType]):
         )
 
     def __eq__(self, other: Any) -> bool:
-        if type(other) == type(self):
+        if type(other) is type(self):
             return (
                 other._filter,
                 other._doc,
@@ -448,44 +445,29 @@ class ReplaceOne(Generic[_DocumentType]):
             )
         return NotImplemented
 
+    __hash__ = None  # type: ignore[assignment]
+
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __repr__(self) -> str:
         if self._namespace:
-            return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
-                self.__class__.__name__,
-                self._filter,
-                self._doc,
-                self._upsert,
-                self._collation,
-                self._hint,
-                self._namespace,
-                self._sort,
-            )
-        return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__,
-            self._filter,
-            self._doc,
-            self._upsert,
-            self._collation,
-            self._hint,
-            self._sort,
-        )
+            return f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, {self._collation!r}, {self._hint!r}, {self._namespace!r}, {self._sort!r})"
+        return f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, {self._collation!r}, {self._hint!r}, {self._sort!r})"
 
 
 class _UpdateOp:
     """Private base class for update operations."""
 
     __slots__ = (
-        "_filter",
-        "_doc",
-        "_upsert",
-        "_collation",
         "_array_filters",
+        "_collation",
+        "_doc",
+        "_filter",
         "_hint",
         "_namespace",
         "_sort",
+        "_upsert",
     )
 
     def __init__(
@@ -540,32 +522,15 @@ class _UpdateOp:
             )
         return NotImplemented
 
+    __hash__ = None  # type: ignore[assignment]
+
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
     def __repr__(self) -> str:
         if self._namespace:
-            return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
-                self.__class__.__name__,
-                self._filter,
-                self._doc,
-                self._upsert,
-                self._collation,
-                self._array_filters,
-                self._hint,
-                self._namespace,
-                self._sort,
-            )
-        return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__,
-            self._filter,
-            self._doc,
-            self._upsert,
-            self._collation,
-            self._array_filters,
-            self._hint,
-            self._sort,
-        )
+            return f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, {self._collation!r}, {self._array_filters!r}, {self._hint!r}, {self._namespace!r}, {self._sort!r})"
+        return f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, {self._collation!r}, {self._array_filters!r}, {self._hint!r}, {self._sort!r})"
 
 
 class UpdateOne(_UpdateOp):

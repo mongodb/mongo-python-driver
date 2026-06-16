@@ -99,9 +99,9 @@ def setup_kms(sub_test_name: str) -> None:
             os.environ["AZUREKMS_VMNAME_PREFIX"] = "PYTHON_DRIVER"
 
             # Found using "az vm image list --output table"
-            os.environ[
-                "AZUREKMS_IMAGE"
-            ] = "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
+            os.environ["AZUREKMS_IMAGE"] = (
+                "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
+            )
         else:
             os.environ["GCPKMS_IMAGEFAMILY"] = "debian-12"
 
@@ -127,9 +127,9 @@ def test_kms_send_to_remote(sub_test_name: str) -> None:
     if sub_test_name == "azure":
         key_name = os.environ["KEY_NAME"]
         key_vault_endpoint = os.environ["KEY_VAULT_ENDPOINT"]
-        env[
-            "AZUREKMS_CMD"
-        ] = f'KEY_NAME="{key_name}" KEY_VAULT_ENDPOINT="{key_vault_endpoint}" bash ./.evergreen/just.sh run-tests'
+        env["AZUREKMS_CMD"] = (
+            f'KEY_NAME="{key_name}" KEY_VAULT_ENDPOINT="{key_vault_endpoint}" bash ./.evergreen/just.sh run-tests'
+        )
     else:
         env["GCPKMS_CMD"] = "./.evergreen/just.sh run-tests"
     cmd = f"{DIRS[sub_test_name]}/run-command.sh"

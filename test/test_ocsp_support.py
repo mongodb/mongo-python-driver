@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for pymongo.ocsp_support."""
+
 from __future__ import annotations
 
 import logging
@@ -27,10 +28,9 @@ import pytest
 
 sys.path[0:0] = [""]
 
-from test import unittest
-
 import pymongo
 from pymongo.errors import ServerSelectionTimeoutError
+from test import unittest
 
 pytestmark = pytest.mark.ocsp
 

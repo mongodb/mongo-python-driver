@@ -13,13 +13,15 @@
 # limitations under the License.
 
 """MONGODB-OIDC Authentication helpers."""
+
 from __future__ import annotations
 
 import asyncio
 import threading
 import time
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import bson
 from bson.binary import Binary

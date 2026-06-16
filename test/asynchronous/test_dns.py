@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Run the SRV support tests."""
+
 from __future__ import annotations
 
 import glob
@@ -23,6 +24,12 @@ import sys
 
 sys.path[0:0] = [""]
 
+from unittest.mock import MagicMock, patch
+
+from pymongo.asynchronous.uri_parser import parse_uri
+from pymongo.common import validate_read_preference_tags
+from pymongo.errors import ConfigurationError
+from pymongo.uri_parser_shared import split_hosts
 from test.asynchronous import (
     AsyncIntegrationTest,
     AsyncPyMongoTestCase,
@@ -30,12 +37,6 @@ from test.asynchronous import (
     unittest,
 )
 from test.utils_shared import async_wait_until
-from unittest.mock import MagicMock, patch
-
-from pymongo.asynchronous.uri_parser import parse_uri
-from pymongo.common import validate_read_preference_tags
-from pymongo.errors import ConfigurationError
-from pymongo.uri_parser_shared import split_hosts
 
 _IS_SYNC = False
 
@@ -271,7 +272,7 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
         await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
     async def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(
-        self
+        self,
     ):
         test_cases = [
             {
@@ -293,7 +294,7 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
         await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
     async def test_5_when_srv_hostname_has_two_dot_separated_parts_it_is_valid_for_the_returned_hostname_to_be_identical(
-        self
+        self,
     ):
         test_cases = [
             {

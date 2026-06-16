@@ -17,10 +17,10 @@ from __future__ import annotations
 import binascii
 import struct
 from pathlib import Path
-from test import unittest
 
 from bson import decode, encode, json_util
 from bson.binary import Binary, BinaryVectorDtype
+from test import unittest
 
 _TEST_PATH = Path(__file__).parent / "bson_binary_vector"
 

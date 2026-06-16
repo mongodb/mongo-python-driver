@@ -14,6 +14,7 @@
 
 
 """Re-import of synchronous URI Parser API for compatibility."""
+
 from __future__ import annotations
 
 import sys
@@ -25,13 +26,13 @@ from pymongo.uri_parser_shared import *  # noqa: F403
 
 __doc__ = original_doc
 __all__ = [  # noqa: F405
-    "parse_userinfo",
-    "parse_ipv6_literal_host",
     "parse_host",
-    "validate_options",
-    "split_options",
-    "split_hosts",
+    "parse_ipv6_literal_host",
     "parse_uri",
+    "parse_userinfo",
+    "split_hosts",
+    "split_options",
+    "validate_options",
 ]
 
 if __name__ == "__main__":

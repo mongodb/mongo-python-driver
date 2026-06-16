@@ -13,9 +13,11 @@
 # limitations under the License.
 
 """Python driver for MongoDB."""
+
 from __future__ import annotations
 
-from typing import ContextManager, Optional
+from contextlib import AbstractContextManager
+from typing import Optional
 
 __all__ = [
     "ASCENDING",
@@ -23,28 +25,28 @@ __all__ = [
     "GEO2D",
     "GEOSPHERE",
     "HASHED",
-    "TEXT",
-    "version_tuple",
-    "get_version_string",
-    "__version__",
-    "version",
-    "ReturnDocument",
     "MAX_SUPPORTED_WIRE_VERSION",
     "MIN_SUPPORTED_WIRE_VERSION",
-    "CursorType",
-    "MongoClient",
+    "TEXT",
     "AsyncMongoClient",
+    "CursorType",
     "DeleteMany",
     "DeleteOne",
     "IndexModel",
     "InsertOne",
+    "MongoClient",
+    "ReadPreference",
     "ReplaceOne",
+    "ReturnDocument",
     "UpdateMany",
     "UpdateOne",
-    "ReadPreference",
     "WriteConcern",
+    "__version__",
+    "get_version_string",
     "has_c",
     "timeout",
+    "version",
+    "version_tuple",
 ]
 
 ASCENDING = 1
@@ -119,7 +121,7 @@ version = __version__
 """Current version of PyMongo."""
 
 
-def timeout(seconds: Optional[float]) -> ContextManager[None]:
+def timeout(seconds: Optional[float]) -> AbstractContextManager[None]:
     """**(Provisional)** Apply the given timeout for a block of operations.
 
     .. note:: :func:`~pymongo.timeout` is currently provisional. Backwards

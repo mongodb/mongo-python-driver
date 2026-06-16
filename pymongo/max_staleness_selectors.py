@@ -26,6 +26,7 @@ When there is no known primary, a secondary S's staleness is estimated with:
 
 where "SMax" is the secondary with the greatest lastWriteDate.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -47,16 +48,15 @@ def _validate_max_staleness(max_staleness: int, heartbeat_frequency: int) -> Non
     # We checked for max staleness -1 before this, it must be positive here.
     if max_staleness < heartbeat_frequency + IDLE_WRITE_PERIOD:
         raise ConfigurationError(
-            "maxStalenessSeconds must be at least heartbeatFrequencyMS +"
-            " %d seconds. maxStalenessSeconds is set to %d,"
-            " heartbeatFrequencyMS is set to %d."
-            % (IDLE_WRITE_PERIOD, max_staleness, heartbeat_frequency * 1000)
+            f"maxStalenessSeconds must be at least heartbeatFrequencyMS +"
+            f" {IDLE_WRITE_PERIOD} seconds. maxStalenessSeconds is set to {max_staleness},"
+            f" heartbeatFrequencyMS is set to {heartbeat_frequency * 1000}."
         )
 
     if max_staleness < SMALLEST_MAX_STALENESS:
         raise ConfigurationError(
-            "maxStalenessSeconds must be at least %d. "
-            "maxStalenessSeconds is set to %d." % (SMALLEST_MAX_STALENESS, max_staleness)
+            f"maxStalenessSeconds must be at least {SMALLEST_MAX_STALENESS}. "
+            f"maxStalenessSeconds is set to {max_staleness}."
         )
 
 

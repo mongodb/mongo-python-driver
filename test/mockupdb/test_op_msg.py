@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import unittest
 from collections import namedtuple
-from test import PyMongoTestCase
 
 import pytest
+
+from test import PyMongoTestCase
 
 try:
     from mockupdb import OP_MSG_FLAGS, MockupDB, OpMsg, OpMsgReply, going

@@ -16,14 +16,16 @@
 
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
+
 from __future__ import annotations
 
 import copy
 import os
 import platform
 import sys
+from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, MutableMapping, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import bson
 from pymongo import __version__
@@ -94,7 +96,7 @@ if platform.python_implementation().startswith("PyPy"):
         (
             platform.python_implementation(),
             ".".join(map(str, sys.pypy_version_info)),  # type: ignore
-            "(Python %s)" % ".".join(map(str, sys.version_info)),
+            "(Python {})".format(".".join(map(str, sys.version_info))),
         )
     )
 else:
@@ -275,24 +277,24 @@ class PoolOptions:
     """
 
     __slots__ = (
-        "__max_pool_size",
-        "__min_pool_size",
-        "__max_idle_time_seconds",
-        "__connect_timeout",
-        "__socket_timeout",
-        "__wait_queue_timeout",
-        "__ssl_context",
-        "__tls_allow_invalid_hostnames",
-        "__event_listeners",
         "__appname",
-        "__driver",
-        "__metadata",
         "__compression_settings",
+        "__connect_timeout",
+        "__credentials",
+        "__driver",
+        "__event_listeners",
+        "__load_balanced",
         "__max_connecting",
+        "__max_idle_time_seconds",
+        "__max_pool_size",
+        "__metadata",
+        "__min_pool_size",
         "__pause_enabled",
         "__server_api",
-        "__load_balanced",
-        "__credentials",
+        "__socket_timeout",
+        "__ssl_context",
+        "__tls_allow_invalid_hostnames",
+        "__wait_queue_timeout",
     )
 
     def __init__(

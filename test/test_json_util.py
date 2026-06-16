@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test some utilities for working with JSON and PyMongo."""
+
 from __future__ import annotations
 
 import datetime
@@ -21,13 +22,11 @@ import re
 import sys
 import uuid
 from collections import OrderedDict
-from typing import Any, Tuple, Type
+from typing import Any
 
 from bson.codec_options import CodecOptions, DatetimeConversion
 
 sys.path[0:0] = [""]
-
-from test import unittest
 
 from bson import EPOCH_AWARE, EPOCH_NAIVE, SON, DatetimeMS, json_util
 from bson.binary import (
@@ -57,6 +56,7 @@ from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset, utc
+from test import unittest
 
 STRICT_JSON_OPTIONS = JSONOptions(
     strict_number_long=True,
@@ -586,7 +586,7 @@ class TestJsonUtil(unittest.TestCase):
             self.assertIsInstance(doc["d"], cls)
 
     def test_encode_subclass(self):
-        cases: list[Tuple[Type, Any]] = [
+        cases: list[tuple[type, Any]] = [
             (int, (1,)),
             (int, (2 << 60,)),
             (float, (1.1,)),

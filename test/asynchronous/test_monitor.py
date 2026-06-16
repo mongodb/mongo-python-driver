@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the monitor module."""
+
 from __future__ import annotations
 
 import asyncio
@@ -24,13 +25,12 @@ from functools import partial
 
 sys.path[0:0] = [""]
 
+from pymongo.periodic_executor import _EXECUTORS
 from test.asynchronous import AsyncIntegrationTest, async_client_context, connected, unittest
 from test.asynchronous.utils import (
     async_wait_until,
 )
 from test.utils_shared import ServerAndTopologyEventListener, gevent_monkey_patched
-
-from pymongo.periodic_executor import _EXECUTORS
 
 _IS_SYNC = False
 

@@ -16,9 +16,11 @@
 
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, TypedDict
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Optional, TypedDict
 
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 

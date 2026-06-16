@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the replica_set_connection module."""
+
 from __future__ import annotations
 
 import contextlib
@@ -25,21 +26,6 @@ from typing import Any
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
-
-from test import (
-    IntegrationTest,
-    SkipTest,
-    client_context,
-    connected,
-    unittest,
-)
-from test.utils_shared import (
-    OvertCommandListener,
-    _ignore_deprecations,
-    one,
-    wait_until,
-)
-from test.version import Version
 
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
@@ -59,6 +45,20 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
+from test import (
+    IntegrationTest,
+    SkipTest,
+    client_context,
+    connected,
+    unittest,
+)
+from test.utils_shared import (
+    OvertCommandListener,
+    _ignore_deprecations,
+    one,
+    wait_until,
+)
+from test.version import Version
 
 _IS_SYNC = True
 

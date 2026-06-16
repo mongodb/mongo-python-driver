@@ -22,14 +22,11 @@ import os
 import sys
 import tempfile
 import unittest
+from collections.abc import Iterable, Iterator
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
     TypeVar,
     Union,
     cast,
@@ -67,8 +64,6 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, PyMongoTestCase, client_context
-
 from bson import CodecOptions, ObjectId, decode, decode_all, decode_file_iter, decode_iter, encode
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
@@ -76,6 +71,7 @@ from pymongo import ASCENDING, MongoClient
 from pymongo.operations import DeleteOne, InsertOne, ReplaceOne
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.collection import Collection
+from test import IntegrationTest, PyMongoTestCase, client_context
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
 
@@ -102,7 +98,7 @@ class TestMypyFails(unittest.TestCase):
     def ensure_mypy_fails(self, filename: str) -> None:
         if api is None:
             raise unittest.SkipTest("Mypy is not installed")
-        stdout, stderr, exit_status = api.run([filename])
+        stdout, _, exit_status = api.run([filename])
         self.assertTrue(exit_status, msg=stdout)
 
     def test_mypy_failures(self) -> None:
@@ -133,7 +129,7 @@ class TestPymongo(IntegrationTest):
             self.assertEqual(result2.inserted_id, result.inserted_id)
 
     def test_cursor_iterable(self) -> None:
-        def to_list(iterable: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        def to_list(iterable: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
             return list(iterable)
 
         self.coll.insert_one({})
@@ -171,10 +167,10 @@ class TestPymongo(IntegrationTest):
     def test_bulk_write(self) -> None:
         self.coll.insert_one({})
         coll: Collection[Movie] = self.coll
-        requests: List[InsertOne[Movie]] = [InsertOne(Movie(name="American Graffiti", year=1973))]
+        requests: list[InsertOne[Movie]] = [InsertOne(Movie(name="American Graffiti", year=1973))]
         self.assertTrue(coll.bulk_write(requests).acknowledged)
-        new_requests: List[Union[InsertOne[Movie], ReplaceOne[Movie]]] = []
-        input_list: List[Union[InsertOne[Movie], ReplaceOne[Movie]]] = [
+        new_requests: list[Union[InsertOne[Movie], ReplaceOne[Movie]]] = []
+        input_list: list[Union[InsertOne[Movie], ReplaceOne[Movie]]] = [
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne({}, Movie(name="American Graffiti", year=1973)),
         ]
@@ -186,13 +182,13 @@ class TestPymongo(IntegrationTest):
     @only_type_check
     def test_bulk_write_heterogeneous(self):
         coll: Collection[Movie] = self.coll
-        requests: List[Union[InsertOne[Movie], ReplaceOne, DeleteOne]] = [
+        requests: list[Union[InsertOne[Movie], ReplaceOne, DeleteOne]] = [
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne({}, {"name": "American Graffiti", "year": "WRONG_TYPE"}),
             DeleteOne({}),
         ]
         self.assertTrue(coll.bulk_write(requests).acknowledged)
-        requests_two: List[Union[InsertOne[Movie], ReplaceOne[Movie], DeleteOne]] = [
+        requests_two: list[Union[InsertOne[Movie], ReplaceOne[Movie], DeleteOne]] = [
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne(
                 {},
@@ -203,7 +199,7 @@ class TestPymongo(IntegrationTest):
         self.assertTrue(coll.bulk_write(requests_two).acknowledged)
 
     def test_command(self) -> None:
-        result: Dict = self.client.admin.command("ping")
+        result: dict = self.client.admin.command("ping")
         result.items()
 
     def test_list_collections(self) -> None:
@@ -237,7 +233,7 @@ class TestPymongo(IntegrationTest):
             ]
         )
 
-        class mydict(Dict[str, Any]):
+        class mydict(dict[str, Any]):
             pass
 
         result = coll3.aggregate(
@@ -259,7 +255,7 @@ class TestPymongo(IntegrationTest):
             )
 
     def test_with_options(self) -> None:
-        coll: Collection[Dict[str, Any]] = self.coll
+        coll: Collection[dict[str, Any]] = self.coll
         coll.drop()
         doc = {"name": "foo", "year": 1982, "other": 1}
         coll.insert_one(doc)
@@ -276,11 +272,11 @@ class TestDecode(unittest.TestCase):
     def test_bson_decode(self) -> None:
         doc = {"_id": 1}
         bsonbytes = encode(doc)
-        rt_document: Dict[str, Any] = decode(bsonbytes)
+        rt_document: dict[str, Any] = decode(bsonbytes)
         assert rt_document["_id"] == 1
         rt_document["foo"] = "bar"
 
-        class MyDict(Dict[str, Any]):
+        class MyDict(dict[str, Any]):
             def foo(self):
                 return "bar"
 
@@ -303,11 +299,11 @@ class TestDecode(unittest.TestCase):
         doc = {"_id": 1}
         bsonbytes = encode(doc)
         bsonbytes += encode(doc)
-        rt_documents: List[Dict[str, Any]] = decode_all(bsonbytes)
+        rt_documents: list[dict[str, Any]] = decode_all(bsonbytes)
         assert rt_documents[0]["_id"] == 1
         rt_documents[0]["foo"] = "bar"
 
-        class MyDict(Dict[str, Any]):
+        class MyDict(dict[str, Any]):
             def foo(self):
                 return "bar"
 
@@ -336,11 +332,11 @@ class TestDecode(unittest.TestCase):
         doc = {"_id": 1}
         bsonbytes = encode(doc)
         bsonbytes += encode(doc)
-        rt_documents: Iterator[Dict[str, Any]] = decode_iter(bsonbytes)
+        rt_documents: Iterator[dict[str, Any]] = decode_iter(bsonbytes)
         assert next(rt_documents)["_id"] == 1
         next(rt_documents)["foo"] = "bar"
 
-        class MyDict(Dict[str, Any]):
+        class MyDict(dict[str, Any]):
             def foo(self):
                 return "bar"
 
@@ -373,11 +369,11 @@ class TestDecode(unittest.TestCase):
         bsonbytes = encode(doc)
         bsonbytes += encode(doc)
         fileobj = self.make_tempfile(bsonbytes)
-        rt_documents: Iterator[Dict[str, Any]] = decode_file_iter(fileobj)
+        rt_documents: Iterator[dict[str, Any]] = decode_file_iter(fileobj)
         assert next(rt_documents)["_id"] == 1
         next(rt_documents)["foo"] = "bar"
 
-        class MyDict(Dict[str, Any]):
+        class MyDict(dict[str, Any]):
             def foo(self):
                 return "bar"
 
@@ -413,7 +409,7 @@ class TestDocumentType(PyMongoTestCase):
 
     @only_type_check
     def test_explicit_document_type(self) -> None:
-        client: MongoClient[Dict[str, Any]] = MongoClient()
+        client: MongoClient[dict[str, Any]] = MongoClient()
         coll = client.test.test
         retrieved = coll.find_one({"_id": "foo"})
         assert retrieved is not None
@@ -545,7 +541,7 @@ class TestDocumentType(PyMongoTestCase):
 
     @only_type_check
     def test_create_index(self) -> None:
-        client: MongoClient[Dict[str, str]] = MongoClient("test")
+        client: MongoClient[dict[str, str]] = MongoClient("test")
         db = client.test
         with client.start_session() as session:
             index = db.test.create_index([("user_id", ASCENDING)], unique=True, session=session)
@@ -556,13 +552,13 @@ class TestCommandDocumentType(unittest.TestCase):
     @only_type_check
     def test_default(self) -> None:
         client: MongoClient = MongoClient()
-        result: Dict = client.admin.command("ping")
+        result: dict = client.admin.command("ping")
         result["a"] = 1
 
     @only_type_check
     def test_explicit_document_type(self) -> None:
         client: MongoClient = MongoClient()
-        codec_options: CodecOptions[Dict[str, Any]] = CodecOptions()
+        codec_options: CodecOptions[dict[str, Any]] = CodecOptions()
         result = client.admin.command("ping", codec_options=codec_options)
         result["a"] = 1
 
@@ -596,7 +592,7 @@ class TestCodecOptionsDocumentType(unittest.TestCase):
         obj["a"] = 1
 
     def test_explicit_document_type(self) -> None:
-        options: CodecOptions[Dict[str, Any]] = CodecOptions()
+        options: CodecOptions[dict[str, Any]] = CodecOptions()
         obj = options.document_class()
         obj["a"] = 1
 

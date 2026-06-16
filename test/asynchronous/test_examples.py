@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """MongoDB documentation examples in Python."""
+
 from __future__ import annotations
 
 import asyncio
@@ -21,12 +22,10 @@ import functools
 import sys
 import threading
 import time
+
 from test.asynchronous.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
-
-from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils_shared import async_wait_until
 
 import pymongo
 from pymongo.asynchronous.helpers import anext
@@ -35,6 +34,8 @@ from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import ServerApi
 from pymongo.write_concern import WriteConcern
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.utils_shared import async_wait_until
 
 _IS_SYNC = False
 

@@ -1,4 +1,5 @@
 """A custom hatch build hook for pymongo."""
+
 from __future__ import annotations
 
 import os
