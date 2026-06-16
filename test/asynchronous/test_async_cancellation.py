@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import socket as _socket
-import ssl as _ssl
+import socket
+import ssl
 import sys
 from test.asynchronous.utils import async_get_pool
 from test.utils_shared import delay, one
@@ -138,8 +138,8 @@ class TestAsyncCancellation(AsyncIntegrationTest):
         address = (await async_client_context.host, await async_client_context.port)
         options = (await async_get_pool(self.client)).opts
 
-        created_sockets: list[_socket.socket] = []
-        real_socket_cls = _socket.socket
+        created_sockets: list[socket.socket] = []
+        real_socket_cls = socket.socket
         target_task = None
 
         def tracking_socket(*args, **kwargs):
@@ -161,7 +161,7 @@ class TestAsyncCancellation(AsyncIntegrationTest):
             return await real_sock_connect(sock, addr)
 
         with (
-            patch.object(_socket, "socket", tracking_socket),
+            patch.object(socket, "socket", tracking_socket),
             patch.object(loop, "sock_connect", slow_sock_connect),
         ):
             task = asyncio.create_task(pool_shared._async_create_connection(address, options))
@@ -181,10 +181,10 @@ class TestAsyncCancellation(AsyncIntegrationTest):
     async def test_cancellation_closes_socket_during_ssl_wrap_socket(self):
         address = (await async_client_context.host, await async_client_context.port)
         options = (await async_get_pool(self.client)).opts
-        fake_ssl_context = _ssl.create_default_context()
+        fake_ssl_context = ssl.create_default_context()
 
-        created_sockets: list[_socket.socket] = []
-        real_socket_cls = _socket.socket
+        created_sockets: list[socket.socket] = []
+        real_socket_cls = socket.socket
         target_task = None
 
         def tracking_socket(*args, **kwargs):
@@ -212,7 +212,7 @@ class TestAsyncCancellation(AsyncIntegrationTest):
             return real_run_in_executor(executor, func, *args)
 
         with (
-            patch.object(_socket, "socket", tracking_socket),
+            patch.object(socket, "socket", tracking_socket),
             patch.object(loop, "run_in_executor", slow_run_in_executor),
             patch.object(options, "_PoolOptions__ssl_context", fake_ssl_context),
         ):
