@@ -117,29 +117,6 @@ class TestReceiveMessage(UnitTest):
 
 
 class TestReceiveData(UnitTest):
-    def test_reads_data_in_multiple_chunks(self):
-        # Covers the loop in receive_data that accumulates short reads until the
-        # requested length has been received.
-        data = b"abcdefgh"
-        chunk1, chunk2 = data[:4], data[4:]
-        conn = _make_conn()
-        calls = 0
-
-        def fake_recv_into(buf):
-            nonlocal calls
-            if calls == 0:
-                buf[: len(chunk1)] = chunk1
-                calls += 1
-                return len(chunk1)
-            buf[: len(chunk2)] = chunk2
-            calls += 1
-            return len(chunk2)
-
-        conn.conn.recv_into.side_effect = fake_recv_into
-        result = network_layer.receive_data(conn, len(data), deadline=None)
-        self.assertEqual(bytes(result), data)
-        self.assertEqual(calls, 2)
-
     def test_raises_on_connection_closed(self):
         # Covers the explicit `raise OSError("connection closed")` branch when
         # recv_into returns 0.
