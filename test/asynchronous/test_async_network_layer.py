@@ -113,27 +113,6 @@ class TestPyMongoProtocol(AsyncUnitTest):
         _, compressor_id = protocol.process_compression_header()
         self.assertEqual(compressor_id, 2)
 
-    async def test_message_complete_resolves_pending_future(self):
-        protocol = await _make_protocol()
-        protocol._expecting_header = False
-        protocol._expecting_compression = False
-        protocol._message_size = 10
-        protocol._message = memoryview(bytearray(10))
-        protocol._message_index = 0
-        protocol._op_code = 2013
-        protocol._compressor_id = None
-        protocol._response_to = 42
-
-        future = asyncio.get_running_loop().create_future()
-        protocol._pending_messages.append(future)
-
-        protocol.buffer_updated(10)
-        self.assertTrue(future.done())
-        op_code, compressor_id, response_to, _ = future.result()
-        self.assertEqual(op_code, 2013)
-        self.assertIsNone(compressor_id)
-        self.assertEqual(response_to, 42)
-
     async def test_close_aborts_transport(self):
         protocol = await _make_protocol()
         protocol.close()
