@@ -21,7 +21,8 @@ from __future__ import annotations
 
 import warnings
 from collections import abc
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
@@ -78,7 +79,7 @@ def _validate_tag_sets(tag_sets: Optional[_TagSets]) -> Optional[_TagSets]:
 
 
 def _invalid_max_staleness_msg(max_staleness: Any) -> str:
-    return "maxStalenessSeconds must be a positive integer, not %s" % max_staleness
+    return f"maxStalenessSeconds must be a positive integer, not {max_staleness}"
 
 
 # Some duplication with common.py to avoid import cycle.
@@ -115,7 +116,7 @@ def _validate_hedge(hedge: Optional[_Hedge]) -> Optional[_Hedge]:
 class _ServerMode:
     """Base class for all read preferences."""
 
-    __slots__ = ("__mongos_mode", "__mode", "__tag_sets", "__max_staleness", "__hedge")
+    __slots__ = ("__hedge", "__max_staleness", "__mode", "__mongos_mode", "__tag_sets")
 
     def __init__(
         self,
@@ -233,12 +234,7 @@ class _ServerMode:
         return 0 if self.__max_staleness == -1 else 5
 
     def __repr__(self) -> str:
-        return "{}(tag_sets={!r}, max_staleness={!r}, hedge={!r})".format(
-            self.name,
-            self.__tag_sets,
-            self.__max_staleness,
-            self.__hedge,
-        )
+        return f"{self.name}(tag_sets={self.__tag_sets!r}, max_staleness={self.__max_staleness!r}, hedge={self.__hedge!r})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, _ServerMode):
@@ -249,6 +245,8 @@ class _ServerMode:
                 and self.hedge == other.hedge
             )
         return NotImplemented
+
+    __hash__ = None  # type: ignore[assignment]
 
     def __ne__(self, other: Any) -> bool:
         return not self == other
@@ -303,6 +301,8 @@ class Primary(_ServerMode):
         if isinstance(other, _ServerMode):
             return other.mode == _PRIMARY
         return NotImplemented
+
+    __hash__ = None
 
 
 class PrimaryPreferred(_ServerMode):
@@ -488,7 +488,7 @@ class _AggWritePref:
     :param pref: The read preference to use on MongoDB 5.0+.
     """
 
-    __slots__ = ("pref", "effective_pref")
+    __slots__ = ("effective_pref", "pref")
 
     def __init__(self, pref: _ServerMode):
         self.pref = pref

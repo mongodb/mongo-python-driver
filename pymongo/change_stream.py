@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Re-import of synchronous ChangeStream API for compatibility."""
+
 from __future__ import annotations
 
 from pymongo.synchronous.change_stream import *  # noqa: F403

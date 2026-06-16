@@ -16,9 +16,11 @@
 
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
+
 from __future__ import annotations
 
-from typing import Any, Mapping, MutableMapping, Optional, cast
+from collections.abc import Mapping, MutableMapping
+from typing import Any, Optional, cast
 
 from pymongo.errors import InvalidOperation
 
@@ -120,8 +122,8 @@ class UpdateResult(_WriteResult):
     """
 
     __slots__ = (
-        "__raw_result",
         "__in_client_bulk",
+        "__raw_result",
     )
 
     def __init__(
@@ -315,12 +317,7 @@ class ClientBulkWriteResult(_BulkWriteResultBase):
         )
 
     def __repr__(self) -> str:
-        return "{}({!r}, acknowledged={}, verbose={})".format(
-            self.__class__.__name__,
-            self.bulk_api_result,
-            self.acknowledged,
-            self.has_verbose_results,
-        )
+        return f"{self.__class__.__name__}({self.bulk_api_result!r}, acknowledged={self.acknowledged}, verbose={self.has_verbose_results})"
 
     def _raise_if_not_verbose(self, property_name: str) -> None:
         """Raise an exception on property access if verbose results are off."""

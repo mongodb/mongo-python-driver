@@ -13,14 +13,15 @@
 # permissions and limitations under the License.
 
 """Communicate with one MongoDB server in a topology."""
+
 from __future__ import annotations
 
 import logging
+from contextlib import AbstractAsyncContextManager
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncContextManager,
     Callable,
     Optional,
     Union,
@@ -233,7 +234,7 @@ class Server:
 
     async def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AsyncContextManager[AsyncConnection]:
+    ) -> AbstractAsyncContextManager[AsyncConnection]:
         return self.pool.checkout(handler)
 
     @property

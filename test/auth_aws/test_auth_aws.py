@@ -13,15 +13,17 @@
 # limitations under the License.
 
 """Test MONGODB-AWS Authentication."""
+
 from __future__ import annotations
 
 import os
 import sys
 import unittest
-from test import PyMongoTestCase
 from unittest.mock import patch
 
 import pytest
+
+from test import PyMongoTestCase
 
 sys.path[0:0] = [""]
 

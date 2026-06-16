@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Re-import of synchronous CommandCursor API for compatibility."""
+
 from __future__ import annotations
 
 from pymongo.synchronous.command_cursor import *  # noqa: F403

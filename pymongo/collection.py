@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Re-import of synchronous Collection API for compatibility."""
+
 from __future__ import annotations
 
 from pymongo.synchronous.collection import *  # noqa: F403

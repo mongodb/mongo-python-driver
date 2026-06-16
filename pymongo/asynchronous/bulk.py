@@ -16,18 +16,16 @@
 
 .. versionadded:: 2.7
 """
+
 from __future__ import annotations
 
 import copy
-from collections.abc import MutableMapping
+from collections.abc import Iterator, Mapping, MutableMapping
 from itertools import islice
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterator,
-    Mapping,
     Optional,
-    Type,
     Union,
 )
 
@@ -117,7 +115,7 @@ class _AsyncBulk:
         self.is_encrypted = False
 
     @property
-    def bulk_ctx_class(self) -> Type[_BulkWriteContext]:
+    def bulk_ctx_class(self) -> type[_BulkWriteContext]:
         encrypter = self.collection.database.client._encrypter
         if encrypter and not encrypter._bypass_auto_encryption:
             self.is_encrypted = True

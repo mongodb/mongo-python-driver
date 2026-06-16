@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Run the auth spec tests."""
+
 from __future__ import annotations
 
 import glob
@@ -20,17 +21,18 @@ import json
 import os
 import sys
 import warnings
-from test import PyMongoTestCase
 
 import pytest
 
-sys.path[0:0] = [""]
+from pymongo.errors import ConfigurationError
+from test import PyMongoTestCase
 
-from test import unittest
-from test.unified_format import generate_test_classes, get_test_path
+sys.path[0:0] = [""]
 
 from pymongo import MongoClient
 from pymongo.auth_oidc_shared import OIDCCallback
+from test import unittest
+from test.unified_format import generate_test_classes, get_test_path
 
 pytestmark = pytest.mark.auth
 
@@ -56,7 +58,7 @@ def create_test(test_case):
         if not valid:
             with warnings.catch_warnings():
                 warnings.simplefilter("default")
-                self.assertRaises(Exception, MongoClient, uri, connect=False)
+                self.assertRaises(ConfigurationError, MongoClient, uri, connect=False)
         else:
             client = self.simple_client(uri, connect=False)
             credentials = client.options.pool_options._credentials

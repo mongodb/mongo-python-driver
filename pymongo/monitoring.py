@@ -190,7 +190,8 @@ from __future__ import annotations
 
 import datetime
 from collections import abc, namedtuple
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Optional
 
 from bson.objectid import ObjectId
 from pymongo.hello import Hello, HelloCompat
@@ -515,12 +516,10 @@ def register(listener: _EventListener) -> None:
 # The "hello" command is also deemed sensitive when attempting speculative
 # authentication.
 def _is_speculative_authenticate(command_name: str, doc: Mapping[str, Any]) -> bool:
-    if (
+    return bool(
         command_name.lower() in ("hello", HelloCompat.LEGACY_CMD)
         and "speculativeAuthenticate" in doc
-    ):
-        return True
-    return False
+    )
 
 
 class _CommandEvent:
@@ -528,12 +527,12 @@ class _CommandEvent:
 
     __slots__ = (
         "__cmd_name",
-        "__rqst_id",
         "__conn_id",
-        "__op_id",
-        "__service_id",
         "__db",
+        "__op_id",
+        "__rqst_id",
         "__server_conn_id",
+        "__service_id",
     )
 
     def __init__(
@@ -653,17 +652,7 @@ class CommandStartedEvent(_CommandEvent):
         return super().database_name
 
     def __repr__(self) -> str:
-        return (
-            "<{} {} db: {!r}, command: {!r}, operation_id: {}, service_id: {}, server_connection_id: {}>"
-        ).format(
-            self.__class__.__name__,
-            self.connection_id,
-            self.database_name,
-            self.command_name,
-            self.operation_id,
-            self.service_id,
-            self.server_connection_id,
-        )
+        return f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
 
 
 class CommandSucceededEvent(_CommandEvent):
@@ -721,18 +710,7 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__reply
 
     def __repr__(self) -> str:
-        return (
-            "<{} {} db: {!r}, command: {!r}, operation_id: {}, duration_micros: {}, service_id: {}, server_connection_id: {}>"
-        ).format(
-            self.__class__.__name__,
-            self.connection_id,
-            self.database_name,
-            self.command_name,
-            self.operation_id,
-            self.duration_micros,
-            self.service_id,
-            self.server_connection_id,
-        )
+        return f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, duration_micros: {self.duration_micros}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
 
 
 class CommandFailedEvent(_CommandEvent):
@@ -787,18 +765,8 @@ class CommandFailedEvent(_CommandEvent):
 
     def __repr__(self) -> str:
         return (
-            "<{} {} db: {!r}, command: {!r}, operation_id: {}, duration_micros: {}, "
-            "failure: {!r}, service_id: {}, server_connection_id: {}>"
-        ).format(
-            self.__class__.__name__,
-            self.connection_id,
-            self.database_name,
-            self.command_name,
-            self.operation_id,
-            self.duration_micros,
-            self.failure,
-            self.service_id,
-            self.server_connection_id,
+            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, duration_micros: {self.duration_micros}, "
+            f"failure: {self.failure!r}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
         )
 
 
@@ -868,7 +836,7 @@ class PoolClearedEvent(_PoolEvent):
     .. versionadded:: 3.9
     """
 
-    __slots__ = ("__service_id", "__interrupt_connections")
+    __slots__ = ("__interrupt_connections", "__service_id")
 
     def __init__(
         self,
@@ -1068,12 +1036,7 @@ class ConnectionClosedEvent(_ConnectionIdEvent):
         return self.__reason
 
     def __repr__(self) -> str:
-        return "{}({!r}, {!r}, {!r})".format(
-            self.__class__.__name__,
-            self.address,
-            self.connection_id,
-            self.__reason,
-        )
+        return f"{self.__class__.__name__}({self.address!r}, {self.connection_id!r}, {self.__reason!r})"
 
 
 class ConnectionCheckOutStartedEvent(_ConnectionEvent):
@@ -1172,7 +1135,7 @@ class ServerDescriptionChangedEvent(_ServerEvent):
     .. versionadded:: 3.3
     """
 
-    __slots__ = ("__previous_description", "__new_description")
+    __slots__ = ("__new_description", "__previous_description")
 
     def __init__(
         self,
@@ -1199,12 +1162,7 @@ class ServerDescriptionChangedEvent(_ServerEvent):
         return self.__new_description
 
     def __repr__(self) -> str:
-        return "<{} {} changed from: {}, to: {}>".format(
-            self.__class__.__name__,
-            self.server_address,
-            self.previous_description,
-            self.new_description,
-        )
+        return f"<{self.__class__.__name__} {self.server_address} changed from: {self.previous_description}, to: {self.new_description}>"
 
 
 class ServerOpeningEvent(_ServerEvent):
@@ -1248,7 +1206,7 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
     .. versionadded:: 3.3
     """
 
-    __slots__ = ("__previous_description", "__new_description")
+    __slots__ = ("__new_description", "__previous_description")
 
     def __init__(
         self,
@@ -1275,12 +1233,7 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
         return self.__new_description
 
     def __repr__(self) -> str:
-        return "<{} topology_id: {} changed from: {}, to: {}>".format(
-            self.__class__.__name__,
-            self.topology_id,
-            self.previous_description,
-            self.new_description,
-        )
+        return f"<{self.__class__.__name__} topology_id: {self.topology_id} changed from: {self.previous_description}, to: {self.new_description}>"
 
 
 class TopologyOpenedEvent(TopologyEvent):
@@ -1304,7 +1257,7 @@ class TopologyClosedEvent(TopologyEvent):
 class _ServerHeartbeatEvent:
     """Base class for server heartbeat events."""
 
-    __slots__ = ("__connection_id", "__awaited")
+    __slots__ = ("__awaited", "__connection_id")
 
     def __init__(self, connection_id: _Address, awaited: bool = False) -> None:
         self.__connection_id = connection_id
@@ -1380,13 +1333,7 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         return super().awaited
 
     def __repr__(self) -> str:
-        return "<{} {} duration: {}, awaited: {}, reply: {}>".format(
-            self.__class__.__name__,
-            self.connection_id,
-            self.duration,
-            self.awaited,
-            self.reply,
-        )
+        return f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, awaited: {self.awaited}, reply: {self.reply}>"
 
 
 class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
@@ -1428,13 +1375,7 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         return super().awaited
 
     def __repr__(self) -> str:
-        return "<{} {} duration: {}, awaited: {}, reply: {!r}>".format(
-            self.__class__.__name__,
-            self.connection_id,
-            self.duration,
-            self.awaited,
-            self.reply,
-        )
+        return f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, awaited: {self.awaited}, reply: {self.reply!r}>"
 
 
 class _EventListeners:

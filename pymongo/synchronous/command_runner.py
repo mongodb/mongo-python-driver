@@ -31,18 +31,17 @@ failure conversion, and auto-encryption decryption. The three wrappers fix the
 transport and response-shaping flags for their command type so call sites pass
 only the parts that vary (the encoded message and a handful of hooks).
 """
+
 from __future__ import annotations
 
 import datetime
 import logging
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Mapping,
-    MutableMapping,
     Optional,
-    Sequence,
     Union,
     cast,
 )

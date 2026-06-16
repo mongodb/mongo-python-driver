@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for working with MongoDB ObjectIds."""
+
 from __future__ import annotations
 
 import datetime
@@ -21,7 +22,7 @@ import struct
 import threading
 import time
 from random import SystemRandom
-from typing import Any, NoReturn, Optional, Type, Union
+from typing import Any, NoReturn, Optional, Union
 
 from bson.datetime_ms import _datetime_to_millis
 from bson.errors import InvalidId
@@ -35,8 +36,7 @@ _UNPACK_INT = struct.Struct(">I").unpack
 
 def _raise_invalid_id(oid: str) -> NoReturn:
     raise InvalidId(
-        "%r is not a valid ObjectId, it must be a 12-byte input"
-        " or a 24-character hex string" % oid
+        f"{oid!r} is not a valid ObjectId, it must be a 12-byte input or a 24-character hex string"
     )
 
 
@@ -120,7 +120,7 @@ class ObjectId:
             raise TypeError(f"id must be an instance of (bytes, str, ObjectId), not {type(oid)}")
 
     @classmethod
-    def from_datetime(cls: Type[ObjectId], generation_time: datetime.datetime) -> ObjectId:
+    def from_datetime(cls: type[ObjectId], generation_time: datetime.datetime) -> ObjectId:
         """Create a dummy ObjectId instance with a specific generation time.
 
         This method is useful for doing range queries on a field
@@ -153,7 +153,7 @@ class ObjectId:
         return cls(oid)
 
     @classmethod
-    def is_valid(cls: Type[ObjectId], oid: Any) -> bool:
+    def is_valid(cls: type[ObjectId], oid: Any) -> bool:
         """Checks if a `oid` string is valid or not.
 
         :param oid: the object id to validate

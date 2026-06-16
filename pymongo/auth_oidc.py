@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Re-import of synchronous AuthOIDC API for compatibility."""
+
 from __future__ import annotations
 
 from pymongo.auth_oidc_shared import *  # noqa: F403

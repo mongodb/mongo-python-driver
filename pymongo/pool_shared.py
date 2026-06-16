@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Pool utilities and shared helper methods."""
+
 from __future__ import annotations
 
 import asyncio
@@ -58,7 +59,7 @@ except ImportError:
     # Windows, various platforms we don't claim to support
     # (Jython, IronPython, ..), systems that don't provide
     # everything we need from fcntl, etc.
-    def _set_non_inheritable_non_atomic(fd: int) -> None:  # noqa: ARG001
+    def _set_non_inheritable_non_atomic(fd: int) -> None:
         """Dummy function for platforms that don't provide fcntl."""
 
 
@@ -131,17 +132,15 @@ def _raise_connection_failure(
     host, port = address
     # If connecting to a Unix socket, port will be None.
     if port is not None:
-        msg = "%s:%d: %s" % (host, port, error)
+        msg = f"{host}:{port}: {error}"
     else:
         msg = f"{host}: {error}"
     if msg_prefix:
         msg = msg_prefix + msg
     if "configured timeouts" not in msg:
         msg += format_timeout_details(timeout_details)
-    if (
-        isinstance(error, socket.timeout)
-        or isinstance(error, SSLErrors)
-        and "timed out" in str(error)
+    if isinstance(error, socket.timeout) or (
+        isinstance(error, SSLErrors) and "timed out" in str(error)
     ):
         raise NetworkTimeout(msg) from error
     else:

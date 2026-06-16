@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test client side encryption spec."""
+
 from __future__ import annotations
 
 import base64
@@ -30,17 +31,18 @@ import textwrap
 import traceback
 import uuid
 import warnings
-from test import IntegrationTest, PyMongoTestCase, client_context
-from test.test_bulk import BulkTestBase
-from test.utils import flaky
+from collections.abc import Mapping
 from threading import Thread
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Optional
 
 import pytest
 
 from pymongo.daemon import _spawn_daemon
 from pymongo.synchronous.collection import Collection
 from pymongo.uri_parser_shared import _parse_kms_tls_options
+from test import IntegrationTest, PyMongoTestCase, client_context
+from test.test_bulk import BulkTestBase
+from test.utils import flaky
 
 try:
     from pymongo.pyopenssl_context import IS_PYOPENSSL
@@ -48,32 +50,6 @@ except ImportError:
     IS_PYOPENSSL = False
 
 sys.path[0:0] = [""]
-
-from test import (
-    unittest,
-)
-from test.helpers_shared import (
-    ALL_KMS_PROVIDERS,
-    AWS_CREDS,
-    AWS_TEMP_CREDS,
-    AZURE_CREDS,
-    CA_PEM,
-    CLIENT_PEM,
-    DEFAULT_KMS_TLS,
-    GCP_CREDS,
-    KMIP_CREDS,
-    LOCAL_MASTER_KEY,
-)
-from test.test_bulk import BulkTestBase
-from test.unified_format import generate_test_classes, get_test_path
-from test.utils_shared import (
-    AllowListEventListener,
-    OvertCommandListener,
-    TopologyEventListener,
-    camel_to_snake_args,
-    is_greenthread_patched,
-    wait_until,
-)
 
 from bson import BSON, DatetimeMS, Decimal128, encode, json_util
 from bson.binary import UUID_SUBTYPE, Binary, UuidRepresentation
@@ -103,6 +79,31 @@ from pymongo.synchronous.encryption import Algorithm, ClientEncryption, QueryTyp
 from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
+from test import (
+    unittest,
+)
+from test.helpers_shared import (
+    ALL_KMS_PROVIDERS,
+    AWS_CREDS,
+    AWS_TEMP_CREDS,
+    AZURE_CREDS,
+    CA_PEM,
+    CLIENT_PEM,
+    DEFAULT_KMS_TLS,
+    GCP_CREDS,
+    KMIP_CREDS,
+    LOCAL_MASTER_KEY,
+)
+from test.test_bulk import BulkTestBase
+from test.unified_format import generate_test_classes, get_test_path
+from test.utils_shared import (
+    AllowListEventListener,
+    OvertCommandListener,
+    TopologyEventListener,
+    camel_to_snake_args,
+    is_greenthread_patched,
+    wait_until,
+)
 
 _IS_SYNC = True
 
@@ -2903,7 +2904,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                 EncryptionError, "expected matching 'min' and value type. Got range option"
             ):
                 self.client_encryption.encrypt(
-                    6 if cast_func != int else float(6),
+                    6 if cast_func is not int else float(6),
                     key_id=self.key1_id,
                     algorithm=Algorithm.RANGE,
                     contention_factor=0,
@@ -3171,7 +3172,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
         self.assertIsNone(encrypted_fields["fields"][0]["keyId"])
 
     def test_options_forward(self):
-        coll, ef = self.client_encryption.create_encrypted_collection(
+        coll, _ = self.client_encryption.create_encrypted_collection(
             database=self.db,
             name="testing1",
             kms_provider="local",

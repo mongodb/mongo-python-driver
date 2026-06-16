@@ -14,6 +14,7 @@
 
 
 """Constants, types, and classes shared across OIDC auth implementations."""
+
 from __future__ import annotations
 
 import abc

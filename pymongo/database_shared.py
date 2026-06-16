@@ -14,9 +14,11 @@
 
 
 """Constants, helpers, and types shared across all database classes."""
+
 from __future__ import annotations
 
-from typing import Any, Mapping, TypeVar
+from collections.abc import Mapping
+from typing import Any, TypeVar
 
 from pymongo.errors import InvalidName
 
@@ -28,7 +30,7 @@ def _check_name(name: str) -> None:
 
     for invalid_char in [" ", ".", "$", "/", "\\", "\x00", '"']:
         if invalid_char in name:
-            raise InvalidName("database names cannot contain the character %r" % invalid_char)
+            raise InvalidName(f"database names cannot contain the character {invalid_char!r}")
 
 
 _CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])

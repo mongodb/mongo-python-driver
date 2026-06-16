@@ -17,6 +17,7 @@ context.
 
 Due to limitations of the CPython asyncio.Protocol implementation for SSL, the async API does not support PyOpenSSL.
 """
+
 from __future__ import annotations
 
 import socket as _socket
@@ -201,7 +202,7 @@ class SSLContext:
     context.
     """
 
-    __slots__ = ("_protocol", "_ctx", "_callback_data", "_check_hostname", "_options")
+    __slots__ = ("_callback_data", "_check_hostname", "_ctx", "_options", "_protocol")
 
     def __init__(self, protocol: int):
         self._protocol = protocol

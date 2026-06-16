@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """GCP helpers."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -30,7 +31,7 @@ def _get_gcp_response(resource: str, timeout: float = 5) -> dict[str, Any]:
             status = response.status
             body = response.read().decode("utf8")
     except Exception as e:
-        msg = "Failed to acquire IMDS access token: %s" % e
+        msg = f"Failed to acquire IMDS access token: {e}"
         raise ValueError(msg) from None
 
     if status != 200:
