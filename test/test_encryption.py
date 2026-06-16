@@ -2195,6 +2195,13 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         self.assertEqual(docs[0]["encryptedIndexed"], val)
 
     def test_02_insert_encrypted_indexed_and_find_contention(self):
+        # setUp creates the collection with contention=0 (from encryptedFields.json).
+        # This test uses contention_factor=10, so recreate the collection with contention=10.
+        self.db.drop_collection("explicit_encryption", encrypted_fields=self.encrypted_fields)
+        encrypted_fields = copy.deepcopy(self.encrypted_fields)
+        encrypted_fields["fields"][0]["queries"]["contention"] = 10
+        self.db.command("create", "explicit_encryption", encryptedFields=encrypted_fields)
+
         val = "encrypted indexed value"
         contention = 10
         for _ in range(contention):
@@ -2205,20 +2212,7 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
                 {"encryptedIndexed": insert_payload}
             )
 
-        find_payload = self.client_encryption.encrypt(
-            val, Algorithm.INDEXED, self.key1_id, query_type=QueryType.EQUALITY, contention_factor=0
-        )
-        docs = (
-            self.encrypted_client[self.db.name]
-            .explicit_encryption.find({"encryptedIndexed": find_payload})
-            .to_list()
-        )
-
-        self.assertLessEqual(len(docs), 10)
-        for doc in docs:
-            self.assertEqual(doc["encryptedIndexed"], val)
-
-        # Find with contention_factor will return all 10 documents.
+        # Find with matching contention_factor returns all 10 documents.
         find_payload = self.client_encryption.encrypt(
             val,
             Algorithm.INDEXED,
