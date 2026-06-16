@@ -23,8 +23,6 @@ from unittest.mock import MagicMock
 
 sys.path[0:0] = [""]
 
-from test import unittest
-
 from bson import CodecOptions, encode
 from pymongo.compression_support import ZlibContext, _have_zlib
 from pymongo.errors import DocumentTooLarge, OperationFailure
@@ -40,6 +38,7 @@ from pymongo.message import (
 )
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, SecondaryPreferred
+from test import unittest
 
 _OPTS = CodecOptions()
 
