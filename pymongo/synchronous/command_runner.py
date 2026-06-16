@@ -16,20 +16,26 @@
 
 The public :func:`command` entry point applies read preference, read concern,
 collation, ``$clusterTime``, auto-encryption, and CSOT to a command spec,
-encodes it as an OP_MSG message, and then delegates to one of three lower-level
-runners.
+encodes it as an OP_MSG message, and then delegates to :func:`run_command`.
 
 Every database operation runs its network round trip through one of three
-public entry points -- :func:`run_acknowledged_command` (acknowledged commands
-and bulk write batches), :func:`run_unacknowledged_command` (unacknowledged
-writes), and
-:func:`run_cursor_command` (cursor ``find``/``getMore`` operations) -- each of
-which wraps the private :func:`_run_command`. ``_run_command`` owns the entire
-shared skeleton: command logging, APM event publishing, ``send``/``receive``,
-``$clusterTime`` gossip, ``_process_response``, ``_check_command_response``,
-failure conversion, and auto-encryption decryption. The three wrappers fix the
-transport and response-shaping flags for their command type so call sites pass
-only the parts that vary (the encoded message and a handful of hooks).
+public entry points, each wrapping :func:`run_command`:
+
+- :func:`run_command` — the shared implementation; also called directly by
+  :func:`command` for standard acknowledged/unacknowledged commands.
+- :func:`run_bulk_write_command` — collection-level and client-level bulk write
+  batches (connection transport via ``conn.send_message`` /
+  ``conn.receive_message``; commands are pre-encrypted so decryption is
+  skipped). Callers: ``bulk.py``, ``client_bulk.py``.
+- :func:`run_cursor_command` — cursor ``find``/``getMore`` operations
+  (connection transport, exhaust-cursor handling). Caller: ``server.py``.
+
+:func:`run_command` owns the entire shared skeleton: command logging, APM event
+publishing, ``send``/``receive``, ``$clusterTime`` gossip,
+``_process_response``, ``_check_command_response``, failure conversion, and
+auto-encryption decryption. The bulk and cursor wrappers hardcode the transport
+and response-shaping flags for their command type so call sites only pass what
+genuinely varies.
 """
 
 from __future__ import annotations
@@ -71,7 +77,7 @@ if TYPE_CHECKING:
 _IS_SYNC = True
 
 
-def _run_command(
+def run_command(
     conn: Connection,
     cmd: MutableMapping[str, Any],
     dbname: str,
@@ -106,11 +112,9 @@ def _run_command(
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
 
-    This is the shared implementation behind :func:`run_acknowledged_command`,
-    :func:`run_unacknowledged_command`, and :func:`run_cursor_command`. Those
-    three public entry points each fix the transport and response-shaping flags
-    for their command type; the bare kwargs here should not be set directly by
-    new call sites.
+    Shared implementation for all command execution. :func:`run_bulk_write_command`
+    and :func:`run_cursor_command` wrap this and hardcode the transport and
+    response-shaping flags for their command type.
 
     It publishes the
     ``STARTED``/``SUCCEEDED``/``FAILED`` command log and APM events, performs
@@ -338,134 +342,6 @@ def _run_command(
     return docs, reply, duration
 
 
-def run_acknowledged_command(
-    conn: Connection,
-    cmd: MutableMapping[str, Any],
-    dbname: str,
-    request_id: int,
-    msg: bytes,
-    *,
-    client: Optional[MongoClient[Any]],
-    session: Optional[ClientSession],
-    listeners: Optional[_EventListeners],
-    address: Optional[_Address],
-    start: datetime.datetime,
-    codec_options: CodecOptions[_DocumentType],
-    user_fields: Optional[Mapping[str, Any]] = None,
-    orig: Optional[MutableMapping[str, Any]] = None,
-    op_id: Optional[int] = None,
-    command_name: Optional[str] = None,
-    check: bool = True,
-    allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-    parse_write_concern_error: bool = False,
-    speculative_hello: bool = False,
-    use_conn_transport: bool = False,
-    process_response: bool = True,
-    decrypt_reply: bool = True,
-    set_conn_more_to_come: bool = True,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send an acknowledged command and return ``(docs, reply, duration)``.
-
-    This is the entry point for standard commands and bulk write batches: it
-    sends ``msg``, receives the reply, runs ``_process_response`` and
-    ``_check_command_response``, decrypts the reply when auto-encryption is
-    enabled, and publishes the command log/APM events.
-
-    :param use_conn_transport: Send/receive via ``conn.send_message`` /
-        ``conn.receive_message`` (bulk path) instead of the raw
-        ``sendall`` / ``receive_message`` (standard command path).
-    :param process_response: Run ``client._process_response`` here.
-    :param decrypt_reply: Decrypt the reply when auto-encryption is enabled; the
-        bulk paths pass False (their commands are encrypted up front).
-    :param set_conn_more_to_come: Store ``reply.more_to_come`` on ``conn``; the
-        bulk paths pass False (bulk write replies never set ``more_to_come``).
-
-    See :func:`_run_command` for the remaining parameters.
-    """
-    return _run_command(
-        conn,
-        cmd,
-        dbname,
-        request_id,
-        msg,
-        client=client,
-        session=session,
-        listeners=listeners,
-        address=address,
-        start=start,
-        codec_options=codec_options,
-        user_fields=user_fields,
-        orig=orig,
-        op_id=op_id,
-        command_name=command_name,
-        check=check,
-        allowable_errors=allowable_errors,
-        parse_write_concern_error=parse_write_concern_error,
-        speculative_hello=speculative_hello,
-        use_conn_transport=use_conn_transport,
-        process_response=process_response,
-        decrypt_reply=decrypt_reply,
-        set_conn_more_to_come=set_conn_more_to_come,
-    )
-
-
-def run_unacknowledged_command(
-    conn: Connection,
-    cmd: MutableMapping[str, Any],
-    dbname: str,
-    request_id: int,
-    msg: bytes,
-    *,
-    client: Optional[MongoClient[Any]],
-    session: Optional[ClientSession],
-    listeners: Optional[_EventListeners],
-    address: Optional[_Address],
-    start: datetime.datetime,
-    codec_options: CodecOptions[_DocumentType],
-    user_fields: Optional[Mapping[str, Any]] = None,
-    orig: Optional[MutableMapping[str, Any]] = None,
-    op_id: Optional[int] = None,
-    command_name: Optional[str] = None,
-    speculative_hello: bool = False,
-    use_conn_transport: bool = False,
-    max_doc_size: int = 0,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send an unacknowledged command and fake an ``{"ok": 1}`` reply.
-
-    The message is sent only -- no reply is received -- so the response
-    processing, command checking, and decryption steps are skipped.
-
-    :param use_conn_transport: Send via ``conn.send_message`` (bulk path) instead
-        of the raw ``sendall`` (standard command path).
-    :param max_doc_size: The largest document size, for ``conn.send_message``.
-
-    See :func:`_run_command` for the remaining parameters.
-    """
-    return _run_command(
-        conn,
-        cmd,
-        dbname,
-        request_id,
-        msg,
-        client=client,
-        session=session,
-        listeners=listeners,
-        address=address,
-        start=start,
-        codec_options=codec_options,
-        user_fields=user_fields,
-        orig=orig,
-        op_id=op_id,
-        command_name=command_name,
-        speculative_hello=speculative_hello,
-        unacknowledged=True,
-        use_conn_transport=use_conn_transport,
-        max_doc_size=max_doc_size,
-        process_response=False,
-        decrypt_reply=False,
-    )
-
-
 def run_bulk_write_command(
     conn: Connection,
     cmd: MutableMapping[str, Any],
@@ -495,9 +371,9 @@ def run_bulk_write_command(
     :param max_doc_size: The largest document size; passed to ``conn.send_message``.
     :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
 
-    See :func:`_run_command` for the remaining parameters.
+    See :func:`run_command` for the remaining parameters.
     """
-    return _run_command(
+    return run_command(
         conn,
         cmd,
         dbname,
@@ -552,9 +428,9 @@ def run_cursor_command(
     :param unpack_res: A callable decoding the wire response.
     :param cursor_id: The cursor id passed to ``unpack_res``.
 
-    See :func:`_run_command` for the remaining parameters.
+    See :func:`run_command` for the remaining parameters.
     """
-    return _run_command(
+    return run_command(
         conn,
         cmd,
         dbname,
@@ -607,7 +483,7 @@ def command(
     Applies read preference, read concern, collation, ``$clusterTime``,
     auto-encryption, and CSOT to ``spec``, encodes it as an OP_MSG message,
     and then delegates the network round trip and response processing to
-    :func:`run_acknowledged_command` or :func:`run_unacknowledged_command`.
+    :func:`run_command`.
 
     :param conn: a Connection instance
     :param dbname: name of the database on which to run the command
@@ -674,41 +550,26 @@ def command(
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-    if unacknowledged:
-        docs, _, _ = run_unacknowledged_command(
-            conn,
-            spec,
-            dbname,
-            request_id,
-            msg,
-            client=client,
-            session=session,
-            listeners=listeners,
-            address=address,
-            start=start,
-            codec_options=codec_options,
-            user_fields=user_fields,
-            orig=orig,
-            speculative_hello=speculative_hello,
-        )
-    else:
-        docs, _, _ = run_acknowledged_command(
-            conn,
-            spec,
-            dbname,
-            request_id,
-            msg,
-            client=client,
-            session=session,
-            listeners=listeners,
-            address=address,
-            start=start,
-            codec_options=codec_options,
-            user_fields=user_fields,
-            orig=orig,
-            check=check,
-            allowable_errors=allowable_errors,
-            parse_write_concern_error=parse_write_concern_error,
-            speculative_hello=speculative_hello,
-        )
+    docs, _, _ = run_command(
+        conn,
+        spec,
+        dbname,
+        request_id,
+        msg,
+        client=client,
+        session=session,
+        listeners=listeners,
+        address=address,
+        start=start,
+        codec_options=codec_options,
+        user_fields=user_fields,
+        orig=orig,
+        check=check,
+        allowable_errors=allowable_errors,
+        parse_write_concern_error=parse_write_concern_error,
+        speculative_hello=speculative_hello,
+        unacknowledged=unacknowledged,
+        process_response=not unacknowledged,
+        decrypt_reply=not unacknowledged,
+    )
     return docs[0]  # type: ignore[return-value]

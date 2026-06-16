@@ -395,7 +395,7 @@ class _ClientBulk:
         listeners = self.client._event_listeners
 
         # Connection.command validates the session, but we use
-        # run_acknowledged_command/run_unacknowledged_command.
+        # run_bulk_write_command.
         conn.validate_session(self.client, session)
 
         bwc = self.bulk_ctx_class(

@@ -16,16 +16,13 @@
 
 The public :func:`command` entry point applies read preference, read concern,
 collation, ``$clusterTime``, auto-encryption, and CSOT to a command spec,
-encodes it as an OP_MSG message, and then delegates to one of four lower-level
-runners.
+encodes it as an OP_MSG message, and then delegates to :func:`run_command`.
 
-Every database operation runs its network round trip through one of four
-public entry points, each wrapping the private :func:`_run_command`:
+Every database operation runs its network round trip through one of three
+public entry points, each wrapping :func:`run_command`:
 
-- :func:`run_acknowledged_command` — standard commands (network transport via
-  ``async_sendall`` / ``async_receive_message``). Caller: :func:`command`.
-- :func:`run_unacknowledged_command` — fire-and-forget (network transport).
-  Caller: :func:`command` unacknowledged branch.
+- :func:`run_command` — the shared implementation; also called directly by
+  :func:`command` for standard acknowledged/unacknowledged commands.
 - :func:`run_bulk_write_command` — collection-level and client-level bulk write
   batches (connection transport via ``conn.send_message`` /
   ``conn.receive_message``; commands are pre-encrypted so decryption is
@@ -33,11 +30,11 @@ public entry points, each wrapping the private :func:`_run_command`:
 - :func:`run_cursor_command` — cursor ``find``/``getMore`` operations
   (connection transport, exhaust-cursor handling). Caller: ``server.py``.
 
-``_run_command`` owns the entire shared skeleton: command logging, APM event
+:func:`run_command` owns the entire shared skeleton: command logging, APM event
 publishing, ``send``/``receive``, ``$clusterTime`` gossip,
 ``_process_response``, ``_check_command_response``, failure conversion, and
-auto-encryption decryption. Each public wrapper hardcodes the transport and
-response-shaping flags for its command type so call sites only pass what
+auto-encryption decryption. The bulk and cursor wrappers hardcode the transport
+and response-shaping flags for their command type so call sites only pass what
 genuinely varies.
 """
 
@@ -80,7 +77,7 @@ if TYPE_CHECKING:
 _IS_SYNC = False
 
 
-async def _run_command(
+async def run_command(
     conn: AsyncConnection,
     cmd: MutableMapping[str, Any],
     dbname: str,
@@ -115,11 +112,9 @@ async def _run_command(
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
 
-    This is the shared implementation behind :func:`run_acknowledged_command`,
-    :func:`run_unacknowledged_command`, :func:`run_bulk_write_command`, and
-    :func:`run_cursor_command`. Those four public entry points each hardcode the
-    transport and response-shaping flags for their command type; the bare kwargs
-    here should not be set directly by new call sites.
+    Shared implementation for all command execution. :func:`run_bulk_write_command`
+    and :func:`run_cursor_command` wrap this and hardcode the transport and
+    response-shaping flags for their command type.
 
     It publishes the
     ``STARTED``/``SUCCEEDED``/``FAILED`` command log and APM events, performs
@@ -347,110 +342,6 @@ async def _run_command(
     return docs, reply, duration
 
 
-async def run_acknowledged_command(
-    conn: AsyncConnection,
-    cmd: MutableMapping[str, Any],
-    dbname: str,
-    request_id: int,
-    msg: bytes,
-    *,
-    client: Optional[AsyncMongoClient[Any]],
-    session: Optional[AsyncClientSession],
-    listeners: Optional[_EventListeners],
-    address: Optional[_Address],
-    start: datetime.datetime,
-    codec_options: CodecOptions[_DocumentType],
-    user_fields: Optional[Mapping[str, Any]] = None,
-    orig: Optional[MutableMapping[str, Any]] = None,
-    op_id: Optional[int] = None,
-    command_name: Optional[str] = None,
-    check: bool = True,
-    allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-    parse_write_concern_error: bool = False,
-    speculative_hello: bool = False,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send an acknowledged command over the network and return ``(docs, reply, duration)``.
-
-    Uses the raw ``async_sendall`` / ``async_receive_message`` transport (the
-    standard :func:`command` path). Sends ``msg``, receives the reply, runs
-    ``_process_response`` and ``_check_command_response``, decrypts the reply
-    when auto-encryption is enabled, and publishes the command log/APM events.
-
-    See :func:`_run_command` for parameter details.
-    """
-    return await _run_command(
-        conn,
-        cmd,
-        dbname,
-        request_id,
-        msg,
-        client=client,
-        session=session,
-        listeners=listeners,
-        address=address,
-        start=start,
-        codec_options=codec_options,
-        user_fields=user_fields,
-        orig=orig,
-        op_id=op_id,
-        command_name=command_name,
-        check=check,
-        allowable_errors=allowable_errors,
-        parse_write_concern_error=parse_write_concern_error,
-        speculative_hello=speculative_hello,
-    )
-
-
-async def run_unacknowledged_command(
-    conn: AsyncConnection,
-    cmd: MutableMapping[str, Any],
-    dbname: str,
-    request_id: int,
-    msg: bytes,
-    *,
-    client: Optional[AsyncMongoClient[Any]],
-    session: Optional[AsyncClientSession],
-    listeners: Optional[_EventListeners],
-    address: Optional[_Address],
-    start: datetime.datetime,
-    codec_options: CodecOptions[_DocumentType],
-    user_fields: Optional[Mapping[str, Any]] = None,
-    orig: Optional[MutableMapping[str, Any]] = None,
-    op_id: Optional[int] = None,
-    command_name: Optional[str] = None,
-    speculative_hello: bool = False,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send an unacknowledged command over the network and fake an ``{"ok": 1}`` reply.
-
-    Uses the raw ``async_sendall`` transport (the standard :func:`command`
-    path). The message is sent only — no reply is received — so response
-    processing, command checking, and decryption are skipped.
-
-    See :func:`_run_command` for parameter details.
-    """
-    return await _run_command(
-        conn,
-        cmd,
-        dbname,
-        request_id,
-        msg,
-        client=client,
-        session=session,
-        listeners=listeners,
-        address=address,
-        start=start,
-        codec_options=codec_options,
-        user_fields=user_fields,
-        orig=orig,
-        op_id=op_id,
-        command_name=command_name,
-        speculative_hello=speculative_hello,
-        unacknowledged=True,
-        process_response=False,
-        decrypt_reply=False,
-    )
-
-
 async def run_bulk_write_command(
     conn: AsyncConnection,
     cmd: MutableMapping[str, Any],
@@ -480,9 +371,9 @@ async def run_bulk_write_command(
     :param max_doc_size: The largest document size; passed to ``conn.send_message``.
     :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
 
-    See :func:`_run_command` for the remaining parameters.
+    See :func:`run_command` for the remaining parameters.
     """
-    return await _run_command(
+    return await run_command(
         conn,
         cmd,
         dbname,
@@ -537,9 +428,9 @@ async def run_cursor_command(
     :param unpack_res: A callable decoding the wire response.
     :param cursor_id: The cursor id passed to ``unpack_res``.
 
-    See :func:`_run_command` for the remaining parameters.
+    See :func:`run_command` for the remaining parameters.
     """
-    return await _run_command(
+    return await run_command(
         conn,
         cmd,
         dbname,
@@ -592,7 +483,7 @@ async def command(
     Applies read preference, read concern, collation, ``$clusterTime``,
     auto-encryption, and CSOT to ``spec``, encodes it as an OP_MSG message,
     and then delegates the network round trip and response processing to
-    :func:`run_acknowledged_command` or :func:`run_unacknowledged_command`.
+    :func:`run_command`.
 
     :param conn: a AsyncConnection instance
     :param dbname: name of the database on which to run the command
@@ -659,41 +550,26 @@ async def command(
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-    if unacknowledged:
-        docs, _, _ = await run_unacknowledged_command(
-            conn,
-            spec,
-            dbname,
-            request_id,
-            msg,
-            client=client,
-            session=session,
-            listeners=listeners,
-            address=address,
-            start=start,
-            codec_options=codec_options,
-            user_fields=user_fields,
-            orig=orig,
-            speculative_hello=speculative_hello,
-        )
-    else:
-        docs, _, _ = await run_acknowledged_command(
-            conn,
-            spec,
-            dbname,
-            request_id,
-            msg,
-            client=client,
-            session=session,
-            listeners=listeners,
-            address=address,
-            start=start,
-            codec_options=codec_options,
-            user_fields=user_fields,
-            orig=orig,
-            check=check,
-            allowable_errors=allowable_errors,
-            parse_write_concern_error=parse_write_concern_error,
-            speculative_hello=speculative_hello,
-        )
+    docs, _, _ = await run_command(
+        conn,
+        spec,
+        dbname,
+        request_id,
+        msg,
+        client=client,
+        session=session,
+        listeners=listeners,
+        address=address,
+        start=start,
+        codec_options=codec_options,
+        user_fields=user_fields,
+        orig=orig,
+        check=check,
+        allowable_errors=allowable_errors,
+        parse_write_concern_error=parse_write_concern_error,
+        speculative_hello=speculative_hello,
+        unacknowledged=unacknowledged,
+        process_response=not unacknowledged,
+        decrypt_reply=not unacknowledged,
+    )
     return docs[0]  # type: ignore[return-value]
