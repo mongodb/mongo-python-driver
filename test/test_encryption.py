@@ -2904,7 +2904,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
                 EncryptionError, "expected matching 'min' and value type. Got range option"
             ):
                 self.client_encryption.encrypt(
-                    6 if cast_func is int else float(6),
+                    6 if cast_func is not int else float(6),
                     key_id=self.key1_id,
                     algorithm=Algorithm.RANGE,
                     contention_factor=0,
