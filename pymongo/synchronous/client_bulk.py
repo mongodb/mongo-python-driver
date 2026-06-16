@@ -258,6 +258,7 @@ class _ClientBulk:
                 command_name=bwc.name,
                 use_conn_transport=True,
                 decrypt_reply=False,
+                set_conn_more_to_come=False,
             )
             reply = result_docs[0]
         except Exception as exc:
