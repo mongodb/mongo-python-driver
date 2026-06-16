@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the topology module."""
+
 from __future__ import annotations
 
 import sys
@@ -20,11 +21,6 @@ import sys
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
-
-from test import client_knobs, unittest
-from test.pymongo_mocks import DummyMonitor
-from test.utils import MockPool
-from test.utils_shared import wait_until
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -40,6 +36,10 @@ from pymongo.synchronous.server import Server
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE
+from test import client_knobs, unittest
+from test.pymongo_mocks import DummyMonitor
+from test.utils import MockPool
+from test.utils_shared import wait_until
 
 
 class SetNameDiscoverySettings(TopologySettings):

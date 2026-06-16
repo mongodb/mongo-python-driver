@@ -14,9 +14,11 @@
 
 
 """Constants, types, and classes shared across Client Bulk Write API implementations."""
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, MutableMapping, NoReturn
+from collections.abc import Mapping, MutableMapping
+from typing import TYPE_CHECKING, Any, NoReturn
 
 from pymongo.errors import ClientBulkWriteException, OperationFailure
 from pymongo.helpers_shared import _get_wce_doc

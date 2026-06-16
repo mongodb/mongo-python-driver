@@ -24,15 +24,12 @@ import ssl
 import sys
 import time
 import weakref
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generator,
-    Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
-    Sequence,
     Union,
 )
 
@@ -395,6 +392,8 @@ class Connection:
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
         self._raise_if_not_writable(unacknowledged)
         try:
+            if session is not None and session._starting_transaction:
+                session._transaction.set_in_progress()
             return command(
                 self,
                 dbname,
@@ -431,8 +430,8 @@ class Connection:
         """
         if self.max_bson_size is not None and max_doc_size > self.max_bson_size:
             raise DocumentTooLarge(
-                "BSON document too large (%d bytes) - the connected server "
-                "supports BSON document sizes up to %d bytes." % (max_doc_size, self.max_bson_size)
+                f"BSON document too large ({max_doc_size} bytes) - the connected server "
+                f"supports BSON document sizes up to {self.max_bson_size} bytes."
             )
 
         try:
@@ -509,9 +508,7 @@ class Connection:
                 auth.authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
             duration = time.monotonic() - self.creation_time
-            if self.enabled_for_cmap:
-                assert self.listeners is not None
-                self.listeners.publish_connection_ready(self.address, self.id, duration)
+            # Log before publishing event to prevent potential listener preemption in tests
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
@@ -522,6 +519,9 @@ class Connection:
                     driverConnectionId=self.id,
                     durationMS=duration,
                 )
+            if self.enabled_for_cmap:
+                assert self.listeners is not None
+                self.listeners.publish_connection_ready(self.address, self.id, duration)
 
     def validate_session(
         self, client: Optional[MongoClient[Any]], session: Optional[ClientSession]
@@ -626,7 +626,7 @@ class Connection:
             details = _get_timeout_details(self.opts)
             _raise_connection_failure(self.address, error, timeout_details=details)
         else:
-            raise
+            raise error
 
     def __eq__(self, other: Any) -> bool:
         return self.conn == other.conn
@@ -640,7 +640,7 @@ class Connection:
     def __repr__(self) -> str:
         return "Connection({}){} at {}".format(
             repr(self.conn),
-            self.closed and " CLOSED" or "",
+            (self.closed and " CLOSED") or "",
             id(self),
         )
 
@@ -1025,9 +1025,7 @@ class Pool:
             self.active_contexts.add(tmp_context)
 
         listeners = self.opts._event_listeners
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_created(self.address, conn_id)
+        # Log before publishing event to prevent potential listener preemption in tests
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
@@ -1037,6 +1035,9 @@ class Pool:
                 serverPort=self.address[1],
                 driverConnectionId=conn_id,
             )
+        if self.enabled_for_cmap:
+            assert listeners is not None
+            listeners.publish_connection_created(self.address, conn_id)
 
         try:
             networking_interface = _configured_socket_interface(
@@ -1062,10 +1063,16 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
-            self._handle_connection_error(error)
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
-                _raise_connection_failure(self.address, error, timeout_details=details)
+                # Wrap to AutoReconnect/NetworkTimeout BEFORE labeling so the
+                # SystemOverloadedError label lands on the propagated exception.
+                try:
+                    _raise_connection_failure(self.address, error, timeout_details=details)
+                except (AutoReconnect, NetworkTimeout) as wrapped:
+                    self._handle_connection_error(wrapped)
+                    raise
+            self._handle_connection_error(error)
             raise
 
         conn = Connection(networking_interface, self, self.address, conn_id, self.is_sdam)  # type: ignore[arg-type]
@@ -1468,15 +1475,9 @@ class Pool:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
             raise WaitQueueTimeoutError(
                 "Timeout waiting for connection from the connection pool. "
-                "maxPoolSize: {}, connections in use by cursors: {}, "
-                "connections in use by transactions: {}, connections in use "
-                "by other operations: {}, timeout: {}".format(
-                    self.opts.max_pool_size,
-                    self.ncursors,
-                    self.ntxns,
-                    other_ops,
-                    timeout,
-                )
+                f"maxPoolSize: {self.opts.max_pool_size}, connections in use by cursors: {self.ncursors}, "
+                f"connections in use by transactions: {self.ntxns}, connections in use "
+                f"by other operations: {other_ops}, timeout: {timeout}"
             )
         raise WaitQueueTimeoutError(
             "Timed out while checking out a connection from connection pool. "

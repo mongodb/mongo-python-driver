@@ -13,24 +13,17 @@
 # limitations under the License.
 
 """Test the database module."""
+
 from __future__ import annotations
 
 import re
 import sys
-from typing import Any, Iterable, List, Mapping, Union
+from collections.abc import Iterable, Mapping
+from typing import Any, Union
 
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 
 sys.path[0:0] = [""]
-
-from test import unittest
-from test.asynchronous import AsyncIntegrationTest, async_client_context
-from test.test_custom_types import DECIMAL_CODECOPTS
-from test.utils_shared import (
-    IMPOSSIBLE_WRITE_CONCERN,
-    OvertCommandListener,
-    async_wait_until,
-)
 
 from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
@@ -55,6 +48,14 @@ from pymongo.errors import (
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
+from test import unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context
+from test.test_custom_types import DECIMAL_CODECOPTS
+from test.utils_shared import (
+    IMPOSSIBLE_WRITE_CONCERN,
+    OvertCommandListener,
+    async_wait_until,
+)
 
 _IS_SYNC = False
 
@@ -692,7 +693,7 @@ class TestDatabase(AsyncIntegrationTest):
 class TestDatabaseAggregation(AsyncIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
-        self.pipeline: List[Mapping[str, Any]] = [
+        self.pipeline: list[Mapping[str, Any]] = [
             {"$listLocalSessions": {}},
             {"$limit": 1},
             {"$addFields": {"dummy": "dummy field"}},

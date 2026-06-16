@@ -13,15 +13,16 @@
 # permissions and limitations under the License.
 
 """Communicate with one MongoDB server in a topology."""
+
 from __future__ import annotations
 
 import logging
+from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    ContextManager,
     Optional,
     Union,
 )
@@ -204,6 +205,8 @@ class Server:
             if more_to_come:
                 reply = conn.receive_message(None)
             else:
+                if operation.session is not None and operation.session._starting_transaction:
+                    operation.session._transaction.set_in_progress()
                 conn.send_message(data, max_doc_size)
                 reply = conn.receive_message(request_id)
 
@@ -340,7 +343,7 @@ class Server:
 
     def checkout(
         self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> ContextManager[Connection]:
+    ) -> AbstractContextManager[Connection]:
         return self.pool.checkout(handler)
 
     @property

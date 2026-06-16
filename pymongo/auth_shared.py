@@ -14,13 +14,15 @@
 
 
 """Constants and types shared across multiple auth types."""
+
 from __future__ import annotations
 
 import os
 import typing
 from base64 import standard_b64encode
 from collections import namedtuple
-from typing import Any, Dict, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from bson import Binary
 from pymongo.auth_oidc_shared import (
@@ -229,7 +231,7 @@ def _xor(fir: bytes, sec: bytes) -> bytes:
     return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec)])
 
 
-def _parse_scram_response(response: bytes) -> Dict[bytes, bytes]:
+def _parse_scram_response(response: bytes) -> dict[bytes, bytes]:
     """Split a scram response into key, value pairs."""
     return dict(
         typing.cast(typing.Tuple[bytes, bytes], item.split(b"=", 1))

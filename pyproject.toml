@@ -59,7 +59,7 @@ mockupdb = [
 perf = ["simplejson>=3.17.0"]
 typing = [
     "mypy==1.19.1",
-    "pyright==1.1.409",
+    "pyright==1.1.410",
     "typing_extensions>=3.7.4.2",
     "pip>=20.2"
 ]
@@ -164,7 +164,7 @@ warn_unused_ignores = false
 disable_error_code = ["unused-coroutine", "no-redef"]
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py39"
 line-length = 100
 
 [tool.ruff.lint]
@@ -195,7 +195,6 @@ select = [
 ignore = [
   "PLR",    # Design related pylint codes
   "E501",   # Line too long
-  "PT004",  # Use underscore for non-returning fixture (use usefixture instead)
   "UP007",  # Use `X | Y` for type annotation
   "EM101",  # Exception must not use a string literal, assign to variable first
   "EM102",  # Exception must not use an f-string literal, assign to variable first
@@ -215,6 +214,8 @@ ignore = [
   "EM103",  # Exception must not use a `.format()` string directly, assign to variable first
   "C408",   # Unnecessary `dict` call (rewrite as a literal)
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
+  "UP045", # Use `X | Y` for union annotation (Enable when we drop 3.9 support)
+  "PLC0415", # `import` should be at the top-level of a file
 ]
 unfixable = [
   "RUF100", # Unused noqa

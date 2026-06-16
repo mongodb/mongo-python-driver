@@ -140,19 +140,16 @@ import collections
 import random
 import time
 import uuid
+from collections.abc import Awaitable, Mapping, MutableMapping
 from collections.abc import Mapping as _Mapping
+from contextlib import AbstractAsyncContextManager
 from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncContextManager,
-    Awaitable,
     Callable,
-    Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
-    Type,
     TypeVar,
 )
 
@@ -243,9 +240,7 @@ class SessionOptions:
             if not isinstance(default_transaction_options, TransactionOptions):
                 raise TypeError(
                     "default_transaction_options must be an instance of "
-                    "pymongo.client_session.TransactionOptions, not: {!r}".format(
-                        default_transaction_options
-                    )
+                    f"pymongo.client_session.TransactionOptions, not: {default_transaction_options!r}"
                 )
         self._default_transaction_options = default_transaction_options
         self._snapshot = snapshot
@@ -325,8 +320,7 @@ class TransactionOptions:
                 )
             if not write_concern.acknowledged:
                 raise ConfigurationError(
-                    "transactions do not support unacknowledged write concern"
-                    f": {write_concern!r}"
+                    f"transactions do not support unacknowledged write concern: {write_concern!r}"
                 )
         if read_preference is not None:
             if not isinstance(read_preference, _ServerMode):
@@ -400,7 +394,7 @@ class _TransactionContext:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
@@ -443,6 +437,10 @@ class _Transaction:
     def set_starting(self) -> None:
         self.state = _TxnState.STARTING
 
+    def set_in_progress(self) -> None:
+        if self.state == _TxnState.STARTING:
+            self.state = _TxnState.IN_PROGRESS
+
     @property
     def pinned_conn(self) -> Optional[AsyncConnection]:
         if self.active() and self.conn_mgr:
@@ -481,7 +479,7 @@ class _Transaction:
 def _reraise_with_unknown_commit(exc: Any) -> NoReturn:
     """Re-raise an exception with the UnknownTransactionCommitResult label."""
     exc._add_error_label("UnknownTransactionCommitResult")
-    raise
+    raise exc
 
 
 def _max_time_expired_error(exc: PyMongoError) -> bool:
@@ -835,7 +833,7 @@ class AsyncClientSession:
         write_concern: Optional[WriteConcern] = None,
         read_preference: Optional[_ServerMode] = None,
         max_commit_time_ms: Optional[int] = None,
-    ) -> AsyncContextManager[Any]:
+    ) -> AbstractAsyncContextManager[Any]:
         """Start a multi-statement transaction.
 
         Takes the same arguments as :class:`TransactionOptions`.
@@ -1135,7 +1133,6 @@ class AsyncClientSession:
 
             if self._transaction.state == _TxnState.STARTING:
                 # First command begins a new transaction.
-                self._transaction.state = _TxnState.IN_PROGRESS
                 command["startTransaction"] = True
 
                 assert self._transaction.opts

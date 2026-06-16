@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Tools for representing JavaScript code in BSON."""
+
 from __future__ import annotations
 
+from collections.abc import Mapping
 from collections.abc import Mapping as _Mapping
-from typing import Any, Mapping, Optional, Type, Union
+from typing import Any, Optional, Union
 
 
 class Code(str):
@@ -50,7 +52,7 @@ class Code(str):
     __scope: Union[Mapping[str, Any], None]
 
     def __new__(
-        cls: Type[Code],
+        cls: type[Code],
         code: Union[str, Code],
         scope: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,

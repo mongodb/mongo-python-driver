@@ -16,26 +16,28 @@
 
 .. versionadded:: 4.9
 """
+
 from __future__ import annotations
 
 import copy
 import datetime
 import logging
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from itertools import islice
 from typing import (
     TYPE_CHECKING,
     Any,
-    Mapping,
     Optional,
-    Type,
     Union,
 )
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo.asynchronous.client_session import AsyncClientSession, _validate_session_write_concern
+from pymongo.asynchronous.client_session import (
+    AsyncClientSession,
+    _validate_session_write_concern,
+)
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.database import AsyncDatabase
@@ -119,7 +121,7 @@ class _AsyncClientBulk:
         self.started_retryable_write = False
 
     @property
-    def bulk_ctx_class(self) -> Type[_ClientBulkWriteContext]:
+    def bulk_ctx_class(self) -> type[_ClientBulkWriteContext]:
         return _ClientBulkWriteContext
 
     def add_insert(self, namespace: str, document: _DocumentOut) -> None:
@@ -258,6 +260,8 @@ class _AsyncClientBulk:
         if bwc.publish:
             bwc._start(cmd, request_id, op_docs, ns_docs)
         try:
+            if bwc.session is not None and bwc.session._starting_transaction:
+                bwc.session._transaction.set_in_progress()
             reply = await bwc.conn.write_command(request_id, msg, bwc.codec)  # type: ignore[misc, arg-type]
             duration = datetime.datetime.now() - bwc.start_time
             if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):

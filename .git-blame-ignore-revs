@@ -2,3 +2,5 @@
 5578999a90e439fbca06fc0ffc98f4d04e96f7b4
 # pyupgrade and ruff
 0092b0af79378abf35b6db73a082ecb91af1d973
+# Ruff upgrade from v0.1.3 to v0.15.15
+d88aaa6cfdb05599a79f60a2cbea5513f3788f6c

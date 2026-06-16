@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for SSL support."""
+
 from __future__ import annotations
 
 import os
@@ -22,6 +23,13 @@ import sys
 
 sys.path[0:0] = [""]
 
+from urllib.parse import quote_plus
+
+from pymongo import AsyncMongoClient, ssl_support
+from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
+from pymongo.hello import HelloCompat
+from pymongo.ssl_support import HAVE_PYSSL, HAVE_SSL, _ssl, get_ssl_context
+from pymongo.write_concern import WriteConcern
 from test.asynchronous import (
     HAVE_IPADDRESS,
     AsyncIntegrationTest,
@@ -38,13 +46,6 @@ from test.utils_shared import (
     cat_files,
     ignore_deprecations,
 )
-from urllib.parse import quote_plus
-
-from pymongo import AsyncMongoClient, ssl_support
-from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
-from pymongo.hello import HelloCompat
-from pymongo.ssl_support import HAVE_PYSSL, HAVE_SSL, _ssl, get_ssl_context
-from pymongo.write_concern import WriteConcern
 
 _HAVE_PYOPENSSL = False
 try:

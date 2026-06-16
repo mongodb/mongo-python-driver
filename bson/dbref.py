@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Tools for manipulating DBRefs (references to MongoDB documents)."""
+
 from __future__ import annotations
 
+from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Mapping, Optional
+from typing import Any, Optional
 
 from bson._helpers import _getstate_slots, _setstate_slots
 from bson.son import SON
@@ -25,7 +27,7 @@ from bson.son import SON
 class DBRef:
     """A reference to a document stored in MongoDB."""
 
-    __slots__ = "__collection", "__id", "__database", "__kwargs"
+    __slots__ = "__collection", "__database", "__id", "__kwargs"
     __getstate__ = _getstate_slots
     __setstate__ = _setstate_slots
     # DBRef isn't actually a BSON "type" so this number was arbitrarily chosen.

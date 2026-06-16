@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Run the BSON corpus specification tests."""
+
 from __future__ import annotations
 
 import binascii
@@ -25,8 +26,6 @@ from decimal import DecimalException
 
 sys.path[0:0] = [""]
 
-from test import unittest
-
 from bson import decode, encode, json_util
 from bson.binary import STANDARD
 from bson.codec_options import CodecOptions
@@ -35,6 +34,7 @@ from bson.decimal128 import Decimal128
 from bson.errors import InvalidBSON, InvalidDocument, InvalidId
 from bson.json_util import JSONMode
 from bson.son import SON
+from test import unittest
 
 _TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "bson_corpus")
 

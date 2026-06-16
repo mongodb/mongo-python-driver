@@ -13,17 +13,16 @@
 # limitations under the License.
 
 """Internal network layer helper methods."""
+
 from __future__ import annotations
 
 import datetime
 import logging
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Mapping,
-    MutableMapping,
     Optional,
-    Sequence,
     Union,
     cast,
 )

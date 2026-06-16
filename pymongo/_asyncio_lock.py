@@ -9,7 +9,8 @@ from __future__ import annotations
 import collections
 import threading
 from asyncio import events, exceptions
-from typing import Any, Coroutine, Optional
+from collections.abc import Coroutine
+from typing import Any, Optional
 
 _global_lock = threading.Lock()
 

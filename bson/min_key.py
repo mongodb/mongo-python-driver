@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Representation for the MongoDB internal MinKey type."""
+
 from __future__ import annotations
 
 from typing import Any

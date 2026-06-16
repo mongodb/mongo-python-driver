@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the handshake unified spec tests."""
+
 from __future__ import annotations
 
 import sys

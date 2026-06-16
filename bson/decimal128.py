@@ -16,12 +16,14 @@
 
 .. versionadded:: 3.4
 """
+
 from __future__ import annotations
 
 import decimal
 import struct
+from collections.abc import Sequence
 from decimal import Decimal
-from typing import Any, Sequence, Tuple, Type, Union
+from typing import Any, Union
 
 from bson.codec_options import TypeDecoder, TypeEncoder
 
@@ -58,7 +60,7 @@ _CTX_OPTIONS = {
 }
 
 _DEC128_CTX = decimal.Context(**_CTX_OPTIONS.copy())  # type: ignore
-_VALUE_OPTIONS = Union[decimal.Decimal, float, str, Tuple[int, Sequence[int], int]]
+_VALUE_OPTIONS = Union[decimal.Decimal, float, str, tuple[int, Sequence[int], int]]
 
 
 class DecimalEncoder(TypeEncoder):
@@ -72,7 +74,7 @@ class DecimalEncoder(TypeEncoder):
     """
 
     @property
-    def python_type(self) -> Type[Decimal]:
+    def python_type(self) -> type[Decimal]:
         return Decimal
 
     def transform_python(self, value: Any) -> Decimal128:
@@ -90,7 +92,7 @@ class DecimalDecoder(TypeDecoder):
     """
 
     @property
-    def bson_type(self) -> Type[Decimal128]:
+    def bson_type(self) -> type[Decimal128]:
         return Decimal128
 
     def transform_bson(self, value: Any) -> decimal.Decimal:
@@ -106,7 +108,7 @@ def create_decimal128_context() -> decimal.Context:
     return decimal.Context(**opts)  # type: ignore
 
 
-def _decimal_to_128(value: _VALUE_OPTIONS) -> Tuple[int, int]:
+def _decimal_to_128(value: _VALUE_OPTIONS) -> tuple[int, int]:
     """Converts a decimal.Decimal to BID (high bits, low bits).
 
     :param value: An instance of decimal.Decimal
@@ -308,7 +310,7 @@ class Decimal128:
             return ctx.create_decimal((sign, digits, exponent))
 
     @classmethod
-    def from_bid(cls: Type[Decimal128], value: bytes) -> Decimal128:
+    def from_bid(cls: type[Decimal128], value: bytes) -> Decimal128:
         """Create an instance of :class:`Decimal128` from Binary Integer
         Decimal string.
 
@@ -336,16 +338,18 @@ class Decimal128:
     def __repr__(self) -> str:
         return f"Decimal128('{self!s}')"
 
-    def __setstate__(self, value: Tuple[int, int]) -> None:
+    def __setstate__(self, value: tuple[int, int]) -> None:
         self.__high, self.__low = value
 
-    def __getstate__(self) -> Tuple[int, int]:
+    def __getstate__(self) -> tuple[int, int]:
         return self.__high, self.__low
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Decimal128):
             return self.bid == other.bid
         return NotImplemented
+
+    __hash__ = None  # type: ignore[assignment]
 
     def __ne__(self, other: Any) -> bool:
         return not self == other

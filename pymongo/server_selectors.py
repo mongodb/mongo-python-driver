@@ -13,9 +13,11 @@
 # permissions and limitations under the License.
 
 """Criteria to select some ServerDescriptions from a TopologyDescription."""
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, TypeVar, cast
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, cast
 
 from pymongo.server_type import SERVER_TYPE
 
