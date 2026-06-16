@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Ensure that 'from __future__ import annotations' is used in all package files
-"""
+"""Ensure that 'from __future__ import annotations' is used in all package files"""
+
 from __future__ import annotations
 
 import sys

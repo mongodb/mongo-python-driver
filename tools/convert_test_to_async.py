@@ -99,9 +99,9 @@ def apply_replacements(lines: list[str]) -> list[str]:
             lines[i] = "_IS_SYNC = False"
         if "def test" in lines[i]:
             lines[i] = lines[i].replace("def test", "async def test")
-        for k in replacements:
+        for k, value in replacements.items():
             if k in lines[i]:
-                lines[i] = lines[i].replace(k, replacements[k])
+                lines[i] = lines[i].replace(k, value)
         for k in async_methods:
             if k + "(" in lines[i]:
                 tokens = lines[i].split(" ")

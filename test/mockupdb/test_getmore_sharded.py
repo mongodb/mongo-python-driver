@@ -13,13 +13,15 @@
 # limitations under the License.
 
 """Test PyMongo cursor with a sharded cluster."""
+
 from __future__ import annotations
 
 import unittest
 from queue import Queue
-from test import PyMongoTestCase
 
 import pytest
+
+from test import PyMongoTestCase
 
 try:
     from mockupdb import MockupDB, going

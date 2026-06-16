@@ -13,24 +13,25 @@
 # limitations under the License.
 
 """Run the SRV support tests."""
+
 from __future__ import annotations
 
 import asyncio
 import sys
 import time
-from test.asynchronous.utils import flaky
-from test.utils_shared import FunctionCallRecorder
 from typing import Any
 
-sys.path[0:0] = [""]
+from test.asynchronous.utils import flaky
+from test.utils_shared import FunctionCallRecorder
 
-from test.asynchronous import AsyncPyMongoTestCase, client_knobs, unittest
-from test.asynchronous.utils import async_wait_until
+sys.path[0:0] = [""]
 
 import pymongo
 from pymongo import common
 from pymongo.asynchronous.srv_resolver import _have_dnspython
 from pymongo.errors import ConfigurationError
+from test.asynchronous import AsyncPyMongoTestCase, client_knobs, unittest
+from test.asynchronous.utils import async_wait_until
 
 _IS_SYNC = False
 

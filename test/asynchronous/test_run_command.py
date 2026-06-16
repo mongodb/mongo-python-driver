@@ -13,11 +13,13 @@
 # limitations under the License.
 
 """Run Command unified tests."""
+
 from __future__ import annotations
 
 import os
 import unittest
 from pathlib import Path
+
 from test.asynchronous.unified_format import generate_test_classes, get_test_path
 
 _IS_SYNC = False

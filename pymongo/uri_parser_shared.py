@@ -17,18 +17,17 @@
 
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
+
 from __future__ import annotations
 
 import re
 import sys
 import warnings
+from collections.abc import Mapping, MutableMapping, Sized
 from typing import (
     TYPE_CHECKING,
     Any,
-    Mapping,
-    MutableMapping,
     Optional,
-    Sized,
     Union,
     cast,
 )
@@ -526,7 +525,7 @@ def _validate_uri(
                 'The "dnspython" module must be '
                 "installed to use mongodb+srv:// URIs. "
                 "To fix this error install pymongo again:\n "
-                "%s -m pip install pymongo>=4.3" % (python_path)
+                f"{python_path} -m pip install pymongo>=4.3"
             )
         is_srv = True
         scheme_free = uri[SRV_SCHEME_LEN:]
@@ -553,7 +552,7 @@ def _validate_uri(
         if "." in dbase:
             dbase, collection = dbase.split(".", 1)
         if _BAD_DB_CHARS.search(dbase):
-            raise InvalidURI('Bad database name "%s"' % dbase)
+            raise InvalidURI(f'Bad database name "{dbase}"')
     else:
         dbase = None
 
@@ -566,7 +565,7 @@ def _validate_uri(
         hosts = host_part
 
     if "/" in hosts:
-        raise InvalidURI("Any '/' in a unix domain socket must be percent-encoded: %s" % host_part)
+        raise InvalidURI(f"Any '/' in a unix domain socket must be percent-encoded: {host_part}")
 
     hosts = unquote_plus(hosts)
     fqdn = None

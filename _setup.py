@@ -71,7 +71,7 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
             if os.environ.get("PYMONGO_C_EXT_MUST_BUILD"):
                 raise
             e = sys.exc_info()[1]
-            sys.stdout.write("%s\n" % str(e))
+            sys.stdout.write(f"{e!s}\n")
             warnings.warn(
                 self.warning_message
                 % (
@@ -94,7 +94,7 @@ https://pymongo.readthedocs.io/en/stable/installation.html#osx
             if os.environ.get("PYMONGO_C_EXT_MUST_BUILD"):
                 raise
             e = sys.exc_info()[1]
-            sys.stdout.write("%s\n" % str(e))
+            sys.stdout.write(f"{e!s}\n")
             warnings.warn(
                 self.warning_message
                 % (

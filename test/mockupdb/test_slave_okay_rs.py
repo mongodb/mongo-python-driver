@@ -16,6 +16,7 @@
 
 Just make sure SlaveOkay is *not* set on primary reads.
 """
+
 from __future__ import annotations
 
 import unittest

@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """Test PyMongo cursor does not set exhaustAllowed automatically (PYTHON-4007)."""
+
 from __future__ import annotations
 
 import unittest
-from test import PyMongoTestCase
 
 import pytest
+
+from test import PyMongoTestCase
 
 try:
     from mockupdb import MockupDB, OpMsg, going

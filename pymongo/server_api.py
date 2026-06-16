@@ -83,9 +83,11 @@ Note that at the time of this writing, no deprecated APIs exist.
 Classes
 =======
 """
+
 from __future__ import annotations
 
-from typing import Any, MutableMapping, Optional
+from collections.abc import MutableMapping
+from typing import Any, Optional
 
 
 class ServerApiVersion:

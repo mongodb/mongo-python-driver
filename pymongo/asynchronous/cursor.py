@@ -13,20 +13,18 @@
 # limitations under the License.
 
 """Cursor class to iterate over Mongo query results."""
+
 from __future__ import annotations
 
 import copy
 import warnings
 from collections import deque
+from collections.abc import Iterable, Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterable,
-    List,
-    Mapping,
     NoReturn,
     Optional,
-    Sequence,
     Union,
     cast,
     overload,
@@ -168,7 +166,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
         self._skip = skip
         self._limit = limit
         self._batch_size = batch_size
-        self._ordering = sort and helpers_shared._index_document(sort) or None
+        self._ordering = (sort and helpers_shared._index_document(sort)) or None
         self._max_scan = max_scan
         self._explain = False
         self._comment = comment
@@ -532,12 +530,10 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
         return self
 
     @overload
-    def __getitem__(self, index: int) -> _DocumentType:
-        ...
+    def __getitem__(self, index: int) -> _DocumentType: ...
 
     @overload
-    def __getitem__(self, index: slice) -> AsyncCursor[_DocumentType]:
-        ...
+    def __getitem__(self, index: slice) -> AsyncCursor[_DocumentType]: ...
 
     def __getitem__(
         self, index: Union[int, slice]
@@ -598,7 +594,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
                     limit = index.stop - skip
                     if limit < 0:
                         raise IndexError(
-                            "stop index must be greater than start index for slice %r" % index
+                            f"stop index must be greater than start index for slice {index!r}"
                         )
                     if limit == 0:
                         self._empty = True
@@ -619,7 +615,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
                 for doc in clone:  # type: ignore[attr-defined]
                     return doc
                 raise IndexError("no such item for AsyncCursor instance")
-            raise TypeError("index %r cannot be applied to AsyncCursor instances" % index)
+            raise TypeError(f"index {index!r} cannot be applied to AsyncCursor instances")
         else:
             raise IndexError("AsyncCursor does not support indexing")
 
@@ -1199,7 +1195,7 @@ class AsyncRawBatchCursor(AsyncCursor[_DocumentType]):
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-        return cast(List["_DocumentOut"], raw_response)
+        return cast(list["_DocumentOut"], raw_response)
 
     async def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.

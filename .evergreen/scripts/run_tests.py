@@ -177,7 +177,7 @@ def run() -> None:
     if TEST_NAME == "doctest":
         from sphinx.cmd.build import main
 
-        result = main("-E -b doctest doc ./doc/_build/doctest".split())
+        result = main(["-E", "-b", "doctest", "doc", "./doc/_build/doctest"])
         sys.exit(result)
 
     # Send ecs tests to run remotely.

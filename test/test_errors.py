@@ -19,14 +19,13 @@ import traceback
 
 sys.path[0:0] = [""]
 
-from test import PyMongoTestCase, unittest
-
 from pymongo.errors import (
     BulkWriteError,
     EncryptionError,
     NotPrimaryError,
     OperationFailure,
 )
+from test import PyMongoTestCase, unittest
 
 
 class TestErrors(PyMongoTestCase):

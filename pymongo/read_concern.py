@@ -16,6 +16,7 @@
 
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
+
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -70,9 +71,11 @@ class ReadConcern:
             return self.document == other.document
         return NotImplemented
 
+    __hash__ = None  # type: ignore[assignment]
+
     def __repr__(self) -> str:
         if self.level:
-            return "ReadConcern(%s)" % self.level
+            return f"ReadConcern({self.level})"
         return "ReadConcern()"
 
 

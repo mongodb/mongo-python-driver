@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the cursor module."""
+
 from __future__ import annotations
 
 import copy
@@ -31,17 +32,6 @@ import pymongo
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
-from test.utils import flaky
-from test.utils_shared import (
-    AllowListEventListener,
-    EventListener,
-    OvertCommandListener,
-    delay,
-    ignore_deprecations,
-    wait_until,
-)
-
 from bson import decode_all
 from bson.code import Code
 from bson.raw_bson import RawBSONDocument
@@ -54,6 +44,16 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.helpers import next
 from pymongo.write_concern import WriteConcern
+from test import IntegrationTest, client_context, unittest
+from test.utils import flaky
+from test.utils_shared import (
+    AllowListEventListener,
+    EventListener,
+    OvertCommandListener,
+    delay,
+    ignore_deprecations,
+    wait_until,
+)
 
 _IS_SYNC = True
 

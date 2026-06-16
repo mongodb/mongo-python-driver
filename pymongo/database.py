@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Re-import of synchronous Database API for compatibility."""
+
 from __future__ import annotations
 
 from pymongo.synchronous.database import *  # noqa: F403

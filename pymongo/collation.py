@@ -18,9 +18,11 @@
 
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
+
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional, Union
+from collections.abc import Mapping
+from typing import Any, Optional, Union
 
 from pymongo import common
 from pymongo.write_concern import validate_boolean
@@ -210,12 +212,14 @@ class Collation:
             return self.document == other.document
         return NotImplemented
 
+    __hash__ = None  # type: ignore[assignment]
+
     def __ne__(self, other: Any) -> bool:
         return not self == other
 
 
 def validate_collation_or_none(
-    value: Optional[Union[Mapping[str, Any], Collation]]
+    value: Optional[Union[Mapping[str, Any], Collation]],
 ) -> Optional[dict[str, Any]]:
     if value is None:
         return None

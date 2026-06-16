@@ -13,10 +13,11 @@
 # limitations under the License.
 
 """Test typings in strict mode."""
+
 from __future__ import annotations
 
 import unittest
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 import pymongo
 from pymongo.synchronous.collection import Collection
@@ -27,7 +28,7 @@ def test_generic_arguments() -> None:
     """Ensure known usages of generic arguments pass strict typing"""
     if not TYPE_CHECKING:
         raise unittest.SkipTest("Used for Type Checking Only")
-    mongo_client: pymongo.MongoClient[Dict[str, Any]] = pymongo.MongoClient()
+    mongo_client: pymongo.MongoClient[dict[str, Any]] = pymongo.MongoClient()
     mongo_client.drop_database("foo")
     mongo_client.get_default_database()
     db = mongo_client.get_database("test_db")

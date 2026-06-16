@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the topology module."""
+
 from __future__ import annotations
 
 import asyncio
@@ -24,39 +25,17 @@ import threading
 import time
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
-from test.asynchronous.helpers import ConcurrentRunner
-from test.asynchronous.utils import flaky
-from test.utils_shared import delay
 
 from pymongo.asynchronous.pool import AsyncConnection
 from pymongo.errors import ConnectionFailure
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
+from test.asynchronous.helpers import ConcurrentRunner
+from test.asynchronous.utils import flaky
+from test.utils_shared import delay
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import (
-    AsyncIntegrationTest,
-    AsyncPyMongoTestCase,
-    AsyncUnitTest,
-    async_client_context,
-    unittest,
-)
-from test.asynchronous.pymongo_mocks import DummyMonitor
-from test.asynchronous.unified_format import generate_test_classes, get_test_path
-from test.asynchronous.utils import (
-    async_get_pool,
-)
-from test.utils_shared import (
-    CMAPListener,
-    HeartbeatEventListener,
-    HeartbeatEventsListListener,
-    assertion_context,
-    async_barrier_wait,
-    async_create_barrier,
-    async_wait_until,
-    server_name_to_type,
-)
 from unittest.mock import patch
 
 from bson import Timestamp, json_util
@@ -81,6 +60,28 @@ from pymongo.monitoring import (
 )
 from pymongo.server_description import SERVER_TYPE, ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    AsyncUnitTest,
+    async_client_context,
+    unittest,
+)
+from test.asynchronous.pymongo_mocks import DummyMonitor
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
+from test.asynchronous.utils import (
+    async_get_pool,
+)
+from test.utils_shared import (
+    CMAPListener,
+    HeartbeatEventListener,
+    HeartbeatEventsListListener,
+    assertion_context,
+    async_barrier_wait,
+    async_create_barrier,
+    async_wait_until,
+    server_name_to_type,
+)
 
 _IS_SYNC = False
 

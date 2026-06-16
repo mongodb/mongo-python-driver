@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the default exports of the top level packages."""
+
 from __future__ import annotations
 
 import inspect
@@ -53,7 +54,11 @@ class TestDefaultExports(unittest.TestCase):
                 value = getattr(mod, name)
                 if inspect.ismodule(value):
                     continue
-                if getattr(value, "__module__", None) == "typing":
+                if getattr(value, "__module__", None) in (
+                    "typing",
+                    "collections.abc",
+                    "contextlib",
+                ):
                     continue
                 if not name.startswith("_"):
                     self.fail(f"{name} was not included in {mod}.__all__")

@@ -13,17 +13,17 @@
 # limitations under the License.
 
 """Test the server module."""
+
 from __future__ import annotations
 
 import sys
 
 sys.path[0:0] = [""]
 
-from test import unittest
-
 from pymongo.hello import Hello
 from pymongo.server_description import ServerDescription
 from pymongo.synchronous.server import Server
+from test import unittest
 
 
 class TestServer(unittest.TestCase):

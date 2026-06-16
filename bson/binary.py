@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import struct
 import warnings
+from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Type, Union, overload
+from typing import TYPE_CHECKING, Any, Optional, Union, overload
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -266,6 +267,8 @@ class BinaryVector:
             self.dtype == other.dtype and self.padding == other.padding and self.data == other.data
         )
 
+    __hash__ = None  # type: ignore[assignment]
+
     def __len__(self) -> int:
         return len(self.data)
 
@@ -307,7 +310,7 @@ class Binary(bytes):
     __subtype: int
 
     def __new__(
-        cls: Type[Binary],
+        cls: type[Binary],
         data: Union[memoryview, bytes, bytearray, _mmap, _array[Any]],
         subtype: int = BINARY_SUBTYPE,
     ) -> Binary:
@@ -322,7 +325,7 @@ class Binary(bytes):
 
     @classmethod
     def from_uuid(
-        cls: Type[Binary], uuid: UUID, uuid_representation: int = UuidRepresentation.STANDARD
+        cls: type[Binary], uuid: UUID, uuid_representation: int = UuidRepresentation.STANDARD
     ) -> Binary:
         """Create a BSON Binary object from a Python UUID.
 
@@ -421,32 +424,29 @@ class Binary(bytes):
 
     @classmethod
     @overload
-    def from_vector(cls: Type[Binary], vector: BinaryVector) -> Binary:
-        ...
+    def from_vector(cls: type[Binary], vector: BinaryVector) -> Binary: ...
 
     @classmethod
     @overload
     def from_vector(
-        cls: Type[Binary],
+        cls: type[Binary],
         vector: Union[list[int], list[float]],
         dtype: BinaryVectorDtype,
         padding: int = 0,
-    ) -> Binary:
-        ...
+    ) -> Binary: ...
 
     @classmethod
     @overload
     def from_vector(
-        cls: Type[Binary],
+        cls: type[Binary],
         vector: npt.NDArray[np.number],
         dtype: BinaryVectorDtype,
         padding: int = 0,
-    ) -> Binary:
-        ...
+    ) -> Binary: ...
 
     @classmethod
     def from_vector(
-        cls: Type[Binary],
+        cls: type[Binary],
         vector: Union[BinaryVector, list[int], list[float], npt.NDArray[np.number]],
         dtype: Optional[BinaryVectorDtype] = None,
         padding: Optional[int] = None,
@@ -501,7 +501,7 @@ class Binary(bytes):
                 if padding:
                     raise ValueError(f"padding does not apply to {dtype=}")
             else:
-                raise NotImplementedError("%s not yet supported" % dtype)
+                raise NotImplementedError(f"{dtype} not yet supported")
             data = struct.pack(f"<{len(vector)}{format_str}", *vector)
         else:  # vector is numpy array or incorrect type.
             try:
@@ -532,7 +532,7 @@ class Binary(bytes):
                 else:
                     raise ValueError("Values found outside UINT8 range.")
             else:
-                raise NotImplementedError("%s not yet supported" % dtype)
+                raise NotImplementedError(f"{dtype} not yet supported")
             data = vector.tobytes()
 
         if padding and len(vector) and not (data[-1] & ((1 << padding) - 1)) == 0:
@@ -599,7 +599,7 @@ class Binary(bytes):
                 return BinaryVector(unpacked_uint8s, dtype, padding)
 
             else:
-                raise NotImplementedError("Binary Vector dtype %s not yet supported" % dtype.name)
+                raise NotImplementedError(f"Binary Vector dtype {dtype.name} not yet supported")
         else:  # create a numpy array
             try:
                 import numpy as np
@@ -629,7 +629,7 @@ class Binary(bytes):
                         stacklevel=2,
                     )
             else:
-                raise NotImplementedError("Binary Vector dtype %s not yet supported" % dtype.name)
+                raise NotImplementedError(f"Binary Vector dtype {dtype.name} not yet supported")
             return BinaryVector(data, dtype, padding)
 
     @property
@@ -637,7 +637,7 @@ class Binary(bytes):
         """Subtype of this binary data."""
         return self.__subtype
 
-    def __getnewargs__(self) -> Tuple[bytes, int]:  # type: ignore[override]
+    def __getnewargs__(self) -> tuple[bytes, int]:  # type: ignore[override]
         # Work around http://bugs.python.org/issue7382
         data = super().__getnewargs__()[0]
         if not isinstance(data, bytes):

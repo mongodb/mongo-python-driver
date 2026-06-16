@@ -13,15 +13,14 @@
 # limitations under the License.
 
 """Type aliases used by PyMongo"""
+
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Mapping,
     Optional,
-    Sequence,
-    Tuple,
     TypeVar,
     Union,
 )
@@ -43,7 +42,7 @@ if TYPE_CHECKING:
 
 
 # Common Shared Types.
-_Address = Tuple[str, Optional[int]]
+_Address = tuple[str, Optional[int]]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
 _Pipeline = Sequence[Mapping[str, Any]]
 ClusterTime = Mapping[str, Any]
@@ -67,12 +66,12 @@ def strip_optional(elem: Optional[_T]) -> _T:
 
 
 __all__ = [
+    "_Address",
+    "_AgnosticMongoClient",
+    "_CollationIn",
     "_DocumentOut",
     "_DocumentType",
     "_DocumentTypeArg",
-    "_Address",
-    "_CollationIn",
     "_Pipeline",
     "strip_optional",
-    "_AgnosticMongoClient",
 ]

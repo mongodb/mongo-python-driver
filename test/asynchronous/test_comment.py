@@ -21,12 +21,12 @@ import sys
 
 sys.path[0:0] = [""]
 from inspect import iscoroutinefunction
-from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils_shared import OvertCommandListener
 
 from bson.dbref import DBRef
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.operations import IndexModel
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.utils_shared import OvertCommandListener
 
 _IS_SYNC = False
 
