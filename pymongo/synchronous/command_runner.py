@@ -352,61 +352,6 @@ def _run_command(
     return docs, reply, duration
 
 
-def run_command(
-    conn: Connection,
-    cmd: MutableMapping[str, Any],
-    dbname: str,
-    request_id: int,
-    msg: bytes,
-    *,
-    client: Optional[MongoClient[Any]],
-    session: Optional[ClientSession],
-    listeners: Optional[_EventListeners],
-    address: Optional[_Address],
-    start: datetime.datetime,
-    codec_options: CodecOptions[_DocumentType],
-    user_fields: Optional[Mapping[str, Any]] = None,
-    orig: Optional[MutableMapping[str, Any]] = None,
-    op_id: Optional[int] = None,
-    command_name: Optional[str] = None,
-    check: bool = True,
-    allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-    parse_write_concern_error: bool = False,
-    unacknowledged: bool = False,
-    speculative_hello: bool = False,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send a standard network-transport command and return ``(docs, reply, duration)``.
-
-    Encodes as an OP_MSG message sent via ``sendall`` / ``receive_message``.
-    For the bulk write path use :func:`run_bulk_write_command`; for cursors use
-    :func:`run_cursor_command`.
-    """
-    return _run_command(
-        conn,
-        cmd,
-        dbname,
-        request_id,
-        msg,
-        client=client,
-        session=session,
-        listeners=listeners,
-        address=address,
-        start=start,
-        codec_options=codec_options,
-        user_fields=user_fields,
-        orig=orig,
-        op_id=op_id,
-        command_name=command_name,
-        check=check,
-        allowable_errors=allowable_errors,
-        parse_write_concern_error=parse_write_concern_error,
-        unacknowledged=unacknowledged,
-        speculative_hello=speculative_hello,
-        process_response=not unacknowledged,
-        decrypt_reply=not unacknowledged,
-    )
-
-
 def run_bulk_write_command(
     bwc: _BulkWriteContextProto,
     cmd: MutableMapping[str, Any],
@@ -418,12 +363,7 @@ def run_bulk_write_command(
     max_doc_size: int = 0,
     unacknowledged: bool = False,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send a bulk write batch over the connection transport and return ``(docs, reply, duration)``.
-
-    Uses ``conn.send_message`` / ``conn.receive_message`` (the bulk write
-    path). Commands are encrypted up front so ``decrypt_reply`` is ``False``;
-    bulk write replies never set ``more_to_come`` so ``set_conn_more_to_come``
-    is ``False``.
+    """Send a bulk write batch and return ``(docs, reply, duration)``.
 
     :param bwc: A bulk write context supplying the connection, session, listeners, etc.
     :param max_doc_size: The largest document size; passed to ``conn.send_message``.
@@ -476,10 +416,6 @@ def run_cursor_command(
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Run a cursor ``find``/``getMore`` operation over ``conn``.
 
-    Uses the connection transport, leaves ``conn.more_to_come`` untouched (the
-    cursor path manages exhaust separately), and shapes the published reply in
-    the find/getMore command response format.
-
     :param more_to_come: Receive only, without sending (exhaust ``getMore``).
     :param unpack_res: A callable decoding the wire response.
     :param cursor_id: The cursor id passed to ``unpack_res``.
@@ -511,7 +447,7 @@ def run_cursor_command(
     )
 
 
-def command(
+def run_command(
     conn: Connection,
     dbname: str,
     spec: MutableMapping[str, Any],
@@ -538,8 +474,7 @@ def command(
 
     Applies read preference, read concern, collation, ``$clusterTime``,
     auto-encryption, and CSOT to ``spec``, encodes it as an OP_MSG message,
-    and then delegates the network round trip and response processing to
-    :func:`run_command`.
+    then performs the network round trip and response processing.
 
     :param conn: a Connection instance
     :param dbname: name of the database on which to run the command
@@ -606,7 +541,7 @@ def command(
 
     if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
         message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
-    docs, _, _ = run_command(
+    docs, _, _ = _run_command(
         conn,
         spec,
         dbname,
@@ -625,5 +560,7 @@ def command(
         parse_write_concern_error=parse_write_concern_error,
         speculative_hello=speculative_hello,
         unacknowledged=unacknowledged,
+        process_response=not unacknowledged,
+        decrypt_reply=not unacknowledged,
     )
     return docs[0]  # type: ignore[return-value]

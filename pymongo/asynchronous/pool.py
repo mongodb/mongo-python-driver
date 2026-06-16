@@ -36,7 +36,7 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
-from pymongo.asynchronous.command_runner import command
+from pymongo.asynchronous.command_runner import run_command
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.common import (
     MAX_BSON_SIZE,
@@ -395,7 +395,7 @@ class AsyncConnection:
         try:
             if session is not None and session._starting_transaction:
                 session._transaction.set_in_progress()
-            return await command(
+            return await run_command(
                 self,
                 dbname,
                 spec,
