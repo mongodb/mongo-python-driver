@@ -34,8 +34,7 @@ from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
 from pymongo.asynchronous.client_session import AsyncClientSession, _validate_session_write_concern
 from pymongo.asynchronous.command_runner import (
-    run_acknowledged_command,
-    run_unacknowledged_command,
+    run_bulk_write_command,
 )
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.bulk_shared import (
@@ -248,7 +247,7 @@ class _AsyncBulk:
     ) -> dict[str, Any]:
         """Run a batch write command, returning the response as a dict."""
         cmd[bwc.field] = docs
-        result_docs, _, _ = await run_acknowledged_command(
+        result_docs, _, _ = await run_bulk_write_command(
             bwc.conn,  # type: ignore[arg-type]
             cmd,
             bwc.db_name,
@@ -262,9 +261,6 @@ class _AsyncBulk:
             codec_options=bwc.codec,
             op_id=bwc.op_id,
             command_name=bwc.name,
-            use_conn_transport=True,
-            decrypt_reply=False,
-            set_conn_more_to_come=False,
         )
         return result_docs[0]
 
@@ -284,7 +280,7 @@ class _AsyncBulk:
         # carrying the ``docs`` field.
         published = dict(cmd)
         published[bwc.field] = docs
-        await run_unacknowledged_command(
+        await run_bulk_write_command(
             bwc.conn,  # type: ignore[arg-type]
             cmd,
             bwc.db_name,
@@ -299,8 +295,8 @@ class _AsyncBulk:
             op_id=bwc.op_id,
             command_name=bwc.name,
             orig=published,
-            use_conn_transport=True,
             max_doc_size=max_doc_size,
+            unacknowledged=True,
         )
         return None
 

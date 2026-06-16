@@ -16,20 +16,29 @@
 
 The public :func:`command` entry point applies read preference, read concern,
 collation, ``$clusterTime``, auto-encryption, and CSOT to a command spec,
-encodes it as an OP_MSG message, and then delegates to one of three lower-level
+encodes it as an OP_MSG message, and then delegates to one of four lower-level
 runners.
 
-Every database operation runs its network round trip through one of three
-public entry points -- :func:`run_acknowledged_command` (acknowledged commands
-and bulk write batches), :func:`run_unacknowledged_command` (unacknowledged
-writes), and
-:func:`run_cursor_command` (cursor ``find``/``getMore`` operations) -- each of
-which wraps the private :func:`_run_command`. ``_run_command`` owns the entire
-shared skeleton: command logging, APM event publishing, ``send``/``receive``,
-``$clusterTime`` gossip, ``_process_response``, ``_check_command_response``,
-failure conversion, and auto-encryption decryption. The three wrappers fix the
-transport and response-shaping flags for their command type so call sites pass
-only the parts that vary (the encoded message and a handful of hooks).
+Every database operation runs its network round trip through one of four
+public entry points, each wrapping the private :func:`_run_command`:
+
+- :func:`run_acknowledged_command` — standard commands (network transport via
+  ``async_sendall`` / ``async_receive_message``). Caller: :func:`command`.
+- :func:`run_unacknowledged_command` — fire-and-forget (network transport).
+  Caller: :func:`command` unacknowledged branch.
+- :func:`run_bulk_write_command` — collection-level and client-level bulk write
+  batches (connection transport via ``conn.send_message`` /
+  ``conn.receive_message``; commands are pre-encrypted so decryption is
+  skipped). Callers: ``bulk.py``, ``client_bulk.py``.
+- :func:`run_cursor_command` — cursor ``find``/``getMore`` operations
+  (connection transport, exhaust-cursor handling). Caller: ``server.py``.
+
+``_run_command`` owns the entire shared skeleton: command logging, APM event
+publishing, ``send``/``receive``, ``$clusterTime`` gossip,
+``_process_response``, ``_check_command_response``, failure conversion, and
+auto-encryption decryption. Each public wrapper hardcodes the transport and
+response-shaping flags for its command type so call sites only pass what
+genuinely varies.
 """
 
 from __future__ import annotations
@@ -103,17 +112,14 @@ async def _run_command(
     set_conn_more_to_come: bool = True,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
-    reply_doc_builder: Optional[
-        Callable[[list[dict[str, Any]], Optional[_OpMsg]], _DocumentOut]
-    ] = None,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
 
     This is the shared implementation behind :func:`run_acknowledged_command`,
-    :func:`run_unacknowledged_command`, and :func:`run_cursor_command`. Those
-    three public entry points each fix the transport and response-shaping flags
-    for their command type; the bare kwargs here should not be set directly by
-    new call sites.
+    :func:`run_unacknowledged_command`, :func:`run_bulk_write_command`, and
+    :func:`run_cursor_command`. Those four public entry points each hardcode the
+    transport and response-shaping flags for their command type; the bare kwargs
+    here should not be set directly by new call sites.
 
     It publishes the
     ``STARTED``/``SUCCEEDED``/``FAILED`` command log and APM events, performs
@@ -167,9 +173,6 @@ async def _run_command(
     :param unpack_res: A callable decoding the wire response (cursor path); when
         ``None`` the reply's own ``unpack_response`` is used.
     :param cursor_id: The cursor id passed to ``unpack_res``.
-    :param reply_doc_builder: Builds the reply document published in the
-        ``SUCCEEDED`` event from ``(docs, reply)`` (cursor find/getMore format);
-        when ``None`` the first decoded document is published.
     """
     name = next(iter(cmd))
     if command_name is None:
@@ -300,10 +303,7 @@ async def _run_command(
 
     duration = datetime.datetime.now() - start
     published_reply: _DocumentOut
-    if reply_doc_builder is not None:
-        published_reply = reply_doc_builder(docs, reply)
-    else:
-        published_reply = docs[0]
+    published_reply = docs[0]
     if client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
         _debug_log(
             _COMMAND_LOGGER,
@@ -368,28 +368,15 @@ async def run_acknowledged_command(
     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
     parse_write_concern_error: bool = False,
     speculative_hello: bool = False,
-    use_conn_transport: bool = False,
-    process_response: bool = True,
-    decrypt_reply: bool = True,
-    set_conn_more_to_come: bool = True,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send an acknowledged command and return ``(docs, reply, duration)``.
+    """Send an acknowledged command over the network and return ``(docs, reply, duration)``.
 
-    This is the entry point for standard commands and bulk write batches: it
-    sends ``msg``, receives the reply, runs ``_process_response`` and
-    ``_check_command_response``, decrypts the reply when auto-encryption is
-    enabled, and publishes the command log/APM events.
+    Uses the raw ``async_sendall`` / ``async_receive_message`` transport (the
+    standard :func:`command` path). Sends ``msg``, receives the reply, runs
+    ``_process_response`` and ``_check_command_response``, decrypts the reply
+    when auto-encryption is enabled, and publishes the command log/APM events.
 
-    :param use_conn_transport: Send/receive via ``conn.send_message`` /
-        ``conn.receive_message`` (bulk path) instead of the raw
-        ``async_sendall`` / ``async_receive_message`` (standard command path).
-    :param process_response: Run ``client._process_response`` here.
-    :param decrypt_reply: Decrypt the reply when auto-encryption is enabled; the
-        bulk paths pass False (their commands are encrypted up front).
-    :param set_conn_more_to_come: Store ``reply.more_to_come`` on ``conn``; the
-        bulk paths pass False (bulk write replies never set ``more_to_come``).
-
-    See :func:`_run_command` for the remaining parameters.
+    See :func:`_run_command` for parameter details.
     """
     return await _run_command(
         conn,
@@ -411,10 +398,6 @@ async def run_acknowledged_command(
         allowable_errors=allowable_errors,
         parse_write_concern_error=parse_write_concern_error,
         speculative_hello=speculative_hello,
-        use_conn_transport=use_conn_transport,
-        process_response=process_response,
-        decrypt_reply=decrypt_reply,
-        set_conn_more_to_come=set_conn_more_to_come,
     )
 
 
@@ -436,19 +419,14 @@ async def run_unacknowledged_command(
     op_id: Optional[int] = None,
     command_name: Optional[str] = None,
     speculative_hello: bool = False,
-    use_conn_transport: bool = False,
-    max_doc_size: int = 0,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send an unacknowledged command and fake an ``{"ok": 1}`` reply.
+    """Send an unacknowledged command over the network and fake an ``{"ok": 1}`` reply.
 
-    The message is sent only -- no reply is received -- so the response
-    processing, command checking, and decryption steps are skipped.
+    Uses the raw ``async_sendall`` transport (the standard :func:`command`
+    path). The message is sent only — no reply is received — so response
+    processing, command checking, and decryption are skipped.
 
-    :param use_conn_transport: Send via ``conn.send_message`` (bulk path) instead
-        of the raw ``async_sendall`` (standard command path).
-    :param max_doc_size: The largest document size, for ``conn.send_message``.
-
-    See :func:`_run_command` for the remaining parameters.
+    See :func:`_run_command` for parameter details.
     """
     return await _run_command(
         conn,
@@ -468,10 +446,63 @@ async def run_unacknowledged_command(
         command_name=command_name,
         speculative_hello=speculative_hello,
         unacknowledged=True,
-        use_conn_transport=use_conn_transport,
-        max_doc_size=max_doc_size,
         process_response=False,
         decrypt_reply=False,
+    )
+
+
+async def run_bulk_write_command(
+    conn: AsyncConnection,
+    cmd: MutableMapping[str, Any],
+    dbname: str,
+    request_id: int,
+    msg: bytes,
+    *,
+    client: Optional[AsyncMongoClient[Any]],
+    session: Optional[AsyncClientSession],
+    listeners: Optional[_EventListeners],
+    address: Optional[_Address],
+    start: datetime.datetime,
+    codec_options: CodecOptions[_DocumentType],
+    op_id: Optional[int] = None,
+    command_name: Optional[str] = None,
+    orig: Optional[MutableMapping[str, Any]] = None,
+    max_doc_size: int = 0,
+    unacknowledged: bool = False,
+) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
+    """Send a bulk write batch over the connection transport and return ``(docs, reply, duration)``.
+
+    Uses ``conn.send_message`` / ``conn.receive_message`` (the bulk write
+    path). Commands are encrypted up front so ``decrypt_reply`` is ``False``;
+    bulk write replies never set ``more_to_come`` so ``set_conn_more_to_come``
+    is ``False``.
+
+    :param max_doc_size: The largest document size; passed to ``conn.send_message``.
+    :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
+
+    See :func:`_run_command` for the remaining parameters.
+    """
+    return await _run_command(
+        conn,
+        cmd,
+        dbname,
+        request_id,
+        msg,
+        client=client,
+        session=session,
+        listeners=listeners,
+        address=address,
+        start=start,
+        codec_options=codec_options,
+        op_id=op_id,
+        command_name=command_name,
+        orig=orig,
+        max_doc_size=max_doc_size,
+        unacknowledged=unacknowledged,
+        use_conn_transport=True,
+        decrypt_reply=False,
+        set_conn_more_to_come=False,
+        process_response=not unacknowledged,
     )
 
 
@@ -495,9 +526,6 @@ async def run_cursor_command(
     more_to_come: bool = False,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
-    reply_doc_builder: Optional[
-        Callable[[list[dict[str, Any]], Optional[_OpMsg]], _DocumentOut]
-    ] = None,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Run a cursor ``find``/``getMore`` operation over ``conn``.
 
@@ -508,8 +536,6 @@ async def run_cursor_command(
     :param more_to_come: Receive only, without sending (exhaust ``getMore``).
     :param unpack_res: A callable decoding the wire response.
     :param cursor_id: The cursor id passed to ``unpack_res``.
-    :param reply_doc_builder: Builds the reply document published in the
-        ``SUCCEEDED`` event from ``(docs, reply)``.
 
     See :func:`_run_command` for the remaining parameters.
     """
@@ -535,7 +561,6 @@ async def run_cursor_command(
         set_conn_more_to_come=False,
         unpack_res=unpack_res,
         cursor_id=cursor_id,
-        reply_doc_builder=reply_doc_builder,
     )
 
 

@@ -103,9 +103,6 @@ def _run_command(
     set_conn_more_to_come: bool = True,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
-    reply_doc_builder: Optional[
-        Callable[[list[dict[str, Any]], Optional[_OpMsg]], _DocumentOut]
-    ] = None,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
 
@@ -167,9 +164,6 @@ def _run_command(
     :param unpack_res: A callable decoding the wire response (cursor path); when
         ``None`` the reply's own ``unpack_response`` is used.
     :param cursor_id: The cursor id passed to ``unpack_res``.
-    :param reply_doc_builder: Builds the reply document published in the
-        ``SUCCEEDED`` event from ``(docs, reply)`` (cursor find/getMore format);
-        when ``None`` the first decoded document is published.
     """
     name = next(iter(cmd))
     if command_name is None:
@@ -300,10 +294,7 @@ def _run_command(
 
     duration = datetime.datetime.now() - start
     published_reply: _DocumentOut
-    if reply_doc_builder is not None:
-        published_reply = reply_doc_builder(docs, reply)
-    else:
-        published_reply = docs[0]
+    published_reply = docs[0]
     if client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
         _debug_log(
             _COMMAND_LOGGER,
@@ -475,6 +466,61 @@ def run_unacknowledged_command(
     )
 
 
+def run_bulk_write_command(
+    conn: Connection,
+    cmd: MutableMapping[str, Any],
+    dbname: str,
+    request_id: int,
+    msg: bytes,
+    *,
+    client: Optional[MongoClient[Any]],
+    session: Optional[ClientSession],
+    listeners: Optional[_EventListeners],
+    address: Optional[_Address],
+    start: datetime.datetime,
+    codec_options: CodecOptions[_DocumentType],
+    op_id: Optional[int] = None,
+    command_name: Optional[str] = None,
+    orig: Optional[MutableMapping[str, Any]] = None,
+    max_doc_size: int = 0,
+    unacknowledged: bool = False,
+) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
+    """Send a bulk write batch over the connection transport and return ``(docs, reply, duration)``.
+
+    Uses ``conn.send_message`` / ``conn.receive_message`` (the bulk write
+    path). Commands are encrypted up front so ``decrypt_reply`` is ``False``;
+    bulk write replies never set ``more_to_come`` so ``set_conn_more_to_come``
+    is ``False``.
+
+    :param max_doc_size: The largest document size; passed to ``conn.send_message``.
+    :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
+
+    See :func:`_run_command` for the remaining parameters.
+    """
+    return _run_command(
+        conn,
+        cmd,
+        dbname,
+        request_id,
+        msg,
+        client=client,
+        session=session,
+        listeners=listeners,
+        address=address,
+        start=start,
+        codec_options=codec_options,
+        op_id=op_id,
+        command_name=command_name,
+        orig=orig,
+        max_doc_size=max_doc_size,
+        unacknowledged=unacknowledged,
+        use_conn_transport=True,
+        decrypt_reply=False,
+        set_conn_more_to_come=False,
+        process_response=not unacknowledged,
+    )
+
+
 def run_cursor_command(
     conn: Connection,
     cmd: MutableMapping[str, Any],
@@ -495,9 +541,6 @@ def run_cursor_command(
     more_to_come: bool = False,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
-    reply_doc_builder: Optional[
-        Callable[[list[dict[str, Any]], Optional[_OpMsg]], _DocumentOut]
-    ] = None,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Run a cursor ``find``/``getMore`` operation over ``conn``.
 
@@ -508,8 +551,6 @@ def run_cursor_command(
     :param more_to_come: Receive only, without sending (exhaust ``getMore``).
     :param unpack_res: A callable decoding the wire response.
     :param cursor_id: The cursor id passed to ``unpack_res``.
-    :param reply_doc_builder: Builds the reply document published in the
-        ``SUCCEEDED`` event from ``(docs, reply)``.
 
     See :func:`_run_command` for the remaining parameters.
     """
@@ -535,7 +576,6 @@ def run_cursor_command(
         set_conn_more_to_come=False,
         unpack_res=unpack_res,
         cursor_id=cursor_id,
-        reply_doc_builder=reply_doc_builder,
     )
 
 

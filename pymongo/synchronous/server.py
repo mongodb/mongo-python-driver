@@ -170,10 +170,6 @@ class Server:
 
         user_fields = _CURSOR_DOC_FIELDS if use_cmd else None
 
-        def _build_reply_doc(docs: list[dict[str, Any]], reply: Optional[_OpMsg]) -> _DocumentOut:  # noqa: ARG001
-            # Must publish in find / getMore / explain command response format.
-            return docs[0]
-
         docs, reply, duration = run_cursor_command(
             conn,
             cmd,
@@ -193,7 +189,6 @@ class Server:
             more_to_come=bool(more_to_come),
             unpack_res=unpack_res,
             cursor_id=operation.cursor_id,
-            reply_doc_builder=_build_reply_doc,
         )
         assert reply is not None
 

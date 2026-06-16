@@ -39,8 +39,7 @@ from pymongo.asynchronous.client_session import (
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.command_runner import (
-    run_acknowledged_command,
-    run_unacknowledged_command,
+    run_bulk_write_command,
 )
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import _handle_reauth
@@ -241,7 +240,7 @@ class _AsyncClientBulk:
         cmd["ops"] = op_docs
         cmd["nsInfo"] = ns_docs
         try:
-            result_docs, _, _ = await run_acknowledged_command(
+            result_docs, _, _ = await run_bulk_write_command(
                 bwc.conn,  # type: ignore[arg-type]
                 cmd,
                 bwc.db_name,
@@ -255,9 +254,6 @@ class _AsyncClientBulk:
                 codec_options=bwc.codec,
                 op_id=bwc.op_id,
                 command_name=bwc.name,
-                use_conn_transport=True,
-                decrypt_reply=False,
-                set_conn_more_to_come=False,
             )
             reply = result_docs[0]
         except Exception as exc:
@@ -283,7 +279,7 @@ class _AsyncClientBulk:
         published["ops"] = op_docs
         published["nsInfo"] = ns_docs
         try:
-            result_docs, _, _ = await run_unacknowledged_command(
+            result_docs, _, _ = await run_bulk_write_command(
                 bwc.conn,  # type: ignore[arg-type]
                 cmd,
                 bwc.db_name,
@@ -298,8 +294,8 @@ class _AsyncClientBulk:
                 op_id=bwc.op_id,
                 command_name=bwc.name,
                 orig=published,
-                use_conn_transport=True,
                 max_doc_size=bwc.max_bson_size,
+                unacknowledged=True,
             )
             reply: Mapping[str, Any] = result_docs[0]
         except Exception as exc:
