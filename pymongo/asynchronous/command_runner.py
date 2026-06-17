@@ -406,11 +406,25 @@ async def run_cursor_command(
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Run a cursor ``find``/``getMore`` operation over ``conn``.
 
+    :param conn: The AsyncConnection to send on.
+    :param cmd: The command document, used for the ``STARTED`` log/APM event.
+    :param dbname: The database the command runs against.
+    :param request_id: The request id of the encoded message.
+    :param msg: The encoded bytes to send (ignored when ``more_to_come``).
+    :param client: The AsyncMongoClient, for ``$clusterTime`` gossip and logging.
+    :param session: The session to update from the response.
+    :param listeners: The event listeners, or ``None`` to disable APM.
+    :param address: The (host, port) of ``conn`` for APM events.
+    :param start: The ``datetime`` the operation began, for duration timing.
+    :param codec_options: The CodecOptions used to decode the reply.
+    :param command_name: The command name for APM events.
+    :param user_fields: Response fields decoded with the codec's TypeDecoders.
+    :param pool_opts: PoolOptions forwarded to ``_check_command_response``.
+    :param max_doc_size: The largest document size, for ``conn.send_message``.
     :param more_to_come: Receive only, without sending (exhaust ``getMore``).
-    :param unpack_res: A callable decoding the wire response.
+    :param unpack_res: A callable decoding the wire response; when ``None`` the
+        reply's own ``unpack_response`` is used.
     :param cursor_id: The cursor id passed to ``unpack_res``.
-
-    See :func:`_run_command` for the remaining parameters.
     """
     return await _run_command(
         conn,
