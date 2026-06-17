@@ -107,10 +107,9 @@ def _run_command(
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
 
-    Private shared implementation. Use :func:`run_command`,
-    :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
+    Private shared implementation. Should not be called directly outside this module. Use :func:`run_command`, :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
 
-    It publishes the
+    Publishes the
     ``STARTED``/``SUCCEEDED``/``FAILED`` command log and APM events, performs
     the network round trip, gossips ``$clusterTime``, runs
     ``client._process_response`` and ``_check_command_response``, and decrypts
@@ -356,7 +355,7 @@ def run_bulk_write_command(
     :param client: The MongoClient, for ``$clusterTime`` gossip and logging.
     :param orig: The original command document for the APM ``STARTED`` event;
         defaults to ``cmd``.
-    :param max_doc_size: The largest document size; passed to ``conn.send_message``.
+    :param max_doc_size: The largest document size in the batch, passed to ``conn.send_message``.
     :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
     """
     return _run_command(
@@ -421,7 +420,7 @@ def run_cursor_command(
     :param user_fields: Response fields decoded with the codec's TypeDecoders.
     :param pool_opts: PoolOptions forwarded to ``_check_command_response``.
     :param max_doc_size: The largest document size, for ``conn.send_message``.
-    :param more_to_come: Receive only, without sending (exhaust ``getMore``).
+    :param more_to_come: Receive only, without sending. Used for ``getMore`` on exhaust cursors.
     :param unpack_res: A callable decoding the wire response; when ``None`` the
         reply's own ``unpack_response`` is used.
     :param cursor_id: The cursor id passed to ``unpack_res``.
@@ -480,28 +479,27 @@ def run_command(
     auto-encryption, and CSOT to ``spec``, encodes it as an OP_MSG message,
     then performs the network round trip and response processing.
 
-    :param conn: a Connection instance
-    :param dbname: name of the database on which to run the command
-    :param spec: a command document as an ordered dict type, eg SON.
-    :param is_mongos: are we connected to a mongos?
-    :param read_preference: a read preference
-    :param codec_options: a CodecOptions instance
-    :param session: optional ClientSession instance.
-    :param client: optional MongoClient instance for updating $clusterTime.
-    :param check: raise OperationFailure if there are errors
-    :param allowable_errors: errors to ignore if `check` is True
-    :param address: the (host, port) of `conn`
-    :param listeners: An instance of :class:`~pymongo.monitoring.EventListeners`
-    :param max_bson_size: The maximum encoded bson size for this server
+    :param conn: The Connection to send on.
+    :param dbname: The database the command runs against.
+    :param spec: A command document as an ordered dict type, e.g. SON.
+    :param is_mongos: Whether we are connected to a mongos.
+    :param read_preference: The read preference for this command.
+    :param codec_options: The CodecOptions used to decode the reply.
+    :param session: The ClientSession for this command.
+    :param client: The MongoClient, for ``$clusterTime`` gossip and logging.
+    :param check: Raise OperationFailure if there are errors.
+    :param allowable_errors: Errors to ignore when ``check`` is True.
+    :param address: The (host, port) of ``conn`` for APM events.
+    :param listeners: The event listeners, or ``None`` to disable APM.
+    :param max_bson_size: The maximum encoded BSON size for this server.
     :param read_concern: The read concern for this command.
     :param parse_write_concern_error: Whether to parse the ``writeConcernError``
         field in the command response.
     :param collation: The collation for this command.
-    :param compression_ctx: optional compression Context.
+    :param compression_ctx: Optional compression context.
     :param unacknowledged: True if this is an unacknowledged command.
-    :param user_fields: Response fields that should be decoded
-        using the TypeDecoders from codec_options, passed to
-        bson._decode_all_selective.
+    :param user_fields: Response fields decoded with the codec's TypeDecoders,
+        passed to ``bson._decode_all_selective``.
     :param exhaust_allowed: True if we should enable OP_MSG exhaustAllowed.
     :param write_concern: The write concern for this command; applied via CSOT.
     """
