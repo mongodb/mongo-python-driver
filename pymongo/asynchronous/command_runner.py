@@ -349,7 +349,13 @@ async def run_bulk_write_command(
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send a bulk write batch and return ``(docs, reply, duration)``.
 
-    :param bwc: A bulk write context supplying the connection, session, listeners, etc.
+    :param bwc: Bulk write context supplying the connection, session, listeners, etc.
+    :param cmd: The encoded command document.
+    :param request_id: The request id of the encoded message.
+    :param msg: The encoded bytes to send.
+    :param client: The AsyncMongoClient, for ``$clusterTime`` gossip and logging.
+    :param orig: The original command document for the APM ``STARTED`` event;
+        defaults to ``cmd``.
     :param max_doc_size: The largest document size; passed to ``conn.send_message``.
     :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
     """
