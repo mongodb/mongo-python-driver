@@ -2785,6 +2785,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._attempt_number = 0
         self._is_run_command = is_run_command
         self._is_aggregate_write = is_aggregate_write
+        self._retry_after_backoff_ms: Optional[float] = None
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2840,6 +2841,9 @@ class _ClientConnectionRetryable(Generic[T]):
                         overloaded = exc.has_error_label("SystemOverloadedError")
                         if overloaded:
                             self._max_retries = self._client.options.max_adaptive_retries
+                            self._retry_after_backoff_ms = (
+                                exc._retry_after_ms / 1000 if exc._retry_after_ms else None
+                            )
                         always_retryable = exc.has_error_label("RetryableError") and overloaded
                         if not self._client.options.retry_reads or (
                             not always_retryable
@@ -2880,6 +2884,9 @@ class _ClientConnectionRetryable(Generic[T]):
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                     if overloaded:
                         self._max_retries = self._client.options.max_adaptive_retries
+                        self._retry_after_backoff_ms = (
+                            exc._retry_after_ms / 1000 if exc._retry_after_ms else None
+                        )
                     always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
 
                     # Always retry abortTransaction and commitTransaction up to once
@@ -2923,7 +2930,9 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 self._always_retryable = always_retryable
                 if overloaded:
-                    delay = self._retry_policy.backoff(self._attempt_number)
+                    delay = self._retry_policy.backoff(
+                        self._attempt_number, self._retry_after_backoff_ms
+                    )
                     if not self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc

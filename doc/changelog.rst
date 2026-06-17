@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Changes in Version 4.18.0 (2026/XX/XX)
+
+PyMongo 4.17 brings a number of changes including:
+
+- Improved performance for MongoDB's Intelligent Workload Management (IWM) by only retrying overload errors when doing so is expected to not worsen server conditions.
+  See the `IWM <https://www.mongodb.com/docs/atlas/production-notes>`_ or `Overload Errors <https://www.mongodb.com/docs/atlas/overload-errors/?interface=driver&language=python>`_ docs for more information.
+
+
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
 
