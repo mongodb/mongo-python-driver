@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test that async cancellation performed by users clean up resources correctly."""
+
 from __future__ import annotations
 
 import asyncio
@@ -20,6 +21,7 @@ import functools
 import socket
 import ssl
 import sys
+
 from test.asynchronous.utils import async_get_pool
 from test.utils_shared import delay, one
 from unittest.mock import patch

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for representing MongoDB internal Timestamps."""
+
 from __future__ import annotations
 
 import calendar
@@ -28,7 +29,7 @@ UPPERBOUND = 4294967296
 class Timestamp:
     """MongoDB internal timestamps used in the opLog."""
 
-    __slots__ = ("__time", "__inc")
+    __slots__ = ("__inc", "__time")
 
     __getstate__ = _getstate_slots
     __setstate__ = _setstate_slots

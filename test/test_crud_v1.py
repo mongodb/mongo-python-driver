@@ -13,13 +13,12 @@
 # limitations under the License.
 
 """Test the collection module."""
+
 from __future__ import annotations
 
 import sys
 
 sys.path[0:0] = [""]
-
-from test import unittest
 
 from pymongo.operations import (
     DeleteMany,
@@ -29,6 +28,7 @@ from pymongo.operations import (
     UpdateMany,
     UpdateOne,
 )
+from test import unittest
 
 
 class TestWriteOpsComparison(unittest.TestCase):

@@ -13,13 +13,12 @@
 # limitations under the License.
 
 """Test the server_description module."""
+
 from __future__ import annotations
 
 import sys
 
 sys.path[0:0] = [""]
-
-from test import unittest
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -27,6 +26,7 @@ from pymongo import common
 from pymongo.hello import Hello, HelloCompat
 from pymongo.server_description import ServerDescription
 from pymongo.server_type import SERVER_TYPE
+from test import unittest
 
 address = ("localhost", 27017)
 

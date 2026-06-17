@@ -16,9 +16,11 @@
 
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence, cast
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from bson.codec_options import _parse_codec_options
 from pymongo import common
@@ -108,7 +110,7 @@ def _parse_ssl_options(
         "tlscrlfile",
     ):
         # Any non-null value of these options implies tls=True.
-        if opt in options and options[opt]:
+        if options.get(opt):
             enabled_tls_opts.append(opt)
     for opt in (
         "tlsallowinvalidcertificates",
@@ -128,7 +130,7 @@ def _parse_ssl_options(
             raise ConfigurationError(
                 "TLS has not been enabled but the "
                 "following tls parameters have been set: "
-                "%s. Please set `tls=True` or remove." % ", ".join(enabled_tls_opts)
+                "{}. Please set `tls=True` or remove.".format(", ".join(enabled_tls_opts))
             )
 
     if use_tls:

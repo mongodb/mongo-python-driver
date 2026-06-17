@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the pymongo daemon module."""
+
 from __future__ import annotations
 
 import subprocess
@@ -22,10 +23,9 @@ from unittest.mock import MagicMock, patch
 
 sys.path[0:0] = [""]
 
-from test import unittest
-
 import pymongo.daemon as daemon_module
 from pymongo.daemon import _popen_wait, _silence_resource_warning, _spawn_daemon
+from test import unittest
 
 
 class TestPopenWait(unittest.TestCase):

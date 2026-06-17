@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test built in connection-pooling with threads."""
+
 from __future__ import annotations
 
 import asyncio
@@ -23,7 +24,6 @@ import random
 import socket
 import sys
 import time
-from test.utils import flaky, get_pool, joinall
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -31,15 +31,15 @@ from pymongo import MongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _create_lock
+from test.utils import flaky, get_pool, joinall
 
 sys.path[0:0] = [""]
 
+from pymongo.socket_checker import SocketChecker
+from pymongo.synchronous.pool import Pool, PoolOptions
 from test import IntegrationTest, client_context, unittest
 from test.helpers import ConcurrentRunner
 from test.utils_shared import delay
-
-from pymongo.socket_checker import SocketChecker
-from pymongo.synchronous.pool import Pool, PoolOptions
 
 _IS_SYNC = True
 
@@ -346,13 +346,13 @@ class TestPooling(_TestPoolingBase):
         with pool.checkout() as s1:
             t = SocketGetter(self.c, pool)
             t.start()
-            while t.state != "get_socket":
+            while t.state != "get_socket":  # noqa: ASYNC110, RUF100
                 time.sleep(0.1)
 
             time.sleep(1)
             self.assertEqual(t.state, "get_socket")
 
-        while t.state != "connection":
+        while t.state != "connection":  # noqa: ASYNC110, RUF100
             time.sleep(0.1)
 
         self.assertEqual(t.state, "connection")
@@ -519,7 +519,7 @@ class TestPooling(_TestPoolingBase):
         coll.insert_many([{"x": 1} for _ in range(10)])
         t = SocketGetter(self.c, pool)
         t.start()
-        while t.state != "connection":
+        while t.state != "connection":  # noqa: ASYNC110, RUF100
             time.sleep(0.1)
 
         assert not t.sock.conn_closed()

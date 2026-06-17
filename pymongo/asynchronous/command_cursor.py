@@ -13,17 +13,16 @@
 # limitations under the License.
 
 """CommandCursor class to iterate over command results."""
+
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import AsyncIterator, Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
-    Mapping,
     NoReturn,
     Optional,
-    Sequence,
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
@@ -77,7 +76,7 @@ class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
         if self._killed:
             self._end_session()
 
-        if "ns" in cursor_info:  # noqa: SIM401
+        if "ns" in cursor_info:
             self._ns = cursor_info["ns"]
         else:
             self._ns = collection.full_name
@@ -112,7 +111,7 @@ class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
 
-        self._batch_size = batch_size == 1 and 2 or batch_size
+        self._batch_size = (batch_size == 1 and 2) or batch_size
         return self
 
     def _has_next(self) -> bool:

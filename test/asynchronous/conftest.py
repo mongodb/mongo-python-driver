@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from test import pytest_conf
-from test.asynchronous import async_setup, async_teardown
 
 import pytest_asyncio
+
+from test import pytest_conf
+from test.asynchronous import async_setup, async_teardown
 
 _IS_SYNC = False
 

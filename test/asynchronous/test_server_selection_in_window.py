@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the topology module's Server Selection Spec implementation."""
+
 from __future__ import annotations
 
 import asyncio
@@ -21,6 +22,11 @@ import platform
 import sys
 import threading
 from pathlib import Path
+
+from pymongo.common import clean_node
+from pymongo.monitoring import ConnectionReadyEvent
+from pymongo.operations import _Op
+from pymongo.read_preferences import ReadPreference
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.helpers import ConcurrentRunner
 from test.asynchronous.utils_selection_tests import create_topology
@@ -30,11 +36,6 @@ from test.utils_shared import (
     OvertCommandListener,
     async_wait_until,
 )
-
-from pymongo.common import clean_node
-from pymongo.monitoring import ConnectionReadyEvent
-from pymongo.operations import _Op
-from pymongo.read_preferences import ReadPreference
 
 _IS_SYNC = False
 # Location of JSON test specifications.
@@ -57,7 +58,7 @@ class TestAllScenarios(unittest.IsolatedAsyncioTestCase):
             server.pool.operation_count = mock["operation_count"]
 
         pref = ReadPreference.NEAREST
-        counts = {address: 0 for address in topology._description.server_descriptions()}
+        counts = dict.fromkeys(topology._description.server_descriptions(), 0)
 
         # Number of times to repeat server selection
         iterations = scenario_def["iterations"]
@@ -130,7 +131,7 @@ class TestProse(AsyncIntegrationTest):
         self.assertEqual(len(events), n_finds * N_TASKS)
         nodes = client.nodes
         self.assertEqual(len(nodes), 2)
-        freqs = {address: 0.0 for address in nodes}
+        freqs = dict.fromkeys(nodes, 0.0)
         for event in events:
             freqs[event.connection_id] += 1
         for address in freqs:

@@ -50,9 +50,11 @@ For use cases like moving documents across different databases or writing binary
 blobs to disk, using raw BSON documents provides better speed and avoids the
 overhead of decoding or encoding BSON.
 """
+
 from __future__ import annotations
 
-from typing import Any, ItemsView, Iterator, Mapping, Optional
+from collections.abc import ItemsView, Iterator, Mapping
+from typing import Any, Optional
 
 from bson import _get_object_size, _raw_to_dict
 from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER, CodecOptions
@@ -82,7 +84,7 @@ class RawBSONDocument(Mapping[str, Any]):
     RawBSONDocument decode its bytes.
     """
 
-    __slots__ = ("__raw", "__inflated_doc", "__codec_options")
+    __slots__ = ("__codec_options", "__inflated_doc", "__raw")
     _type_marker = _RAW_BSON_DOCUMENT_MARKER
     __codec_options: CodecOptions[RawBSONDocument]
 
@@ -174,6 +176,8 @@ class RawBSONDocument(Mapping[str, Any]):
         if isinstance(other, RawBSONDocument):
             return self.__raw == other.raw
         return NotImplemented
+
+    __hash__ = None  # type: ignore[assignment]
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.raw!r}, codec_options={self.__codec_options!r})"

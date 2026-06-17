@@ -19,19 +19,18 @@ MongoDB.
 .. note:: This module is for internal use and is generally not needed by
    application developers.
 """
+
 from __future__ import annotations
 
 import datetime
 import random
 import struct
+from collections.abc import Iterable, Mapping, MutableMapping
 from io import BytesIO as _BytesIO
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Iterable,
-    Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
     Union,
@@ -171,14 +170,6 @@ def _convert_write_result(
     elif operation == "update":
         if "upserted" in result:
             res["upserted"] = [{"index": 0, "_id": result["upserted"]}]
-        # Versions of MongoDB before 2.6 don't return the _id for an
-        # upsert if _id is not an ObjectId.
-        elif result.get("updatedExisting") is False and affected == 1:
-            # If _id is in both the update document *and* the query spec
-            # the update document _id takes precedence.
-            update = command["updates"][0]
-            _id = update["u"].get("_id", update["q"].get("_id"))
-            res["upserted"] = [{"index": 0, "_id": _id}]
     return res
 
 
@@ -479,18 +470,18 @@ class _BulkWriteContextBase:
     """Private base class for wrapping around AsyncConnection to use with write splitting functions."""
 
     __slots__ = (
-        "db_name",
-        "conn",
-        "op_id",
-        "name",
-        "field",
-        "publish",
-        "start_time",
-        "listeners",
-        "session",
-        "compress",
-        "op_type",
         "codec",
+        "compress",
+        "conn",
+        "db_name",
+        "field",
+        "listeners",
+        "name",
+        "op_id",
+        "op_type",
+        "publish",
+        "session",
+        "start_time",
     )
 
     def __init__(
@@ -652,15 +643,15 @@ def _raise_document_too_large(operation: str, doc_size: int, max_size: int) -> N
     """Internal helper for raising DocumentTooLarge."""
     if operation == "insert":
         raise DocumentTooLarge(
-            "BSON document too large (%d bytes)"
-            " - the connected server supports"
-            " BSON document sizes up to %d"
-            " bytes." % (doc_size, max_size)
+            f"BSON document too large ({doc_size} bytes)"
+            f" - the connected server supports"
+            f" BSON document sizes up to {max_size}"
+            f" bytes."
         )
     else:
         # There's nothing intelligent we can say
         # about size for update and delete
-        raise DocumentTooLarge(f"{operation!r} command document too large")
+        raise DocumentTooLarge(f"{operation} command document too large")
 
 
 # From the Client Side Encryption spec:
@@ -703,8 +694,7 @@ def _batched_op_msg_impl(
         raise InvalidOperation("Unknown command") from None
 
     to_send = []
-    idx = 0
-    for doc in docs:
+    for idx, doc in enumerate(docs):
         # Encode the current operation
         value = _dict_to_bson(doc, False, opts)
         doc_length = len(value)
@@ -725,9 +715,8 @@ def _batched_op_msg_impl(
             break
         buf.write(value)
         to_send.append(doc)
-        idx += 1
         # We have enough documents, return this batch.
-        if idx == max_write_batch_size:
+        if idx + 1 == max_write_batch_size:
             break
 
     # Write type 1 section size
@@ -992,9 +981,8 @@ def _client_batched_op_msg_impl(
     to_send_ns_encoded: list[bytes] = []
     total_ops_length = 0
     total_ns_length = 0
-    idx = 0
 
-    for (real_op_type, op_doc), namespace in zip(operations, namespaces):
+    for idx, ((real_op_type, op_doc), namespace) in enumerate(zip(operations, namespaces)):
         op_type = real_op_type
         # Check insert/replace document size if unacknowledged.
         if real_op_type == "insert":
@@ -1046,10 +1034,8 @@ def _client_batched_op_msg_impl(
             to_send_ns_encoded.append(ns_doc_encoded)
             total_ns_length += ns_length
 
-        idx += 1
-
         # We have enough documents, return this batch.
-        if idx == max_write_batch_size:
+        if idx + 1 == max_write_batch_size:
             break
 
     # Construct the entire OP_MSG.
@@ -1210,8 +1196,7 @@ def _batched_write_command_impl(
     # Where to write list document length
     list_start = buf.tell() - 4
     to_send = []
-    idx = 0
-    for doc in docs:
+    for idx, doc in enumerate(docs):
         # Encode the current operation
         key = str(idx).encode("utf8")
         value = _dict_to_bson(doc, False, opts)
@@ -1230,7 +1215,6 @@ def _batched_write_command_impl(
         buf.write(_ZERO_8)
         buf.write(value)
         to_send.append(doc)
-        idx += 1
 
     # Finalize the current OP_QUERY message.
     # Close list and command documents
@@ -1249,7 +1233,7 @@ def _batched_write_command_impl(
 class _OpMsg:
     """A MongoDB OP_MSG response message."""
 
-    __slots__ = ("flags", "cursor_id", "number_returned", "payload_document")
+    __slots__ = ("cursor_id", "flags", "number_returned", "payload_document")
 
     UNPACK_FROM = struct.Struct("<IBi").unpack_from
     OP_CODE = 2013
@@ -1339,24 +1323,24 @@ class _Query:
     """A query operation."""
 
     __slots__ = (
-        "flags",
-        "db",
-        "coll",
-        "ntoskip",
-        "spec",
-        "fields",
-        "codec_options",
-        "read_preference",
-        "limit",
-        "batch_size",
-        "name",
-        "read_concern",
-        "collation",
-        "session",
-        "client",
-        "allow_disk_use",
         "_as_command",
+        "allow_disk_use",
+        "batch_size",
+        "client",
+        "codec_options",
+        "coll",
+        "collation",
+        "db",
         "exhaust",
+        "fields",
+        "flags",
+        "limit",
+        "name",
+        "ntoskip",
+        "read_concern",
+        "read_preference",
+        "session",
+        "spec",
     )
 
     # For compatibility with the _GetMore class.
@@ -1416,8 +1400,8 @@ class _Query:
             use_find_cmd = True
         elif not self.read_concern.ok_for_legacy:
             raise ConfigurationError(
-                "read concern level of %s is not valid "
-                "with a max wire version of %d." % (self.read_concern.level, conn.max_wire_version)
+                f"read concern level of {self.read_concern.level} is not valid "
+                f"with a max wire version of {conn.max_wire_version}."
             )
 
         conn.validate_session(self.client, self.session)  # type: ignore[arg-type]
@@ -1488,19 +1472,19 @@ class _GetMore:
     """A getmore operation."""
 
     __slots__ = (
-        "db",
-        "coll",
-        "ntoreturn",
-        "cursor_id",
-        "max_await_time_ms",
+        "_as_command",
+        "client",
         "codec_options",
+        "coll",
+        "comment",
+        "conn_mgr",
+        "cursor_id",
+        "db",
+        "exhaust",
+        "max_await_time_ms",
+        "ntoreturn",
         "read_preference",
         "session",
-        "client",
-        "conn_mgr",
-        "_as_command",
-        "exhaust",
-        "comment",
     )
 
     name = "getMore"

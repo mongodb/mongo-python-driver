@@ -25,8 +25,9 @@ import sys
 import time
 import warnings
 import weakref
+from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo.errors import (
@@ -236,8 +237,7 @@ class Topology:
                 kwargs = {"skip_file_prefixes": (_pymongo_dir,)}
             else:
                 kwargs = {"stacklevel": 6}
-            # Ignore B028 warning for missing stacklevel.
-            warnings.warn(  # type: ignore[call-overload] # noqa: B028
+            warnings.warn(  # type: ignore[call-overload]
                 "MongoClient opened before fork. May not be entirely fork-safe, "
                 "proceed with caution. See PyMongo's documentation for details: "
                 "https://dochub.mongodb.org/core/pymongo-fork-deadlock",
@@ -1034,7 +1034,7 @@ class Topology:
                 if is_replica_set:
                     return "No primary available for writes"
                 else:
-                    return "No %s available for writes" % server_plural
+                    return f"No {server_plural} available for writes"
             else:
                 return f'No {server_plural} match selector "{selector}"'
         else:
@@ -1043,12 +1043,9 @@ class Topology:
             if not servers:
                 if is_replica_set:
                     # We removed all servers because of the wrong setName?
-                    return 'No {} available for replica set name "{}"'.format(
-                        server_plural,
-                        self._settings.replica_set_name,
-                    )
+                    return f'No {server_plural} available for replica set name "{self._settings.replica_set_name}"'
                 else:
-                    return "No %s available" % server_plural
+                    return f"No {server_plural} available"
 
             # 1 or more servers, all Unknown. Are they unknown for one reason?
             error = servers[0].error
@@ -1056,13 +1053,13 @@ class Topology:
             if same:
                 if error is None:
                     # We're still discovering.
-                    return "No %s found yet" % server_plural
+                    return f"No {server_plural} found yet"
 
                 if is_replica_set and not set(addresses).intersection(self._seed_addresses):
                     # We replaced our seeds with new hosts but can't reach any.
                     return (
-                        "Could not reach any servers in %s. Replica set is"
-                        " configured with internal hostnames or IPs?" % addresses
+                        f"Could not reach any servers in {addresses}. Replica set is"
+                        " configured with internal hostnames or IPs?"
                     )
 
                 return str(error)

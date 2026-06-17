@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test support for callbacks to encode/decode custom types."""
+
 from __future__ import annotations
 
 import datetime
@@ -21,14 +22,12 @@ import tempfile
 from collections import OrderedDict
 from decimal import Decimal
 from random import random
-from typing import Any, Tuple, Type, no_type_check
+from typing import Any, no_type_check
 
 from bson.decimal128 import DecimalDecoder, DecimalEncoder
 from gridfs.synchronous.grid_file import GridIn, GridOut
 
 sys.path[0:0] = [""]
-
-from test import IntegrationTest, client_context, unittest
 
 from bson import (
     _BUILT_IN_TYPES,
@@ -56,6 +55,7 @@ from pymongo.errors import DuplicateKeyError
 from pymongo.message import _CursorAddress
 from pymongo.synchronous.collection import ReturnDocument
 from pymongo.synchronous.helpers import next
+from test import IntegrationTest, client_context, unittest
 
 _IS_SYNC = True
 
@@ -341,9 +341,9 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
     TypeB: Any
     fallback_encoder_A2B: Any
     fallback_encoder_A2BSON: Any
-    B2BSON: Type[TypeEncoder]
-    B2A: Type[TypeEncoder]
-    A2B: Type[TypeEncoder]
+    B2BSON: type[TypeEncoder]
+    B2A: type[TypeEncoder]
+    A2B: type[TypeEncoder]
 
     @classmethod
     def setUpClass(cls):
@@ -433,8 +433,8 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
 
 
 class TestTypeRegistry(unittest.TestCase):
-    types: Tuple[object, object]
-    codecs: Tuple[Type[TypeCodec], Type[TypeCodec]]
+    types: tuple[object, object]
+    codecs: tuple[type[TypeCodec], type[TypeCodec]]
     fallback_encoder: Any
 
     @classmethod

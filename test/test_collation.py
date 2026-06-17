@@ -13,12 +13,11 @@
 # limitations under the License.
 
 """Test the collation module."""
+
 from __future__ import annotations
 
 import functools
 import warnings
-from test import IntegrationTest, client_context, unittest
-from test.utils_shared import EventListener, OvertCommandListener
 from typing import Any
 
 from pymongo.collation import (
@@ -39,6 +38,8 @@ from pymongo.operations import (
 )
 from pymongo.synchronous.helpers import next
 from pymongo.write_concern import WriteConcern
+from test import IntegrationTest, client_context, unittest
+from test.utils_shared import EventListener, OvertCommandListener
 
 _IS_SYNC = True
 

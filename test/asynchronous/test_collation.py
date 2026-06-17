@@ -13,12 +13,11 @@
 # limitations under the License.
 
 """Test the collation module."""
+
 from __future__ import annotations
 
 import functools
 import warnings
-from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.utils_shared import EventListener, OvertCommandListener
 from typing import Any
 
 from pymongo.asynchronous.helpers import anext
@@ -39,6 +38,8 @@ from pymongo.operations import (
     UpdateOne,
 )
 from pymongo.write_concern import WriteConcern
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.utils_shared import EventListener, OvertCommandListener
 
 _IS_SYNC = False
 

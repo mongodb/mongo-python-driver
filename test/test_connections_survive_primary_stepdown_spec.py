@@ -13,13 +13,20 @@
 # limitations under the License.
 
 """Test compliance with the connections survive primary step down spec."""
+
 from __future__ import annotations
 
 import sys
+
 from test.utils import ensure_all_connected
 
 sys.path[0:0] = [""]
 
+from bson import SON
+from pymongo import monitoring
+from pymongo.errors import NotPrimaryError
+from pymongo.synchronous.collection import Collection
+from pymongo.write_concern import WriteConcern
 from test import (
     IntegrationTest,
     client_context,
@@ -29,12 +36,6 @@ from test.helpers import repl_set_step_down
 from test.utils_shared import (
     CMAPListener,
 )
-
-from bson import SON
-from pymongo import monitoring
-from pymongo.errors import NotPrimaryError
-from pymongo.synchronous.collection import Collection
-from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
 

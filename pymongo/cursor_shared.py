@@ -14,10 +14,12 @@
 
 
 """Constants and types shared across all cursor classes."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Mapping, Optional, Sequence, Tuple, Union
+from collections.abc import Mapping, Sequence
+from typing import Any, Generic, Optional, Union
 
 from pymongo.message import _CursorAddress
 from pymongo.typings import _Address, _DocumentType
@@ -186,6 +188,6 @@ class CursorType:
 
 
 _Sort = Union[
-    Sequence[Union[str, Tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
+    Sequence[Union[str, tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
 ]
 _Hint = Union[str, _Sort]

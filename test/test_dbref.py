@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for the dbref module."""
+
 from __future__ import annotations
 
 import pickle
@@ -22,11 +23,11 @@ from typing import Any
 sys.path[0:0] = [""]
 
 from copy import deepcopy
-from test import unittest
 
 from bson import decode, encode
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
+from test import unittest
 
 
 class TestDBRef(unittest.TestCase):

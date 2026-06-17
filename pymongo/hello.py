@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """Helpers for the 'hello' and legacy hello commands."""
+
 from __future__ import annotations
 
 import copy
 import datetime
 import itertools
-from typing import Any, Generic, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Generic, Optional
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -68,7 +70,7 @@ class Hello(Generic[_DocumentType]):
     .. versionadded:: 3.12
     """
 
-    __slots__ = ("_doc", "_server_type", "_is_writable", "_is_readable", "_awaitable")
+    __slots__ = ("_awaitable", "_doc", "_is_readable", "_is_writable", "_server_type")
 
     def __init__(self, doc: _DocumentType, awaitable: bool = False) -> None:
         self._server_type = _get_server_type(doc)

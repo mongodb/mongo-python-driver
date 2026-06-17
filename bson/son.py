@@ -18,22 +18,18 @@ Regular dictionaries can be used instead of SON objects, but not when the order
 of keys is important. A SON object can be used just like a normal Python
 dictionary.
 """
+
 from __future__ import annotations
 
 import copy
 import re
 import warnings
+from collections.abc import Iterable, Iterator, Mapping
 from collections.abc import Mapping as _Mapping
+from re import Pattern
 from typing import (
     Any,
-    Dict,
-    Iterable,
-    Iterator,
-    Mapping,
     Optional,
-    Pattern,
-    Tuple,
-    Type,
     TypeVar,
     Union,
     cast,
@@ -41,14 +37,14 @@ from typing import (
 
 # This sort of sucks, but seems to be as good as it gets...
 # This is essentially the same as re._pattern_type
-RE_TYPE: Type[Pattern[Any]] = type(re.compile(""))
+RE_TYPE: type[Pattern[Any]] = type(re.compile(""))
 
 _Key = TypeVar("_Key")
 _Value = TypeVar("_Value")
 _T = TypeVar("_T")
 
 
-class SON(Dict[_Key, _Value]):
+class SON(dict[_Key, _Value]):
     """SON data.
 
     A subclass of dict that maintains ordering of keys and provides a
@@ -60,7 +56,7 @@ class SON(Dict[_Key, _Value]):
 
     def __init__(
         self,
-        data: Optional[Union[Mapping[_Key, _Value], Iterable[Tuple[_Key, _Value]]]] = None,
+        data: Optional[Union[Mapping[_Key, _Value], Iterable[tuple[_Key, _Value]]]] = None,
         **kwargs: Any,
     ) -> None:
         self.__keys = []
@@ -68,7 +64,7 @@ class SON(Dict[_Key, _Value]):
         self.update(data)
         self.update(kwargs)
 
-    def __new__(cls: Type[SON[_Key, _Value]], *args: Any, **kwargs: Any) -> SON[_Key, _Value]:
+    def __new__(cls: type[SON[_Key, _Value]], *args: Any, **kwargs: Any) -> SON[_Key, _Value]:
         instance = super().__new__(cls, *args, **kwargs)
         instance.__keys = []
         return instance
@@ -77,7 +73,7 @@ class SON(Dict[_Key, _Value]):
         result = []
         for key in self.__keys:
             result.append(f"({key!r}, {self[key]!r})")
-        return "SON([%s])" % ", ".join(result)
+        return "SON([{}])".format(", ".join(result))
 
     def __setitem__(self, key: _Key, value: _Value) -> None:
         if key not in self.__keys:
@@ -151,7 +147,7 @@ class SON(Dict[_Key, _Value]):
         del self[key]
         return value
 
-    def popitem(self) -> Tuple[_Key, _Value]:
+    def popitem(self) -> tuple[_Key, _Value]:
         try:
             k, v = next(iter(self.items()))
         except StopIteration:
@@ -190,6 +186,8 @@ class SON(Dict[_Key, _Value]):
         if isinstance(other, SON):
             return len(self) == len(other) and list(self.items()) == list(other.items())
         return cast(bool, self.to_dict() == other)
+
+    __hash__ = None
 
     def __ne__(self, other: Any) -> bool:
         return not self == other

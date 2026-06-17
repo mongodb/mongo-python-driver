@@ -13,18 +13,17 @@
 # limitations under the License.
 
 """Database level operations."""
+
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping, Sequence
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
-    Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
-    Sequence,
     Union,
     cast,
     overload,
@@ -153,8 +152,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = ...,
         write_concern: Optional[WriteConcern] = ...,
         read_concern: Optional[ReadConcern] = ...,
-    ) -> AsyncDatabase[_DocumentType]:
-        ...
+    ) -> AsyncDatabase[_DocumentType]: ...
 
     @overload
     def with_options(
@@ -163,8 +161,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = ...,
         write_concern: Optional[WriteConcern] = ...,
         read_concern: Optional[ReadConcern] = ...,
-    ) -> AsyncDatabase[_DocumentTypeArg]:
-        ...
+    ) -> AsyncDatabase[_DocumentTypeArg]: ...
 
     def with_options(
         self,
@@ -620,7 +617,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 and (not s or not s.in_transaction)
                 and name in await self._list_collection_names(filter={"name": name}, session=s)
             ):
-                raise CollectionInvalid("collection %s already exists" % name)
+                raise CollectionInvalid(f"collection {name} already exists")
             if s:
                 s._leave_alive = False
             coll = AsyncCollection(
@@ -733,8 +730,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         parse_write_concern_error: bool = False,
         session: Optional[AsyncClientSession] = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
-        ...
+    ) -> dict[str, Any]: ...
 
     @overload
     async def _command(
@@ -750,8 +746,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         parse_write_concern_error: bool = False,
         session: Optional[AsyncClientSession] = None,
         **kwargs: Any,
-    ) -> _CodecDocumentType:
-        ...
+    ) -> _CodecDocumentType: ...
 
     async def _command(
         self,
@@ -800,8 +795,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
-        ...
+    ) -> dict[str, Any]: ...
 
     @overload
     async def command(
@@ -815,8 +809,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         session: Optional[AsyncClientSession] = None,
         comment: Optional[Any] = None,
         **kwargs: Any,
-    ) -> _CodecDocumentType:
-        ...
+    ) -> _CodecDocumentType: ...
 
     @_csot.apply
     async def command(
@@ -1471,7 +1464,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
            Added ``session`` parameter.
         """
         if not isinstance(dbref, DBRef):
-            raise TypeError("cannot dereference a %s" % type(dbref))
+            raise TypeError(f"cannot dereference a {type(dbref)}")
         if dbref.database is not None and dbref.database != self._name:
             raise ValueError(
                 "trying to dereference a DBRef that points to "
