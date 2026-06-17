@@ -160,7 +160,7 @@ class AsyncSpecTestCreator:
             dirname = os.path.split(dirpath)[-1]
 
             for filename in filenames:
-                with open(os.path.join(dirpath, filename)) as scenario_stream:  # noqa: ASYNC230
+                with open(os.path.join(dirpath, filename)) as scenario_stream:  # noqa: ASYNC230, RUF100
                     # Use tz_aware=False to match how CodecOptions decodes
                     # dates.
                     opts = json_util.JSONOptions(tz_aware=False)
