@@ -34,6 +34,7 @@ if [ -z "${CI:-}" ]; then
     export PYMONGO_C_EXT_MUST_BUILD=1
   fi
 
+  export UV_NO_LOCK=1
   (
     cd $ROOT && uv sync
   )

@@ -44,3 +44,4 @@ xunit-results/
 coverage.xml
 server.log
 .coverage
+uv.lock
