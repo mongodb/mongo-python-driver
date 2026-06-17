@@ -107,8 +107,7 @@ async def _run_command(
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
 
-    Private shared implementation. Use :func:`run_command`,
-    :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
+    Private shared implementation. Should not be called directly outside this module. Use :func:`run_command`, :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
 
     It publishes the
     ``STARTED``/``SUCCEEDED``/``FAILED`` command log and APM events, performs
