@@ -186,7 +186,7 @@ class Server:
             command_name=operation.name,
             pool_opts=conn.opts,
             max_doc_size=max_doc_size,
-            more_to_come=bool(more_to_come),
+            more_to_come=more_to_come,
             unpack_res=unpack_res,
             cursor_id=operation.cursor_id,
         )
