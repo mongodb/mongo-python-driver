@@ -107,10 +107,9 @@ async def _run_command(
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
 
-    Private shared implementation. Use :func:`run_command`,
-    :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
+    Private shared implementation. Should not be called directly outside this module. Use :func:`run_command`, :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
 
-    It publishes the
+    Publishes the
     ``STARTED``/``SUCCEEDED``/``FAILED`` command log and APM events, performs
     the network round trip, gossips ``$clusterTime``, runs
     ``client._process_response`` and ``_check_command_response``, and decrypts
@@ -356,7 +355,7 @@ async def run_bulk_write_command(
     :param client: The AsyncMongoClient, for ``$clusterTime`` gossip and logging.
     :param orig: The original command document for the APM ``STARTED`` event;
         defaults to ``cmd``.
-    :param max_doc_size: The largest document size; passed to ``conn.send_message``.
+    :param max_doc_size: The largest document size in the batch, passed to ``conn.send_message``.
     :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
     """
     return await _run_command(
@@ -421,7 +420,7 @@ async def run_cursor_command(
     :param user_fields: Response fields decoded with the codec's TypeDecoders.
     :param pool_opts: PoolOptions forwarded to ``_check_command_response``.
     :param max_doc_size: The largest document size, for ``conn.send_message``.
-    :param more_to_come: Receive only, without sending (exhaust ``getMore``).
+    :param more_to_come: Receive only, without sending. Used for ``getMore`` on exhaust cursors.
     :param unpack_res: A callable decoding the wire response; when ``None`` the
         reply's own ``unpack_response`` is used.
     :param cursor_id: The cursor id passed to ``unpack_res``.
