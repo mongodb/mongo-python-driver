@@ -23,11 +23,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncUnitTest, unittest
-
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
 from pymongo.network_layer import PyMongoProtocol, _async_socket_receive
+from test.asynchronous import AsyncUnitTest, unittest
 
 
 async def _make_protocol(timeout=None):
