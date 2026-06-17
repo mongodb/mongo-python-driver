@@ -193,7 +193,7 @@ class TestClientMetadataProse(IntegrationTest):
         )
 
         # send initial metadata
-        name, version, platform, _ = self.send_ping_and_get_metadata(client, True)
+        name, version, platform, _metadata = self.send_ping_and_get_metadata(client, True)
         self.assertIsNotNone(name)
         self.assertIsNotNone(version)
         self.assertIsNotNone(platform)
