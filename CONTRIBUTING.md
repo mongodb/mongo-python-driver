@@ -577,6 +577,6 @@ Dependabot will raise PRs at most once per week, grouped by GitHub Actions updat
 file updates.  To handle a failing Dependabot PR:
 
 1. Check out the PR: `gh pr checkout <pr number>`
-2. Re-run the linters to pick up any formatting changes: `just lint-manual`
+2. Re-run the linters to pick up any formatting changes: `just lint`
 3. If a typing dependency changed, run `just typing` and fix any new errors.
 4. Commit the changes and push: `git add -u && git commit -m "Address linter/typing issues" && git push`
