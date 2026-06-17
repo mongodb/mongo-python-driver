@@ -355,7 +355,7 @@ async def run_bulk_write_command(
     :param client: The AsyncMongoClient, for ``$clusterTime`` gossip and logging.
     :param orig: The original command document for the APM ``STARTED`` event;
         defaults to ``cmd``.
-    :param max_doc_size: The largest document size; passed to ``conn.send_message``.
+    :param max_doc_size: The largest document size in the batch, passed to ``conn.send_message``.
     :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
     """
     return await _run_command(
