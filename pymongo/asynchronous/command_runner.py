@@ -503,6 +503,7 @@ async def run_command(
         using the TypeDecoders from codec_options, passed to
         bson._decode_all_selective.
     :param exhaust_allowed: True if we should enable OP_MSG exhaustAllowed.
+    :param write_concern: The write concern for this command; applied via CSOT.
     """
     name = next(iter(spec))
     speculative_hello = False
