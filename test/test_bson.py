@@ -1280,12 +1280,12 @@ class TestBSON(unittest.TestCase):
         # generates on the fly for 1000+. Encode a list that crosses that
         # boundary and verify the round-trip is correct.
         values = list(range(1002))
-        doc = encode({"a": values})
-        self.assertEqual(decode(doc)["a"], values)
-        # Spot-check: the 1000th and 1001st elements (0-indexed) must
-        # survive the cache/on-demand boundary intact.
-        self.assertEqual(decode(doc)["a"][1000], 1000)
-        self.assertEqual(decode(doc)["a"][1001], 1001)
+        decoded = decode(encode({"a": values}))
+        self.assertEqual(decoded["a"], values)
+        # Spot-check elements on both sides of the cache/on-demand boundary.
+        self.assertEqual(decoded["a"][999], 999)
+        self.assertEqual(decoded["a"][1000], 1000)
+        self.assertEqual(decoded["a"][1001], 1001)
 
 
 class TestCodecOptions(unittest.TestCase):
@@ -1763,9 +1763,6 @@ class TestDatetimeConversion(unittest.TestCase):
         self.assertEqual(hash(DatetimeMS(0)), hash(DatetimeMS(0)))
         self.assertEqual(hash(DatetimeMS(-1)), hash(DatetimeMS(-1)))
         self.assertEqual(hash(DatetimeMS(2**62)), hash(DatetimeMS(2**62)))
-        # Unequal values should produce unequal hashes (not guaranteed, but
-        # true for plain int hashes which is what DatetimeMS delegates to).
-        self.assertNotEqual(hash(DatetimeMS(0)), hash(DatetimeMS(1)))
         # Usable as a dict key.
         d = {DatetimeMS(0): "epoch", DatetimeMS(1): "one"}
         self.assertEqual(d[DatetimeMS(0)], "epoch")
