@@ -1275,6 +1275,18 @@ class TestBSON(unittest.TestCase):
         with self.assertRaises(InvalidBSON):
             decode(payload)
 
+    def test_large_list_encoding(self):
+        # gen_list_name yields pre-cached names for indices 0-999 then
+        # generates on the fly for 1000+. Encode a list that crosses that
+        # boundary and verify the round-trip is correct.
+        values = list(range(1002))
+        decoded = decode(encode({"a": values}))
+        self.assertEqual(decoded["a"], values)
+        # Spot-check elements on both sides of the cache/on-demand boundary.
+        self.assertEqual(decoded["a"][999], 999)
+        self.assertEqual(decoded["a"][1000], 1000)
+        self.assertEqual(decoded["a"][1001], 1001)
+
 
 class TestCodecOptions(unittest.TestCase):
     def test_document_class(self):
@@ -1745,6 +1757,40 @@ class TestDatetimeConversion(unittest.TestCase):
         buf = b"\x14\x00\x00\x00\x04a\x00\xff\xff\xff\x00\x100\x00\x01\x00\x00\x00\x00\x00"
         with self.assertRaises(InvalidBSON):
             _array_of_documents_to_buffer(buf)
+
+    def test_datetime_ms_hash(self):
+        # Equal values must have equal hashes.
+        self.assertEqual(hash(DatetimeMS(0)), hash(DatetimeMS(0)))
+        self.assertEqual(hash(DatetimeMS(-1)), hash(DatetimeMS(-1)))
+        self.assertEqual(hash(DatetimeMS(2**62)), hash(DatetimeMS(2**62)))
+        # Usable as a dict key.
+        d = {DatetimeMS(0): "epoch", DatetimeMS(1): "one"}
+        self.assertEqual(d[DatetimeMS(0)], "epoch")
+        self.assertEqual(d[DatetimeMS(1)], "one")
+        # Usable in a set.
+        s = {DatetimeMS(0), DatetimeMS(1), DatetimeMS(0)}
+        self.assertEqual(len(s), 2)
+
+    def test_datetime_ms_repr(self):
+        self.assertEqual(repr(DatetimeMS(0)), "DatetimeMS(0)")
+        self.assertEqual(repr(DatetimeMS(-1)), "DatetimeMS(-1)")
+        self.assertEqual(repr(DatetimeMS(2**62)), f"DatetimeMS({2**62})")
+        # repr round-trips through eval.
+        for value in (0, 1, -1, 2**32):
+            obj = DatetimeMS(value)
+            self.assertEqual(eval(repr(obj)), obj)
+
+    def test_datetime_ms_invalid_type(self):
+        # Non-int, non-datetime arguments must raise TypeError.
+        for bad in ("2024-01-01", 3.14, [], None, b"bytes"):
+            with self.assertRaises(TypeError):
+                DatetimeMS(bad)  # type: ignore[arg-type]
+        # Out-of-range int must raise OverflowError directly, not only
+        # when encoding.
+        with self.assertRaises(OverflowError):
+            DatetimeMS(2**63)
+        with self.assertRaises(OverflowError):
+            DatetimeMS(-(2**63) - 1)
 
 
 class TestLongLongToString(unittest.TestCase):

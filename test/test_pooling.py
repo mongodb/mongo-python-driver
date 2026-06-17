@@ -346,13 +346,13 @@ class TestPooling(_TestPoolingBase):
         with pool.checkout() as s1:
             t = SocketGetter(self.c, pool)
             t.start()
-            while t.state != "get_socket":
+            while t.state != "get_socket":  # noqa: ASYNC110, RUF100
                 time.sleep(0.1)
 
             time.sleep(1)
             self.assertEqual(t.state, "get_socket")
 
-        while t.state != "connection":
+        while t.state != "connection":  # noqa: ASYNC110, RUF100
             time.sleep(0.1)
 
         self.assertEqual(t.state, "connection")
@@ -519,7 +519,7 @@ class TestPooling(_TestPoolingBase):
         coll.insert_many([{"x": 1} for _ in range(10)])
         t = SocketGetter(self.c, pool)
         t.start()
-        while t.state != "connection":
+        while t.state != "connection":  # noqa: ASYNC110, RUF100
             time.sleep(0.1)
 
         assert not t.sock.conn_closed()
