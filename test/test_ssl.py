@@ -30,7 +30,10 @@ from urllib.parse import quote_plus
 from pymongo import MongoClient, ssl_support
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from pymongo.hello import HelloCompat
-from pymongo.pool_shared import _configured_socket_interface, _get_ssl_session
+from pymongo.pool_shared import (
+    _configured_socket_interface,
+    _get_ssl_session,
+)
 from pymongo.ssl_support import HAVE_PYSSL, HAVE_SSL, _ssl, get_ssl_context
 from pymongo.write_concern import WriteConcern
 from test import (
@@ -143,7 +146,6 @@ class TestClientSSL(PyMongoTestCase):
     @unittest.skipUnless(_IS_SYNC, "Tests sync wrap_socket path only")
     def test_tls_session_reused_on_second_connection(self):
         """Cached TLS session is passed to wrap_socket on subsequent connections."""
-        from pymongo.pool_shared import _configured_socket_interface
 
         fake_session = object()
         cache: list = [fake_session]
