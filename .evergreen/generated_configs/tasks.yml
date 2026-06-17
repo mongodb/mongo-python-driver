@@ -4844,7 +4844,7 @@ tasks:
           VERSION: latest
           TOOLCHAIN_VERSION: 3.14t
     tags:
-      - test-non-standard
+      - test-non-standard-no-cov
       - server-latest
       - python-3.14t
       - replica_set-noauth-ssl
@@ -4914,7 +4914,7 @@ tasks:
           VERSION: latest
           TOOLCHAIN_VERSION: "3.14"
     tags:
-      - test-non-standard
+      - test-non-standard-no-cov
       - server-latest
       - python-3.14
       - sharded_cluster-auth-ssl
@@ -4961,7 +4961,7 @@ tasks:
           VERSION: latest
           TOOLCHAIN_VERSION: "3.13"
     tags:
-      - test-non-standard
+      - test-non-standard-no-cov
       - server-latest
       - python-3.13
       - standalone-noauth-nossl

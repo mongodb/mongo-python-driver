@@ -134,7 +134,9 @@ def create_encryption_variants() -> list[BuildVariant]:
         if host != "rhel8":
             # Exclude PyPy (no Evergreen toolchain on macOS/win64) and coverage tasks
             # (encryption suites exceed the 60-min timeout with coverage overhead on macOS/win64).
-            tasks = [".test-non-standard !.pypy !.cov"]
+            # Also include the non-coverage companion tasks (test-non-standard-no-cov) which
+            # carry the "latest" server tasks without COVERAGE=1.
+            tasks = [".test-non-standard !.pypy !.cov", ".test-non-standard-no-cov !.pypy"]
         variant = create_variant(
             tasks,
             display_name,
@@ -684,7 +686,13 @@ def create_test_non_standard_tasks():
         # constraints) still have a "latest" task to activate in patch builds.
         if pr and "cov" in tags:
             nc_expansions = {k: v for k, v in expansions.items() if k != "COVERAGE"}
-            nc_tags = [t for t in tags if t != "cov"]
+            # Use a distinct primary tag so companions are not selected by existing
+            # ".test-non-standard" selectors (e.g. load-balancer, PyOpenSSL variants).
+            nc_tags = [
+                "test-non-standard-no-cov" if t == "test-non-standard" else t
+                for t in tags
+                if t != "cov"
+            ]
             nc_name = get_task_name("test-non-standard", python=python, **nc_expansions)
             nc_server_func = FunctionCall(func="run server", vars=nc_expansions)
             nc_test_vars = nc_expansions.copy()
