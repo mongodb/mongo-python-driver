@@ -1784,7 +1784,7 @@ class TestDatetimeConversion(unittest.TestCase):
         # Non-int, non-datetime arguments must raise TypeError.
         for bad in ("2024-01-01", 3.14, [], None, b"bytes"):
             with self.assertRaises(TypeError):
-                DatetimeMS(bad)
+                DatetimeMS(bad)  # type: ignore[arg-type]
         # Out-of-range int must raise OverflowError directly, not only
         # when encoding.
         with self.assertRaises(OverflowError):
