@@ -96,7 +96,6 @@ def _run_command(
     unacknowledged: bool = False,
     speculative_hello: bool = False,
     ensure_db: bool = False,
-    process_response: bool = True,
     decrypt_reply: bool = True,
     use_conn_transport: bool = False,
     max_doc_size: int = 0,
@@ -146,8 +145,6 @@ def _run_command(
         APM redaction.
     :param ensure_db: Add ``$db`` to the published command if missing (cursor
         path), after the ``STARTED`` log has been emitted.
-    :param process_response: Run ``client._process_response`` on the response
-        document before ``_check_command_response`` and APM/log events.
     :param decrypt_reply: Decrypt the reply when auto-encryption is enabled;
         the bulk paths pass False (their commands are encrypted up front).
     :param use_conn_transport: Send/receive via ``conn.send_message`` /
@@ -200,29 +197,25 @@ def _run_command(
             service_id=conn.service_id,
         )
 
-    reply: Optional[_OpMsg]
+    reply: Optional[_OpMsg] = None
+    docs: list[dict[str, Any]] = [{"ok": 1}]
     try:
         if more_to_come:
             reply = conn.receive_message(None)
-        elif unacknowledged:
-            if use_conn_transport:
-                conn._raise_if_not_writable()
-                conn.send_message(msg, max_doc_size)
-            else:
-                sendall(conn.conn.get_conn, msg)
-            # Unacknowledged, fake a successful command response.
-            reply = None
-            docs: list[dict[str, Any]] = [{"ok": 1}]
         elif use_conn_transport:
-            if session is not None and session._starting_transaction:
+            if unacknowledged:
+                conn._raise_if_not_writable()
+            elif session is not None and session._starting_transaction:
                 session._transaction.set_in_progress()
             conn.send_message(msg, max_doc_size)
-            reply = conn.receive_message(request_id)
+            if not unacknowledged:
+                reply = conn.receive_message(request_id)
         else:
             sendall(conn.conn.get_conn, msg)
-            reply = receive_message(conn, request_id)
+            if not unacknowledged:
+                reply = receive_message(conn, request_id)
 
-        if reply is not None:
+        if reply:
             if set_conn_more_to_come:
                 conn.more_to_come = reply.more_to_come
             if unpack_res is not None:
@@ -239,7 +232,7 @@ def _run_command(
                 cluster_time = response_doc.get("$clusterTime")
                 if cluster_time:
                     conn._cluster_time = cluster_time
-            if process_response and client:
+            if client:
                 client._process_response(response_doc, session)
             if check:
                 helpers_shared._check_command_response(
@@ -377,8 +370,6 @@ def run_bulk_write_command(
         unacknowledged=unacknowledged,
         use_conn_transport=True,
         decrypt_reply=False,
-        set_conn_more_to_come=False,
-        process_response=not unacknowledged,
     )
 
 
@@ -444,7 +435,6 @@ def run_cursor_command(
         use_conn_transport=True,
         max_doc_size=max_doc_size,
         more_to_come=more_to_come,
-        set_conn_more_to_come=False,
         unpack_res=unpack_res,
         cursor_id=cursor_id,
     )
@@ -454,7 +444,6 @@ def run_command(
     conn: Connection,
     dbname: str,
     spec: MutableMapping[str, Any],
-    is_mongos: bool,  # noqa: ARG001
     read_preference: Optional[_ServerMode],
     codec_options: CodecOptions[_DocumentType],
     session: Optional[ClientSession],
@@ -482,7 +471,6 @@ def run_command(
     :param conn: The Connection to send on.
     :param dbname: The database the command runs against.
     :param spec: A command document as an ordered dict type, e.g. SON.
-    :param is_mongos: Whether we are connected to a mongos.
     :param read_preference: The read preference for this command.
     :param codec_options: The CodecOptions used to decode the reply.
     :param session: The ClientSession for this command.
@@ -501,7 +489,7 @@ def run_command(
     :param user_fields: Response fields decoded with the codec's TypeDecoders,
         passed to ``bson._decode_all_selective``.
     :param exhaust_allowed: True if we should enable OP_MSG exhaustAllowed.
-    :param write_concern: The write concern for this command; applied via CSOT.
+    :param write_concern: The write concern for this command. Applied via CSOT.
     """
     name = next(iter(spec))
     speculative_hello = False
@@ -563,8 +551,6 @@ def run_command(
         parse_write_concern_error=parse_write_concern_error,
         speculative_hello=speculative_hello,
         unacknowledged=unacknowledged,
-        process_response=not unacknowledged,
-        decrypt_reply=not unacknowledged,
         set_conn_more_to_come=True,
     )
     return docs[0]  # type: ignore[return-value]
