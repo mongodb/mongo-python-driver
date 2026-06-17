@@ -109,7 +109,7 @@ async def _run_command(
 
     Private shared implementation. Should not be called directly outside this module. Use :func:`run_command`, :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
 
-    It publishes the
+    Publishes the
     ``STARTED``/``SUCCEEDED``/``FAILED`` command log and APM events, performs
     the network round trip, gossips ``$clusterTime``, runs
     ``client._process_response`` and ``_check_command_response``, and decrypts
