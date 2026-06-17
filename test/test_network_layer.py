@@ -27,11 +27,10 @@ from unittest.mock import MagicMock, patch
 
 sys.path[0:0] = [""]
 
-from test import UnitTest, unittest
-
 from pymongo import network_layer
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
+from test import UnitTest, unittest
 
 
 def _make_header(length, request_id, response_to, op_code):
