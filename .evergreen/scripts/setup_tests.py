@@ -171,8 +171,11 @@ def handle_test_env() -> None:
     write_env("PIP_QUIET")  # Quiet by default.
     write_env("PIP_PREFER_BINARY")  # Prefer binary dists by default.
     write_env("UV_NO_LOCK", "1")
-    exclude_newer = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    write_env("UV_EXCLUDE_NEWER", exclude_newer)
+    if not os.environ.get("UV_EXCLUDE_NEWER"):
+        exclude_newer = (datetime.now(timezone.utc) - timedelta(days=7)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        write_env("UV_EXCLUDE_NEWER", exclude_newer)
 
     # Set an environment variable for the test name and sub test name.
     write_env(f"TEST_{test_name.upper()}")
