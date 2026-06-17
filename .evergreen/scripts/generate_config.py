@@ -679,6 +679,20 @@ def create_test_non_standard_tasks():
         test_vars["TOOLCHAIN_VERSION"] = python
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+        # For each coverage task, also emit a non-coverage companion so that
+        # macOS/Win64 encryption variants (which filter out .cov due to timeout
+        # constraints) still have a "latest" task to activate in patch builds.
+        if pr and "cov" in tags:
+            nc_expansions = {k: v for k, v in expansions.items() if k != "COVERAGE"}
+            nc_tags = [t for t in tags if t != "cov"]
+            nc_name = get_task_name("test-non-standard", python=python, **nc_expansions)
+            nc_server_func = FunctionCall(func="run server", vars=nc_expansions)
+            nc_test_vars = nc_expansions.copy()
+            nc_test_vars["TOOLCHAIN_VERSION"] = python
+            nc_test_func = FunctionCall(func="run tests", vars=nc_test_vars)
+            tasks.append(
+                EvgTask(name=nc_name, tags=nc_tags, commands=[nc_server_func, nc_test_func])
+            )
     return tasks
 
 
