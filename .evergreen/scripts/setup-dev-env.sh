@@ -22,6 +22,9 @@ fi
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
+# Never create or update uv.lock, in CI or locally.
+export UV_NO_LOCK=1
+
 # Only run the next part if not running on CI.
 if [ -z "${CI:-}" ]; then
   # Add the default install path to the path if needed.
@@ -34,7 +37,6 @@ if [ -z "${CI:-}" ]; then
     export PYMONGO_C_EXT_MUST_BUILD=1
   fi
 
-  export UV_NO_LOCK=1
   (
     cd $ROOT && uv sync
   )
