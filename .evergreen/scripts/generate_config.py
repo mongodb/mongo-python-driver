@@ -132,7 +132,8 @@ def create_encryption_variants() -> list[BuildVariant]:
         display_name = get_variant_name(encryption, host, **expansions)
         tasks = [".test-non-standard"]
         if host != "rhel8":
-            tasks = [".test-non-standard !.pypy"]
+            # Exclude PyPy (not supported on non-linux) and coverage tasks (too slow on macOS/win64).
+            tasks = [".test-non-standard !.pypy !.cov"]
         variant = create_variant(
             tasks,
             display_name,
@@ -670,6 +671,7 @@ def create_test_non_standard_tasks():
             expansions["TEST_MIN_DEPS"] = "1"
         elif pr:
             expansions["COVERAGE"] = "1"
+            tags.append("cov")
         name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()

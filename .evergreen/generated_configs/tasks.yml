@@ -4827,6 +4827,7 @@ tasks:
       - noauth
       - free-threaded
       - pr
+      - cov
   - name: test-non-standard-latest-pypy3.11-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -4873,6 +4874,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - pr
+      - cov
   - name: test-non-standard-latest-python3.13-noauth-nossl-standalone-cov
     commands:
       - func: run server
@@ -4897,6 +4899,7 @@ tasks:
       - standalone-noauth-nossl
       - noauth
       - pr
+      - cov
   - name: test-non-standard-rapid-python3.11-noauth-ssl-replica-set
     commands:
       - func: run server

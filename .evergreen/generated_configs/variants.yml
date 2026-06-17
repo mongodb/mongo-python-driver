@@ -193,7 +193,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-macos
     tasks:
-      - name: .test-non-standard !.pypy
+      - name: .test-non-standard !.pypy !.cov
     display_name: Encryption macOS
     run_on:
       - macos-14
@@ -203,7 +203,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-win64
     tasks:
-      - name: .test-non-standard !.pypy
+      - name: .test-non-standard !.pypy !.cov
     display_name: Encryption Win64
     run_on:
       - windows-2022-latest-small
@@ -224,7 +224,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-crypt_shared-macos
     tasks:
-      - name: .test-non-standard !.pypy
+      - name: .test-non-standard !.pypy !.cov
     display_name: Encryption crypt_shared macOS
     run_on:
       - macos-14
@@ -235,7 +235,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-crypt_shared-win64
     tasks:
-      - name: .test-non-standard !.pypy
+      - name: .test-non-standard !.pypy !.cov
     display_name: Encryption crypt_shared Win64
     run_on:
       - windows-2022-latest-small
