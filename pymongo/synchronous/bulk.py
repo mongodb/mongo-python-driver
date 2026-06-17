@@ -248,7 +248,7 @@ class _Bulk:
         """Run a batch write command, returning the response as a dict."""
         cmd[bwc.field] = docs
         result_docs, _, _ = run_bulk_write_command(
-            bwc,  # type: ignore[arg-type]
+            bwc,
             cmd,
             request_id,
             msg,
@@ -273,7 +273,7 @@ class _Bulk:
         published = dict(cmd)
         published[bwc.field] = docs
         run_bulk_write_command(
-            bwc,  # type: ignore[arg-type]
+            bwc,
             cmd,
             request_id,
             msg,

@@ -241,7 +241,7 @@ class _AsyncClientBulk:
         cmd["nsInfo"] = ns_docs
         try:
             result_docs, _, _ = await run_bulk_write_command(
-                bwc,  # type: ignore[arg-type]
+                bwc,
                 cmd,
                 request_id,
                 msg,  # type: ignore[arg-type]
@@ -272,7 +272,7 @@ class _AsyncClientBulk:
         published["nsInfo"] = ns_docs
         try:
             result_docs, _, _ = await run_bulk_write_command(
-                bwc,  # type: ignore[arg-type]
+                bwc,
                 cmd,
                 request_id,
                 msg,

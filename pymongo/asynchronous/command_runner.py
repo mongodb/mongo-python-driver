@@ -14,25 +14,23 @@
 
 """Encoding and execution of commands over a connection.
 
-The public :func:`command` entry point applies read preference, read concern,
-collation, ``$clusterTime``, auto-encryption, and CSOT to a command spec,
-encodes it as an OP_MSG message, and then delegates to :func:`run_command`.
-
 Three public entry points each wrap the private :func:`_run_command`:
 
-- :func:`run_command` — standard network-transport commands (acknowledged or
-  unacknowledged). Called by :func:`command`.
+- :func:`run_command` — the standard entry point used by ``pool.py``. Applies
+  read concern, collation, ``$clusterTime``, compression, auto-encryption, and
+  CSOT to a raw spec dict, encodes it as OP_MSG, then delegates to
+  :func:`_run_command`.
 - :func:`run_bulk_write_command` — collection-level and client-level bulk write
-  batches (connection transport; pre-encrypted so decryption is skipped).
-  Callers: ``bulk.py``, ``client_bulk.py``.
-- :func:`run_cursor_command` — cursor ``find``/``getMore`` operations
-  (connection transport, exhaust-cursor handling). Caller: ``server.py``.
+  batches. Pre-encrypted, so decryption is skipped. Callers: ``bulk.py``,
+  ``client_bulk.py``.
+- :func:`run_cursor_command` — cursor ``find``/``getMore`` operations with
+  exhaust-cursor handling. Caller: ``server.py``.
 
 :func:`_run_command` owns the entire shared skeleton: command logging, APM
 event publishing, ``send``/``receive``, ``$clusterTime`` gossip,
 ``_process_response``, ``_check_command_response``, failure conversion, and
-auto-encryption decryption. Each public wrapper hardcodes the transport and
-response-shaping flags for its command type so callers only pass what varies.
+auto-encryption decryption. Each public wrapper hardcodes the flags for its
+command type so callers only pass what varies.
 """
 
 from __future__ import annotations
@@ -45,7 +43,6 @@ from typing import (
     Any,
     Callable,
     Optional,
-    Protocol,
     Union,
     cast,
 )
@@ -55,7 +52,7 @@ from pymongo import _csot, helpers_shared, message
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
-from pymongo.message import _convert_exception, _OpMsg
+from pymongo.message import _BulkWriteContextBase, _convert_exception, _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 from pymongo.network_layer import async_receive_message, async_sendall
 
@@ -73,19 +70,6 @@ if TYPE_CHECKING:
     from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = False
-
-
-class _BulkWriteContextProto(Protocol):
-    """Structural interface for bulk write context objects passed to :func:`run_bulk_write_command`."""
-
-    conn: AsyncConnection
-    db_name: str
-    session: Optional[AsyncClientSession]
-    listeners: Optional[_EventListeners]
-    start_time: datetime.datetime
-    codec: CodecOptions[Any]
-    op_id: int
-    name: str
 
 
 async def _run_command(
@@ -353,7 +337,7 @@ async def _run_command(
 
 
 async def run_bulk_write_command(
-    bwc: _BulkWriteContextProto,
+    bwc: _BulkWriteContextBase,
     cmd: MutableMapping[str, Any],
     request_id: int,
     msg: bytes,
@@ -370,15 +354,15 @@ async def run_bulk_write_command(
     :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
     """
     return await _run_command(
-        bwc.conn,
+        bwc.conn,  # type: ignore[arg-type]
         cmd,
         bwc.db_name,
         request_id,
         msg,
         client=client,
-        session=bwc.session,
+        session=bwc.session,  # type: ignore[arg-type]
         listeners=bwc.listeners,
-        address=bwc.conn.address,
+        address=bwc.conn.address,  # type: ignore[union-attr]
         start=bwc.start_time,
         codec_options=bwc.codec,
         op_id=bwc.op_id,
