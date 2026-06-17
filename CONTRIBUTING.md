@@ -574,5 +574,9 @@ From the spawn host or Ubuntu image, do the following:
 ## Dependabot updates
 
 Dependabot will raise PRs at most once per week, grouped by GitHub Actions updates and Python requirement
-file updates.  To handle a failing Dependabot PR, you can use a method like `gh pr checkout <pr number>`,
-then push the changes.  If a typing dependency has changed, also run `just typing` and handle any new findings.
+file updates.  To handle a failing Dependabot PR:
+
+1. Check out the PR: `gh pr checkout <pr number>`
+2. Re-run the linters to pick up any formatting changes: `just lint-manual`
+3. If a typing dependency changed, run `just typing` and fix any new errors.
+4. Commit the changes and push: `git add -u && git commit -m "Address linter/typing issues" && git push`
