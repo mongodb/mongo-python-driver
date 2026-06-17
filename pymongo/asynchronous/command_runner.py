@@ -101,7 +101,7 @@ async def _run_command(
     use_conn_transport: bool = False,
     max_doc_size: int = 0,
     more_to_come: bool = False,
-    set_conn_more_to_come: bool = True,
+    set_conn_more_to_come: bool = False,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
@@ -567,5 +567,6 @@ async def run_command(
         unacknowledged=unacknowledged,
         process_response=not unacknowledged,
         decrypt_reply=not unacknowledged,
+        set_conn_more_to_come=True,
     )
     return docs[0]  # type: ignore[return-value]
