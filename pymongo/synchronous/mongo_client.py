@@ -2785,7 +2785,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._attempt_number = 0
         self._is_run_command = is_run_command
         self._is_aggregate_write = is_aggregate_write
-        self._retry_after_backoff_ms = None
+        self._retry_after_backoff_ms: Optional[float] = None
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry

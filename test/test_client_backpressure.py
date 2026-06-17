@@ -294,6 +294,7 @@ class TestClientBackpressure(IntegrationTest):
 
     @patch("random.uniform")
     @patch("random.random")
+    @client_context.require_version_min(9, 0, 0, -1)
     @client_context.require_failCommand_appName
     def test_05_overload_errors_with_retryafterms_override_backoff(self, random_func, uniform_func):
         # Drivers should test that overload errors with `retryAfterMS` override the default exponential backoff policy.
