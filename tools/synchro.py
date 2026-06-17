@@ -171,22 +171,14 @@ if not Path.exists(Path(_pymongo_dest_base)):
 if not Path.exists(Path(_gridfs_dest_base)):
     Path.mkdir(Path(_gridfs_dest_base))
 
-async_files = [
-    _pymongo_base + str(f)
-    for f in Path.iterdir(Path(_pymongo_base))
-    if (Path(_pymongo_base) / f).is_file()
-]
+async_files = [_pymongo_base + f.name for f in Path(_pymongo_base).iterdir() if f.is_file()]
 
-gridfs_files = [
-    _gridfs_base + str(f)
-    for f in Path.iterdir(Path(_gridfs_base))
-    if (Path(_gridfs_base) / f).is_file()
-]
+gridfs_files = [_gridfs_base + f.name for f in Path(_gridfs_base).iterdir() if f.is_file()]
 
 
 def async_only_test(f: Path) -> bool:
     """Return True for async tests that should not be converted to sync."""
-    return str(f) in [
+    return f.name in [
         "test_locks.py",
         "test_concurrency.py",
         "test_async_cancellation.py",
@@ -197,9 +189,9 @@ def async_only_test(f: Path) -> bool:
 
 
 test_files = [
-    _test_base + str(f)
-    for f in Path.iterdir(Path(_test_base))
-    if (Path(_test_base) / f).is_file() and not async_only_test(f)
+    _test_base + f.name
+    for f in Path(_test_base).iterdir()
+    if f.is_file() and not async_only_test(f)
 ]
 
 # Add each asynchronized test here as part of the converting PR
@@ -453,15 +445,11 @@ def main() -> None:
     unasync_directory(test_files, _test_base, _test_dest_base, replacements)
 
     sync_files = [
-        _pymongo_dest_base + str(f)
-        for f in Path.iterdir(Path(_pymongo_dest_base))
-        if (Path(_pymongo_dest_base) / f).is_file()
+        _pymongo_dest_base + f.name for f in Path(_pymongo_dest_base).iterdir() if f.is_file()
     ]
 
     sync_gridfs_files = [
-        _gridfs_dest_base + str(f)
-        for f in Path.iterdir(Path(_gridfs_dest_base))
-        if (Path(_gridfs_dest_base) / f).is_file()
+        _gridfs_dest_base + f.name for f in Path(_gridfs_dest_base).iterdir() if f.is_file()
     ]
     sync_test_files = [
         _test_dest_base + f for f in converted_tests if (Path(_test_dest_base) / f).is_file()
