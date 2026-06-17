@@ -420,7 +420,7 @@ async def run_cursor_command(
     :param user_fields: Response fields decoded with the codec's TypeDecoders.
     :param pool_opts: PoolOptions forwarded to ``_check_command_response``.
     :param max_doc_size: The largest document size, for ``conn.send_message``.
-    :param more_to_come: Receive only, without sending (exhaust ``getMore``).
+    :param more_to_come: Receive only, without sending. Used for ``getMore`` on exhaust cursors.
     :param unpack_res: A callable decoding the wire response; when ``None`` the
         reply's own ``unpack_response`` is used.
     :param cursor_id: The cursor id passed to ``unpack_res``.
