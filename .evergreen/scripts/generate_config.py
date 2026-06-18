@@ -132,7 +132,7 @@ def create_encryption_variants() -> list[BuildVariant]:
         display_name = get_variant_name(encryption, host, **expansions)
         tasks = [".test-non-standard"]
         if host != "rhel8":
-            # Exclude PyPy (no Evergreen toolchain on macOS/win64) and coverage tasks
+            # Exclude PyPy (not tested with encryption on macOS/win64) and coverage tasks
             # (encryption suites exceed the 60-min timeout with coverage overhead on macOS/win64).
             # Also include the non-coverage companion tasks (test-non-standard-no-cov) which
             # carry the "latest" server tasks without COVERAGE=1.
