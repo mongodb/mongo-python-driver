@@ -648,8 +648,9 @@ def create_test_non_standard_tasks():
     tasks = []
     task_combos = set()
     # For each version and topology, rotate through the CPythons.
+    # Only the sharded_cluster topology runs on PRs to keep patch build size manageable.
     for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
-        pr = version == "latest"
+        pr = version == "latest" and topology == "sharded_cluster"
         task_combos.add((version, topology, python, pr))
     # For each PyPy and topology, rotate through the MongoDB versions.
     for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
