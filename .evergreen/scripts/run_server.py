@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import Any
 
 from utils import DRIVERS_TOOLS, ROOT, get_test_options, run_command
@@ -42,6 +43,14 @@ def start_server():
             set_env("TLS_CERT_KEY_FILE", certs / "client.pem")
             set_env("TLS_PEM_KEY_FILE", certs / "server.pem")
             set_env("TLS_CA_FILE", certs / "ca.pem")
+            if sys.platform == "darwin":
+                # MongoDB Enterprise on macOS uses Apple SecTrust with
+                # kSecRevocationRequirePositiveResponse, which requires a
+                # positive OCSP response for every cert in the chain.  Our
+                # test CA is not in the macOS system keychain so OCSP always
+                # fails with CSSMERR_TP_CERT_SUSPENDED.  Bypass cert
+                # verification to allow the server to start.
+                extra_opts.append("--tls-allow-invalid-certificates")
 
     if opts.auth:
         extra_opts.append("--auth")

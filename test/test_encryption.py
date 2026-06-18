@@ -3022,10 +3022,9 @@ class TestKmsRetryProse(EncryptionIntegrationTest):
     def http_post(self, path, data=None):
         # Note, the connection to the mock server needs to be closed after
         # each request because the server is single threaded.
-        ctx = ssl.create_default_context(cafile=CA_PEM)
+        ctx = ssl.create_default_context()
+        ctx.load_verify_locations(cafile=CA_PEM)
         ctx.load_cert_chain(CLIENT_PEM)
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
         conn = http.client.HTTPSConnection("127.0.0.1:9003", context=ctx)
         try:
             if data is not None:
