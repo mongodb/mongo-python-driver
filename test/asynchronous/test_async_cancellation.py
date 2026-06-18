@@ -21,16 +21,15 @@ import functools
 import socket
 import ssl
 import sys
+from unittest.mock import patch
 
 from test.asynchronous.utils import async_get_pool
 from test.utils_shared import delay, one
-from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, async_client_context, connected
-
 from pymongo import pool_shared
+from test.asynchronous import AsyncIntegrationTest, async_client_context, connected
 
 
 class TestAsyncCancellation(AsyncIntegrationTest):
