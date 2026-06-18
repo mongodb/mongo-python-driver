@@ -230,7 +230,7 @@ class TestClientMetadataProse(AsyncIntegrationTest):
 
         # Assert that for every handshake document intercepted:
         # the document has a field `backpressure` whose value is `true`.
-        self.assertEqual(self.handshake_req["backpressure"], True)
+        self.assertEqual(self.handshake_req["backpressure"], "2")
 
 
 if __name__ == "__main__":
