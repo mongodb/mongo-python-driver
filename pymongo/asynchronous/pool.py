@@ -754,6 +754,9 @@ class Pool:
         self._pending = 0
         self._max_connecting = self.opts.max_connecting
         self._client_id = client_id
+        self._ssl_session_cache: Optional[list[Any]] = (
+            [None] if self.opts._ssl_context is not None else None
+        )
         # Log before publishing event to prevent potential listener preemption in tests
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
@@ -1041,7 +1044,9 @@ class Pool:
             listeners.publish_connection_created(self.address, conn_id)
 
         try:
-            networking_interface = await _configured_protocol_interface(self.address, self.opts)
+            networking_interface = await _configured_protocol_interface(
+                self.address, self.opts, self._ssl_session_cache
+            )
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             async with self.lock:
