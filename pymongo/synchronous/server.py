@@ -158,7 +158,7 @@ class Server:
         start = datetime.now()
 
         use_cmd = operation.use_command(conn)
-        more_to_come = operation.conn_mgr and operation.conn_mgr.more_to_come
+        more_to_come = bool(operation.conn_mgr and operation.conn_mgr.more_to_come)
         cmd, dbn = self.operation_to_command(operation, conn, use_cmd)
         if more_to_come:
             request_id = 0
