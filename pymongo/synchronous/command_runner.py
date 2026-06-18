@@ -1,4 +1,4 @@
-# Copyright 2025-present MongoDB, Inc.
+# Copyright 2015-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Encoding and execution of commands over a connection.
+"""Encoding and execution of commands over a connection (previously ``network.py``).
 
 Three public entry points each wrap the private :func:`_run_command`:
 
@@ -54,7 +54,6 @@ from pymongo.errors import NotPrimaryError, OperationFailure
 from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import _BulkWriteContextBase, _convert_exception, _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
-from pymongo.network_layer import receive_message, sendall
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -97,7 +96,6 @@ def _run_command(
     speculative_hello: bool = False,
     ensure_db: bool = False,
     decrypt_reply: bool = True,
-    use_conn_transport: bool = False,
     max_doc_size: int = 0,
     more_to_come: bool = False,
     set_conn_more_to_come: bool = False,
@@ -147,9 +145,6 @@ def _run_command(
         path), after the ``STARTED`` log has been emitted.
     :param decrypt_reply: Decrypt the reply when auto-encryption is enabled;
         the bulk paths pass False (their commands are encrypted up front).
-    :param use_conn_transport: Send/receive via ``conn.send_message`` /
-        ``conn.receive_message`` instead of the raw ``sendall`` /
-        ``receive_message`` (network path).
     :param max_doc_size: The largest document size, for ``conn.send_message``.
     :param more_to_come: Receive only, without sending (exhaust ``getMore``).
     :param set_conn_more_to_come: Store ``reply.more_to_come`` on ``conn`` (the
@@ -202,7 +197,7 @@ def _run_command(
     try:
         if more_to_come:
             reply = conn.receive_message(None)
-        elif use_conn_transport:
+        else:
             if unacknowledged:
                 conn._raise_if_not_writable()
             elif session is not None and session._starting_transaction:
@@ -210,10 +205,6 @@ def _run_command(
             conn.send_message(msg, max_doc_size)
             if not unacknowledged:
                 reply = conn.receive_message(request_id)
-        else:
-            sendall(conn.conn.get_conn, msg)
-            if not unacknowledged:
-                reply = receive_message(conn, request_id)
 
         if reply:
             if set_conn_more_to_come:
@@ -368,7 +359,6 @@ def run_bulk_write_command(
         orig=orig,
         max_doc_size=max_doc_size,
         unacknowledged=unacknowledged,
-        use_conn_transport=True,
         decrypt_reply=False,
     )
 
@@ -432,7 +422,6 @@ def run_cursor_command(
         command_name=command_name,
         pool_opts=pool_opts,
         ensure_db=True,
-        use_conn_transport=True,
         max_doc_size=max_doc_size,
         more_to_come=more_to_come,
         unpack_res=unpack_res,
