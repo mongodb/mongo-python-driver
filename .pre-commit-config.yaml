@@ -18,25 +18,36 @@ repos:
     exclude: .patch
     exclude_types: [json]
 
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  # Ruff version.
-  rev: v0.15.16
+- repo: local
   hooks:
     - id: ruff
-      args: ["--fix", "--show-fixes"]
+      name: ruff
+      entry: uv run --group lint ruff check --fix --show-fixes
+      language: system
+      types_or: [python, pyi]
+      require_serial: true
     - id: ruff-format
+      name: ruff-format
+      entry: uv run --group lint ruff format
+      language: system
+      types_or: [python, pyi]
+      require_serial: true
 
 - repo: local
   hooks:
     - id: synchro
       name: synchro
-      entry: bash ./tools/synchro.sh
-      language: python
+      entry: uv run --group unasync ./tools/synchro.py
+      language: system
       require_serial: true
-      fail_fast: true
-      additional_dependencies:
-        - ruff==0.15.16
-        - unasync
+      always_run: true
+    - id: synchro-stage-files
+      name: synchro-stage-files
+      entry: bash -c 'if [ -s .synchro-modified ]; then xargs git add < .synchro-modified || true; fi'
+      language: system
+      require_serial: true
+      always_run: true
+      pass_filenames: false
 
 - repo: https://github.com/adamchainz/blacken-docs
   rev: "1.16.0"

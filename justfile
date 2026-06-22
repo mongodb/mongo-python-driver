@@ -16,6 +16,10 @@ default:
 resync:
  @uv sync --quiet
 
+[private]
+run-synchro:
+    uv run --group unasync ./tools/synchro.py
+
 # Set up the development environment
 install:
    bash .evergreen/scripts/setup-dev-env.sh
@@ -66,7 +70,7 @@ lint-manual *args="": && resync
 
 # Run pytest (e.g. just test test/test_uri_parser.py)
 [group('test')]
-test *args="-v --durations=5 --maxfail=10": && resync
+test *args="-v --durations=5 --maxfail=10": run-synchro && resync
     #!/usr/bin/env bash
     set -euo pipefail
     uv run ${USE_ACTIVE_VENV:+--active} --extra test python -m pytest {{args}}
@@ -79,7 +83,7 @@ test-numpy *args="": && resync
 
 # Run tests via the Evergreen test runner script
 [group('test')]
-run-tests *args: && resync
+run-tests *args: run-synchro && resync
     bash ./.evergreen/run-tests.sh {{args}}
 
 # Set up the test environment (auth, TLS, etc.)

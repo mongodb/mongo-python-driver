@@ -46,6 +46,9 @@ jobs:
       - name: Run typecheck
         run: |
           just typing
+      - name: Run synchro smoke test
+        run: |
+          uv run --extra test --with unasync pytest tools/test_synchro.py -v --override-ini="addopts="
       - run: |
           sudo apt-get install -y cppcheck
       - run: |
