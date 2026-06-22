@@ -1107,7 +1107,7 @@ class TestClient(IntegrationTest):
 
     def test_close_stops_kill_cursors_thread(self):
         client = self.rs_client()
-        client.test.test.find_one()
+        client.db.coll.find_one()
         self.assertFalse(client._kill_cursors_executor._stopped)
 
         # Closing the client should stop the thread.
@@ -1151,7 +1151,7 @@ class TestClient(IntegrationTest):
 
     def test_close_closes_sockets(self):
         client = self.rs_client()
-        client.test.test.find_one()
+        client.db.coll.find_one()
         topology = client._topology
         client.close()
         for server in topology._servers.values():
@@ -1609,7 +1609,7 @@ class TestClient(IntegrationTest):
     def test_connect_to_standalone_using_replica_set_name(self):
         client = self.single_client(replicaSet="anything", serverSelectionTimeoutMS=100)
         with self.assertRaises(AutoReconnect):
-            client.test.test.find_one()
+            client.db.coll.find_one()
 
     @client_context.require_replica_set
     def test_stale_getmore(self):
@@ -1906,7 +1906,7 @@ class TestClient(IntegrationTest):
             )
             initial_count = server_description_count()
             with self.assertRaises(ServerSelectionTimeoutError):
-                client.test.test.find_one()
+                client.db.coll.find_one()
             gc.collect()
             final_count = server_description_count()
             client.close()
@@ -2127,16 +2127,16 @@ class TestClient(IntegrationTest):
         )
 
     def test_dict_hints(self):
-        self.db.t.find(hint={"x": 1})
+        self.db.coll.find(hint={"x": 1})
 
     def test_dict_hints_sort(self):
-        result = self.db.t.find()
+        result = self.db.coll.find()
         result.sort({"x": 1})
 
-        self.db.t.find(sort={"x": 1})
+        self.db.coll.find(sort={"x": 1})
 
     def test_dict_hints_create_index(self):
-        self.db.t.create_index({"x": pymongo.ASCENDING})
+        self.db.coll.create_index({"x": pymongo.ASCENDING})
 
     def test_legacy_java_uuid_roundtrip(self):
         data = BinaryData.java_data

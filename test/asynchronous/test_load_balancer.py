@@ -53,12 +53,12 @@ class TestLB(AsyncIntegrationTest):
     async def test_connections_are_only_returned_once(self):
         pool = await async_get_pool(self.client)
         n_conns = len(pool.conns)
-        await self.db.test.find_one({})
+        await self.db.coll.find_one({})
         # On PyPy it can take a few rounds to collect the cursor.
         for _ in range(3):
             gc.collect()
         self.assertEqual(len(pool.conns), n_conns)
-        await (await self.db.test.aggregate([{"$limit": 1}])).to_list()
+        await (await self.db.coll.aggregate([{"$limit": 1}])).to_list()
         # On PyPy it can take a few rounds to collect the cursor.
         for _ in range(3):
             gc.collect()

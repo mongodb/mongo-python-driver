@@ -105,16 +105,16 @@ class TestReadPreferencesBase(IntegrationTest):
     def setUp(self):
         super().setUp()
         # Insert some data so we can use cursors in read_from_which_host
-        self.client.pymongo_test.test.drop()
+        self.client.pymongo_test.coll.drop()
         self.client.get_database(
             "pymongo_test", write_concern=WriteConcern(w=client_context.w)
-        ).test.insert_many([{"_id": i} for i in range(10)])
+        ).coll.insert_many([{"_id": i} for i in range(10)])
 
-        self.addCleanup(self.client.pymongo_test.test.drop)
+        self.addCleanup(self.client.pymongo_test.coll.drop)
 
     def read_from_which_host(self, client):
         """Do a find() on the client and return which host was used"""
-        cursor = client.pymongo_test.test.find()
+        cursor = client.pymongo_test.coll.find()
         next(cursor)
         return cursor.address
 
@@ -158,7 +158,7 @@ class TestSingleSecondaryOk(TestReadPreferencesBase):
         self.assertEqual(client.read_preference, ReadPreference.PRIMARY)
 
         db = client.pymongo_test
-        coll = db.test
+        coll = db.coll
 
         # Test find and find_one.
         self.assertIsNotNone(coll.find_one())
@@ -166,7 +166,7 @@ class TestSingleSecondaryOk(TestReadPreferencesBase):
 
         # Test some database helpers.
         self.assertIsNotNone(db.list_collection_names())
-        self.assertIsNotNone(db.validate_collection("test"))
+        self.assertIsNotNone(db.validate_collection("coll"))
         self.assertIsNotNone(db.command("ping"))
 
         # Test some collection helpers.
@@ -424,17 +424,17 @@ class TestCommandAndReadPreference(IntegrationTest):
         self._test_primary_helper(func)
 
     def test_count_documents(self):
-        self._test_coll_helper(True, self.c.pymongo_test.test, "count_documents", {})
+        self._test_coll_helper(True, self.c.pymongo_test.coll, "count_documents", {})
 
     def test_estimated_document_count(self):
-        self._test_coll_helper(True, self.c.pymongo_test.test, "estimated_document_count")
+        self._test_coll_helper(True, self.c.pymongo_test.coll, "estimated_document_count")
 
     def test_distinct(self):
-        self._test_coll_helper(True, self.c.pymongo_test.test, "distinct", "a")
+        self._test_coll_helper(True, self.c.pymongo_test.coll, "distinct", "a")
 
     def test_aggregate(self):
         self._test_coll_helper(
-            True, self.c.pymongo_test.test, "aggregate", [{"$project": {"_id": 1}}]
+            True, self.c.pymongo_test.coll, "aggregate", [{"$project": {"_id": 1}}]
         )
 
     def test_aggregate_write(self):
@@ -442,7 +442,7 @@ class TestCommandAndReadPreference(IntegrationTest):
         secondary_ok = client_context.version.at_least(5, 0)
         self._test_coll_helper(
             secondary_ok,
-            self.c.pymongo_test.test,
+            self.c.pymongo_test.coll,
             "aggregate",
             [{"$project": {"_id": 1}}, {"$out": "agg_write_test"}],
         )
@@ -683,13 +683,13 @@ class TestMongosAndReadPreference(IntegrationTest):
     def test_mongos_max_staleness(self):
         # Sanity check that we're sending maxStalenessSeconds
         coll = client_context.client.pymongo_test.get_collection(
-            "test", read_preference=SecondaryPreferred(max_staleness=120)
+            "coll", read_preference=SecondaryPreferred(max_staleness=120)
         )
         # No error
         coll.find_one()
 
         coll = client_context.client.pymongo_test.get_collection(
-            "test", read_preference=SecondaryPreferred(max_staleness=10)
+            "coll", read_preference=SecondaryPreferred(max_staleness=10)
         )
         try:
             coll.find_one()
@@ -700,13 +700,13 @@ class TestMongosAndReadPreference(IntegrationTest):
 
         coll = (
             self.single_client(readPreference="secondaryPreferred", maxStalenessSeconds=120)
-        ).pymongo_test.test
+        ).pymongo_test.coll
         # No error
         coll.find_one()
 
         coll = (
             self.single_client(readPreference="secondaryPreferred", maxStalenessSeconds=10)
-        ).pymongo_test.test
+        ).pymongo_test.coll
         try:
             coll.find_one()
         except OperationFailure as exc:

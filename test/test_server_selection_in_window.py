@@ -117,7 +117,7 @@ class FinderTask(ConcurrentRunner):
 
 class TestProse(IntegrationTest):
     def frequencies(self, client, listener, n_finds=10):
-        coll = client.test.test
+        coll = client.db.coll
         N_TASKS = 10
         tasks = [FinderTask(coll, n_finds) for _ in range(N_TASKS)]
         for task in tasks:
@@ -170,7 +170,7 @@ class TestProse(IntegrationTest):
                 "appName": "loadBalancingTest",
             },
         }
-        coll = client.test.test
+        coll = client.db.coll
         N_TASKS = 10
         with self.fail_point(delay_finds):
             nodes = client_context.client.nodes

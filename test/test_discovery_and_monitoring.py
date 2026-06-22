@@ -484,13 +484,13 @@ class TestPoolBackpressure(IntegrationTest):
         self.addCleanup(teardown)
 
         # Make sure the collection has at least one document.
-        client.test.test.delete_many({})
-        client.test.test.insert_one({})
+        client.db.coll.delete_many({})
+        client.db.coll.insert_one({})
 
         # Run a slow operation to tie up the connection.
         def target():
             try:
-                client.test.test.find_one({"$where": delay(0.1)})
+                client.db.coll.find_one({"$where": delay(0.1)})
             except ConnectionFailure:
                 pass
 

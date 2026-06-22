@@ -243,17 +243,17 @@ class TestSession(IntegrationTest):
         # Retry up to 10 times because there is a known race condition that can cause multiple
         # sessions to be used: connection check in happens before session check in
         for _ in range(10):
-            cursor = client.db.test.find({})
+            cursor = client.db.coll.find({})
             ops: list[tuple[Callable, list[Any]]] = [
-                (client.db.test.find_one, [{"_id": 1}]),
-                (client.db.test.delete_one, [{}]),
-                (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),
-                (client.db.test.bulk_write, [[UpdateOne({}, {"$set": {"x": 2}})]]),
-                (client.db.test.find_one_and_delete, [{}]),
-                (client.db.test.find_one_and_update, [{}, {"$set": {"x": 1}}]),
-                (client.db.test.find_one_and_replace, [{}, {}]),
-                (client.db.test.aggregate, [[{"$limit": 1}]]),
-                (client.db.test.find, []),
+                (client.db.coll.find_one, [{"_id": 1}]),
+                (client.db.coll.delete_one, [{}]),
+                (client.db.coll.update_one, [{}, {"$set": {"x": 2}}]),
+                (client.db.coll.bulk_write, [[UpdateOne({}, {"$set": {"x": 2}})]]),
+                (client.db.coll.find_one_and_delete, [{}]),
+                (client.db.coll.find_one_and_update, [{}, {"$set": {"x": 1}}]),
+                (client.db.coll.find_one_and_replace, [{}, {}]),
+                (client.db.coll.aggregate, [[{"$limit": 1}]]),
+                (client.db.coll.find, []),
                 (client.server_info, []),
                 (client.db.aggregate, [[{"$listLocalSessions": {}}, {"$limit": 1}]]),
                 (cursor.distinct, ["_id"]),
@@ -1315,7 +1315,7 @@ class TestClusterTime(IntegrationTest):
             self.assertEqual(c1._topology.max_cluster_time(), cluster_time)
 
             # Advance the server's $clusterTime by performing an insert via another client.
-            self.db.test.insert_one({"advance": "$clusterTime"})
+            self.db.coll.insert_one({"advance": "$clusterTime"})
             # Wait until the client C1 processes the next pair of SDAM heartbeat started + succeeded events.
             heartbeat_listener.reset()
 

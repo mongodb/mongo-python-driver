@@ -108,7 +108,7 @@ class TestReadWriteConcernSpec(IntegrationTest):
             w=wc["w"], wTimeoutMS=wc["wtimeout"], socketTimeoutMS=30000
         )
         db = client.get_database("pymongo_test")
-        coll = db.test
+        coll = db.coll
 
         def insert_command():
             coll.database.command(
@@ -192,12 +192,12 @@ class TestReadWriteConcernSpec(IntegrationTest):
         with self.fail_point(cause_wce):
             # Write concern error on insert includes errInfo.
             with self.assertRaises(WriteConcernError) as ctx:
-                self.db.test.insert_one({})
+                self.db.coll.insert_one({})
             self.assertEqual(ctx.exception.details, expected_wce)
 
             # Test bulk_write as well.
             with self.assertRaises(BulkWriteError) as ctx:
-                self.db.test.bulk_write([InsertOne({})])
+                self.db.coll.bulk_write([InsertOne({})])
             expected_details = {
                 "writeErrors": [],
                 "writeConcernErrors": [expected_wce],
@@ -219,9 +219,9 @@ class TestReadWriteConcernSpec(IntegrationTest):
         db = client.errinfotest
         self.addCleanup(client.drop_database, "errinfotest")
         validator = {"x": {"$type": "string"}}
-        db.create_collection("test", validator=validator)
+        db.create_collection("coll", validator=validator)
         with self.assertRaises(WriteError) as ctx:
-            db.test.insert_one({"x": 1})
+            db.coll.insert_one({"x": 1})
         self.assertEqual(ctx.exception.code, 121)
         self.assertIsNotNone(ctx.exception.details)
         assert ctx.exception.details is not None

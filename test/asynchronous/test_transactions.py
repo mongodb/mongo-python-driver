@@ -106,7 +106,7 @@ class TestTransactions(AsyncTransactionsBase):
         """Test txn overrides Client/Database/Collection write_concern."""
         client = await self.async_rs_client(w=0)
         db = client.test
-        coll = db.test
+        coll = db.coll
         await coll.insert_one({})
         async with client.start_session() as s:
             async with await s.start_transaction(write_concern=WriteConcern(w=1)):
@@ -165,7 +165,7 @@ class TestTransactions(AsyncTransactionsBase):
             async_client_context.mongos_seeds(), localThresholdMS=1000
         )
         await async_wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
+        coll = client.db.coll
         # Create the collection.
         await coll.insert_one({})
         async with client.start_session() as s:
@@ -194,7 +194,7 @@ class TestTransactions(AsyncTransactionsBase):
             async_client_context.mongos_seeds(), localThresholdMS=1000
         )
         await async_wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
+        coll = client.db.coll
         # Create the collection.
         await coll.insert_one({})
         async with client.start_session() as s:
@@ -460,10 +460,10 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
         async with self.client.start_session() as s:
             self.assertEqual(await s.with_transaction(callback), "Foo")
 
-        await self.db.test.insert_one({})
+        await self.db.coll.insert_one({})
 
         async def callback2(session):
-            await self.db.test.insert_one({}, session=session)
+            await self.db.coll.insert_one({}, session=session)
             return "Foo"
 
         async with self.client.start_session() as s:
@@ -622,7 +622,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_in_transaction_property(self):
         client = async_client_context.client
-        coll = client.test.testcollection
+        coll = client.db.collcollection
         await coll.insert_one({})
         self.addAsyncCleanup(coll.drop)
 

@@ -488,13 +488,13 @@ class TestPoolBackpressure(AsyncIntegrationTest):
         self.addAsyncCleanup(teardown)
 
         # Make sure the collection has at least one document.
-        await client.test.test.delete_many({})
-        await client.test.test.insert_one({})
+        await client.db.coll.delete_many({})
+        await client.db.coll.insert_one({})
 
         # Run a slow operation to tie up the connection.
         async def target():
             try:
-                await client.test.test.find_one({"$where": delay(0.1)})
+                await client.db.coll.find_one({"$where": delay(0.1)})
             except ConnectionFailure:
                 pass
 

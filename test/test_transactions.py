@@ -106,7 +106,7 @@ class TestTransactions(TransactionsBase):
         """Test txn overrides Client/Database/Collection write_concern."""
         client = self.rs_client(w=0)
         db = client.test
-        coll = db.test
+        coll = db.coll
         coll.insert_one({})
         with client.start_session() as s:
             with s.start_transaction(write_concern=WriteConcern(w=1)):
@@ -159,7 +159,7 @@ class TestTransactions(TransactionsBase):
         # to avoid false positives.
         client = self.rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
+        coll = client.db.coll
         # Create the collection.
         coll.insert_one({})
         with client.start_session() as s:
@@ -186,7 +186,7 @@ class TestTransactions(TransactionsBase):
         # to avoid false positives.
         client = self.rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
+        coll = client.db.coll
         # Create the collection.
         coll.insert_one({})
         with client.start_session() as s:
@@ -452,10 +452,10 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         with self.client.start_session() as s:
             self.assertEqual(s.with_transaction(callback), "Foo")
 
-        self.db.test.insert_one({})
+        self.db.coll.insert_one({})
 
         def callback2(session):
-            self.db.test.insert_one({}, session=session)
+            self.db.coll.insert_one({}, session=session)
             return "Foo"
 
         with self.client.start_session() as s:
@@ -610,7 +610,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     @client_context.require_transactions
     def test_in_transaction_property(self):
         client = client_context.client
-        coll = client.test.testcollection
+        coll = client.db.collcollection
         coll.insert_one({})
         self.addCleanup(coll.drop)
 

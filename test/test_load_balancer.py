@@ -53,12 +53,12 @@ class TestLB(IntegrationTest):
     def test_connections_are_only_returned_once(self):
         pool = get_pool(self.client)
         n_conns = len(pool.conns)
-        self.db.test.find_one({})
+        self.db.coll.find_one({})
         # On PyPy it can take a few rounds to collect the cursor.
         for _ in range(3):
             gc.collect()
         self.assertEqual(len(pool.conns), n_conns)
-        (self.db.test.aggregate([{"$limit": 1}])).to_list()
+        (self.db.coll.aggregate([{"$limit": 1}])).to_list()
         # On PyPy it can take a few rounds to collect the cursor.
         for _ in range(3):
             gc.collect()

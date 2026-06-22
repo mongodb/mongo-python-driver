@@ -174,11 +174,12 @@ class TestCommon(AsyncIntegrationTest):
         self.assertFalse(direct != direct2)
 
     async def test_validate_boolean(self):
-        await self.db.test.update_one({}, {"$set": {"total": 1}}, upsert=True)
+        self.addAsyncCleanup(self.db.coll.drop)
+        await self.db.coll.update_one({}, {"$set": {"total": 1}}, upsert=True)
         with self.assertRaisesRegex(
             TypeError, "upsert must be True or False, was: upsert={'upsert': True}"
         ):
-            await self.db.test.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
+            await self.db.coll.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
 
 
 if __name__ == "__main__":

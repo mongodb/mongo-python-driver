@@ -214,9 +214,9 @@ class TestCursor(AsyncIntegrationTest):
             self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
 
         client = await self.async_rs_client(document_class=RawBSONDocument)
-        await client.db.t.insert_one({"x": 1})
+        await client.db.coll.insert_one({"x": 1})
         with self.assertRaises(OperationFailure) as error:
-            await client.db.t.find_one({"$where": delay(2)}, max_time_ms=1)
+            await client.db.coll.find_one({"$where": delay(2)}, max_time_ms=1)
 
         if isinstance(error.exception, ExecutionTimeout):
             self.assertIn("(configured timeouts: connectTimeoutMS: 20000.0ms", str(error.exception))
@@ -367,7 +367,7 @@ class TestCursor(AsyncIntegrationTest):
             )
 
     async def test_explain(self):
-        a = self.db.test.find()
+        a = self.db.coll.find()
         await a.explain()
         async for _ in a:
             break
@@ -378,7 +378,7 @@ class TestCursor(AsyncIntegrationTest):
         # Do not add readConcern level to explain.
         listener = AllowListEventListener("explain")
         client = await self.async_rs_or_single_client(event_listeners=[listener])
-        coll = client.pymongo_test.test.with_options(read_concern=ReadConcern(level="local"))
+        coll = client.pymongo_test.coll.with_options(read_concern=ReadConcern(level="local"))
         self.assertTrue(await coll.find().explain())
         started = listener.started_events
         self.assertEqual(len(started), 1)
