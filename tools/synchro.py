@@ -429,7 +429,7 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 
 def main() -> None:
     is_ci = bool(os.environ.get("CI"))
-    skip_ruff = bool(os.environ.get("SYNCHRO_SKIP_RUFF"))
+    skip_ruff = not is_ci and bool(os.environ.get("SYNCHRO_SKIP_RUFF"))
     modified_files = [f"./{f}" for f in sys.argv[1:]]
     errored = False
     for fname in async_files + gridfs_files + test_files:
