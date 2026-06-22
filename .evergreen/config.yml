@@ -48,6 +48,7 @@ tasks:
   - name: linkcheck
     commands:
       - command: subprocess.exec
+        type: test
         params:
           binary: bash
           args:
