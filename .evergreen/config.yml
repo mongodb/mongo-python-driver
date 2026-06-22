@@ -45,6 +45,17 @@ post:
   - func: "cleanup"
 
 tasks:
+  - name: linkcheck
+    commands:
+      - command: subprocess.exec
+        type: test
+        params:
+          binary: bash
+          args:
+            - .evergreen/just.sh
+            - docs-linkcheck
+          working_dir: src
+
   - name: resync_specs
     commands:
       - command: subprocess.exec
@@ -56,6 +67,14 @@ tasks:
           working_dir: src
 
 buildvariants:
+  - name: linkcheck
+    display_name: "Link Check"
+    run_on: rhel80-small
+    cron: '0 0 * * *'
+    patchable: true
+    tasks:
+      - name: linkcheck
+
   - name: resync_specs
     display_name: "Resync Specs"
     run_on: rhel80-small
