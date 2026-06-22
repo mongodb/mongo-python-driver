@@ -429,6 +429,7 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 
 def main() -> None:
     is_ci = bool(os.environ.get("CI"))
+    skip_ruff = bool(os.environ.get("SYNCHRO_SKIP_RUFF"))
     modified_files = [f"./{f}" for f in sys.argv[1:]]
     errored = False
     for fname in async_files + gridfs_files + test_files:
@@ -455,7 +456,7 @@ def main() -> None:
 
     # Check async source files for problems before generating sync output.
     async_sources = filtered_async + filtered_gridfs + filtered_tests
-    if async_sources:
+    if async_sources and not skip_ruff:
         subprocess.run(  # noqa: S603
             [sys.executable, "-m", "ruff", "check", *async_sources, *ruff_extra],
             check=True,
@@ -490,14 +491,15 @@ def main() -> None:
         for f in generated_files:
             print(f"  {f}")
 
-    subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "ruff", "check", *generated_files, "--fix", *ruff_extra],
-        check=is_ci,
-    )
-    subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "ruff", "format", *generated_files, *ruff_extra],
-        check=is_ci,
-    )
+    if not skip_ruff:
+        subprocess.run(  # noqa: S603
+            [sys.executable, "-m", "ruff", "check", *generated_files, "--fix", *ruff_extra],
+            check=is_ci,
+        )
+        subprocess.run(  # noqa: S603
+            [sys.executable, "-m", "ruff", "format", *generated_files, *ruff_extra],
+            check=is_ci,
+        )
 
     if is_ci and generated_files:
         result = subprocess.run(  # noqa: S603

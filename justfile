@@ -18,7 +18,7 @@ resync:
 
 [private]
 run-synchro:
-    uv run --group unasync ./tools/synchro.py
+    SYNCHRO_SKIP_RUFF=1 uv run --group unasync ./tools/synchro.py
 
 # Set up the development environment
 install:
