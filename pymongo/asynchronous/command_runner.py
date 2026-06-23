@@ -274,7 +274,6 @@ async def _run_command(
         raise
 
     duration = datetime.datetime.now() - start
-    published_reply: _DocumentOut
     published_reply = docs[0]
     if client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
         _debug_log(
