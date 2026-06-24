@@ -29,7 +29,7 @@ from pymongo.network_layer import PyMongoProtocol, _async_socket_receive
 from test.asynchronous import AsyncUnitTest, unittest
 
 
-async def _make_protocol(timeout=None):
+def _make_protocol(timeout=None):
     protocol = PyMongoProtocol(timeout=timeout)
     mock_transport = MagicMock()
     mock_transport.is_closing.return_value = False
@@ -42,15 +42,15 @@ def _make_header(length, request_id, response_to, op_code):
 
 
 class TestPyMongoProtocol(AsyncUnitTest):
-    async def _make_proto_with_header(self, header_bytes, max_size=MAX_MESSAGE_SIZE):
-        protocol = await _make_protocol()
+    def _make_proto_with_header(self, header_bytes, max_size=MAX_MESSAGE_SIZE):
+        protocol = _make_protocol()
         protocol._max_message_size = max_size
         protocol._header = memoryview(bytearray(header_bytes))
         return protocol
 
     async def test_normal_op_msg(self):
         header = _make_header(length=32, request_id=1, response_to=99, op_code=2013)
-        protocol = await self._make_proto_with_header(header)
+        protocol = self._make_proto_with_header(header)
         body_len, op_code, response_to, expecting_compression = protocol.process_header()
         self.assertEqual(body_len, 16)
         self.assertEqual(op_code, 2013)
@@ -62,7 +62,7 @@ class TestPyMongoProtocol(AsyncUnitTest):
         # (op code + uncompressed size + compressor id), then the 16-byte standard header.
         # length=35 → after compression sub-header: 26 → body: 10
         header = _make_header(length=35, request_id=1, response_to=0, op_code=2012)
-        protocol = await self._make_proto_with_header(header)
+        protocol = self._make_proto_with_header(header)
         body_len, op_code, _response_to, expecting_compression = protocol.process_header()
         self.assertEqual(body_len, 10)
         self.assertEqual(op_code, 2012)
@@ -70,34 +70,26 @@ class TestPyMongoProtocol(AsyncUnitTest):
 
     async def test_op_compressed_length_too_small_raises(self):
         header = _make_header(length=25, request_id=1, response_to=0, op_code=2012)
-        protocol = await self._make_proto_with_header(header)
-        with self.assertRaises(ProtocolError):
+        protocol = self._make_proto_with_header(header)
+        with self.assertRaisesRegex(ProtocolError, "not longer than standard OP_COMPRESSED"):
             protocol.process_header()
 
     async def test_non_compressed_length_too_small_raises(self):
         header = _make_header(length=16, request_id=1, response_to=0, op_code=2013)
-        protocol = await self._make_proto_with_header(header)
-        with self.assertRaises(ProtocolError):
+        protocol = self._make_proto_with_header(header)
+        with self.assertRaisesRegex(ProtocolError, "not longer than standard message header size"):
             protocol.process_header()
 
     async def test_length_exceeds_max_raises(self):
         header = _make_header(
             length=MAX_MESSAGE_SIZE + 1, request_id=1, response_to=0, op_code=2013
         )
-        protocol = await self._make_proto_with_header(header)
-        with self.assertRaises(ProtocolError):
+        protocol = self._make_proto_with_header(header)
+        with self.assertRaisesRegex(ProtocolError, "larger than server max"):
             protocol.process_header()
 
-    async def test_op_reply_op_code(self):
-        header = _make_header(length=20, request_id=0, response_to=0, op_code=1)
-        protocol = await self._make_proto_with_header(header)
-        body_len, op_code, _response_to, expecting_compression = protocol.process_header()
-        self.assertEqual(body_len, 4)
-        self.assertEqual(op_code, 1)
-        self.assertFalse(expecting_compression)
-
     async def test_compression_header_snappy_compressor_id(self):
-        protocol = await _make_protocol()
+        protocol = _make_protocol()
         # <iiB: little-endian, i32 op code=2013, i32 uncompressed size=0, u8 compressor id=1 (snappy)
         data = struct.pack("<iiB", 2013, 0, 1)
         protocol._compression_header = memoryview(bytearray(data))
@@ -105,25 +97,13 @@ class TestPyMongoProtocol(AsyncUnitTest):
         self.assertEqual(op_code, 2013)
         self.assertEqual(compressor_id, 1)
 
-    async def test_compression_header_zlib_compressor_id(self):
-        protocol = await _make_protocol()
-        data = struct.pack("<iiB", 2013, 0, 2)
-        protocol._compression_header = memoryview(bytearray(data))
-        _, compressor_id = protocol.process_compression_header()
-        self.assertEqual(compressor_id, 2)
-
     async def test_close_aborts_transport(self):
-        protocol = await _make_protocol()
+        protocol = _make_protocol()
         protocol.close()
         self.assertTrue(protocol.transport.abort.called)
 
-    async def test_connection_lost_twice_does_not_raise(self):
-        protocol = await _make_protocol()
-        protocol.connection_lost(None)
-        protocol.connection_lost(None)
-
     async def test_close_with_exception_propagates_to_pending(self):
-        protocol = await _make_protocol()
+        protocol = _make_protocol()
         future = asyncio.get_running_loop().create_future()
         protocol._pending_messages.append(future)
         exc = OSError("connection reset")

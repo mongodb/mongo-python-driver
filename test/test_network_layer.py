@@ -62,7 +62,7 @@ class TestReceiveMessage(UnitTest):
         self._patch_receive_data(
             _make_header(length=32, request_id=0, response_to=99, op_code=2013)
         )
-        with self.assertRaises(ProtocolError):
+        with self.assertRaisesRegex(ProtocolError, "Got response id"):
             network_layer.receive_message(_make_conn(), request_id=1)
 
     def test_length_too_small_raises(self):
