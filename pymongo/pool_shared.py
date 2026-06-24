@@ -30,7 +30,6 @@ from typing import (
     Union,
 )
 
-from bson.objectid import ObjectId
 from pymongo import _csot
 from pymongo.asynchronous.helpers import _getaddrinfo
 from pymongo.errors import (  # type:ignore[attr-defined]
@@ -46,6 +45,7 @@ from pymongo.ssl_support import PYSSLError, SSLError, _has_sni
 
 SSLErrors = (PYSSLError, SSLError)
 if TYPE_CHECKING:
+    from bson.objectid import ObjectId
     from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
 
