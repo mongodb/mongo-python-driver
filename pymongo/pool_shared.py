@@ -26,9 +26,11 @@ from typing import (
     Any,
     NoReturn,
     Optional,
+    Protocol,
     Union,
 )
 
+from bson.objectid import ObjectId
 from pymongo import _csot
 from pymongo.asynchronous.helpers import _getaddrinfo
 from pymongo.errors import (  # type:ignore[attr-defined]
@@ -46,6 +48,15 @@ SSLErrors = (PYSSLError, SSLError)
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
+
+
+class _ConnectionTelemetryInfo(Protocol):
+    """Protocol for connection fields consumed by :class:`~pymongo._telemetry._CommandTelemetry`."""
+
+    id: int
+    server_connection_id: Optional[int]
+    address: tuple[str, int]
+    service_id: Optional[ObjectId]
 
 
 def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:
