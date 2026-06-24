@@ -23,7 +23,6 @@ jobs:
     runs-on: "ubuntu-latest"
     timeout-minutes: 360
     permissions:
-      # required for all workflows
       security-events: write
 
     strategy:
@@ -36,33 +35,15 @@ jobs:
           build-mode: none
         - language: actions
           build-mode: none
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v6.0.3
-      with:
-        ref: ${{ inputs.ref }}
-        persist-credentials: false
-    - uses: actions/setup-python@v6
 
-    # Initializes the CodeQL tools for scanning.
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+    steps:
+    - uses: mongodb-labs/drivers-github-tools/codeql@6916a008ec612b4575d8f630c6745e776207e30a # PYTHON-5877
       with:
-        languages: ${{ matrix.language }}
+        language: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
-        # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
-        queries: security-extended
+        ref: ${{ inputs.ref }}
         config: |
           paths-ignore:
             - 'doc/**'
             - 'tools/**'
             - 'test/**'
-
-    - if: matrix.build-mode == 'manual'
-      run: |
-        pip install -e .
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
-      with:
-        category: "/language:${{matrix.language}}"
