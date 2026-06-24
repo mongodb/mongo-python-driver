@@ -85,8 +85,8 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.client_session import _validate_session_write_concern
+from pymongo.synchronous.command_runner import run_command
 from pymongo.synchronous.helpers import _handle_reauth
-from pymongo.synchronous.network import command
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -390,15 +390,15 @@ class Connection:
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
-        self._raise_if_not_writable(unacknowledged)
+        if unacknowledged:
+            self._raise_if_not_writable()
         try:
             if session is not None and session._starting_transaction:
                 session._transaction.set_in_progress()
-            return command(
+            return run_command(
                 self,
                 dbname,
                 spec,
-                self.is_mongos,
                 read_preference,
                 codec_options,  # type: ignore[arg-type]
                 session,
@@ -451,42 +451,10 @@ class Connection:
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def _raise_if_not_writable(self, unacknowledged: bool) -> None:
-        """Raise NotPrimaryError on unacknowledged write if this socket is not
-        writable.
-        """
-        if unacknowledged and not self.is_writable:
-            # Write won't succeed, bail as if we'd received a not primary error.
+    def _raise_if_not_writable(self) -> None:
+        """Raise NotPrimaryError if this connection is not writable."""
+        if not self.is_writable:
             raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
-
-    def unack_write(self, msg: bytes, max_doc_size: int) -> None:
-        """Send unack OP_MSG.
-
-        Can raise ConnectionFailure or InvalidDocument.
-
-        :param msg: bytes, an OP_MSG message.
-        :param max_doc_size: size in bytes of the largest document in `msg`.
-        """
-        self._raise_if_not_writable(True)
-        self.send_message(msg, max_doc_size)
-
-    def write_command(
-        self, request_id: int, msg: bytes, codec_options: CodecOptions[Mapping[str, Any]]
-    ) -> dict[str, Any]:
-        """Send "insert" etc. command, returning response as a dict.
-
-        Can raise ConnectionFailure or OperationFailure.
-
-        :param request_id: an int.
-        :param msg: bytes, the command message.
-        """
-        self.send_message(msg, 0)
-        reply = self.receive_message(request_id)
-        result = reply.command_response(codec_options)
-
-        # Raises NotPrimaryError or OperationFailure.
-        helpers_shared._check_command_response(result, self.max_wire_version)
-        return result
 
     def authenticate(self, reauthenticate: bool = False) -> None:
         """Authenticate to the server if needed.

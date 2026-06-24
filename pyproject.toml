@@ -48,6 +48,13 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [dependency-groups]
 dev = []
+lint = [
+    "ruff==0.15.16",
+]
+unasync = [
+    {include-group = "lint"},
+    "unasync",
+]
 pip = ["pip>=20.2"]
 gevent = ["gevent>=21.12"]
 coverage = [
@@ -142,6 +149,10 @@ disable_error_code = ["no-any-return"]
 disallow_any_generics = true
 
 [[tool.mypy.overrides]]
+module = ["synchro"]
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
 module = ["test.*"]
 disable_error_code = ["type-arg", "no-untyped-def", "no-untyped-call"]
 
@@ -234,6 +245,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
     "RET", "ARG", "F405", "B028", "PGH001", "B018", "F403", "RUF015", "E731", "B007",
     "UP031", "F401", "B023", "F811"]
 "tools/*.py" = ["T201"]
+"tools/test_*.py" = ["E402", "S"]
 "hatch_build.py" = ["S"]
 "_setup.py" = ["SIM112"]
 
