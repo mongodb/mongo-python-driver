@@ -378,7 +378,6 @@ def run_command(
     :param write_concern: The write concern for this command. Applied via CSOT.
     """
     name = next(iter(spec))
-    speculative_hello = False
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
@@ -391,8 +390,7 @@ def run_command(
         spec["collation"] = collation
 
     topology_id = client._topology_settings._topology_id if client is not None else None
-    if listeners is not None and listeners.enabled_for_commands:
-        speculative_hello = _is_speculative_authenticate(name, spec)
+    speculative_hello = _is_speculative_authenticate(name, spec)
 
     if compression_ctx and name.lower() in _NO_COMPRESSION:
         compression_ctx = None
