@@ -308,7 +308,6 @@ class TestTransactions(TransactionsBase):
                     op(*args, session=s)  # type: ignore
 
     # Require 4.2+ for large (16MB+) transactions.
-    @client_context.require_version_min(4, 2)
     @client_context.require_transactions
     @unittest.skipIf(sys.platform == "win32", "Our Windows machines are too slow to pass this test")
     def test_transaction_starts_with_batched_write(self):

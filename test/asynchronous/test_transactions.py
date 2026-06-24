@@ -316,7 +316,6 @@ class TestTransactions(AsyncTransactionsBase):
                     await op(*args, session=s)  # type: ignore
 
     # Require 4.2+ for large (16MB+) transactions.
-    @async_client_context.require_version_min(4, 2)
     @async_client_context.require_transactions
     @unittest.skipIf(sys.platform == "win32", "Our Windows machines are too slow to pass this test")
     async def test_transaction_starts_with_batched_write(self):

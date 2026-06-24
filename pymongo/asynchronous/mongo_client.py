@@ -1804,14 +1804,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 ):
                     session._pin(server, conn)
                 err_handler.contribute_socket(conn)
-                if (
-                    self._encrypter
-                    and not self._encrypter._bypass_auto_encryption
-                    and conn.max_wire_version < 8
-                ):
-                    raise ConfigurationError(
-                        "Auto-encryption requires a minimum MongoDB version of 4.2"
-                    )
                 yield conn
 
     async def _select_server(
