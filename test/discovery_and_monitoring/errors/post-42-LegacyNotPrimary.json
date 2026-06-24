@@ -16,7 +16,7 @@
             ],
             "setName": "rs",
             "minWireVersion": 0,
-            "maxWireVersion": 8
+            "maxWireVersion": 9
           }
         ]
       ],
@@ -42,7 +42,7 @@
         {
           "address": "a:27017",
           "when": "afterHandshakeCompletes",
-          "maxWireVersion": 8,
+          "maxWireVersion": 9,
           "type": "command",
           "response": {
             "ok": 0,
