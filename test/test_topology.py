@@ -581,7 +581,7 @@ class TestMultiServerTopology(TopologyTest):
         )
 
         self.assertEqual(server.description.min_wire_version, 1)
-        self.assertEqual(server.description.max_wire_version, common.MIN_SUPPORTED_WIRE_VERSION)
+        self.assertEqual(server.description.max_wire_version, 8)
         t.select_servers(any_server_selector, _Op.TEST)
 
         # Incompatible.
