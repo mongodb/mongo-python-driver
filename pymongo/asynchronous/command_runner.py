@@ -245,7 +245,7 @@ async def run_bulk_write_command(
     :param max_doc_size: The largest document size in the batch, passed to ``conn.send_message``.
     :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
     """
-    topology_id = client._topology_settings._topology_id if client is not None else None
+    topology_id = client._topology_id if client is not None else None
     return await _run_command(
         bwc.conn,  # type: ignore[arg-type]
         cmd,
@@ -305,7 +305,7 @@ async def run_cursor_command(
         reply's own ``unpack_response`` is used.
     :param cursor_id: The cursor id passed to ``unpack_res``.
     """
-    topology_id = client._topology_settings._topology_id if client is not None else None
+    topology_id = client._topology_id if client is not None else None
     return await _run_command(
         conn,
         cmd,
@@ -389,7 +389,7 @@ async def run_command(
     if collation is not None:
         spec["collation"] = collation
 
-    topology_id = client._topology_settings._topology_id if client is not None else None
+    topology_id = client._topology_id if client is not None else None
     speculative_hello = _is_speculative_authenticate(name, spec)
 
     if compression_ctx and name.lower() in _NO_COMPRESSION:

@@ -1250,6 +1250,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology.description
 
     @property
+    def _topology_id(self) -> Optional[ObjectId]:
+        return self._topology_settings._topology_id
+
+    @property
     def nodes(self) -> frozenset[_Address]:
         """Set of all currently connected servers.
 
@@ -3003,7 +3007,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     _debug_log(
                         _COMMAND_LOGGER,
                         message=f"Retrying write attempt number {self._attempt_number}",
-                        clientId=self._client._topology_settings._topology_id,
+                        clientId=self._client._topology_id,
                         commandName=self._operation,
                         operationId=self._operation_id,
                     )
