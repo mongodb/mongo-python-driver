@@ -2706,26 +2706,40 @@ class _ClientCheckout:
             self.contribute_socket(session._pinned_connection)
             return session._pinned_connection
         pool_checkout = _PoolCheckout(server.pool, self)
-        conn = pool_checkout.__enter__()
+        try:
+            conn = pool_checkout.__enter__()
+        except BaseException as exc:
+            # __aenter__ raised — pool already cleaned up internally.
+            # Run SDAM error handling so the topology learns about the failure.
+            self.handle(type(exc), exc)
+            raise
         self._pool_checkout = pool_checkout
-        # Pin this session to the selected server or connection.
-        if (
-            in_txn
-            and session
-            and server.description.server_type
-            in (
-                SERVER_TYPE.Mongos,
-                SERVER_TYPE.LoadBalancer,
-            )
-        ):
-            session._pin(server, conn)
-        self.contribute_socket(conn)
-        if (
-            self.client._encrypter
-            and not self.client._encrypter._bypass_auto_encryption
-            and conn.max_wire_version < 8
-        ):
-            raise ConfigurationError("Auto-encryption requires a minimum MongoDB version of 4.2")
+        try:
+            # Pin this session to the selected server or connection.
+            if (
+                in_txn
+                and session
+                and server.description.server_type
+                in (
+                    SERVER_TYPE.Mongos,
+                    SERVER_TYPE.LoadBalancer,
+                )
+            ):
+                session._pin(server, conn)
+            self.contribute_socket(conn)
+            if (
+                self.client._encrypter
+                and not self.client._encrypter._bypass_auto_encryption
+                and conn.max_wire_version < 8
+            ):
+                raise ConfigurationError(
+                    "Auto-encryption requires a minimum MongoDB version of 4.2"
+                )
+        except BaseException as exc:
+            self.handle(type(exc), exc)
+            pool_checkout.__exit__(type(exc), exc, None)
+            self._pool_checkout = None
+            raise
         return conn
 
     def __exit__(
