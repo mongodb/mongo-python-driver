@@ -797,19 +797,21 @@ class TestClient(IntegrationTest):
         # Verify that the connection is returned to the pool when an exception
         # is raised during _ClientCheckout.__aenter__ post-checkout setup
         # (e.g. session pinning or the auto-encryption wire-version check).
-        from unittest.mock import patch
-
+        # Use a subclass to override contribute_socket because __slots__ prevents
+        # instance-level patching of methods.
         from pymongo.synchronous.mongo_client import _ClientCheckout
+
+        class _BrokenSetupCheckout(_ClientCheckout):
+            def contribute_socket(self, conn, completed_handshake=True):
+                raise RuntimeError("simulated failure in post-checkout setup")
 
         client = self.rs_or_single_client()
         server = (client._get_topology()).select_server(writable_server_selector, _Op.TEST)
         pool = server.pool
 
-        checkout = _ClientCheckout(client, server, None)
-        with patch.object(checkout, "contribute_socket", side_effect=RuntimeError("simulated")):
-            with self.assertRaises(RuntimeError):
-                with checkout:
-                    pass
+        with self.assertRaises(RuntimeError):
+            with _BrokenSetupCheckout(client, server, None):
+                pass
 
         # Connection was returned to pool, not leaked.
         self.assertEqual(0, pool.active_sockets)
