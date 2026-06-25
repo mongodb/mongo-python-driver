@@ -294,14 +294,11 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
         # 6. Assert that the total number of started commands is max_retries + 1.
         self.assertEqual(len(self.listener.started_events), max_retries + 1)
 
-    @patch("random.uniform")
     @patch("random.random")
     @async_client_context.require_version_min(9, 0, 0, -1)
     @async_client_context.require_failCommand_appName
-    async def test_05_overload_errors_with_retryafterms_override_backoff(
-        self, random_func, uniform_func
-    ):
-        # Drivers should test that overload errors with `retryAfterMS` override the default exponential backoff policy.
+    async def test_05_overload_errors_with_retryafterms_override_backoff(self, random_func):
+        # Drivers should test that overload errors with `retryAfterMS` override the default backoff duration.
 
         # 1. Let `client` be a `MongoClient`.
         client = self.client
@@ -332,24 +329,21 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
             end0 = perf_counter()
             exponential_backoff_time = end0 - start0
 
-            # 6. Configure the random number generator used for `retryAfterMS` jitter to always return `0`.
-            uniform_func.return_value = 0
-
-            # 7. Run the following command to set up `retryAfterMS` on overload errors.
+            # 6. Run the following command to set up `retryAfterMS` on overload errors.
             try:
                 await client.admin.command("setParameter", 1, overloadRetryAfterMS=50)
 
-                # 8. Execute step 5 again.
+                # 7. Execute step 5 again.
                 start1 = perf_counter()
                 with self.assertRaises(OperationFailure):
                     await coll.insert_one({"a": 1})
                 end1 = perf_counter()
                 with_retry_after_ms_time = end1 - start1
             finally:
-                # 9. Run the following command to disable `retryAfterMS` on overload errors.
+                # 8. Run the following command to disable `retryAfterMS` on overload errors.
                 await client.admin.command("setParameter", 1, overloadRetryAfterMS=0)
 
-        # 10. Compare the time between the two runs.
+        # 9. Compare the time between the two runs.
         # The difference in the backoffs is 0.2 seconds. There is a 0.2-second window to account for potential variance
         # between the two runs.
         self.assertTrue(abs(exponential_backoff_time - (with_retry_after_ms_time + 0.2)) < 0.2)

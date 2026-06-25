@@ -84,18 +84,11 @@ _BACKOFF_MAX = 10
 
 def _backoff(
     attempt: int,
-    initial_delay: float = _BACKOFF_INITIAL,
+    base_backoff: float,
     max_delay: float = _BACKOFF_MAX,
-    retry_after_backoff: Optional[float] = None,
 ) -> float:
-    if retry_after_backoff:
-        # Jitter of up to +/- 50% of backoff
-        jitter = random.uniform(-1, 1) * 0.5  # noqa: S311
-
-        return (jitter * retry_after_backoff) + retry_after_backoff
-    else:
-        jitter = random.random()  # noqa: S311
-        return jitter * min(initial_delay * (2**attempt), max_delay)
+    jitter = random.random()  # noqa: S311
+    return jitter * min(base_backoff * (2**attempt), max_delay)
 
 
 class _RetryPolicy:
@@ -111,10 +104,12 @@ class _RetryPolicy:
         self.backoff_initial = backoff_initial
         self.backoff_max = backoff_max
 
-    def backoff(self, attempt: int, retry_after_backoff: Optional[float] = None) -> float:
+    def backoff(self, attempt: int, base_backoff: Optional[float] = None) -> float:
         """Return the actual backoff duration for the given suggested backoff duration."""
         return _backoff(
-            max(0, attempt - 1), self.backoff_initial, self.backoff_max, retry_after_backoff
+            max(0, attempt - 1),
+            _BACKOFF_INITIAL if base_backoff is None else base_backoff,
+            self.backoff_max,
         )
 
     async def should_retry(self, attempt: int, delay: float) -> bool:
