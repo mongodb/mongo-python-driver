@@ -21,37 +21,27 @@ from contextlib import AbstractAsyncContextManager
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Optional,
-    Union,
 )
 
-from pymongo.asynchronous.command_runner import run_cursor_command
-from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.logger import (
     _SDAM_LOGGER,
     _debug_log,
     _SDAMStatusMessage,
 )
-from pymongo.message import _GetMore, _OpMsg, _Query
-from pymongo.response import PinnedResponse, Response
 
 if TYPE_CHECKING:
     from queue import Queue
     from weakref import ReferenceType
 
     from bson.objectid import ObjectId
-    from pymongo.asynchronous.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
+    from pymongo.asynchronous.mongo_client import _MongoClientErrorHandler
     from pymongo.asynchronous.monitor import Monitor
     from pymongo.asynchronous.pool import AsyncConnection, Pool
     from pymongo.monitoring import _EventListeners
-    from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
-    from pymongo.typings import _DocumentOut
 
 _IS_SYNC = False
-
-_CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
 class Server:
@@ -240,20 +230,6 @@ class Server:
     @property
     def pool(self) -> Pool:
         return self._pool
-
-    def _split_message(
-        self, message: Union[tuple[int, Any], tuple[int, Any, int]]
-    ) -> tuple[int, Any, int]:
-        """Return request_id, data, max_doc_size.
-
-        :param message: (request_id, data, max_doc_size) or (request_id, data)
-        """
-        if len(message) == 3:
-            return message  # type: ignore[return-value]
-        else:
-            # get_more and kill_cursors messages don't include BSON documents.
-            request_id, data = message  # type: ignore[misc]
-            return request_id, data, 0
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self._description!r}>"
