@@ -16,19 +16,56 @@
 
 from __future__ import annotations
 
+import datetime
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Optional
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pymongo import _csot
+from pymongo.asynchronous.command_runner import run_cursor_command
+from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.cursor_shared import _AgnosticCursorBase
 from pymongo.lock import _async_create_lock
-from pymongo.typings import _DocumentType
+from pymongo.message import _GetMore, _OpMsg, _Query
+from pymongo.response import PinnedResponse, Response
+from pymongo.typings import _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.read_preferences import _ServerMode
 
 _IS_SYNC = False
+
+_CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
+
+
+def _split_message(
+    message: Union[tuple[int, Any], tuple[int, Any, int]],
+) -> tuple[int, Any, int]:
+    """Return request_id, data, max_doc_size.
+
+    :param message: (request_id, data, max_doc_size) or (request_id, data)
+    """
+    if len(message) == 3:
+        return message  # type: ignore[return-value]
+    # get_more and kill_cursors messages don't include BSON documents.
+    request_id, data = message  # type: ignore[misc]
+    return request_id, data, 0
+
+
+async def _operation_to_command(
+    operation: Union[_Query, _GetMore],
+    conn: AsyncConnection,
+    use_cmd: bool,
+) -> tuple[dict[str, Any], str]:
+    cmd, db = operation.as_command(conn, use_cmd)
+    if operation.client._encrypter and not operation.client._encrypter._bypass_auto_encryption:
+        cmd = await operation.client._encrypter.encrypt(  # type: ignore[misc, assignment]
+            operation.db, cmd, operation.codec_options
+        )
+    operation.update_command(cmd)
+    return cmd, db
 
 
 class _ConnectionManager:
@@ -65,6 +102,84 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
     @abstractmethod
     async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]
         ...
+
+    @abstractmethod
+    def _unpack_response(
+        self,
+        response: _OpMsg,
+        cursor_id: Optional[int],
+        codec_options: Any,
+        user_fields: Optional[Mapping[str, Any]] = None,
+        legacy_response: bool = False,
+    ) -> Sequence[_DocumentOut]: ...
+
+    @_handle_reauth
+    async def _run_with_conn(
+        self,
+        conn: AsyncConnection,
+        operation: Union[_Query, _GetMore],
+        read_preference: _ServerMode,
+    ) -> Response:
+        """Execute a cursor operation on the given connection and return a Response."""
+        client = self._collection.database.client
+        use_cmd = operation.use_command(conn)
+        more_to_come = bool(operation.conn_mgr and operation.conn_mgr.more_to_come)
+        cmd, dbn = await _operation_to_command(operation, conn, use_cmd)
+        if more_to_come:
+            request_id, data, max_doc_size = 0, b"", 0
+        else:
+            message = operation.get_message(read_preference, conn, use_cmd)
+            request_id, data, max_doc_size = _split_message(message)
+        user_fields = _CURSOR_DOC_FIELDS if use_cmd else None
+        docs, reply, duration = await run_cursor_command(
+            conn,
+            cmd,
+            dbn,
+            request_id,
+            data,
+            client=client,
+            session=operation.session,  # type: ignore[arg-type]
+            listeners=client._event_listeners,
+            address=conn.address,
+            start=datetime.datetime.now(),
+            codec_options=operation.codec_options,
+            user_fields=user_fields,
+            command_name=operation.name,
+            pool_opts=conn.opts,
+            max_doc_size=max_doc_size,
+            more_to_come=more_to_come,
+            unpack_res=self._unpack_response,
+            cursor_id=operation.cursor_id,
+        )
+        assert reply is not None
+        if client._should_pin_cursor(operation.session) or operation.exhaust:  # type: ignore[arg-type]
+            conn.pin_cursor()
+            if isinstance(reply, _OpMsg):
+                # In OP_MSG, the server keeps sending only if the more_to_come flag is set.
+                more_to_come = reply.more_to_come
+            else:
+                # In OP_REPLY, the server keeps sending until cursor_id is 0.
+                more_to_come = bool(operation.exhaust and reply.cursor_id)
+            if operation.conn_mgr:
+                operation.conn_mgr.update_exhaust(more_to_come)
+            return PinnedResponse(
+                data=reply,
+                address=conn.address,
+                conn=conn,
+                duration=duration,
+                request_id=request_id,
+                from_command=use_cmd,
+                docs=docs,  # type: ignore[arg-type]
+                more_to_come=more_to_come,
+            )
+        return Response(
+            data=reply,
+            address=conn.address,
+            duration=duration,
+            request_id=request_id,
+            from_command=use_cmd,
+            docs=docs,  # type: ignore[arg-type]
+        )
 
     async def _die_lock(self) -> None:
         """Closes this cursor."""
