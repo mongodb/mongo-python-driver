@@ -259,7 +259,7 @@ def handle_test_env() -> None:
             krb_conf.touch()
             write_env("KRB5_CONFIG", krb_conf)
             LOGGER.info("Writing keytab")
-            keytab = base64.b64decode(config["KEYTAB_BASE64"])
+            keytab = base64.b64decode(config["KEYTAB_BASE64_BUILD"])
             keytab_file = ROOT / ".evergreen/drivers.keytab"
             with keytab_file.open("wb") as fid:
                 fid.write(keytab)
