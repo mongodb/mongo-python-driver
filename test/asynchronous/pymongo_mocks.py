@@ -43,7 +43,7 @@ class MockPool(Pool):
         Pool.__init__(self, (client_context.host, client_context.port), *args, **kwargs)
 
     @contextlib.asynccontextmanager
-    async def checkout(self, handler=None):
+    async def checkout(self, handler=None):  # type: ignore[override]
         client = self.client
         host_and_port = f"{self.mock_host}:{self.mock_port}"
         if host_and_port in client.mock_down_hosts:

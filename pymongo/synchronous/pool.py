@@ -16,15 +16,13 @@ from __future__ import annotations
 
 import asyncio
 import collections
-import contextlib
 import logging
 import os
 import socket
 import ssl
-import sys
 import time
 import weakref
-from collections.abc import Generator, Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -89,6 +87,8 @@ from pymongo.synchronous.command_runner import run_command
 from pymongo.synchronous.helpers import _handle_reauth
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from bson import CodecOptions
     from bson.objectid import ObjectId
     from pymongo.compression_support import (
@@ -101,7 +101,7 @@ if TYPE_CHECKING:
     from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.auth import _AuthContext
     from pymongo.synchronous.client_session import ClientSession
-    from pymongo.synchronous.mongo_client import MongoClient, _MongoClientErrorHandler
+    from pymongo.synchronous.mongo_client import MongoClient, _ClientCheckout
     from pymongo.typings import _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
@@ -743,7 +743,7 @@ class Pool:
         # Retain references to pinned connections to prevent the CPython GC
         # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
-        self.__pinned_sockets: set[Connection] = set()
+        self._pinned_sockets: set[Connection] = set()
         self.ncursors = 0
         self.ntxns = 0
 
@@ -977,7 +977,7 @@ class Pool:
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
 
-    def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
+    def connect(self, handler: Optional[_ClientCheckout] = None) -> Connection:
         """Connect to Mongo and return a new Connection.
 
         Can raise ConnectionFailure.
@@ -1073,84 +1073,23 @@ class Pool:
 
         return conn
 
-    @contextlib.contextmanager
-    def checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> Generator[Connection, None]:
-        """Get a connection from the pool. Use with a "with" statement.
+    def checkout(self, handler: Optional[_ClientCheckout] = None) -> _PoolCheckout:
+        """Get a connection from the pool. Use with an "with" statement.
 
-        Returns a :class:`Connection` object wrapping a connected
-        :class:`socket.socket`.
+        Returns a :class:`_PoolCheckout` context manager that yields a
+        :class:`Connection` object wrapping a connected socket.
 
-        This method should always be used in a with-statement::
+        This method should always be used in an async-with-statement::
 
-            with pool.get_conn() as connection:
+            with pool.checkout() as connection:
                 connection.send_message(msg)
                 data = connection.receive_message(op_code, request_id)
 
         Can raise ConnectionFailure or OperationFailure.
 
-        :param handler: A _MongoClientErrorHandler.
+        :param handler: A _ClientCheckout error handler.
         """
-        listeners = self.opts._event_listeners
-        checkout_started_time = time.monotonic()
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_check_out_started(self.address)
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.CHECKOUT_STARTED,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-            )
-
-        conn = self._get_conn(checkout_started_time, handler=handler)
-
-        duration = time.monotonic() - checkout_started_time
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_checked_out(self.address, conn.id, duration)
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-                driverConnectionId=conn.id,
-                durationMS=duration,
-            )
-        try:
-            with self.lock:
-                self.active_contexts.add(conn.cancel_context)
-            yield conn
-        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException:
-            # Exception in caller. Ensure the connection gets returned.
-            # Note that when pinned is True, the session owns the
-            # connection and it is responsible for checking the connection
-            # back into the pool.
-            pinned = conn.pinned_txn or conn.pinned_cursor
-            if handler:
-                # Perform SDAM error handling rules while the connection is
-                # still checked out.
-                exc_type, exc_val, _ = sys.exc_info()
-                handler.handle(exc_type, exc_val)
-            if not pinned and conn.active:
-                self.checkin(conn)
-            raise
-        if conn.pinned_txn:
-            with self.lock:
-                self.__pinned_sockets.add(conn)
-                self.ntxns += 1
-        elif conn.pinned_cursor:
-            with self.lock:
-                self.__pinned_sockets.add(conn)
-                self.ncursors += 1
-        elif conn.active:
-            self.checkin(conn)
+        return _PoolCheckout(self, handler)
 
     def _raise_if_not_ready(self, checkout_started_time: float, emit_event: bool) -> None:
         if self.state != PoolState.READY:
@@ -1179,7 +1118,7 @@ class Pool:
             )
 
     def _get_conn(
-        self, checkout_started_time: float, handler: Optional[_MongoClientErrorHandler] = None
+        self, checkout_started_time: float, handler: Optional[_ClientCheckout] = None
     ) -> Connection:
         """Get or create a Connection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
@@ -1238,6 +1177,7 @@ class Pool:
         conn = None
         incremented = False
         emitted_event = False
+        is_new_conn = False
         try:
             with self.lock:
                 self.active_sockets += 1
@@ -1269,6 +1209,7 @@ class Pool:
                 else:  # We need to create a new connection
                     try:
                         conn = self.connect(handler=handler)
+                        is_new_conn = True
                     finally:
                         with self._max_connecting_cond:
                             self._pending -= 1
@@ -1305,6 +1246,11 @@ class Pool:
             raise
 
         conn.active = True
+        # connect() already adds cancel_context for new connections; only add
+        # here for reused connections taken from the idle pool.
+        if not is_new_conn:
+            with self.lock:
+                self.active_contexts.add(conn.cancel_context)
         return conn
 
     def checkin(self, conn: Connection) -> None:
@@ -1317,7 +1263,7 @@ class Pool:
         conn.active = False
         conn.pinned_txn = False
         conn.pinned_cursor = False
-        self.__pinned_sockets.discard(conn)
+        self._pinned_sockets.discard(conn)
         listeners = self.opts._event_listeners
         with self.lock:
             self.active_contexts.discard(conn.cancel_context)
@@ -1459,3 +1405,91 @@ class Pool:
         if _IS_SYNC:
             for conn in self.conns:
                 conn.close_conn(None)  # type: ignore[unused-coroutine]
+
+
+class _PoolCheckout:
+    """Class-based context manager for pool connection checkout."""
+
+    __slots__ = ("_checkout_started_time", "_conn", "_handler", "_pool")
+
+    def __init__(
+        self,
+        pool: Pool,
+        handler: Optional[_ClientCheckout] = None,
+    ) -> None:
+        self._pool = pool
+        self._handler = handler
+        self._conn: Optional[Connection] = None
+        self._checkout_started_time: float = 0.0
+
+    def __enter__(self) -> Connection:
+        pool = self._pool
+        self._checkout_started_time = time.monotonic()
+        checkout_started_time = self._checkout_started_time
+        if pool.enabled_for_cmap:
+            assert pool.opts._event_listeners is not None
+            pool.opts._event_listeners.publish_connection_check_out_started(pool.address)
+        if pool.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _CONNECTION_LOGGER,
+                message=_ConnectionStatusMessage.CHECKOUT_STARTED,
+                clientId=pool._client_id,
+                serverHost=pool.address[0],
+                serverPort=pool.address[1],
+            )
+
+        conn = pool._get_conn(checkout_started_time, handler=self._handler)
+        self._conn = conn
+        try:
+            duration = time.monotonic() - checkout_started_time
+            if pool.enabled_for_cmap:
+                assert pool.opts._event_listeners is not None
+                pool.opts._event_listeners.publish_connection_checked_out(
+                    pool.address, conn.id, duration
+                )
+            if pool.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                _debug_log(
+                    _CONNECTION_LOGGER,
+                    message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
+                    clientId=pool._client_id,
+                    serverHost=pool.address[0],
+                    serverPort=pool.address[1],
+                    driverConnectionId=conn.id,
+                    durationMS=duration,
+                )
+        except BaseException:
+            pool.checkin(conn)
+            self._conn = None
+            raise
+        return conn
+
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        conn = self._conn
+        if conn is None:
+            return
+        pool = self._pool
+        if exc_type is not None:
+            # Exception in caller. Ensure the connection gets returned.
+            # Note that when pinned is True, the session owns the connection
+            # and is responsible for checking it back into the pool.
+            # SDAM error handling is performed by _ClientCheckout.__aexit__
+            # before this method is called.
+            pinned = conn.pinned_txn or conn.pinned_cursor
+            if not pinned and conn.active:
+                pool.checkin(conn)
+        else:
+            if conn.pinned_txn:
+                with pool.lock:
+                    pool._pinned_sockets.add(conn)
+                    pool.ntxns += 1
+            elif conn.pinned_cursor:
+                with pool.lock:
+                    pool._pinned_sockets.add(conn)
+                    pool.ncursors += 1
+            elif conn.active:
+                pool.checkin(conn)
