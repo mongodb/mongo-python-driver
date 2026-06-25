@@ -2807,6 +2807,30 @@ class _ClientReadCheckout(_ClientCheckout):
 class _ClientConnectionRetryable(Generic[T]):
     """Responsible for executing retryable connections on read or write operations"""
 
+    __slots__ = (
+        "_address",
+        "_always_retryable",
+        "_attempt_number",
+        "_bulk",
+        "_client",
+        "_deprioritized_servers",
+        "_func",
+        "_is_aggregate_write",
+        "_is_read",
+        "_is_run_command",
+        "_last_error",
+        "_max_retries",
+        "_operation",
+        "_operation_id",
+        "_read_pref",
+        "_retry_policy",
+        "_retryable",
+        "_retrying",
+        "_server",
+        "_server_selector",
+        "_session",
+    )
+
     def __init__(
         self,
         mongo_client: AsyncMongoClient,  # type: ignore[type-arg]
@@ -2839,7 +2863,7 @@ class _ClientConnectionRetryable(Generic[T]):
         )
         self._address = address
         self._server: Server = None  # type: ignore
-        self._deprioritized_servers: list[Server] = []
+        self._deprioritized_servers: Optional[list[Server]] = None
         self._operation = operation
         self._operation_id = operation_id
         self._attempt_number = 0
@@ -2979,6 +3003,8 @@ class _ClientConnectionRetryable(Generic[T]):
                     self._client.topology_description.topology_type_name == "Sharded"
                     or (overloaded and self._client.options.enable_overload_retargeting)
                 ):
+                    if self._deprioritized_servers is None:
+                        self._deprioritized_servers = []
                     self._deprioritized_servers.append(self._server)
 
                 self._always_retryable = always_retryable
