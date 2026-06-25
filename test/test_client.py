@@ -793,6 +793,27 @@ class TestClient(IntegrationTest):
                 self.assertEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
 
+    def test_client_checkout_setup_failure_returns_connection(self):
+        # Verify that the connection is returned to the pool when an exception
+        # is raised during _ClientCheckout.__aenter__ post-checkout setup
+        # (e.g. session pinning or the auto-encryption wire-version check).
+        from unittest.mock import patch
+
+        from pymongo.synchronous.mongo_client import _ClientCheckout
+
+        client = self.rs_or_single_client()
+        server = (client._get_topology()).select_server(writable_server_selector, _Op.TEST)
+        pool = server.pool
+
+        checkout = _ClientCheckout(client, server, None)
+        with patch.object(checkout, "contribute_socket", side_effect=RuntimeError("simulated")):
+            with self.assertRaises(RuntimeError):
+                with checkout:
+                    pass
+
+        # Connection was returned to pool, not leaked.
+        self.assertEqual(0, pool.active_sockets)
+
     def test_constants(self):
         """This test uses MongoClient explicitly to make sure that host and
         port are not overloaded.
