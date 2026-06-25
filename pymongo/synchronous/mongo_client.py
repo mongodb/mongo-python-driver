@@ -2705,7 +2705,7 @@ class _ClientCheckout:
         if in_txn and session and session._pinned_connection:
             self.contribute_socket(session._pinned_connection)
             return session._pinned_connection
-        pool_checkout = _PoolCheckout(server.pool, self)
+        pool_checkout = server.pool.checkout(self)
         try:
             conn = pool_checkout.__enter__()
         except BaseException as exc:
