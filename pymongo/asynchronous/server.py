@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import logging
-from contextlib import AbstractAsyncContextManager
 from datetime import datetime
 from typing import (
     TYPE_CHECKING,
@@ -42,9 +41,9 @@ if TYPE_CHECKING:
     from weakref import ReferenceType
 
     from bson.objectid import ObjectId
-    from pymongo.asynchronous.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.monitor import Monitor
-    from pymongo.asynchronous.pool import AsyncConnection, Pool
+    from pymongo.asynchronous.pool import AsyncConnection, Pool, _PoolCheckout
     from pymongo.monitoring import _EventListeners
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
@@ -227,10 +226,8 @@ class Server:
 
         return response
 
-    async def checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AbstractAsyncContextManager[AsyncConnection]:
-        return self.pool.checkout(handler)
+    def checkout(self) -> _PoolCheckout:
+        return self.pool.checkout()
 
     @property
     def description(self) -> ServerDescription:

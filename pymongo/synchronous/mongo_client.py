@@ -41,7 +41,6 @@ import warnings
 import weakref
 from collections import defaultdict
 from collections.abc import Collection, Generator, Mapping, MutableMapping, Sequence
-from contextlib import AbstractContextManager
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -109,6 +108,7 @@ from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.helpers import (
     _RetryPolicy,
 )
+from pymongo.synchronous.pool import _PoolCheckout
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
@@ -1777,39 +1777,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self._opened = True
         return self._topology
 
-    @contextlib.contextmanager
-    def _checkout(
-        self, server: Server, session: Optional[ClientSession]
-    ) -> Generator[Connection, None]:
-        in_txn = session and session.in_transaction
-        with _MongoClientErrorHandler(self, server, session) as err_handler:
-            # Reuse the pinned connection, if it exists.
-            if in_txn and session and session._pinned_connection:
-                err_handler.contribute_socket(session._pinned_connection)
-                yield session._pinned_connection
-                return
-            with server.checkout(handler=err_handler) as conn:
-                # Pin this session to the selected server or connection.
-                if (
-                    in_txn
-                    and session
-                    and server.description.server_type
-                    in (
-                        SERVER_TYPE.Mongos,
-                        SERVER_TYPE.LoadBalancer,
-                    )
-                ):
-                    session._pin(server, conn)
-                err_handler.contribute_socket(conn)
-                if (
-                    self._encrypter
-                    and not self._encrypter._bypass_auto_encryption
-                    and conn.max_wire_version < 8
-                ):
-                    raise ConfigurationError(
-                        "Auto-encryption requires a minimum MongoDB version of 4.2"
-                    )
-                yield conn
+    def _checkout(self, server: Server, session: Optional[ClientSession]) -> _ClientCheckout:
+        return _ClientCheckout(self, server, session)
 
     def _select_server(
         self,
@@ -1858,43 +1827,22 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 session._unpin()
             raise
 
-    def _conn_for_writes(
-        self, session: Optional[ClientSession], operation: str
-    ) -> AbstractContextManager[Connection]:
+    def _conn_for_writes(self, session: Optional[ClientSession], operation: str) -> _ClientCheckout:
         server = self._select_server(writable_server_selector, session, operation)
         return self._checkout(server, session)
 
-    @contextlib.contextmanager
     def _conn_from_server(
         self, read_preference: _ServerMode, server: Server, session: Optional[ClientSession]
-    ) -> Generator[tuple[Connection, _ServerMode], None]:
+    ) -> _ClientReadCheckout:
         assert read_preference is not None, "read_preference must not be None"
-        # Get a connection for a server matching the read preference, and yield
-        # conn with the effective read preference. The Server Selection
-        # Spec says not to send any $readPreference to standalones and to
-        # always send primaryPreferred when directly connected to a repl set
-        # member.
-        # Thread safe: if the type is single it cannot change.
-        # NOTE: We already opened the Topology when selecting a server so there's no need
-        # to call _get_topology() again.
-        single = self._topology.description.topology_type == TOPOLOGY_TYPE.Single
-        with self._checkout(server, session) as conn:
-            if single:
-                if conn.is_repl and not (session and session.in_transaction):
-                    # Use primary preferred to ensure any repl set member
-                    # can handle the request.
-                    read_preference = ReadPreference.PRIMARY_PREFERRED
-                elif conn.is_standalone:
-                    # Don't send read preference to standalones.
-                    read_preference = ReadPreference.PRIMARY
-            yield conn, read_preference
+        return _ClientReadCheckout(self, server, session, read_preference)
 
     def _conn_for_reads(
         self,
         read_preference: _ServerMode,
         session: Optional[ClientSession],
         operation: str,
-    ) -> AbstractContextManager[tuple[Connection, _ServerMode]]:
+    ) -> _ClientReadCheckout:
         assert read_preference is not None, "read_preference must not be None"
         server = self._select_server(read_preference, session, operation)
         return self._conn_from_server(read_preference, server, session)
@@ -1922,8 +1870,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             )
 
             with operation.conn_mgr._lock:
-                with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
-                    err_handler.contribute_socket(operation.conn_mgr.conn)
+                with _ClientCheckout.for_existing_conn(
+                    self,
+                    server,
+                    operation.session,  # type: ignore[arg-type]
+                    operation.conn_mgr.conn,
+                ):
                     return server.run_operation(
                         operation.conn_mgr.conn,
                         operation,
@@ -2658,10 +2610,18 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mong
         exc_to_check._add_error_label("RetryableWriteError")
 
 
-class _MongoClientErrorHandler:
-    """Handle errors raised when executing an operation."""
+class _ClientCheckout:
+    """Context manager for checking out a connection from the pool.
+
+    Absorbs the former _MongoClientErrorHandler and the @asynccontextmanager
+    _checkout() method into a single class-based CM to eliminate generator
+    overhead on the hot path.
+    """
 
     __slots__ = (
+        "_existing_conn",
+        "_pool_checkout",
+        "_server",
         "client",
         "completed_handshake",
         "handled",
@@ -2695,6 +2655,9 @@ class _MongoClientErrorHandler:
         self.completed_handshake = False
         self.service_id: Optional[ObjectId] = None
         self.handled = False
+        self._existing_conn: Optional[Connection] = None
+        self._pool_checkout: Optional[_PoolCheckout] = None
+        self._server = server
 
     def contribute_socket(self, conn: Connection, completed_handshake: bool = True) -> None:
         """Provide socket information to the error handler."""
@@ -2732,16 +2695,102 @@ class _MongoClientErrorHandler:
         assert self.client._topology is not None
         self.client._topology.handle_error(self.server_address, err_ctx)
 
-    def __enter__(self) -> _MongoClientErrorHandler:
-        return self
+    def __enter__(self) -> Connection:
+        if self._existing_conn is not None:
+            return self._existing_conn
+        server = self._server
+        session = self.session
+        in_txn = session and session.in_transaction
+        # Reuse the pinned connection, if it exists.
+        if in_txn and session and session._pinned_connection:
+            self.contribute_socket(session._pinned_connection)
+            return session._pinned_connection
+        pool_checkout = _PoolCheckout(server.pool, self)
+        conn = pool_checkout.__enter__()
+        self._pool_checkout = pool_checkout
+        # Pin this session to the selected server or connection.
+        if (
+            in_txn
+            and session
+            and server.description.server_type
+            in (
+                SERVER_TYPE.Mongos,
+                SERVER_TYPE.LoadBalancer,
+            )
+        ):
+            session._pin(server, conn)
+        self.contribute_socket(conn)
+        if (
+            self.client._encrypter
+            and not self.client._encrypter._bypass_auto_encryption
+            and conn.max_wire_version < 8
+        ):
+            raise ConfigurationError("Auto-encryption requires a minimum MongoDB version of 4.2")
+        return conn
 
     def __exit__(
         self,
-        exc_type: Optional[type[Exception]],
-        exc_val: Optional[Exception],
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        return self.handle(exc_type, exc_val)
+        # Perform SDAM error handling while the connection is still checked out.
+        self.handle(exc_type, exc_val)
+        if self._pool_checkout is not None:
+            self._pool_checkout.__exit__(exc_type, exc_val, exc_tb)
+
+    @classmethod
+    def for_existing_conn(
+        cls,
+        client: MongoClient,  # type: ignore[type-arg]
+        server: Server,
+        session: Optional[ClientSession],
+        conn: Connection,
+    ) -> _ClientCheckout:
+        """Return a _ClientCheckout for an already-checked-out connection.
+
+        Used when SDAM error handling is needed around an existing connection
+        without performing a new pool checkout (e.g. re-running a getMore).
+        """
+        checkout = cls(client, server, session)
+        checkout.contribute_socket(conn)
+        checkout._existing_conn = conn
+        return checkout
+
+
+class _ClientReadCheckout(_ClientCheckout):
+    """Context manager for read operations.
+
+    Extends _ClientCheckout to apply the single-topology read preference
+    adjustment (formerly in _conn_from_server()) and return the effective
+    read preference alongside the connection.
+    """
+
+    __slots__ = ("_effective_read_pref",)
+
+    def __init__(
+        self,
+        client: MongoClient,  # type: ignore[type-arg]
+        server: Server,
+        session: Optional[ClientSession],
+        read_preference: _ServerMode,
+    ) -> None:
+        super().__init__(client, server, session)
+        self._effective_read_pref: _ServerMode = read_preference
+
+    def __enter__(self) -> tuple[Connection, _ServerMode]:  # type: ignore[override]
+        conn = super().__enter__()
+        # The Server Selection Spec says not to send any $readPreference to
+        # standalones and to always send primaryPreferred when directly
+        # connected to a replica set member.
+        # Thread safe: topology type cannot change once set to Single.
+        single = self.client._topology.description.topology_type == TOPOLOGY_TYPE.Single
+        if single:
+            if conn.is_repl and not (self.session and self.session.in_transaction):
+                self._effective_read_pref = ReadPreference.PRIMARY_PREFERRED
+            elif conn.is_standalone:
+                self._effective_read_pref = ReadPreference.PRIMARY
+        return conn, self._effective_read_pref
 
 
 class _ClientConnectionRetryable(Generic[T]):
