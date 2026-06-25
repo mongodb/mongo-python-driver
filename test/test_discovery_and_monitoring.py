@@ -269,6 +269,22 @@ def create_tests():
             test_name = f"test_{dirname}_{os.path.splitext(filename)[0]}"
 
             new_test.__name__ = test_name
+
+            # Skip scenarios where all mock server responses report a wire
+            # version below the minimum supported (server no longer reachable).
+            max_version = max(
+                (
+                    r[1].get("maxWireVersion", 0)
+                    for phase in scenario_def.get("phases", [])
+                    for r in phase.get("responses", [])
+                ),
+                default=common.MIN_SUPPORTED_WIRE_VERSION,
+            )
+            if max_version < common.MIN_SUPPORTED_WIRE_VERSION:
+                new_test = unittest.skip(
+                    f"Server wire version {max_version} is below minimum {common.MIN_SUPPORTED_WIRE_VERSION}"
+                )(new_test)
+
             setattr(TestAllScenarios, new_test.__name__, new_test)
 
 
