@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from pymongo.server_description import ServerDescription
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.monitor import Monitor
-    from pymongo.synchronous.pool import Connection, Pool, _PoolCheckout
+    from pymongo.synchronous.pool import Connection, Pool
     from pymongo.typings import _DocumentOut
 
 _IS_SYNC = True
@@ -225,9 +225,6 @@ class Server:
             )
 
         return response
-
-    def checkout(self) -> _PoolCheckout:
-        return self.pool.checkout()
 
     @property
     def description(self) -> ServerDescription:

@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.monitor import Monitor
-    from pymongo.asynchronous.pool import AsyncConnection, Pool, _PoolCheckout
+    from pymongo.asynchronous.pool import AsyncConnection, Pool
     from pymongo.monitoring import _EventListeners
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
@@ -225,9 +225,6 @@ class Server:
             )
 
         return response
-
-    def checkout(self) -> _PoolCheckout:
-        return self.pool.checkout()
 
     @property
     def description(self) -> ServerDescription:

@@ -215,6 +215,34 @@ class TestPooling(_TestPoolingBase):
 
         self.assertEqual(1, len(cx_pool.conns))
 
+    async def test_checkout_event_listener_failure_no_leak(self):
+        # Connection is returned to the pool when publish_connection_checked_out raises.
+        from unittest.mock import patch
+
+        from pymongo.monitoring import _EventListeners
+        from test.utils_shared import CMAPListener
+
+        cx_pool = await self.create_pool(
+            max_pool_size=1, event_listeners=_EventListeners([CMAPListener()])
+        )
+
+        with patch.object(
+            cx_pool.opts._event_listeners,
+            "publish_connection_checked_out",
+            side_effect=RuntimeError("simulated failure"),
+        ):
+            with self.assertRaises(RuntimeError):
+                async with cx_pool.checkout():
+                    pass
+
+        # Connection was returned to the pool — not leaked.
+        self.assertEqual(1, len(cx_pool.conns))
+        self.assertEqual(0, cx_pool.active_sockets)
+
+        # Pool is still functional.
+        async with cx_pool.checkout():
+            pass
+
     async def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.
         cx_pool = await self.create_pool()
