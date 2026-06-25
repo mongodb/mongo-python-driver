@@ -124,13 +124,12 @@ class _CommandTelemetry:
         self._duration = datetime.datetime.now() - self._start
         if not self._should_log and not self._publish:
             return
-        duration = self._duration
         if self._should_log:
             _debug_log(
                 _COMMAND_LOGGER,
                 message=_CommandStatusMessage.SUCCEEDED,
                 clientId=self._topology_id,
-                durationMS=duration,
+                durationMS=self._duration,
                 reply=reply,
                 commandName=self._name,
                 databaseName=self._dbname,
@@ -146,7 +145,7 @@ class _CommandTelemetry:
         if self._publish:
             assert self._listeners is not None
             self._listeners.publish_command_success(
-                duration,
+                self._duration,
                 reply,
                 command_name,
                 self._request_id,
@@ -168,13 +167,12 @@ class _CommandTelemetry:
         self._duration = datetime.datetime.now() - self._start
         if not self._should_log and not self._publish:
             return
-        duration = self._duration
         if self._should_log:
             _debug_log(
                 _COMMAND_LOGGER,
                 message=_CommandStatusMessage.FAILED,
                 clientId=self._topology_id,
-                durationMS=duration,
+                durationMS=self._duration,
                 failure=failure,
                 commandName=self._name,
                 databaseName=self._dbname,
@@ -190,7 +188,7 @@ class _CommandTelemetry:
         if self._publish:
             assert self._listeners is not None
             self._listeners.publish_command_failure(
-                duration,
+                self._duration,
                 failure,
                 command_name,
                 self._request_id,
