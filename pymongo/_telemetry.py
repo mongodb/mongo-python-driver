@@ -39,6 +39,7 @@ class _CommandTelemetry:
     """
 
     __slots__ = (
+        "_active",
         "_cmd",
         "_conn",
         "_dbname",
@@ -66,6 +67,7 @@ class _CommandTelemetry:
         self._topology_id = topology_id
         self._should_log = topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)
         self._publish = listeners is not None and listeners.enabled_for_commands
+        self._active = self._should_log or self._publish
         self._listeners = listeners
         self._conn = conn
         self._cmd = cmd
@@ -76,25 +78,30 @@ class _CommandTelemetry:
         self._start: datetime.datetime
         self._duration: datetime.timedelta
 
+    def _emit_log(self, message: _CommandStatusMessage, **extra: Any) -> None:
+        _debug_log(
+            _COMMAND_LOGGER,
+            message=message,
+            clientId=self._topology_id,
+            commandName=self._name,
+            databaseName=self._dbname,
+            requestId=self._request_id,
+            operationId=self._request_id,
+            driverConnectionId=self._conn.id,
+            serverConnectionId=self._conn.server_connection_id,
+            serverHost=self._conn.address[0],
+            serverPort=self._conn.address[1],
+            serviceId=self._conn.service_id,
+            **extra,
+        )
+
     def started(self, orig: MutableMapping[str, Any], ensure_db: bool) -> None:
         """Emit the STARTED log entry and APM event, and start the duration clock."""
         self._start = datetime.datetime.now()
+        if not self._active:
+            return
         if self._should_log:
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.STARTED,
-                clientId=self._topology_id,
-                command=self._cmd,
-                commandName=self._name,
-                databaseName=self._dbname,
-                requestId=self._request_id,
-                operationId=self._request_id,
-                driverConnectionId=self._conn.id,
-                serverConnectionId=self._conn.server_connection_id,
-                serverHost=self._conn.address[0],
-                serverPort=self._conn.address[1],
-                serviceId=self._conn.service_id,
-            )
+            self._emit_log(_CommandStatusMessage.STARTED, command=self._cmd)
         if self._publish:
             assert self._listeners is not None
             if ensure_db and "$db" not in orig:
@@ -122,24 +129,13 @@ class _CommandTelemetry:
     ) -> None:
         """Emit the SUCCEEDED log entry and APM event."""
         self._duration = datetime.datetime.now() - self._start
-        if not self._should_log and not self._publish:
+        if not self._active:
             return
         if self._should_log:
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.SUCCEEDED,
-                clientId=self._topology_id,
+            self._emit_log(
+                _CommandStatusMessage.SUCCEEDED,
                 durationMS=self._duration,
                 reply=reply,
-                commandName=self._name,
-                databaseName=self._dbname,
-                requestId=self._request_id,
-                operationId=self._request_id,
-                driverConnectionId=self._conn.id,
-                serverConnectionId=self._conn.server_connection_id,
-                serverHost=self._conn.address[0],
-                serverPort=self._conn.address[1],
-                serviceId=self._conn.service_id,
                 speculative_authenticate=speculative_hello,
             )
         if self._publish:
@@ -165,24 +161,13 @@ class _CommandTelemetry:
     ) -> None:
         """Emit the FAILED log entry and APM event."""
         self._duration = datetime.datetime.now() - self._start
-        if not self._should_log and not self._publish:
+        if not self._active:
             return
         if self._should_log:
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.FAILED,
-                clientId=self._topology_id,
+            self._emit_log(
+                _CommandStatusMessage.FAILED,
                 durationMS=self._duration,
                 failure=failure,
-                commandName=self._name,
-                databaseName=self._dbname,
-                requestId=self._request_id,
-                operationId=self._request_id,
-                driverConnectionId=self._conn.id,
-                serverConnectionId=self._conn.server_connection_id,
-                serverHost=self._conn.address[0],
-                serverPort=self._conn.address[1],
-                serviceId=self._conn.service_id,
                 isServerSideError=is_server_side_error,
             )
         if self._publish:
