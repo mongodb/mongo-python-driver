@@ -294,7 +294,7 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
         await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
     async def test_5_when_srv_hostname_has_three_or_more_dot_separated_parts_it_is_valid_for_the_returned_hostname_to_be_identical(
-        self
+        self,
     ):
         test_cases = [
             {
