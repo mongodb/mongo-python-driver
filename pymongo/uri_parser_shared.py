@@ -87,6 +87,7 @@ URI_OPTIONS = frozenset(
         "socketTimeoutMS",
         "srvMaxHosts",
         "srvServiceName",
+        "srvAllowedHostsSuffix",
         "ssl",
         "tls",
         "tlsAllowInvalidCertificates",
