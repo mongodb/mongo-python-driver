@@ -247,9 +247,6 @@ class AsyncClientContext:
                 self.cmd_line = await self.client.admin.command("getCmdLineOpts")
 
             self.server_status = await self.client.admin.command("serverStatus")
-            if self.storage_engine == "mmapv1":
-                # MMAPv1 does not support retryWrites=True.
-                self.default_client_options["retryWrites"] = False
 
             hello = await self.hello
             self.sessions_enabled = "logicalSessionTimeoutMinutes" in hello

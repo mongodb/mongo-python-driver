@@ -140,13 +140,9 @@ class _AggregationCommand:
         cmd = {"aggregate": self._aggregation_target, "pipeline": self._pipeline}
         cmd.update(self._options)
 
-        # Apply this target's read concern if:
-        # readConcern has not been specified as a kwarg and either
-        # - server version is >= 4.2 or
-        # - server version is >= 3.2 and pipeline doesn't use $out
-        if ("readConcern" not in cmd) and (
-            not self._performs_write or (conn.max_wire_version >= 8)
-        ):
+        # Apply this target's read concern if readConcern has not been specified as a kwarg.
+        # $out/$merge pipelines also support readConcern on all supported server versions (4.4+).
+        if "readConcern" not in cmd:
             read_concern = self._target.read_concern
         else:
             read_concern = None

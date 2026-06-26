@@ -157,18 +157,18 @@ class Server:
         assert listeners is not None
         start = datetime.now()
 
-        use_cmd = operation.use_command(conn)
+        conn.validate_session(operation.client, operation.session)  # type: ignore[arg-type]
         more_to_come = bool(operation.conn_mgr and operation.conn_mgr.more_to_come)
-        cmd, dbn = await self.operation_to_command(operation, conn, use_cmd)
+        cmd, dbn = await self.operation_to_command(operation, conn, True)
         if more_to_come:
             request_id = 0
             data = b""
             max_doc_size = 0
         else:
-            message = operation.get_message(read_preference, conn, use_cmd)
+            message = operation.get_message(read_preference, conn)
             request_id, data, max_doc_size = self._split_message(message)
 
-        user_fields = _CURSOR_DOC_FIELDS if use_cmd else None
+        user_fields = _CURSOR_DOC_FIELDS
 
         docs, reply, duration = await run_cursor_command(
             conn,
@@ -211,7 +211,6 @@ class Server:
                 conn=conn,
                 duration=duration,
                 request_id=request_id,
-                from_command=use_cmd,
                 docs=docs,  # type: ignore[arg-type]
                 more_to_come=more_to_come,
             )
@@ -221,7 +220,6 @@ class Server:
                 address=self._description.address,
                 duration=duration,
                 request_id=request_id,
-                from_command=use_cmd,
                 docs=docs,  # type: ignore[arg-type]
             )
 

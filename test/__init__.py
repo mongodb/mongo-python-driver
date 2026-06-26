@@ -247,9 +247,6 @@ class ClientContext:
                 self.cmd_line = self.client.admin.command("getCmdLineOpts")
 
             self.server_status = self.client.admin.command("serverStatus")
-            if self.storage_engine == "mmapv1":
-                # MMAPv1 does not support retryWrites=True.
-                self.default_client_options["retryWrites"] = False
 
             hello = self.hello
             self.sessions_enabled = "logicalSessionTimeoutMinutes" in hello

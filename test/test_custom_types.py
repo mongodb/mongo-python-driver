@@ -928,7 +928,6 @@ class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCus
 
 
 class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
-    @client_context.require_version_min(4, 2, 0)
     @client_context.require_change_streams
     def setUp(self):
         super().setUp()
@@ -946,7 +945,6 @@ class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCusto
 
 
 class TestClusterChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
-    @client_context.require_version_min(4, 2, 0)
     @client_context.require_change_streams
     def setUp(self):
         super().setUp()

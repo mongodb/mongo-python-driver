@@ -4,6 +4,7 @@ Changelog
 Changes in Version 4.18.0
 -------------------------
 
+- Dropped support for MongoDB 4.2. PyMongo now requires MongoDB 4.4 or later.
 - Improved TLS connection performance by reusing TLS sessions across connections
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
