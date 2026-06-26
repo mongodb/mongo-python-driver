@@ -37,29 +37,29 @@ def apply_patches(errored):
         ["bash", "./.evergreen/remove-unimplemented-tests.sh"],  # noqa: S607
         check=True,
     )
-    try:
-        # Avoid shell=True by passing arguments as a list.
-        # Note: glob expansion doesn't work in shell=False, so we use a list of files.
-        spec_patch_dir = pathlib.Path("./.evergreen/spec-patch/")
-        patches = [str(p) for p in spec_patch_dir.glob("*.patch")]
-        patches += [str(p) for p in (spec_patch_dir / "permanent").glob("*.patch")]
-        if patches:
-            for patch in patches:
-                print(f"Applying patch {patch}")
-            subprocess.run(  # noqa: S603
-                [  # noqa: S607
-                    "git",
-                    "apply",
-                    "-R",
-                    "--allow-empty",
-                    "--whitespace=fix",
-                    *patches,
-                ],
-                check=True,
-                stderr=subprocess.PIPE,
-            )
-    except CalledProcessError as exc:
-        errored["applying patches"] = exc.stderr
+    # Avoid shell=True by passing arguments as a list.
+    # Note: glob expansion doesn't work in shell=False, so we use a list of files.
+    spec_patch_dir = pathlib.Path("./.evergreen/spec-patch/")
+    patches = [str(p) for p in spec_patch_dir.glob("*.patch")]
+    patches += [str(p) for p in (spec_patch_dir / "permanent").glob("*.patch")]
+    if patches:
+        for patch in patches:
+            print(f"Applying patch {patch}")
+            try:
+                subprocess.run(  # noqa: S603
+                    [  # noqa: S607
+                        "git",
+                        "apply",
+                        "-R",
+                        "--allow-empty",
+                        "--whitespace=fix",
+                        str(patch),
+                    ],
+                    check=True,
+                    stderr=subprocess.PIPE,
+                )
+            except CalledProcessError as exc:
+                errored[f"{patch}"] = exc.stderr
 
 
 def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
