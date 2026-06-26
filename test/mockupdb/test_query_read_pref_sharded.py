@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """Test PyMongo query and read preference with a sharded cluster."""
+
 from __future__ import annotations
 
 import unittest
-from test import PyMongoTestCase
 
 import pytest
+
+from test import PyMongoTestCase
 
 try:
     from mockupdb import MockupDB, OpMsg, going

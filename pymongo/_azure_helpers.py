@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Azure helpers."""
+
 from __future__ import annotations
 
 import json
@@ -38,7 +39,7 @@ def _get_azure_response(
             status = response.status
             body = response.read().decode("utf8")
     except Exception as e:
-        msg = "Failed to acquire IMDS access token: %s" % e
+        msg = f"Failed to acquire IMDS access token: {e}"
         raise ValueError(msg) from None
 
     if status != 200:

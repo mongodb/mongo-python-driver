@@ -37,6 +37,7 @@ To run individual benchmarks quickly::
 
     FASTBENCH=1 python test/performance/perf_test.py -v TestRunCommand TestFindManyAndEmptyCursor
 """
+
 from __future__ import annotations
 
 import multiprocessing as mp
@@ -46,7 +47,7 @@ import tempfile
 import threading
 import time
 import warnings
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 
 import pytest
 
@@ -57,8 +58,6 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from test import client_context, unittest
-
 from bson import decode, encode, json_util
 from gridfs import GridFSBucket
 from pymongo import (
@@ -67,6 +66,7 @@ from pymongo import (
     MongoClient,
     ReplaceOne,
 )
+from test import client_context, unittest
 
 pytestmark = pytest.mark.perf
 
@@ -89,7 +89,7 @@ TEST_PATH = os.environ.get(
 
 OUTPUT_FILE = os.environ.get("OUTPUT_FILE")
 
-result_data: List = []
+result_data: list = []
 
 
 def tearDownModule():

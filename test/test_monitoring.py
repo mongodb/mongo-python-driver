@@ -22,6 +22,15 @@ from typing import Any
 
 sys.path[0:0] = [""]
 
+from bson.int64 import Int64
+from bson.objectid import ObjectId
+from bson.son import SON
+from pymongo import CursorType, DeleteOne, InsertOne, UpdateOne, monitoring
+from pymongo.errors import AutoReconnect, NotPrimaryError, OperationFailure
+from pymongo.read_preferences import ReadPreference
+from pymongo.synchronous.command_cursor import CommandCursor
+from pymongo.synchronous.helpers import next
+from pymongo.write_concern import WriteConcern
 from test import (
     IntegrationTest,
     client_context,
@@ -34,16 +43,6 @@ from test.utils_shared import (
     OvertCommandListener,
     wait_until,
 )
-
-from bson.int64 import Int64
-from bson.objectid import ObjectId
-from bson.son import SON
-from pymongo import CursorType, DeleteOne, InsertOne, UpdateOne, monitoring
-from pymongo.errors import AutoReconnect, NotPrimaryError, OperationFailure
-from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.helpers import next
-from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
 

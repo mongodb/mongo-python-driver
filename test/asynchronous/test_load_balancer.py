@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the Load Balancer unified spec tests."""
+
 from __future__ import annotations
 
 import asyncio
@@ -22,21 +23,21 @@ import pathlib
 import sys
 import threading
 from asyncio import Event
-from test.asynchronous.helpers import ConcurrentRunner, ExceptionCatchingTask
-from test.asynchronous.utils import async_get_pool
 
 import pytest
 
+from test.asynchronous.helpers import ConcurrentRunner, ExceptionCatchingTask
+from test.asynchronous.utils import async_get_pool
+
 sys.path[0:0] = [""]
 
+from pymongo.asynchronous.helpers import anext
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import (
     async_wait_until,
     create_async_event,
 )
-
-from pymongo.asynchronous.helpers import anext
 
 _IS_SYNC = False
 

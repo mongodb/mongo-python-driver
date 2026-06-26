@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Pool utilities and shared helper methods."""
+
 from __future__ import annotations
 
 import asyncio
@@ -46,6 +47,14 @@ if TYPE_CHECKING:
     from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
 
+
+def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:
+    """Return the TLS session from an SSL socket, handling both PyOpenSSL and stdlib ssl."""
+    if hasattr(ssl_sock, "get_session"):
+        return ssl_sock.get_session()
+    return getattr(ssl_sock, "session", None)
+
+
 try:
     from fcntl import F_GETFD, F_SETFD, FD_CLOEXEC, fcntl
 
@@ -58,7 +67,7 @@ except ImportError:
     # Windows, various platforms we don't claim to support
     # (Jython, IronPython, ..), systems that don't provide
     # everything we need from fcntl, etc.
-    def _set_non_inheritable_non_atomic(fd: int) -> None:  # noqa: ARG001
+    def _set_non_inheritable_non_atomic(fd: int) -> None:
         """Dummy function for platforms that don't provide fcntl."""
 
 
@@ -131,17 +140,15 @@ def _raise_connection_failure(
     host, port = address
     # If connecting to a Unix socket, port will be None.
     if port is not None:
-        msg = "%s:%d: %s" % (host, port, error)
+        msg = f"{host}:{port}: {error}"
     else:
         msg = f"{host}: {error}"
     if msg_prefix:
         msg = msg_prefix + msg
     if "configured timeouts" not in msg:
         msg += format_timeout_details(timeout_details)
-    if (
-        isinstance(error, socket.timeout)
-        or isinstance(error, SSLErrors)
-        and "timed out" in str(error)
+    if isinstance(error, socket.timeout) or (
+        isinstance(error, SSLErrors) and "timed out" in str(error)
     ):
         raise NetworkTimeout(msg) from error
     else:
@@ -298,7 +305,9 @@ async def _async_configured_socket(
 
 
 async def _configured_protocol_interface(
-    address: _Address, options: PoolOptions
+    address: _Address,
+    options: PoolOptions,
+    ssl_session_cache: Optional[list[Any]] = None,
 ) -> AsyncNetworkingInterface:
     """Given (host, port) and PoolOptions, return a configured AsyncNetworkingInterface.
 
@@ -318,6 +327,22 @@ async def _configured_protocol_interface(
         )
 
     host = address[0]
+    # asyncio does not support TLS session resumption natively (cpython#79152,
+    # closed without a fix).  On Python 3.11+ SSLProtocol.__init__ calls
+    # wrap_bio() synchronously before the first event-loop yield, so setting
+    # sslobject_class is race-free.  Session injection is skipped on older
+    # Python versions.  (The async path always uses stdlib ssl, never PyOpenSSL.)
+    if ssl_session_cache is not None and sys.version_info >= (3, 11):
+        session = ssl_session_cache[0]
+        if session is not None:
+            _session = session
+
+            class _SessionSSLObject(ssl.SSLObject):
+                def __init__(self, *args: Any, **kwargs: Any) -> None:
+                    super().__init__(*args, **kwargs)
+                    self.session = _session
+
+            ssl_context.sslobject_class = _SessionSSLObject  # type: ignore[attr-defined]
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
@@ -337,6 +362,7 @@ async def _configured_protocol_interface(
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
         details = _get_timeout_details(options)
         _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
+
     if (
         ssl_context.verify_mode
         and not ssl_context.check_hostname
@@ -347,6 +373,13 @@ async def _configured_protocol_interface(
         except _CertificateError:
             transport.abort()
             raise
+
+    if ssl_session_cache is not None:
+        ssl_obj = transport.get_extra_info("ssl_object")
+        if ssl_obj is not None:
+            new_session = ssl_obj.session
+            if new_session is not None:
+                ssl_session_cache[0] = new_session
 
     return AsyncNetworkingInterface((transport, protocol))
 
@@ -470,7 +503,11 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
     return ssl_sock
 
 
-def _configured_socket_interface(address: _Address, options: PoolOptions) -> NetworkingInterface:
+def _configured_socket_interface(
+    address: _Address,
+    options: PoolOptions,
+    ssl_session_cache: Optional[list[Any]] = None,
+) -> NetworkingInterface:
     """Given (host, port) and PoolOptions, return a NetworkingInterface wrapping a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
@@ -485,13 +522,14 @@ def _configured_socket_interface(address: _Address, options: PoolOptions) -> Net
         return NetworkingInterface(sock)
 
     host = address[0]
+    session = ssl_session_cache[0] if ssl_session_cache is not None else None
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
         if _has_sni(True):
-            ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host)
+            ssl_sock = ssl_context.wrap_socket(sock, server_hostname=host, session=session)
         else:
-            ssl_sock = ssl_context.wrap_socket(sock)
+            ssl_sock = ssl_context.wrap_socket(sock, session=session)
     except _CertificateError:
         sock.close()
         # Raise _CertificateError directly like we do after match_hostname
@@ -514,6 +552,11 @@ def _configured_socket_interface(address: _Address, options: PoolOptions) -> Net
         except _CertificateError:
             ssl_sock.close()
             raise
+
+    if ssl_session_cache is not None:
+        new_session = _get_ssl_session(ssl_sock)
+        if new_session is not None:
+            ssl_session_cache[0] = new_session
 
     ssl_sock.settimeout(options.socket_timeout)
     return NetworkingInterface(ssl_sock)

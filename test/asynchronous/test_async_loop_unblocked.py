@@ -13,13 +13,14 @@
 # limitations under the License.
 
 """Test that the asynchronous API does not block the event loop."""
+
 from __future__ import annotations
 
 import asyncio
 import time
-from test.asynchronous import AsyncIntegrationTest
 
 from pymongo.errors import ServerSelectionTimeoutError
+from test.asynchronous import AsyncIntegrationTest
 
 
 class TestClientLoopUnblocked(AsyncIntegrationTest):

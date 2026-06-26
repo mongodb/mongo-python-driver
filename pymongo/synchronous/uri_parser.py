@@ -14,6 +14,7 @@
 
 
 """Tools to parse and validate a MongoDB URI."""
+
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -159,7 +160,7 @@ def _parse_srv(
     srv_max_hosts = srv_max_hosts or options.get("srvMaxHosts")
     if is_srv:
         nodes = split_hosts(hosts, default_port=None)
-        fqdn, port = nodes[0]
+        fqdn, _port = nodes[0]
 
         # Use the connection timeout. connectTimeoutMS passed as a keyword
         # argument overrides the same option passed in the connection string.

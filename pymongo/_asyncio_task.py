@@ -15,12 +15,12 @@
 """A custom asyncio.Task that allows checking if a task has been sent a cancellation request.
 Can be removed once we drop Python 3.10 support in favor of asyncio.Task.cancelling."""
 
-
 from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Any, Coroutine, Optional
+from collections.abc import Coroutine
+from typing import Any, Optional
 
 
 # TODO (https://jira.mongodb.org/browse/PYTHON-4981): Revisit once the underlying cause of the swallowed cancellations is uncovered

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Support for explicit client-side field level encryption."""
+
 from __future__ import annotations
 
 import asyncio
@@ -22,18 +23,13 @@ import socket
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
+from collections.abc import AsyncGenerator, Iterator, Mapping, MutableMapping, Sequence
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncGenerator,
-    Dict,
     Generic,
-    Iterator,
-    Mapping,
-    MutableMapping,
     Optional,
-    Sequence,
     Union,
     cast,
 )
@@ -109,7 +105,7 @@ _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to C
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
 _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
-    document_class=Dict[str, Any], uuid_representation=STANDARD
+    document_class=dict[str, Any], uuid_representation=STANDARD
 )
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.

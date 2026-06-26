@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Tests for the gridfs package."""
+
 from __future__ import annotations
 
 import asyncio
@@ -23,14 +24,11 @@ import sys
 import threading
 import time
 from io import BytesIO
-from test.helpers import ConcurrentRunner
 from unittest.mock import patch
 
-sys.path[0:0] = [""]
+from test.helpers import ConcurrentRunner
 
-from test import IntegrationTest, client_context, unittest
-from test.utils import joinall
-from test.utils_shared import one
+sys.path[0:0] = [""]
 
 import gridfs
 from bson.binary import Binary
@@ -46,6 +44,9 @@ from pymongo.errors import (
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.mongo_client import MongoClient
+from test import IntegrationTest, client_context, unittest
+from test.utils import joinall
+from test.utils_shared import one
 
 _IS_SYNC = True
 

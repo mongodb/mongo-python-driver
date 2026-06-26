@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 """Synchronization of asynchronous modules.
 
 Used as part of our build system to generate synchronous code.
@@ -21,11 +22,13 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import sys
-from os import listdir
 from pathlib import Path
 
-from unasync import Rule, unasync_files  # type: ignore[import-not-found]
+from unasync import Rule, unasync_files  # type: ignore[import-untyped,import-not-found]
+
+MANIFEST = ".synchro-modified"
 
 replacements = {
     "AsyncCollection": "Collection",
@@ -172,18 +175,14 @@ if not Path.exists(Path(_pymongo_dest_base)):
 if not Path.exists(Path(_gridfs_dest_base)):
     Path.mkdir(Path(_gridfs_dest_base))
 
-async_files = [
-    _pymongo_base + f for f in listdir(_pymongo_base) if (Path(_pymongo_base) / f).is_file()
-]
+async_files = [_pymongo_base + f.name for f in Path(_pymongo_base).iterdir() if f.is_file()]
 
-gridfs_files = [
-    _gridfs_base + f for f in listdir(_gridfs_base) if (Path(_gridfs_base) / f).is_file()
-]
+gridfs_files = [_gridfs_base + f.name for f in Path(_gridfs_base).iterdir() if f.is_file()]
 
 
-def async_only_test(f: str) -> bool:
+def async_only_test(f: Path) -> bool:
     """Return True for async tests that should not be converted to sync."""
-    return f in [
+    return f.name in [
         "test_locks.py",
         "test_concurrency.py",
         "test_async_cancellation.py",
@@ -194,9 +193,9 @@ def async_only_test(f: str) -> bool:
 
 
 test_files = [
-    _test_base + f
-    for f in listdir(_test_base)
-    if (Path(_test_base) / f).is_file() and not async_only_test(f)
+    _test_base + f.name
+    for f in Path(_test_base).iterdir()
+    if f.is_file() and not async_only_test(f)
 ]
 
 # Add each asynchronized test here as part of the converting PR
@@ -289,7 +288,7 @@ def process_files(
     files: list[str], docstring_translate_files: list[str], sync_test_files: list[str]
 ) -> None:
     for file in files:
-        if "__init__" not in file or "__init__" and "test" in file:
+        if "__init__" not in file or ("__init__" and "test" in file):
             with open(file, "r+") as f:
                 lines = f.readlines()
                 lines = apply_is_sync(lines, file)
@@ -366,7 +365,7 @@ def translate_async_sleeps(lines: list[str]) -> list[str]:
 
 def translate_docstrings(lines: list[str]) -> list[str]:
     for i in range(len(lines)):
-        for k in replacements:
+        for k, value in replacements.items():
             if k in lines[i]:
                 # This sequence of replacements fixes the grammar issues caused by translating async -> sync
                 if "an Async" in lines[i]:
@@ -384,19 +383,19 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                 # This ensures docstring links are for `pymongo.X` instead of `pymongo.synchronous.X`
                 if "pymongo.asynchronous" in lines[i] and "import" not in lines[i]:
                     lines[i] = lines[i].replace("pymongo.asynchronous", "pymongo")
-                lines[i] = lines[i].replace(k, replacements[k])
-            if "Sync" in lines[i] and "Synchronous" not in lines[i] and replacements[k] in lines[i]:
+                lines[i] = lines[i].replace(k, value)
+            if "Sync" in lines[i] and "Synchronous" not in lines[i] and value in lines[i]:
                 lines[i] = lines[i].replace("Sync", "")
         if "async for" in lines[i] or "async with" in lines[i] or "async def" in lines[i]:
             lines[i] = lines[i].replace("async ", "")
         if "await " in lines[i] and "tailable" not in lines[i]:
             lines[i] = lines[i].replace("await ", "")
     for i in range(len(lines)):
-        for k in docstring_replacements:  # type: ignore[assignment]
+        for k, value in docstring_replacements.items():  # type: ignore[assignment]
             if f":param {k[1]}: **Not supported by {k[0]}**." in lines[i]:
                 lines[i] = lines[i].replace(
                     f"**Not supported by {k[0]}**.",
-                    docstring_replacements[k],  # type: ignore[index]
+                    value,
                 )
 
         for line in docstring_removals:
@@ -429,6 +428,7 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 
 
 def main() -> None:
+    is_ci = bool(os.environ.get("CI"))
     modified_files = [f"./{f}" for f in sys.argv[1:]]
     errored = False
     for fname in async_files + gridfs_files + test_files:
@@ -437,40 +437,82 @@ def main() -> None:
             continue
         sync_name = str(fname).replace("asynchronous", "synchronous")
         test_sync_name = str(fname).replace("/asynchronous", "")
-        if (
-            sync_name in modified_files
-            or test_sync_name in modified_files
-            and "OVERRIDE_SYNCHRO_CHECK" not in os.environ
+        if sync_name in modified_files or (
+            test_sync_name in modified_files and "OVERRIDE_SYNCHRO_CHECK" not in os.environ
         ):
             print(f"Refusing to overwrite {test_sync_name}")
             errored = True
     if errored:
-        raise ValueError("Aborting synchro due to errors")
+        sys.exit(1)
 
-    unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
-    unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
-    unasync_directory(test_files, _test_base, _test_dest_base, replacements)
+    # When called with specific files, only process those; otherwise process everything.
+    modified_set = set(modified_files)
+    filtered_async = [f for f in async_files if not modified_set or f in modified_set]
+    filtered_gridfs = [f for f in gridfs_files if not modified_set or f in modified_set]
+    filtered_tests = [f for f in test_files if not modified_set or f in modified_set]
 
-    sync_files = [
-        _pymongo_dest_base + f
-        for f in listdir(_pymongo_dest_base)
-        if (Path(_pymongo_dest_base) / f).is_file()
+    ruff_extra = [] if is_ci else ["--silent"]
+
+    # Check async source files for problems before generating sync output.
+    async_sources = filtered_async + filtered_gridfs + filtered_tests
+    if async_sources:
+        subprocess.run(  # noqa: S603
+            [sys.executable, "-m", "ruff", "check", *async_sources, *ruff_extra],
+            check=True,
+        )
+
+    unasync_directory(filtered_async, _pymongo_base, _pymongo_dest_base, replacements)
+    unasync_directory(filtered_gridfs, _gridfs_base, _gridfs_dest_base, replacements)
+    unasync_directory(filtered_tests, _test_base, _test_dest_base, replacements)
+
+    # Derive generated output paths directly from filtered source paths.
+    converted_tests_set = set(converted_tests)
+    generated_pymongo = [_pymongo_dest_base + Path(f).name for f in filtered_async]
+    generated_gridfs = [_gridfs_dest_base + Path(f).name for f in filtered_gridfs]
+    generated_tests = [
+        _test_dest_base + Path(f).name
+        for f in filtered_tests
+        if Path(f).name in converted_tests_set and (Path(_test_dest_base) / Path(f).name).is_file()
     ]
 
-    sync_gridfs_files = [
-        _gridfs_dest_base + f
-        for f in listdir(_gridfs_dest_base)
-        if (Path(_gridfs_dest_base) / f).is_file()
-    ]
-    sync_test_files = [
-        _test_dest_base + f for f in converted_tests if (Path(_test_dest_base) / f).is_file()
-    ]
-
-    docstring_translate_files = sync_files + sync_gridfs_files + sync_test_files
+    docstring_translate_files = generated_pymongo + generated_gridfs + generated_tests
 
     process_files(
-        sync_files + sync_gridfs_files + sync_test_files, docstring_translate_files, sync_test_files
+        generated_pymongo + generated_gridfs + generated_tests,
+        docstring_translate_files,
+        generated_tests,
     )
+
+    generated_files = generated_pymongo + generated_gridfs + generated_tests
+
+    if is_ci and generated_files:
+        print(f"Synchro generated {len(generated_files)} file(s):")
+        for f in generated_files:
+            print(f"  {f}")
+
+    subprocess.run(  # noqa: S603
+        [sys.executable, "-m", "ruff", "check", *generated_files, "--fix", *ruff_extra],
+        check=is_ci,
+    )
+    subprocess.run(  # noqa: S603
+        [sys.executable, "-m", "ruff", "format", *generated_files, *ruff_extra],
+        check=is_ci,
+    )
+
+    if is_ci and generated_files:
+        result = subprocess.run(  # noqa: S603
+            ["git", "diff", "--name-only", "--", *generated_files],  # noqa: S607
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        if result.stdout.strip():
+            print("Sync files are out of date. Run `just lint --all-files synchro` to regenerate:")
+            for f in result.stdout.strip().splitlines():
+                print(f"  {f}")
+            sys.exit(1)
+
+    Path(MANIFEST).write_text("\n".join(generated_files) + ("\n" if generated_files else ""))
 
 
 if __name__ == "__main__":

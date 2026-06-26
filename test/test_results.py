@@ -13,13 +13,12 @@
 # limitations under the License.
 
 """Test results module."""
+
 from __future__ import annotations
 
 import sys
 
 sys.path[0:0] = [""]
-
-from test import unittest
 
 from pymongo.errors import InvalidOperation
 from pymongo.results import (
@@ -29,6 +28,7 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
+from test import unittest
 
 
 class TestResults(unittest.TestCase):

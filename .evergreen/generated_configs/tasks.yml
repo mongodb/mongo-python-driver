@@ -4802,7 +4802,7 @@ tasks:
       - python-3.13
       - standalone-noauth-nossl
       - noauth
-  - name: test-non-standard-latest-python3.14t-noauth-ssl-replica-set-cov
+  - name: test-non-standard-latest-python3.14t-noauth-ssl-replica-set
     commands:
       - func: run server
         vars:
@@ -4810,14 +4810,12 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: 3.14t
     tags:
       - test-non-standard
@@ -4826,7 +4824,6 @@ tasks:
       - replica_set-noauth-ssl
       - noauth
       - free-threaded
-      - pr
   - name: test-non-standard-latest-pypy3.11-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -4873,7 +4870,30 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - pr
-  - name: test-non-standard-latest-python3.13-noauth-nossl-standalone-cov
+      - cov
+  - name: test-non-standard-latest-python3.14-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: latest
+          TOOLCHAIN_VERSION: "3.14"
+    tags:
+      - test-non-standard-no-cov
+      - server-latest
+      - python-3.14
+      - sharded_cluster-auth-ssl
+      - auth
+      - pr
+  - name: test-non-standard-latest-python3.13-noauth-nossl-standalone
     commands:
       - func: run server
         vars:
@@ -4881,14 +4901,12 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: latest
-          COVERAGE: "1"
       - func: run tests
         vars:
           AUTH: noauth
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: latest
-          COVERAGE: "1"
           TOOLCHAIN_VERSION: "3.13"
     tags:
       - test-non-standard
@@ -4896,7 +4914,6 @@ tasks:
       - python-3.13
       - standalone-noauth-nossl
       - noauth
-      - pr
   - name: test-non-standard-rapid-python3.11-noauth-ssl-replica-set
     commands:
       - func: run server

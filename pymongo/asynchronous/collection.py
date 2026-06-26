@@ -13,24 +13,19 @@
 # limitations under the License.
 
 """Collection level utilities for Mongo."""
+
 from __future__ import annotations
 
 import warnings
 from collections import abc
+from collections.abc import Coroutine, Iterable, Iterator, Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Coroutine,
     Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
-    Sequence,
-    Type,
     TypeVar,
     Union,
     cast,
@@ -238,9 +233,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
         if "$" in name and not (name.startswith(("oplog.$main", "$cmd"))):
-            raise InvalidName("collection names must not contain '$': %r" % name)
+            raise InvalidName(f"collection names must not contain '$': {name!r}")
         if name[0] == "." or name[-1] == ".":
-            raise InvalidName("collection names must not start or end with '.': %r" % name)
+            raise InvalidName(f"collection names must not start or end with '.': {name!r}")
         if "\x00" in name:
             raise InvalidName("collection names must not contain the null character")
 
@@ -339,8 +334,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = ...,
         write_concern: Optional[WriteConcern] = ...,
         read_concern: Optional[ReadConcern] = ...,
-    ) -> AsyncCollection[_DocumentType]:
-        ...
+    ) -> AsyncCollection[_DocumentType]: ...
 
     @overload
     def with_options(
@@ -349,8 +343,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         read_preference: Optional[_ServerMode] = ...,
         write_concern: Optional[WriteConcern] = ...,
         read_concern: Optional[ReadConcern] = ...,
-    ) -> AsyncCollection[_DocumentTypeArg]:
-        ...
+    ) -> AsyncCollection[_DocumentTypeArg]: ...
 
     def with_options(
         self,
@@ -2920,9 +2913,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     async def _aggregate(
         self,
-        aggregation_command: Type[_AggregationCommand],
+        aggregation_command: type[_AggregationCommand],
         pipeline: _Pipeline,
-        cursor_class: Type[AsyncCommandCursor],  # type: ignore[type-arg]
+        cursor_class: type[AsyncCommandCursor],  # type: ignore[type-arg]
         session: Optional[AsyncClientSession],
         let: Optional[Mapping[str, Any]] = None,
         comment: Optional[Any] = None,

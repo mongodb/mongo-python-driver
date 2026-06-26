@@ -21,8 +21,6 @@ from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
-from test import unittest
-
 from pymongo.compression_support import (
     CompressionSettings,
     SnappyContext,
@@ -35,6 +33,7 @@ from pymongo.compression_support import (
     validate_compressors,
     validate_zlib_compression_level,
 )
+from test import unittest
 
 
 class TestValidateCompressors(unittest.TestCase):
@@ -44,8 +43,9 @@ class TestValidateCompressors(unittest.TestCase):
         self.assertEqual(result, ["zlib"])
 
     def test_string_input_comma_separated(self):
-        with patch("pymongo.compression_support._have_zlib", return_value=True), patch(
-            "pymongo.compression_support._have_snappy", return_value=True
+        with (
+            patch("pymongo.compression_support._have_zlib", return_value=True),
+            patch("pymongo.compression_support._have_snappy", return_value=True),
         ):
             result = validate_compressors(None, "zlib,snappy")
         self.assertEqual(result, ["zlib", "snappy"])
@@ -94,8 +94,9 @@ class TestValidateCompressors(unittest.TestCase):
         self.assertIn("compression.zstd", str(ctx.warning))
 
     def test_multiple_valid_compressors_preserves_order(self):
-        with patch("pymongo.compression_support._have_zlib", return_value=True), patch(
-            "pymongo.compression_support._have_snappy", return_value=True
+        with (
+            patch("pymongo.compression_support._have_zlib", return_value=True),
+            patch("pymongo.compression_support._have_snappy", return_value=True),
         ):
             result = validate_compressors(None, ["zlib", "snappy"])
         self.assertEqual(result, ["zlib", "snappy"])

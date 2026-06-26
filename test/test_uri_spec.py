@@ -15,6 +15,7 @@
 """Test that the pymongo.uri_parser module is compliant with the connection
 string and uri options specifications.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,12 +25,11 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from test import unittest
-from test.helpers_shared import clear_warning_registry
-
 from pymongo.common import INTERNAL_URI_OPTION_NAME_MAP, _CaseInsensitiveDictionary, validate
 from pymongo.compression_support import _have_snappy
 from pymongo.synchronous.uri_parser import parse_uri
+from test import unittest
+from test.helpers_shared import clear_warning_registry
 
 CONN_STRING_TEST_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), os.path.join("connection_string", "test")

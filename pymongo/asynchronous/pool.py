@@ -24,23 +24,20 @@ import ssl
 import sys
 import time
 import weakref
+from collections.abc import AsyncGenerator, Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncGenerator,
-    Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
-    Sequence,
     Union,
 )
 
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
+from pymongo.asynchronous.command_runner import run_command
 from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.asynchronous.network import command
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -393,15 +390,15 @@ class AsyncConnection:
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
-        self._raise_if_not_writable(unacknowledged)
+        if unacknowledged:
+            self._raise_if_not_writable()
         try:
             if session is not None and session._starting_transaction:
                 session._transaction.set_in_progress()
-            return await command(
+            return await run_command(
                 self,
                 dbname,
                 spec,
-                self.is_mongos,
                 read_preference,
                 codec_options,  # type: ignore[arg-type]
                 session,
@@ -433,8 +430,8 @@ class AsyncConnection:
         """
         if self.max_bson_size is not None and max_doc_size > self.max_bson_size:
             raise DocumentTooLarge(
-                "BSON document too large (%d bytes) - the connected server "
-                "supports BSON document sizes up to %d bytes." % (max_doc_size, self.max_bson_size)
+                f"BSON document too large ({max_doc_size} bytes) - the connected server "
+                f"supports BSON document sizes up to {self.max_bson_size} bytes."
             )
 
         try:
@@ -454,42 +451,10 @@ class AsyncConnection:
         except BaseException as error:
             await self._raise_connection_failure(error)
 
-    def _raise_if_not_writable(self, unacknowledged: bool) -> None:
-        """Raise NotPrimaryError on unacknowledged write if this socket is not
-        writable.
-        """
-        if unacknowledged and not self.is_writable:
-            # Write won't succeed, bail as if we'd received a not primary error.
+    def _raise_if_not_writable(self) -> None:
+        """Raise NotPrimaryError if this connection is not writable."""
+        if not self.is_writable:
             raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
-
-    async def unack_write(self, msg: bytes, max_doc_size: int) -> None:
-        """Send unack OP_MSG.
-
-        Can raise ConnectionFailure or InvalidDocument.
-
-        :param msg: bytes, an OP_MSG message.
-        :param max_doc_size: size in bytes of the largest document in `msg`.
-        """
-        self._raise_if_not_writable(True)
-        await self.send_message(msg, max_doc_size)
-
-    async def write_command(
-        self, request_id: int, msg: bytes, codec_options: CodecOptions[Mapping[str, Any]]
-    ) -> dict[str, Any]:
-        """Send "insert" etc. command, returning response as a dict.
-
-        Can raise ConnectionFailure or OperationFailure.
-
-        :param request_id: an int.
-        :param msg: bytes, the command message.
-        """
-        await self.send_message(msg, 0)
-        reply = await self.receive_message(request_id)
-        result = reply.command_response(codec_options)
-
-        # Raises NotPrimaryError or OperationFailure.
-        helpers_shared._check_command_response(result, self.max_wire_version)
-        return result
 
     async def authenticate(self, reauthenticate: bool = False) -> None:
         """Authenticate to the server if needed.
@@ -631,7 +596,7 @@ class AsyncConnection:
             details = _get_timeout_details(self.opts)
             _raise_connection_failure(self.address, error, timeout_details=details)
         else:
-            raise
+            raise error
 
     def __eq__(self, other: Any) -> bool:
         return self.conn == other.conn
@@ -645,7 +610,7 @@ class AsyncConnection:
     def __repr__(self) -> str:
         return "AsyncConnection({}){} at {}".format(
             repr(self.conn),
-            self.closed and " CLOSED" or "",
+            (self.closed and " CLOSED") or "",
             id(self),
         )
 
@@ -757,6 +722,9 @@ class Pool:
         self._pending = 0
         self._max_connecting = self.opts.max_connecting
         self._client_id = client_id
+        self._ssl_session_cache: Optional[list[Any]] = (
+            [None] if self.opts._ssl_context is not None else None
+        )
         # Log before publishing event to prevent potential listener preemption in tests
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
@@ -1044,7 +1012,9 @@ class Pool:
             listeners.publish_connection_created(self.address, conn_id)
 
         try:
-            networking_interface = await _configured_protocol_interface(self.address, self.opts)
+            networking_interface = await _configured_protocol_interface(
+                self.address, self.opts, self._ssl_session_cache
+            )
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             async with self.lock:
@@ -1477,15 +1447,9 @@ class Pool:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
             raise WaitQueueTimeoutError(
                 "Timeout waiting for connection from the connection pool. "
-                "maxPoolSize: {}, connections in use by cursors: {}, "
-                "connections in use by transactions: {}, connections in use "
-                "by other operations: {}, timeout: {}".format(
-                    self.opts.max_pool_size,
-                    self.ncursors,
-                    self.ntxns,
-                    other_ops,
-                    timeout,
-                )
+                f"maxPoolSize: {self.opts.max_pool_size}, connections in use by cursors: {self.ncursors}, "
+                f"connections in use by transactions: {self.ntxns}, connections in use "
+                f"by other operations: {other_ops}, timeout: {timeout}"
             )
         raise WaitQueueTimeoutError(
             "Timed out while checking out a connection from connection pool. "

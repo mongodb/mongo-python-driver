@@ -69,6 +69,7 @@ bytes [#bytes]_                          binary         both
 .. [#bytes] The bytes type is encoded as BSON binary with
    subtype 0. It will be decoded back to bytes.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -81,21 +82,15 @@ import uuid
 from codecs import utf_8_decode as _utf_8_decode
 from codecs import utf_8_encode as _utf_8_encode
 from collections import abc as _abc
+from collections.abc import Generator, Iterator, Mapping, MutableMapping, Sequence
 from typing import (
     IO,
     TYPE_CHECKING,
     Any,
     BinaryIO,
     Callable,
-    Generator,
-    Iterator,
-    Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
-    Sequence,
-    Tuple,
-    Type,
     TypeVar,
     Union,
     cast,
@@ -152,65 +147,65 @@ except ImportError:
 
 __all__ = [
     "ALL_UUID_SUBTYPES",
+    "BSON",
+    "BSONARR",
+    "BSONBIN",
+    "BSONBOO",
+    "BSONCOD",
+    "BSONCWS",
+    "BSONDAT",
+    "BSONDEC",
+    "BSONINT",
+    "BSONLON",
+    "BSONMAX",
+    "BSONMIN",
+    "BSONNUL",
+    "BSONNUM",
+    "BSONOBJ",
+    "BSONOID",
+    "BSONREF",
+    "BSONRGX",
+    "BSONSTR",
+    "BSONSYM",
+    "BSONTIM",
+    "BSONUND",
     "CSHARP_LEGACY",
+    "DEFAULT_CODEC_OPTIONS",
+    "EPOCH_AWARE",
+    "EPOCH_NAIVE",
     "JAVA_LEGACY",
     "OLD_UUID_SUBTYPE",
+    "RE_TYPE",
+    "SON",
     "STANDARD",
     "UUID_SUBTYPE",
     "Binary",
-    "UuidRepresentation",
     "Code",
-    "DEFAULT_CODEC_OPTIONS",
     "CodecOptions",
     "DBRef",
+    "DatetimeConversion",
+    "DatetimeMS",
     "Decimal128",
+    "Int64",
     "InvalidBSON",
     "InvalidDocument",
     "InvalidStringData",
-    "Int64",
     "MaxKey",
     "MinKey",
     "ObjectId",
     "Regex",
-    "RE_TYPE",
-    "SON",
     "Timestamp",
-    "utc",
-    "EPOCH_AWARE",
-    "EPOCH_NAIVE",
-    "BSONNUM",
-    "BSONSTR",
-    "BSONOBJ",
-    "BSONARR",
-    "BSONBIN",
-    "BSONUND",
-    "BSONOID",
-    "BSONBOO",
-    "BSONDAT",
-    "BSONNUL",
-    "BSONRGX",
-    "BSONREF",
-    "BSONCOD",
-    "BSONSYM",
-    "BSONCWS",
-    "BSONINT",
-    "BSONTIM",
-    "BSONLON",
-    "BSONDEC",
-    "BSONMIN",
-    "BSONMAX",
-    "get_data_and_view",
-    "gen_list_name",
-    "encode",
+    "UuidRepresentation",
     "decode",
     "decode_all",
-    "decode_iter",
     "decode_file_iter",
-    "is_valid",
-    "BSON",
+    "decode_iter",
+    "encode",
+    "gen_list_name",
+    "get_data_and_view",
     "has_c",
-    "DatetimeConversion",
-    "DatetimeMS",
+    "is_valid",
+    "utc",
 ]
 
 BSONNUM = b"\x01"  # Floating point
@@ -222,18 +217,18 @@ BSONUND = b"\x06"  # Undefined
 BSONOID = b"\x07"  # ObjectId
 BSONBOO = b"\x08"  # Boolean
 BSONDAT = b"\x09"  # UTC Datetime
-BSONNUL = b"\x0A"  # Null
-BSONRGX = b"\x0B"  # Regex
-BSONREF = b"\x0C"  # DBRef
-BSONCOD = b"\x0D"  # Javascript code
-BSONSYM = b"\x0E"  # Symbol
-BSONCWS = b"\x0F"  # Javascript code with scope
+BSONNUL = b"\x0a"  # Null
+BSONRGX = b"\x0b"  # Regex
+BSONREF = b"\x0c"  # DBRef
+BSONCOD = b"\x0d"  # Javascript code
+BSONSYM = b"\x0e"  # Symbol
+BSONCWS = b"\x0f"  # Javascript code with scope
 BSONINT = b"\x10"  # 32bit int
 BSONTIM = b"\x11"  # Timestamp
 BSONLON = b"\x12"  # 64bit int
 BSONDEC = b"\x13"  # Decimal128
-BSONMIN = b"\xFF"  # Min key
-BSONMAX = b"\x7F"  # Max key
+BSONMIN = b"\xff"  # Min key
+BSONMAX = b"\x7f"  # Max key
 
 
 _UNPACK_FLOAT_FROM = struct.Struct("<d").unpack_from
@@ -244,7 +239,7 @@ _UNPACK_LONG_FROM = struct.Struct("<q").unpack_from
 _UNPACK_TIMESTAMP_FROM = struct.Struct("<II").unpack_from
 
 
-def get_data_and_view(data: Any) -> Tuple[Any, memoryview]:
+def get_data_and_view(data: Any) -> tuple[Any, memoryview]:
     if isinstance(data, (bytes, bytearray)):
         return data, memoryview(data)
     view = memoryview(data)
@@ -254,19 +249,19 @@ def get_data_and_view(data: Any) -> Tuple[Any, memoryview]:
 def _raise_unknown_type(element_type: int, element_name: str) -> NoReturn:
     """Unknown type helper."""
     raise InvalidBSON(
-        "Detected unknown BSON type {!r} for fieldname '{}'. Are "
-        "you using the latest driver version?".format(chr(element_type).encode(), element_name)
+        f"Detected unknown BSON type {chr(element_type).encode()!r} for fieldname '{element_name}'. Are "
+        "you using the latest driver version?"
     )
 
 
 def _get_int(
     data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """Decode a BSON int32 to python int."""
     return _UNPACK_INT_FROM(data, position)[0], position + 4
 
 
-def _get_c_string(data: Any, view: Any, position: int, opts: CodecOptions[Any]) -> Tuple[str, int]:
+def _get_c_string(data: Any, view: Any, position: int, opts: CodecOptions[Any]) -> tuple[str, int]:
     """Decode a BSON 'C' string to python str."""
     end = data.index(b"\x00", position)
     return _utf_8_decode(view[position:end], opts.unicode_decode_error_handler, True)[0], end + 1
@@ -274,14 +269,14 @@ def _get_c_string(data: Any, view: Any, position: int, opts: CodecOptions[Any]) 
 
 def _get_float(
     data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
-) -> Tuple[float, int]:
+) -> tuple[float, int]:
     """Decode a BSON double to python float."""
     return _UNPACK_FLOAT_FROM(data, position)[0], position + 8
 
 
 def _get_string(
     data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions[Any], dummy: Any
-) -> Tuple[str, int]:
+) -> tuple[str, int]:
     """Decode a BSON string to python str."""
     length = _UNPACK_INT_FROM(data, position)[0]
     position += 4
@@ -293,7 +288,7 @@ def _get_string(
     return _utf_8_decode(view[position:end], opts.unicode_decode_error_handler, True)[0], end + 1
 
 
-def _get_object_size(data: Any, position: int, obj_end: int) -> Tuple[int, int]:
+def _get_object_size(data: Any, position: int, obj_end: int) -> tuple[int, int]:
     """Validate and return a BSON document's size."""
     try:
         obj_size = _UNPACK_INT_FROM(data, position)[0]
@@ -312,7 +307,7 @@ def _get_object_size(data: Any, position: int, obj_end: int) -> Tuple[int, int]:
 
 def _get_object(
     data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions[Any], dummy: Any
-) -> Tuple[Any, int]:
+) -> tuple[Any, int]:
     """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
     obj_size, end = _get_object_size(data, position, obj_end)
     if _raw_document_class(opts.document_class):
@@ -333,7 +328,7 @@ def _get_object(
 
 def _get_array(
     data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions[Any], element_name: str
-) -> Tuple[Any, int]:
+) -> tuple[Any, int]:
     """Decode a BSON array to python list."""
     size = _UNPACK_INT_FROM(data, position)[0]
     end = position + size - 1
@@ -375,7 +370,7 @@ def _get_array(
 
 def _get_binary(
     data: Any, _view: Any, position: int, obj_end: int, opts: CodecOptions[Any], dummy1: Any
-) -> Tuple[Union[Binary, uuid.UUID], int]:
+) -> tuple[Union[Binary, uuid.UUID], int]:
     """Decode a BSON binary to bson.binary.Binary or python UUID."""
     length, subtype = _UNPACK_LENGTH_SUBTYPE_FROM(data, position)
     position += 5
@@ -412,7 +407,7 @@ def _get_binary(
 
 def _get_oid(
     data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
-) -> Tuple[ObjectId, int]:
+) -> tuple[ObjectId, int]:
     """Decode a BSON ObjectId to bson.objectid.ObjectId."""
     end = position + 12
     return ObjectId(data[position:end]), end
@@ -420,7 +415,7 @@ def _get_oid(
 
 def _get_boolean(
     data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
-) -> Tuple[bool, int]:
+) -> tuple[bool, int]:
     """Decode a BSON true/false to python True/False."""
     end = position + 1
     boolean_byte = data[position:end]
@@ -428,19 +423,19 @@ def _get_boolean(
         return False, end
     elif boolean_byte == b"\x01":
         return True, end
-    raise InvalidBSON("invalid boolean value: %r" % boolean_byte)
+    raise InvalidBSON(f"invalid boolean value: {boolean_byte!r}")
 
 
 def _get_date(
     data: Any, _view: Any, position: int, dummy0: int, opts: CodecOptions[Any], dummy1: Any
-) -> Tuple[Union[datetime.datetime, DatetimeMS], int]:
+) -> tuple[Union[datetime.datetime, DatetimeMS], int]:
     """Decode a BSON datetime to python datetime.datetime."""
     return _millis_to_datetime(_UNPACK_LONG_FROM(data, position)[0], opts), position + 8
 
 
 def _get_code(
     data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions[Any], element_name: str
-) -> Tuple[Code, int]:
+) -> tuple[Code, int]:
     """Decode a BSON code to bson.code.Code."""
     code, position = _get_string(data, view, position, obj_end, opts, element_name)
     return Code(code), position
@@ -448,7 +443,7 @@ def _get_code(
 
 def _get_code_w_scope(
     data: Any, view: Any, position: int, _obj_end: int, opts: CodecOptions[Any], element_name: str
-) -> Tuple[Code, int]:
+) -> tuple[Code, int]:
     """Decode a BSON code_w_scope to bson.code.Code."""
     code_end = position + _UNPACK_INT_FROM(data, position)[0]
     code, position = _get_string(data, view, position + 4, code_end, opts, element_name)
@@ -460,7 +455,7 @@ def _get_code_w_scope(
 
 def _get_regex(
     data: Any, view: Any, position: int, dummy0: Any, opts: CodecOptions[Any], dummy1: Any
-) -> Tuple[Regex[Any], int]:
+) -> tuple[Regex[Any], int]:
     """Decode a BSON regex to bson.regex.Regex or a python pattern object."""
     pattern, position = _get_c_string(data, view, position, opts)
     bson_flags, position = _get_c_string(data, view, position, opts)
@@ -470,7 +465,7 @@ def _get_regex(
 
 def _get_ref(
     data: Any, view: Any, position: int, obj_end: int, opts: CodecOptions[Any], element_name: str
-) -> Tuple[DBRef, int]:
+) -> tuple[DBRef, int]:
     """Decode (deprecated) BSON DBPointer to bson.dbref.DBRef."""
     collection, position = _get_string(data, view, position, obj_end, opts, element_name)
     oid, position = _get_oid(data, view, position, obj_end, opts, element_name)
@@ -479,7 +474,7 @@ def _get_ref(
 
 def _get_timestamp(
     data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
-) -> Tuple[Timestamp, int]:
+) -> tuple[Timestamp, int]:
     """Decode a BSON timestamp to bson.timestamp.Timestamp."""
     inc, timestamp = _UNPACK_TIMESTAMP_FROM(data, position)
     return Timestamp(timestamp, inc), position + 8
@@ -487,14 +482,14 @@ def _get_timestamp(
 
 def _get_int64(
     data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
-) -> Tuple[Int64, int]:
+) -> tuple[Int64, int]:
     """Decode a BSON int64 to bson.int64.Int64."""
     return Int64(_UNPACK_LONG_FROM(data, position)[0]), position + 8
 
 
 def _get_decimal128(
     data: Any, _view: Any, position: int, dummy0: Any, dummy1: Any, dummy2: Any
-) -> Tuple[Decimal128, int]:
+) -> tuple[Decimal128, int]:
     """Decode a BSON decimal128 to bson.decimal128.Decimal128."""
     end = position + 16
     return Decimal128.from_bid(data[position:end]), end
@@ -506,7 +501,7 @@ def _get_decimal128(
 #   - position: int, beginning of object in 'data' to decode
 #   - obj_end: int, end of object to decode in 'data' if variable-length type
 #   - opts: a CodecOptions
-_ELEMENT_GETTER: dict[int, Callable[..., Tuple[Any, int]]] = {
+_ELEMENT_GETTER: dict[int, Callable[..., tuple[Any, int]]] = {
     ord(BSONNUM): _get_float,
     ord(BSONSTR): _get_string,
     ord(BSONOBJ): _get_object,
@@ -540,9 +535,9 @@ if _USE_C:
         obj_end: int,
         opts: CodecOptions[Any],
         raw_array: bool = False,
-    ) -> Tuple[str, Any, int]:
+    ) -> tuple[str, Any, int]:
         return cast(
-            "Tuple[str, Any, int]",
+            "tuple[str, Any, int]",
             _cbson._element_to_dict(data, position, obj_end, opts, raw_array),
         )
 
@@ -555,7 +550,7 @@ else:
         obj_end: int,
         opts: CodecOptions[Any],
         raw_array: bool = False,
-    ) -> Tuple[str, Any, int]:
+    ) -> tuple[str, Any, int]:
         """Decode a single key, value pair."""
         element_type = data[position]
         position += 1
@@ -670,7 +665,7 @@ def _make_c_string_check(string: Union[str, bytes]) -> bytes:
             return string + b"\x00"
         except UnicodeError:
             raise InvalidStringData(
-                "strings in documents must be valid UTF-8: %r" % string
+                f"strings in documents must be valid UTF-8: {string!r}"
             ) from None
     else:
         if "\x00" in string:
@@ -686,7 +681,7 @@ def _make_c_string(string: Union[str, bytes]) -> bytes:
             return string + b"\x00"
         except UnicodeError:
             raise InvalidStringData(
-                "strings in documents must be valid UTF-8: %r" % string
+                f"strings in documents must be valid UTF-8: {string!r}"
             ) from None
     else:
         return _utf_8_encode(string)[0] + b"\x00"
@@ -772,7 +767,7 @@ def _encode_objectid(name: bytes, value: ObjectId, dummy: Any, dummy1: Any) -> b
 
 def _encode_bool(name: bytes, value: bool, dummy0: Any, dummy1: Any) -> bytes:
     """Encode a python boolean (True/False)."""
-    return b"\x08" + name + (value and b"\x01" or b"\x00")
+    return b"\x08" + name + ((value and b"\x01") or b"\x00")
 
 
 def _encode_datetime(name: bytes, value: datetime.datetime, dummy0: Any, dummy1: Any) -> bytes:
@@ -789,7 +784,7 @@ def _encode_datetime_ms(name: bytes, value: DatetimeMS, dummy0: Any, dummy1: Any
 
 def _encode_none(name: bytes, dummy0: Any, dummy1: Any, dummy2: Any) -> bytes:
     """Encode python None."""
-    return b"\x0A" + name
+    return b"\x0a" + name
 
 
 def _encode_regex(name: bytes, value: Regex[Any], dummy0: Any, dummy1: Any) -> bytes:
@@ -797,9 +792,9 @@ def _encode_regex(name: bytes, value: Regex[Any], dummy0: Any, dummy1: Any) -> b
     flags = value.flags
     # Python 3 common case
     if flags == re.UNICODE:
-        return b"\x0B" + name + _make_c_string_check(value.pattern) + b"u\x00"
+        return b"\x0b" + name + _make_c_string_check(value.pattern) + b"u\x00"
     elif flags == 0:
-        return b"\x0B" + name + _make_c_string_check(value.pattern) + b"\x00"
+        return b"\x0b" + name + _make_c_string_check(value.pattern) + b"\x00"
     else:
         sflags = b""
         if flags & re.IGNORECASE:
@@ -815,7 +810,7 @@ def _encode_regex(name: bytes, value: Regex[Any], dummy0: Any, dummy1: Any) -> b
         if flags & re.VERBOSE:
             sflags += b"x"
         sflags += b"\x00"
-        return b"\x0B" + name + _make_c_string_check(value.pattern) + sflags
+        return b"\x0b" + name + _make_c_string_check(value.pattern) + sflags
 
 
 def _encode_code(name: bytes, value: Code, dummy: Any, opts: CodecOptions[Any]) -> bytes:
@@ -823,10 +818,10 @@ def _encode_code(name: bytes, value: Code, dummy: Any, opts: CodecOptions[Any]) 
     cstring = _make_c_string(value)
     cstrlen = len(cstring)
     if value.scope is None:
-        return b"\x0D" + name + _PACK_INT(cstrlen) + cstring
+        return b"\x0d" + name + _PACK_INT(cstrlen) + cstring
     scope = _dict_to_bson(value.scope, False, opts, False)
     full_length = _PACK_INT(8 + cstrlen + len(scope))
-    return b"\x0F" + name + full_length + _PACK_INT(cstrlen) + cstring + scope
+    return b"\x0f" + name + full_length + _PACK_INT(cstrlen) + cstring + scope
 
 
 def _encode_int(name: bytes, value: int, dummy0: Any, dummy1: Any) -> bytes:
@@ -860,12 +855,12 @@ def _encode_decimal128(name: bytes, value: Decimal128, dummy0: Any, dummy1: Any)
 
 def _encode_minkey(name: bytes, dummy0: Any, dummy1: Any, dummy2: Any) -> bytes:
     """Encode bson.min_key.MinKey."""
-    return b"\xFF" + name
+    return b"\xff" + name
 
 
 def _encode_maxkey(name: bytes, dummy0: Any, dummy1: Any, dummy2: Any) -> bytes:
     """Encode bson.max_key.MaxKey."""
-    return b"\x7F" + name
+    return b"\x7f" + name
 
 
 # Each encoder function's signature is:
@@ -904,9 +899,9 @@ _ENCODERS = {
 
 # Map each _type_marker to its encoder for faster lookup.
 _MARKERS = {}
-for _typ in _ENCODERS:
+for _typ, _encoder in _ENCODERS.items():
     if hasattr(_typ, "_type_marker"):
-        _MARKERS[_typ._type_marker] = _ENCODERS[_typ]
+        _MARKERS[_typ._type_marker] = _encoder
 
 
 _BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
@@ -1054,13 +1049,11 @@ def encode(
 
 
 @overload
-def decode(data: _ReadableBuffer, codec_options: None = None) -> dict[str, Any]:
-    ...
+def decode(data: _ReadableBuffer, codec_options: None = None) -> dict[str, Any]: ...
 
 
 @overload
-def decode(data: _ReadableBuffer, codec_options: CodecOptions[_DocumentType]) -> _DocumentType:
-    ...
+def decode(data: _ReadableBuffer, codec_options: CodecOptions[_DocumentType]) -> _DocumentType: ...
 
 
 def decode(
@@ -1134,15 +1127,13 @@ if _USE_C:
 
 
 @overload
-def decode_all(data: _ReadableBuffer, codec_options: None = None) -> list[dict[str, Any]]:
-    ...
+def decode_all(data: _ReadableBuffer, codec_options: None = None) -> list[dict[str, Any]]: ...
 
 
 @overload
 def decode_all(
     data: _ReadableBuffer, codec_options: CodecOptions[_DocumentType]
-) -> list[_DocumentType]:
-    ...
+) -> list[_DocumentType]: ...
 
 
 def decode_all(
@@ -1288,13 +1279,13 @@ def _decode_all_selective(
 
 
 @overload
-def decode_iter(data: bytes, codec_options: None = None) -> Iterator[dict[str, Any]]:
-    ...
+def decode_iter(data: bytes, codec_options: None = None) -> Iterator[dict[str, Any]]: ...
 
 
 @overload
-def decode_iter(data: bytes, codec_options: CodecOptions[_DocumentType]) -> Iterator[_DocumentType]:
-    ...
+def decode_iter(
+    data: bytes, codec_options: CodecOptions[_DocumentType]
+) -> Iterator[_DocumentType]: ...
 
 
 def decode_iter(
@@ -1335,15 +1326,13 @@ def decode_iter(
 @overload
 def decode_file_iter(
     file_obj: Union[BinaryIO, IO[bytes]], codec_options: None = None
-) -> Iterator[dict[str, Any]]:
-    ...
+) -> Iterator[dict[str, Any]]: ...
 
 
 @overload
 def decode_file_iter(
     file_obj: Union[BinaryIO, IO[bytes]], codec_options: CodecOptions[_DocumentType]
-) -> Iterator[_DocumentType]:
-    ...
+) -> Iterator[_DocumentType]: ...
 
 
 def decode_file_iter(
@@ -1407,7 +1396,7 @@ class BSON(bytes):
 
     @classmethod
     def encode(
-        cls: Type[BSON],
+        cls: type[BSON],
         document: Mapping[str, Any],
         check_keys: bool = False,
         codec_options: CodecOptions[Any] = DEFAULT_CODEC_OPTIONS,

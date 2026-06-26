@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the read_concern module."""
+
 from __future__ import annotations
 
 import sys
@@ -20,12 +21,11 @@ import unittest
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context
-from test.utils_shared import OvertCommandListener
-
 from bson.son import SON
 from pymongo.errors import OperationFailure
 from pymongo.read_concern import ReadConcern
+from test import IntegrationTest, client_context
+from test.utils_shared import OvertCommandListener
 
 _IS_SYNC = True
 

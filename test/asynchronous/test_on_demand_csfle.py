@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test client side encryption with on demand credentials."""
+
 from __future__ import annotations
 
 import os
@@ -23,14 +24,13 @@ import pytest
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncIntegrationTest, async_client_context
-
 from bson.codec_options import CodecOptions
 from pymongo.asynchronous.encryption import (
     _HAVE_PYMONGOCRYPT,
     AsyncClientEncryption,
     EncryptionError,
 )
+from test.asynchronous import AsyncIntegrationTest, async_client_context
 
 _IS_SYNC = False
 

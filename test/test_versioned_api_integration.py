@@ -16,14 +16,14 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+
 from test.unified_format import generate_test_classes, get_test_path
 
 sys.path[0:0] = [""]
 
+from pymongo.server_api import ServerApi
 from test import IntegrationTest, client_context, unittest
 from test.utils_shared import OvertCommandListener
-
-from pymongo.server_api import ServerApi
 
 _IS_SYNC = True
 

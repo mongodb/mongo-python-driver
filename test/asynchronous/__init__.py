@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Asynchronous test suite for pymongo, bson, and gridfs."""
+
 from __future__ import annotations
 
 import asyncio
@@ -42,9 +43,10 @@ try:
     HAVE_IPADDRESS = True
 except ImportError:
     HAVE_IPADDRESS = False
+from collections.abc import Generator
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial, wraps
-from typing import Any, Callable, Dict, Generator, overload
+from typing import Any, Callable, overload
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
@@ -117,7 +119,7 @@ class AsyncClientContext:
         self.tls = False
         self.tlsCertificateKeyFile = False
         self.server_is_resolvable = is_server_resolvable()
-        self.default_client_options: Dict = {}
+        self.default_client_options: dict = {}
         self.sessions_enabled = False
         self.client = None  # type: ignore
         self.conn_lock = threading.Lock()
@@ -701,7 +703,7 @@ class AsyncClientContext:
         """Run a test only if the server supports the failCommand appName."""
         # SERVER-47195 and SERVER-49336.
         return self._require(
-            lambda: (self.test_commands_enabled and self.version >= (4, 4, 7)),
+            lambda: self.test_commands_enabled and self.version >= (4, 4, 7),
             "failCommand appName must be supported",
             func=func,
         )
@@ -1172,7 +1174,7 @@ class AsyncIntegrationTest(AsyncPyMongoTestCase):
 
     client: AsyncMongoClient[dict]
     db: AsyncDatabase
-    credentials: Dict[str, str]
+    credentials: dict[str, str]
 
     @async_client_context.require_connection
     async def asyncSetUp(self) -> None:
