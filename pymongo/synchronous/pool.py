@@ -294,7 +294,8 @@ class Connection:
             hello.logical_session_timeout_minutes is not None and hello.is_readable
         )
         self.logical_session_timeout_minutes: Optional[int] = hello.logical_session_timeout_minutes
-        self.hello_ok = hello.hello_ok
+        # PYTHON-5904
+        self.hello_ok = self.hello_ok or hello.hello_ok
         self.is_repl = hello.server_type in (
             SERVER_TYPE.RSPrimary,
             SERVER_TYPE.RSSecondary,
