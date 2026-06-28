@@ -22,7 +22,7 @@ jobs:
   static:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
@@ -67,7 +67,7 @@ jobs:
 
     name: Python ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
@@ -76,7 +76,7 @@ jobs:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        uses: mongodb-labs/drivers-evergreen-tools@da0f17351d74bd154b0ec15e92142ecf12e63d75 # master
         with:
           version: "${{ matrix.mongodb-version }}"
       - name: Run tests
@@ -89,7 +89,7 @@ jobs:
 
     name: Coverage
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
@@ -98,7 +98,7 @@ jobs:
           enable-cache: true
           python-version: "3.10"
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        uses: mongodb-labs/drivers-evergreen-tools@da0f17351d74bd154b0ec15e92142ecf12e63d75 # master
         with:
           version: "8.0"
       - name: Install just
@@ -117,7 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     name: DocTest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
@@ -128,7 +128,7 @@ jobs:
       - name: Install just
         run: uv tool install rust-just
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        uses: mongodb-labs/drivers-evergreen-tools@da0f17351d74bd154b0ec15e92142ecf12e63d75 # master
         with:
           version: "8.0"
       - name: Install dependencies
@@ -142,7 +142,7 @@ jobs:
     name: Docs Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
@@ -164,7 +164,7 @@ jobs:
       matrix:
         python: ["3.10", "3.11"]
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
@@ -185,7 +185,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Integration Tests
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
       - name: Install uv
@@ -199,12 +199,12 @@ jobs:
         run: |
           just install
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        uses: mongodb-labs/drivers-evergreen-tools@da0f17351d74bd154b0ec15e92142ecf12e63d75 # master
       - name: Run tests
         run:  |
           just integration-tests
       - id: setup-mongodb-ssl
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        uses: mongodb-labs/drivers-evergreen-tools@da0f17351d74bd154b0ec15e92142ecf12e63d75 # master
         with:
           ssl: true
       - name: Run tests
@@ -215,10 +215,10 @@ jobs:
     runs-on: ubuntu-latest
     name: "Make an sdist"
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
@@ -229,7 +229,7 @@ jobs:
         run: |
           pip install build
           python -m build --sdist
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: "sdist"
           path: dist/*.tar.gz
@@ -241,7 +241,7 @@ jobs:
       timeout-minutes: 20
       steps:
         - name: Download sdist
-          uses: actions/download-artifact@v8
+          uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
           with:
             path: sdist/
         - name: Unpack SDist
@@ -252,14 +252,14 @@ jobs:
             mkdir test
             tar --strip-components=1 -zxf *.tar.gz -C ./test
             ls test
-        - uses: actions/setup-python@v6
+        - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
           with:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
             # Test sdist on lowest supported Python
             python-version: "3.9"
         - id: setup-mongodb
-          uses: mongodb-labs/drivers-evergreen-tools@master
+          uses: mongodb-labs/drivers-evergreen-tools@da0f17351d74bd154b0ec15e92142ecf12e63d75 # master
         - name: Run connect test from sdist
           shell: bash
           run: |
@@ -275,7 +275,7 @@ jobs:
       runs-on: ubuntu-latest
       name: Test minimum dependencies and Python
       steps:
-        - uses: actions/checkout@v6.0.3
+        - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
           with:
             persist-credentials: false
         - name: Install uv
@@ -283,7 +283,7 @@ jobs:
           with:
             python-version: "3.9"
         - id: setup-mongodb
-          uses: mongodb-labs/drivers-evergreen-tools@master
+          uses: mongodb-labs/drivers-evergreen-tools@da0f17351d74bd154b0ec15e92142ecf12e63d75 # master
           with:
             version: "8.0"
         - name: Run tests
