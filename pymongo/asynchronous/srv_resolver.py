@@ -20,6 +20,7 @@ import ipaddress
 import random
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+from pymongo._psl import is_public_suffix
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
@@ -73,13 +74,27 @@ class _SrvResolver:
         srv_max_hosts: int = 0,
         srv_allowed_hosts_suffix: Optional[str] = None,
     ):
-        self.__fqdn = fqdn
+        self.__fqdn = fqdn.lower()
         self.__srv = srv_service_name
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
         self.__srv_max_hosts = srv_max_hosts or 0
         self.__srv_allowed_hosts_suffix = (
-            "." + srv_allowed_hosts_suffix.lower().lstrip(".") if srv_allowed_hosts_suffix else None
+            "." + srv_allowed_hosts_suffix.lower().strip(".") if srv_allowed_hosts_suffix else None
         )  # ensure there's a . at the beginning of the domain
+        if (
+            self.__srv_allowed_hosts_suffix is not None
+            and "." not in self.__srv_allowed_hosts_suffix[1:]
+        ):
+            raise ConfigurationError(
+                "srvAllowedHostsSuffix must contain at least two labels (e.g. '.mydomain.net'), "
+                f"got: {srv_allowed_hosts_suffix}"
+            )
+        if self.__srv_allowed_hosts_suffix is not None and is_public_suffix(
+            self.__srv_allowed_hosts_suffix
+        ):
+            raise ConfigurationError(
+                f"srvAllowedHostsSuffix must not be a public suffix, got: {srv_allowed_hosts_suffix}"
+            )
         # Validate the fully qualified domain name.
         try:
             ipaddress.ip_address(fqdn)

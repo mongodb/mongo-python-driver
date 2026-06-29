@@ -583,6 +583,10 @@ def _validate_uri(
         raise ConfigurationError(
             "The srvServiceName option is only allowed with 'mongodb+srv://' URIs"
         )
+    elif not is_srv and options.get("srvAllowedHostsSuffix") is not None:
+        raise ConfigurationError(
+            "The srvAllowedHostsSuffix option is only allowed with 'mongodb+srv://' URIs"
+        )
     elif not is_srv and srv_max_hosts:
         raise ConfigurationError(
             "The srvMaxHosts option is only allowed with 'mongodb+srv://' URIs"

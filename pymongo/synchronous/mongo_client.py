@@ -451,6 +451,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             connect to. More specifically, when a "mongodb+srv://" connection string
             resolves to more than srvMaxHosts number of hosts, the client will randomly
             choose an srvMaxHosts sized subset of hosts.
+          - `srvAllowedHostsSuffix`: (string) Overrides the default requirement that
+            hosts returned by SRV DNS records share the same parent domain as the seed
+            hostname. When set, the driver accepts any returned host whose name ends
+            with this suffix (e.g. ``".atlas.mongodb.com"``). The value must contain
+            at least two labels and must not be a public suffix (per the Public Suffix
+            List). Only valid with ``mongodb+srv://`` URIs.
+
+            .. warning::
+
+               This option relaxes a built-in DNS spoofing safeguard. Use the most
+               specific suffix possible for your deployment rather than a broad
+               company-wide domain.
 
 
           | **Write Concern options:**
