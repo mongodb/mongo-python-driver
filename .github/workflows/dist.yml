@@ -54,9 +54,7 @@ jobs:
 
       - uses: actions/setup-python@v6.2.0
         with:
-          cache: 'pip'
           python-version: 3.11
-          cache-dependency-path: 'pyproject.toml'
           allow-prereleases: true
 
       - name: Set up QEMU
