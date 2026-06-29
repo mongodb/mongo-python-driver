@@ -36,9 +36,9 @@ from test.utils import make_msg_header
 def _make_conn():
     conn = MagicMock()
     conn.conn.gettimeout.return_value = None
-    # PyPy calls wait_for_read() before recv_into(), which checks fileno() == -1
-    # as an early-exit. Without this, sock.fileno() returns a MagicMock and the
-    # subsequent sock.pending() > 0 comparison raises TypeError on PyPy.
+    # On PyPy/Windows, receive_data() calls wait_for_read() before recv_into().
+    # wait_for_read() checks fileno() == -1 as an early-exit; without this mock,
+    # sock.fileno() returns a MagicMock and sock.pending() > 0 raises TypeError.
     conn.conn.sock.fileno.return_value = -1
     return conn
 
@@ -82,9 +82,8 @@ class TestReceiveMessage(UnitTest):
                 b"data",
             ],
         ):
-            with patch.object(network_layer, "_UNPACK_REPLY", {2013: MagicMock()}):
-                with self.assertRaisesRegex(ProtocolError, "Got opcode"):
-                    network_layer.receive_message(_make_conn(), request_id=None)
+            with self.assertRaisesRegex(ProtocolError, "Got opcode"):
+                network_layer.receive_message(_make_conn(), request_id=None)
 
 
 class TestReceiveData(UnitTest):
