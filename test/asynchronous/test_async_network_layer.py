@@ -27,6 +27,7 @@ from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
 from pymongo.network_layer import PyMongoProtocol, _async_socket_receive
 from test.asynchronous import AsyncUnitTest, unittest
+from test.utils import make_msg_header
 
 
 def _make_protocol(timeout=None):
@@ -37,10 +38,6 @@ def _make_protocol(timeout=None):
     return protocol
 
 
-def _make_header(length, request_id, response_to, op_code):
-    return struct.pack("<iiii", length, request_id, response_to, op_code)
-
-
 class TestPyMongoProtocol(AsyncUnitTest):
     def _make_proto_with_header(self, header_bytes, max_size=MAX_MESSAGE_SIZE):
         protocol = _make_protocol()
@@ -49,7 +46,7 @@ class TestPyMongoProtocol(AsyncUnitTest):
         return protocol
 
     async def test_normal_op_msg(self):
-        header = _make_header(length=32, request_id=1, response_to=99, op_code=2013)
+        header = make_msg_header(length=32, request_id=1, response_to=99, op_code=2013)
         protocol = self._make_proto_with_header(header)
         body_len, op_code, response_to, expecting_compression = protocol.process_header()
         self.assertEqual(body_len, 16)
@@ -61,7 +58,7 @@ class TestPyMongoProtocol(AsyncUnitTest):
         # OP_COMPRESSED=2012; process_header strips the 9-byte compression sub-header
         # (op code + uncompressed size + compressor id), then the 16-byte standard header.
         # length=35 → after compression sub-header: 26 → body: 10
-        header = _make_header(length=35, request_id=1, response_to=0, op_code=2012)
+        header = make_msg_header(length=35, request_id=1, response_to=0, op_code=2012)
         protocol = self._make_proto_with_header(header)
         body_len, op_code, _response_to, expecting_compression = protocol.process_header()
         self.assertEqual(body_len, 10)
@@ -69,19 +66,19 @@ class TestPyMongoProtocol(AsyncUnitTest):
         self.assertTrue(expecting_compression)
 
     async def test_op_compressed_length_too_small_raises(self):
-        header = _make_header(length=25, request_id=1, response_to=0, op_code=2012)
+        header = make_msg_header(length=25, request_id=1, response_to=0, op_code=2012)
         protocol = self._make_proto_with_header(header)
         with self.assertRaisesRegex(ProtocolError, "not longer than standard OP_COMPRESSED"):
             protocol.process_header()
 
     async def test_non_compressed_length_too_small_raises(self):
-        header = _make_header(length=16, request_id=1, response_to=0, op_code=2013)
+        header = make_msg_header(length=16, request_id=1, response_to=0, op_code=2013)
         protocol = self._make_proto_with_header(header)
         with self.assertRaisesRegex(ProtocolError, "not longer than standard message header size"):
             protocol.process_header()
 
     async def test_length_exceeds_max_raises(self):
-        header = _make_header(
+        header = make_msg_header(
             length=MAX_MESSAGE_SIZE + 1, request_id=1, response_to=0, op_code=2013
         )
         protocol = self._make_proto_with_header(header)
@@ -111,6 +108,47 @@ class TestPyMongoProtocol(AsyncUnitTest):
         with self.assertRaisesRegex(OSError, "connection reset"):
             await future
 
+    async def test_buffer_updated_completes_pending_future(self):
+        protocol = _make_protocol()
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        protocol._pending_messages.append(future)
+
+        # Feed a valid 32-byte OP_MSG header (16-byte header + 16-byte body).
+        header = make_msg_header(length=32, request_id=1, response_to=99, op_code=2013)
+        buf = protocol.get_buffer(16)
+        buf[:16] = header
+        protocol.buffer_updated(16)
+
+        # Header processed: message buffer allocated, no longer expecting header.
+        self.assertFalse(protocol._expecting_header)
+        self.assertEqual(protocol._message_size, 16)
+
+        # Feed the 16-byte body.
+        buf = protocol.get_buffer(16)
+        buf[:16] = b"x" * 16
+        protocol.buffer_updated(16)
+
+        # Future resolved with (op_code, compressor_id, response_to, data).
+        self.assertTrue(future.done())
+        op_code, compressor_id, response_to, _data = future.result()
+        self.assertEqual(op_code, 2013)
+        self.assertIsNone(compressor_id)
+        self.assertEqual(response_to, 99)
+
+    async def test_buffer_updated_zero_bytes_closes(self):
+        protocol = _make_protocol()
+        protocol.buffer_updated(0)
+        self.assertTrue(protocol.transport.abort.called)
+
+    async def test_buffer_updated_protocol_error_closes(self):
+        protocol = _make_protocol()
+        # length=16 triggers "not longer than standard message header size" in process_header.
+        buf = protocol.get_buffer(16)
+        buf[:16] = make_msg_header(length=16, request_id=1, response_to=0, op_code=2013)
+        protocol.buffer_updated(16)
+        self.assertTrue(protocol.transport.abort.called)
+
 
 class TestAsyncSocketReceive(AsyncUnitTest):
     async def test_raises_on_connection_closed(self):
@@ -119,10 +157,7 @@ class TestAsyncSocketReceive(AsyncUnitTest):
         mock_socket = MagicMock()
         loop = asyncio.get_running_loop()
 
-        async def fake_recv_into(sock, buf):
-            return 0
-
-        with patch.object(loop, "sock_recv_into", new=AsyncMock(side_effect=fake_recv_into)):
+        with patch.object(loop, "sock_recv_into", new=AsyncMock(return_value=0)):
             with self.assertRaisesRegex(OSError, "connection closed"):
                 await _async_socket_receive(mock_socket, 10, loop)
 

@@ -20,6 +20,7 @@ import asyncio
 import contextlib
 import os
 import random
+import struct
 import sys
 import threading  # Used in the synchronized version of this file
 import time
@@ -273,3 +274,8 @@ class MockPool:
 
     def remove_stale_sockets(self, *args, **kwargs):
         pass
+
+
+def make_msg_header(length: int, request_id: int, response_to: int, op_code: int) -> bytes:
+    """Pack a MongoDB wire-protocol message header."""
+    return struct.pack("<iiii", length, request_id, response_to, op_code)
