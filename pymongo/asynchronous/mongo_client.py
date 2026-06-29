@@ -609,6 +609,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             details.
 
           | **Overload retry options:**
+          | (Requires MongoDB server version 9.0+.)
 
           - `max_adaptive_retries`: (int) How many retries to allow for overload errors. Defaults to ``2``.
           - `enable_overload_retargeting`: (boolean) Whether overload retargeting is enabled for this client.
