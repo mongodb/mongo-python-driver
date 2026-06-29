@@ -49,7 +49,7 @@ class CommandCursor(_CursorBase[_DocumentType]):
     :meth:`~pymongo.collection.Collection.list_search_indexes`
     :meth:`~pymongo.database.Database.list_collections`,
     :meth:`~pymongo.database.Database.cursor_command`,
-    and: meth:`~pymongo.mongo_client.MongoClient.list_databases`
+    and :meth:`~pymongo.mongo_client.MongoClient.list_databases`
     to iterate MongoDB command results.
 
     Should not be called directly by application developers.

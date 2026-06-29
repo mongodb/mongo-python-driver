@@ -49,7 +49,7 @@ class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
     :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_search_indexes`
     :meth:`~pymongo.asynchronous.database.AsyncDatabase.list_collections`,
     :meth:`~pymongo.asynchronous.database.AsyncDatabase.cursor_command`,
-    and: meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.list_databases`
+    and :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.list_databases`
     to iterate MongoDB command results.
 
     Should not be called directly by application developers.
