@@ -27,7 +27,7 @@ from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
 from pymongo.network_layer import PyMongoProtocol, _async_socket_receive
 from test.asynchronous import AsyncUnitTest, unittest
-from test.utils import make_msg_header
+from test.asynchronous.utils import make_msg_header
 
 
 def _make_protocol(timeout=None):
