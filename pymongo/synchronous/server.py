@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import logging
-from contextlib import AbstractContextManager
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -44,7 +43,7 @@ if TYPE_CHECKING:
     from pymongo.monitoring import _EventListeners
     from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
-    from pymongo.synchronous.mongo_client import MongoClient, _MongoClientErrorHandler
+    from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.monitor import Monitor
     from pymongo.synchronous.pool import Connection, Pool
     from pymongo.typings import _DocumentOut
@@ -222,11 +221,6 @@ class Server:
             )
 
         return response
-
-    def checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AbstractContextManager[Connection]:
-        return self.pool.checkout(handler)
 
     @property
     def description(self) -> ServerDescription:
