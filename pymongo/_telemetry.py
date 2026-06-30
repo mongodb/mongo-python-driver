@@ -359,6 +359,18 @@ class _HeartbeatTelemetry:
         self._publish = publish
         self._awaited = awaited
 
+    def _emit_log(self, message: _SDAMStatusMessage, **extra: Any) -> None:
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SDAM_LOGGER,
+                message=message,
+                topologyId=self._topology_id,
+                serverHost=self._address[0],
+                serverPort=self._address[1],
+                awaited=self._awaited,
+                **extra,
+            )
+
     def started(self) -> None:
         """Publish the APM heartbeat-started event (before connection checkout)."""
         self._start = time.monotonic()
@@ -368,17 +380,11 @@ class _HeartbeatTelemetry:
 
     def emit_started_log(self, conn_id: int, server_conn_id: Optional[int]) -> None:
         """Emit the log entry for heartbeat started (after connection checkout)."""
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.HEARTBEAT_START,
-                topologyId=self._topology_id,
-                driverConnectionId=conn_id,
-                serverConnectionId=server_conn_id,
-                serverHost=self._address[0],
-                serverPort=self._address[1],
-                awaited=self._awaited,
-            )
+        self._emit_log(
+            _SDAMStatusMessage.HEARTBEAT_START,
+            driverConnectionId=conn_id,
+            serverConnectionId=server_conn_id,
+        )
 
     def succeeded(
         self,
@@ -393,19 +399,13 @@ class _HeartbeatTelemetry:
             self._listeners.publish_server_heartbeat_succeeded(
                 self._address, round_trip_time, response, response.awaitable
             )
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.HEARTBEAT_SUCCESS,
-                topologyId=self._topology_id,
-                driverConnectionId=conn_id,
-                serverConnectionId=server_conn_id,
-                serverHost=self._address[0],
-                serverPort=self._address[1],
-                awaited=self._awaited,
-                durationMS=round_trip_time * 1000,
-                reply=response.document,
-            )
+        self._emit_log(
+            _SDAMStatusMessage.HEARTBEAT_SUCCESS,
+            driverConnectionId=conn_id,
+            serverConnectionId=server_conn_id,
+            durationMS=round_trip_time * 1000,
+            reply=response.document,
+        )
 
     def failed(self, error: Exception, conn_id: Optional[int]) -> None:
         """Emit the FAILED log entry and APM event."""
@@ -415,18 +415,12 @@ class _HeartbeatTelemetry:
             self._listeners.publish_server_heartbeat_failed(
                 self._address, duration, error, self._awaited
             )
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.HEARTBEAT_FAIL,
-                topologyId=self._topology_id,
-                serverHost=self._address[0],
-                serverPort=self._address[1],
-                awaited=self._awaited,
-                durationMS=duration * 1000,
-                failure=error,
-                driverConnectionId=conn_id,
-            )
+        self._emit_log(
+            _SDAMStatusMessage.HEARTBEAT_FAIL,
+            durationMS=duration * 1000,
+            failure=error,
+            driverConnectionId=conn_id,
+        )
 
 
 class _SdamTelemetry:
@@ -453,13 +447,17 @@ class _SdamTelemetry:
         if self._events is not None:
             self._events.put((fn, args))
 
-    def topology_opened(self) -> None:
+    def _emit_log(self, message: _SDAMStatusMessage, **extra: Any) -> None:
         if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _SDAM_LOGGER,
-                message=_SDAMStatusMessage.START_TOPOLOGY,
+                message=message,
                 topologyId=self._topology_id,
+                **extra,
             )
+
+    def topology_opened(self) -> None:
+        self._emit_log(_SDAMStatusMessage.START_TOPOLOGY)
         if self._publish_tp:
             assert self._listeners is not None
             self._enqueue(self._listeners.publish_topology_opened, (self._topology_id,))
@@ -471,14 +469,11 @@ class _SdamTelemetry:
                 self._listeners.publish_topology_description_changed,
                 (old_td, new_td, self._topology_id),
             )
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
-                topologyId=self._topology_id,
-                previousDescription=repr(old_td),
-                newDescription=repr(new_td),
-            )
+        self._emit_log(
+            _SDAMStatusMessage.TOPOLOGY_CHANGE,
+            previousDescription=repr(old_td),
+            newDescription=repr(new_td),
+        )
 
     def topology_closed(self, old_td: Any, new_td: Any) -> None:
         """Emit APM and log events for topology description change + topology closed."""
@@ -489,32 +484,22 @@ class _SdamTelemetry:
                 (old_td, new_td, self._topology_id),
             )
             self._enqueue(self._listeners.publish_topology_closed, (self._topology_id,))
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
-                topologyId=self._topology_id,
-                previousDescription=repr(old_td),
-                newDescription=repr(new_td),
-            )
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.STOP_TOPOLOGY,
-                topologyId=self._topology_id,
-            )
+        self._emit_log(
+            _SDAMStatusMessage.TOPOLOGY_CHANGE,
+            previousDescription=repr(old_td),
+            newDescription=repr(new_td),
+        )
+        self._emit_log(_SDAMStatusMessage.STOP_TOPOLOGY)
 
     def server_opened(self, address: _Address) -> None:
         if self._publish_server:
             assert self._listeners is not None
             self._enqueue(self._listeners.publish_server_opened, (address, self._topology_id))
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.START_SERVER,
-                topologyId=self._topology_id,
-                serverHost=address[0],
-                serverPort=address[1],
-            )
+        self._emit_log(
+            _SDAMStatusMessage.START_SERVER,
+            serverHost=address[0],
+            serverPort=address[1],
+        )
 
     def server_description_changed(self, sd_old: Any, sd_new: Any, address: _Address) -> None:
         if self._publish_server:
@@ -528,11 +513,8 @@ class _SdamTelemetry:
         if self._publish_server:
             assert self._listeners is not None
             self._enqueue(self._listeners.publish_server_closed, (address, self._topology_id))
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.STOP_SERVER,
-                topologyId=self._topology_id,
-                serverHost=address[0],
-                serverPort=address[1],
-            )
+        self._emit_log(
+            _SDAMStatusMessage.STOP_SERVER,
+            serverHost=address[0],
+            serverPort=address[1],
+        )
