@@ -23,6 +23,7 @@ import functools
 import random
 import re
 import shutil
+import struct
 import sys
 import threading
 import unittest
@@ -743,3 +744,8 @@ async def async_barrier_wait(barrier, timeout: float | None = None):
 
 def barrier_wait(barrier, timeout: float | None = None):
     barrier.wait(timeout=timeout)
+
+
+def make_msg_header(length: int, request_id: int, response_to: int, op_code: int) -> bytes:
+    """Pack a MongoDB wire-protocol message header."""
+    return struct.pack("<iiii", length, request_id, response_to, op_code)

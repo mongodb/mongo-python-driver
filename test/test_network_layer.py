@@ -30,7 +30,7 @@ from pymongo import network_layer
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
 from test import UnitTest, unittest
-from test.utils import make_msg_header
+from test.utils_shared import make_msg_header
 
 
 def _make_conn():
