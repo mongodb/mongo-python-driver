@@ -36,7 +36,6 @@ command type so callers only pass what varies.
 from __future__ import annotations
 
 import datetime
-import logging
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
@@ -49,14 +48,15 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo import _csot, helpers_shared, message
+from pymongo._telemetry import _CommandTelemetry
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import NotPrimaryError, OperationFailure
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
 from pymongo.message import _BulkWriteContextBase, _convert_exception, _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 
 if TYPE_CHECKING:
     from bson import CodecOptions
+    from bson.objectid import ObjectId
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.monitoring import _EventListeners
     from pymongo.pool_options import PoolOptions
@@ -65,7 +65,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
-    from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
+    from pymongo.typings import _CollationIn, _DocumentOut, _DocumentType
     from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
@@ -81,8 +81,7 @@ def _run_command(
     client: Optional[MongoClient[Any]],
     session: Optional[ClientSession],
     listeners: Optional[_EventListeners],
-    address: Optional[_Address],
-    start: datetime.datetime,
+    topology_id: Optional[ObjectId],
     codec_options: CodecOptions[_DocumentType],
     user_fields: Optional[Mapping[str, Any]] = None,
     orig: Optional[MutableMapping[str, Any]] = None,
@@ -118,12 +117,12 @@ def _run_command(
     :param request_id: The request id of the encoded message (``0`` when
         ``more_to_come`` and no message is sent).
     :param msg: The encoded bytes to send (ignored when ``more_to_come``).
-    :param client: The MongoClient, for ``$clusterTime`` gossip, logging,
-        and decryption. ``None`` disables those steps (e.g. during handshake).
+    :param client: The MongoClient, for ``$clusterTime`` gossip and
+        decryption. ``None`` disables those steps (e.g. during handshake).
     :param session: The session to update from the response.
     :param listeners: The event listeners, or ``None`` to disable APM.
-    :param address: The (host, port) of ``conn`` for APM events.
-    :param start: The ``datetime`` the operation began, for duration timing.
+    :param topology_id: The client topology id for structured logging, or
+        ``None`` to disable command logging.
     :param codec_options: The CodecOptions used to decode the reply.
     :param user_fields: Response fields decoded with the codec's TypeDecoders.
     :param orig: The command document published in the ``STARTED`` APM event;
@@ -159,38 +158,9 @@ def _run_command(
         command_name = name
     if orig is None:
         orig = cmd
-    publish = listeners is not None and listeners.enabled_for_commands
 
-    if client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-        _debug_log(
-            _COMMAND_LOGGER,
-            message=_CommandStatusMessage.STARTED,
-            clientId=client._topology_settings._topology_id,
-            command=cmd,
-            commandName=name,
-            databaseName=dbname,
-            requestId=request_id,
-            operationId=request_id,
-            driverConnectionId=conn.id,
-            serverConnectionId=conn.server_connection_id,
-            serverHost=conn.address[0],
-            serverPort=conn.address[1],
-            serviceId=conn.service_id,
-        )
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        if ensure_db and "$db" not in orig:
-            orig["$db"] = dbname
-        listeners.publish_command_start(
-            orig,
-            dbname,
-            request_id,
-            address,
-            conn.server_connection_id,
-            op_id,
-            service_id=conn.service_id,
-        )
+    telemetry = _CommandTelemetry(topology_id, conn, listeners, cmd, dbname, request_id, op_id)
+    telemetry.started(orig, ensure_db)
 
     reply: Optional[_OpMsg] = None
     docs: list[dict[str, Any]] = [{"ok": 1}]
@@ -234,80 +204,14 @@ def _run_command(
                     pool_opts=pool_opts,
                 )
     except Exception as exc:
-        duration = datetime.datetime.now() - start
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
             failure = _convert_exception(exc)
-        if client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.FAILED,
-                clientId=client._topology_settings._topology_id,
-                durationMS=duration,
-                failure=failure,
-                commandName=name,
-                databaseName=dbname,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-                isServerSideError=isinstance(exc, OperationFailure),
-            )
-        if publish:
-            assert listeners is not None
-            assert address is not None
-            listeners.publish_command_failure(
-                duration,
-                failure,
-                command_name,
-                request_id,
-                address,
-                conn.server_connection_id,
-                op_id,
-                service_id=conn.service_id,
-                database_name=dbname,
-            )
+        telemetry.failed(failure, command_name, isinstance(exc, OperationFailure))
         raise
 
-    duration = datetime.datetime.now() - start
-    published_reply = docs[0]
-    if client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-        _debug_log(
-            _COMMAND_LOGGER,
-            message=_CommandStatusMessage.SUCCEEDED,
-            clientId=client._topology_settings._topology_id,
-            durationMS=duration,
-            reply=published_reply,
-            commandName=name,
-            databaseName=dbname,
-            requestId=request_id,
-            operationId=request_id,
-            driverConnectionId=conn.id,
-            serverConnectionId=conn.server_connection_id,
-            serverHost=conn.address[0],
-            serverPort=conn.address[1],
-            serviceId=conn.service_id,
-            speculative_authenticate="speculativeAuthenticate" in orig,
-        )
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        listeners.publish_command_success(
-            duration,
-            published_reply,
-            command_name,
-            request_id,
-            address,
-            conn.server_connection_id,
-            op_id,
-            service_id=conn.service_id,
-            speculative_hello=speculative_hello,
-            database_name=dbname,
-        )
+    telemetry.succeeded(docs[0], command_name, speculative_hello)
 
     if client and client._encrypter and reply and decrypt_reply:
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
@@ -315,7 +219,7 @@ def _run_command(
             "list[dict[str, Any]]", _decode_all_selective(decrypted, codec_options, user_fields)
         )
 
-    return docs, reply, duration
+    return docs, reply, telemetry.duration
 
 
 def run_bulk_write_command(
@@ -341,6 +245,7 @@ def run_bulk_write_command(
     :param max_doc_size: The largest document size in the batch, passed to ``conn.send_message``.
     :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
     """
+    topology_id = client._topology_id if client is not None else None
     return _run_command(
         bwc.conn,  # type: ignore[arg-type]
         cmd,
@@ -350,8 +255,7 @@ def run_bulk_write_command(
         client=client,
         session=bwc.session,  # type: ignore[arg-type]
         listeners=bwc.listeners,
-        address=bwc.conn.address,  # type: ignore[union-attr]
-        start=bwc.start_time,
+        topology_id=topology_id,
         codec_options=bwc.codec,
         op_id=bwc.op_id,
         command_name=bwc.name,
@@ -372,8 +276,6 @@ def run_cursor_command(
     client: Optional[MongoClient[Any]],
     session: Optional[ClientSession],
     listeners: Optional[_EventListeners],
-    address: Optional[_Address],
-    start: datetime.datetime,
     codec_options: CodecOptions[_DocumentType],
     command_name: str,
     user_fields: Optional[Mapping[str, Any]] = None,
@@ -393,8 +295,6 @@ def run_cursor_command(
     :param client: The MongoClient, for ``$clusterTime`` gossip and logging.
     :param session: The session to update from the response.
     :param listeners: The event listeners, or ``None`` to disable APM.
-    :param address: The (host, port) of ``conn`` for APM events.
-    :param start: The ``datetime`` the operation began, for duration timing.
     :param codec_options: The CodecOptions used to decode the reply.
     :param command_name: The command name for APM events.
     :param user_fields: Response fields decoded with the codec's TypeDecoders.
@@ -405,6 +305,7 @@ def run_cursor_command(
         reply's own ``unpack_response`` is used.
     :param cursor_id: The cursor id passed to ``unpack_res``.
     """
+    topology_id = client._topology_id if client is not None else None
     return _run_command(
         conn,
         cmd,
@@ -414,8 +315,7 @@ def run_cursor_command(
         client=client,
         session=session,
         listeners=listeners,
-        address=address,
-        start=start,
+        topology_id=topology_id,
         codec_options=codec_options,
         user_fields=user_fields,
         command_name=command_name,
@@ -438,7 +338,6 @@ def run_command(
     client: Optional[MongoClient[Any]],
     check: bool = True,
     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-    address: Optional[_Address] = None,
     listeners: Optional[_EventListeners] = None,
     max_bson_size: Optional[int] = None,
     read_concern: Optional[ReadConcern] = None,
@@ -465,7 +364,6 @@ def run_command(
     :param client: The MongoClient, for ``$clusterTime`` gossip and logging.
     :param check: Raise OperationFailure if there are errors.
     :param allowable_errors: Errors to ignore when ``check`` is True.
-    :param address: The (host, port) of ``conn`` for APM events.
     :param listeners: The event listeners, or ``None`` to disable APM.
     :param max_bson_size: The maximum encoded BSON size for this server.
     :param read_concern: The read concern for this command.
@@ -480,7 +378,6 @@ def run_command(
     :param write_concern: The write concern for this command. Applied via CSOT.
     """
     name = next(iter(spec))
-    speculative_hello = False
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
@@ -492,10 +389,8 @@ def run_command(
     if collation is not None:
         spec["collation"] = collation
 
-    publish = listeners is not None and listeners.enabled_for_commands
-    start = datetime.datetime.now()
-    if publish:
-        speculative_hello = _is_speculative_authenticate(name, spec)
+    topology_id = client._topology_id if client is not None else None
+    speculative_hello = _is_speculative_authenticate(name, spec)
 
     if compression_ctx and name.lower() in _NO_COMPRESSION:
         compression_ctx = None
@@ -529,8 +424,7 @@ def run_command(
         client=client,
         session=session,
         listeners=listeners,
-        address=address,
-        start=start,
+        topology_id=topology_id,
         codec_options=codec_options,
         user_fields=user_fields,
         orig=orig,

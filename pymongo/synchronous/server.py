@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -154,7 +153,6 @@ class Server:
         :param client: A MongoClient instance.
         """
         assert listeners is not None
-        start = datetime.now()
 
         use_cmd = operation.use_command(conn)
         more_to_come = bool(operation.conn_mgr and operation.conn_mgr.more_to_come)
@@ -178,8 +176,6 @@ class Server:
             client=client,
             session=operation.session,  # type: ignore[arg-type]
             listeners=listeners,
-            address=conn.address,
-            start=start,
             codec_options=operation.codec_options,
             user_fields=user_fields,
             command_name=operation.name,
