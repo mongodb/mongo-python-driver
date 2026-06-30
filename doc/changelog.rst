@@ -4,6 +4,12 @@ Changelog
 Changes in Version 4.18.0
 -------------------------
 
+- Added the ``srvAllowedHostsSuffix`` URI option and :class:`~pymongo.mongo_client.MongoClient`
+  keyword argument. When connecting via ``mongodb+srv://``, this option overrides the default
+  requirement that SRV-returned hosts share the same parent domain as the seed hostname,
+  allowing hosts under a different domain suffix to be accepted. The suffix must contain at
+  least two labels and must not be a public suffix. See the
+  :class:`~pymongo.mongo_client.MongoClient` documentation for security considerations.
 - Improved TLS connection performance by reusing TLS sessions across connections
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients

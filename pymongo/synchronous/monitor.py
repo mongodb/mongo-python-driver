@@ -416,6 +416,7 @@ class SrvMonitor(MonitorBase):
                 self._fqdn,
                 self._settings.pool_options.connect_timeout,
                 self._settings.srv_service_name,
+                srv_allowed_hosts_suffix=self._settings.srv_allowed_hosts_suffix,
             )
             seedlist, ttl = resolver.get_hosts_and_min_ttl()
             if len(seedlist) == 0:
