@@ -1,3 +1,19 @@
+# Copyright 2022-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Test that connection continues to use hello after ismaster returns hello_ok"""
+
 import unittest
 from unittest.mock import AsyncMock 
 from types import SimpleNamespace
@@ -58,7 +74,7 @@ class TestHelloLatched(unittest.IsolatedAsyncioTestCase):
         await conn._hello(None, None)
         # Verify connection continues to use hello
         self.assertEqual(self._sent[2].get("hello"), 1)
-        self.assertIsNone(self._sent[1].get("ismaster", None))
+        self.assertIsNone(self._sent[2].get("ismaster", None))
 
 
 if __name__ == "__main__":
