@@ -166,7 +166,6 @@ class AsyncConnection(_ConnectionTelemetryInfo):
         self.active = False
         self.last_timeout = self.opts.socket_timeout
         self.connect_rtt = 0.0
-        self.creation_time = time.monotonic()
         # For gossiping $clusterTime from the connection handshake to the client.
         self._cluster_time = None
 
@@ -467,8 +466,7 @@ class AsyncConnection(_ConnectionTelemetryInfo):
 
                 await auth.authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
-            duration = time.monotonic() - self.creation_time
-            self._telemetry.connection_ready(self.id, duration)
+            self._telemetry.connection_ready(self.id)
 
     def validate_session(
         self, client: Optional[AsyncMongoClient[Any]], session: Optional[AsyncClientSession]
@@ -978,13 +976,11 @@ class Pool:
 
         :param handler: A _MongoClientErrorHandler.
         """
-        checkout_started_time = time.monotonic()
         self._telemetry.checkout_started()
 
-        conn = await self._get_conn(checkout_started_time, handler=handler)
+        conn = await self._get_conn(handler=handler)
 
-        duration = time.monotonic() - checkout_started_time
-        self._telemetry.checkout_succeeded(conn.id, duration)
+        self._telemetry.checkout_succeeded(conn.id)
         try:
             async with self.lock:
                 self.active_contexts.add(conn.cancel_context)
@@ -1015,14 +1011,12 @@ class Pool:
         elif conn.active:
             await self.checkin(conn)
 
-    def _raise_if_not_ready(self, checkout_started_time: float, emit_event: bool) -> None:
+    def _raise_if_not_ready(self, emit_event: bool) -> None:
         if self.state != PoolState.READY:
             if emit_event:
-                duration = time.monotonic() - checkout_started_time
                 self._telemetry.checkout_failed(
                     "An error occurred while trying to establish a new connection",
                     ConnectionCheckOutFailedReason.CONN_ERROR,
-                    duration,
                 )
 
             details = _get_timeout_details(self.opts)
@@ -1031,7 +1025,7 @@ class Pool:
             )
 
     async def _get_conn(
-        self, checkout_started_time: float, handler: Optional[_MongoClientErrorHandler] = None
+        self, handler: Optional[_MongoClientErrorHandler] = None
     ) -> AsyncConnection:
         """Get or create a AsyncConnection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
@@ -1041,11 +1035,9 @@ class Pool:
             await self.reset_without_pause()
 
         if self.closed:
-            duration = time.monotonic() - checkout_started_time
             self._telemetry.checkout_failed(
                 "Connection pool was closed",
                 ConnectionCheckOutFailedReason.POOL_CLOSED,
-                duration,
             )
             raise _PoolClosedError(
                 "Attempted to check out a connection from closed connection pool"
@@ -1063,7 +1055,7 @@ class Pool:
             deadline = None
 
         async with self.size_cond:
-            self._raise_if_not_ready(checkout_started_time, emit_event=True)
+            self._raise_if_not_ready(emit_event=True)
             while not (self.requests < self.max_pool_size):
                 timeout = deadline - time.monotonic() if deadline else None
                 if not await _async_cond_wait(self.size_cond, timeout):
@@ -1071,8 +1063,8 @@ class Pool:
                     # timeout doesn't consume the condition.
                     if self.requests < self.max_pool_size:
                         self.size_cond.notify()
-                    self._raise_wait_queue_timeout(checkout_started_time)
-                self._raise_if_not_ready(checkout_started_time, emit_event=True)
+                    self._raise_wait_queue_timeout()
+                self._raise_if_not_ready(emit_event=True)
             self.requests += 1
 
         # We've now acquired the semaphore and must release it on error.
@@ -1087,7 +1079,7 @@ class Pool:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
                 # to be checked back into the pool.
                 async with self._max_connecting_cond:
-                    self._raise_if_not_ready(checkout_started_time, emit_event=False)
+                    self._raise_if_not_ready(emit_event=False)
                     while not (self.conns or self._pending < self._max_connecting):
                         timeout = deadline - time.monotonic() if deadline else None
                         if not await _async_cond_wait(self._max_connecting_cond, timeout):
@@ -1096,8 +1088,8 @@ class Pool:
                             if self.conns or self._pending < self._max_connecting:
                                 self._max_connecting_cond.notify()
                             emitted_event = True
-                            self._raise_wait_queue_timeout(checkout_started_time)
-                        self._raise_if_not_ready(checkout_started_time, emit_event=False)
+                            self._raise_wait_queue_timeout()
+                        self._raise_if_not_ready(emit_event=False)
 
                     try:
                         conn = self.conns.popleft()
@@ -1126,11 +1118,9 @@ class Pool:
                 self.size_cond.notify()
 
             if not emitted_event:
-                duration = time.monotonic() - checkout_started_time
                 self._telemetry.checkout_failed(
                     "An error occurred while trying to establish a new connection",
                     ConnectionCheckOutFailedReason.CONN_ERROR,
-                    duration,
                 )
             raise
 
@@ -1222,12 +1212,10 @@ class Pool:
 
         return False
 
-    def _raise_wait_queue_timeout(self, checkout_started_time: float) -> NoReturn:
-        duration = time.monotonic() - checkout_started_time
+    def _raise_wait_queue_timeout(self) -> NoReturn:
         self._telemetry.checkout_failed(
             "Wait queue timeout elapsed without a connection becoming available",
             ConnectionCheckOutFailedReason.TIMEOUT,
-            duration,
         )
         timeout = _csot.get_timeout() or self.opts.wait_queue_timeout
         if self.opts.load_balanced:

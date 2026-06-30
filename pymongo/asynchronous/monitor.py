@@ -259,7 +259,6 @@ class Monitor(MonitorBase):
         """
         self._conn_id = None
         self._current_hb = None
-        start = time.monotonic()
         try:
             return await self._check_once()
         except ReferenceError:
@@ -267,9 +266,8 @@ class Monitor(MonitorBase):
         except Exception as error:
             _sanitize(error)
             address = self._server_description.address
-            duration = _monotonic_duration(start)
             if self._current_hb is not None:
-                self._current_hb.failed(duration, error, self._conn_id)
+                self._current_hb.failed(error, self._conn_id)
             await self._reset_connection()
             if isinstance(error, _OperationCancelled):
                 raise

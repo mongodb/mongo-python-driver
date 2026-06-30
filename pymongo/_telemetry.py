@@ -19,6 +19,7 @@ from __future__ import annotations
 import datetime
 import logging
 import queue
+import time
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -198,7 +199,15 @@ class _CommandTelemetry:
 class _CmapTelemetry:
     """Combines CMAP structured logging and APM event publishing for pool and connection events."""
 
-    __slots__ = ("_address", "_client_id", "_listeners", "_should_log", "_should_publish")
+    __slots__ = (
+        "_address",
+        "_checkout_start",
+        "_client_id",
+        "_conn_created_start",
+        "_listeners",
+        "_should_log",
+        "_should_publish",
+    )
 
     def __init__(
         self,
@@ -258,13 +267,15 @@ class _CmapTelemetry:
             self._listeners.publish_pool_closed(self._address)
 
     def connection_created(self, conn_id: int) -> None:
+        self._conn_created_start = time.monotonic()
         # Log before publishing to prevent potential listener preemption in tests.
         self._emit_log(_ConnectionStatusMessage.CONN_CREATED, driverConnectionId=conn_id)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_created(self._address, conn_id)
 
-    def connection_ready(self, conn_id: int, duration: float) -> None:
+    def connection_ready(self, conn_id: int) -> None:
+        duration = max(0.0, time.monotonic() - self._conn_created_start)
         # Log before publishing to prevent potential listener preemption in tests.
         self._emit_log(
             _ConnectionStatusMessage.CONN_READY,
@@ -287,12 +298,14 @@ class _CmapTelemetry:
         )
 
     def checkout_started(self) -> None:
+        self._checkout_start = time.monotonic()
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_check_out_started(self._address)
         self._emit_log(_ConnectionStatusMessage.CHECKOUT_STARTED)
 
-    def checkout_succeeded(self, conn_id: int, duration: float) -> None:
+    def checkout_succeeded(self, conn_id: int) -> None:
+        duration = max(0.0, time.monotonic() - self._checkout_start)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_checked_out(self._address, conn_id, duration)
@@ -302,7 +315,8 @@ class _CmapTelemetry:
             durationMS=duration,
         )
 
-    def checkout_failed(self, reason: str, error: str, duration: float) -> None:
+    def checkout_failed(self, reason: str, error: str) -> None:
+        duration = max(0.0, time.monotonic() - self._checkout_start)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_check_out_failed(self._address, error, duration)
@@ -329,7 +343,7 @@ class _HeartbeatTelemetry:
     context, then :meth:`succeeded` or :meth:`failed` when the outcome is known.
     """
 
-    __slots__ = ("_address", "_awaited", "_listeners", "_publish", "_topology_id")
+    __slots__ = ("_address", "_awaited", "_listeners", "_publish", "_start", "_topology_id")
 
     def __init__(
         self,
@@ -347,6 +361,7 @@ class _HeartbeatTelemetry:
 
     def started(self) -> None:
         """Publish the APM heartbeat-started event (before connection checkout)."""
+        self._start = time.monotonic()
         if self._publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_started(self._address, self._awaited)
@@ -392,8 +407,9 @@ class _HeartbeatTelemetry:
                 reply=response.document,
             )
 
-    def failed(self, duration: float, error: Exception, conn_id: Optional[int]) -> None:
+    def failed(self, error: Exception, conn_id: Optional[int]) -> None:
         """Emit the FAILED log entry and APM event."""
+        duration = max(0.0, time.monotonic() - self._start)
         if self._publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_failed(
