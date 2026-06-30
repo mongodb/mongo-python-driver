@@ -17,6 +17,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
+
+_PUBLIC_SUFFIXES: Optional[tuple[set[str], set[str], set[str]]] = None
 
 
 def _load_public_suffixes() -> tuple[set[str], set[str], set[str]]:
@@ -40,7 +43,10 @@ def _load_public_suffixes() -> tuple[set[str], set[str], set[str]]:
 
 def is_public_suffix(domain: str) -> bool:
     """Return True if domain is a public suffix per the bundled Public Suffix List."""
-    suffixes, wildcards, exceptions = _load_public_suffixes()
+    global _PUBLIC_SUFFIXES  # noqa: PLW0603
+    if _PUBLIC_SUFFIXES is None:
+        _PUBLIC_SUFFIXES = _load_public_suffixes()
+    suffixes, wildcards, exceptions = _PUBLIC_SUFFIXES
 
     domain = domain.lower().strip(".")
     if domain in exceptions:
