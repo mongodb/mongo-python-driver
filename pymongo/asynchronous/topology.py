@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 from pymongo import _csot, common, helpers_shared, periodic_executor
+from pymongo._telemetry import _SdamTelemetry
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import MonitorBase, SrvMonitor
 from pymongo.asynchronous.pool import Pool
@@ -52,10 +53,8 @@ from pymongo.lock import (
     _async_create_lock,
 )
 from pymongo.logger import (
-    _SDAM_LOGGER,
     _SERVER_SELECTION_LOGGER,
     _debug_log,
-    _SDAMStatusMessage,
     _ServerSelectionStatusMessage,
 )
 from pymongo.pool_options import PoolOptions
@@ -118,17 +117,9 @@ class Topology:
         if self._publish_server or self._publish_tp:
             self._events = queue.Queue(maxsize=100)
 
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.START_TOPOLOGY,
-                topologyId=self._topology_id,
-            )
+        self._sdam = _SdamTelemetry(self._topology_id, self._listeners, self._events)
+        self._sdam.topology_opened()
 
-        if self._publish_tp:
-            assert self._events is not None
-            assert self._listeners is not None
-            self._events.put((self._listeners.publish_topology_opened, (self._topology_id,)))
         self._settings = topology_settings
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
@@ -143,37 +134,10 @@ class Topology:
         initial_td = TopologyDescription(
             TOPOLOGY_TYPE.Unknown, {}, None, None, None, self._settings
         )
-        if self._publish_tp:
-            assert self._events is not None
-            assert self._listeners is not None
-            self._events.put(
-                (
-                    self._listeners.publish_topology_description_changed,
-                    (initial_td, self._description, self._topology_id),
-                )
-            )
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
-                topologyId=self._topology_id,
-                previousDescription=repr(initial_td),
-                newDescription=repr(self._description),
-            )
+        self._sdam.topology_description_changed(initial_td, self._description)
 
         for seed in topology_settings.seeds:
-            if self._publish_server:
-                assert self._events is not None
-                assert self._listeners is not None
-                self._events.put((self._listeners.publish_server_opened, (seed, self._topology_id)))
-            if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _SDAM_LOGGER,
-                    message=_SDAMStatusMessage.START_SERVER,
-                    topologyId=self._topology_id,
-                    serverHost=seed[0],
-                    serverPort=seed[1],
-                )
+            self._sdam.server_opened(seed)
 
         # Store the seed list to help diagnose errors in _error_message().
         self._seed_addresses = list(topology_description.server_descriptions())
@@ -508,36 +472,16 @@ class Topology:
                 await server.pool.ready()
 
         suppress_event = sd_old == server_description
-        if self._publish_server and not suppress_event:
-            assert self._events is not None
-            assert self._listeners is not None
-            self._events.put(
-                (
-                    self._listeners.publish_server_description_changed,
-                    (sd_old, server_description, server_description.address, self._topology_id),
-                )
+        if not suppress_event:
+            self._sdam.server_description_changed(
+                sd_old, server_description, server_description.address
             )
 
         self._description = new_td
         await self._update_servers()
 
-        if self._publish_tp and not suppress_event:
-            assert self._events is not None
-            assert self._listeners is not None
-            self._events.put(
-                (
-                    self._listeners.publish_topology_description_changed,
-                    (td_old, self._description, self._topology_id),
-                )
-            )
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG) and not suppress_event:
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
-                topologyId=self._topology_id,
-                previousDescription=repr(td_old),
-                newDescription=repr(self._description),
-            )
+        if not suppress_event:
+            self._sdam.topology_description_changed(td_old, self._description)
 
         # Shutdown SRV polling for unsupported cluster types.
         # This is only applicable if the old topology was Unknown, and the
@@ -588,24 +532,7 @@ class Topology:
         self._description = _updated_topology_description_srv_polling(self._description, seedlist)
 
         await self._update_servers()
-
-        if self._publish_tp:
-            assert self._events is not None
-            assert self._listeners is not None
-            self._events.put(
-                (
-                    self._listeners.publish_topology_description_changed,
-                    (td_old, self._description, self._topology_id),
-                )
-            )
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
-                topologyId=self._topology_id,
-                previousDescription=repr(td_old),
-                newDescription=repr(self._description),
-            )
+        self._sdam.topology_description_changed(td_old, self._description)
 
     async def on_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
         """Process a new list of nodes obtained from scanning SRV records."""
@@ -744,8 +671,6 @@ class Topology:
 
         # Publish only after releasing the lock.
         if self._publish_tp:
-            assert self._events is not None
-            assert self._listeners is not None
             self._description = TopologyDescription(
                 TOPOLOGY_TYPE.Unknown,
                 {},
@@ -754,28 +679,7 @@ class Topology:
                 self._description.max_election_id,
                 self._description._topology_settings,
             )
-            self._events.put(
-                (
-                    self._listeners.publish_topology_description_changed,
-                    (
-                        old_td,
-                        self._description,
-                        self._topology_id,
-                    ),
-                )
-            )
-            self._events.put((self._listeners.publish_topology_closed, (self._topology_id,)))
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
-                topologyId=self._topology_id,
-                previousDescription=repr(old_td),
-                newDescription=repr(self._description),
-            )
-            _debug_log(
-                _SDAM_LOGGER, message=_SDAMStatusMessage.STOP_TOPOLOGY, topologyId=self._topology_id
-            )
+        self._sdam.topology_closed(old_td, self._description)
 
         if self._publish_server or self._publish_tp:
             # Make sure the events executor thread is fully closed before publishing the remaining events

@@ -18,16 +18,26 @@ from __future__ import annotations
 
 import datetime
 import logging
+import queue
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Any, Optional
 
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.logger import (
+    _COMMAND_LOGGER,
+    _CONNECTION_LOGGER,
+    _SDAM_LOGGER,
+    _CommandStatusMessage,
+    _ConnectionStatusMessage,
+    _debug_log,
+    _SDAMStatusMessage,
+    _verbose_connection_error_reason,
+)
 from pymongo.pool_shared import _ConnectionTelemetryInfo
 
 if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.monitoring import _EventListeners
-    from pymongo.typings import _DocumentOut
+    from pymongo.typings import _Address, _DocumentOut
 
 
 class _CommandTelemetry:
@@ -182,4 +192,330 @@ class _CommandTelemetry:
                 self._op_id,
                 service_id=self._conn.service_id,
                 database_name=self._dbname,
+            )
+
+
+class _CmapTelemetry:
+    """Combines CMAP structured logging and APM event publishing for pool and connection events."""
+
+    __slots__ = ("_address", "_client_id", "_listeners", "_should_log", "_should_publish")
+
+    def __init__(
+        self,
+        client_id: Optional[ObjectId],
+        address: _Address,
+        listeners: Optional[_EventListeners],
+        is_sdam: bool,
+    ) -> None:
+        self._client_id = client_id
+        self._address = address
+        self._listeners = listeners
+        self._should_publish = not is_sdam and listeners is not None and listeners.enabled_for_cmap
+        self._should_log = not is_sdam
+
+    def _log(self, message: _ConnectionStatusMessage, **extra: Any) -> None:
+        if self._should_log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _CONNECTION_LOGGER,
+                message=message,
+                clientId=self._client_id,
+                serverHost=self._address[0],
+                serverPort=self._address[1],
+                **extra,
+            )
+
+    def pool_created(self, non_default_options: dict[str, Any]) -> None:
+        # Log before publishing to prevent potential listener preemption in tests.
+        self._log(_ConnectionStatusMessage.POOL_CREATED, **non_default_options)
+        if self._should_publish:
+            assert self._listeners is not None
+            self._listeners.publish_pool_created(self._address, non_default_options)
+
+    def pool_ready(self) -> None:
+        # Log before publishing to prevent potential listener preemption in tests.
+        self._log(_ConnectionStatusMessage.POOL_READY)
+        if self._should_publish:
+            assert self._listeners is not None
+            self._listeners.publish_pool_ready(self._address)
+
+    def pool_cleared(self, service_id: Optional[ObjectId], interrupt_connections: bool) -> None:
+        # Log before publishing to prevent potential listener preemption in tests.
+        self._log(_ConnectionStatusMessage.POOL_CLEARED, serviceId=service_id)
+        if self._should_publish:
+            assert self._listeners is not None
+            self._listeners.publish_pool_cleared(
+                self._address,
+                service_id=service_id,
+                interrupt_connections=interrupt_connections,
+            )
+
+    def pool_closed(self) -> None:
+        # Log before publishing to prevent potential listener preemption in tests.
+        self._log(_ConnectionStatusMessage.POOL_CLOSED)
+        if self._should_publish:
+            assert self._listeners is not None
+            self._listeners.publish_pool_closed(self._address)
+
+    def connection_created(self, conn_id: int) -> None:
+        # Log before publishing to prevent potential listener preemption in tests.
+        self._log(_ConnectionStatusMessage.CONN_CREATED, driverConnectionId=conn_id)
+        if self._should_publish:
+            assert self._listeners is not None
+            self._listeners.publish_connection_created(self._address, conn_id)
+
+    def connection_ready(self, conn_id: int, duration: float) -> None:
+        # Log before publishing to prevent potential listener preemption in tests.
+        self._log(
+            _ConnectionStatusMessage.CONN_READY,
+            driverConnectionId=conn_id,
+            durationMS=duration,
+        )
+        if self._should_publish:
+            assert self._listeners is not None
+            self._listeners.publish_connection_ready(self._address, conn_id, duration)
+
+    def connection_closed(self, conn_id: int, reason: str) -> None:
+        if self._should_publish:
+            assert self._listeners is not None
+            self._listeners.publish_connection_closed(self._address, conn_id, reason)
+        self._log(
+            _ConnectionStatusMessage.CONN_CLOSED,
+            driverConnectionId=conn_id,
+            reason=_verbose_connection_error_reason(reason),
+            error=reason,
+        )
+
+    def checkout_started(self) -> None:
+        if self._should_publish:
+            assert self._listeners is not None
+            self._listeners.publish_connection_check_out_started(self._address)
+        self._log(_ConnectionStatusMessage.CHECKOUT_STARTED)
+
+    def checkout_succeeded(self, conn_id: int, duration: float) -> None:
+        if self._should_publish:
+            assert self._listeners is not None
+            self._listeners.publish_connection_checked_out(self._address, conn_id, duration)
+        self._log(
+            _ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
+            driverConnectionId=conn_id,
+            durationMS=duration,
+        )
+
+    def checkout_failed(self, reason: str, error: str, duration: float) -> None:
+        if self._should_publish:
+            assert self._listeners is not None
+            self._listeners.publish_connection_check_out_failed(self._address, error, duration)
+        self._log(
+            _ConnectionStatusMessage.CHECKOUT_FAILED,
+            reason=reason,
+            error=error,
+            durationMS=duration,
+        )
+
+    def checked_in(self, conn_id: int) -> None:
+        if self._should_publish:
+            assert self._listeners is not None
+            self._listeners.publish_connection_checked_in(self._address, conn_id)
+        self._log(_ConnectionStatusMessage.CHECKEDIN, driverConnectionId=conn_id)
+
+
+class _HeartbeatTelemetry:
+    """Combines SDAM structured logging and APM event publishing for server heartbeats.
+
+    The APM started event is published before connection checkout (no conn_id yet);
+    the log entry for started is emitted after checkout once the conn_id is known.
+    Call :meth:`apm_started` first, then :meth:`log_started` inside the checkout
+    context, then :meth:`succeeded` or :meth:`failed` when the outcome is known.
+    """
+
+    __slots__ = ("_address", "_awaited", "_listeners", "_publish", "_topology_id")
+
+    def __init__(
+        self,
+        topology_id: ObjectId,
+        address: _Address,
+        listeners: Optional[_EventListeners],
+        publish: bool,
+        awaited: bool,
+    ) -> None:
+        self._topology_id = topology_id
+        self._address = address
+        self._listeners = listeners
+        self._publish = publish
+        self._awaited = awaited
+
+    def apm_started(self) -> None:
+        """Publish the APM heartbeat-started event (before connection checkout)."""
+        if self._publish:
+            assert self._listeners is not None
+            self._listeners.publish_server_heartbeat_started(self._address, self._awaited)
+
+    def log_started(self, conn_id: int, server_conn_id: Optional[int]) -> None:
+        """Emit the log entry for heartbeat started (after connection checkout)."""
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SDAM_LOGGER,
+                message=_SDAMStatusMessage.HEARTBEAT_START,
+                topologyId=self._topology_id,
+                driverConnectionId=conn_id,
+                serverConnectionId=server_conn_id,
+                serverHost=self._address[0],
+                serverPort=self._address[1],
+                awaited=self._awaited,
+            )
+
+    def succeeded(
+        self,
+        round_trip_time: float,
+        response: Any,
+        conn_id: int,
+        server_conn_id: Optional[int],
+    ) -> None:
+        """Emit the SUCCEEDED log entry and APM event."""
+        if self._publish:
+            assert self._listeners is not None
+            self._listeners.publish_server_heartbeat_succeeded(
+                self._address, round_trip_time, response, self._awaited
+            )
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SDAM_LOGGER,
+                message=_SDAMStatusMessage.HEARTBEAT_SUCCESS,
+                topologyId=self._topology_id,
+                driverConnectionId=conn_id,
+                serverConnectionId=server_conn_id,
+                serverHost=self._address[0],
+                serverPort=self._address[1],
+                awaited=self._awaited,
+                durationMS=round_trip_time * 1000,
+                reply=response.document,
+            )
+
+    def failed(self, duration: float, error: Exception, conn_id: Optional[int]) -> None:
+        """Emit the FAILED log entry and APM event."""
+        if self._publish:
+            assert self._listeners is not None
+            self._listeners.publish_server_heartbeat_failed(
+                self._address, duration, error, self._awaited
+            )
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SDAM_LOGGER,
+                message=_SDAMStatusMessage.HEARTBEAT_FAIL,
+                topologyId=self._topology_id,
+                serverHost=self._address[0],
+                serverPort=self._address[1],
+                awaited=self._awaited,
+                durationMS=duration * 1000,
+                failure=error,
+                driverConnectionId=conn_id,
+            )
+
+
+class _SdamTelemetry:
+    """Combines SDAM structured logging and APM event publishing for topology and server events.
+
+    Topology events are queued for asynchronous delivery; log entries are emitted inline.
+    """
+
+    __slots__ = ("_events", "_listeners", "_publish_server", "_publish_tp", "_topology_id")
+
+    def __init__(
+        self,
+        topology_id: ObjectId,
+        listeners: Optional[_EventListeners],
+        events: Optional[queue.Queue[Any]],
+    ) -> None:
+        self._topology_id = topology_id
+        self._listeners = listeners
+        self._events = events
+        self._publish_server = listeners is not None and listeners.enabled_for_server
+        self._publish_tp = listeners is not None and listeners.enabled_for_topology
+
+    def _enqueue(self, fn: Any, args: tuple[Any, ...]) -> None:
+        if self._events is not None:
+            self._events.put((fn, args))
+
+    def topology_opened(self) -> None:
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SDAM_LOGGER,
+                message=_SDAMStatusMessage.START_TOPOLOGY,
+                topologyId=self._topology_id,
+            )
+        if self._publish_tp:
+            assert self._listeners is not None
+            self._enqueue(self._listeners.publish_topology_opened, (self._topology_id,))
+
+    def topology_description_changed(self, old_td: Any, new_td: Any) -> None:
+        if self._publish_tp:
+            assert self._listeners is not None
+            self._enqueue(
+                self._listeners.publish_topology_description_changed,
+                (old_td, new_td, self._topology_id),
+            )
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SDAM_LOGGER,
+                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
+                topologyId=self._topology_id,
+                previousDescription=repr(old_td),
+                newDescription=repr(new_td),
+            )
+
+    def topology_closed(self, old_td: Any, new_td: Any) -> None:
+        """Emit APM and log events for topology description change + topology closed."""
+        if self._publish_tp:
+            assert self._listeners is not None
+            self._enqueue(
+                self._listeners.publish_topology_description_changed,
+                (old_td, new_td, self._topology_id),
+            )
+            self._enqueue(self._listeners.publish_topology_closed, (self._topology_id,))
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SDAM_LOGGER,
+                message=_SDAMStatusMessage.TOPOLOGY_CHANGE,
+                topologyId=self._topology_id,
+                previousDescription=repr(old_td),
+                newDescription=repr(new_td),
+            )
+            _debug_log(
+                _SDAM_LOGGER,
+                message=_SDAMStatusMessage.STOP_TOPOLOGY,
+                topologyId=self._topology_id,
+            )
+
+    def server_opened(self, address: _Address) -> None:
+        if self._publish_server:
+            assert self._listeners is not None
+            self._enqueue(self._listeners.publish_server_opened, (address, self._topology_id))
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SDAM_LOGGER,
+                message=_SDAMStatusMessage.START_SERVER,
+                topologyId=self._topology_id,
+                serverHost=address[0],
+                serverPort=address[1],
+            )
+
+    def server_description_changed(self, sd_old: Any, sd_new: Any, address: _Address) -> None:
+        if self._publish_server:
+            assert self._listeners is not None
+            self._enqueue(
+                self._listeners.publish_server_description_changed,
+                (sd_old, sd_new, address, self._topology_id),
+            )
+
+    def server_closed(self, address: _Address) -> None:
+        if self._publish_server:
+            assert self._listeners is not None
+            self._enqueue(self._listeners.publish_server_closed, (address, self._topology_id))
+        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+            _debug_log(
+                _SDAM_LOGGER,
+                message=_SDAMStatusMessage.STOP_SERVER,
+                topologyId=self._topology_id,
+                serverHost=address[0],
+                serverPort=address[1],
             )
