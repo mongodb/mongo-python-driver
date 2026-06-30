@@ -2675,7 +2675,7 @@ class _ClientCheckout:
         self._server = server
 
     def contribute_socket(self, conn: AsyncConnection, completed_handshake: bool = True) -> None:
-        """Provide socket information to the error handler."""
+        """Record connection metadata needed for SDAM error handling."""
         self.max_wire_version = conn.max_wire_version
         self.sock_generation = conn.generation
         self.service_id = conn.service_id
