@@ -280,7 +280,7 @@ class _CmapTelemetry:
         self._emit_log(
             _ConnectionStatusMessage.CONN_READY,
             driverConnectionId=conn_id,
-            durationMS=duration,
+            durationMS=duration * 1000,
         )
         if self._should_publish:
             assert self._listeners is not None
@@ -312,7 +312,7 @@ class _CmapTelemetry:
         self._emit_log(
             _ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
             driverConnectionId=conn_id,
-            durationMS=duration,
+            durationMS=duration * 1000,
         )
 
     def checkout_failed(self, reason: str, error: str) -> None:
@@ -324,7 +324,7 @@ class _CmapTelemetry:
             _ConnectionStatusMessage.CHECKOUT_FAILED,
             reason=reason,
             error=error,
-            durationMS=duration,
+            durationMS=duration * 1000,
         )
 
     def checked_in(self, conn_id: int) -> None:
