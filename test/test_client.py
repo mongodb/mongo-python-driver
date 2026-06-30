@@ -85,7 +85,7 @@ from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
-from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.mongo_client import MongoClient, _ClientCheckout
 from pymongo.synchronous.pool import (
     Connection,
 )
@@ -799,8 +799,6 @@ class TestClient(IntegrationTest):
         # (e.g. session pinning or the auto-encryption wire-version check).
         # Use a subclass to override contribute_socket because __slots__ prevents
         # instance-level patching of methods.
-        from pymongo.synchronous.mongo_client import _ClientCheckout
-
         class _BrokenSetupCheckout(_ClientCheckout):
             def contribute_socket(self, conn, completed_handshake=True):
                 raise RuntimeError("simulated failure in post-checkout setup")

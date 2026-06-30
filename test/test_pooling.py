@@ -24,6 +24,7 @@ import random
 import socket
 import sys
 import time
+from unittest.mock import patch
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -31,6 +32,7 @@ from pymongo import MongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _create_lock
+from pymongo.monitoring import _EventListeners
 from test.utils import flaky, get_pool, joinall
 
 sys.path[0:0] = [""]
@@ -39,7 +41,7 @@ from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.pool import Pool, PoolOptions
 from test import IntegrationTest, client_context, unittest
 from test.helpers import ConcurrentRunner
-from test.utils_shared import delay
+from test.utils_shared import CMAPListener, delay
 
 _IS_SYNC = True
 
@@ -217,11 +219,6 @@ class TestPooling(_TestPoolingBase):
 
     def test_checkout_event_listener_failure_no_leak(self):
         # Connection is returned to the pool when publish_connection_checked_out raises.
-        from unittest.mock import patch
-
-        from pymongo.monitoring import _EventListeners
-        from test.utils_shared import CMAPListener
-
         cx_pool = self.create_pool(
             max_pool_size=1, event_listeners=_EventListeners([CMAPListener()])
         )
