@@ -98,7 +98,7 @@ class TestClose(AsyncUnitTest):
         self.assertTrue(self.protocol.transport.abort.called)
 
     async def test_close_propagates_exception_to_pending_read(self):
-        read_task = asyncio.ensure_future(
+        read_task = asyncio.create_task(
             self.protocol.read(request_id=None, max_message_size=MAX_MESSAGE_SIZE)
         )
         await asyncio.sleep(0)
@@ -122,7 +122,7 @@ class TestBufferUpdated(AsyncUnitTest):
         self.assertTrue(self.protocol.transport.abort.called)
 
     async def test_resolves_pending_read(self):
-        read_task = asyncio.ensure_future(
+        read_task = asyncio.create_task(
             self.protocol.read(request_id=None, max_message_size=MAX_MESSAGE_SIZE)
         )
         await asyncio.sleep(0)
