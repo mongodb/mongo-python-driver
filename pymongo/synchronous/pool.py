@@ -1410,7 +1410,7 @@ class Pool:
 class _PoolCheckout:
     """Class-based context manager for pool connection checkout."""
 
-    __slots__ = ("_checkout_started_time", "_conn", "_handler", "_pool")
+    __slots__ = ("_conn", "_handler", "_pool")
 
     def __init__(
         self,
@@ -1420,12 +1420,10 @@ class _PoolCheckout:
         self._pool = pool
         self._handler = handler
         self._conn: Optional[Connection] = None
-        self._checkout_started_time: float = 0.0
 
     def __enter__(self) -> Connection:
         pool = self._pool
-        self._checkout_started_time = time.monotonic()
-        checkout_started_time = self._checkout_started_time
+        checkout_started_time = time.monotonic()
         if pool.enabled_for_cmap:
             assert pool.opts._event_listeners is not None
             pool.opts._event_listeners.publish_connection_check_out_started(pool.address)

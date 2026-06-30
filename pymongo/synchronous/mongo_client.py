@@ -2741,9 +2741,11 @@ class _ClientCheckout:
                     "Auto-encryption requires a minimum MongoDB version of 4.2"
                 )
         except BaseException as exc:
-            self.handle(type(exc), exc)
-            pool_checkout.__exit__(type(exc), exc, None)
-            self._pool_checkout = None
+            try:
+                self.handle(type(exc), exc)
+            finally:
+                pool_checkout.__exit__(type(exc), exc, exc.__traceback__)
+                self._pool_checkout = None
             raise
         return conn
 
@@ -2754,9 +2756,11 @@ class _ClientCheckout:
         exc_tb: Optional[TracebackType],
     ) -> None:
         # Perform SDAM error handling while the connection is still checked out.
-        self.handle(exc_type, exc_val)
-        if self._pool_checkout is not None:
-            self._pool_checkout.__exit__(exc_type, exc_val, exc_tb)
+        try:
+            self.handle(exc_type, exc_val)
+        finally:
+            if self._pool_checkout is not None:
+                self._pool_checkout.__exit__(exc_type, exc_val, exc_tb)
 
     @classmethod
     def for_existing_conn(
