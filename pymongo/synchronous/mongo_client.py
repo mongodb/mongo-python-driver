@@ -462,7 +462,19 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
                This option relaxes a built-in DNS spoofing safeguard. Use the most
                specific suffix possible for your deployment rather than a broad
-               company-wide domain.
+               company-wide domain. For example, instead of::
+
+                   MongoClient(
+                       "mongodb+srv://cluster.test.internal.example.com/",
+                       srvAllowedHostsSuffix=".example.com",
+                   )
+
+               which would accept any host across the entire domain, scope it further like so::
+
+                   MongoClient(
+                       "mongodb+srv://cluster.test.internal.example.com/",
+                       srvAllowedHostsSuffix=".internal.example.com",
+                   )
 
 
           | **Write Concern options:**
