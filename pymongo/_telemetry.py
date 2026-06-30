@@ -339,7 +339,7 @@ class _HeartbeatTelemetry:
 
     The APM started event is published before connection checkout (no conn_id yet);
     the log entry for started is emitted after checkout once the conn_id is known.
-    Call :meth:`apm_started` first, then :meth:`log_started` inside the checkout
+    Call :meth:`started` first, then :meth:`emit_started_log` inside the checkout
     context, then :meth:`succeeded` or :meth:`failed` when the outcome is known.
     """
 
@@ -391,7 +391,7 @@ class _HeartbeatTelemetry:
         if self._publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_succeeded(
-                self._address, round_trip_time, response, self._awaited
+                self._address, round_trip_time, response, response.awaitable
             )
         if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
