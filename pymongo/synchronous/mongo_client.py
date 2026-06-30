@@ -2618,9 +2618,8 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mong
 class _ClientCheckout:
     """Context manager for checking out a connection from the pool.
 
-    Absorbs the former _MongoClientErrorHandler and the @asynccontextmanager
-    _checkout() method into a single class-based CM to eliminate generator
-    overhead on the hot path.
+    Handles pool checkout, SDAM error handling, and session pinning in a
+    single class-based CM to eliminate generator overhead on the hot path.
     """
 
     __slots__ = (
@@ -2785,8 +2784,7 @@ class _ClientReadCheckout(_ClientCheckout):
     """Context manager for read operations.
 
     Extends _ClientCheckout to apply the single-topology read preference
-    adjustment (formerly in _conn_from_server()) and return the effective
-    read preference alongside the connection.
+    adjustment and return the effective read preference alongside the connection.
     """
 
     __slots__ = ("_effective_read_pref",)
