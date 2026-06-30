@@ -205,15 +205,16 @@ class _CmapTelemetry:
         client_id: Optional[ObjectId],
         address: _Address,
         listeners: Optional[_EventListeners],
-        is_sdam: bool,
+        publish: bool,
+        log: bool,
     ) -> None:
         self._client_id = client_id
         self._address = address
         self._listeners = listeners
-        self._should_publish = not is_sdam and listeners is not None and listeners.enabled_for_cmap
-        self._should_log = not is_sdam
+        self._should_publish = publish and listeners is not None and listeners.enabled_for_cmap
+        self._should_log = log
 
-    def _log(self, message: _ConnectionStatusMessage, **extra: Any) -> None:
+    def _emit_log(self, message: _ConnectionStatusMessage, **extra: Any) -> None:
         if self._should_log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
@@ -226,21 +227,21 @@ class _CmapTelemetry:
 
     def pool_created(self, non_default_options: dict[str, Any]) -> None:
         # Log before publishing to prevent potential listener preemption in tests.
-        self._log(_ConnectionStatusMessage.POOL_CREATED, **non_default_options)
+        self._emit_log(_ConnectionStatusMessage.POOL_CREATED, **non_default_options)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_pool_created(self._address, non_default_options)
 
     def pool_ready(self) -> None:
         # Log before publishing to prevent potential listener preemption in tests.
-        self._log(_ConnectionStatusMessage.POOL_READY)
+        self._emit_log(_ConnectionStatusMessage.POOL_READY)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_pool_ready(self._address)
 
     def pool_cleared(self, service_id: Optional[ObjectId], interrupt_connections: bool) -> None:
         # Log before publishing to prevent potential listener preemption in tests.
-        self._log(_ConnectionStatusMessage.POOL_CLEARED, serviceId=service_id)
+        self._emit_log(_ConnectionStatusMessage.POOL_CLEARED, serviceId=service_id)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_pool_cleared(
@@ -251,21 +252,21 @@ class _CmapTelemetry:
 
     def pool_closed(self) -> None:
         # Log before publishing to prevent potential listener preemption in tests.
-        self._log(_ConnectionStatusMessage.POOL_CLOSED)
+        self._emit_log(_ConnectionStatusMessage.POOL_CLOSED)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_pool_closed(self._address)
 
     def connection_created(self, conn_id: int) -> None:
         # Log before publishing to prevent potential listener preemption in tests.
-        self._log(_ConnectionStatusMessage.CONN_CREATED, driverConnectionId=conn_id)
+        self._emit_log(_ConnectionStatusMessage.CONN_CREATED, driverConnectionId=conn_id)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_created(self._address, conn_id)
 
     def connection_ready(self, conn_id: int, duration: float) -> None:
         # Log before publishing to prevent potential listener preemption in tests.
-        self._log(
+        self._emit_log(
             _ConnectionStatusMessage.CONN_READY,
             driverConnectionId=conn_id,
             durationMS=duration,
@@ -278,7 +279,7 @@ class _CmapTelemetry:
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_closed(self._address, conn_id, reason)
-        self._log(
+        self._emit_log(
             _ConnectionStatusMessage.CONN_CLOSED,
             driverConnectionId=conn_id,
             reason=_verbose_connection_error_reason(reason),
@@ -289,13 +290,13 @@ class _CmapTelemetry:
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_check_out_started(self._address)
-        self._log(_ConnectionStatusMessage.CHECKOUT_STARTED)
+        self._emit_log(_ConnectionStatusMessage.CHECKOUT_STARTED)
 
     def checkout_succeeded(self, conn_id: int, duration: float) -> None:
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_checked_out(self._address, conn_id, duration)
-        self._log(
+        self._emit_log(
             _ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
             driverConnectionId=conn_id,
             durationMS=duration,
@@ -305,7 +306,7 @@ class _CmapTelemetry:
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_check_out_failed(self._address, error, duration)
-        self._log(
+        self._emit_log(
             _ConnectionStatusMessage.CHECKOUT_FAILED,
             reason=reason,
             error=error,
@@ -316,7 +317,7 @@ class _CmapTelemetry:
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_checked_in(self._address, conn_id)
-        self._log(_ConnectionStatusMessage.CHECKEDIN, driverConnectionId=conn_id)
+        self._emit_log(_ConnectionStatusMessage.CHECKEDIN, driverConnectionId=conn_id)
 
 
 class _HeartbeatTelemetry:
@@ -344,13 +345,13 @@ class _HeartbeatTelemetry:
         self._publish = publish
         self._awaited = awaited
 
-    def apm_started(self) -> None:
+    def started(self) -> None:
         """Publish the APM heartbeat-started event (before connection checkout)."""
         if self._publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_started(self._address, self._awaited)
 
-    def log_started(self, conn_id: int, server_conn_id: Optional[int]) -> None:
+    def emit_started_log(self, conn_id: int, server_conn_id: Optional[int]) -> None:
         """Emit the log entry for heartbeat started (after connection checkout)."""
         if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(

@@ -681,7 +681,9 @@ class Pool:
         self._ssl_session_cache: Optional[list[Any]] = (
             [None] if self.opts._ssl_context is not None else None
         )
-        self._telemetry = _CmapTelemetry(client_id, address, options._event_listeners, is_sdam)
+        self._telemetry = _CmapTelemetry(
+            client_id, address, options._event_listeners, publish=not is_sdam, log=not is_sdam
+        )
         self._telemetry.pool_created(self.opts.non_default_options)
         # Similar to active_sockets but includes threads in the wait queue.
         self.operation_count: int = 0

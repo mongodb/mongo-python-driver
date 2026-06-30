@@ -294,12 +294,12 @@ class Monitor(MonitorBase):
             self._topology._topology_id, address, self._listeners, self._publish, awaited
         )
         self._current_hb = hb
-        hb.apm_started()
+        hb.started()
 
         if self._cancel_context and self._cancel_context.cancelled:
             await self._reset_connection()
         async with self._pool.checkout() as conn:
-            hb.log_started(conn.id, conn.server_connection_id)
+            hb.emit_started_log(conn.id, conn.server_connection_id)
             self._cancel_context = conn.cancel_context
             # Record the connection id so we can later attach it to the failed log message.
             self._conn_id = conn.id
