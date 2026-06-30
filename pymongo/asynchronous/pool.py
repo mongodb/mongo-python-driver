@@ -177,6 +177,8 @@ class AsyncConnection(_ConnectionTelemetryInfo):
         self.creation_time = time.monotonic()
         # For gossiping $clusterTime from the connection handshake to the client.
         self._cluster_time = None
+        # Stable operation id for the operation currently using this connection.
+        self.op_id: Optional[int] = None
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
@@ -416,6 +418,7 @@ class AsyncConnection(_ConnectionTelemetryInfo):
                 user_fields=user_fields,
                 exhaust_allowed=exhaust_allowed,
                 write_concern=write_concern,
+                op_id=self.op_id,
             )
         except (OperationFailure, NotPrimaryError):
             raise
@@ -1319,6 +1322,7 @@ class Pool:
         txn = conn.pinned_txn
         cursor = conn.pinned_cursor
         conn.active = False
+        conn.op_id = None
         conn.pinned_txn = False
         conn.pinned_cursor = False
         self.__pinned_sockets.discard(conn)

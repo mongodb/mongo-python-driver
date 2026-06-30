@@ -85,7 +85,7 @@ from pymongo.logger import (
     _log_client_error,
     _log_or_warn,
 )
-from pymongo.message import _CursorAddress, _GetMore, _Query
+from pymongo.message import _CursorAddress, _GetMore, _Query, _randint
 from pymongo.monitoring import ConnectionClosedReason, _EventListeners
 from pymongo.operations import (
     DeleteMany,
@@ -1834,6 +1834,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             be pinned to a mongos server address.
           - `address` (optional): Address when sending a message
             to a specific server, used for getMore.
+          - `operation_id` (optional): Stable operation id shared across retries,
+            used for command monitoring.
         """
         try:
             topology = self._get_topology()
@@ -1929,6 +1931,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             with operation.conn_mgr._lock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
+                    operation.conn_mgr.conn.op_id = _randint()
                     return server.run_operation(
                         operation.conn_mgr.conn,
                         operation,
@@ -2020,6 +2023,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param retryable: If the operation should be retried once, defaults to None
         :param is_run_command: If this is a runCommand operation, defaults to False
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
+        :param operation_id: Stable operation id shared across retries, defaults to None
 
         :return: Output of the calling func()
         """
@@ -2066,6 +2070,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             (may not always be supported even if supplied), defaults to False
         :param is_run_command: If this is a runCommand operation, defaults to False.
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
+        :param operation_id: Stable operation id shared across retries, defaults to None
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2109,6 +2114,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param session: Client session we will use to execute write operation
         :param operation: The name of the operation that the server is being selected for
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
+        :param operation_id: Stable operation id shared across retries, defaults to None
         """
         with self._tmp_session(session) as s:
             return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
@@ -2786,7 +2792,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._server: Server = None  # type: ignore
         self._deprioritized_servers: list[Server] = []
         self._operation = operation
-        self._operation_id = operation_id
+        self._operation_id = operation_id if operation_id is not None else _randint()
         self._attempt_number = 0
         self._is_run_command = is_run_command
         self._is_aggregate_write = is_aggregate_write
@@ -2992,6 +2998,7 @@ class _ClientConnectionRetryable(Generic[T]):
             is_mongos = False
             self._server = self._get_server()
             with self._client._checkout(self._server, self._session) as conn:
+                conn.op_id = self._operation_id
                 max_wire_version = conn.max_wire_version
                 sessions_supported = (
                     self._session
@@ -3031,6 +3038,7 @@ class _ClientConnectionRetryable(Generic[T]):
             conn,
             read_pref,
         ):
+            conn.op_id = self._operation_id
             if self._retrying and not self._retryable and not self._always_retryable:
                 self._check_last_error()
             if self._retrying:

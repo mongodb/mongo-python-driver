@@ -699,7 +699,7 @@ class ClientContext:
             func=func,
         )
 
-    def require_failCommand_appName(self, func):
+    def require_failCommand_appName(self, func: Any) -> Any:
         """Run a test only if the server supports the failCommand appName."""
         # SERVER-47195 and SERVER-49336.
         return self._require(
