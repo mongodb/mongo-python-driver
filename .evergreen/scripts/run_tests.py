@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import platform
-import shlex
 import shutil
 import subprocess
 import sys
@@ -205,11 +204,12 @@ def run() -> None:
         TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG}".split())
 
     if os.environ.get("COVERAGE"):
-        binary = sys.executable.replace(os.sep, "/")
-        cmd = f"{binary} -m coverage run -m pytest {' '.join(TEST_ARGS)} {' '.join(sys.argv[1:])}"
-        result = subprocess.run(shlex.split(cmd), check=False)  # noqa: S603
-        cmd = f"{binary} -m coverage report"
-        subprocess.run(shlex.split(cmd), check=False)  # noqa: S603
+        binary = sys.executable
+        result = subprocess.run(  # noqa: S603
+            [binary, "-m", "coverage", "run", "-m", "pytest", *TEST_ARGS, *sys.argv[1:]],
+            check=False,
+        )
+        subprocess.run([binary, "-m", "coverage", "report"], check=False)  # noqa: S603
         if result.returncode != 0:
             print(result.stderr)
         sys.exit(result.returncode)

@@ -491,15 +491,6 @@ buildvariants:
       - rhel87-small
 
   # Server version tests
-  - name: mongodb-v4.2
-    tasks:
-      - name: .server-version
-    display_name: "* MongoDB v4.2"
-    run_on:
-      - rhel87-small
-    expansions:
-      VERSION: "4.2"
-    tags: [coverage_tag]
   - name: mongodb-v4.4
     tasks:
       - name: .server-version

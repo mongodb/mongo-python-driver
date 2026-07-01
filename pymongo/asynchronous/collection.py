@@ -1010,10 +1010,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             else:
                 update_doc["arrayFilters"] = array_filters
         if hint is not None:
-            if not acknowledged and conn.max_wire_version < 8:
-                raise ConfigurationError(
-                    "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
-                )
             if not isinstance(hint, str):
                 hint = helpers_shared._index_document(hint)
             update_doc["hint"] = hint
@@ -3295,14 +3291,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                     )
                 cmd["arrayFilters"] = list(array_filters)
             if hint is not None:
-                if conn.max_wire_version < 8:
-                    raise ConfigurationError(
-                        "Must be connected to MongoDB 4.2+ to use hint on find and modify commands."
-                    )
-                elif not acknowledged and conn.max_wire_version < 9:
-                    raise ConfigurationError(
-                        "Must be connected to MongoDB 4.4+ to use hint on unacknowledged find and modify commands."
-                    )
                 cmd["hint"] = hint
             out = await self._command(
                 conn,
