@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Changes in Version 4.18.0 (2026/04/20)
+Changes in Version 4.18.0 (2026/XX/XX)
 --------------------------------------
 
 PyMongo 4.18 brings a number of changes including:

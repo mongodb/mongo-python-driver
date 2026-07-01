@@ -2890,7 +2890,9 @@ class _ClientConnectionRetryable(Generic[T]):
                     if overloaded:
                         self._max_retries = self._client.options.max_adaptive_retries
                         self._retry_after_backoff_ms = (
-                            exc._retry_after_ms / 1000 if exc._retry_after_ms else None
+                            exc_to_check._retry_after_ms / 1000
+                            if exc_to_check._retry_after_ms
+                            else None
                         )
                     always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
 

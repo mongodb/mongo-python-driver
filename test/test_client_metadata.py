@@ -229,7 +229,7 @@ class TestClientMetadataProse(IntegrationTest):
         client.admin.command("ping")
 
         # Assert that for every handshake document intercepted:
-        # the document has a field `backpressure` whose value is `true`.
+        # the document has a field `backpressure` whose value is `"2"`.
         self.assertEqual(self.handshake_req["backpressure"], "2")
 
 
