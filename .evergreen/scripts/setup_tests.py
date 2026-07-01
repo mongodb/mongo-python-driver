@@ -256,7 +256,15 @@ def handle_test_env() -> None:
         else:
             # BUILD-3830
             krb_conf = ROOT / ".evergreen/krb5.conf.empty"
-            krb_conf.touch()
+            krb_conf.write_text(
+                "[libdefaults]\n"
+                "  default_realm = LDAPTEST.10GEN.CC\n\n"
+                "[realms]\n"
+                "  LDAPTEST.10GEN.CC = {\n"
+                "    kdc = ldaptest.build.10gen.cc\n"
+                "    admin_server = ldaptest.build.10gen.cc\n"
+                "  }\n"
+            )
             write_env("KRB5_CONFIG", krb_conf)
             LOGGER.info("Writing keytab")
             keytab = base64.b64decode(config["KEYTAB_BASE64"])
