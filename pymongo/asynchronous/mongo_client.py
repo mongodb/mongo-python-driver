@@ -2990,6 +2990,15 @@ class _ClientConnectionRetryable(Generic[T]):
             operation_id=self._operation_id,
         )
 
+    def _log_retry(self, is_write: bool) -> None:
+        log_command_retry(
+            self._client._topology_id,
+            self._operation,
+            self._operation_id,
+            self._attempt_number,
+            is_write,
+        )
+
     async def _write(self) -> T:
         """Wrapper method for write-type retryable client executions
 
@@ -3013,13 +3022,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     self._check_last_error()
                     self._retryable = False
                 if self._retrying:
-                    log_command_retry(
-                        self._client._topology_id,
-                        self._operation,
-                        self._operation_id,
-                        self._attempt_number,
-                        is_write=True,
-                    )
+                    self._log_retry(is_write=True)
                 return await self._func(self._session, conn, self._retryable)  # type: ignore
         except PyMongoError as exc:
             if not self._retryable:
@@ -3042,13 +3045,7 @@ class _ClientConnectionRetryable(Generic[T]):
             if self._retrying and not self._retryable and not self._always_retryable:
                 self._check_last_error()
             if self._retrying:
-                log_command_retry(
-                    self._client._topology_id,
-                    self._operation,
-                    self._operation_id,
-                    self._attempt_number,
-                    is_write=False,
-                )
+                self._log_retry(is_write=False)
             return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 

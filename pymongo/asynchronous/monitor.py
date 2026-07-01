@@ -24,12 +24,11 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
-from pymongo._telemetry import _HeartbeatTelemetry
+from pymongo._telemetry import _HeartbeatTelemetry, log_srv_monitor_failure
 from pymongo.asynchronous.srv_resolver import _SrvResolver
 from pymongo.errors import NetworkTimeout, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _async_create_lock
-from pymongo.logger import _SDAM_LOGGER, _debug_log
 from pymongo.periodic_executor import _shutdown_executors
 from pymongo.pool_options import _is_faas
 from pymongo.read_preferences import MovingAverage
@@ -385,7 +384,7 @@ class SrvMonitor(MonitorBase):
             # - SRV records must be rescanned every heartbeatFrequencyMS
             # - Topology must be left unchanged
             self.request_check()
-            _debug_log(_SDAM_LOGGER, message="SRV monitor check failed", failure=repr(exc))
+            log_srv_monitor_failure(exc)
             return None
         else:
             self._executor.update_interval(max(ttl, common.MIN_SRV_RESCAN_INTERVAL))

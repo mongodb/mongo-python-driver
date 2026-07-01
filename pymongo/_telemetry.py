@@ -204,9 +204,7 @@ class _CmapTelemetry:
 
     __slots__ = (
         "_address",
-        "_checkout_start",
         "_client_id",
-        "_conn_created_start",
         "_listeners",
         "_log",
         "_publish",
@@ -283,9 +281,6 @@ class _CmapTelemetry:
             self._listeners.publish_pool_closed(self._address)
 
     def connection_created(self, conn_id: int) -> None:
-        # Always record start time: logging or publishing may be enabled by the time
-        # connection_ready is called to compute the duration.
-        self._conn_created_start = time.monotonic()
         # Log before publishing to prevent potential listener preemption in tests.
         if self._should_log:
             self._emit_log(_ConnectionStatusMessage.CONN_CREATED, driverConnectionId=conn_id)
@@ -293,12 +288,12 @@ class _CmapTelemetry:
             assert self._listeners is not None
             self._listeners.publish_connection_created(self._address, conn_id)
 
-    def connection_ready(self, conn_id: int) -> None:
+    def connection_ready(self, conn_id: int, creation_time: float) -> None:
         should_log = self._should_log
         should_publish = self._should_publish
         if not should_log and not should_publish:
             return
-        duration = max(0.0, time.monotonic() - self._conn_created_start)
+        duration = max(0.0, time.monotonic() - creation_time)
         # Log before publishing to prevent potential listener preemption in tests.
         if should_log:
             self._emit_log(
@@ -324,24 +319,22 @@ class _CmapTelemetry:
                 error=reason,
             )
 
-    def checkout_started(self) -> None:
-        should_log = self._should_log
-        should_publish = self._should_publish
-        # Always record start time: logging or publishing may be enabled by the time
-        # checkout_succeeded or checkout_failed is called to compute the duration.
-        self._checkout_start = time.monotonic()
-        if should_publish:
+    def checkout_started(self) -> float:
+        """Emit the checkout started event/log and return the start time for duration tracking."""
+        start = time.monotonic()
+        if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_check_out_started(self._address)
-        if should_log:
+        if self._should_log:
             self._emit_log(_ConnectionStatusMessage.CHECKOUT_STARTED)
+        return start
 
-    def checkout_succeeded(self, conn_id: int) -> None:
+    def checkout_succeeded(self, conn_id: int, start: float) -> None:
         should_log = self._should_log
         should_publish = self._should_publish
         if not should_log and not should_publish:
             return
-        duration = max(0.0, time.monotonic() - self._checkout_start)
+        duration = max(0.0, time.monotonic() - start)
         if should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_checked_out(self._address, conn_id, duration)
@@ -352,12 +345,12 @@ class _CmapTelemetry:
                 durationMS=duration * 1000,
             )
 
-    def checkout_failed(self, reason: str, error: str) -> None:
+    def checkout_failed(self, reason: str, error: str, start: float) -> None:
         should_log = self._should_log
         should_publish = self._should_publish
         if not should_log and not should_publish:
             return
-        duration = max(0.0, time.monotonic() - self._checkout_start)
+        duration = max(0.0, time.monotonic() - start)
         if should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_check_out_failed(self._address, error, duration)
@@ -632,7 +625,9 @@ class _ServerSelectionTelemetry:
         # logging level is stable for its lifetime.
         self._should_log = _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
 
-    def _emit_log(self, message: _ServerSelectionStatusMessage, **extra: Any) -> None:
+    def _emit_log(
+        self, message: _ServerSelectionStatusMessage, topology_description: Any, **extra: Any
+    ) -> None:
         _debug_log(
             _SERVER_SELECTION_LOGGER,
             message=message,
@@ -640,33 +635,50 @@ class _ServerSelectionTelemetry:
             selector=self._selector,
             operation=self._operation,
             operationId=self._operation_id,
-            topologyDescription=self._topology_description,
+            topologyDescription=topology_description,
             **extra,
         )
 
     def started(self) -> None:
         """Emit the server selection STARTED log entry."""
         if self._should_log:
-            self._emit_log(_ServerSelectionStatusMessage.STARTED)
+            self._emit_log(_ServerSelectionStatusMessage.STARTED, self._topology_description)
 
     def waiting(self, remaining_time_ms: int) -> None:
         """Emit the server selection WAITING log entry."""
         if self._should_log:
-            self._emit_log(_ServerSelectionStatusMessage.WAITING, remainingTimeMS=remaining_time_ms)
+            self._emit_log(
+                _ServerSelectionStatusMessage.WAITING,
+                self._topology_description,
+                remainingTimeMS=remaining_time_ms,
+            )
 
-    def failed(self, failure: str) -> None:
-        """Emit the server selection FAILED log entry."""
+    def failed(self, failure: str, topology_description: Any = None) -> None:
+        """Emit the server selection FAILED log entry with the current topology description."""
         if self._should_log:
-            self._emit_log(_ServerSelectionStatusMessage.FAILED, failure=failure)
+            self._emit_log(
+                _ServerSelectionStatusMessage.FAILED,
+                topology_description
+                if topology_description is not None
+                else self._topology_description,
+                failure=failure,
+            )
 
     def succeeded(self, server_host: str, server_port: Optional[int]) -> None:
         """Emit the server selection SUCCEEDED log entry."""
         if self._should_log:
             self._emit_log(
                 _ServerSelectionStatusMessage.SUCCEEDED,
+                self._topology_description,
                 serverHost=server_host,
                 serverPort=server_port,
             )
+
+
+def log_srv_monitor_failure(failure: Exception) -> None:
+    """Emit a log entry when the SRV monitor fails to poll DNS records."""
+    if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+        _debug_log(_SDAM_LOGGER, message="SRV monitor check failed", failure=repr(failure))
 
 
 def log_command_retry(
