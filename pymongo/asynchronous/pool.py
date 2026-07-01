@@ -294,7 +294,8 @@ class AsyncConnection:
             hello.logical_session_timeout_minutes is not None and hello.is_readable
         )
         self.logical_session_timeout_minutes: Optional[int] = hello.logical_session_timeout_minutes
-        # PYTHON-5904
+        # hello_ok is set from helloOk, which is only returned from ismaster
+        # don't overwrite this when connection switches to hello
         self.hello_ok = self.hello_ok or hello.hello_ok
         self.is_repl = hello.server_type in (
             SERVER_TYPE.RSPrimary,
