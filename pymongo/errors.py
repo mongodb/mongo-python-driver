@@ -37,12 +37,12 @@ class PyMongoError(Exception):
         self,
         message: str = "",
         error_labels: Optional[Iterable[str]] = None,
-        retry_after_ms: Optional[str] = None,
+        retry_after_ms: Optional[int] = None,
     ) -> None:
         super().__init__(message)
         self._message = message
         self._error_labels = set(error_labels or [])
-        self._retry_after_ms = int(retry_after_ms) if retry_after_ms else None
+        self._retry_after_ms = retry_after_ms
 
     def has_error_label(self, label: str) -> bool:
         """Return True if this error contains the given label.

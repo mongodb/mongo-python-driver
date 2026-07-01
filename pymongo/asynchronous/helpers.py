@@ -105,10 +105,10 @@ class _RetryPolicy:
         self.backoff_max = backoff_max
 
     def backoff(self, attempt: int, base_backoff: Optional[float] = None) -> float:
-        """Return the actual backoff duration for the given suggested backoff duration."""
+        """Return the actual backoff duration for the given attempt and base backoff."""
         return _backoff(
             max(0, attempt - 1),
-            _BACKOFF_INITIAL if base_backoff is None else base_backoff,
+            self.backoff_initial if base_backoff is None or base_backoff < 0 else base_backoff,
             self.backoff_max,
         )
 
