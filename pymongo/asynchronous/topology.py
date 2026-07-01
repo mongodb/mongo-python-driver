@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 import queue
 import random
@@ -30,7 +29,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 from pymongo import _csot, common, helpers_shared, periodic_executor
-from pymongo._telemetry import _SdamTelemetry
+from pymongo._telemetry import _SdamTelemetry, _ServerSelectionTelemetry
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import MonitorBase, SrvMonitor
 from pymongo.asynchronous.pool import Pool
@@ -51,11 +50,6 @@ from pymongo.lock import (
     _async_cond_wait,
     _async_create_condition,
     _async_create_lock,
-)
-from pymongo.logger import (
-    _SERVER_SELECTION_LOGGER,
-    _debug_log,
-    _ServerSelectionStatusMessage,
 )
 from pymongo.pool_options import PoolOptions
 from pymongo.server_description import ServerDescription
@@ -107,14 +101,14 @@ class Topology:
     def __init__(self, topology_settings: TopologySettings):
         self._topology_id = topology_settings._topology_id
         self._listeners = topology_settings._pool_options._event_listeners
-        self._publish_server = self._listeners is not None and self._listeners.enabled_for_server
-        self._publish_tp = self._listeners is not None and self._listeners.enabled_for_topology
 
         # Create events queue if there are publishers.
         self._events: queue.Queue[Any] | None = None
         self.__events_executor: Any = None
 
-        if self._publish_server or self._publish_tp:
+        publish_server = self._listeners is not None and self._listeners.enabled_for_server
+        publish_tp = self._listeners is not None and self._listeners.enabled_for_topology
+        if publish_server or publish_tp:
             self._events = queue.Queue(maxsize=100)
 
         self._sdam = _SdamTelemetry(self._topology_id, self._listeners, self._events)
@@ -152,7 +146,7 @@ class Topology:
         self._max_cluster_time: Optional[ClusterTime] = None
         self._session_pool = _ServerSessionPool()
 
-        if self._publish_server or self._publish_tp:
+        if self._sdam._publish_server or self._sdam._publish_tp:
             assert self._events is not None
             weak: weakref.ReferenceType[queue.Queue[Any]]
 
@@ -285,17 +279,10 @@ class Topology:
         now = time.monotonic()
         end_time = now + timeout
         logged_waiting = False
-
-        if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SERVER_SELECTION_LOGGER,
-                message=_ServerSelectionStatusMessage.STARTED,
-                selector=selector,
-                operation=operation,
-                operationId=operation_id,
-                topologyDescription=self.description,
-                clientId=self.description._topology_settings._topology_id,
-            )
+        ss = _ServerSelectionTelemetry(
+            self._topology_id, selector, operation, operation_id, self.description
+        )
+        ss.started()
 
         server_descriptions = self._description.apply_selector(
             selector,
@@ -309,32 +296,13 @@ class Topology:
         while not server_descriptions:
             # No suitable servers.
             if timeout == 0 or now > end_time:
-                if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _SERVER_SELECTION_LOGGER,
-                        message=_ServerSelectionStatusMessage.FAILED,
-                        selector=selector,
-                        operation=operation,
-                        operationId=operation_id,
-                        topologyDescription=self.description,
-                        clientId=self.description._topology_settings._topology_id,
-                        failure=self._error_message(selector),
-                    )
+                ss.failed(self._error_message(selector))
                 raise ServerSelectionTimeoutError(
                     f"{self._error_message(selector)}, Timeout: {timeout}s, Topology Description: {self.description!r}"
                 )
 
             if not logged_waiting:
-                _debug_log(
-                    _SERVER_SELECTION_LOGGER,
-                    message=_ServerSelectionStatusMessage.WAITING,
-                    selector=selector,
-                    operation=operation,
-                    operationId=operation_id,
-                    topologyDescription=self.description,
-                    clientId=self.description._topology_settings._topology_id,
-                    remainingTimeMS=int(1000 * (end_time - time.monotonic())),
-                )
+                ss.waiting(int(1000 * (end_time - time.monotonic())))
                 logged_waiting = True
 
             await self._ensure_opened()
@@ -399,18 +367,9 @@ class Topology:
         )
         if _csot.get_timeout():
             _csot.set_rtt(server.description.min_round_trip_time)
-        if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SERVER_SELECTION_LOGGER,
-                message=_ServerSelectionStatusMessage.SUCCEEDED,
-                selector=selector,
-                operation=operation,
-                operationId=operation_id,
-                topologyDescription=self.description,
-                clientId=self.description._topology_settings._topology_id,
-                serverHost=server.description.address[0],
-                serverPort=server.description.address[1],
-            )
+        _ServerSelectionTelemetry(
+            self._topology_id, selector, operation, operation_id, self.description
+        ).succeeded(server.description.address[0], server.description.address[1])
         return server
 
     async def select_server_by_address(
@@ -670,7 +629,7 @@ class Topology:
             self._closed = True
 
         # Publish only after releasing the lock.
-        if self._publish_tp:
+        if self._sdam._publish_tp:
             self._description = TopologyDescription(
                 TOPOLOGY_TYPE.Unknown,
                 {},
@@ -681,7 +640,7 @@ class Topology:
             )
         self._sdam.topology_closed(old_td, self._description)
 
-        if self._publish_server or self._publish_tp:
+        if self._sdam._publish_server or self._sdam._publish_tp:
             # Make sure the events executor thread is fully closed before publishing the remaining events
             self.__events_executor.close()
             await self.__events_executor.join(1)
@@ -722,7 +681,7 @@ class Topology:
             await self._update_servers()
 
             # Start or restart the events publishing thread.
-            if self._publish_tp or self._publish_server:
+            if self._sdam._publish_tp or self._sdam._publish_server:
                 self.__events_executor.open()
 
             # Start the SRV polling thread.
@@ -861,7 +820,7 @@ class Topology:
                 )
 
                 weak = None
-                if self._publish_server and self._events is not None:
+                if self._sdam._publish_server and self._events is not None:
                     weak = weakref.ref(self._events)
                 server = Server(
                     server_description=sd,

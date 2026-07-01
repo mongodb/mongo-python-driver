@@ -27,10 +27,12 @@ from pymongo.logger import (
     _COMMAND_LOGGER,
     _CONNECTION_LOGGER,
     _SDAM_LOGGER,
+    _SERVER_SELECTION_LOGGER,
     _CommandStatusMessage,
     _ConnectionStatusMessage,
     _debug_log,
     _SDAMStatusMessage,
+    _ServerSelectionStatusMessage,
     _verbose_connection_error_reason,
 )
 from pymongo.pool_shared import _ConnectionTelemetryInfo
@@ -542,4 +544,92 @@ class _SdamTelemetry:
             _SDAMStatusMessage.STOP_SERVER,
             serverHost=address[0],
             serverPort=address[1],
+        )
+
+
+class _ServerSelectionTelemetry:
+    """Structured logging for server selection events.
+
+    The server selection spec defines only log entries, not APM events, so this
+    class has no publish methods.
+
+    Construct once per :meth:`select_server` call.
+    """
+
+    __slots__ = (
+        "_operation",
+        "_operation_id",
+        "_selector",
+        "_topology_description",
+        "_topology_id",
+    )
+
+    def __init__(
+        self,
+        topology_id: Any,
+        selector: Any,
+        operation: str,
+        operation_id: Optional[int],
+        topology_description: Any,
+    ) -> None:
+        self._topology_id = topology_id
+        self._selector = selector
+        self._operation = operation
+        self._operation_id = operation_id
+        self._topology_description = topology_description
+
+    @property
+    def _should_log(self) -> bool:
+        return _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
+
+    def _emit_log(self, message: _ServerSelectionStatusMessage, **extra: Any) -> None:
+        if self._should_log:
+            _debug_log(
+                _SERVER_SELECTION_LOGGER,
+                message=message,
+                clientId=self._topology_id,
+                selector=self._selector,
+                operation=self._operation,
+                operationId=self._operation_id,
+                topologyDescription=self._topology_description,
+                **extra,
+            )
+
+    def started(self) -> None:
+        """Emit the server selection STARTED log entry."""
+        self._emit_log(_ServerSelectionStatusMessage.STARTED)
+
+    def waiting(self, remaining_time_ms: int) -> None:
+        """Emit the server selection WAITING log entry."""
+        self._emit_log(_ServerSelectionStatusMessage.WAITING, remainingTimeMS=remaining_time_ms)
+
+    def failed(self, failure: str) -> None:
+        """Emit the server selection FAILED log entry."""
+        self._emit_log(_ServerSelectionStatusMessage.FAILED, failure=failure)
+
+    def succeeded(self, server_host: str, server_port: Optional[int]) -> None:
+        """Emit the server selection SUCCEEDED log entry."""
+        self._emit_log(
+            _ServerSelectionStatusMessage.SUCCEEDED,
+            serverHost=server_host,
+            serverPort=server_port,
+        )
+
+
+def log_command_retry(
+    topology_id: Any,
+    command_name: str,
+    operation_id: Optional[int],
+    attempt_number: int,
+    is_write: bool,
+) -> None:
+    """Emit a command-retry log entry."""
+    if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+        op = "write" if is_write else "read"
+        _debug_log(
+            _COMMAND_LOGGER,
+            message=f"Retrying {op} attempt number {attempt_number}",
+            clientId=topology_id,
+            commandName=command_name,
+            operationId=operation_id,
         )
