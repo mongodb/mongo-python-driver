@@ -228,10 +228,12 @@ class _CmapTelemetry:
 
     @property
     def _should_publish(self) -> bool:
+        """Computed per-call because listener registration can change while the pool is open."""
         return self._publish and self._listeners is not None and self._listeners.enabled_for_cmap
 
     @property
     def _should_log(self) -> bool:
+        """Computed per-call because logging level can be reconfigured at runtime."""
         return self._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
 
     def _emit_log(self, message: _ConnectionStatusMessage, **extra: Any) -> None:
@@ -364,7 +366,15 @@ class _HeartbeatTelemetry:
     context, then :meth:`succeeded` or :meth:`failed` when the outcome is known.
     """
 
-    __slots__ = ("_address", "_awaited", "_listeners", "_start", "_topology_id")
+    __slots__ = (
+        "_address",
+        "_awaited",
+        "_listeners",
+        "_should_log",
+        "_should_publish",
+        "_start",
+        "_topology_id",
+    )
 
     def __init__(
         self,
@@ -377,14 +387,10 @@ class _HeartbeatTelemetry:
         self._address = address
         self._listeners = listeners
         self._awaited = awaited
-
-    @property
-    def _should_publish(self) -> bool:
-        return self._listeners is not None and self._listeners.enabled_for_server_heartbeat
-
-    @property
-    def _should_log(self) -> bool:
-        return _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
+        # Cached at construction: this object is short-lived (one heartbeat check) so
+        # listener registration and logging level are stable for its lifetime.
+        self._should_publish = listeners is not None and listeners.enabled_for_server_heartbeat
+        self._should_log = _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
 
     def _emit_log(self, message: _SDAMStatusMessage, **extra: Any) -> None:
         _debug_log(
@@ -472,14 +478,17 @@ class _SdamTelemetry:
 
     @property
     def _publish_server(self) -> bool:
+        """Computed per-call because listener registration can change while the topology is open."""
         return self._listeners is not None and self._listeners.enabled_for_server
 
     @property
     def _publish_tp(self) -> bool:
+        """Computed per-call because listener registration can change while the topology is open."""
         return self._listeners is not None and self._listeners.enabled_for_topology
 
     @property
     def _should_log(self) -> bool:
+        """Computed per-call because logging level can be reconfigured at runtime."""
         return _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
 
     def _enqueue(self, fn: Any, args: tuple[Any, ...]) -> None:
@@ -576,6 +585,7 @@ class _ServerSelectionTelemetry:
         "_operation",
         "_operation_id",
         "_selector",
+        "_should_log",
         "_topology_description",
         "_topology_id",
     )
@@ -593,10 +603,9 @@ class _ServerSelectionTelemetry:
         self._operation = operation
         self._operation_id = operation_id
         self._topology_description = topology_description
-
-    @property
-    def _should_log(self) -> bool:
-        return _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
+        # Cached at construction: this object is short-lived (one select_server call) so
+        # logging level is stable for its lifetime.
+        self._should_log = _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
 
     def _emit_log(self, message: _ServerSelectionStatusMessage, **extra: Any) -> None:
         _debug_log(
