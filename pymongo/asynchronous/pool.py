@@ -81,6 +81,7 @@ from pymongo.pool_shared import (
     SSLErrors,
     _CancellationContext,
     _configured_protocol_interface,
+    _ConnectionTelemetryInfo,
     _raise_connection_failure,
 )
 from pymongo.read_preferences import ReadPreference
@@ -109,7 +110,7 @@ if TYPE_CHECKING:
 _IS_SYNC = False
 
 
-class AsyncConnection:
+class AsyncConnection(_ConnectionTelemetryInfo):
     """Store a connection with some metadata.
 
     :param conn: a raw connection object
@@ -405,7 +406,6 @@ class AsyncConnection:
                 client,
                 check,
                 allowable_errors,
-                self.address,
                 listeners,
                 self.max_bson_size,
                 read_concern,
