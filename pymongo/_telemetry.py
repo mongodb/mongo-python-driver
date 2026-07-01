@@ -235,33 +235,35 @@ class _CmapTelemetry:
         return self._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
 
     def _emit_log(self, message: _ConnectionStatusMessage, **extra: Any) -> None:
-        if self._should_log:
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=message,
-                clientId=self._client_id,
-                serverHost=self._address[0],
-                serverPort=self._address[1],
-                **extra,
-            )
+        _debug_log(
+            _CONNECTION_LOGGER,
+            message=message,
+            clientId=self._client_id,
+            serverHost=self._address[0],
+            serverPort=self._address[1],
+            **extra,
+        )
 
     def pool_created(self, non_default_options: dict[str, Any]) -> None:
         # Log before publishing to prevent potential listener preemption in tests.
-        self._emit_log(_ConnectionStatusMessage.POOL_CREATED, **non_default_options)
+        if self._should_log:
+            self._emit_log(_ConnectionStatusMessage.POOL_CREATED, **non_default_options)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_pool_created(self._address, non_default_options)
 
     def pool_ready(self) -> None:
         # Log before publishing to prevent potential listener preemption in tests.
-        self._emit_log(_ConnectionStatusMessage.POOL_READY)
+        if self._should_log:
+            self._emit_log(_ConnectionStatusMessage.POOL_READY)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_pool_ready(self._address)
 
     def pool_cleared(self, service_id: Optional[ObjectId], interrupt_connections: bool) -> None:
         # Log before publishing to prevent potential listener preemption in tests.
-        self._emit_log(_ConnectionStatusMessage.POOL_CLEARED, serviceId=service_id)
+        if self._should_log:
+            self._emit_log(_ConnectionStatusMessage.POOL_CLEARED, serviceId=service_id)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_pool_cleared(
@@ -272,7 +274,8 @@ class _CmapTelemetry:
 
     def pool_closed(self) -> None:
         # Log before publishing to prevent potential listener preemption in tests.
-        self._emit_log(_ConnectionStatusMessage.POOL_CLOSED)
+        if self._should_log:
+            self._emit_log(_ConnectionStatusMessage.POOL_CLOSED)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_pool_closed(self._address)
@@ -280,7 +283,8 @@ class _CmapTelemetry:
     def connection_created(self, conn_id: int) -> None:
         self._conn_created_start = time.monotonic()
         # Log before publishing to prevent potential listener preemption in tests.
-        self._emit_log(_ConnectionStatusMessage.CONN_CREATED, driverConnectionId=conn_id)
+        if self._should_log:
+            self._emit_log(_ConnectionStatusMessage.CONN_CREATED, driverConnectionId=conn_id)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_created(self._address, conn_id)
@@ -288,11 +292,12 @@ class _CmapTelemetry:
     def connection_ready(self, conn_id: int) -> None:
         duration = max(0.0, time.monotonic() - self._conn_created_start)
         # Log before publishing to prevent potential listener preemption in tests.
-        self._emit_log(
-            _ConnectionStatusMessage.CONN_READY,
-            driverConnectionId=conn_id,
-            durationMS=duration * 1000,
-        )
+        if self._should_log:
+            self._emit_log(
+                _ConnectionStatusMessage.CONN_READY,
+                driverConnectionId=conn_id,
+                durationMS=duration * 1000,
+            )
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_ready(self._address, conn_id, duration)
@@ -301,48 +306,53 @@ class _CmapTelemetry:
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_closed(self._address, conn_id, reason)
-        self._emit_log(
-            _ConnectionStatusMessage.CONN_CLOSED,
-            driverConnectionId=conn_id,
-            reason=_verbose_connection_error_reason(reason),
-            error=reason,
-        )
+        if self._should_log:
+            self._emit_log(
+                _ConnectionStatusMessage.CONN_CLOSED,
+                driverConnectionId=conn_id,
+                reason=_verbose_connection_error_reason(reason),
+                error=reason,
+            )
 
     def checkout_started(self) -> None:
         self._checkout_start = time.monotonic()
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_check_out_started(self._address)
-        self._emit_log(_ConnectionStatusMessage.CHECKOUT_STARTED)
+        if self._should_log:
+            self._emit_log(_ConnectionStatusMessage.CHECKOUT_STARTED)
 
     def checkout_succeeded(self, conn_id: int) -> None:
         duration = max(0.0, time.monotonic() - self._checkout_start)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_checked_out(self._address, conn_id, duration)
-        self._emit_log(
-            _ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
-            driverConnectionId=conn_id,
-            durationMS=duration * 1000,
-        )
+        if self._should_log:
+            self._emit_log(
+                _ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
+                driverConnectionId=conn_id,
+                durationMS=duration * 1000,
+            )
 
     def checkout_failed(self, reason: str, error: str) -> None:
         duration = max(0.0, time.monotonic() - self._checkout_start)
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_check_out_failed(self._address, error, duration)
-        self._emit_log(
-            _ConnectionStatusMessage.CHECKOUT_FAILED,
-            reason=reason,
-            error=error,
-            durationMS=duration * 1000,
-        )
+        if self._should_log:
+            self._emit_log(
+                _ConnectionStatusMessage.CHECKOUT_FAILED,
+                reason=reason,
+                error=error,
+                durationMS=duration * 1000,
+            )
 
     def checked_in(self, conn_id: int) -> None:
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_checked_in(self._address, conn_id)
-        self._emit_log(_ConnectionStatusMessage.CHECKEDIN, driverConnectionId=conn_id)
+        if self._should_log:
+            self._emit_log(_ConnectionStatusMessage.CHECKEDIN, driverConnectionId=conn_id)
 
 
 class _HeartbeatTelemetry:
@@ -377,16 +387,15 @@ class _HeartbeatTelemetry:
         return _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
 
     def _emit_log(self, message: _SDAMStatusMessage, **extra: Any) -> None:
-        if self._should_log:
-            _debug_log(
-                _SDAM_LOGGER,
-                message=message,
-                topologyId=self._topology_id,
-                serverHost=self._address[0],
-                serverPort=self._address[1],
-                awaited=self._awaited,
-                **extra,
-            )
+        _debug_log(
+            _SDAM_LOGGER,
+            message=message,
+            topologyId=self._topology_id,
+            serverHost=self._address[0],
+            serverPort=self._address[1],
+            awaited=self._awaited,
+            **extra,
+        )
 
     def started(self) -> None:
         """Publish the APM heartbeat-started event (before connection checkout)."""
@@ -397,11 +406,12 @@ class _HeartbeatTelemetry:
 
     def emit_started_log(self, conn_id: int, server_conn_id: Optional[int]) -> None:
         """Emit the log entry for heartbeat started (after connection checkout)."""
-        self._emit_log(
-            _SDAMStatusMessage.HEARTBEAT_START,
-            driverConnectionId=conn_id,
-            serverConnectionId=server_conn_id,
-        )
+        if self._should_log:
+            self._emit_log(
+                _SDAMStatusMessage.HEARTBEAT_START,
+                driverConnectionId=conn_id,
+                serverConnectionId=server_conn_id,
+            )
 
     def succeeded(
         self,
@@ -416,13 +426,14 @@ class _HeartbeatTelemetry:
             self._listeners.publish_server_heartbeat_succeeded(
                 self._address, round_trip_time, response, response.awaitable
             )
-        self._emit_log(
-            _SDAMStatusMessage.HEARTBEAT_SUCCESS,
-            driverConnectionId=conn_id,
-            serverConnectionId=server_conn_id,
-            durationMS=round_trip_time * 1000,
-            reply=response.document,
-        )
+        if self._should_log:
+            self._emit_log(
+                _SDAMStatusMessage.HEARTBEAT_SUCCESS,
+                driverConnectionId=conn_id,
+                serverConnectionId=server_conn_id,
+                durationMS=round_trip_time * 1000,
+                reply=response.document,
+            )
 
     def failed(self, error: Exception, conn_id: Optional[int]) -> None:
         """Emit the FAILED log entry and APM event."""
@@ -432,12 +443,13 @@ class _HeartbeatTelemetry:
             self._listeners.publish_server_heartbeat_failed(
                 self._address, duration, error, self._awaited
             )
-        self._emit_log(
-            _SDAMStatusMessage.HEARTBEAT_FAIL,
-            durationMS=duration * 1000,
-            failure=error,
-            driverConnectionId=conn_id,
-        )
+        if self._should_log:
+            self._emit_log(
+                _SDAMStatusMessage.HEARTBEAT_FAIL,
+                durationMS=duration * 1000,
+                failure=error,
+                driverConnectionId=conn_id,
+            )
 
 
 class _SdamTelemetry:
@@ -475,16 +487,16 @@ class _SdamTelemetry:
             self._events.put((fn, args))
 
     def _emit_log(self, message: _SDAMStatusMessage, **extra: Any) -> None:
-        if self._should_log:
-            _debug_log(
-                _SDAM_LOGGER,
-                message=message,
-                topologyId=self._topology_id,
-                **extra,
-            )
+        _debug_log(
+            _SDAM_LOGGER,
+            message=message,
+            topologyId=self._topology_id,
+            **extra,
+        )
 
     def topology_opened(self) -> None:
-        self._emit_log(_SDAMStatusMessage.START_TOPOLOGY)
+        if self._should_log:
+            self._emit_log(_SDAMStatusMessage.START_TOPOLOGY)
         if self._publish_tp:
             assert self._listeners is not None
             self._enqueue(self._listeners.publish_topology_opened, (self._topology_id,))
@@ -496,11 +508,12 @@ class _SdamTelemetry:
                 self._listeners.publish_topology_description_changed,
                 (old_td, new_td, self._topology_id),
             )
-        self._emit_log(
-            _SDAMStatusMessage.TOPOLOGY_CHANGE,
-            previousDescription=repr(old_td),
-            newDescription=repr(new_td),
-        )
+        if self._should_log:
+            self._emit_log(
+                _SDAMStatusMessage.TOPOLOGY_CHANGE,
+                previousDescription=repr(old_td),
+                newDescription=repr(new_td),
+            )
 
     def topology_closed(self, old_td: Any, new_td: Any) -> None:
         """Emit APM and log events for topology description change + topology closed."""
@@ -511,22 +524,24 @@ class _SdamTelemetry:
                 (old_td, new_td, self._topology_id),
             )
             self._enqueue(self._listeners.publish_topology_closed, (self._topology_id,))
-        self._emit_log(
-            _SDAMStatusMessage.TOPOLOGY_CHANGE,
-            previousDescription=repr(old_td),
-            newDescription=repr(new_td),
-        )
-        self._emit_log(_SDAMStatusMessage.STOP_TOPOLOGY)
+        if self._should_log:
+            self._emit_log(
+                _SDAMStatusMessage.TOPOLOGY_CHANGE,
+                previousDescription=repr(old_td),
+                newDescription=repr(new_td),
+            )
+            self._emit_log(_SDAMStatusMessage.STOP_TOPOLOGY)
 
     def server_opened(self, address: _Address) -> None:
         if self._publish_server:
             assert self._listeners is not None
             self._enqueue(self._listeners.publish_server_opened, (address, self._topology_id))
-        self._emit_log(
-            _SDAMStatusMessage.START_SERVER,
-            serverHost=address[0],
-            serverPort=address[1],
-        )
+        if self._should_log:
+            self._emit_log(
+                _SDAMStatusMessage.START_SERVER,
+                serverHost=address[0],
+                serverPort=address[1],
+            )
 
     def server_description_changed(self, sd_old: Any, sd_new: Any, address: _Address) -> None:
         if self._publish_server:
@@ -540,11 +555,12 @@ class _SdamTelemetry:
         if self._publish_server:
             assert self._listeners is not None
             self._enqueue(self._listeners.publish_server_closed, (address, self._topology_id))
-        self._emit_log(
-            _SDAMStatusMessage.STOP_SERVER,
-            serverHost=address[0],
-            serverPort=address[1],
-        )
+        if self._should_log:
+            self._emit_log(
+                _SDAMStatusMessage.STOP_SERVER,
+                serverHost=address[0],
+                serverPort=address[1],
+            )
 
 
 class _ServerSelectionTelemetry:
@@ -583,37 +599,40 @@ class _ServerSelectionTelemetry:
         return _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
 
     def _emit_log(self, message: _ServerSelectionStatusMessage, **extra: Any) -> None:
-        if self._should_log:
-            _debug_log(
-                _SERVER_SELECTION_LOGGER,
-                message=message,
-                clientId=self._topology_id,
-                selector=self._selector,
-                operation=self._operation,
-                operationId=self._operation_id,
-                topologyDescription=self._topology_description,
-                **extra,
-            )
+        _debug_log(
+            _SERVER_SELECTION_LOGGER,
+            message=message,
+            clientId=self._topology_id,
+            selector=self._selector,
+            operation=self._operation,
+            operationId=self._operation_id,
+            topologyDescription=self._topology_description,
+            **extra,
+        )
 
     def started(self) -> None:
         """Emit the server selection STARTED log entry."""
-        self._emit_log(_ServerSelectionStatusMessage.STARTED)
+        if self._should_log:
+            self._emit_log(_ServerSelectionStatusMessage.STARTED)
 
     def waiting(self, remaining_time_ms: int) -> None:
         """Emit the server selection WAITING log entry."""
-        self._emit_log(_ServerSelectionStatusMessage.WAITING, remainingTimeMS=remaining_time_ms)
+        if self._should_log:
+            self._emit_log(_ServerSelectionStatusMessage.WAITING, remainingTimeMS=remaining_time_ms)
 
     def failed(self, failure: str) -> None:
         """Emit the server selection FAILED log entry."""
-        self._emit_log(_ServerSelectionStatusMessage.FAILED, failure=failure)
+        if self._should_log:
+            self._emit_log(_ServerSelectionStatusMessage.FAILED, failure=failure)
 
     def succeeded(self, server_host: str, server_port: Optional[int]) -> None:
         """Emit the server selection SUCCEEDED log entry."""
-        self._emit_log(
-            _ServerSelectionStatusMessage.SUCCEEDED,
-            serverHost=server_host,
-            serverPort=server_port,
-        )
+        if self._should_log:
+            self._emit_log(
+                _ServerSelectionStatusMessage.SUCCEEDED,
+                serverHost=server_host,
+                serverPort=server_port,
+            )
 
 
 def log_command_retry(
