@@ -980,7 +980,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
         try:
             response = await client._run_operation(
-                operation, self._unpack_response, address=self._address
+                operation, self._run_with_conn, address=self._address
             )
         except OperationFailure as exc:
             if exc.code in _CURSOR_CLOSED_ERRORS or self._exhaust:
