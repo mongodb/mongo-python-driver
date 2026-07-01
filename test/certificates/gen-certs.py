@@ -15,11 +15,12 @@ from __future__ import annotations
 
 import datetime
 import ipaddress
+import subprocess
 import sys
 from pathlib import Path
 
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import (
     BestAvailableEncryption,
@@ -113,9 +114,6 @@ TRUSTED_CA_NAME = x509.Name(
 )
 
 
-# ---------------------------------------------------------------------------
-# 0. Drivers Testing CA — basicConstraints (critical), keyUsage (critical), SKI.
-# ---------------------------------------------------------------------------
 print("==> Generating Drivers Testing CA...")
 ca_key = make_key()
 ca_cert = (
@@ -148,10 +146,7 @@ ca_cert = (
 print("    ca.pem written (subject:", ca_cert.subject.rfc4514_string(), ")")
 
 
-# ---------------------------------------------------------------------------
-# 1. Server certificate — serial 1, revoked in crl.pem for test_tlsCRLFile_support.
-#    No AKI (see README.md).
-# ---------------------------------------------------------------------------
+# Serial 1 is revoked in crl.pem for test_tlsCRLFile_support. No AKI (see README.md).
 print("==> Generating server certificate (no AKI)...")
 server_key = make_key()
 server_cert = (
@@ -169,10 +164,7 @@ server_cert = (
 print("    server.pem written")
 
 
-# ---------------------------------------------------------------------------
-# 1b. KMS server certificate — serial 5, with AKI + SKI (see README.md).
-#     Used by kms_failpoint_server.py (port 9003).
-# ---------------------------------------------------------------------------
+# Serial 5, with AKI + SKI (see README.md). Used by kms_failpoint_server.py (port 9003).
 print("==> Generating KMS server certificate (with AKI)...")
 server_kms_key = make_key()
 server_kms_cert = (
@@ -194,9 +186,7 @@ server_kms_cert = (
 print("    kms-server.pem written")
 
 
-# ---------------------------------------------------------------------------
-# 2. Client certificate — serial 2, no AKI (see README.md).
-# ---------------------------------------------------------------------------
+# Serial 2, no AKI (see README.md).
 print("==> Generating client certificate (no AKI)...")
 client_key = make_key()
 client_cert = (
@@ -231,9 +221,6 @@ client_cert = (
 print("    client.pem written")
 
 
-# ---------------------------------------------------------------------------
-# 3. Password-protected client certificate (same cert, encrypted key)
-# ---------------------------------------------------------------------------
 print("==> Generating password-protected client certificate...")
 (SCRIPT_DIR / "password_protected.pem").write_bytes(
     key_pem(client_key, password=b"qwerty") + cert_pem(client_cert)
@@ -241,9 +228,6 @@ print("==> Generating password-protected client certificate...")
 print("    password_protected.pem written (password: qwerty)")
 
 
-# ---------------------------------------------------------------------------
-# 4. CRL — revokes the server cert (serial 1) for test_tlsCRLFile_support
-# ---------------------------------------------------------------------------
 print("==> Generating CRL...")
 crl = (
     x509.CertificateRevocationListBuilder()
@@ -259,9 +243,6 @@ crl = (
 print("    crl.pem written")
 
 
-# ---------------------------------------------------------------------------
-# 5. Wrong-host certificate (serial 3) — used in KMS TLS tests (with AKI)
-# ---------------------------------------------------------------------------
 print("==> Generating wrong-host certificate (with AKI)...")
 wrong_host_key = make_key()
 wrong_host_cert = (
@@ -297,9 +278,6 @@ wrong_host_cert = (
 print("    kms-wrong-host.pem written (SAN: wronghost.example.com)")
 
 
-# ---------------------------------------------------------------------------
-# 6. Expired certificate (serial 4) — used in KMS TLS tests (with AKI)
-# ---------------------------------------------------------------------------
 print("==> Generating expired certificate (with AKI)...")
 expired_key = make_key()
 expired_cert = (
@@ -321,10 +299,7 @@ expired_cert = (
 print("    kms-expired.pem written (expired 2001-01-01)")
 
 
-# ---------------------------------------------------------------------------
-# 7. Trusted Kernel Test CA — separate CA used in CA-bundle tests only.
-#    This is an independent CA unrelated to the main Drivers Testing CA.
-# ---------------------------------------------------------------------------
+# Separate CA unrelated to the main Drivers Testing CA; used in CA-bundle tests only.
 print("==> Generating Trusted Kernel Test CA...")
 trusted_ca_key = make_key()
 trusted_ca_cert = (
@@ -361,8 +336,6 @@ print("    trusted-ca.pem written")
 # ---------------------------------------------------------------------------
 print()
 print("==> Verifying cert properties...")
-
-import subprocess
 
 
 def cert_text(path: Path) -> str:

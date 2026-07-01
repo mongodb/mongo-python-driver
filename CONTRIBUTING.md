@@ -255,7 +255,7 @@ to `<repo_roo>/test/certificates/client.pem` and `tlsCAFile` to the local path t
 If the test certificates in `test/certificates/` need to be regenerated (e.g. after expiry or to add missing extensions), run:
 
 ```bash
-cd test/certificates && bash gen-certs.sh
+cd test/certificates && uv run gen-certs.py
 ```
 
 See `test/certificates/README.md` for full details and constraints on certificate subjects/SANs that must be preserved.
