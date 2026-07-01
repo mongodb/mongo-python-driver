@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 """Synchronization of asynchronous modules.
 
 Used as part of our build system to generate synchronous code.
@@ -21,10 +22,13 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
-from unasync import Rule, unasync_files  # type: ignore[import-not-found]
+from unasync import Rule, unasync_files  # type: ignore[import-untyped,import-not-found]
+
+MANIFEST = ".synchro-modified"
 
 replacements = {
     "AsyncCollection": "Collection",
@@ -194,91 +198,6 @@ test_files = [
     if f.is_file() and not async_only_test(f)
 ]
 
-# Add each asynchronized test here as part of the converting PR
-converted_tests = [
-    "__init__.py",
-    "conftest.py",
-    "helpers.py",
-    "pymongo_mocks.py",
-    "utils_spec_runner.py",
-    "qcheck.py",
-    "test_auth.py",
-    "test_auth_oidc.py",
-    "test_auth_spec.py",
-    "test_bulk.py",
-    "test_causal_consistency.py",
-    "test_change_stream.py",
-    "test_client.py",
-    "test_client_backpressure.py",
-    "test_client_bulk_write.py",
-    "test_client_context.py",
-    "test_client_metadata.py",
-    "test_collation.py",
-    "test_collection.py",
-    "test_collection_management.py",
-    "test_command_logging.py",
-    "test_command_logging.py",
-    "test_command_monitoring.py",
-    "test_comment.py",
-    "test_common.py",
-    "test_connection_logging.py",
-    "test_connection_monitoring.py",
-    "test_connections_survive_primary_stepdown_spec.py",
-    "test_create_entities.py",
-    "test_crud_unified.py",
-    "test_csot.py",
-    "test_cursor.py",
-    "test_custom_types.py",
-    "test_database.py",
-    "test_discovery_and_monitoring.py",
-    "test_dns.py",
-    "test_encryption.py",
-    "test_examples.py",
-    "test_grid_file.py",
-    "test_gridfs.py",
-    "test_gridfs_bucket.py",
-    "test_gridfs_spec.py",
-    "test_handshake_unified.py",
-    "test_heartbeat_monitoring.py",
-    "test_index_management.py",
-    "test_json_util_integration.py",
-    "test_load_balancer.py",
-    "test_logger.py",
-    "test_max_staleness.py",
-    "test_monitor.py",
-    "test_monitoring.py",
-    "test_mongos_load_balancing.py",
-    "test_on_demand_csfle.py",
-    "test_periodic_executor.py",
-    "test_pooling.py",
-    "test_raw_bson.py",
-    "test_read_concern.py",
-    "test_read_preferences.py",
-    "test_read_write_concern_spec.py",
-    "test_retryable_reads.py",
-    "test_retryable_reads_unified.py",
-    "test_retryable_writes.py",
-    "test_retryable_writes_unified.py",
-    "test_run_command.py",
-    "test_sdam_monitoring_spec.py",
-    "test_server_selection.py",
-    "test_server_selection_in_window.py",
-    "test_server_selection_logging.py",
-    "test_server_selection_rtt.py",
-    "test_session.py",
-    "test_sessions_unified.py",
-    "test_srv_polling.py",
-    "test_ssl.py",
-    "test_streaming_protocol.py",
-    "test_transactions.py",
-    "test_transactions_unified.py",
-    "test_unified_format.py",
-    "test_versioned_api_integration.py",
-    "unified_format.py",
-    "utils_selection_tests.py",
-    "utils.py",
-]
-
 
 def process_files(
     files: list[str], docstring_translate_files: list[str], sync_test_files: list[str]
@@ -424,6 +343,7 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 
 
 def main() -> None:
+    is_ci = bool(os.environ.get("CI"))
     modified_files = [f"./{f}" for f in sys.argv[1:]]
     errored = False
     for fname in async_files + gridfs_files + test_files:
@@ -438,28 +358,75 @@ def main() -> None:
             print(f"Refusing to overwrite {test_sync_name}")
             errored = True
     if errored:
-        raise ValueError("Aborting synchro due to errors")
+        sys.exit(1)
 
-    unasync_directory(async_files, _pymongo_base, _pymongo_dest_base, replacements)
-    unasync_directory(gridfs_files, _gridfs_base, _gridfs_dest_base, replacements)
-    unasync_directory(test_files, _test_base, _test_dest_base, replacements)
+    # When called with specific files, only process those; otherwise process everything.
+    modified_set = set(modified_files)
+    filtered_async = [f for f in async_files if not modified_set or f in modified_set]
+    filtered_gridfs = [f for f in gridfs_files if not modified_set or f in modified_set]
+    filtered_tests = [f for f in test_files if not modified_set or f in modified_set]
 
-    sync_files = [
-        _pymongo_dest_base + f.name for f in Path(_pymongo_dest_base).iterdir() if f.is_file()
+    ruff_extra = [] if is_ci else ["--silent"]
+
+    # Check async source files for problems before generating sync output.
+    async_sources = filtered_async + filtered_gridfs + filtered_tests
+    if async_sources:
+        subprocess.run(  # noqa: S603
+            [sys.executable, "-m", "ruff", "check", *async_sources, *ruff_extra],
+            check=True,
+        )
+
+    unasync_directory(filtered_async, _pymongo_base, _pymongo_dest_base, replacements)
+    unasync_directory(filtered_gridfs, _gridfs_base, _gridfs_dest_base, replacements)
+    unasync_directory(filtered_tests, _test_base, _test_dest_base, replacements)
+
+    # Derive generated output paths directly from filtered source paths.
+    generated_pymongo = [_pymongo_dest_base + Path(f).name for f in filtered_async]
+    generated_gridfs = [_gridfs_dest_base + Path(f).name for f in filtered_gridfs]
+    generated_tests = [
+        _test_dest_base + Path(f).name
+        for f in filtered_tests
+        if (Path(_test_dest_base) / Path(f).name).is_file()
     ]
 
-    sync_gridfs_files = [
-        _gridfs_dest_base + f.name for f in Path(_gridfs_dest_base).iterdir() if f.is_file()
-    ]
-    sync_test_files = [
-        _test_dest_base + f for f in converted_tests if (Path(_test_dest_base) / f).is_file()
-    ]
-
-    docstring_translate_files = sync_files + sync_gridfs_files + sync_test_files
+    docstring_translate_files = generated_pymongo + generated_gridfs + generated_tests
 
     process_files(
-        sync_files + sync_gridfs_files + sync_test_files, docstring_translate_files, sync_test_files
+        generated_pymongo + generated_gridfs + generated_tests,
+        docstring_translate_files,
+        generated_tests,
     )
+
+    generated_files = generated_pymongo + generated_gridfs + generated_tests
+
+    if is_ci and generated_files:
+        print(f"Synchro generated {len(generated_files)} file(s):")
+        for f in generated_files:
+            print(f"  {f}")
+
+    subprocess.run(  # noqa: S603
+        [sys.executable, "-m", "ruff", "check", *generated_files, "--fix", *ruff_extra],
+        check=is_ci,
+    )
+    subprocess.run(  # noqa: S603
+        [sys.executable, "-m", "ruff", "format", *generated_files, *ruff_extra],
+        check=is_ci,
+    )
+
+    if is_ci and generated_files:
+        result = subprocess.run(  # noqa: S603
+            ["git", "diff", "--name-only", "--", *generated_files],  # noqa: S607
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        if result.stdout.strip():
+            print("Sync files are out of date. Run `just lint --all-files synchro` to regenerate:")
+            for f in result.stdout.strip().splitlines():
+                print(f"  {f}")
+            sys.exit(1)
+
+    Path(MANIFEST).write_text("\n".join(generated_files) + ("\n" if generated_files else ""))
 
 
 if __name__ == "__main__":

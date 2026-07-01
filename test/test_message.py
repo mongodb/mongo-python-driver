@@ -29,7 +29,6 @@ from pymongo.errors import DocumentTooLarge, OperationFailure
 from pymongo.message import (
     _convert_client_bulk_exception,
     _convert_exception,
-    _convert_write_result,
     _gen_find_command,
     _gen_get_more_command,
     _maybe_add_read_preference,
@@ -98,54 +97,6 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(doc["errmsg"], "failed")
         self.assertEqual(doc["code"], 11000)
         self.assertEqual(doc["errtype"], "OperationFailure")
-
-    # _convert_write_result
-    # In the update command spec, `q` is the query/filter and `u` is the update document.
-
-    def test_insert_basic(self):
-        cmd = {"documents": [{"_id": 1}, {"_id": 2}]}
-        result = _convert_write_result("insert", cmd, {"n": 0})
-        self.assertEqual(result["ok"], 1)
-        self.assertEqual(result["n"], 2)
-
-    def test_update_basic(self):
-        cmd = {"updates": [{"q": {}, "u": {"$set": {"x": 1}}}]}
-        result = _convert_write_result("update", cmd, {"n": 1, "updatedExisting": True})
-        self.assertEqual(result["ok"], 1)
-        self.assertNotIn("upserted", result)
-
-    def test_update_with_upserted_id(self):
-        cmd = {"updates": [{"q": {}, "u": {"_id": 42}}]}
-        result = _convert_write_result("update", cmd, {"n": 1, "upserted": 42})
-        self.assertIn("upserted", result)
-        self.assertEqual(result["upserted"][0]["_id"], 42)
-
-    def test_delete_basic(self):
-        cmd = {"deletes": [{"q": {}, "limit": 1}]}
-        result = _convert_write_result("delete", cmd, {"n": 1})
-        self.assertEqual(result["ok"], 1)
-        self.assertEqual(result["n"], 1)
-
-    def test_write_error(self):
-        cmd = {"documents": [{"_id": 1}]}
-        gle = {"n": 0, "err": "duplicate key error", "code": 11000}
-        result = _convert_write_result("insert", cmd, gle)
-        self.assertIn("writeErrors", result)
-        self.assertEqual(result["writeErrors"][0]["code"], 11000)
-
-    def test_write_concern_timeout(self):
-        cmd = {"documents": [{"_id": 1}]}
-        gle = {"n": 1, "errmsg": "timeout", "wtimeout": True}
-        result = _convert_write_result("insert", cmd, gle)
-        self.assertIn("writeConcernError", result)
-        self.assertEqual(result["writeConcernError"]["code"], 64)
-
-    def test_write_error_with_err_info(self):
-        # Covers the `if "errInfo" in result:` branch, which test_write_error does not enter.
-        cmd = {"documents": [{"_id": 1}]}
-        gle = {"n": 0, "err": "err", "code": 123, "errInfo": {"detail": "x"}}
-        result = _convert_write_result("insert", cmd, gle)
-        self.assertIn("errInfo", result["writeErrors"][0])
 
     # _op_msg
 

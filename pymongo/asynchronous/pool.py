@@ -36,8 +36,8 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo.asynchronous.client_session import _validate_session_write_concern
+from pymongo.asynchronous.command_runner import run_command
 from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.asynchronous.network import command
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -81,6 +81,7 @@ from pymongo.pool_shared import (
     SSLErrors,
     _CancellationContext,
     _configured_protocol_interface,
+    _ConnectionTelemetryInfo,
     _raise_connection_failure,
 )
 from pymongo.read_preferences import ReadPreference
@@ -109,7 +110,7 @@ if TYPE_CHECKING:
 _IS_SYNC = False
 
 
-class AsyncConnection:
+class AsyncConnection(_ConnectionTelemetryInfo):
     """Store a connection with some metadata.
 
     :param conn: a raw connection object
@@ -390,22 +391,21 @@ class AsyncConnection:
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
-        self._raise_if_not_writable(unacknowledged)
+        if unacknowledged:
+            self._raise_if_not_writable()
         try:
             if session is not None and session._starting_transaction:
                 session._transaction.set_in_progress()
-            return await command(
+            return await run_command(
                 self,
                 dbname,
                 spec,
-                self.is_mongos,
                 read_preference,
                 codec_options,  # type: ignore[arg-type]
                 session,
                 client,
                 check,
                 allowable_errors,
-                self.address,
                 listeners,
                 self.max_bson_size,
                 read_concern,
@@ -451,42 +451,10 @@ class AsyncConnection:
         except BaseException as error:
             await self._raise_connection_failure(error)
 
-    def _raise_if_not_writable(self, unacknowledged: bool) -> None:
-        """Raise NotPrimaryError on unacknowledged write if this socket is not
-        writable.
-        """
-        if unacknowledged and not self.is_writable:
-            # Write won't succeed, bail as if we'd received a not primary error.
+    def _raise_if_not_writable(self) -> None:
+        """Raise NotPrimaryError if this connection is not writable."""
+        if not self.is_writable:
             raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
-
-    async def unack_write(self, msg: bytes, max_doc_size: int) -> None:
-        """Send unack OP_MSG.
-
-        Can raise ConnectionFailure or InvalidDocument.
-
-        :param msg: bytes, an OP_MSG message.
-        :param max_doc_size: size in bytes of the largest document in `msg`.
-        """
-        self._raise_if_not_writable(True)
-        await self.send_message(msg, max_doc_size)
-
-    async def write_command(
-        self, request_id: int, msg: bytes, codec_options: CodecOptions[Mapping[str, Any]]
-    ) -> dict[str, Any]:
-        """Send "insert" etc. command, returning response as a dict.
-
-        Can raise ConnectionFailure or OperationFailure.
-
-        :param request_id: an int.
-        :param msg: bytes, the command message.
-        """
-        await self.send_message(msg, 0)
-        reply = await self.receive_message(request_id)
-        result = reply.command_response(codec_options)
-
-        # Raises NotPrimaryError or OperationFailure.
-        helpers_shared._check_command_response(result, self.max_wire_version)
-        return result
 
     async def authenticate(self, reauthenticate: bool = False) -> None:
         """Authenticate to the server if needed.
