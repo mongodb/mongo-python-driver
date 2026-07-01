@@ -304,7 +304,13 @@ class Monitor(MonitorBase):
 
             avg_rtt, min_rtt = await self._rtt_monitor.get()
             sd = ServerDescription(address, response, avg_rtt, min_round_trip_time=min_rtt)
-            hb.succeeded(round_trip_time, response, conn.id, conn.server_connection_id)
+            hb.succeeded(
+                round_trip_time,
+                response.document,
+                response.awaitable,
+                conn.id,
+                conn.server_connection_id,
+            )
             return sd
 
     async def _check_with_socket(self, conn: AsyncConnection) -> tuple[Hello, float]:  # type: ignore[type-arg]

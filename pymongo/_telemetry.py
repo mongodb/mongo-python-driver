@@ -403,7 +403,8 @@ class _HeartbeatTelemetry:
     def succeeded(
         self,
         round_trip_time: float,
-        response: Any,
+        reply: _DocumentOut,
+        awaited: bool,
         conn_id: int,
         server_conn_id: Optional[int],
     ) -> None:
@@ -411,14 +412,14 @@ class _HeartbeatTelemetry:
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_succeeded(
-                self._address, round_trip_time, response, response.awaitable
+                self._address, round_trip_time, reply, awaited
             )
         self._emit_log(
             _SDAMStatusMessage.HEARTBEAT_SUCCESS,
             driverConnectionId=conn_id,
             serverConnectionId=server_conn_id,
             durationMS=round_trip_time * 1000,
-            reply=response.document,
+            reply=reply,
         )
 
     def failed(self, error: Exception, conn_id: Optional[int]) -> None:
