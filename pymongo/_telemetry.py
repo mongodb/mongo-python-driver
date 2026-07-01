@@ -205,8 +205,8 @@ class _CmapTelemetry:
         "_client_id",
         "_conn_created_start",
         "_listeners",
-        "_should_log",
-        "_should_publish",
+        "_log",
+        "_publish",
     )
 
     def __init__(
@@ -220,11 +220,19 @@ class _CmapTelemetry:
         self._client_id = client_id
         self._address = address
         self._listeners = listeners
-        self._should_publish = publish and listeners is not None and listeners.enabled_for_cmap
-        self._should_log = log
+        self._publish = publish
+        self._log = log
+
+    @property
+    def _should_publish(self) -> bool:
+        return self._publish and self._listeners is not None and self._listeners.enabled_for_cmap
+
+    @property
+    def _should_log(self) -> bool:
+        return self._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
 
     def _emit_log(self, message: _ConnectionStatusMessage, **extra: Any) -> None:
-        if self._should_log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+        if self._should_log:
             _debug_log(
                 _CONNECTION_LOGGER,
                 message=message,
@@ -359,8 +367,16 @@ class _HeartbeatTelemetry:
         self._publish = publish
         self._awaited = awaited
 
+    @property
+    def _should_publish(self) -> bool:
+        return self._publish and self._listeners is not None
+
+    @property
+    def _should_log(self) -> bool:
+        return _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
+
     def _emit_log(self, message: _SDAMStatusMessage, **extra: Any) -> None:
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+        if self._should_log:
             _debug_log(
                 _SDAM_LOGGER,
                 message=message,
@@ -374,7 +390,7 @@ class _HeartbeatTelemetry:
     def started(self) -> None:
         """Publish the APM heartbeat-started event (before connection checkout)."""
         self._start = time.monotonic()
-        if self._publish:
+        if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_started(self._address, self._awaited)
 
@@ -394,7 +410,7 @@ class _HeartbeatTelemetry:
         server_conn_id: Optional[int],
     ) -> None:
         """Emit the SUCCEEDED log entry and APM event."""
-        if self._publish:
+        if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_succeeded(
                 self._address, round_trip_time, response, response.awaitable
@@ -410,7 +426,7 @@ class _HeartbeatTelemetry:
     def failed(self, error: Exception, conn_id: Optional[int]) -> None:
         """Emit the FAILED log entry and APM event."""
         duration = max(0.0, time.monotonic() - self._start)
-        if self._publish:
+        if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_failed(
                 self._address, duration, error, self._awaited
@@ -429,7 +445,7 @@ class _SdamTelemetry:
     Topology events are queued for asynchronous delivery; log entries are emitted inline.
     """
 
-    __slots__ = ("_events", "_listeners", "_publish_server", "_publish_tp", "_topology_id")
+    __slots__ = ("_events", "_listeners", "_topology_id")
 
     def __init__(
         self,
@@ -440,15 +456,25 @@ class _SdamTelemetry:
         self._topology_id = topology_id
         self._listeners = listeners
         self._events = events
-        self._publish_server = listeners is not None and listeners.enabled_for_server
-        self._publish_tp = listeners is not None and listeners.enabled_for_topology
+
+    @property
+    def _publish_server(self) -> bool:
+        return self._listeners is not None and self._listeners.enabled_for_server
+
+    @property
+    def _publish_tp(self) -> bool:
+        return self._listeners is not None and self._listeners.enabled_for_topology
+
+    @property
+    def _should_log(self) -> bool:
+        return _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
 
     def _enqueue(self, fn: Any, args: tuple[Any, ...]) -> None:
         if self._events is not None:
             self._events.put((fn, args))
 
     def _emit_log(self, message: _SDAMStatusMessage, **extra: Any) -> None:
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+        if self._should_log:
             _debug_log(
                 _SDAM_LOGGER,
                 message=message,
