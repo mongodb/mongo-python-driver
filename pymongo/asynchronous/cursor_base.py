@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from pymongo import _csot
 from pymongo.asynchronous.command_runner import run_cursor_command
 from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.cursor_shared import _AgnosticCursorBase
+from pymongo.cursor_shared import _CURSOR_DOC_FIELDS, _AgnosticCursorBase, _split_message
 from pymongo.lock import _async_create_lock
 from pymongo.message import _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
@@ -35,22 +35,6 @@ if TYPE_CHECKING:
     from pymongo.read_preferences import _ServerMode
 
 _IS_SYNC = False
-
-_CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
-
-
-def _split_message(
-    message: Union[tuple[int, bytes], tuple[int, bytes, int]],
-) -> tuple[int, bytes, int]:
-    """Return request_id, data, max_doc_size.
-
-    :param message: (request_id, data, max_doc_size) or (request_id, data)
-    """
-    if len(message) == 3:
-        return message  # type: ignore[return-value]
-    # get_more and kill_cursors messages don't include BSON documents.
-    request_id, data = message  # type: ignore[misc]
-    return request_id, data, 0
 
 
 async def _operation_to_command(
@@ -119,7 +103,12 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
         operation: Union[_Query, _GetMore],
         read_preference: _ServerMode,
     ) -> Response:
-        """Execute a cursor operation on the given connection and return a Response."""
+        """Execute a cursor operation on the given connection and return a Response.
+
+        :param conn: An AsyncConnection instance.
+        :param operation: A _Query or _GetMore object.
+        :param read_preference: The read preference to use.
+        """
         client = self._collection.database.client
         use_cmd = operation.use_command(conn)
         more_to_come = bool(operation.conn_mgr and operation.conn_mgr.more_to_come)
