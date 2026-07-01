@@ -37,6 +37,7 @@ from pymongo.pool_shared import _ConnectionTelemetryInfo
 
 if TYPE_CHECKING:
     from bson.objectid import ObjectId
+    from pymongo.hello import Hello
     from pymongo.monitoring import _EventListeners
     from pymongo.typings import _Address, _DocumentOut
 
@@ -403,8 +404,7 @@ class _HeartbeatTelemetry:
     def succeeded(
         self,
         round_trip_time: float,
-        reply: _DocumentOut,
-        awaited: bool,
+        response: Hello[Any],
         conn_id: int,
         server_conn_id: Optional[int],
     ) -> None:
@@ -412,14 +412,14 @@ class _HeartbeatTelemetry:
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_succeeded(
-                self._address, round_trip_time, reply, awaited
+                self._address, round_trip_time, response, response.awaitable
             )
         self._emit_log(
             _SDAMStatusMessage.HEARTBEAT_SUCCESS,
             driverConnectionId=conn_id,
             serverConnectionId=server_conn_id,
             durationMS=round_trip_time * 1000,
-            reply=reply,
+            reply=response.document,
         )
 
     def failed(self, error: Exception, conn_id: Optional[int]) -> None:
