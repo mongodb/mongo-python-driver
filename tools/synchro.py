@@ -198,91 +198,6 @@ test_files = [
     if f.is_file() and not async_only_test(f)
 ]
 
-# Add each asynchronized test here as part of the converting PR
-converted_tests = [
-    "__init__.py",
-    "conftest.py",
-    "helpers.py",
-    "pymongo_mocks.py",
-    "utils_spec_runner.py",
-    "qcheck.py",
-    "test_auth.py",
-    "test_auth_oidc.py",
-    "test_auth_spec.py",
-    "test_bulk.py",
-    "test_causal_consistency.py",
-    "test_change_stream.py",
-    "test_client.py",
-    "test_client_backpressure.py",
-    "test_client_bulk_write.py",
-    "test_client_context.py",
-    "test_client_metadata.py",
-    "test_collation.py",
-    "test_collection.py",
-    "test_collection_management.py",
-    "test_command_logging.py",
-    "test_command_logging.py",
-    "test_command_monitoring.py",
-    "test_comment.py",
-    "test_common.py",
-    "test_connection_logging.py",
-    "test_connection_monitoring.py",
-    "test_connections_survive_primary_stepdown_spec.py",
-    "test_create_entities.py",
-    "test_crud_unified.py",
-    "test_csot.py",
-    "test_cursor.py",
-    "test_custom_types.py",
-    "test_database.py",
-    "test_discovery_and_monitoring.py",
-    "test_dns.py",
-    "test_encryption.py",
-    "test_examples.py",
-    "test_grid_file.py",
-    "test_gridfs.py",
-    "test_gridfs_bucket.py",
-    "test_gridfs_spec.py",
-    "test_handshake_unified.py",
-    "test_heartbeat_monitoring.py",
-    "test_index_management.py",
-    "test_json_util_integration.py",
-    "test_load_balancer.py",
-    "test_logger.py",
-    "test_max_staleness.py",
-    "test_monitor.py",
-    "test_monitoring.py",
-    "test_mongos_load_balancing.py",
-    "test_on_demand_csfle.py",
-    "test_periodic_executor.py",
-    "test_pooling.py",
-    "test_raw_bson.py",
-    "test_read_concern.py",
-    "test_read_preferences.py",
-    "test_read_write_concern_spec.py",
-    "test_retryable_reads.py",
-    "test_retryable_reads_unified.py",
-    "test_retryable_writes.py",
-    "test_retryable_writes_unified.py",
-    "test_run_command.py",
-    "test_sdam_monitoring_spec.py",
-    "test_server_selection.py",
-    "test_server_selection_in_window.py",
-    "test_server_selection_logging.py",
-    "test_server_selection_rtt.py",
-    "test_session.py",
-    "test_sessions_unified.py",
-    "test_srv_polling.py",
-    "test_ssl.py",
-    "test_streaming_protocol.py",
-    "test_transactions.py",
-    "test_transactions_unified.py",
-    "test_unified_format.py",
-    "test_versioned_api_integration.py",
-    "unified_format.py",
-    "utils_selection_tests.py",
-    "utils.py",
-]
-
 
 def process_files(
     files: list[str], docstring_translate_files: list[str], sync_test_files: list[str]
@@ -466,13 +381,12 @@ def main() -> None:
     unasync_directory(filtered_tests, _test_base, _test_dest_base, replacements)
 
     # Derive generated output paths directly from filtered source paths.
-    converted_tests_set = set(converted_tests)
     generated_pymongo = [_pymongo_dest_base + Path(f).name for f in filtered_async]
     generated_gridfs = [_gridfs_dest_base + Path(f).name for f in filtered_gridfs]
     generated_tests = [
         _test_dest_base + Path(f).name
         for f in filtered_tests
-        if Path(f).name in converted_tests_set and (Path(_test_dest_base) / Path(f).name).is_file()
+        if (Path(_test_dest_base) / Path(f).name).is_file()
     ]
 
     docstring_translate_files = generated_pymongo + generated_gridfs + generated_tests
