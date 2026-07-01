@@ -18,17 +18,16 @@ from __future__ import annotations
 
 import asyncio
 import atexit
-import logging
 import time
 import weakref
 from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
+from pymongo._telemetry import _HeartbeatTelemetry, log_srv_monitor_failure
 from pymongo.errors import NetworkTimeout, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
-from pymongo.logger import _SDAM_LOGGER, _debug_log, _SDAMStatusMessage
 from pymongo.periodic_executor import _shutdown_executors
 from pymongo.pool_options import _is_faas
 from pymongo.read_preferences import MovingAverage
@@ -151,9 +150,9 @@ class Monitor(MonitorBase):
         self._pool = pool
         self._settings = topology_settings
         self._listeners = self._settings._pool_options._event_listeners
-        self._publish = self._listeners is not None and self._listeners.enabled_for_server_heartbeat
         self._cancel_context: Optional[_CancellationContext] = None
         self._conn_id: Optional[int] = None
+        self._current_hb: Optional[_HeartbeatTelemetry] = None
         self._rtt_monitor = _RttMonitor(
             topology,
             topology_settings,
@@ -255,32 +254,16 @@ class Monitor(MonitorBase):
         Returns a ServerDescription.
         """
         self._conn_id = None
-        start = time.monotonic()
+        self._current_hb = None
         try:
             return self._check_once()
         except ReferenceError:
             raise
         except Exception as error:
             _sanitize(error)
-            sd = self._server_description
-            address = sd.address
-            duration = _monotonic_duration(start)
-            awaited = bool(self._stream and sd.is_server_type_known and sd.topology_version)
-            if self._publish:
-                assert self._listeners is not None
-                self._listeners.publish_server_heartbeat_failed(address, duration, error, awaited)
-            if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _SDAM_LOGGER,
-                    message=_SDAMStatusMessage.HEARTBEAT_FAIL,
-                    topologyId=self._topology._topology_id,
-                    serverHost=address[0],
-                    serverPort=address[1],
-                    awaited=awaited,
-                    durationMS=duration * 1000,
-                    failure=error,
-                    driverConnectionId=self._conn_id,
-                )
+            address = self._server_description.address
+            if self._current_hb is not None:
+                self._current_hb.failed(error, self._conn_id)
             self._reset_connection()
             if isinstance(error, _OperationCancelled):
                 raise
@@ -301,25 +284,14 @@ class Monitor(MonitorBase):
         awaited = bool(
             self._pool.conns and self._stream and sd.is_server_type_known and sd.topology_version
         )
-        if self._publish:
-            assert self._listeners is not None
-            self._listeners.publish_server_heartbeat_started(address, awaited)
+        hb = _HeartbeatTelemetry(self._topology._topology_id, address, self._listeners, awaited)
+        self._current_hb = hb
+        hb.started()
 
         if self._cancel_context and self._cancel_context.cancelled:
             self._reset_connection()
         with self._pool.checkout() as conn:
-            if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _SDAM_LOGGER,
-                    message=_SDAMStatusMessage.HEARTBEAT_START,
-                    topologyId=self._topology._topology_id,
-                    driverConnectionId=conn.id,
-                    serverConnectionId=conn.server_connection_id,
-                    serverHost=address[0],
-                    serverPort=address[1],
-                    awaited=awaited,
-                )
-
+            hb.emit_started_log(conn.id, conn.server_connection_id)
             self._cancel_context = conn.cancel_context
             # Record the connection id so we can later attach it to the failed log message.
             self._conn_id = conn.id
@@ -329,24 +301,7 @@ class Monitor(MonitorBase):
 
             avg_rtt, min_rtt = self._rtt_monitor.get()
             sd = ServerDescription(address, response, avg_rtt, min_round_trip_time=min_rtt)
-            if self._publish:
-                assert self._listeners is not None
-                self._listeners.publish_server_heartbeat_succeeded(
-                    address, round_trip_time, response, response.awaitable
-                )
-            if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _SDAM_LOGGER,
-                    message=_SDAMStatusMessage.HEARTBEAT_SUCCESS,
-                    topologyId=self._topology._topology_id,
-                    driverConnectionId=conn.id,
-                    serverConnectionId=conn.server_connection_id,
-                    serverHost=address[0],
-                    serverPort=address[1],
-                    awaited=awaited,
-                    durationMS=round_trip_time * 1000,
-                    reply=response.document,
-                )
+            hb.succeeded(round_trip_time, response, conn.id, conn.server_connection_id)
             return sd
 
     def _check_with_socket(self, conn: Connection) -> tuple[Hello, float]:  # type: ignore[type-arg]
@@ -427,7 +382,7 @@ class SrvMonitor(MonitorBase):
             # - SRV records must be rescanned every heartbeatFrequencyMS
             # - Topology must be left unchanged
             self.request_check()
-            _debug_log(_SDAM_LOGGER, message="SRV monitor check failed", failure=repr(exc))
+            log_srv_monitor_failure(exc)
             return None
         else:
             self._executor.update_interval(max(ttl, common.MIN_SRV_RESCAN_INTERVAL))

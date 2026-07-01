@@ -43,16 +43,14 @@ _IS_SYNC = True
 def get_pool(client: MongoClient) -> Pool:
     """Get the standalone, primary, or mongos pool."""
     topology = client._get_topology()
-    server = topology._select_server(writable_server_selector, _Op.TEST)
+    server, _ = topology._select_server(writable_server_selector, _Op.TEST)
     return server.pool
 
 
 def get_pools(client: MongoClient) -> list[Pool]:
     """Get all pools."""
-    return [
-        server.pool
-        for server in (client._get_topology()).select_servers(any_server_selector, _Op.TEST)
-    ]
+    servers, _ = (client._get_topology()).select_servers(any_server_selector, _Op.TEST)
+    return [server.pool for server in servers]
 
 
 def wait_until(predicate, success_description, timeout=10):

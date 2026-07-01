@@ -43,18 +43,14 @@ _IS_SYNC = False
 async def async_get_pool(client: AsyncMongoClient) -> Pool:
     """Get the standalone, primary, or mongos pool."""
     topology = await client._get_topology()
-    server = await topology._select_server(writable_server_selector, _Op.TEST)
+    server, _ = await topology._select_server(writable_server_selector, _Op.TEST)
     return server.pool
 
 
 async def async_get_pools(client: AsyncMongoClient) -> list[Pool]:
     """Get all pools."""
-    return [
-        server.pool
-        for server in await (await client._get_topology()).select_servers(
-            any_server_selector, _Op.TEST
-        )
-    ]
+    servers, _ = await (await client._get_topology()).select_servers(any_server_selector, _Op.TEST)
+    return [server.pool for server in servers]
 
 
 async def async_wait_until(predicate, success_description, timeout=10):

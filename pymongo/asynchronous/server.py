@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import logging
 from contextlib import AbstractAsyncContextManager
 from typing import (
     TYPE_CHECKING,
@@ -26,13 +25,9 @@ from typing import (
     Union,
 )
 
+from pymongo._telemetry import _SdamTelemetry
 from pymongo.asynchronous.command_runner import run_cursor_command
 from pymongo.asynchronous.helpers import _handle_reauth
-from pymongo.logger import (
-    _SDAM_LOGGER,
-    _debug_log,
-    _SDAMStatusMessage,
-)
 from pymongo.message import _GetMore, _OpMsg, _Query
 from pymongo.response import PinnedResponse, Response
 
@@ -69,11 +64,8 @@ class Server:
         self._pool = pool
         self._monitor = monitor
         self._topology_id = topology_id
-        self._publish = listeners is not None and listeners.enabled_for_server
-        self._listener = listeners
-        self._events = None
-        if self._publish:
-            self._events = events()  # type: ignore[misc]
+        _events = events() if listeners is not None and listeners.enabled_for_server else None  # type: ignore[misc]
+        self._sdam = _SdamTelemetry(topology_id, listeners, _events)  # type: ignore[arg-type]
 
     async def open(self) -> None:
         """Start monitoring, or restart after a fork.
@@ -92,23 +84,7 @@ class Server:
 
         Reconnect with open().
         """
-        if self._publish:
-            assert self._listener is not None
-            assert self._events is not None
-            self._events.put(
-                (
-                    self._listener.publish_server_closed,
-                    (self._description.address, self._topology_id),
-                )
-            )
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.STOP_SERVER,
-                topologyId=self._topology_id,
-                serverHost=self._description.address[0],
-                serverPort=self._description.address[1],
-            )
+        self._sdam.server_closed(self._description.address)
 
         await self._monitor.close()
         await self._pool.close()

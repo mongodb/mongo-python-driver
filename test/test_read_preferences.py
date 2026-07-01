@@ -292,7 +292,9 @@ class TestReadPreferences(TestReadPreferencesBase):
         not_used = data_members.difference(used)
         latencies = ", ".join(
             "%s: %sms" % (server.description.address, server.description.round_trip_time)
-            for server in (c._get_topology()).select_servers(readable_server_selector, _Op.TEST)
+            for server in ((c._get_topology()).select_servers(readable_server_selector, _Op.TEST))[
+                0
+            ]
         )
 
         self.assertFalse(
