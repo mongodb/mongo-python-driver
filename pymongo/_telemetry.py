@@ -245,6 +245,7 @@ class _CmapTelemetry:
         )
 
     def pool_created(self, non_default_options: dict[str, Any]) -> None:
+        """Emit the pool created log entry and APM event."""
         # Log before publishing to prevent potential listener preemption in tests.
         if self._should_log:
             self._emit_log(_ConnectionStatusMessage.POOL_CREATED, **non_default_options)
@@ -253,6 +254,7 @@ class _CmapTelemetry:
             self._listeners.publish_pool_created(self._address, non_default_options)
 
     def pool_ready(self) -> None:
+        """Emit the pool ready log entry and APM event."""
         # Log before publishing to prevent potential listener preemption in tests.
         if self._should_log:
             self._emit_log(_ConnectionStatusMessage.POOL_READY)
@@ -261,6 +263,7 @@ class _CmapTelemetry:
             self._listeners.publish_pool_ready(self._address)
 
     def pool_cleared(self, service_id: Optional[ObjectId], interrupt_connections: bool) -> None:
+        """Emit the pool cleared log entry and APM event."""
         # Log before publishing to prevent potential listener preemption in tests.
         if self._should_log:
             self._emit_log(_ConnectionStatusMessage.POOL_CLEARED, serviceId=service_id)
@@ -273,6 +276,7 @@ class _CmapTelemetry:
             )
 
     def pool_closed(self) -> None:
+        """Emit the pool closed log entry and APM event."""
         # Log before publishing to prevent potential listener preemption in tests.
         if self._should_log:
             self._emit_log(_ConnectionStatusMessage.POOL_CLOSED)
@@ -281,6 +285,7 @@ class _CmapTelemetry:
             self._listeners.publish_pool_closed(self._address)
 
     def connection_created(self, conn_id: int) -> None:
+        """Emit the connection created log entry and APM event."""
         # Log before publishing to prevent potential listener preemption in tests.
         if self._should_log:
             self._emit_log(_ConnectionStatusMessage.CONN_CREATED, driverConnectionId=conn_id)
@@ -289,6 +294,7 @@ class _CmapTelemetry:
             self._listeners.publish_connection_created(self._address, conn_id)
 
     def connection_ready(self, conn_id: int, creation_time: float) -> None:
+        """Emit the connection ready log entry and APM event."""
         should_log = self._should_log
         should_publish = self._should_publish
         if not should_log and not should_publish:
@@ -306,6 +312,7 @@ class _CmapTelemetry:
             self._listeners.publish_connection_ready(self._address, conn_id, duration)
 
     def connection_closed(self, conn_id: int, reason: str) -> None:
+        """Emit the connection closed log entry and APM event."""
         should_log = self._should_log
         should_publish = self._should_publish
         if should_publish:
@@ -330,6 +337,7 @@ class _CmapTelemetry:
         return start
 
     def checkout_succeeded(self, conn_id: int, start: float) -> None:
+        """Emit the checkout succeeded log entry and APM event."""
         should_log = self._should_log
         should_publish = self._should_publish
         if not should_log and not should_publish:
@@ -346,6 +354,7 @@ class _CmapTelemetry:
             )
 
     def checkout_failed(self, reason: str, error: str, start: float) -> None:
+        """Emit the checkout failed log entry and APM event."""
         should_log = self._should_log
         should_publish = self._should_publish
         if not should_log and not should_publish:
@@ -363,6 +372,7 @@ class _CmapTelemetry:
             )
 
     def checked_in(self, conn_id: int) -> None:
+        """Emit the connection checked-in log entry and APM event."""
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_checked_in(self._address, conn_id)
@@ -522,6 +532,7 @@ class _SdamTelemetry:
         )
 
     def topology_opened(self) -> None:
+        """Emit the topology opened log entry and APM event."""
         if self._should_log:
             self._emit_log(_SDAMStatusMessage.START_TOPOLOGY)
         if self._publish_tp:
@@ -529,6 +540,7 @@ class _SdamTelemetry:
             self._enqueue(self._listeners.publish_topology_opened, (self._topology_id,))
 
     def topology_description_changed(self, old_td: Any, new_td: Any) -> None:
+        """Emit the topology description changed APM event and log entry."""
         if self._publish_tp:
             assert self._listeners is not None
             self._enqueue(
@@ -560,6 +572,7 @@ class _SdamTelemetry:
             self._emit_log(_SDAMStatusMessage.STOP_TOPOLOGY)
 
     def server_opened(self, address: _Address) -> None:
+        """Emit the server opened log entry and APM event."""
         if self._publish_server:
             assert self._listeners is not None
             self._enqueue(self._listeners.publish_server_opened, (address, self._topology_id))
@@ -571,6 +584,7 @@ class _SdamTelemetry:
             )
 
     def server_description_changed(self, sd_old: Any, sd_new: Any, address: _Address) -> None:
+        """Emit the server description changed APM event."""
         if self._publish_server:
             assert self._listeners is not None
             self._enqueue(
@@ -579,6 +593,7 @@ class _SdamTelemetry:
             )
 
     def server_closed(self, address: _Address) -> None:
+        """Emit the server closed log entry and APM event."""
         if self._publish_server:
             assert self._listeners is not None
             self._enqueue(self._listeners.publish_server_closed, (address, self._topology_id))
@@ -653,14 +668,12 @@ class _ServerSelectionTelemetry:
                 remainingTimeMS=remaining_time_ms,
             )
 
-    def failed(self, failure: str, topology_description: Any = None) -> None:
+    def failed(self, failure: str, topology_description: Any) -> None:
         """Emit the server selection FAILED log entry with the current topology description."""
         if self._should_log:
             self._emit_log(
                 _ServerSelectionStatusMessage.FAILED,
-                topology_description
-                if topology_description is not None
-                else self._topology_description,
+                topology_description,
                 failure=failure,
             )
 

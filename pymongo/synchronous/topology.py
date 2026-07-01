@@ -227,7 +227,7 @@ class Topology:
         address: Optional[_Address] = None,
         operation_id: Optional[int] = None,
         deprioritized_servers: Optional[list[Server]] = None,
-    ) -> list[Server]:
+    ) -> tuple[list[Server], _ServerSelectionTelemetry]:
         """Return a list of Servers matching selector, or time out.
 
         :param selector: function that takes a list of Servers and returns
@@ -253,7 +253,7 @@ class Topology:
             self.cleanup_monitors()
 
         with self._lock:
-            server_descriptions = self._select_servers_loop(
+            server_descriptions, ss = self._select_servers_loop(
                 selector,
                 server_timeout,
                 operation,
@@ -264,7 +264,7 @@ class Topology:
 
             return [
                 cast(Server, self.get_server_by_address(sd.address)) for sd in server_descriptions
-            ]
+            ], ss
 
     def _select_servers_loop(
         self,
@@ -274,7 +274,7 @@ class Topology:
         operation_id: Optional[int],
         address: Optional[_Address],
         deprioritized_servers: Optional[list[Server]] = None,
-    ) -> list[ServerDescription]:
+    ) -> tuple[list[ServerDescription], _ServerSelectionTelemetry]:
         """select_servers() guts. Hold the lock when calling this."""
         now = time.monotonic()
         end_time = now + timeout
@@ -320,7 +320,7 @@ class Topology:
             )
 
         self._description.check_compatible()
-        return server_descriptions
+        return server_descriptions, ss
 
     def _select_server(
         self,
@@ -330,8 +330,8 @@ class Topology:
         address: Optional[_Address] = None,
         deprioritized_servers: Optional[list[Server]] = None,
         operation_id: Optional[int] = None,
-    ) -> Server:
-        servers = self.select_servers(
+    ) -> tuple[Server, _ServerSelectionTelemetry]:
+        servers, ss = self.select_servers(
             selector,
             operation,
             server_selection_timeout,
@@ -340,12 +340,12 @@ class Topology:
             deprioritized_servers,
         )
         if len(servers) == 1:
-            return servers[0]
+            return servers[0], ss
         server1, server2 = random.sample(servers, 2)
         if server1.pool.operation_count <= server2.pool.operation_count:
-            return server1
+            return server1, ss
         else:
-            return server2
+            return server2, ss
 
     def select_server(
         self,
@@ -357,7 +357,7 @@ class Topology:
         operation_id: Optional[int] = None,
     ) -> Server:
         """Like select_servers, but choose a random server if several match."""
-        server = self._select_server(
+        server, ss = self._select_server(
             selector,
             operation,
             server_selection_timeout,
@@ -367,9 +367,7 @@ class Topology:
         )
         if _csot.get_timeout():
             _csot.set_rtt(server.description.min_round_trip_time)
-        _ServerSelectionTelemetry(
-            self._topology_id, selector, operation, operation_id, self.description
-        ).succeeded(server.description.address[0], server.description.address[1])
+        ss.succeeded(server.description.address[0], server.description.address[1])
         return server
 
     def select_server_by_address(

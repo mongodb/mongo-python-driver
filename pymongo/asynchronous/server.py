@@ -64,12 +64,8 @@ class Server:
         self._pool = pool
         self._monitor = monitor
         self._topology_id = topology_id
-        self._publish = listeners is not None and listeners.enabled_for_server
-        self._listener = listeners
-        self._events = None
-        if self._publish:
-            self._events = events()  # type: ignore[misc]
-        self._sdam = _SdamTelemetry(topology_id, listeners, self._events)  # type: ignore[arg-type]
+        _events = events() if listeners is not None and listeners.enabled_for_server else None  # type: ignore[misc]
+        self._sdam = _SdamTelemetry(topology_id, listeners, _events)  # type: ignore[arg-type]
 
     async def open(self) -> None:
         """Start monitoring, or restart after a fork.
