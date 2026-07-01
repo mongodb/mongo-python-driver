@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import datetime
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, Union
@@ -140,8 +139,6 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
             client=client,
             session=operation.session,  # type: ignore[arg-type]
             listeners=client._event_listeners,
-            address=conn.address,
-            start=datetime.datetime.now(),
             codec_options=operation.codec_options,
             user_fields=user_fields,
             command_name=operation.name,
