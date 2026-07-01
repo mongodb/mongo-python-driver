@@ -1917,7 +1917,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """Run a _Query/_GetMore operation and return a Response.
 
         :param operation: a _Query or _GetMore object.
-        :param execute_fn: A callable ``(conn, operation, read_preference) -> Response``
+        :param execute_fn: A callable ``(conn, operation, read_preference) -> Awaitable[Response]``
             that executes the operation on a given connection.
         :param address: Optional address when sending a message
             to a specific server, used for getMore.

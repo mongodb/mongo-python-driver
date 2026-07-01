@@ -40,8 +40,8 @@ _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
 def _split_message(
-    message: Union[tuple[int, Any], tuple[int, Any, int]],
-) -> tuple[int, Any, int]:
+    message: Union[tuple[int, bytes], tuple[int, bytes, int]],
+) -> tuple[int, bytes, int]:
     """Return request_id, data, max_doc_size.
 
     :param message: (request_id, data, max_doc_size) or (request_id, data)
@@ -56,9 +56,9 @@ def _split_message(
 async def _operation_to_command(
     operation: Union[_Query, _GetMore],
     conn: AsyncConnection,
-    use_cmd: bool,
+    apply_timeout: bool,
 ) -> tuple[dict[str, Any], str]:
-    cmd, db = operation.as_command(conn, use_cmd)
+    cmd, db = operation.as_command(conn, apply_timeout)
     if operation.client._encrypter and not operation.client._encrypter._bypass_auto_encryption:
         cmd = await operation.client._encrypter.encrypt(  # type: ignore[misc, assignment]
             operation.db, cmd, operation.codec_options
