@@ -46,17 +46,15 @@ jobs:
 
     steps:
       - name: Checkout pymongo
-        uses: actions/checkout@v6.0.3
+        uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ inputs.ref }}
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v6.2.0
         with:
-          cache: 'pip'
           python-version: 3.11
-          cache-dependency-path: 'pyproject.toml'
           allow-prereleases: true
 
       - name: Set up QEMU
@@ -105,13 +103,13 @@ jobs:
     name: Make SDist
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ inputs.ref }}
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v6.2.0
         with:
           # Build sdist on lowest supported Python
           python-version: "3.9"
