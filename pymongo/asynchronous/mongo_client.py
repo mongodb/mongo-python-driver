@@ -3043,7 +3043,7 @@ class _ClientConnectionRetryable(Generic[T]):
                 self._check_last_error()
             if self._retrying:
                 log_command_retry(
-                    self._client._topology_settings._topology_id,
+                    self._client._topology_id,
                     self._operation,
                     self._operation_id,
                     self._attempt_number,
