@@ -67,7 +67,6 @@ if TYPE_CHECKING:
         ec,
         ed448,
         ed25519,
-        mldsa,
         rsa,
         x448,
         x25519,
@@ -88,9 +87,6 @@ if TYPE_CHECKING:
         ec.EllipticCurvePublicKey,
         ed25519.Ed25519PublicKey,
         ed448.Ed448PublicKey,
-        mldsa.MLDSA44PublicKey,
-        mldsa.MLDSA65PublicKey,
-        mldsa.MLDSA87PublicKey,
         x25519.X25519PublicKey,
         x448.X448PublicKey,
     ]
