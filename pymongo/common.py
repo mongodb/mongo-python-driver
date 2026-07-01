@@ -718,6 +718,7 @@ URI_OPTIONS_VALIDATOR_MAP: dict[str, Callable[[Any, Any], Any]] = {
     "zlibcompressionlevel": validate_zlib_compression_level,
     "srvservicename": validate_string,
     "srvmaxhosts": validate_non_negative_integer,
+    "srvallowedhostssuffix": validate_string,
     "timeoutms": validate_timeoutms,
     "servermonitoringmode": validate_server_monitoring_mode,
     "maxadaptiveretries": validate_non_negative_integer,
