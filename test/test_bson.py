@@ -1776,7 +1776,7 @@ class TestDatetimeConversion(unittest.TestCase):
         # Claim a length far larger than what remains (but >= BSON_MIN_SIZE so
         # the existing lower-bound check still passes), forcing the new
         # upper-bound guard to reject it.
-        malformed[offset:offset + 4] = struct.pack("<i", 0x7FFF)
+        malformed[offset : offset + 4] = struct.pack("<i", 0x7FFF)
         # The C fast-path raises a dedicated "invalid array content" error from the
         # new bound check; the pure-Python path reaches the same invariant through
         # _get_object_size, which raises "invalid object length".
