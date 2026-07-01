@@ -33,10 +33,16 @@ if TYPE_CHECKING:
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""
 
-    def __init__(self, message: str = "", error_labels: Optional[Iterable[str]] = None) -> None:
+    def __init__(
+        self,
+        message: str = "",
+        error_labels: Optional[Iterable[str]] = None,
+        retry_after_ms: Optional[int] = None,
+    ) -> None:
         super().__init__(message)
         self._message = message
         self._error_labels = set(error_labels or [])
+        self._retry_after_ms = retry_after_ms
 
     def has_error_label(self, label: str) -> bool:
         """Return True if this error contains the given label.
@@ -190,9 +196,15 @@ class OperationFailure(PyMongoError):
         max_wire_version: Optional[int] = None,
     ) -> None:
         error_labels = None
+        retry_after_ms = None
         if details is not None:
             error_labels = details.get("errorLabels")
-        super().__init__(_format_detailed_error(error, details), error_labels=error_labels)
+            retry_after_ms = details.get("retryAfterMS")
+        super().__init__(
+            _format_detailed_error(error, details),
+            error_labels=error_labels,
+            retry_after_ms=retry_after_ms,
+        )
         self.__code = code
         self.__details = details
         self.__max_wire_version = max_wire_version

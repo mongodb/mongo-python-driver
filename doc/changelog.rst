@@ -1,13 +1,16 @@
 Changelog
 =========
 
-Changes in Version 4.18.0
--------------------------
+Changes in Version 4.18.0 (2026/XX/XX)
+--------------------------------------
+
+PyMongo 4.18 brings a number of changes including:
 
 - Improved TLS connection performance by reusing TLS sessions across connections
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
   and on Python 3.11+ for async clients.
+- Improved performance for MongoDB's Intelligent Workload Management (IWM) by only retrying overload errors when doing so is expected to not worsen server conditions.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------

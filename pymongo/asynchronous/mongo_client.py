@@ -2799,6 +2799,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._attempt_number = 0
         self._is_run_command = is_run_command
         self._is_aggregate_write = is_aggregate_write
+        self._retry_after_backoff_ms: Optional[float] = None
 
     async def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2848,26 +2849,29 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 # Execute specialized catch on read
                 if self._is_read:
-                    if isinstance(exc, (ConnectionFailure, OperationFailure)):
+                    if isinstance(exc_to_check, (ConnectionFailure, OperationFailure)):
                         # ConnectionFailures do not supply a code property
-                        exc_code = getattr(exc, "code", None)
-                        overloaded = exc.has_error_label("SystemOverloadedError")
+                        exc_code = getattr(exc_to_check, "code", None)
+                        overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                         if overloaded:
                             self._max_retries = self._client.options.max_adaptive_retries
-                        always_retryable = exc.has_error_label("RetryableError") and overloaded
+                            self._retry_after_backoff_ms = exc_to_check._retry_after_ms
+                        always_retryable = (
+                            exc_to_check.has_error_label("RetryableError") and overloaded
+                        )
                         if not self._client.options.retry_reads or (
                             not always_retryable
                             and (
                                 self._is_not_eligible_for_retry()
                                 or (
-                                    isinstance(exc, OperationFailure)
+                                    isinstance(exc_to_check, OperationFailure)
                                     and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
                                 )
                             )
                         ):
                             raise
                         self._retrying = True
-                        self._last_error = exc
+                        self._last_error = exc_to_check
                         self._attempt_number += 1
 
                         # Revert back to starting state only if the first
@@ -2894,6 +2898,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                     if overloaded:
                         self._max_retries = self._client.options.max_adaptive_retries
+                        self._retry_after_backoff_ms = exc_to_check._retry_after_ms
                     always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
 
                     # Always retry abortTransaction and commitTransaction up to once
@@ -2937,7 +2942,12 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 self._always_retryable = always_retryable
                 if overloaded:
-                    delay = self._retry_policy.backoff(self._attempt_number)
+                    delay = self._retry_policy.backoff(
+                        self._attempt_number,
+                        self._retry_after_backoff_ms / 1000
+                        if self._retry_after_backoff_ms
+                        else None,
+                    )
                     if not await self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
