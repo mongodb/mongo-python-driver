@@ -1633,7 +1633,7 @@ class TestClient(IntegrationTest):
                     False,
                     None,
                 ),
-                execute_fn=Cursor(client.pymongo_test.collection)._run_with_conn,
+                run_with_conn=Cursor(client.pymongo_test.collection)._run_with_conn,
                 address=("not-a-member", 27017),
             )
 
