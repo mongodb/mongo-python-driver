@@ -476,6 +476,17 @@ class TestPoolBackpressure(AsyncIntegrationTest):
         else:
             admin_clients = [client]
 
+        # Disable the ingress rate limiter on teardown.
+        # Sleep for 1 second before disabling to avoid the rate limiter.
+        async def teardown():
+            await asyncio.sleep(1)
+            for admin_client in admin_clients:
+                await admin_client.admin.command(
+                    "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
+                )
+
+        self.addAsyncCleanup(teardown)
+
         # Enable the ingress rate limiter.
         for admin_client in admin_clients:
             await admin_client.admin.command(
@@ -490,17 +501,6 @@ class TestPoolBackpressure(AsyncIntegrationTest):
             await admin_client.admin.command(
                 "setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1
             )
-
-        # Disable the ingress rate limiter on teardown.
-        # Sleep for 1 second before disabling to avoid the rate limiter.
-        async def teardown():
-            await asyncio.sleep(1)
-            for admin_client in admin_clients:
-                await admin_client.admin.command(
-                    "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
-                )
-
-        self.addAsyncCleanup(teardown)
 
         # Make sure the collection has at least one document.
         await client.test.test.delete_many({})

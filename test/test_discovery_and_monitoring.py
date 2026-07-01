@@ -473,6 +473,17 @@ class TestPoolBackpressure(IntegrationTest):
         else:
             admin_clients = [client]
 
+        # Disable the ingress rate limiter on teardown.
+        # Sleep for 1 second before disabling to avoid the rate limiter.
+        def teardown():
+            time.sleep(1)
+            for admin_client in admin_clients:
+                admin_client.admin.command(
+                    "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
+                )
+
+        self.addCleanup(teardown)
+
         # Enable the ingress rate limiter.
         for admin_client in admin_clients:
             admin_client.admin.command(
@@ -487,17 +498,6 @@ class TestPoolBackpressure(IntegrationTest):
             admin_client.admin.command(
                 "setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1
             )
-
-        # Disable the ingress rate limiter on teardown.
-        # Sleep for 1 second before disabling to avoid the rate limiter.
-        def teardown():
-            time.sleep(1)
-            for admin_client in admin_clients:
-                admin_client.admin.command(
-                    "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
-                )
-
-        self.addCleanup(teardown)
 
         # Make sure the collection has at least one document.
         client.test.test.delete_many({})
