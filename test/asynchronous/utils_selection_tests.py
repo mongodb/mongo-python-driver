@@ -150,13 +150,13 @@ def create_test(scenario_def):
 
             return
 
-        actual_suitable_s = await top_suitable.select_servers(
+        actual_suitable_s, _ = await top_suitable.select_servers(
             pref,
             _Op.TEST,
             server_selection_timeout=0,
             deprioritized_servers=top_suitable_deprioritized_servers,
         )
-        actual_latency_s = await top_latency.select_servers(
+        actual_latency_s, _ = await top_latency.select_servers(
             pref,
             _Op.TEST,
             server_selection_timeout=0,

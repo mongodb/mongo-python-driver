@@ -61,7 +61,7 @@ async def do_simple_op(client, ntasks):
 async def writable_addresses(topology):
     return {
         server.description.address
-        for server in await topology.select_servers(writable_server_selector, _Op.TEST)
+        for server in (await topology.select_servers(writable_server_selector, _Op.TEST))[0]
     }
 
 
