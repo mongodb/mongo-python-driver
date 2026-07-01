@@ -66,7 +66,7 @@ lint-manual *args="": && resync
 
 # Run synchro
 [group('lint')]
-synchro *args="": && resync
+synchro: && resync
     uvx pre-commit run --all-files synchro
 
 # Run pytest (e.g. just test test/test_uri_parser.py)
