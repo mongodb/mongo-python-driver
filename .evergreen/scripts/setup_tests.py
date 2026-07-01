@@ -271,7 +271,7 @@ def handle_test_env() -> None:
             keytab_file = ROOT / ".evergreen/drivers.keytab"
             with keytab_file.open("wb") as fid:
                 fid.write(keytab)
-            principal = config["PRINCIPAL_BUILD"]
+            principal = config["PRINCIPAL"]
             LOGGER.info("Running kinit")
             os.environ["KRB5_CONFIG"] = str(krb_conf)
             cmd = f"kinit -k -t {keytab_file} -p {principal}"
@@ -280,7 +280,7 @@ def handle_test_env() -> None:
         LOGGER.info("Setting GSSAPI variables")
         write_env("GSSAPI_HOST", config["SASL_HOST_BUILD"])
         write_env("GSSAPI_PORT", config["SASL_PORT"])
-        write_env("GSSAPI_PRINCIPAL", config["PRINCIPAL_BUILD"])
+        write_env("GSSAPI_PRINCIPAL", config["PRINCIPAL"])
         write_env("SASL_HOST", config["SASL_HOST_BUILD"])
 
     if test_name == "doctest":
