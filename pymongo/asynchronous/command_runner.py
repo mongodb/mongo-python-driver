@@ -284,6 +284,7 @@ async def run_cursor_command(
     more_to_come: bool = False,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
+    op_id: Optional[int] = None,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Run a cursor ``find``/``getMore`` operation over ``conn``.
 
@@ -304,6 +305,7 @@ async def run_cursor_command(
     :param unpack_res: A callable decoding the wire response; when ``None`` the
         reply's own ``unpack_response`` is used.
     :param cursor_id: The cursor id passed to ``unpack_res``.
+    :param op_id: The APM operation id; defaults to ``request_id``.
     """
     topology_id = client._topology_id if client is not None else None
     return await _run_command(
@@ -325,6 +327,7 @@ async def run_cursor_command(
         more_to_come=more_to_come,
         unpack_res=unpack_res,
         cursor_id=cursor_id,
+        op_id=op_id,
     )
 
 
@@ -348,6 +351,7 @@ async def run_command(
     user_fields: Optional[Mapping[str, Any]] = None,
     exhaust_allowed: bool = False,
     write_concern: Optional[WriteConcern] = None,
+    op_id: Optional[int] = None,
 ) -> _DocumentType:
     """Encode and execute a command over ``conn``, or raise socket.error.
 
@@ -376,6 +380,7 @@ async def run_command(
         passed to ``bson._decode_all_selective``.
     :param exhaust_allowed: True if we should enable OP_MSG exhaustAllowed.
     :param write_concern: The write concern for this command. Applied via CSOT.
+    :param op_id: The APM operation id; defaults to ``request_id``.
     """
     name = next(iter(spec))
 
@@ -428,6 +433,7 @@ async def run_command(
         codec_options=codec_options,
         user_fields=user_fields,
         orig=orig,
+        op_id=op_id,
         check=check,
         allowable_errors=allowable_errors,
         parse_write_concern_error=parse_write_concern_error,
