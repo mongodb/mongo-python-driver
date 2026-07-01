@@ -425,7 +425,8 @@ class _HeartbeatTelemetry:
 
     def started(self) -> None:
         """Publish the APM heartbeat-started event (before connection checkout)."""
-        self._start = time.monotonic()
+        if self._should_publish or self._should_log:
+            self._start = time.monotonic()
         if self._should_publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_started(self._address, self._awaited)
