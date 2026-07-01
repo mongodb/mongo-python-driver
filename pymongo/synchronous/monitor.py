@@ -151,7 +151,6 @@ class Monitor(MonitorBase):
         self._pool = pool
         self._settings = topology_settings
         self._listeners = self._settings._pool_options._event_listeners
-        self._publish = self._listeners is not None and self._listeners.enabled_for_server_heartbeat
         self._cancel_context: Optional[_CancellationContext] = None
         self._conn_id: Optional[int] = None
         self._current_hb: Optional[_HeartbeatTelemetry] = None
@@ -286,9 +285,7 @@ class Monitor(MonitorBase):
         awaited = bool(
             self._pool.conns and self._stream and sd.is_server_type_known and sd.topology_version
         )
-        hb = _HeartbeatTelemetry(
-            self._topology._topology_id, address, self._listeners, self._publish, awaited
-        )
+        hb = _HeartbeatTelemetry(self._topology._topology_id, address, self._listeners, awaited)
         self._current_hb = hb
         hb.started()
 

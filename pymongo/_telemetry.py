@@ -351,25 +351,23 @@ class _HeartbeatTelemetry:
     context, then :meth:`succeeded` or :meth:`failed` when the outcome is known.
     """
 
-    __slots__ = ("_address", "_awaited", "_listeners", "_publish", "_start", "_topology_id")
+    __slots__ = ("_address", "_awaited", "_listeners", "_start", "_topology_id")
 
     def __init__(
         self,
         topology_id: ObjectId,
         address: _Address,
         listeners: Optional[_EventListeners],
-        publish: bool,
         awaited: bool,
     ) -> None:
         self._topology_id = topology_id
         self._address = address
         self._listeners = listeners
-        self._publish = publish
         self._awaited = awaited
 
     @property
     def _should_publish(self) -> bool:
-        return self._publish and self._listeners is not None
+        return self._listeners is not None and self._listeners.enabled_for_server_heartbeat
 
     @property
     def _should_log(self) -> bool:
