@@ -283,6 +283,8 @@ class _CmapTelemetry:
             self._listeners.publish_pool_closed(self._address)
 
     def connection_created(self, conn_id: int) -> None:
+        # Always record start time: logging or publishing may be enabled by the time
+        # connection_ready is called to compute the duration.
         self._conn_created_start = time.monotonic()
         # Log before publishing to prevent potential listener preemption in tests.
         if self._should_log:
@@ -325,6 +327,8 @@ class _CmapTelemetry:
     def checkout_started(self) -> None:
         should_log = self._should_log
         should_publish = self._should_publish
+        # Always record start time: logging or publishing may be enabled by the time
+        # checkout_succeeded or checkout_failed is called to compute the duration.
         self._checkout_start = time.monotonic()
         if should_publish:
             assert self._listeners is not None
