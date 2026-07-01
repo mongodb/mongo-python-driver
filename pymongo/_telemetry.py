@@ -292,23 +292,29 @@ class _CmapTelemetry:
             self._listeners.publish_connection_created(self._address, conn_id)
 
     def connection_ready(self, conn_id: int) -> None:
+        should_log = self._should_log
+        should_publish = self._should_publish
+        if not should_log and not should_publish:
+            return
         duration = max(0.0, time.monotonic() - self._conn_created_start)
         # Log before publishing to prevent potential listener preemption in tests.
-        if self._should_log:
+        if should_log:
             self._emit_log(
                 _ConnectionStatusMessage.CONN_READY,
                 driverConnectionId=conn_id,
                 durationMS=duration * 1000,
             )
-        if self._should_publish:
+        if should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_ready(self._address, conn_id, duration)
 
     def connection_closed(self, conn_id: int, reason: str) -> None:
-        if self._should_publish:
+        should_log = self._should_log
+        should_publish = self._should_publish
+        if should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_closed(self._address, conn_id, reason)
-        if self._should_log:
+        if should_log:
             self._emit_log(
                 _ConnectionStatusMessage.CONN_CLOSED,
                 driverConnectionId=conn_id,
@@ -317,19 +323,25 @@ class _CmapTelemetry:
             )
 
     def checkout_started(self) -> None:
+        should_log = self._should_log
+        should_publish = self._should_publish
         self._checkout_start = time.monotonic()
-        if self._should_publish:
+        if should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_check_out_started(self._address)
-        if self._should_log:
+        if should_log:
             self._emit_log(_ConnectionStatusMessage.CHECKOUT_STARTED)
 
     def checkout_succeeded(self, conn_id: int) -> None:
+        should_log = self._should_log
+        should_publish = self._should_publish
+        if not should_log and not should_publish:
+            return
         duration = max(0.0, time.monotonic() - self._checkout_start)
-        if self._should_publish:
+        if should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_checked_out(self._address, conn_id, duration)
-        if self._should_log:
+        if should_log:
             self._emit_log(
                 _ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
                 driverConnectionId=conn_id,
@@ -337,11 +349,15 @@ class _CmapTelemetry:
             )
 
     def checkout_failed(self, reason: str, error: str) -> None:
+        should_log = self._should_log
+        should_publish = self._should_publish
+        if not should_log and not should_publish:
+            return
         duration = max(0.0, time.monotonic() - self._checkout_start)
-        if self._should_publish:
+        if should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_check_out_failed(self._address, error, duration)
-        if self._should_log:
+        if should_log:
             self._emit_log(
                 _ConnectionStatusMessage.CHECKOUT_FAILED,
                 reason=reason,
@@ -443,13 +459,17 @@ class _HeartbeatTelemetry:
 
     def failed(self, error: Exception, conn_id: Optional[int]) -> None:
         """Emit the FAILED log entry and APM event."""
+        should_publish = self._should_publish
+        should_log = self._should_log
+        if not should_publish and not should_log:
+            return
         duration = max(0.0, time.monotonic() - self._start)
-        if self._should_publish:
+        if should_publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_failed(
                 self._address, duration, error, self._awaited
             )
-        if self._should_log:
+        if should_log:
             self._emit_log(
                 _SDAMStatusMessage.HEARTBEAT_FAIL,
                 durationMS=duration * 1000,
