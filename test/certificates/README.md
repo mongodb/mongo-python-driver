@@ -64,7 +64,7 @@ macOS and Windows with Python 3.13+.  The root causes were:
    `ssl.create_default_context()`, which additionally requires **SKI** on non-root certs and
    **keyUsage** on CA certs.
 
-MongoDB certs carry no AKI: AKI on any leaf cert triggers Apple SecTrust OCSP checks, which fail
+The generated MongoDB certs carry no AKI: AKI on any leaf cert triggers Apple SecTrust OCSP checks, which fail
 (`CSSMERR_TP_CERT_SUSPENDED`) because our CA has no OCSP responder.  MongoDB Enterprise on macOS
 uses `kSecRevocationRequirePositiveResponse`, so even without AKI the server startup fails; that is
 why `.evergreen/scripts/run_server.py` passes `--tls-allow-invalid-certificates` on macOS.  The CA
