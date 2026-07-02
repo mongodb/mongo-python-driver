@@ -11,6 +11,7 @@ Usage:
 
 Password for password_protected.pem: qwerty
 """
+
 from __future__ import annotations
 
 import datetime
