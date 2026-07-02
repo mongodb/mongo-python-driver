@@ -30,7 +30,7 @@ from pymongo import network_layer
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
 from test import UnitTest, unittest
-from test.utils_shared import make_msg_header
+from test.utils_shared import pack_msg_header
 
 
 def _make_conn():
@@ -48,7 +48,7 @@ class TestReceiveMessage(UnitTest):
         with patch.object(
             network_layer,
             "receive_data",
-            return_value=make_msg_header(length=32, request_id=0, response_to=99, op_code=2013),
+            return_value=pack_msg_header(length=32, request_id=0, response_to=99, op_code=2013),
         ):
             with self.assertRaisesRegex(ProtocolError, "Got response id"):
                 network_layer.receive_message(_make_conn(), request_id=1)
@@ -57,7 +57,7 @@ class TestReceiveMessage(UnitTest):
         with patch.object(
             network_layer,
             "receive_data",
-            return_value=make_msg_header(length=16, request_id=0, response_to=0, op_code=2013),
+            return_value=pack_msg_header(length=16, request_id=0, response_to=0, op_code=2013),
         ):
             with self.assertRaisesRegex(ProtocolError, "not longer than standard message header"):
                 network_layer.receive_message(_make_conn(), request_id=None)
@@ -66,7 +66,7 @@ class TestReceiveMessage(UnitTest):
         with patch.object(
             network_layer,
             "receive_data",
-            return_value=make_msg_header(
+            return_value=pack_msg_header(
                 length=MAX_MESSAGE_SIZE + 1, request_id=0, response_to=0, op_code=2013
             ),
         ):
@@ -78,7 +78,7 @@ class TestReceiveMessage(UnitTest):
             network_layer,
             "receive_data",
             side_effect=[
-                make_msg_header(length=20, request_id=0, response_to=0, op_code=9999),
+                pack_msg_header(length=20, request_id=0, response_to=0, op_code=9999),
                 b"data",
             ],
         ):

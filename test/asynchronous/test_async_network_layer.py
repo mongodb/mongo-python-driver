@@ -26,7 +26,7 @@ from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
 from pymongo.network_layer import PyMongoProtocol, _async_socket_receive
 from test.asynchronous import AsyncUnitTest, unittest
-from test.utils_shared import make_msg_header
+from test.utils_shared import pack_msg_header
 
 
 def _make_protocol(timeout=None):
@@ -43,7 +43,7 @@ class TestProcessHeader(AsyncUnitTest):
 
     def test_op_msg_returns_body_len_and_op_code(self):
         self.protocol._header = memoryview(
-            bytearray(make_msg_header(length=32, request_id=1, response_to=99, op_code=2013))
+            bytearray(pack_msg_header(length=32, request_id=1, response_to=99, op_code=2013))
         )
         body_len, op_code, response_to, expecting_compression = self.protocol.process_header()
         self.assertEqual(body_len, 16)
@@ -56,7 +56,7 @@ class TestProcessHeader(AsyncUnitTest):
         # (op code + uncompressed size + compressor id), then the 16-byte standard header.
         # length=35 → after compression sub-header: 26 → body: 10
         self.protocol._header = memoryview(
-            bytearray(make_msg_header(length=35, request_id=1, response_to=0, op_code=2012))
+            bytearray(pack_msg_header(length=35, request_id=1, response_to=0, op_code=2012))
         )
         body_len, op_code, _response_to, expecting_compression = self.protocol.process_header()
         self.assertEqual(body_len, 10)
@@ -65,14 +65,14 @@ class TestProcessHeader(AsyncUnitTest):
 
     def test_op_compressed_length_too_small_raises(self):
         self.protocol._header = memoryview(
-            bytearray(make_msg_header(length=25, request_id=1, response_to=0, op_code=2012))
+            bytearray(pack_msg_header(length=25, request_id=1, response_to=0, op_code=2012))
         )
         with self.assertRaisesRegex(ProtocolError, "not longer than standard OP_COMPRESSED"):
             self.protocol.process_header()
 
     def test_non_compressed_length_too_small_raises(self):
         self.protocol._header = memoryview(
-            bytearray(make_msg_header(length=16, request_id=1, response_to=0, op_code=2013))
+            bytearray(pack_msg_header(length=16, request_id=1, response_to=0, op_code=2013))
         )
         with self.assertRaisesRegex(ProtocolError, "not longer than standard message header size"):
             self.protocol.process_header()
@@ -80,7 +80,7 @@ class TestProcessHeader(AsyncUnitTest):
     def test_length_exceeds_max_raises(self):
         self.protocol._header = memoryview(
             bytearray(
-                make_msg_header(
+                pack_msg_header(
                     length=MAX_MESSAGE_SIZE + 1, request_id=1, response_to=0, op_code=2013
                 )
             )
@@ -111,15 +111,31 @@ class TestBufferUpdated(AsyncUnitTest):
     async def asyncSetUp(self):
         self.protocol = _make_protocol()
 
-    def test_zero_bytes_closes_connection(self):
+    async def test_zero_bytes_closes_connection(self):
+        # A zero-byte buffer_updated (connection closed mid-read) must surface to
+        # a waiting reader as OSError("connection closed"), not just abort the transport.
+        read_task = asyncio.create_task(
+            self.protocol.read(request_id=None, max_message_size=MAX_MESSAGE_SIZE)
+        )
+        await asyncio.sleep(0)
         self.protocol.buffer_updated(0)
         self.assertTrue(self.protocol.transport.abort.called)
+        with self.assertRaisesRegex(OSError, "connection closed"):
+            await read_task
 
-    def test_protocol_error_closes_connection(self):
+    async def test_protocol_error_closes_connection(self):
+        # A malformed header must surface to a waiting reader as a ProtocolError,
+        # not just abort the transport.
+        read_task = asyncio.create_task(
+            self.protocol.read(request_id=None, max_message_size=MAX_MESSAGE_SIZE)
+        )
+        await asyncio.sleep(0)
         buf = self.protocol.get_buffer(16)
-        buf[:16] = make_msg_header(length=16, request_id=1, response_to=0, op_code=2013)
+        buf[:16] = pack_msg_header(length=16, request_id=1, response_to=0, op_code=2013)
         self.protocol.buffer_updated(16)
         self.assertTrue(self.protocol.transport.abort.called)
+        with self.assertRaisesRegex(ProtocolError, "not longer than standard message header"):
+            await read_task
 
     async def test_resolves_pending_read(self):
         read_task = asyncio.create_task(
@@ -128,7 +144,7 @@ class TestBufferUpdated(AsyncUnitTest):
         await asyncio.sleep(0)
 
         # Feed a valid 32-byte OP_MSG header (16-byte header + 16-byte body).
-        header = make_msg_header(length=32, request_id=1, response_to=99, op_code=2013)
+        header = pack_msg_header(length=32, request_id=1, response_to=99, op_code=2013)
         buf = self.protocol.get_buffer(16)
         buf[:16] = header
         self.protocol.buffer_updated(16)

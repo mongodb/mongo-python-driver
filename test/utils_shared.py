@@ -746,6 +746,11 @@ def barrier_wait(barrier, timeout: float | None = None):
     barrier.wait(timeout=timeout)
 
 
-def make_msg_header(length: int, request_id: int, response_to: int, op_code: int) -> bytes:
-    """Pack a MongoDB wire-protocol message header."""
+def pack_msg_header(length: int, request_id: int, response_to: int, op_code: int) -> bytes:
+    """Pack a MongoDB wire-protocol message header (``<iiii``: length,
+    request_id, response_to, op_code).
+
+    Lets tests set an arbitrary ``length`` (including invalid values), which
+    production header-packing never does.
+    """
     return struct.pack("<iiii", length, request_id, response_to, op_code)
