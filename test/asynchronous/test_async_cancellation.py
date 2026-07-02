@@ -29,7 +29,24 @@ from test.utils_shared import delay, one
 sys.path[0:0] = [""]
 
 from pymongo import pool_shared
+from pymongo.pool_options import PoolOptions
 from test.asynchronous import AsyncIntegrationTest, async_client_context, connected
+
+
+class _SocketLeakTracker:
+    """Track sockets created inside a target task to verify they're closed on cancellation."""
+
+    def __init__(self):
+        self.sockets = []
+        self.target_task = None
+        self.started = asyncio.Event()
+        self._socket_class = socket.socket
+
+    def track(self, *args, **kwargs):
+        s = self._socket_class(*args, **kwargs)
+        if asyncio.current_task() is self.target_task:
+            self.sockets.append(s)
+        return s
 
 
 class TestAsyncCancellation(AsyncIntegrationTest):
@@ -135,68 +152,52 @@ class TestAsyncCancellation(AsyncIntegrationTest):
 
         self.assertTrue(change_stream._closed)
 
-    async def test_cancellation_closes_socket_during_create_connection(self):
-        address = (await async_client_context.host, await async_client_context.port)
-        options = (await async_get_pool(self.client)).opts
-
-        created_sockets: list[socket.socket] = []
-        real_socket_cls = socket.socket
-        target_task = None
-
-        def tracking_socket(*args, **kwargs):
-            s = real_socket_cls(*args, **kwargs)
-            if asyncio.current_task() is target_task:
-                created_sockets.append(s)
-            return s
-
-        loop = asyncio.get_running_loop()
-        real_sock_connect = loop.sock_connect
-        started = asyncio.Event()
-        block_forever = asyncio.Event()
-
-        async def slow_sock_connect(sock, addr):
-            if sock in created_sockets:
-                started.set()
-                await block_forever.wait()
-                return None
-            return await real_sock_connect(sock, addr)
-
-        with (
-            patch.object(socket, "socket", tracking_socket),
-            patch.object(loop, "sock_connect", slow_sock_connect),
-        ):
-            task = asyncio.create_task(pool_shared._async_create_connection(address, options))
-            target_task = task
-            await asyncio.wait_for(started.wait(), timeout=5)
-            task.cancel()
-            with self.assertRaises(asyncio.CancelledError):
-                await task
-        self.assertTrue(created_sockets, "expected at least one socket to be created")
-        for sock in created_sockets:
+    async def _assert_cancel_closes_tracked_sockets(self, tracker, coro):
+        task = asyncio.create_task(coro)
+        tracker.target_task = task
+        await asyncio.wait_for(tracker.started.wait(), timeout=5)
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+        self.assertTrue(tracker.sockets, "expected at least one socket to be created")
+        for sock in tracker.sockets:
             self.assertEqual(
                 sock.fileno(),
                 -1,
                 f"socket leaked across cancellation: {sock!r}",
             )
 
-    async def test_cancellation_closes_socket_during_ssl_wrap_socket(self):
+    async def test_cancellation_closes_socket_during_create_connection(self):
         address = (await async_client_context.host, await async_client_context.port)
         options = (await async_get_pool(self.client)).opts
+        tracker = _SocketLeakTracker()
+        loop = asyncio.get_running_loop()
+        real_sock_connect = loop.sock_connect
+        block_forever = asyncio.Event()
+
+        async def slow_sock_connect(sock, addr):
+            if sock in tracker.sockets:
+                tracker.started.set()
+                await block_forever.wait()
+                return None
+            return await real_sock_connect(sock, addr)
+
+        with (
+            patch.object(socket, "socket", tracker.track),
+            patch.object(loop, "sock_connect", slow_sock_connect),
+        ):
+            await self._assert_cancel_closes_tracked_sockets(
+                tracker,
+                pool_shared._async_create_connection(address, options),
+            )
+
+    async def test_cancellation_closes_socket_during_ssl_wrap_socket(self):
+        address = (await async_client_context.host, await async_client_context.port)
         fake_ssl_context = ssl.create_default_context()
-
-        created_sockets: list[socket.socket] = []
-        real_socket_cls = socket.socket
-        target_task = None
-
-        def tracking_socket(*args, **kwargs):
-            s = real_socket_cls(*args, **kwargs)
-            if asyncio.current_task() is target_task:
-                created_sockets.append(s)
-            return s
-
+        options = PoolOptions(ssl_context=fake_ssl_context)  # type: ignore[arg-type]
+        tracker = _SocketLeakTracker()
         loop = asyncio.get_running_loop()
         real_run_in_executor = loop.run_in_executor
-        started = asyncio.Event()
 
         def slow_run_in_executor(executor, func, *args):
             # Need to unwrap the SNI branch here if present
@@ -205,29 +206,41 @@ class TestAsyncCancellation(AsyncIntegrationTest):
             # object, so we check the bound instance (__self__) instead
             if (
                 getattr(inner, "__self__", None) is fake_ssl_context
-                and asyncio.current_task() is target_task
+                and asyncio.current_task() is tracker.target_task
             ):
-                started.set()
+                tracker.started.set()
                 # Return a future that never completes for cancellation.
                 return asyncio.get_running_loop().create_future()
             return real_run_in_executor(executor, func, *args)
 
         with (
-            patch.object(socket, "socket", tracking_socket),
+            patch.object(socket, "socket", tracker.track),
             patch.object(loop, "run_in_executor", slow_run_in_executor),
-            patch.object(options, "_PoolOptions__ssl_context", fake_ssl_context),
         ):
-            task = asyncio.create_task(pool_shared._async_configured_socket(address, options))
-            target_task = task
-            await asyncio.wait_for(started.wait(), timeout=5)
-            task.cancel()
-            with self.assertRaises(asyncio.CancelledError):
-                await task
+            await self._assert_cancel_closes_tracked_sockets(
+                tracker,
+                pool_shared._async_configured_socket(address, options),
+            )
 
-        self.assertTrue(created_sockets, "expected at least one socket to be created")
-        for sock in created_sockets:
-            self.assertEqual(
-                sock.fileno(),
-                -1,
-                f"socket leaked across cancellation: {sock!r}",
+    async def test_cancellation_closes_socket_during_configured_protocol_interface(self):
+        address = (await async_client_context.host, await async_client_context.port)
+        options = PoolOptions()
+        tracker = _SocketLeakTracker()
+        loop = asyncio.get_running_loop()
+        real_create_connection = loop.create_connection
+        block_forever = asyncio.Event()
+
+        async def slow_create_connection(*args, **kwargs):
+            if asyncio.current_task() is tracker.target_task:
+                tracker.started.set()
+                await block_forever.wait()
+            return await real_create_connection(*args, **kwargs)
+
+        with (
+            patch.object(socket, "socket", tracker.track),
+            patch.object(loop, "create_connection", slow_create_connection),
+        ):
+            await self._assert_cancel_closes_tracked_sockets(
+                tracker,
+                pool_shared._configured_protocol_interface(address, options),
             )

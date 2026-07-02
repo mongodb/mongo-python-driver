@@ -21,9 +21,12 @@ import functools
 import socket
 import ssl
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     NoReturn,
     Optional,
     Union,
@@ -155,6 +158,20 @@ def _raise_connection_failure(
         raise AutoReconnect(msg) from error
 
 
+@contextmanager
+def _cleanup_on_error(cleanup: Callable[[], None]) -> Iterator[None]:
+    """Invoke `cleanup` if the context block exits with any exception.
+
+    Used on async connect paths to prevent raw socket/transport
+    leaks when the coroutine is canceled mid-handshake.
+    """
+    try:
+        yield
+    except BaseException:
+        cleanup()
+        raise
+
+
 class _CancellationContext:
     def __init__(self) -> None:
         self._cancelled = False
@@ -185,14 +202,10 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
         sock = socket.socket(socket.AF_UNIX)
         # SOCK_CLOEXEC not supported for Unix sockets.
         _set_non_inheritable_non_atomic(sock.fileno())
-        try:
+        with _cleanup_on_error(sock.close):
             sock.setblocking(False)
             await asyncio.get_running_loop().sock_connect(sock, host)
             return sock
-        except BaseException:
-            # Protect against cancellation or interruption where the raw socket would otherwise leak
-            sock.close()
-            raise
 
     # Don't try IPv6 if we don't support it. Also skip it if host
     # is 'localhost' (::1 is fine). Avoids slow connect issues
@@ -216,33 +229,28 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
         # Fallback when SOCK_CLOEXEC isn't available.
         _set_non_inheritable_non_atomic(sock.fileno())
         try:
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            # CSOT: apply timeout to socket connect.
-            timeout = _csot.remaining()
-            if timeout is None:
-                timeout = options.connect_timeout
-            elif timeout <= 0:
-                raise socket.timeout("timed out")
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
-            _set_keepalive_times(sock)
-            # Socket needs to be non-blocking during connection to not block the event loop
-            sock.setblocking(False)
-            await asyncio.wait_for(
-                asyncio.get_running_loop().sock_connect(sock, sa), timeout=timeout
-            )
-            sock.settimeout(timeout)
-            return sock
+            with _cleanup_on_error(sock.close):
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                # CSOT: apply timeout to socket connect.
+                timeout = _csot.remaining()
+                if timeout is None:
+                    timeout = options.connect_timeout
+                elif timeout <= 0:
+                    raise socket.timeout("timed out")
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
+                _set_keepalive_times(sock)
+                # Socket needs to be non-blocking during connection to not block the event loop
+                sock.setblocking(False)
+                await asyncio.wait_for(
+                    asyncio.get_running_loop().sock_connect(sock, sa), timeout=timeout
+                )
+                sock.settimeout(timeout)
+                return sock
         except asyncio.TimeoutError as e:
-            sock.close()
             err = socket.timeout("timed out")
             err.__cause__ = e
         except OSError as e:
-            sock.close()
             err = e  # type: ignore[assignment]
-        except BaseException:
-            # Protect against cancellation or interruption where the raw socket would otherwise leak
-            sock.close()
-            raise
 
     if err is not None:
         raise err
@@ -271,34 +279,28 @@ async def _async_configured_socket(
 
     host = address[0]
     try:
-        # We have to pass hostname / ip address to wrap_socket
-        # to use SSLContext.check_hostname.
-        if _has_sni(False):
-            loop = asyncio.get_running_loop()
-            ssl_sock = await loop.run_in_executor(
-                None,
-                functools.partial(ssl_context.wrap_socket, sock, server_hostname=host),  # type: ignore[assignment, misc, unused-ignore]
-            )
-        else:
-            loop = asyncio.get_running_loop()
-            ssl_sock = await loop.run_in_executor(None, ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc, unused-ignore]
+        with _cleanup_on_error(sock.close):
+            # We have to pass hostname / ip address to wrap_socket
+            # to use SSLContext.check_hostname.
+            if _has_sni(False):
+                loop = asyncio.get_running_loop()
+                ssl_sock = await loop.run_in_executor(
+                    None,
+                    functools.partial(ssl_context.wrap_socket, sock, server_hostname=host),  # type: ignore[assignment, misc, unused-ignore]
+                )
+            else:
+                loop = asyncio.get_running_loop()
+                ssl_sock = await loop.run_in_executor(None, ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc, unused-ignore]
     except _CertificateError:
-        sock.close()
-        # Raise _CertificateError directly like we do after match_hostname
-        # below.
+        # Raise _CertificateError directly like we do after match_hostname below.
         raise
     except (OSError, *SSLErrors) as exc:
-        sock.close()
         # We raise AutoReconnect for transient and permanent SSL handshake
         # failures alike. Permanent handshake failures, like protocol
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
         details = _get_timeout_details(options)
         _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
-    except BaseException:
-        # Protect against cancellation or interruption where the raw socket would otherwise leak
-        sock.close()
-        raise
-    try:
+    with _cleanup_on_error(ssl_sock.close):
         if (
             ssl_context.verify_mode
             and not ssl_context.check_hostname
@@ -308,11 +310,6 @@ async def _async_configured_socket(
 
         ssl_sock.settimeout(options.socket_timeout)
         return ssl_sock
-    except BaseException:
-        # Protect against cancellation, _CertificateError, or interruption
-        # where the raw socket would otherwise leak.
-        ssl_sock.close()
-        raise
 
 
 async def _configured_protocol_interface(
@@ -331,11 +328,12 @@ async def _configured_protocol_interface(
     timeout = options.socket_timeout
 
     if ssl_context is None:
-        return AsyncNetworkingInterface(
-            await asyncio.get_running_loop().create_connection(
-                lambda: PyMongoProtocol(timeout=timeout), sock=sock
+        with _cleanup_on_error(sock.close):
+            return AsyncNetworkingInterface(
+                await asyncio.get_running_loop().create_connection(
+                    lambda: PyMongoProtocol(timeout=timeout), sock=sock
+                )
             )
-        )
 
     host = address[0]
     # asyncio does not support TLS session resumption natively (cpython#79152,
@@ -357,12 +355,13 @@ async def _configured_protocol_interface(
     try:
         # We have to pass hostname / ip address to wrap_socket
         # to use SSLContext.check_hostname.
-        transport, protocol = await asyncio.get_running_loop().create_connection(  # type: ignore[call-overload]
-            lambda: PyMongoProtocol(timeout=timeout),
-            sock=sock,
-            server_hostname=host,
-            ssl=ssl_context,
-        )
+        with _cleanup_on_error(sock.close):
+            transport, protocol = await asyncio.get_running_loop().create_connection(  # type: ignore[call-overload]
+                lambda: PyMongoProtocol(timeout=timeout),
+                sock=sock,
+                server_hostname=host,
+                ssl=ssl_context,
+            )
     except _CertificateError:
         # Raise _CertificateError directly like we do after match_hostname
         # below.
@@ -373,7 +372,7 @@ async def _configured_protocol_interface(
         # mismatch, will be turned into ServerSelectionTimeoutErrors later.
         details = _get_timeout_details(options)
         _raise_connection_failure(address, exc, "SSL handshake failed: ", timeout_details=details)
-    try:
+    with _cleanup_on_error(transport.abort):
         if (
             ssl_context.verify_mode
             and not ssl_context.check_hostname
@@ -389,11 +388,6 @@ async def _configured_protocol_interface(
                     ssl_session_cache[0] = new_session
 
         return AsyncNetworkingInterface((transport, protocol))
-    except BaseException:
-        # Protect against cancellation, _CertificateError, or interruption
-        # where the transport would otherwise leak.
-        transport.abort()
-        raise
 
 
 def _create_connection(address: _Address, options: PoolOptions) -> socket.socket:
