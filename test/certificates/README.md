@@ -15,7 +15,9 @@ uv run gen-certs.py
 ## Certificate details
 
 Two classes of leaf certificate are generated, with different extension profiles to satisfy
-conflicting requirements from Python's ssl module and macOS's SecTrust framework:
+conflicting requirements from Python's ssl module and macOS's SecTrust framework.
+AKI (Authority Key Identifier) and SKI (Subject Key Identifier) are X.509 extensions that
+identify the key used to sign a certificate and the certificate's own key, respectively.
 
 **MongoDB certs** — presented to MongoDB Enterprise, verified by Apple SecTrust on macOS.
 No AKI or SKI. Adding AKI triggers SecTrust OCSP checks; our CA has no OCSP responder, so those
