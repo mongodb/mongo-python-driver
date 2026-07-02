@@ -36,6 +36,18 @@ NOW = datetime.datetime.now(datetime.timezone.utc)
 NOT_BEFORE = NOW - datetime.timedelta(days=1)
 NOT_AFTER = NOW + datetime.timedelta(days=DAYS)
 
+CA_KEY_USAGE = x509.KeyUsage(
+    digital_signature=False,
+    content_commitment=False,
+    key_encipherment=False,
+    data_encipherment=False,
+    key_agreement=False,
+    key_cert_sign=True,
+    crl_sign=True,
+    encipher_only=False,
+    decipher_only=False,
+)
+
 
 def make_key() -> rsa.RSAPrivateKey:
     return rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -125,20 +137,7 @@ ca_cert = (
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
     .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
-    .add_extension(
-        x509.KeyUsage(
-            digital_signature=False,
-            content_commitment=False,
-            key_encipherment=False,
-            data_encipherment=False,
-            key_agreement=False,
-            key_cert_sign=True,
-            crl_sign=True,
-            encipher_only=False,
-            decipher_only=False,
-        ),
-        critical=True,
-    )
+    .add_extension(CA_KEY_USAGE, critical=True)
     .add_extension(x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False)
     .sign(ca_key, hashes.SHA256())
 )
@@ -311,20 +310,7 @@ trusted_ca_cert = (
     .not_valid_before(NOT_BEFORE)
     .not_valid_after(NOT_AFTER)
     .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
-    .add_extension(
-        x509.KeyUsage(
-            digital_signature=False,
-            content_commitment=False,
-            key_encipherment=False,
-            data_encipherment=False,
-            key_agreement=False,
-            key_cert_sign=True,
-            crl_sign=True,
-            encipher_only=False,
-            decipher_only=False,
-        ),
-        critical=True,
-    )
+    .add_extension(CA_KEY_USAGE, critical=True)
     .sign(trusted_ca_key, hashes.SHA256())
 )
 (SCRIPT_DIR / "trusted-ca.pem").write_bytes(cert_pem(trusted_ca_cert))
@@ -349,35 +335,33 @@ errors = 0
 
 # CA cert must have critical basicConstraints, critical keyUsage, and SKI; must NOT have AKI or SAN.
 ca_text = cert_text(SCRIPT_DIR / "ca.pem")
-ca_errors = 0
+prev_errors = errors
 if "Basic Constraints: critical" not in ca_text:
     print(
         "    ca.pem: ERROR — basicConstraints not critical (required by Python 3.14 strict mode)",
         file=sys.stderr,
     )
-    ca_errors += 1
+    errors += 1
 if "Key Usage: critical" not in ca_text:
     print(
         "    ca.pem: ERROR — missing critical keyUsage (required by Python 3.14 strict mode)",
         file=sys.stderr,
     )
-    ca_errors += 1
+    errors += 1
 if "Subject Key Identifier" not in ca_text:
     print(
         "    ca.pem: ERROR — missing SKI (required for keyid-form AKI on KMS leaf certs)",
         file=sys.stderr,
     )
-    ca_errors += 1
+    errors += 1
 for ext in ("Authority Key Identifier", "Subject Alternative Name"):
     if ext in ca_text:
         print(
             f"    ca.pem: ERROR — has {ext} (would cause issues on Windows or macOS)",
             file=sys.stderr,
         )
-        ca_errors += 1
-if ca_errors:
-    errors += ca_errors
-else:
+        errors += 1
+if errors == prev_errors:
     print("    ca.pem: OK (has basicConstraints critical, keyUsage critical, SKI; no AKI/SAN)")
 
 # MongoDB certs must NOT have AKI.
