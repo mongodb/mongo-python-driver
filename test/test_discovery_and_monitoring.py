@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the topology module."""
+
 from __future__ import annotations
 
 import asyncio
@@ -24,39 +25,17 @@ import threading
 import time
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
-from test.helpers import ConcurrentRunner
-from test.utils import flaky
-from test.utils_shared import delay
 
 from pymongo.errors import ConnectionFailure
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
 from pymongo.synchronous.pool import Connection
+from test.helpers import ConcurrentRunner
+from test.utils import flaky
+from test.utils_shared import delay
 
 sys.path[0:0] = [""]
 
-from test import (
-    IntegrationTest,
-    PyMongoTestCase,
-    UnitTest,
-    client_context,
-    unittest,
-)
-from test.pymongo_mocks import DummyMonitor
-from test.unified_format import generate_test_classes, get_test_path
-from test.utils import (
-    get_pool,
-)
-from test.utils_shared import (
-    CMAPListener,
-    HeartbeatEventListener,
-    HeartbeatEventsListListener,
-    assertion_context,
-    barrier_wait,
-    create_barrier,
-    server_name_to_type,
-    wait_until,
-)
 from unittest.mock import patch
 
 from bson import Timestamp, json_util
@@ -81,6 +60,28 @@ from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.synchronous.uri_parser import parse_uri
 from pymongo.topology_description import TOPOLOGY_TYPE
+from test import (
+    IntegrationTest,
+    PyMongoTestCase,
+    UnitTest,
+    client_context,
+    unittest,
+)
+from test.pymongo_mocks import DummyMonitor
+from test.unified_format import generate_test_classes, get_test_path
+from test.utils import (
+    get_pool,
+)
+from test.utils_shared import (
+    CMAPListener,
+    HeartbeatEventListener,
+    HeartbeatEventsListListener,
+    assertion_context,
+    barrier_wait,
+    create_barrier,
+    server_name_to_type,
+    wait_until,
+)
 
 _IS_SYNC = True
 
@@ -464,23 +465,39 @@ class TestPoolBackpressure(IntegrationTest):
         # Create a client that listens to CMAP events, with maxConnecting=100.
         client = self.rs_or_single_client(maxConnecting=100, event_listeners=[listener])
 
-        # Enable the ingress rate limiter.
-        client.admin.command(
-            "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
-        )
-        client.admin.command("setParameter", 1, ingressConnectionEstablishmentRatePerSec=20)
-        client.admin.command("setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1)
-        client.admin.command("setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1)
+        # setParameter needs to be set on each mongos in a sharded cluster
+        if client_context.mongoses:
+            admin_clients = [
+                self.single_client("{}:{}".format(*address)) for address in client_context.mongoses
+            ]
+        else:
+            admin_clients = [client]
 
         # Disable the ingress rate limiter on teardown.
         # Sleep for 1 second before disabling to avoid the rate limiter.
         def teardown():
             time.sleep(1)
-            client.admin.command(
-                "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
-            )
+            for admin_client in admin_clients:
+                admin_client.admin.command(
+                    "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
+                )
 
         self.addCleanup(teardown)
+
+        # Enable the ingress rate limiter.
+        for admin_client in admin_clients:
+            admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
+            )
+            admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentRatePerSec=20
+            )
+            admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1
+            )
+            admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1
+            )
 
         # Make sure the collection has at least one document.
         client.test.test.delete_many({})

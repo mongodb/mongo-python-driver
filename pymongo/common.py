@@ -14,24 +14,21 @@
 
 
 """Functions and classes common to multiple pymongo modules."""
+
 from __future__ import annotations
 
 import datetime
 import warnings
 from collections import OrderedDict, abc
+from collections.abc import Iterator, Mapping, MutableMapping, Sequence
 from difflib import get_close_matches
 from importlib.metadata import requires, version
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Iterator,
-    Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
-    Sequence,
-    Type,
     Union,
     overload,
 )
@@ -57,7 +54,7 @@ if TYPE_CHECKING:
     from pymongo.typings import _AgnosticClientSession
 
 
-ORDERED_TYPES: Sequence[Type[Any]] = (SON, OrderedDict)
+ORDERED_TYPES: Sequence[type[Any]] = (SON, OrderedDict)
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024**2)
@@ -483,7 +480,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
 
 def validate_document_class(
     option: str, value: Any
-) -> Union[Type[MutableMapping[str, Any]], Type[RawBSONDocument]]:
+) -> Union[type[MutableMapping[str, Any]], type[RawBSONDocument]]:
     """Validate the document_class option."""
     # issubclass can raise TypeError for generic aliases like SON[str, Any].
     # In that case we can use the base class for the comparison.
@@ -632,7 +629,7 @@ def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
 def validate_tzinfo(dummy: Any, value: Any) -> Optional[datetime.tzinfo]:
     """Validate the tzinfo option"""
     if value is not None and not isinstance(value, datetime.tzinfo):
-        raise TypeError("%s must be an instance of datetime.tzinfo" % value)
+        raise TypeError(f"{value} must be an instance of datetime.tzinfo")
     return value
 
 
@@ -1018,6 +1015,8 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
 
         return True
 
+    __hash__ = None  # type: ignore[assignment]
+
     def get(self, key: str, default: Optional[Any] = None) -> Any:
         return self.__data.get(key.lower(), default)
 
@@ -1036,12 +1035,10 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
         self.__data.clear()
 
     @overload
-    def setdefault(self, key: str, default: None = None) -> Optional[Any]:
-        ...
+    def setdefault(self, key: str, default: None = None) -> Optional[Any]: ...
 
     @overload
-    def setdefault(self, key: str, default: Any) -> Any:
-        ...
+    def setdefault(self, key: str, default: Any) -> Any: ...
 
     def setdefault(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
         lc_key = key.lower()

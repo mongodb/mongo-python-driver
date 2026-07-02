@@ -14,9 +14,10 @@
 from __future__ import annotations
 
 import unittest
-from test import PyMongoTestCase
 
 import pytest
+
+from test import PyMongoTestCase
 
 try:
     from mockupdb import MockupDB, going
@@ -57,10 +58,7 @@ class TestMaxStalenessMongos(PyMongoTestCase):
         # Set maxStalenessSeconds to 1. Client has no minimum with mongos,
         # we let mongos enforce the 90-second minimum and return an error:
         # SERVER-27146.
-        uri = (
-            "mongodb://localhost:%d/?readPreference=secondary"
-            "&maxStalenessSeconds=1" % mongos.port
-        )
+        uri = "mongodb://localhost:%d/?readPreference=secondary&maxStalenessSeconds=1" % mongos.port
 
         client = self.simple_client(uri)
         with going(client.db.coll.find_one) as future:

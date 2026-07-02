@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test MONGODB-OIDC Authentication."""
+
 from __future__ import annotations
 
 import os
@@ -22,16 +23,13 @@ import unittest
 import warnings
 from contextlib import contextmanager
 from pathlib import Path
-from test import PyMongoTestCase
-from test.helpers import ConcurrentRunner
-from typing import Dict
 
 import pytest
 
-sys.path[0:0] = [""]
+from test import PyMongoTestCase
+from test.helpers import ConcurrentRunner
 
-from test.unified_format import generate_test_classes, get_test_path
-from test.utils_shared import EventListener, OvertCommandListener
+sys.path[0:0] = [""]
 
 from bson import SON
 from pymongo import MongoClient
@@ -50,6 +48,8 @@ from pymongo.synchronous.auth_oidc import (
     _get_authenticator,
 )
 from pymongo.synchronous.uri_parser import parse_uri
+from test.unified_format import generate_test_classes, get_test_path
+from test.utils_shared import EventListener, OvertCommandListener
 
 _IS_SYNC = True
 
@@ -87,7 +87,7 @@ class OIDCTestBase(PyMongoTestCase):
                 token_file = TOKEN_FILE
             else:
                 token_file = os.path.join(TOKEN_DIR, username)
-            with open(token_file) as fid:  # noqa: ASYNC101,RUF100
+            with open(token_file) as fid:  # noqa:RUF100
                 return fid.read()
         elif ENVIRON == "azure":
             opts = parse_uri(self.uri_single)["options"]
@@ -166,7 +166,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         request_cb = kwargs.pop("request_cb", self.create_request_cb(username=username))
         props = kwargs.pop("authmechanismproperties", {"OIDC_HUMAN_CALLBACK": request_cb})
         kwargs["retryReads"] = False
-        if not len(args):
+        if not args:
             args = [self.uri_single]
 
         client = self.simple_client(*args, authmechanismproperties=props, **kwargs)
@@ -224,7 +224,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
     def test_1_6_allowed_hosts_blocked(self):
         # Create a default OIDC client, with an ALLOWED_HOSTS that is an empty list.
         request_token = self.create_request_cb()
-        props: Dict = {"OIDC_HUMAN_CALLBACK": request_token, "ALLOWED_HOSTS": []}
+        props: dict = {"OIDC_HUMAN_CALLBACK": request_token, "ALLOWED_HOSTS": []}
         client = self.create_client(authmechanismproperties=props)
         # Assert that a find operation fails with a client-side error.
         with self.assertRaises(ConfigurationError):
@@ -234,7 +234,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
         # Create a client that uses the URL mongodb://localhost/?authMechanism=MONGODB-OIDC&ignored=example.com,
         # a human callback, and an ALLOWED_HOSTS that contains ["example.com"].
-        props: Dict = {
+        props: dict = {
             "OIDC_HUMAN_CALLBACK": request_token,
             "ALLOWED_HOSTS": ["example.com"],
         }
@@ -776,7 +776,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         request_cb = kwargs.pop("request_cb", self.create_request_cb())
         props = kwargs.pop("authmechanismproperties", {"OIDC_CALLBACK": request_cb})
         kwargs["retryReads"] = False
-        if not len(args):
+        if not args:
             args = [self.uri_single]
         client = MongoClient(*args, authmechanismproperties=props, **kwargs)
         self.addCleanup(client.close)
@@ -848,20 +848,20 @@ class TestAuthOIDCMachine(OIDCTestBase):
     def test_2_4_invalid_client_configuration_with_callback(self):
         # Create a MongoClient configured with an OIDC callback and auth mechanism property ENVIRONMENT:test.
         request_cb = self.create_request_cb()
-        props: Dict = {"OIDC_CALLBACK": request_cb, "ENVIRONMENT": "test"}
+        props: dict = {"OIDC_CALLBACK": request_cb, "ENVIRONMENT": "test"}
         # Assert it returns a client configuration error.
         with self.assertRaises(ConfigurationError):
             self.create_client(authmechanismproperties=props)
 
     def test_2_5_invalid_use_of_ALLOWED_HOSTS(self):
         # Create an OIDC configured client with auth mechanism properties `{"ENVIRONMENT": "test", "ALLOWED_HOSTS": []}`.
-        props: Dict = {"ENVIRONMENT": "test", "ALLOWED_HOSTS": []}
+        props: dict = {"ENVIRONMENT": "test", "ALLOWED_HOSTS": []}
         # Assert it returns a client configuration error.
         with self.assertRaises(ConfigurationError):
             self.create_client(authmechanismproperties=props)
 
         # Create an OIDC configured client with auth mechanism properties `{"OIDC_CALLBACK": "<my_callback>", "ALLOWED_HOSTS": []}`.
-        props: Dict = {"OIDC_CALLBACK": self.create_request_cb(), "ALLOWED_HOSTS": []}
+        props: dict = {"OIDC_CALLBACK": self.create_request_cb(), "ALLOWED_HOSTS": []}
         # Assert it returns a client configuration error.
         with self.assertRaises(ConfigurationError):
             self.create_client(authmechanismproperties=props)

@@ -13,16 +13,16 @@
 # limitations under the License.
 
 """Test the pymongo module itself."""
+
 from __future__ import annotations
 
 import sys
 
 sys.path[0:0] = [""]
 
-from test import unittest
-
 import pymongo
 from pymongo._version import get_version_tuple
+from test import unittest
 
 
 class TestPyMongo(unittest.TestCase):

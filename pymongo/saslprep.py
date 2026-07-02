@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """An implementation of RFC4013 SASLprep."""
+
 from __future__ import annotations
 
 from typing import Any, Optional

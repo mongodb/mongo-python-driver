@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test Client Backpressure spec."""
+
 from __future__ import annotations
 
 import os
@@ -25,6 +26,7 @@ from pymongo.common import MAX_ADAPTIVE_RETRIES
 
 sys.path[0:0] = [""]
 
+from pymongo.errors import OperationFailure, PyMongoError
 from test.asynchronous import (
     AsyncIntegrationTest,
     async_client_context,
@@ -32,8 +34,6 @@ from test.asynchronous import (
 )
 from test.asynchronous.unified_format import generate_test_classes
 from test.utils_shared import EventListener, OvertCommandListener
-
-from pymongo.errors import OperationFailure, PyMongoError
 
 _IS_SYNC = False
 

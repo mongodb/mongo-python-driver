@@ -14,12 +14,12 @@
 from __future__ import annotations
 
 import os
-from test import IntegrationTest, client_context, unittest
 from unittest.mock import patch
 
 from bson import json_util
 from pymongo.errors import OperationFailure
 from pymongo.logger import _DEFAULT_DOCUMENT_LENGTH
+from test import IntegrationTest, client_context, unittest
 
 _IS_SYNC = True
 

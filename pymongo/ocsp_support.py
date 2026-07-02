@@ -13,13 +13,15 @@
 # permissions and limitations under the License.
 
 """Support for requesting and verifying OCSP responses."""
+
 from __future__ import annotations
 
 import logging as _logging
 import re as _re
+from collections.abc import Iterable
 from datetime import datetime as _datetime
 from datetime import timezone
-from typing import TYPE_CHECKING, Iterable, Optional, Type, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from cryptography.exceptions import InvalidSignature as _InvalidSignature
 from cryptography.hazmat.backends import default_backend as _default_backend
@@ -147,7 +149,7 @@ def _verify_signature(
 
 
 def _get_extension(
-    cert: Certificate, klass: Type[ExtensionTypeVar]
+    cert: Certificate, klass: type[ExtensionTypeVar]
 ) -> Optional[Extension[ExtensionTypeVar]]:
     try:
         return cert.extensions.get_extension_for_class(klass)
@@ -198,7 +200,7 @@ def _verify_response_signature(issuer: Certificate, response: OCSPResponse) -> i
     name = response.responder_name
     rkey_hash = response.responder_key_hash
     ikey_hash = response.issuer_key_hash
-    if name is not None and name == issuer.subject or rkey_hash == ikey_hash:
+    if (name is not None and name == issuer.subject) or rkey_hash == ikey_hash:
         _LOGGER.debug("Responder is issuer")
         # Responder is the issuer
         responder_cert = issuer
@@ -412,6 +414,4 @@ def _ocsp_callback(conn: Connection, ocsp_bytes: bytes, user_data: Optional[_Cal
     # Cache the verified, stapled response.
     ocsp_response_cache[_build_ocsp_request(cert, issuer)] = response
     _LOGGER.debug("OCSP cert status: %r", response.certificate_status)
-    if response.certificate_status == _OCSPCertStatus.REVOKED:
-        return False
-    return True
+    return response.certificate_status != _OCSPCertStatus.REVOKED

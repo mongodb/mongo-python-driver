@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Re-import of synchronous Encryption API for compatibility."""
+
 from __future__ import annotations
 
 from pymongo.synchronous.encryption import *  # noqa: F403

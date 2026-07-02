@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from test import IntegrationTest
-from typing import Any, List, MutableMapping
+from collections.abc import MutableMapping
+from typing import Any
 
 from bson import Binary, Code, DBRef, ObjectId, json_util
 from bson.binary import USER_DEFINED_SUBTYPE
+from test import IntegrationTest
 
 _IS_SYNC = True
 
@@ -14,7 +15,7 @@ class TestJsonUtilRoundtrip(IntegrationTest):
         db = self.db
 
         db.drop_collection("test")
-        docs: List[MutableMapping[str, Any]] = [
+        docs: list[MutableMapping[str, Any]] = [
             {"foo": [1, 2]},
             {"bar": {"hello": "world"}},
             {"code": Code("function x() { return 1; }")},

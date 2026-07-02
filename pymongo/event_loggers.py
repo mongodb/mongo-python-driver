@@ -29,6 +29,7 @@ or
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 
 """
+
 from __future__ import annotations
 
 import logging
@@ -116,9 +117,7 @@ class HeartbeatLogger(monitoring.ServerHeartbeatListener):
     def succeeded(self, event: monitoring.ServerHeartbeatSucceededEvent) -> None:
         # The reply.document attribute was added in PyMongo 3.4.
         logging.info(
-            f"Heartbeat to server {event.connection_id} "
-            "succeeded with reply "
-            f"{event.reply.document}"
+            f"Heartbeat to server {event.connection_id} succeeded with reply {event.reply.document}"
         )
 
     def failed(self, event: monitoring.ServerHeartbeatFailedEvent) -> None:

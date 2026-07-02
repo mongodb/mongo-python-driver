@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Execute Transactions Spec tests."""
+
 from __future__ import annotations
 
 import asyncio
@@ -31,12 +32,6 @@ from pymongo.synchronous.pool import PoolState
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_context, unittest
-from test.utils_shared import (
-    OvertCommandListener,
-    wait_until,
-)
-from typing import List
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
@@ -59,6 +54,11 @@ from pymongo.synchronous.client_session import TransactionOptions
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.helpers import next
+from test import IntegrationTest, client_context, unittest
+from test.utils_shared import (
+    OvertCommandListener,
+    wait_until,
+)
 
 _IS_SYNC = True
 
@@ -314,8 +314,7 @@ class TestTransactions(TransactionsBase):
     def test_transaction_starts_with_batched_write(self):
         if "PyPy" in sys.version and client_context.tls:
             self.skipTest(
-                "PYTHON-2937 PyPy is so slow sending large "
-                "messages over TLS that this test fails"
+                "PYTHON-2937 PyPy is so slow sending large messages over TLS that this test fails"
             )
         # Start a transaction with a batch of operations that needs to be
         # split.
@@ -326,7 +325,7 @@ class TestTransactions(TransactionsBase):
         listener.reset()
         self.addCleanup(coll.drop)
         large_str = "\0" * (1 * 1024 * 1024)
-        ops: List[InsertOne[RawBSONDocument]] = [
+        ops: list[InsertOne[RawBSONDocument]] = [
             InsertOne(RawBSONDocument(encode({"a": large_str}))) for _ in range(48)
         ]
         with client.start_session() as session:

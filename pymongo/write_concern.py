@@ -16,6 +16,7 @@
 
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
+
 from __future__ import annotations
 
 from typing import Any, Optional, Union
@@ -60,7 +61,7 @@ class WriteConcern:
         Deprecated parameter ``wtimeout``, use :meth:`~pymongo.timeout`.
     """
 
-    __slots__ = ("__document", "__acknowledged", "__server_default")
+    __slots__ = ("__acknowledged", "__document", "__server_default")
 
     def __init__(
         self,
@@ -134,6 +135,8 @@ class WriteConcern:
         if isinstance(other, WriteConcern):
             return self.__document == other.document
         return NotImplemented
+
+    __hash__ = None  # type: ignore[assignment]
 
     def __ne__(self, other: Any) -> bool:
         if isinstance(other, WriteConcern):

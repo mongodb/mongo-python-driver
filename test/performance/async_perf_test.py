@@ -37,6 +37,7 @@ To run individual benchmarks quickly::
 
     FASTBENCH=1 python test/performance/async_perf_test.py -v TestRunCommand TestFindManyAndEmptyCursor
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -45,7 +46,7 @@ import sys
 import tempfile
 import time
 import warnings
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 
 import pytest
 
@@ -56,8 +57,6 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import AsyncPyMongoTestCase, async_client_context, unittest
-
 from bson import encode
 from gridfs import AsyncGridFSBucket
 from pymongo import (
@@ -65,6 +64,7 @@ from pymongo import (
     InsertOne,
     ReplaceOne,
 )
+from test.asynchronous import AsyncPyMongoTestCase, async_client_context, unittest
 
 pytestmark = pytest.mark.perf
 
@@ -87,7 +87,7 @@ TEST_PATH = os.environ.get(
 
 OUTPUT_FILE = os.environ.get("OUTPUT_FILE")
 
-result_data: List = []
+result_data: list = []
 
 
 def tearDownModule():
@@ -239,7 +239,7 @@ class TestDocument(PerformanceTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
         # Location of test data.
-        with open(  # noqa: ASYNC101
+        with open(  # noqa: ASYNC230
             os.path.join(TEST_PATH, os.path.join("single_and_multi_document", self.dataset))
         ) as data:
             self.document = json.loads(data.read())
@@ -464,7 +464,7 @@ class GridFsTest(PerformanceTest):
         gridfs_path = os.path.join(
             TEST_PATH, os.path.join("single_and_multi_document", "gridfs_large.bin")
         )
-        with open(gridfs_path, "rb") as data:  # noqa: ASYNC101
+        with open(gridfs_path, "rb") as data:  # noqa: ASYNC230
             self.document = data.read()
         self.data_size = len(self.document)
         self.bucket = AsyncGridFSBucket(self.client.perftest)

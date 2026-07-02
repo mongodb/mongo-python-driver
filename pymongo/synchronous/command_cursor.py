@@ -13,17 +13,16 @@
 # limitations under the License.
 
 """CommandCursor class to iterate over command results."""
+
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Iterator, Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterator,
-    Mapping,
     NoReturn,
     Optional,
-    Sequence,
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
@@ -43,7 +42,18 @@ _IS_SYNC = True
 
 
 class CommandCursor(_CursorBase[_DocumentType]):
-    """A cursor / iterator over command cursors."""
+    """A cursor / iterator over command cursors.
+    Used by :meth:`~pymongo.collection.Collection.aggregate`,
+    :meth:`~pymongo.database.Database.aggregate`,
+    :meth:`~pymongo.collection.Collection.list_indexes`,
+    :meth:`~pymongo.collection.Collection.list_search_indexes`
+    :meth:`~pymongo.database.Database.list_collections`,
+    :meth:`~pymongo.database.Database.cursor_command`,
+    and :meth:`~pymongo.mongo_client.MongoClient.list_databases`
+    to iterate MongoDB command results.
+
+    Should not be called directly by application developers.
+    """
 
     _getmore_class = _GetMore
 
@@ -77,7 +87,7 @@ class CommandCursor(_CursorBase[_DocumentType]):
         if self._killed:
             self._end_session()
 
-        if "ns" in cursor_info:  # noqa: SIM401
+        if "ns" in cursor_info:
             self._ns = cursor_info["ns"]
         else:
             self._ns = collection.full_name
@@ -112,7 +122,7 @@ class CommandCursor(_CursorBase[_DocumentType]):
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
 
-        self._batch_size = batch_size == 1 and 2 or batch_size
+        self._batch_size = (batch_size == 1 and 2) or batch_size
         return self
 
     def _has_next(self) -> bool:

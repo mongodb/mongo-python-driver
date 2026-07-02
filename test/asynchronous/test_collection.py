@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the collection module."""
+
 from __future__ import annotations
 
 import asyncio
@@ -21,27 +22,14 @@ import re
 import sys
 from codecs import utf_8_decode
 from collections import defaultdict
-from test.asynchronous.utils import async_get_pool, async_is_mongos
-from typing import Any, Iterable, no_type_check
+from collections.abc import Iterable
+from typing import Any, no_type_check
 
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import anext
+from test.asynchronous.utils import async_get_pool, async_is_mongos
 
 sys.path[0:0] = [""]
-
-from test import unittest
-from test.asynchronous import (  # TODO: fix sync imports in PYTHON-4528
-    AsyncIntegrationTest,
-    AsyncUnitTest,
-    async_client_context,
-)
-from test.utils_shared import (
-    IMPOSSIBLE_WRITE_CONCERN,
-    EventListener,
-    OvertCommandListener,
-    async_wait_until,
-)
-from test.version import Version
 
 from bson import encode
 from bson.codec_options import CodecOptions
@@ -77,6 +65,19 @@ from pymongo.results import (
     UpdateResult,
 )
 from pymongo.write_concern import WriteConcern
+from test import unittest
+from test.asynchronous import (  # TODO: fix sync imports in PYTHON-4528
+    AsyncIntegrationTest,
+    AsyncUnitTest,
+    async_client_context,
+)
+from test.utils_shared import (
+    IMPOSSIBLE_WRITE_CONCERN,
+    EventListener,
+    OvertCommandListener,
+    async_wait_until,
+)
+from test.version import Version
 
 _IS_SYNC = False
 

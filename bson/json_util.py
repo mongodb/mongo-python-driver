@@ -99,6 +99,7 @@ but it will be faster as there is less recursion.
    `libbson <https://github.com/mongodb/libbson>`_. `python-bsonjs` works best
    with PyMongo when using :class:`~bson.raw_bson.RawBSONDocument`.
 """
+
 from __future__ import annotations
 
 import base64
@@ -107,16 +108,12 @@ import json
 import math
 import re
 import uuid
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Mapping,
-    MutableMapping,
     Optional,
-    Sequence,
-    Tuple,
-    Type,
     Union,
     cast,
 )
@@ -244,7 +241,7 @@ class JSONOptions(_BASE_CLASS):
     strict_number_long: bool
     datetime_representation: int
     strict_uuid: bool
-    document_class: Type[MutableMapping[str, Any]]
+    document_class: type[MutableMapping[str, Any]]
 
     def __init__(self, *args: Any, **kwargs: Any):
         """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
@@ -303,7 +300,7 @@ class JSONOptions(_BASE_CLASS):
         super().__init__()
 
     def __new__(
-        cls: Type[JSONOptions],
+        cls: type[JSONOptions],
         strict_number_long: Optional[bool] = None,
         datetime_representation: Optional[int] = None,
         strict_uuid: Optional[bool] = None,
@@ -327,8 +324,7 @@ class JSONOptions(_BASE_CLASS):
         self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))
         if json_mode not in (JSONMode.LEGACY, JSONMode.RELAXED, JSONMode.CANONICAL):
             raise ValueError(
-                "JSONOptions.json_mode must be one of LEGACY, RELAXED, "
-                "or CANONICAL from JSONMode."
+                "JSONOptions.json_mode must be one of LEGACY, RELAXED, or CANONICAL from JSONMode."
             )
         self.json_mode = json_mode
         if self.json_mode == JSONMode.RELAXED:
@@ -371,15 +367,9 @@ class JSONOptions(_BASE_CLASS):
 
     def _arguments_repr(self) -> str:
         return (
-            "strict_number_long={!r}, "
-            "datetime_representation={!r}, "
-            "strict_uuid={!r}, json_mode={!r}, {}".format(
-                self.strict_number_long,
-                self.datetime_representation,
-                self.strict_uuid,
-                self.json_mode,
-                super()._arguments_repr(),
-            )
+            f"strict_number_long={self.strict_number_long!r}, "
+            f"datetime_representation={self.datetime_representation!r}, "
+            f"strict_uuid={self.strict_uuid!r}, json_mode={self.json_mode!r}, {super()._arguments_repr()}"
         )
 
     def with_options(self, **kwargs: Any) -> JSONOptions:
@@ -509,7 +499,7 @@ def _json_convert(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) ->
 
 
 def object_pairs_hook(
-    pairs: Sequence[Tuple[str, Any]], json_options: JSONOptions = DEFAULT_JSON_OPTIONS
+    pairs: Sequence[tuple[str, Any]], json_options: JSONOptions = DEFAULT_JSON_OPTIONS
 ) -> Any:
     return object_hook(json_options.document_class(pairs), json_options)  # type:ignore[call-arg]
 
@@ -572,7 +562,7 @@ def _binary_or_uuid(data: Any, subtype: int, json_options: JSONOptions) -> Union
 
 def _parse_legacy_binary(doc: Any, json_options: JSONOptions) -> Union[Binary, uuid.UUID]:
     if isinstance(doc["$type"], int):
-        doc["$type"] = "%02x" % doc["$type"]
+        doc["$type"] = "{:02x}".format(doc["$type"])
     subtype = int(doc["$type"], 16)
     if subtype >= 0xFFFFFF80:  # Handle mongoexport values
         subtype = int(doc["$type"][6:], 16)
@@ -699,7 +689,7 @@ def _parse_canonical_regex(doc: Any, dummy0: Any) -> Regex[str]:
     opts = regex["options"]
     if not isinstance(opts, str):
         raise TypeError(
-            "Bad $regularExpression options, options must be string, was type %s" % (type(opts))
+            f"Bad $regularExpression options, options must be string, was type {type(opts)}"
         )
     return Regex(regex["pattern"], opts)
 
@@ -774,7 +764,7 @@ def _parse_canonical_decimal128(doc: Any, dummy0: Any) -> Decimal128:
 
 def _parse_canonical_minkey(doc: Any, dummy0: Any) -> MinKey:
     """Decode a JSON MinKey to bson.min_key.MinKey."""
-    if type(doc["$minKey"]) is not int or doc["$minKey"] != 1:  # noqa: E721
+    if type(doc["$minKey"]) is not int or doc["$minKey"] != 1:
         raise TypeError(f"$minKey value must be 1: {doc}")
     if len(doc) != 1:
         raise TypeError(f"Bad $minKey, extra field(s): {doc}")
@@ -783,7 +773,7 @@ def _parse_canonical_minkey(doc: Any, dummy0: Any) -> MinKey:
 
 def _parse_canonical_maxkey(doc: Any, dummy0: Any) -> MaxKey:
     """Decode a JSON MaxKey to bson.max_key.MaxKey."""
-    if type(doc["$maxKey"]) is not int or doc["$maxKey"] != 1:  # noqa: E721
+    if type(doc["$maxKey"]) is not int or doc["$maxKey"] != 1:
         raise TypeError("$maxKey value must be 1: %s", (doc,))
     if len(doc) != 1:
         raise TypeError(f"Bad $minKey, extra field(s): {doc}")
@@ -827,8 +817,8 @@ _PARSERS_SET = set(_PARSERS)
 
 def _encode_binary(data: bytes, subtype: int, json_options: JSONOptions) -> Any:
     if json_options.json_mode == JSONMode.LEGACY:
-        return {"$binary": base64.b64encode(data).decode(), "$type": "%02x" % subtype}
-    return {"$binary": {"base64": base64.b64encode(data).decode(), "subType": "%02x" % subtype}}
+        return {"$binary": base64.b64encode(data).decode(), "$type": f"{subtype:02x}"}
+    return {"$binary": {"base64": base64.b64encode(data).decode(), "subType": f"{subtype:02x}"}}
 
 
 def _encode_datetimems(obj: Any, json_options: JSONOptions) -> dict:  # type: ignore[type-arg]
@@ -917,7 +907,7 @@ def _encode_datetime(obj: datetime.datetime, json_options: JSONOptions) -> dict:
             else:
                 tz_string = obj.strftime("%z")
             millis = int(obj.microsecond / 1000)
-            fracsecs = ".%03d" % (millis,) if millis else ""
+            fracsecs = f".{millis:03d}" if millis else ""
             return {
                 "$date": "{}{}{}".format(obj.strftime("%Y-%m-%dT%H:%M:%S"), fracsecs, tz_string)
             }
@@ -972,7 +962,7 @@ def _encode_maxkey(dummy0: Any, dummy1: Any) -> dict:  # type: ignore[type-arg]
 # Each encoder function's signature is:
 #   - obj: a Python data type, e.g. a Python int for _encode_int
 #   - json_options: a JSONOptions
-_ENCODERS: dict[Type, Callable[[Any, JSONOptions], Any]] = {  # type: ignore[type-arg]
+_ENCODERS: dict[type, Callable[[Any, JSONOptions], Any]] = {
     bool: _encode_noop,
     bytes: _encode_bytes,
     datetime.datetime: _encode_datetime,
@@ -997,9 +987,9 @@ _ENCODERS: dict[Type, Callable[[Any, JSONOptions], Any]] = {  # type: ignore[typ
 
 # Map each _type_marker to its encoder for faster lookup.
 _MARKERS: dict[int, Callable[[Any, JSONOptions], Any]] = {}
-for _typ in _ENCODERS:
+for _typ, _encoder in _ENCODERS.items():
     if hasattr(_typ, "_type_marker"):
-        _MARKERS[_typ._type_marker] = _ENCODERS[_typ]
+        _MARKERS[_typ._type_marker] = _encoder
 
 _BUILT_IN_TYPES = tuple(t for t in _ENCODERS)
 
@@ -1032,7 +1022,7 @@ def default(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
             _ENCODERS[type(obj)] = func
             return func(obj, json_options)
 
-    raise TypeError("%r is not JSON serializable" % obj)
+    raise TypeError(f"{obj!r} is not JSON serializable")
 
 
 def _get_str_size(obj: Any) -> int:
@@ -1097,7 +1087,7 @@ def get_size(obj: Any, max_size: int, current_size: int = 0) -> int:
             )
         else:
             current_size += 5 + len(obj)
-    elif obj_type == dict:
+    elif obj_type is dict:
         for k, v in obj.items():
             current_size += get_size(k, max_size, current_size)
             current_size += get_size(v, max_size, current_size)
@@ -1111,7 +1101,7 @@ def get_size(obj: Any, max_size: int, current_size: int = 0) -> int:
     return current_size
 
 
-def _truncate_documents(obj: Any, max_length: int) -> Tuple[Any, int]:
+def _truncate_documents(obj: Any, max_length: int) -> tuple[Any, int]:
     """Recursively truncate documents as needed to fit inside max_length characters."""
     if max_length <= 0:
         return None, 0
@@ -1138,7 +1128,7 @@ def _truncate_documents(obj: Any, max_length: int) -> Tuple[Any, int]:
         return _truncate(obj, remaining)
 
 
-def _truncate(obj: Any, remaining: int) -> Tuple[Any, int]:
+def _truncate(obj: Any, remaining: int) -> tuple[Any, int]:
     size = get_size(obj, remaining)
 
     if size <= remaining:

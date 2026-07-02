@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import sys
 import warnings
-from typing import Any, Iterable, Optional, Union
+from collections.abc import Iterable
+from typing import Any, Optional, Union
 
 from pymongo.hello import HelloCompat
 from pymongo.helpers_shared import _SENSITIVE_COMMANDS
@@ -104,7 +105,7 @@ def validate_zlib_compression_level(option: str, value: Any) -> int:
     except Exception:
         raise TypeError(f"{option} must be an integer, not {value!r}") from None
     if level < -1 or level > 9:
-        raise ValueError("%s must be between -1 and 9, not %d." % (option, level))
+        raise ValueError(f"{option} must be between -1 and 9, not {level}.")
     return level
 
 
@@ -184,4 +185,4 @@ def decompress(data: bytes | memoryview, compressor_id: int) -> bytes:
 
         return zstd.decompress(data)
     else:
-        raise ValueError("Unknown compressorId %d" % (compressor_id,))
+        raise ValueError(f"Unknown compressorId {compressor_id}")

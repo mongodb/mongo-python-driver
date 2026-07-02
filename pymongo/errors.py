@@ -16,10 +16,12 @@
 
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
+
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from ssl import SSLCertVerificationError as _CertificateError  # noqa: F401
-from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from bson.errors import InvalidDocument
 
@@ -304,9 +306,7 @@ class BulkWriteError(OperationFailure):
             return True
 
         werrs = self.details.get("writeErrors", [])
-        if werrs and werrs[-1].get("code") == 50:
-            return True
-        return False
+        return bool(werrs and werrs[-1].get("code") == 50)
 
 
 class ClientBulkWriteException(OperationFailure):

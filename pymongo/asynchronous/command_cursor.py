@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CommandCursor class to iterate over command results."""
+"""AsyncCommandCursor class to iterate over command results."""
+
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import AsyncIterator, Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
-    Mapping,
     NoReturn,
     Optional,
-    Sequence,
 )
 
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
@@ -43,7 +42,18 @@ _IS_SYNC = False
 
 
 class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
-    """An asynchronous cursor / iterator over command cursors."""
+    """An asynchronous cursor / iterator over command cursors.
+    Used by :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate`,
+    :meth:`~pymongo.asynchronous.database.AsyncDatabase.aggregate`,
+    :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_indexes`,
+    :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_search_indexes`
+    :meth:`~pymongo.asynchronous.database.AsyncDatabase.list_collections`,
+    :meth:`~pymongo.asynchronous.database.AsyncDatabase.cursor_command`,
+    and :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.list_databases`
+    to iterate MongoDB command results.
+
+    Should not be called directly by application developers.
+    """
 
     _getmore_class = _GetMore
 
@@ -77,7 +87,7 @@ class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
         if self._killed:
             self._end_session()
 
-        if "ns" in cursor_info:  # noqa: SIM401
+        if "ns" in cursor_info:
             self._ns = cursor_info["ns"]
         else:
             self._ns = collection.full_name
@@ -112,7 +122,7 @@ class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
 
-        self._batch_size = batch_size == 1 and 2 or batch_size
+        self._batch_size = (batch_size == 1 and 2) or batch_size
         return self
 
     def _has_next(self) -> bool:

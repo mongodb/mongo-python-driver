@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import time
 import unittest
-from test import PyMongoTestCase
 
 import pytest
+
+from test import PyMongoTestCase
 
 try:
     from mockupdb import MockupDB, wait_until

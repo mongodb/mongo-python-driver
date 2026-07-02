@@ -16,6 +16,7 @@
 
 .. versionadded:: 4.3
 """
+
 from __future__ import annotations
 
 import calendar

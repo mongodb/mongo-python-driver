@@ -17,6 +17,7 @@
 Used as cibuildwheel's before-build hook so artifacts from one Python
 version do not leak into the wheel built for the next.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -13,19 +13,20 @@
 # limitations under the License.
 
 """Test the monitoring of the server heartbeats."""
+
 from __future__ import annotations
 
 import sys
+
 from test.utils import MockPool
 
 sys.path[0:0] = [""]
 
-from test import IntegrationTest, client_knobs, unittest
-from test.utils_shared import HeartbeatEventListener, wait_until
-
 from pymongo.errors import ConnectionFailure
 from pymongo.hello import Hello, HelloCompat
 from pymongo.synchronous.monitor import Monitor
+from test import IntegrationTest, client_knobs, unittest
+from test.utils_shared import HeartbeatEventListener, wait_until
 
 _IS_SYNC = True
 

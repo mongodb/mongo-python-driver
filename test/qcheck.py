@@ -182,35 +182,35 @@ def simplify(case):  # TODO this is a hack
         if random.choice([True, False]):
             # delete
             simplified_keys = list(simplified)
-            if not len(simplified_keys):
+            if not simplified_keys:
                 return (False, case)
             simplified.pop(random.choice(simplified_keys))
             return (True, simplified)
         else:
             # simplify a value
             simplified_items = list(simplified.items())
-            if not len(simplified_items):
+            if not simplified_items:
                 return (False, case)
             (key, value) = random.choice(simplified_items)
             (success, value) = simplify(value)
             simplified[key] = value
-            return (success, success and simplified or case)
+            return (success, (success and simplified) or case)
     if isinstance(case, list):
         simplified = list(case)
         if random.choice([True, False]):
             # delete
-            if not len(simplified):
+            if not simplified:
                 return (False, case)
             simplified.pop(random.randrange(len(simplified)))
             return (True, simplified)
         else:
             # simplify an item
-            if not len(simplified):
+            if not simplified:
                 return (False, case)
             index = random.randrange(len(simplified))
             (success, value) = simplify(simplified[index])
             simplified[index] = value
-            return (success, success and simplified or case)
+            return (success, (success and simplified) or case)
     return (False, case)
 
 
