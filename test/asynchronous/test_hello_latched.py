@@ -1,4 +1,4 @@
-# Copyright 2022-present MongoDB, Inc.
+# Copyright 2026-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from pymongo.asynchronous.pool import AsyncConnection
+
+_IS_SYNC = False
 
 
 class TestHelloLatched(unittest.IsolatedAsyncioTestCase):

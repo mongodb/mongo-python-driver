@@ -1,4 +1,4 @@
-# Copyright 2022-present MongoDB, Inc.
+# Copyright 2026-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@ from __future__ import annotations
 
 import unittest
 from types import SimpleNamespace
-from unittest.mock import SyncMock
+from unittest.mock import Mock
 
 from pymongo.synchronous.pool import Connection
+
+_IS_SYNC = True
 
 
 class TestHelloLatched(unittest.TestCase):
@@ -50,7 +52,7 @@ class TestHelloLatched(unittest.TestCase):
         Switches from ismaster to hello
         """
         conn = self.create_connection()
-        conn.command = SyncMock(side_effect=self.mock_conn_command)
+        conn.command = Mock(side_effect=self.mock_conn_command)
 
         # First hello
         conn._hello(None, None)
