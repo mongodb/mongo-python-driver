@@ -132,7 +132,7 @@ def cert_text(path: Path) -> str:
     ).decode()
 
 
-def gen_ca() -> tuple[rsa.RSAPrivateKey, x509.Certificate]:
+def gen_ca() -> rsa.RSAPrivateKey:
     print("==> Generating Drivers Testing CA...")
     ca_key = make_key()
     ca_cert = (
@@ -152,7 +152,7 @@ def gen_ca() -> tuple[rsa.RSAPrivateKey, x509.Certificate]:
     )
     (SCRIPT_DIR / "ca.pem").write_bytes(cert_pem(ca_cert))
     print("    ca.pem written (subject:", ca_cert.subject.rfc4514_string(), ")")
-    return ca_key, ca_cert
+    return ca_key
 
 
 def gen_server(ca_key: rsa.RSAPrivateKey) -> None:
@@ -406,7 +406,7 @@ def verify() -> int:
 
 
 def main() -> None:
-    ca_key, _ = gen_ca()
+    ca_key = gen_ca()
     gen_server(ca_key)
     gen_kms_server(ca_key)
     gen_client(ca_key)
