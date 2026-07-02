@@ -340,7 +340,7 @@ class TestSASLPlain(PyMongoTestCase):
             authSource=SASL_DB,
             authMechanism="PLAIN",
         )
-        client.ldap.test.find_one()
+        client.ldap.coll.find_one()
 
         assert SASL_USER is not None
         assert SASL_PASS is not None
@@ -352,7 +352,7 @@ class TestSASLPlain(PyMongoTestCase):
             SASL_DB,
         )
         client = self.simple_client(uri)
-        client.ldap.test.find_one()
+        client.ldap.coll.find_one()
 
         set_name = client_context.replica_set_name
         if set_name:
@@ -365,7 +365,7 @@ class TestSASLPlain(PyMongoTestCase):
                 authSource=SASL_DB,
                 authMechanism="PLAIN",
             )
-            client.ldap.test.find_one()
+            client.ldap.coll.find_one()
 
             uri = "mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;authSource=%s;replicaSet=%s" % (
                 quote_plus(SASL_USER),
@@ -376,7 +376,7 @@ class TestSASLPlain(PyMongoTestCase):
                 str(set_name),
             )
             client = self.simple_client(uri)
-            client.ldap.test.find_one()
+            client.ldap.coll.find_one()
 
     def test_sasl_plain_bad_credentials(self):
         def auth_string(user, password):

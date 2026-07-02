@@ -1060,7 +1060,7 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_list_database_names(self):
         await self.client.pymongo_test.coll.insert_one({"dummy": "object"})
-        await self.client.pymongo_test_mike.test.insert_one({"dummy": "object"})
+        await self.client.pymongo_test_mike.coll.insert_one({"dummy": "object"})
         cmd_docs = (await self.client.admin.command("listDatabases"))["databases"]
         cmd_names = [doc["name"] for doc in cmd_docs]
 
@@ -1076,7 +1076,7 @@ class TestClient(AsyncIntegrationTest):
             await self.client.drop_database(None)  # type: ignore[arg-type]
 
         await self.client.pymongo_test.coll.insert_one({"dummy": "object"})
-        await self.client.pymongo_test2.test.insert_one({"dummy": "object"})
+        await self.client.pymongo_test2.coll.insert_one({"dummy": "object"})
         dbs = await self.client.list_database_names()
         self.assertIn("pymongo_test", dbs)
         self.assertIn("pymongo_test2", dbs)
@@ -1458,7 +1458,7 @@ class TestClient(AsyncIntegrationTest):
 
         client = await self.async_rs_or_single_client_noauth(uri)
         await client.pymongo_test.coll.insert_one({"dummy": "object"})
-        await client.pymongo_test_bernie.test.insert_one({"dummy": "object"})
+        await client.pymongo_test_bernie.coll.insert_one({"dummy": "object"})
 
         dbs = await client.list_database_names()
         self.assertIn("pymongo_test", dbs)
