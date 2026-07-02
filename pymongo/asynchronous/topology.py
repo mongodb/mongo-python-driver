@@ -367,7 +367,7 @@ class Topology:
         )
         if _csot.get_timeout():
             _csot.set_rtt(server.description.min_round_trip_time)
-        ss.succeeded(server.description.address[0], server.description.address[1])
+        ss.succeeded(server.description.address[0], server.description.address[1], self.description)
         return server
 
     async def select_server_by_address(

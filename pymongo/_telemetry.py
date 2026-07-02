@@ -677,12 +677,14 @@ class _ServerSelectionTelemetry:
                 failure=failure,
             )
 
-    def succeeded(self, server_host: str, server_port: Optional[int]) -> None:
+    def succeeded(
+        self, server_host: str, server_port: Optional[int], topology_description: Any
+    ) -> None:
         """Emit the server selection SUCCEEDED log entry."""
         if self._should_log:
             self._emit_log(
                 _ServerSelectionStatusMessage.SUCCEEDED,
-                self._topology_description,
+                topology_description,
                 serverHost=server_host,
                 serverPort=server_port,
             )
