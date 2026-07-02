@@ -258,7 +258,7 @@ If the test certificates in `test/certificates/` need to be regenerated (e.g. af
 cd test/certificates && uv run gen-certs.py
 ```
 
-See `test/certificates/README.md` for full details and constraints on certificate subjects/SANs that must be preserved.
+See `test/certificates/README.md` for full details and constraints on certificate subjects/Subject Alternative Names that must be preserved.
 
 ### Encryption tests
 
