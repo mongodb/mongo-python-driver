@@ -68,7 +68,7 @@ class TestLB(AsyncIntegrationTest):
     async def test_unpin_committed_transaction(self):
         client = await self.async_rs_client()
         pool = await async_get_pool(client)
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         async with client.start_session() as session:
             async with await session.start_transaction():
                 self.assertEqual(pool.active_sockets, 0)
@@ -98,7 +98,7 @@ class TestLB(AsyncIntegrationTest):
     async def _test_no_gc_deadlock(self, create_resource):
         client = await self.async_rs_client()
         pool = await async_get_pool(client)
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         await coll.insert_many([{} for _ in range(10)])
         self.assertEqual(pool.active_sockets, 0)
         # Cause the initial find attempt to fail to induce a reference cycle.
@@ -160,7 +160,7 @@ class TestLB(AsyncIntegrationTest):
 
         await async_wait_until(lambda: pool.active_sockets == 0, "return socket")
         # Run another operation to ensure the socket still works.
-        await client[self.db.name].test.delete_many({})
+        await client[self.db.name].coll.delete_many({})
 
 
 class PoolLocker(ExceptionCatchingTask):

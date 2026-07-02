@@ -560,7 +560,7 @@ class TestSSL(AsyncIntegrationTest):
         )
 
         with self.assertRaises(OperationFailure):
-            await noauth.pymongo_test.test.find_one()
+            await noauth.pymongo_test.coll.find_one()
 
         listener = EventListener()
         auth = self.simple_client(
@@ -573,7 +573,7 @@ class TestSSL(AsyncIntegrationTest):
         )
 
         # No error
-        await auth.pymongo_test.test.find_one()
+        await auth.pymongo_test.coll.find_one()
         names = listener.started_command_names()
         if async_client_context.version.at_least(4, 4, -1):
             # Speculative auth skips the authenticate command.
@@ -590,14 +590,14 @@ class TestSSL(AsyncIntegrationTest):
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
         # No error
-        await client.pymongo_test.test.find_one()
+        await client.pymongo_test.coll.find_one()
 
         uri = "mongodb://%s:%d/?authMechanism=MONGODB-X509" % (host, port)
         client = self.simple_client(
             uri, ssl=True, tlsAllowInvalidCertificates=True, tlsCertificateKeyFile=CLIENT_PEM
         )
         # No error
-        await client.pymongo_test.test.find_one()
+        await client.pymongo_test.coll.find_one()
         # Auth should fail if username and certificate do not match
         uri = "mongodb://%s@%s:%d/?authMechanism=MONGODB-X509" % (
             quote_plus("not the username"),
@@ -610,7 +610,7 @@ class TestSSL(AsyncIntegrationTest):
         )
 
         with self.assertRaises(OperationFailure):
-            await bad_client.pymongo_test.test.find_one()
+            await bad_client.pymongo_test.coll.find_one()
 
         bad_client = self.simple_client(
             await async_client_context.pair,
@@ -622,7 +622,7 @@ class TestSSL(AsyncIntegrationTest):
         )
 
         with self.assertRaises(OperationFailure):
-            await bad_client.pymongo_test.test.find_one()
+            await bad_client.pymongo_test.coll.find_one()
 
         # Invalid certificate (using CA certificate as client certificate)
         uri = "mongodb://%s@%s:%d/?authMechanism=MONGODB-X509" % (

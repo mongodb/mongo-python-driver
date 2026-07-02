@@ -124,11 +124,11 @@ class TestCommon(AsyncIntegrationTest):
 
         db = c.pymongo_test
         self.assertEqual(wc, db.write_concern)
-        coll = db.test
+        coll = db.coll
         self.assertEqual(wc, coll.write_concern)
 
         cwc = WriteConcern(j=True)
-        coll = db.get_collection("test", write_concern=cwc)
+        coll = db.get_collection("coll", write_concern=cwc)
         self.assertEqual(cwc, coll.write_concern)
         self.assertEqual(wc, db.write_concern)
 

@@ -405,7 +405,7 @@ class TestPoolManagement(AsyncIntegrationTest):
             "pool initialized with 10 connections",
         )
 
-        await client.db.test.insert_one({"x": 1})
+        await client.db.coll.insert_one({"x": 1})
         close_delay = 0.1
         latencies = []
         should_exit = []
@@ -413,7 +413,7 @@ class TestPoolManagement(AsyncIntegrationTest):
         async def run_task():
             while True:
                 start_time = time.monotonic()
-                await client.db.test.find_one({})
+                await client.db.coll.find_one({})
                 elapsed = time.monotonic() - start_time
                 latencies.append(elapsed)
                 if should_exit:

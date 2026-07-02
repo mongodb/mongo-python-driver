@@ -231,7 +231,7 @@ class TestGSSAPI(PyMongoTestCase):
         # collection.find_one with a 1-second delay, forcing it to check out
         # multiple connections from the pool concurrently, proving that
         # auto-authentication works with GSSAPI.
-        collection = db.test
+        collection = db.coll
         if not collection.count_documents({}):
             try:
                 collection.drop()
@@ -650,13 +650,13 @@ class TestSCRAM(IntegrationTest):
 
     @client_context.require_sync
     def test_scram_threaded(self):
-        coll = client_context.client.db.test
+        coll = client_context.client.db.coll
         coll.drop()
         coll.insert_one({"_id": 1})
 
         # The first thread to call find() will authenticate
         client = self.rs_or_single_client()
-        coll = client.db.test
+        coll = client.db.coll
         threads = []
         for _ in range(4):
             threads.append(AutoAuthenticateThread(coll))

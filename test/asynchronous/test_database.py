@@ -150,11 +150,11 @@ class TestDatabase(AsyncIntegrationTest):
     async def test_create_collection(self):
         db = AsyncDatabase(self.client, "pymongo_test")
 
-        await db.test.insert_one({"hello": "world"})
+        await db.coll.insert_one({"hello": "world"})
         with self.assertRaises(CollectionInvalid):
-            await db.create_collection("test")
+            await db.create_collection("coll")
 
-        await db.drop_collection("test")
+        await db.drop_collection("coll")
 
         with self.assertRaises(TypeError):
             await db.create_collection(5)  # type: ignore[arg-type]
@@ -163,10 +163,10 @@ class TestDatabase(AsyncIntegrationTest):
         with self.assertRaises(InvalidName):
             await db.create_collection("coll..ection")  # type: ignore[arg-type]
 
-        test = await db.create_collection("test")
-        self.assertIn("test", await db.list_collection_names())
-        await test.insert_one({"hello": "world"})
-        self.assertEqual((await db.test.find_one())["hello"], "world")
+        coll_obj = await db.create_collection("coll")
+        self.assertIn("coll", await db.list_collection_names())
+        await coll_obj.insert_one({"hello": "world"})
+        self.assertEqual((await db.coll.find_one())["hello"], "world")
 
         await db.drop_collection("test.foo")
         await db.create_collection("test.foo")
@@ -176,12 +176,12 @@ class TestDatabase(AsyncIntegrationTest):
 
     async def test_list_collection_names(self):
         db = AsyncDatabase(self.client, "pymongo_test")
-        await db.test.insert_one({"dummy": "object"})
-        await db.test.mike.insert_one({"dummy": "object"})
+        await db.coll.insert_one({"dummy": "object"})
+        await db.coll.mike.insert_one({"dummy": "object"})
 
         colls = await db.list_collection_names()
-        self.assertIn("test", colls)
-        self.assertIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertIn("coll.mike", colls)
         for coll in colls:
             self.assertNotIn("$", coll)
 
@@ -246,15 +246,15 @@ class TestDatabase(AsyncIntegrationTest):
     async def test_list_collections(self):
         await self.client.drop_database("pymongo_test")
         db = AsyncDatabase(self.client, "pymongo_test")
-        await db.test.insert_one({"dummy": "object"})
-        await db.test.mike.insert_one({"dummy": "object"})
+        await db.coll.insert_one({"dummy": "object"})
+        await db.coll.mike.insert_one({"dummy": "object"})
 
         results = await db.list_collections()
         colls = [result["name"] async for result in results]
 
         # All the collections present.
-        self.assertIn("test", colls)
-        self.assertIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertIn("coll.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
@@ -272,25 +272,25 @@ class TestDatabase(AsyncIntegrationTest):
         coll_cnt: dict = {}
 
         # Check if there are any collections which don't exist.
-        self.assertLessEqual(set(colls), {"test", "test.mike", "system.indexes"})
+        self.assertLessEqual(set(colls), {"coll", "coll.mike", "system.indexes"})
 
-        colls = await (await db.list_collections(filter={"name": {"$regex": "^test$"}})).to_list()
+        colls = await (await db.list_collections(filter={"name": {"$regex": "^coll$"}})).to_list()
         self.assertEqual(1, len(colls))
 
         colls = await (
-            await db.list_collections(filter={"name": {"$regex": "^test.mike$"}})
+            await db.list_collections(filter={"name": {"$regex": "^coll.mike$"}})
         ).to_list()
         self.assertEqual(1, len(colls))
 
-        await db.drop_collection("test")
+        await db.drop_collection("coll")
 
-        await db.create_collection("test", capped=True, size=4096)
+        await db.create_collection("coll", capped=True, size=4096)
         results = await db.list_collections(filter={"options.capped": True})
         colls = [result["name"] async for result in results]
 
         # Checking only capped collections are present
-        self.assertIn("test", colls)
-        self.assertNotIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertNotIn("coll.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
@@ -308,7 +308,7 @@ class TestDatabase(AsyncIntegrationTest):
         coll_cnt = {}
 
         # Check if there are any collections which don't exist.
-        self.assertLessEqual(set(colls), {"test", "system.indexes"})
+        self.assertLessEqual(set(colls), {"coll", "system.indexes"})
 
         await self.client.drop_database("pymongo_test")
 
@@ -330,35 +330,35 @@ class TestDatabase(AsyncIntegrationTest):
         with self.assertRaises(TypeError):
             await db.drop_collection(None)  # type: ignore[arg-type]
 
-        await db.test.insert_one({"dummy": "object"})
-        self.assertIn("test", await db.list_collection_names())
-        await db.drop_collection("test")
-        self.assertNotIn("test", await db.list_collection_names())
+        await db.coll.insert_one({"dummy": "object"})
+        self.assertIn("coll", await db.list_collection_names())
+        await db.drop_collection("coll")
+        self.assertNotIn("coll", await db.list_collection_names())
 
-        await db.test.insert_one({"dummy": "object"})
-        self.assertIn("test", await db.list_collection_names())
-        await db.drop_collection("test")
-        self.assertNotIn("test", await db.list_collection_names())
+        await db.coll.insert_one({"dummy": "object"})
+        self.assertIn("coll", await db.list_collection_names())
+        await db.drop_collection("coll")
+        self.assertNotIn("coll", await db.list_collection_names())
 
-        await db.test.insert_one({"dummy": "object"})
-        self.assertIn("test", await db.list_collection_names())
-        await db.drop_collection(db.test)
-        self.assertNotIn("test", await db.list_collection_names())
+        await db.coll.insert_one({"dummy": "object"})
+        self.assertIn("coll", await db.list_collection_names())
+        await db.drop_collection(db.coll)
+        self.assertNotIn("coll", await db.list_collection_names())
 
-        await db.test.insert_one({"dummy": "object"})
-        self.assertIn("test", await db.list_collection_names())
-        await db.test.drop()
-        self.assertNotIn("test", await db.list_collection_names())
-        await db.test.drop()
+        await db.coll.insert_one({"dummy": "object"})
+        self.assertIn("coll", await db.list_collection_names())
+        await db.coll.drop()
+        self.assertNotIn("coll", await db.list_collection_names())
+        await db.coll.drop()
 
-        await db.drop_collection(db.test.doesnotexist)
+        await db.drop_collection(db.coll.doesnotexist)
 
         if async_client_context.is_rs:
             db_wc = AsyncDatabase(
                 self.client, "pymongo_test", write_concern=IMPOSSIBLE_WRITE_CONCERN
             )
             with self.assertRaises(WriteConcernError):
-                await db_wc.drop_collection("test")
+                await db_wc.drop_collection("coll")
 
     async def test_validate_collection(self):
         db = self.client.pymongo_test
@@ -368,26 +368,26 @@ class TestDatabase(AsyncIntegrationTest):
         with self.assertRaises(TypeError):
             await db.validate_collection(None)  # type: ignore[arg-type]
 
-        await db.test.insert_one({"dummy": "object"})
+        await db.coll.insert_one({"dummy": "object"})
 
         with self.assertRaises(OperationFailure):
-            await db.validate_collection("test.doesnotexist")
+            await db.validate_collection("coll.doesnotexist")
         with self.assertRaises(OperationFailure):
-            await db.validate_collection(db.test.doesnotexist)
+            await db.validate_collection(db.coll.doesnotexist)
 
-        self.assertTrue(await db.validate_collection("test"))
-        self.assertTrue(await db.validate_collection(db.test))
-        self.assertTrue(await db.validate_collection(db.test, full=True))
-        self.assertTrue(await db.validate_collection(db.test, scandata=True))
-        self.assertTrue(await db.validate_collection(db.test, scandata=True, full=True))
-        self.assertTrue(await db.validate_collection(db.test, True, True))
+        self.assertTrue(await db.validate_collection("coll"))
+        self.assertTrue(await db.validate_collection(db.coll))
+        self.assertTrue(await db.validate_collection(db.coll, full=True))
+        self.assertTrue(await db.validate_collection(db.coll, scandata=True))
+        self.assertTrue(await db.validate_collection(db.coll, scandata=True, full=True))
+        self.assertTrue(await db.validate_collection(db.coll, True, True))
 
     @async_client_context.require_version_min(4, 3, 3)
     @async_client_context.require_no_standalone
     async def test_validate_collection_background(self):
         db = self.client.pymongo_test.with_options(write_concern=WriteConcern(w="majority"))
-        await db.test.insert_one({"dummy": "object"})
-        coll = db.test
+        await db.coll.insert_one({"dummy": "object"})
+        coll = db.coll
         self.assertTrue(await db.validate_collection(coll, background=False))
         # The inMemory storage engine does not support background=True.
         if async_client_context.storage_engine != "inMemory":
@@ -414,11 +414,11 @@ class TestDatabase(AsyncIntegrationTest):
     # retrieve a BSON regex from a collection using a command.
     async def test_command_with_regex(self):
         db = self.client.pymongo_test
-        await db.test.drop()
-        await db.test.insert_one({"r": re.compile(".*")})
-        await db.test.insert_one({"r": Regex(".*")})
+        await db.coll.drop()
+        await db.coll.insert_one({"r": re.compile(".*")})
+        await db.coll.insert_one({"r": Regex(".*")})
 
-        result = await db.command("aggregate", "test", pipeline=[], cursor={})
+        result = await db.command("aggregate", "coll", pipeline=[], cursor={})
         for doc in result["cursor"]["firstBatch"]:
             self.assertIsInstance(doc["r"], Regex)
 
@@ -428,23 +428,23 @@ class TestDatabase(AsyncIntegrationTest):
             await self.client.admin.command(
                 {
                     "bulkWrite": 1,
-                    "nsInfo": [{"ns": self.db.test.full_name}],
+                    "nsInfo": [{"ns": self.db.coll.full_name}],
                     "ops": [{"insert": 0, "document": {}}],
                 }
             )
-        await self.db.command({"insert": "test", "documents": [{}]})
-        await self.db.command({"update": "test", "updates": [{"q": {}, "u": {"$set": {"x": 1}}}]})
-        await self.db.command({"delete": "test", "deletes": [{"q": {}, "limit": 1}]})
-        await self.db.test.drop()
+        await self.db.command({"insert": "coll", "documents": [{}]})
+        await self.db.command({"update": "coll", "updates": [{"q": {}, "u": {"$set": {"x": 1}}}]})
+        await self.db.command({"delete": "coll", "deletes": [{"q": {}, "limit": 1}]})
+        await self.db.coll.drop()
 
     async def test_cursor_command(self):
         db = self.client.pymongo_test
-        await db.test.drop()
+        await db.coll.drop()
 
         docs = [{"_id": i, "doc": i} for i in range(3)]
-        await db.test.insert_many(docs)
+        await db.coll.insert_many(docs)
 
-        cursor = await db.cursor_command("find", "test")
+        cursor = await db.cursor_command("find", "coll")
 
         self.assertIsInstance(cursor, AsyncCommandCursor)
 
@@ -453,7 +453,7 @@ class TestDatabase(AsyncIntegrationTest):
 
     async def test_cursor_command_invalid(self):
         with self.assertRaises(InvalidOperation):
-            await self.db.cursor_command("usersInfo", "test")
+            await self.db.cursor_command("usersInfo", "coll")
 
     @async_client_context.require_no_fips
     def test_password_digest(self):
@@ -480,13 +480,13 @@ class TestDatabase(AsyncIntegrationTest):
         # work right in any Python or environment
         # with hash randomization enabled (e.g. tox).
         db = self.client.pymongo_test
-        await db.test.drop()
-        await db.test.insert_one(SON([("hello", "world"), ("_id", 5)]))
+        await db.coll.drop()
+        await db.coll.insert_one(SON([("hello", "world"), ("_id", 5)]))
 
         db = self.client.get_database(
             "pymongo_test", codec_options=CodecOptions(document_class=SON[str, Any])
         )
-        cursor = db.test.find()
+        cursor = db.coll.find()
         async for x in cursor:
             for k, _v in x.items():
                 self.assertEqual(k, "_id")
@@ -494,7 +494,7 @@ class TestDatabase(AsyncIntegrationTest):
 
     async def test_deref(self):
         db = self.client.pymongo_test
-        await db.test.drop()
+        await db.coll.drop()
 
         with self.assertRaises(TypeError):
             await db.dereference(5)  # type: ignore[arg-type]
@@ -503,106 +503,106 @@ class TestDatabase(AsyncIntegrationTest):
         with self.assertRaises(TypeError):
             await db.dereference(None)  # type: ignore[arg-type]
 
-        self.assertEqual(None, await db.dereference(DBRef("test", ObjectId())))
+        self.assertEqual(None, await db.dereference(DBRef("coll", ObjectId())))
         obj: dict[str, Any] = {"x": True}
-        key = (await db.test.insert_one(obj)).inserted_id
-        self.assertEqual(obj, await db.dereference(DBRef("test", key)))
-        self.assertEqual(obj, await db.dereference(DBRef("test", key, "pymongo_test")))
+        key = (await db.coll.insert_one(obj)).inserted_id
+        self.assertEqual(obj, await db.dereference(DBRef("coll", key)))
+        self.assertEqual(obj, await db.dereference(DBRef("coll", key, "pymongo_test")))
         with self.assertRaises(ValueError):
-            await db.dereference(DBRef("test", key, "foo"))
+            await db.dereference(DBRef("coll", key, "foo"))
 
-        self.assertEqual(None, await db.dereference(DBRef("test", 4)))
+        self.assertEqual(None, await db.dereference(DBRef("coll", 4)))
         obj = {"_id": 4}
-        await db.test.insert_one(obj)
-        self.assertEqual(obj, await db.dereference(DBRef("test", 4)))
+        await db.coll.insert_one(obj)
+        self.assertEqual(obj, await db.dereference(DBRef("coll", 4)))
 
     async def test_deref_kwargs(self):
         db = self.client.pymongo_test
-        await db.test.drop()
+        await db.coll.drop()
 
-        await db.test.insert_one({"_id": 4, "foo": "bar"})
+        await db.coll.insert_one({"_id": 4, "foo": "bar"})
         db = self.client.get_database(
             "pymongo_test", codec_options=CodecOptions(document_class=SON[str, Any])
         )
         self.assertEqual(
-            SON([("foo", "bar")]), await db.dereference(DBRef("test", 4), projection={"_id": False})
+            SON([("foo", "bar")]), await db.dereference(DBRef("coll", 4), projection={"_id": False})
         )
 
     # TODO some of these tests belong in the collection level testing.
     async def test_insert_find_one(self):
         db = self.client.pymongo_test
-        await db.test.drop()
+        await db.coll.drop()
 
         a_doc = SON({"hello": "world"})
-        a_key = (await db.test.insert_one(a_doc)).inserted_id
+        a_key = (await db.coll.insert_one(a_doc)).inserted_id
         self.assertIsInstance(a_doc["_id"], ObjectId)
         self.assertEqual(a_doc["_id"], a_key)
-        self.assertEqual(a_doc, await db.test.find_one({"_id": a_doc["_id"]}))
-        self.assertEqual(a_doc, await db.test.find_one(a_key))
-        self.assertEqual(None, await db.test.find_one(ObjectId()))
-        self.assertEqual(a_doc, await db.test.find_one({"hello": "world"}))
-        self.assertEqual(None, await db.test.find_one({"hello": "test"}))
+        self.assertEqual(a_doc, await db.coll.find_one({"_id": a_doc["_id"]}))
+        self.assertEqual(a_doc, await db.coll.find_one(a_key))
+        self.assertEqual(None, await db.coll.find_one(ObjectId()))
+        self.assertEqual(a_doc, await db.coll.find_one({"hello": "world"}))
+        self.assertEqual(None, await db.coll.find_one({"hello": "test"}))
 
-        b = await db.test.find_one()
+        b = await db.coll.find_one()
         assert b is not None
         b["hello"] = "mike"
-        await db.test.replace_one({"_id": b["_id"]}, b)
+        await db.coll.replace_one({"_id": b["_id"]}, b)
 
-        self.assertNotEqual(a_doc, await db.test.find_one(a_key))
-        self.assertEqual(b, await db.test.find_one(a_key))
-        self.assertEqual(b, await db.test.find_one())
+        self.assertNotEqual(a_doc, await db.coll.find_one(a_key))
+        self.assertEqual(b, await db.coll.find_one(a_key))
+        self.assertEqual(b, await db.coll.find_one())
 
         count = 0
-        async for _ in db.test.find():
+        async for _ in db.coll.find():
             count += 1
         self.assertEqual(count, 1)
 
     async def test_long(self):
         db = self.client.pymongo_test
-        await db.test.drop()
-        await db.test.insert_one({"x": 9223372036854775807})
-        retrieved = (await db.test.find_one())["x"]
+        await db.coll.drop()
+        await db.coll.insert_one({"x": 9223372036854775807})
+        retrieved = (await db.coll.find_one())["x"]
         self.assertEqual(Int64(9223372036854775807), retrieved)
         self.assertIsInstance(retrieved, Int64)
-        await db.test.delete_many({})
-        await db.test.insert_one({"x": Int64(1)})
-        retrieved = (await db.test.find_one())["x"]
+        await db.coll.delete_many({})
+        await db.coll.insert_one({"x": Int64(1)})
+        retrieved = (await db.coll.find_one())["x"]
         self.assertEqual(Int64(1), retrieved)
         self.assertIsInstance(retrieved, Int64)
 
     async def test_delete(self):
         db = self.client.pymongo_test
-        await db.test.drop()
+        await db.coll.drop()
 
-        await db.test.insert_one({"x": 1})
-        await db.test.insert_one({"x": 2})
-        await db.test.insert_one({"x": 3})
+        await db.coll.insert_one({"x": 1})
+        await db.coll.insert_one({"x": 2})
+        await db.coll.insert_one({"x": 3})
         length = 0
-        async for _ in db.test.find():
+        async for _ in db.coll.find():
             length += 1
         self.assertEqual(length, 3)
 
-        await db.test.delete_one({"x": 1})
+        await db.coll.delete_one({"x": 1})
         length = 0
-        async for _ in db.test.find():
+        async for _ in db.coll.find():
             length += 1
         self.assertEqual(length, 2)
 
-        await db.test.delete_one(await db.test.find_one())  # type: ignore[arg-type]
-        await db.test.delete_one(await db.test.find_one())  # type: ignore[arg-type]
-        self.assertEqual(await db.test.find_one(), None)
+        await db.coll.delete_one(await db.coll.find_one())  # type: ignore[arg-type]
+        await db.coll.delete_one(await db.coll.find_one())  # type: ignore[arg-type]
+        self.assertEqual(await db.coll.find_one(), None)
 
-        await db.test.insert_one({"x": 1})
-        await db.test.insert_one({"x": 2})
-        await db.test.insert_one({"x": 3})
+        await db.coll.insert_one({"x": 1})
+        await db.coll.insert_one({"x": 2})
+        await db.coll.insert_one({"x": 3})
 
-        self.assertTrue(await db.test.find_one({"x": 2}))
-        await db.test.delete_one({"x": 2})
-        self.assertFalse(await db.test.find_one({"x": 2}))
+        self.assertTrue(await db.coll.find_one({"x": 2}))
+        await db.coll.delete_one({"x": 2})
+        self.assertFalse(await db.coll.find_one({"x": 2}))
 
-        self.assertTrue(await db.test.find_one())
-        await db.test.delete_many({})
-        self.assertFalse(await db.test.find_one())
+        self.assertTrue(await db.coll.find_one())
+        await db.coll.delete_many({})
+        self.assertFalse(await db.coll.find_one())
 
     def test_command_response_without_ok(self):
         # Sometimes (SERVER-10891) the server's response to a badly-formatted
@@ -626,24 +626,24 @@ class TestDatabase(AsyncIntegrationTest):
         )
         try:
             db = self.client.pymongo_test
-            await db.command("count", "test")
+            await db.command("count", "coll")
             with self.assertRaises(ExecutionTimeout):
-                await db.command("count", "test", maxTimeMS=1)
+                await db.command("count", "coll", maxTimeMS=1)
             pipeline = [{"$project": {"name": 1, "count": 1}}]
             # Database command helper.
-            await db.command("aggregate", "test", pipeline=pipeline, cursor={})
+            await db.command("aggregate", "coll", pipeline=pipeline, cursor={})
             with self.assertRaises(ExecutionTimeout):
                 await db.command(
                     "aggregate",
-                    "test",
+                    "coll",
                     pipeline=pipeline,
                     cursor={},
                     maxTimeMS=1,
                 )
             # Collection helper.
-            await db.test.aggregate(pipeline=pipeline)
+            await db.coll.aggregate(pipeline=pipeline)
             with self.assertRaises(ExecutionTimeout):
-                await db.test.aggregate(pipeline, maxTimeMS=1)
+                await db.coll.aggregate(pipeline, maxTimeMS=1)
         finally:
             await self.client.admin.command(
                 "configureFailPoint", "maxTimeAlwaysTimeOut", mode="off"

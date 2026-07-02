@@ -160,9 +160,9 @@ class _TestPoolingBase(IntegrationTest):
         self.c = self.rs_or_single_client()
         db = self.c[DB]
         db.unique.drop()
-        db.test.drop()
+        db.coll.drop()
         db.unique.insert_one({"_id": "jesse"})
-        db.test.insert_many([{} for _ in range(10)])
+        db.coll.insert_many([{} for _ in range(10)])
 
     def create_pool(self, pair=None, *args, **kwargs):
         if pair is None:
@@ -553,7 +553,7 @@ class TestPoolMaxSize(_TestPoolingBase):
     def test_max_pool_size(self):
         max_pool_size = 4
         c = self.rs_or_single_client(maxPoolSize=max_pool_size)
-        collection = c[DB].test
+        collection = c[DB].coll
 
         # Need one document.
         collection.drop()
@@ -592,7 +592,7 @@ class TestPoolMaxSize(_TestPoolingBase):
     )
     def test_max_pool_size_none(self):
         c = self.rs_or_single_client(maxPoolSize=None)
-        collection = c[DB].test
+        collection = c[DB].coll
 
         # Need one document.
         collection.drop()

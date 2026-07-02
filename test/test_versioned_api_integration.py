@@ -66,7 +66,7 @@ class TestServerApiIntegration(IntegrationTest):
         with client.start_session() as s, s.start_transaction():
             coll.insert_many([{} for _ in range(100)], session=s)
             coll.find(batch_size=25, session=s).to_list()
-            client.test.command("find", "test", session=s)
+            client.db.command("find", "coll", session=s)
             self.assertServerApiInAllCommands(listener.started_events)
 
 

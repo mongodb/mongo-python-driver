@@ -328,7 +328,7 @@ class TestTransactions(AsyncTransactionsBase):
         # split.
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         await coll.delete_many({})
         listener.reset()
         self.addAsyncCleanup(coll.drop)
@@ -356,7 +356,7 @@ class TestTransactions(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_transaction_direct_connection(self):
         client = await self.async_single_client()
-        coll = client.pymongo_test.test
+        coll = client.pymongo_test.coll
 
         # Make sure the collection exists.
         await coll.insert_one({})
@@ -484,7 +484,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     async def test_3_1_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         async def callback(session):
             await coll.insert_one({}, session=session)
@@ -514,7 +514,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     async def test_3_2_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         async def callback(session):
             await coll.insert_one({}, session=session)
@@ -550,7 +550,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     async def test_3_3_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         async def callback(session):
             await coll.insert_one({}, session=session)
@@ -590,7 +590,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     async def test_callback_not_retried_after_csot_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         async def callback(session):
             await coll.insert_one({}, session=session)
@@ -659,7 +659,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_4_retry_backoff_is_enforced(self):
         client = async_client_context.client
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         end = start = no_backoff_time = 0
 
         # Make random.random always return 0 (no backoff)
@@ -720,7 +720,7 @@ class TestOptionsInsideTransactionProse(AsyncTransactionsBase):
         # Write concern not inherited from collection object inside transaction
         # Create a MongoClient running against a configured sharded/replica set/load balanced cluster.
         client = async_client_context.client
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         await coll.delete_many({})
         # Start a new session on the client.
         async with client.start_session() as s:

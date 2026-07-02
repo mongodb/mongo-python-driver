@@ -106,9 +106,9 @@ class TestCollectionNoConnect(AsyncUnitTest):
         self.assertRaises(InvalidName, make_col, self.db, "tes..t")
         self.assertRaises(InvalidName, make_col, self.db.coll, "")
         self.assertRaises(InvalidName, make_col, self.db.coll, "te$t")
-        self.assertRaises(InvalidName, make_col, self.db.test, ".test")
-        self.assertRaises(InvalidName, make_col, self.db.test, "test.")
-        self.assertRaises(InvalidName, make_col, self.db.test, "tes..t")
+        self.assertRaises(InvalidName, make_col, self.db.coll, ".test")
+        self.assertRaises(InvalidName, make_col, self.db.coll, "test.")
+        self.assertRaises(InvalidName, make_col, self.db.coll, "tes..t")
         self.assertRaises(InvalidName, make_col, self.db.coll, "tes\x00t")
 
     def test_getattr(self):
@@ -213,11 +213,11 @@ class AsyncTestCollection(AsyncIntegrationTest):
                 await db.create_collection("create-test-wc", write_concern=IMPOSSIBLE_WRITE_CONCERN)
 
     async def test_drop_nonexistent_collection(self):
-        await self.db.drop_collection("test")
-        self.assertNotIn("test", await self.db.list_collection_names())
+        await self.db.drop_collection("coll")
+        self.assertNotIn("coll", await self.db.list_collection_names())
 
         # No exception
-        await self.db.drop_collection("test")
+        await self.db.drop_collection("coll")
 
     async def test_create_indexes(self):
         db = self.db
@@ -1522,7 +1522,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
     @async_client_context.require_version_max(4, 9)
     async def test_manual_last_error(self):
-        coll = self.db.get_collection("test", write_concern=WriteConcern(w=0))
+        coll = self.db.get_collection("coll", write_concern=WriteConcern(w=0))
         await coll.insert_one({"x": 1})
         await self.db.command("getlasterror", w=1, wtimeout=1)
 
@@ -2103,9 +2103,9 @@ class AsyncTestCollection(AsyncIntegrationTest):
         listener = OvertCommandListener()
         db = (await self.async_single_client(event_listeners=[listener]))[self.db.name]
         # non-default WriteConcern.
-        c_w0 = db.get_collection("test", write_concern=WriteConcern(w=0))
+        c_w0 = db.get_collection("coll", write_concern=WriteConcern(w=0))
         # default WriteConcern.
-        c_default = db.get_collection("test", write_concern=WriteConcern())
+        c_default = db.get_collection("coll", write_concern=WriteConcern())
         # Authenticate the client and throw out auth commands from the listener.
         await db.command("ping")
         listener.reset()

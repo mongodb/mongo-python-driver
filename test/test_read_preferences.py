@@ -576,7 +576,7 @@ class TestMongosAndReadPreference(IntegrationTest):
         for _mode, cls in cases.items():
             with _ignore_deprecations():
                 pref = cls(hedge={"enabled": True})
-            coll = client.test.get_collection("test", read_preference=pref)
+            coll = client.test.get_collection("coll", read_preference=pref)
             listener.reset()
             coll.find_one()
             started = listener.started_events

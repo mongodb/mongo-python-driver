@@ -899,7 +899,7 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
         cli = self.rs_or_single_client_noauth(
             username="readonly", password="pw", authSource="pymongo_test"
         )
-        coll = cli.pymongo_test.test
+        coll = cli.pymongo_test.coll
         coll.find_one()
         with self.assertRaises(OperationFailure):
             coll.bulk_write([InsertOne({"x": 1})])

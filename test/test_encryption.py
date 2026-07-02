@@ -417,7 +417,7 @@ class TestEncryptedBulkWrite(BulkTestBase, EncryptionIntegrationTest):
         client = self.rs_or_single_client(auto_encryption_opts=opts)
 
         options = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
-        encrypted_coll = client.pymongo_test.test
+        encrypted_coll = client.pymongo_test.coll
         coll = encrypted_coll.with_options(codec_options=options)
         uuids = [uuid.uuid4() for _ in range(3)]
         result = coll.bulk_write(

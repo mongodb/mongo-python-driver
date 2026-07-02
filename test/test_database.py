@@ -149,11 +149,11 @@ class TestDatabase(IntegrationTest):
     def test_create_collection(self):
         db = Database(self.client, "pymongo_test")
 
-        db.test.insert_one({"hello": "world"})
+        db.coll.insert_one({"hello": "world"})
         with self.assertRaises(CollectionInvalid):
-            db.create_collection("test")
+            db.create_collection("coll")
 
-        db.drop_collection("test")
+        db.drop_collection("coll")
 
         with self.assertRaises(TypeError):
             db.create_collection(5)  # type: ignore[arg-type]
@@ -162,10 +162,10 @@ class TestDatabase(IntegrationTest):
         with self.assertRaises(InvalidName):
             db.create_collection("coll..ection")  # type: ignore[arg-type]
 
-        test = db.create_collection("test")
-        self.assertIn("test", db.list_collection_names())
-        test.insert_one({"hello": "world"})
-        self.assertEqual((db.test.find_one())["hello"], "world")
+        coll_obj = db.create_collection("coll")
+        self.assertIn("coll", db.list_collection_names())
+        coll_obj.insert_one({"hello": "world"})
+        self.assertEqual((db.coll.find_one())["hello"], "world")
 
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
@@ -175,12 +175,12 @@ class TestDatabase(IntegrationTest):
 
     def test_list_collection_names(self):
         db = Database(self.client, "pymongo_test")
-        db.test.insert_one({"dummy": "object"})
-        db.test.mike.insert_one({"dummy": "object"})
+        db.coll.insert_one({"dummy": "object"})
+        db.coll.mike.insert_one({"dummy": "object"})
 
         colls = db.list_collection_names()
-        self.assertIn("test", colls)
-        self.assertIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertIn("coll.mike", colls)
         for coll in colls:
             self.assertNotIn("$", coll)
 
@@ -245,15 +245,15 @@ class TestDatabase(IntegrationTest):
     def test_list_collections(self):
         self.client.drop_database("pymongo_test")
         db = Database(self.client, "pymongo_test")
-        db.test.insert_one({"dummy": "object"})
-        db.test.mike.insert_one({"dummy": "object"})
+        db.coll.insert_one({"dummy": "object"})
+        db.coll.mike.insert_one({"dummy": "object"})
 
         results = db.list_collections()
         colls = [result["name"] for result in results]
 
         # All the collections present.
-        self.assertIn("test", colls)
-        self.assertIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertIn("coll.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
@@ -271,23 +271,23 @@ class TestDatabase(IntegrationTest):
         coll_cnt: dict = {}
 
         # Check if there are any collections which don't exist.
-        self.assertLessEqual(set(colls), {"test", "test.mike", "system.indexes"})
+        self.assertLessEqual(set(colls), {"coll", "coll.mike", "system.indexes"})
 
-        colls = (db.list_collections(filter={"name": {"$regex": "^test$"}})).to_list()
+        colls = (db.list_collections(filter={"name": {"$regex": "^coll$"}})).to_list()
         self.assertEqual(1, len(colls))
 
-        colls = (db.list_collections(filter={"name": {"$regex": "^test.mike$"}})).to_list()
+        colls = (db.list_collections(filter={"name": {"$regex": "^coll.mike$"}})).to_list()
         self.assertEqual(1, len(colls))
 
-        db.drop_collection("test")
+        db.drop_collection("coll")
 
-        db.create_collection("test", capped=True, size=4096)
+        db.create_collection("coll", capped=True, size=4096)
         results = db.list_collections(filter={"options.capped": True})
         colls = [result["name"] for result in results]
 
         # Checking only capped collections are present
-        self.assertIn("test", colls)
-        self.assertNotIn("test.mike", colls)
+        self.assertIn("coll", colls)
+        self.assertNotIn("coll.mike", colls)
 
         # No collection containing a '$'.
         for coll in colls:
@@ -305,7 +305,7 @@ class TestDatabase(IntegrationTest):
         coll_cnt = {}
 
         # Check if there are any collections which don't exist.
-        self.assertLessEqual(set(colls), {"test", "system.indexes"})
+        self.assertLessEqual(set(colls), {"coll", "system.indexes"})
 
         self.client.drop_database("pymongo_test")
 
@@ -327,33 +327,33 @@ class TestDatabase(IntegrationTest):
         with self.assertRaises(TypeError):
             db.drop_collection(None)  # type: ignore[arg-type]
 
-        db.test.insert_one({"dummy": "object"})
-        self.assertIn("test", db.list_collection_names())
-        db.drop_collection("test")
-        self.assertNotIn("test", db.list_collection_names())
+        db.coll.insert_one({"dummy": "object"})
+        self.assertIn("coll", db.list_collection_names())
+        db.drop_collection("coll")
+        self.assertNotIn("coll", db.list_collection_names())
 
-        db.test.insert_one({"dummy": "object"})
-        self.assertIn("test", db.list_collection_names())
-        db.drop_collection("test")
-        self.assertNotIn("test", db.list_collection_names())
+        db.coll.insert_one({"dummy": "object"})
+        self.assertIn("coll", db.list_collection_names())
+        db.drop_collection("coll")
+        self.assertNotIn("coll", db.list_collection_names())
 
-        db.test.insert_one({"dummy": "object"})
-        self.assertIn("test", db.list_collection_names())
-        db.drop_collection(db.test)
-        self.assertNotIn("test", db.list_collection_names())
+        db.coll.insert_one({"dummy": "object"})
+        self.assertIn("coll", db.list_collection_names())
+        db.drop_collection(db.coll)
+        self.assertNotIn("coll", db.list_collection_names())
 
-        db.test.insert_one({"dummy": "object"})
-        self.assertIn("test", db.list_collection_names())
-        db.test.drop()
-        self.assertNotIn("test", db.list_collection_names())
-        db.test.drop()
+        db.coll.insert_one({"dummy": "object"})
+        self.assertIn("coll", db.list_collection_names())
+        db.coll.drop()
+        self.assertNotIn("coll", db.list_collection_names())
+        db.coll.drop()
 
-        db.drop_collection(db.test.doesnotexist)
+        db.drop_collection(db.coll.doesnotexist)
 
         if client_context.is_rs:
             db_wc = Database(self.client, "pymongo_test", write_concern=IMPOSSIBLE_WRITE_CONCERN)
             with self.assertRaises(WriteConcernError):
-                db_wc.drop_collection("test")
+                db_wc.drop_collection("coll")
 
     def test_validate_collection(self):
         db = self.client.pymongo_test
@@ -363,26 +363,26 @@ class TestDatabase(IntegrationTest):
         with self.assertRaises(TypeError):
             db.validate_collection(None)  # type: ignore[arg-type]
 
-        db.test.insert_one({"dummy": "object"})
+        db.coll.insert_one({"dummy": "object"})
 
         with self.assertRaises(OperationFailure):
-            db.validate_collection("test.doesnotexist")
+            db.validate_collection("coll.doesnotexist")
         with self.assertRaises(OperationFailure):
-            db.validate_collection(db.test.doesnotexist)
+            db.validate_collection(db.coll.doesnotexist)
 
-        self.assertTrue(db.validate_collection("test"))
-        self.assertTrue(db.validate_collection(db.test))
-        self.assertTrue(db.validate_collection(db.test, full=True))
-        self.assertTrue(db.validate_collection(db.test, scandata=True))
-        self.assertTrue(db.validate_collection(db.test, scandata=True, full=True))
-        self.assertTrue(db.validate_collection(db.test, True, True))
+        self.assertTrue(db.validate_collection("coll"))
+        self.assertTrue(db.validate_collection(db.coll))
+        self.assertTrue(db.validate_collection(db.coll, full=True))
+        self.assertTrue(db.validate_collection(db.coll, scandata=True))
+        self.assertTrue(db.validate_collection(db.coll, scandata=True, full=True))
+        self.assertTrue(db.validate_collection(db.coll, True, True))
 
     @client_context.require_version_min(4, 3, 3)
     @client_context.require_no_standalone
     def test_validate_collection_background(self):
         db = self.client.pymongo_test.with_options(write_concern=WriteConcern(w="majority"))
-        db.test.insert_one({"dummy": "object"})
-        coll = db.test
+        db.coll.insert_one({"dummy": "object"})
+        coll = db.coll
         self.assertTrue(db.validate_collection(coll, background=False))
         # The inMemory storage engine does not support background=True.
         if client_context.storage_engine != "inMemory":
@@ -409,11 +409,11 @@ class TestDatabase(IntegrationTest):
     # retrieve a BSON regex from a collection using a command.
     def test_command_with_regex(self):
         db = self.client.pymongo_test
-        db.test.drop()
-        db.test.insert_one({"r": re.compile(".*")})
-        db.test.insert_one({"r": Regex(".*")})
+        db.coll.drop()
+        db.coll.insert_one({"r": re.compile(".*")})
+        db.coll.insert_one({"r": Regex(".*")})
 
-        result = db.command("aggregate", "test", pipeline=[], cursor={})
+        result = db.command("aggregate", "coll", pipeline=[], cursor={})
         for doc in result["cursor"]["firstBatch"]:
             self.assertIsInstance(doc["r"], Regex)
 
@@ -423,23 +423,23 @@ class TestDatabase(IntegrationTest):
             self.client.admin.command(
                 {
                     "bulkWrite": 1,
-                    "nsInfo": [{"ns": self.db.test.full_name}],
+                    "nsInfo": [{"ns": self.db.coll.full_name}],
                     "ops": [{"insert": 0, "document": {}}],
                 }
             )
-        self.db.command({"insert": "test", "documents": [{}]})
-        self.db.command({"update": "test", "updates": [{"q": {}, "u": {"$set": {"x": 1}}}]})
-        self.db.command({"delete": "test", "deletes": [{"q": {}, "limit": 1}]})
-        self.db.test.drop()
+        self.db.command({"insert": "coll", "documents": [{}]})
+        self.db.command({"update": "coll", "updates": [{"q": {}, "u": {"$set": {"x": 1}}}]})
+        self.db.command({"delete": "coll", "deletes": [{"q": {}, "limit": 1}]})
+        self.db.coll.drop()
 
     def test_cursor_command(self):
         db = self.client.pymongo_test
-        db.test.drop()
+        db.coll.drop()
 
         docs = [{"_id": i, "doc": i} for i in range(3)]
-        db.test.insert_many(docs)
+        db.coll.insert_many(docs)
 
-        cursor = db.cursor_command("find", "test")
+        cursor = db.cursor_command("find", "coll")
 
         self.assertIsInstance(cursor, CommandCursor)
 
@@ -448,7 +448,7 @@ class TestDatabase(IntegrationTest):
 
     def test_cursor_command_invalid(self):
         with self.assertRaises(InvalidOperation):
-            self.db.cursor_command("usersInfo", "test")
+            self.db.cursor_command("usersInfo", "coll")
 
     @client_context.require_no_fips
     def test_password_digest(self):
@@ -475,13 +475,13 @@ class TestDatabase(IntegrationTest):
         # work right in any Python or environment
         # with hash randomization enabled (e.g. tox).
         db = self.client.pymongo_test
-        db.test.drop()
-        db.test.insert_one(SON([("hello", "world"), ("_id", 5)]))
+        db.coll.drop()
+        db.coll.insert_one(SON([("hello", "world"), ("_id", 5)]))
 
         db = self.client.get_database(
             "pymongo_test", codec_options=CodecOptions(document_class=SON[str, Any])
         )
-        cursor = db.test.find()
+        cursor = db.coll.find()
         for x in cursor:
             for k, _v in x.items():
                 self.assertEqual(k, "_id")
@@ -489,7 +489,7 @@ class TestDatabase(IntegrationTest):
 
     def test_deref(self):
         db = self.client.pymongo_test
-        db.test.drop()
+        db.coll.drop()
 
         with self.assertRaises(TypeError):
             db.dereference(5)  # type: ignore[arg-type]
@@ -498,106 +498,106 @@ class TestDatabase(IntegrationTest):
         with self.assertRaises(TypeError):
             db.dereference(None)  # type: ignore[arg-type]
 
-        self.assertEqual(None, db.dereference(DBRef("test", ObjectId())))
+        self.assertEqual(None, db.dereference(DBRef("coll", ObjectId())))
         obj: dict[str, Any] = {"x": True}
-        key = (db.test.insert_one(obj)).inserted_id
-        self.assertEqual(obj, db.dereference(DBRef("test", key)))
-        self.assertEqual(obj, db.dereference(DBRef("test", key, "pymongo_test")))
+        key = (db.coll.insert_one(obj)).inserted_id
+        self.assertEqual(obj, db.dereference(DBRef("coll", key)))
+        self.assertEqual(obj, db.dereference(DBRef("coll", key, "pymongo_test")))
         with self.assertRaises(ValueError):
-            db.dereference(DBRef("test", key, "foo"))
+            db.dereference(DBRef("coll", key, "foo"))
 
-        self.assertEqual(None, db.dereference(DBRef("test", 4)))
+        self.assertEqual(None, db.dereference(DBRef("coll", 4)))
         obj = {"_id": 4}
-        db.test.insert_one(obj)
-        self.assertEqual(obj, db.dereference(DBRef("test", 4)))
+        db.coll.insert_one(obj)
+        self.assertEqual(obj, db.dereference(DBRef("coll", 4)))
 
     def test_deref_kwargs(self):
         db = self.client.pymongo_test
-        db.test.drop()
+        db.coll.drop()
 
-        db.test.insert_one({"_id": 4, "foo": "bar"})
+        db.coll.insert_one({"_id": 4, "foo": "bar"})
         db = self.client.get_database(
             "pymongo_test", codec_options=CodecOptions(document_class=SON[str, Any])
         )
         self.assertEqual(
-            SON([("foo", "bar")]), db.dereference(DBRef("test", 4), projection={"_id": False})
+            SON([("foo", "bar")]), db.dereference(DBRef("coll", 4), projection={"_id": False})
         )
 
     # TODO some of these tests belong in the collection level testing.
     def test_insert_find_one(self):
         db = self.client.pymongo_test
-        db.test.drop()
+        db.coll.drop()
 
         a_doc = SON({"hello": "world"})
-        a_key = (db.test.insert_one(a_doc)).inserted_id
+        a_key = (db.coll.insert_one(a_doc)).inserted_id
         self.assertIsInstance(a_doc["_id"], ObjectId)
         self.assertEqual(a_doc["_id"], a_key)
-        self.assertEqual(a_doc, db.test.find_one({"_id": a_doc["_id"]}))
-        self.assertEqual(a_doc, db.test.find_one(a_key))
-        self.assertEqual(None, db.test.find_one(ObjectId()))
-        self.assertEqual(a_doc, db.test.find_one({"hello": "world"}))
-        self.assertEqual(None, db.test.find_one({"hello": "test"}))
+        self.assertEqual(a_doc, db.coll.find_one({"_id": a_doc["_id"]}))
+        self.assertEqual(a_doc, db.coll.find_one(a_key))
+        self.assertEqual(None, db.coll.find_one(ObjectId()))
+        self.assertEqual(a_doc, db.coll.find_one({"hello": "world"}))
+        self.assertEqual(None, db.coll.find_one({"hello": "test"}))
 
-        b = db.test.find_one()
+        b = db.coll.find_one()
         assert b is not None
         b["hello"] = "mike"
-        db.test.replace_one({"_id": b["_id"]}, b)
+        db.coll.replace_one({"_id": b["_id"]}, b)
 
-        self.assertNotEqual(a_doc, db.test.find_one(a_key))
-        self.assertEqual(b, db.test.find_one(a_key))
-        self.assertEqual(b, db.test.find_one())
+        self.assertNotEqual(a_doc, db.coll.find_one(a_key))
+        self.assertEqual(b, db.coll.find_one(a_key))
+        self.assertEqual(b, db.coll.find_one())
 
         count = 0
-        for _ in db.test.find():
+        for _ in db.coll.find():
             count += 1
         self.assertEqual(count, 1)
 
     def test_long(self):
         db = self.client.pymongo_test
-        db.test.drop()
-        db.test.insert_one({"x": 9223372036854775807})
-        retrieved = (db.test.find_one())["x"]
+        db.coll.drop()
+        db.coll.insert_one({"x": 9223372036854775807})
+        retrieved = (db.coll.find_one())["x"]
         self.assertEqual(Int64(9223372036854775807), retrieved)
         self.assertIsInstance(retrieved, Int64)
-        db.test.delete_many({})
-        db.test.insert_one({"x": Int64(1)})
-        retrieved = (db.test.find_one())["x"]
+        db.coll.delete_many({})
+        db.coll.insert_one({"x": Int64(1)})
+        retrieved = (db.coll.find_one())["x"]
         self.assertEqual(Int64(1), retrieved)
         self.assertIsInstance(retrieved, Int64)
 
     def test_delete(self):
         db = self.client.pymongo_test
-        db.test.drop()
+        db.coll.drop()
 
-        db.test.insert_one({"x": 1})
-        db.test.insert_one({"x": 2})
-        db.test.insert_one({"x": 3})
+        db.coll.insert_one({"x": 1})
+        db.coll.insert_one({"x": 2})
+        db.coll.insert_one({"x": 3})
         length = 0
-        for _ in db.test.find():
+        for _ in db.coll.find():
             length += 1
         self.assertEqual(length, 3)
 
-        db.test.delete_one({"x": 1})
+        db.coll.delete_one({"x": 1})
         length = 0
-        for _ in db.test.find():
+        for _ in db.coll.find():
             length += 1
         self.assertEqual(length, 2)
 
-        db.test.delete_one(db.test.find_one())  # type: ignore[arg-type]
-        db.test.delete_one(db.test.find_one())  # type: ignore[arg-type]
-        self.assertEqual(db.test.find_one(), None)
+        db.coll.delete_one(db.coll.find_one())  # type: ignore[arg-type]
+        db.coll.delete_one(db.coll.find_one())  # type: ignore[arg-type]
+        self.assertEqual(db.coll.find_one(), None)
 
-        db.test.insert_one({"x": 1})
-        db.test.insert_one({"x": 2})
-        db.test.insert_one({"x": 3})
+        db.coll.insert_one({"x": 1})
+        db.coll.insert_one({"x": 2})
+        db.coll.insert_one({"x": 3})
 
-        self.assertTrue(db.test.find_one({"x": 2}))
-        db.test.delete_one({"x": 2})
-        self.assertFalse(db.test.find_one({"x": 2}))
+        self.assertTrue(db.coll.find_one({"x": 2}))
+        db.coll.delete_one({"x": 2})
+        self.assertFalse(db.coll.find_one({"x": 2}))
 
-        self.assertTrue(db.test.find_one())
-        db.test.delete_many({})
-        self.assertFalse(db.test.find_one())
+        self.assertTrue(db.coll.find_one())
+        db.coll.delete_many({})
+        self.assertFalse(db.coll.find_one())
 
     def test_command_response_without_ok(self):
         # Sometimes (SERVER-10891) the server's response to a badly-formatted
@@ -619,24 +619,24 @@ class TestDatabase(IntegrationTest):
         self.client.admin.command("configureFailPoint", "maxTimeAlwaysTimeOut", mode="alwaysOn")
         try:
             db = self.client.pymongo_test
-            db.command("count", "test")
+            db.command("count", "coll")
             with self.assertRaises(ExecutionTimeout):
-                db.command("count", "test", maxTimeMS=1)
+                db.command("count", "coll", maxTimeMS=1)
             pipeline = [{"$project": {"name": 1, "count": 1}}]
             # Database command helper.
-            db.command("aggregate", "test", pipeline=pipeline, cursor={})
+            db.command("aggregate", "coll", pipeline=pipeline, cursor={})
             with self.assertRaises(ExecutionTimeout):
                 db.command(
                     "aggregate",
-                    "test",
+                    "coll",
                     pipeline=pipeline,
                     cursor={},
                     maxTimeMS=1,
                 )
             # Collection helper.
-            db.test.aggregate(pipeline=pipeline)
+            db.coll.aggregate(pipeline=pipeline)
             with self.assertRaises(ExecutionTimeout):
-                db.test.aggregate(pipeline, maxTimeMS=1)
+                db.coll.aggregate(pipeline, maxTimeMS=1)
         finally:
             self.client.admin.command("configureFailPoint", "maxTimeAlwaysTimeOut", mode="off")
 

@@ -870,7 +870,7 @@ class TestSession(IntegrationTest):
             self.assertRaises(TypeError, lambda: copy.copy(s))
 
     def test_nested_session_binding(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         coll.insert_one({"x": 1})
 
         session1 = self.client.start_session()
@@ -921,7 +921,7 @@ class TestSession(IntegrationTest):
             session2.end_session()
 
     def test_session_binding_end_session(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         coll.insert_one({"x": 1})
 
         with self.client.start_session().bind() as s1:
@@ -939,7 +939,7 @@ class TestSession(IntegrationTest):
     def test_getmore_preserves_lsid_after_session_support_lost(self):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
-        coll = client.pymongo_test.test
+        coll = client.pymongo_test.coll
         coll.drop()
         coll.insert_many([{"x": i} for i in range(10)])
         self.addCleanup(coll.drop)
@@ -979,8 +979,8 @@ class TestCausalConsistency(UnitTest):
         super().setUp()
         self.listener = SessionTestListener()
         self.client = self.rs_or_single_client(event_listeners=[self.listener])
-        self.client.pymongo_test.drop_collection("test")
-        self.client.pymongo_test.create_collection("test")
+        self.client.pymongo_test.drop_collection("coll")
+        self.client.pymongo_test.create_collection("coll")
 
     @client_context.require_no_standalone
     def test_core(self):
@@ -988,7 +988,7 @@ class TestCausalConsistency(UnitTest):
             self.assertIsNone(sess.cluster_time)
             self.assertIsNone(sess.operation_time)
             self.listener.reset()
-            self.client.pymongo_test.test.find_one(session=sess)
+            self.client.pymongo_test.coll.find_one(session=sess)
             started = self.listener.started_events[0]
             cmd = started.command
             self.assertIsNone(cmd.get("readConcern"))
@@ -999,7 +999,7 @@ class TestCausalConsistency(UnitTest):
             self.assertEqual(op_time, reply.get("operationTime"))
 
             # No explicit session
-            self.client.pymongo_test.test.insert_one({})
+            self.client.pymongo_test.coll.insert_one({})
             self.assertEqual(sess.operation_time, op_time)
             self.listener.reset()
             try:
@@ -1031,7 +1031,7 @@ class TestCausalConsistency(UnitTest):
                 self.assertEqual(sess.operation_time, sess2.operation_time)
 
     def _test_reads(self, op, exception=None):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         with self.client.start_session() as sess:
             coll.find_one({}, session=sess)
             operation_time = sess.operation_time
@@ -1072,7 +1072,7 @@ class TestCausalConsistency(UnitTest):
             self._test_reads(lambda coll, session: coll.estimated_document_count(session=session))
 
     def _test_writes(self, op):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         with self.client.start_session() as sess:
             op(coll, sess)
             operation_time = sess.operation_time
@@ -1123,7 +1123,7 @@ class TestCausalConsistency(UnitTest):
         self._test_writes(lambda coll, session: coll.drop_indexes(session=session))
 
     def _test_no_read_concern(self, op):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         with self.client.start_session() as sess:
             coll.find_one({}, session=sess)
             operation_time = sess.operation_time
@@ -1139,7 +1139,7 @@ class TestCausalConsistency(UnitTest):
 
     @client_context.require_no_standalone
     def test_get_more_does_not_include_read_concern(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         with self.client.start_session() as sess:
             coll.find_one({}, session=sess)
             operation_time = sess.operation_time
@@ -1155,9 +1155,9 @@ class TestCausalConsistency(UnitTest):
 
     def test_session_not_causal(self):
         with self.client.start_session(causal_consistency=False) as s:
-            self.client.pymongo_test.test.insert_one({}, session=s)
+            self.client.pymongo_test.coll.insert_one({}, session=s)
             self.listener.reset()
-            self.client.pymongo_test.test.find_one({}, session=s)
+            self.client.pymongo_test.coll.find_one({}, session=s)
             act = (
                 self.listener.started_events[0]
                 .command.get("readConcern", {})
@@ -1168,9 +1168,9 @@ class TestCausalConsistency(UnitTest):
     @client_context.require_standalone
     def test_server_not_causal(self):
         with self.client.start_session(causal_consistency=True) as s:
-            self.client.pymongo_test.test.insert_one({}, session=s)
+            self.client.pymongo_test.coll.insert_one({}, session=s)
             self.listener.reset()
-            self.client.pymongo_test.test.find_one({}, session=s)
+            self.client.pymongo_test.coll.find_one({}, session=s)
             act = (
                 self.listener.started_events[0]
                 .command.get("readConcern", {})
@@ -1181,7 +1181,7 @@ class TestCausalConsistency(UnitTest):
     @client_context.require_no_standalone
     def test_read_concern(self):
         with self.client.start_session(causal_consistency=True) as s:
-            coll = self.client.pymongo_test.test
+            coll = self.client.pymongo_test.coll
             coll.insert_one({}, session=s)
             self.listener.reset()
             coll.find_one({}, session=s)
@@ -1201,14 +1201,14 @@ class TestCausalConsistency(UnitTest):
     @client_context.require_no_standalone
     def test_cluster_time_with_server_support(self):
         self.listener.reset()
-        self.client.pymongo_test.test.find_one({})
+        self.client.pymongo_test.coll.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")
         self.assertIsNotNone(after_cluster_time)
 
     @client_context.require_standalone
     def test_cluster_time_no_server_support(self):
         self.listener.reset()
-        self.client.pymongo_test.test.find_one({})
+        self.client.pymongo_test.coll.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")
         self.assertIsNone(after_cluster_time)
 

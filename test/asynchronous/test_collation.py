@@ -266,7 +266,7 @@ class TestCollation(AsyncIntegrationTest):
 
     async def test_unacknowledged_write(self):
         unacknowledged = WriteConcern(w=0)
-        collection = self.db.get_collection("test", write_concern=unacknowledged)
+        collection = self.db.get_collection("coll", write_concern=unacknowledged)
         with self.assertRaises(ConfigurationError):
             await collection.update_one(
                 {"hello": "world"}, {"$set": {"hello": "moon"}}, collation=self.collation

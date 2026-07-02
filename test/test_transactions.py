@@ -320,7 +320,7 @@ class TestTransactions(TransactionsBase):
         # split.
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         coll.delete_many({})
         listener.reset()
         self.addCleanup(coll.drop)
@@ -348,7 +348,7 @@ class TestTransactions(TransactionsBase):
     @client_context.require_transactions
     def test_transaction_direct_connection(self):
         client = self.single_client()
-        coll = client.pymongo_test.test
+        coll = client.pymongo_test.coll
 
         # Make sure the collection exists.
         coll.insert_one({})
@@ -476,7 +476,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_3_1_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         def callback(session):
             coll.insert_one({}, session=session)
@@ -506,7 +506,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_3_2_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         def callback(session):
             coll.insert_one({}, session=session)
@@ -540,7 +540,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_3_3_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         def callback(session):
             coll.insert_one({}, session=session)
@@ -578,7 +578,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_callback_not_retried_after_csot_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         def callback(session):
             coll.insert_one({}, session=session)
@@ -647,7 +647,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     @client_context.require_transactions
     def test_4_retry_backoff_is_enforced(self):
         client = client_context.client
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         end = start = no_backoff_time = 0
 
         # Make random.random always return 0 (no backoff)
@@ -708,7 +708,7 @@ class TestOptionsInsideTransactionProse(TransactionsBase):
         # Write concern not inherited from collection object inside transaction
         # Create a MongoClient running against a configured sharded/replica set/load balanced cluster.
         client = client_context.client
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         coll.delete_many({})
         # Start a new session on the client.
         with client.start_session() as s:

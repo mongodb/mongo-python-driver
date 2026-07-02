@@ -901,7 +901,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
         cli = await self.async_rs_or_single_client_noauth(
             username="readonly", password="pw", authSource="pymongo_test"
         )
-        coll = cli.pymongo_test.test
+        coll = cli.pymongo_test.coll
         await coll.find_one()
         with self.assertRaises(OperationFailure):
             await coll.bulk_write([InsertOne({"x": 1})])

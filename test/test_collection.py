@@ -106,9 +106,9 @@ class TestCollectionNoConnect(UnitTest):
         self.assertRaises(InvalidName, make_col, self.db, "tes..t")
         self.assertRaises(InvalidName, make_col, self.db.coll, "")
         self.assertRaises(InvalidName, make_col, self.db.coll, "te$t")
-        self.assertRaises(InvalidName, make_col, self.db.test, ".test")
-        self.assertRaises(InvalidName, make_col, self.db.test, "test.")
-        self.assertRaises(InvalidName, make_col, self.db.test, "tes..t")
+        self.assertRaises(InvalidName, make_col, self.db.coll, ".test")
+        self.assertRaises(InvalidName, make_col, self.db.coll, "test.")
+        self.assertRaises(InvalidName, make_col, self.db.coll, "tes..t")
         self.assertRaises(InvalidName, make_col, self.db.coll, "tes\x00t")
 
     def test_getattr(self):
@@ -213,11 +213,11 @@ class TestCollection(IntegrationTest):
                 db.create_collection("create-test-wc", write_concern=IMPOSSIBLE_WRITE_CONCERN)
 
     def test_drop_nonexistent_collection(self):
-        self.db.drop_collection("test")
-        self.assertNotIn("test", self.db.list_collection_names())
+        self.db.drop_collection("coll")
+        self.assertNotIn("coll", self.db.list_collection_names())
 
         # No exception
-        self.db.drop_collection("test")
+        self.db.drop_collection("coll")
 
     def test_create_indexes(self):
         db = self.db
@@ -1504,7 +1504,7 @@ class TestCollection(IntegrationTest):
 
     @client_context.require_version_max(4, 9)
     def test_manual_last_error(self):
-        coll = self.db.get_collection("test", write_concern=WriteConcern(w=0))
+        coll = self.db.get_collection("coll", write_concern=WriteConcern(w=0))
         coll.insert_one({"x": 1})
         self.db.command("getlasterror", w=1, wtimeout=1)
 
@@ -2081,9 +2081,9 @@ class TestCollection(IntegrationTest):
         listener = OvertCommandListener()
         db = (self.single_client(event_listeners=[listener]))[self.db.name]
         # non-default WriteConcern.
-        c_w0 = db.get_collection("test", write_concern=WriteConcern(w=0))
+        c_w0 = db.get_collection("coll", write_concern=WriteConcern(w=0))
         # default WriteConcern.
-        c_default = db.get_collection("test", write_concern=WriteConcern())
+        c_default = db.get_collection("coll", write_concern=WriteConcern())
         # Authenticate the client and throw out auth commands from the listener.
         db.command("ping")
         listener.reset()

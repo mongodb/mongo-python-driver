@@ -68,7 +68,7 @@ class TestLB(IntegrationTest):
     def test_unpin_committed_transaction(self):
         client = self.rs_client()
         pool = get_pool(client)
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         with client.start_session() as session:
             with session.start_transaction():
                 self.assertEqual(pool.active_sockets, 0)
@@ -98,7 +98,7 @@ class TestLB(IntegrationTest):
     def _test_no_gc_deadlock(self, create_resource):
         client = self.rs_client()
         pool = get_pool(client)
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         coll.insert_many([{} for _ in range(10)])
         self.assertEqual(pool.active_sockets, 0)
         # Cause the initial find attempt to fail to induce a reference cycle.
@@ -160,7 +160,7 @@ class TestLB(IntegrationTest):
 
         wait_until(lambda: pool.active_sockets == 0, "return socket")
         # Run another operation to ensure the socket still works.
-        client[self.db.name].test.delete_many({})
+        client[self.db.name].coll.delete_many({})
 
 
 class PoolLocker(ExceptionCatchingTask):
