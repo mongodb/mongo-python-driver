@@ -44,6 +44,7 @@ from pymongo.errors import (
 )
 from pymongo.hello import Hello
 from pymongo.server_description import ServerDescription
+from test import unittest
 
 _PID = ObjectId()
 
@@ -59,8 +60,6 @@ def _sd_with_topology_version(counter, process_id=_PID):
     )
     return ServerDescription(("a", 27017), hello, 0)
 
-
-from test import unittest
 
 # Baseline context: an error that occurred after a completed handshake on a
 # modern (non-load-balanced) server.
