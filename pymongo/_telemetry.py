@@ -414,6 +414,7 @@ class _HeartbeatTelemetry:
         # listener registration and logging level are stable for its lifetime.
         self._should_publish = listeners is not None and listeners.enabled_for_server_heartbeat
         self._should_log = _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
+        self._start: float = 0.0
 
     def _emit_log(self, message: _SDAMStatusMessage, **extra: Any) -> None:
         _debug_log(
