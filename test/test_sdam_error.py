@@ -24,12 +24,15 @@ import sys
 
 sys.path[0:0] = [""]
 
+from bson import ObjectId
+from bson.int64 import Int64
 from pymongo._sdam_error import (
     _NO_ACTION,
     _SDAMAction,
     decide_error_action,
     error_topology_version,
     is_stale_error_topology_version,
+    is_stale_server_description,
 )
 from pymongo.errors import (
     ConnectionFailure,
@@ -39,6 +42,24 @@ from pymongo.errors import (
     WaitQueueTimeoutError,
     WriteError,
 )
+from pymongo.hello import Hello
+from pymongo.server_description import ServerDescription
+
+_PID = ObjectId()
+
+
+def _sd_with_topology_version(counter, process_id=_PID):
+    hello = Hello(
+        {
+            "ok": 1,
+            "isWritablePrimary": True,
+            "maxWireVersion": 21,
+            "topologyVersion": {"processId": process_id, "counter": Int64(counter)},
+        }
+    )
+    return ServerDescription(("a", 27017), hello, 0)
+
+
 from test import unittest
 
 # Baseline context: an error that occurred after a completed handshake on a
@@ -177,6 +198,36 @@ class TestStaleErrorHelpers(unittest.TestCase):
         self.assertFalse(is_stale_error_topology_version(cur, other))
         self.assertFalse(is_stale_error_topology_version(None, cur))
         self.assertFalse(is_stale_error_topology_version(cur, None))
+
+
+class TestIsStaleServerDescription(unittest.TestCase):
+    def test_older_counter_is_stale(self):
+        current = _sd_with_topology_version(5)
+        older = _sd_with_topology_version(3)
+        self.assertTrue(is_stale_server_description(current, older))
+
+    def test_newer_counter_is_not_stale(self):
+        current = _sd_with_topology_version(5)
+        newer = _sd_with_topology_version(7)
+        self.assertFalse(is_stale_server_description(current, newer))
+
+    def test_equal_counter_is_not_stale(self):
+        # Only strictly-older is stale (">" not ">=").
+        current = _sd_with_topology_version(5)
+        same = _sd_with_topology_version(5)
+        self.assertFalse(is_stale_server_description(current, same))
+
+    def test_different_process_is_not_stale(self):
+        current = _sd_with_topology_version(5)
+        other = _sd_with_topology_version(1, process_id=ObjectId())
+        self.assertFalse(is_stale_server_description(current, other))
+
+    def test_missing_topology_version_is_not_stale(self):
+        current = _sd_with_topology_version(5)
+        # A plain Unknown ServerDescription has no topologyVersion.
+        unknown = ServerDescription(("a", 27017))
+        self.assertFalse(is_stale_server_description(current, unknown))
+        self.assertFalse(is_stale_server_description(unknown, current))
 
 
 if __name__ == "__main__":

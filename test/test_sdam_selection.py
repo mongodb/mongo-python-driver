@@ -20,13 +20,28 @@ import sys
 
 sys.path[0:0] = [""]
 
-from pymongo._sdam_selection import format_selection_error, select_least_loaded
+from pymongo._sdam_selection import (
+    data_bearing_servers,
+    format_selection_error,
+    select_least_loaded,
+)
 from pymongo.errors import ConnectionFailure
+from pymongo.hello import Hello
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.settings import TopologySettings
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from test import unittest
+
+
+def _standalone_sd(address):
+    hello = Hello({"ok": 1, "isWritablePrimary": True, "maxWireVersion": 21})
+    return ServerDescription(address, hello, 0)
+
+
+def _mongos_sd(address):
+    hello = Hello({"ok": 1, "msg": "isdbgrid", "maxWireVersion": 21})
+    return ServerDescription(address, hello, 0)
 
 
 def _td(topology_type, servers):
@@ -107,6 +122,28 @@ class TestFormatSelectionError(unittest.TestCase):
         msg = format_selection_error(td, writable_server_selector, "rs0", seed_addresses=[_B])
         self.assertIn("Could not reach any servers", msg)
         self.assertIn("internal hostnames or IPs", msg)
+
+
+class TestDataBearingServers(unittest.TestCase):
+    def test_single_returns_known_servers(self):
+        # For a Single topology, any known server is data-bearing.
+        td = _td(TOPOLOGY_TYPE.Single, {_A: _standalone_sd(_A)})
+        result = data_bearing_servers(td)
+        self.assertEqual([sd.address for sd in result], [_A])
+
+    def test_single_excludes_unknown_servers(self):
+        td = _td(TOPOLOGY_TYPE.Single, {_A: ServerDescription(_A)})
+        self.assertEqual(data_bearing_servers(td), [])
+
+    def test_sharded_returns_readable_servers(self):
+        td = _td(TOPOLOGY_TYPE.Sharded, {_A: _mongos_sd(_A), _B: _mongos_sd(_B)})
+        result = data_bearing_servers(td)
+        self.assertEqual({sd.address for sd in result}, {_A, _B})
+
+    def test_sharded_excludes_unknown_servers(self):
+        td = _td(TOPOLOGY_TYPE.Sharded, {_A: _mongos_sd(_A), _B: ServerDescription(_B)})
+        result = data_bearing_servers(td)
+        self.assertEqual({sd.address for sd in result}, {_A})
 
 
 if __name__ == "__main__":

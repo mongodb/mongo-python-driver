@@ -33,8 +33,13 @@ from pymongo._sdam_error import (
     decide_error_action,
     error_topology_version,
     is_stale_error_topology_version,
+    is_stale_server_description,
 )
-from pymongo._sdam_selection import format_selection_error, select_least_loaded
+from pymongo._sdam_selection import (
+    data_bearing_servers,
+    format_selection_error,
+    select_least_loaded,
+)
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import Monitor, MonitorBase, SrvMonitor
 from pymongo.asynchronous.pool import Pool
@@ -487,7 +492,7 @@ class Topology:
         """
         td_old = self._description
         sd_old = td_old._server_descriptions[server_description.address]
-        if _is_stale_server_description(sd_old, server_description):
+        if is_stale_server_description(sd_old, server_description):
             # This is a stale hello response. Ignore it.
             return
 
@@ -687,9 +692,7 @@ class Topology:
 
         This includes any server that might be selected for an operation.
         """
-        if self._description.topology_type == TOPOLOGY_TYPE.Single:
-            return self._description.known_servers
-        return self._description.readable_servers
+        return data_bearing_servers(self._description)
 
     async def update_pool(self) -> None:
         # Remove any stale sockets and add new sockets if pool is too small.
@@ -1013,13 +1016,3 @@ class _ErrorContext:
         self.sock_generation = sock_generation
         self.completed_handshake = completed_handshake
         self.service_id = service_id
-
-
-def _is_stale_server_description(current_sd: ServerDescription, new_sd: ServerDescription) -> bool:
-    """Return True if the new topologyVersion is < current."""
-    current_tv, new_tv = current_sd.topology_version, new_sd.topology_version
-    if current_tv is None or new_tv is None:
-        return False
-    if current_tv["processId"] != new_tv["processId"]:
-        return False
-    return current_tv["counter"] > new_tv["counter"]

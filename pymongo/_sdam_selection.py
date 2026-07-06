@@ -30,10 +30,22 @@ from pymongo.server_selectors import Selection, writable_server_selector
 from pymongo.topology_description import TOPOLOGY_TYPE
 
 if TYPE_CHECKING:
+    from pymongo.server_description import ServerDescription
     from pymongo.topology_description import TopologyDescription
     from pymongo.typings import _Address
 
 _T = TypeVar("_T")
+
+
+def data_bearing_servers(description: TopologyDescription) -> list[ServerDescription]:
+    """Return all servers that might be selected for an operation.
+
+    Pure decision over a :class:`TopologyDescription`: for a single-server
+    topology any known server is data-bearing; otherwise only readable servers.
+    """
+    if description.topology_type == TOPOLOGY_TYPE.Single:
+        return description.known_servers
+    return description.readable_servers
 
 
 def format_selection_error(

@@ -30,9 +30,12 @@ I/O- or concurrency-colored and therefore stays in the topology layer.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, NamedTuple, Optional
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional
 
 from pymongo import helpers_shared
+
+if TYPE_CHECKING:
+    from pymongo.server_description import ServerDescription
 from pymongo.errors import (
     ConnectionFailure,
     NetworkTimeout,
@@ -68,6 +71,20 @@ def is_stale_error_topology_version(
     if current_tv["processId"] != error_tv["processId"]:
         return False
     return current_tv["counter"] >= error_tv["counter"]
+
+
+def is_stale_server_description(current_sd: ServerDescription, new_sd: ServerDescription) -> bool:
+    """Return True if ``new_sd``'s topologyVersion is older than ``current_sd``'s.
+
+    Pure comparison used to discard a server description update that is stale
+    relative to what the topology already knows.
+    """
+    current_tv, new_tv = current_sd.topology_version, new_sd.topology_version
+    if current_tv is None or new_tv is None:
+        return False
+    if current_tv["processId"] != new_tv["processId"]:
+        return False
+    return current_tv["counter"] > new_tv["counter"]
 
 
 class _SDAMAction(NamedTuple):
