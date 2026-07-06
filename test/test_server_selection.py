@@ -26,7 +26,7 @@ from pymongo.errors import ServerSelectionTimeoutError
 from pymongo.hello import HelloCompat
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
-from pymongo.synchronous.settings import TopologySettings
+from pymongo.settings import TopologySettings
 from pymongo.synchronous.topology import Topology
 from pymongo.typings import strip_optional
 

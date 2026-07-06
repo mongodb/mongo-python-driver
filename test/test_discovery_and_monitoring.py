@@ -56,7 +56,7 @@ from pymongo.monitoring import (
     ServerHeartbeatStartedEvent,
 )
 from pymongo.server_description import SERVER_TYPE, ServerDescription
-from pymongo.synchronous.settings import TopologySettings
+from pymongo.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.synchronous.uri_parser import parse_uri
 from pymongo.topology_description import TOPOLOGY_TYPE

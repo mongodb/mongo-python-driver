@@ -63,7 +63,7 @@ from pymongo.server_selectors import (
     writable_server_selector,
 )
 from pymongo.synchronous.client_session import _ServerSession, _ServerSessionPool
-from pymongo.synchronous.monitor import MonitorBase, SrvMonitor
+from pymongo.synchronous.monitor import Monitor, MonitorBase, SrvMonitor
 from pymongo.synchronous.pool import Pool
 from pymongo.synchronous.server import Server
 from pymongo.topology_description import (
@@ -76,7 +76,7 @@ from pymongo.topology_description import (
 
 if TYPE_CHECKING:
     from bson import ObjectId
-    from pymongo.synchronous.settings import TopologySettings
+    from pymongo.settings import TopologySettings
     from pymongo.typings import ClusterTime, _Address
 
 _IS_SYNC = True
@@ -891,7 +891,8 @@ class Topology:
         """
         for address, sd in self._description.server_descriptions().items():
             if address not in self._servers:
-                monitor = self._settings.monitor_class(
+                monitor_class = self._settings.monitor_class or Monitor
+                monitor = monitor_class(
                     server_description=sd,
                     topology=self,
                     pool=self._create_pool_for_monitor(address),
@@ -929,9 +930,8 @@ class Topology:
                 self._servers.pop(address)
 
     def _create_pool_for_server(self, address: _Address) -> Pool:
-        return self._settings.pool_class(
-            address, self._settings.pool_options, client_id=self._topology_id
-        )
+        pool_class = self._settings.pool_class or Pool
+        return pool_class(address, self._settings.pool_options, client_id=self._topology_id)
 
     def _create_pool_for_monitor(self, address: _Address) -> Pool:
         options = self._settings.pool_options
@@ -951,9 +951,8 @@ class Topology:
             server_api=options.server_api,
         )
 
-        return self._settings.pool_class(
-            address, monitor_pool_options, is_sdam=True, client_id=self._topology_id
-        )
+        pool_class = self._settings.pool_class or Pool
+        return pool_class(address, monitor_pool_options, is_sdam=True, client_id=self._topology_id)
 
     def _error_message(self, selector: Callable[[Selection], Selection]) -> str:
         """Format an error message if server selection fails.

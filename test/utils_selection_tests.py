@@ -30,7 +30,7 @@ from pymongo.common import HEARTBEAT_FREQUENCY, clean_node
 from pymongo.errors import AutoReconnect, ConfigurationError
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
-from pymongo.synchronous.settings import TopologySettings
+from pymongo.settings import TopologySettings
 from pymongo.synchronous.topology import Topology
 from test import unittest
 from test.pymongo_mocks import DummyMonitor

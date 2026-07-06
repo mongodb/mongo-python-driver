@@ -81,6 +81,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
+from pymongo.settings import TOPOLOGY_TYPE
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
@@ -89,7 +90,6 @@ from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.synchronous.pool import (
     Connection,
 )
-from pymongo.synchronous.settings import TOPOLOGY_TYPE
 from pymongo.synchronous.topology import _ErrorContext
 from pymongo.topology_description import TopologyDescription
 from pymongo.write_concern import WriteConcern

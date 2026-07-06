@@ -101,6 +101,7 @@ from pymongo.results import ClientBulkWriteResult
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
+from pymongo.settings import TopologySettings
 from pymongo.synchronous import client_session, database, uri_parser
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
@@ -109,7 +110,6 @@ from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.helpers import (
     _RetryPolicy,
 )
-from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.typings import (

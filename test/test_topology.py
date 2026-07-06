@@ -30,10 +30,10 @@ from pymongo.read_preferences import Primary, ReadPreference, Secondary
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import any_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
+from pymongo.settings import TopologySettings
 from pymongo.synchronous.monitor import Monitor
 from pymongo.synchronous.pool import PoolOptions
 from pymongo.synchronous.server import Server
-from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE
 from test import client_knobs, unittest

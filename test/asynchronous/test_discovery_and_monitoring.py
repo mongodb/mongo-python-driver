@@ -40,7 +40,6 @@ from unittest.mock import patch
 
 from bson import Timestamp, json_util
 from pymongo import common, monitoring
-from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
 from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.errors import (
@@ -59,6 +58,7 @@ from pymongo.monitoring import (
     ServerHeartbeatStartedEvent,
 )
 from pymongo.server_description import SERVER_TYPE, ServerDescription
+from pymongo.settings import TopologySettings
 from pymongo.topology_description import TOPOLOGY_TYPE
 from test.asynchronous import (
     AsyncIntegrationTest,

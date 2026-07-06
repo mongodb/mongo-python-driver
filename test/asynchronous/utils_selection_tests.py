@@ -26,12 +26,12 @@ from test.asynchronous.utils import AsyncMockPool
 sys.path[0:0] = [""]
 
 from bson import json_util
-from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology
 from pymongo.common import HEARTBEAT_FREQUENCY, clean_node
 from pymongo.errors import AutoReconnect, ConfigurationError
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
+from pymongo.settings import TopologySettings
 from test import unittest
 from test.pymongo_mocks import DummyMonitor
 from test.utils_selection_tests_shared import (

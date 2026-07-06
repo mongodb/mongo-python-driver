@@ -12,7 +12,14 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Represent MongoClient's configuration."""
+"""Represent MongoClient's configuration.
+
+This module is flavor-agnostic (shared by the synchronous and asynchronous
+drivers) and performs no I/O. It intentionally does not import the
+flavor-specific ``pool``/``monitor`` modules: ``pool_class`` and
+``monitor_class`` are stored as given (possibly ``None``), and the flavor's
+default classes are supplied by the (flavor-specific) topology layer.
+"""
 
 from __future__ import annotations
 
@@ -27,11 +34,7 @@ from pymongo.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
 from pymongo.errors import ConfigurationError
 from pymongo.pool_options import PoolOptions
 from pymongo.server_description import ServerDescription
-from pymongo.synchronous import monitor, pool
-from pymongo.synchronous.pool import Pool
 from pymongo.topology_description import TOPOLOGY_TYPE, _ServerSelector
-
-_IS_SYNC = True
 
 
 class TopologySettings:
@@ -39,9 +42,9 @@ class TopologySettings:
         self,
         seeds: Optional[Collection[tuple[str, int]]] = None,
         replica_set_name: Optional[str] = None,
-        pool_class: Optional[type[Pool]] = None,
+        pool_class: Optional[type[Any]] = None,
         pool_options: Optional[PoolOptions] = None,
-        monitor_class: Optional[type[monitor.Monitor]] = None,
+        monitor_class: Optional[type[Any]] = None,
         condition_class: Optional[type[threading.Condition]] = None,
         local_threshold_ms: int = LOCAL_THRESHOLD_MS,
         server_selection_timeout: int = SERVER_SELECTION_TIMEOUT,
@@ -58,6 +61,11 @@ class TopologySettings:
         """Represent MongoClient's configuration.
 
         Take a list of (host, port) pairs and optional replica set name.
+
+        ``pool_class`` and ``monitor_class`` are stored as given; when omitted
+        the topology layer fills in the flavor-specific default class, so this
+        module never needs to know whether it is serving the sync or async
+        driver.
         """
         if heartbeat_frequency < common.MIN_HEARTBEAT_INTERVAL:
             raise ConfigurationError(
@@ -66,9 +74,9 @@ class TopologySettings:
 
         self._seeds: Collection[tuple[str, int]] = seeds or [("localhost", 27017)]
         self._replica_set_name = replica_set_name
-        self._pool_class: type[Pool] = pool_class or pool.Pool
+        self._pool_class: Optional[type[Any]] = pool_class
         self._pool_options: PoolOptions = pool_options or PoolOptions()
-        self._monitor_class: type[monitor.Monitor] = monitor_class or monitor.Monitor
+        self._monitor_class: Optional[type[Any]] = monitor_class
         self._condition_class: type[threading.Condition] = condition_class or threading.Condition
         self._local_threshold_ms = local_threshold_ms
         self._server_selection_timeout = server_selection_timeout
@@ -98,7 +106,8 @@ class TopologySettings:
         return self._replica_set_name
 
     @property
-    def pool_class(self) -> type[Pool]:
+    def pool_class(self) -> Optional[type[Any]]:
+        """The configured pool class, or None to use the flavor default."""
         return self._pool_class
 
     @property
@@ -106,7 +115,8 @@ class TopologySettings:
         return self._pool_options
 
     @property
-    def monitor_class(self) -> type[monitor.Monitor]:
+    def monitor_class(self) -> Optional[type[Any]]:
+        """The configured monitor class, or None to use the flavor default."""
         return self._monitor_class
 
     @property

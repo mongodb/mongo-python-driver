@@ -22,12 +22,12 @@ import time
 from pathlib import Path
 
 from pymongo import AsyncMongoClient, ReadPreference, monitoring
-from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology
 from pymongo.errors import ServerSelectionTimeoutError
 from pymongo.hello import HelloCompat
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
+from pymongo.settings import TopologySettings
 from pymongo.typings import strip_optional
 
 sys.path[0:0] = [""]

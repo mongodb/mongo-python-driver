@@ -42,8 +42,8 @@ if TYPE_CHECKING:
         Pool,
         _CancellationContext,
     )
-    from pymongo.asynchronous.settings import TopologySettings
     from pymongo.asynchronous.topology import Topology
+    from pymongo.settings import TopologySettings
 
 _IS_SYNC = False
 

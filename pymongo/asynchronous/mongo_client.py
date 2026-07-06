@@ -65,7 +65,6 @@ from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import (
     _RetryPolicy,
 )
-from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
 from pymongo.client_options import ClientOptions
 from pymongo.driver_info import DriverInfo
@@ -111,6 +110,7 @@ from pymongo.results import ClientBulkWriteResult
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
+from pymongo.settings import TopologySettings
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.typings import (
     ClusterTime,
