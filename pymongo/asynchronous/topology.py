@@ -228,7 +228,7 @@ class Topology:
         operation_id: Optional[int] = None,
         deprioritized_servers: Optional[list[Server]] = None,
     ) -> tuple[list[Server], _ServerSelectionTelemetry]:
-        """Return a list of Servers matching selector, or time out.
+        """Return (servers, server_selection_telemetry) matching selector, or time out.
 
         :param selector: function that takes a list of Servers and returns
             a subset of them.
