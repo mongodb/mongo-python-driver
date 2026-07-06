@@ -20,7 +20,6 @@ import asyncio
 import logging
 import os
 import queue
-import random
 import sys
 import time
 import warnings
@@ -35,6 +34,7 @@ from pymongo._sdam_error import (
     error_topology_version,
     is_stale_error_topology_version,
 )
+from pymongo._sdam_selection import select_least_loaded
 from pymongo.errors import (
     InvalidOperation,
     PyMongoError,
@@ -406,13 +406,7 @@ class Topology:
             operation_id,
             deprioritized_servers,
         )
-        if len(servers) == 1:
-            return servers[0]
-        server1, server2 = random.sample(servers, 2)
-        if server1.pool.operation_count <= server2.pool.operation_count:
-            return server1
-        else:
-            return server2
+        return select_least_loaded(servers, lambda server: server.pool.operation_count)
 
     def select_server(
         self,
