@@ -14,7 +14,7 @@ PyMongo ships two drivers for the same functionality:
 This duplicates a lot of code that is not actually async/sync-specific — pure protocol/decision logic that happens to sit next to an `await`. Two costs follow:
 
 1. **Maintenance:** every change must survive naive text substitution and is effectively written twice.
-2. **Divergence risk:** the two copies can drift. This spike found a live example — see PYTHON-5906 below.
+2. **Divergence risk:** the two copies can drift. This spike found a live example — see PYTHON-5906.
 
 ## The idea: separate shared logic from the async/sync-specific wrapper
 
