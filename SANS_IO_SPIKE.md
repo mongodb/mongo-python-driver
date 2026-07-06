@@ -44,13 +44,9 @@ The method for each extraction:
 
 ~41 new unit tests were added for the extracted logic. All are **server-free** — they exercise SDAM/wire-protocol/selection decisions that previously could only be tested against a live `mongod`.
 
-## Bug found and fixed: PYTHON-5906
-
-Unifying the wire-header framing surfaced a real divergence. The sync `receive_message` was missing the `OP_COMPRESSED` minimum-length guard (`length <= 25`) that the async `process_header` had. A malformed compressed header with `16 < length <= 25` made the sync path compute a negative body length and raise `ValueError` instead of `ProtocolError`. Sharing `parse_wire_header()` fixes both paths from one place. (Blocked on triage; can ship as its own small PR.)
-
 ## Findings
 
-1. **Leaf extraction is cheap and high-value.** Lifting a pure decision into a shared module + thin call site is low-risk, deletes duplicated logic, and unlocks server-free tests. This is the bulk of the branch (6 of 7 commits) and would be safe to do incrementally on `master`.
+1. **Extracting individual functions is cheap and high-value.** Lifting a single self-contained decision into a shared module + thin call site is low-risk, deletes duplicated logic, and unlocks server-free tests. This is the bulk of the branch (6 of 7 commits) and would be safe to do incrementally on `master`.
 
 2. **A whole module *can* leave `unasync` — but the cost is the import graph, not the code.** `settings.py` is pure config, yet it was split only because it defaulted `pool_class`/`monitor_class` to the async/sync-specific `pool.Pool`/`monitor.Monitor`. Relocating that one default into `topology.py` (`self._settings.pool_class or Pool`) let the module become shared with **no behavior change** — but the move touched ~17 files, because every `from pymongo.{asynchronous,synchronous}.settings import` caller (many themselves generated) had to be rewritten. **The barrier to de-duplicating a module is how deeply its async/sync-specific import path is woven through the generated layer, not how pure it is.**
 
@@ -64,4 +60,4 @@ Unifying the wire-header framing surfaced a real divergence. The sync `receive_m
 
 ## Open question / possible follow-up
 
-The extractions above pull *decisions* out of the async/sync wrapper but leave *control flow* (retry loops, waits) driver-specific. The remaining question is whether such a wrapper — e.g. `topology._select_servers_loop` — can be modeled as an explicit sans-I/O state machine that **emits intents** ("wait for a topology change", "re-apply the selector") consumed by a tiny async/sync-specific driver. That would shrink even the wrapper, but it is a redesign rather than a leaf extraction and was left out of this spike.
+The extractions above pull *decisions* out of the async/sync wrapper but leave *control flow* (retry loops, waits) driver-specific. The remaining question is whether such a wrapper — e.g. `topology._select_servers_loop` — can be modeled as an explicit sans-I/O state machine that **emits intents** ("wait for a topology change", "re-apply the selector") consumed by a tiny async/sync-specific driver. That would shrink even the wrapper, but it is a redesign rather than a single-function extraction and was left out of this spike.
