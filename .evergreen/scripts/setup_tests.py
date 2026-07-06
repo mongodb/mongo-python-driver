@@ -259,11 +259,11 @@ def handle_test_env() -> None:
             krb_conf.touch()
             write_env("KRB5_CONFIG", krb_conf)
             LOGGER.info("Writing keytab")
-            keytab = base64.b64decode(config["KEYTAB_BASE64"])
+            keytab = base64.b64decode(config["KEYTAB_BASE64_BUILD"])
             keytab_file = ROOT / ".evergreen/drivers.keytab"
             with keytab_file.open("wb") as fid:
                 fid.write(keytab)
-            principal = config["PRINCIPAL"]
+            principal = config["PRINCIPAL_BUILD"]
             LOGGER.info("Running kinit")
             os.environ["KRB5_CONFIG"] = str(krb_conf)
             cmd = f"kinit -k -t {keytab_file} -p {principal}"
