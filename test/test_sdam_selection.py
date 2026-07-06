@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the sans-I/O server-selection tie-breaking. No server required."""
+"""Test the sans-I/O server-selection helpers. No server required."""
 
 from __future__ import annotations
 
@@ -20,8 +20,23 @@ import sys
 
 sys.path[0:0] = [""]
 
-from pymongo._sdam_selection import select_least_loaded
+from pymongo._sdam_selection import format_selection_error, select_least_loaded
+from pymongo.errors import ConnectionFailure
+from pymongo.server_description import ServerDescription
+from pymongo.server_selectors import any_server_selector, writable_server_selector
+from pymongo.settings import TopologySettings
+from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from test import unittest
+
+
+def _td(topology_type, servers):
+    """Build a real TopologyDescription from {address: ServerDescription}."""
+    settings = TopologySettings(seeds=list(servers) or [("a", 27017)])
+    return TopologyDescription(topology_type, dict(servers), None, None, None, settings)
+
+
+_A = ("a", 27017)
+_B = ("b", 27017)
 
 
 class TestSelectLeastLoaded(unittest.TestCase):
@@ -49,6 +64,49 @@ class TestSelectLeastLoaded(unittest.TestCase):
         candidates = ["a", "b", "c", "d"]
         for _ in range(50):
             self.assertIn(select_least_loaded(candidates, lambda s: 1), candidates)
+
+
+class TestFormatSelectionError(unittest.TestCase):
+    def test_no_servers_available(self):
+        td = _td(TOPOLOGY_TYPE.Unknown, {})
+        msg = format_selection_error(td, any_server_selector, None, [])
+        self.assertEqual(msg, "No servers available")
+
+    def test_no_replica_set_members_for_set_name(self):
+        td = _td(TOPOLOGY_TYPE.ReplicaSetNoPrimary, {})
+        msg = format_selection_error(td, any_server_selector, "rs0", [])
+        self.assertEqual(msg, 'No replica set members available for replica set name "rs0"')
+
+    def test_still_discovering(self):
+        # A single Unknown server with no error yet.
+        td = _td(TOPOLOGY_TYPE.Unknown, {_A: ServerDescription(_A)})
+        msg = format_selection_error(td, any_server_selector, None, [_A])
+        self.assertEqual(msg, "No servers found yet")
+
+    def test_all_servers_share_one_error(self):
+        err = ConnectionFailure("boom")
+        td = _td(TOPOLOGY_TYPE.Unknown, {_A: ServerDescription(_A, error=err)})
+        msg = format_selection_error(td, any_server_selector, None, [_A])
+        self.assertEqual(msg, "boom")
+
+    def test_distinct_errors_are_joined(self):
+        td = _td(
+            TOPOLOGY_TYPE.Unknown,
+            {
+                _A: ServerDescription(_A, error=ConnectionFailure("err-a")),
+                _B: ServerDescription(_B, error=ConnectionFailure("err-b")),
+            },
+        )
+        msg = format_selection_error(td, any_server_selector, None, [_A, _B])
+        self.assertEqual(sorted(msg.split(",")), ["err-a", "err-b"])
+
+    def test_replica_set_seeds_unreachable(self):
+        # Servers whose addresses do not intersect the original seeds.
+        err = ConnectionFailure("unreachable")
+        td = _td(TOPOLOGY_TYPE.ReplicaSetNoPrimary, {_A: ServerDescription(_A, error=err)})
+        msg = format_selection_error(td, writable_server_selector, "rs0", seed_addresses=[_B])
+        self.assertIn("Could not reach any servers", msg)
+        self.assertIn("internal hostnames or IPs", msg)
 
 
 if __name__ == "__main__":

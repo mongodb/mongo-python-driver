@@ -34,7 +34,7 @@ from pymongo._sdam_error import (
     error_topology_version,
     is_stale_error_topology_version,
 )
-from pymongo._sdam_selection import select_least_loaded
+from pymongo._sdam_selection import format_selection_error, select_least_loaded
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import Monitor, MonitorBase, SrvMonitor
 from pymongo.asynchronous.pool import Pool
@@ -961,55 +961,12 @@ class Topology:
 
         Hold the lock when calling this.
         """
-        is_replica_set = self._description.topology_type in (
-            TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-            TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+        return format_selection_error(
+            self._description,
+            selector,
+            self._settings.replica_set_name,
+            self._seed_addresses,
         )
-
-        if is_replica_set:
-            server_plural = "replica set members"
-        elif self._description.topology_type == TOPOLOGY_TYPE.Sharded:
-            server_plural = "mongoses"
-        else:
-            server_plural = "servers"
-
-        if self._description.known_servers:
-            # We've connected, but no servers match the selector.
-            if selector is writable_server_selector:
-                if is_replica_set:
-                    return "No primary available for writes"
-                else:
-                    return f"No {server_plural} available for writes"
-            else:
-                return f'No {server_plural} match selector "{selector}"'
-        else:
-            addresses = list(self._description.server_descriptions())
-            servers = list(self._description.server_descriptions().values())
-            if not servers:
-                if is_replica_set:
-                    # We removed all servers because of the wrong setName?
-                    return f'No {server_plural} available for replica set name "{self._settings.replica_set_name}"'
-                else:
-                    return f"No {server_plural} available"
-
-            # 1 or more servers, all Unknown. Are they unknown for one reason?
-            error = servers[0].error
-            same = all(server.error == error for server in servers[1:])
-            if same:
-                if error is None:
-                    # We're still discovering.
-                    return f"No {server_plural} found yet"
-
-                if is_replica_set and not set(addresses).intersection(self._seed_addresses):
-                    # We replaced our seeds with new hosts but can't reach any.
-                    return (
-                        f"Could not reach any servers in {addresses}. Replica set is"
-                        " configured with internal hostnames or IPs?"
-                    )
-
-                return str(error)
-            else:
-                return ",".join(str(server.error) for server in servers if server.error)
 
     async def cleanup_monitors(self) -> None:
         tasks = []
