@@ -256,18 +256,9 @@ def handle_test_env() -> None:
         else:
             # BUILD-3830
             krb_conf = ROOT / ".evergreen/krb5.conf.empty"
-            krb_conf.write_text(
-                "[libdefaults]\n"
-                "  default_realm = LDAPTEST.10GEN.CC\n\n"
-                "[realms]\n"
-                "  LDAPTEST.10GEN.CC = {\n"
-                "    kdc = ldaptest.build.10gen.cc\n"
-                "    admin_server = ldaptest.build.10gen.cc\n"
-                "  }\n"
-            )
             write_env("KRB5_CONFIG", krb_conf)
             LOGGER.info("Writing keytab")
-            keytab = base64.b64decode(config["KEYTAB_BASE64"])
+            keytab = base64.b64decode(config["KEYTAB_BASE64_BUILD"])
             keytab_file = ROOT / ".evergreen/drivers.keytab"
             with keytab_file.open("wb") as fid:
                 fid.write(keytab)
@@ -280,7 +271,7 @@ def handle_test_env() -> None:
         LOGGER.info("Setting GSSAPI variables")
         write_env("GSSAPI_HOST", config["SASL_HOST_BUILD"])
         write_env("GSSAPI_PORT", config["SASL_PORT"])
-        write_env("GSSAPI_PRINCIPAL", config["PRINCIPAL"])
+        write_env("GSSAPI_PRINCIPAL", config["PRINCIPAL_BUILD"])
         write_env("SASL_HOST", config["SASL_HOST_BUILD"])
 
     if test_name == "doctest":
