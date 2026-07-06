@@ -66,6 +66,45 @@ if TYPE_CHECKING:
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
+
+
+def parse_wire_header(
+    header: Union[bytes, bytearray, memoryview], max_message_size: int
+) -> tuple[int, int, int, bool]:
+    """Parse and validate a MongoDB Wire Protocol message header.
+
+    This is the sans-I/O core shared by the synchronous and asynchronous read
+    paths: it performs no I/O and contains no ``await``/blocking calls, so both
+    transports can reuse the exact same framing and validation logic.
+
+    Given the 16 header bytes, returns a tuple of
+    ``(body_length, op_code, response_to, compressed)`` where ``body_length`` is
+    the number of bytes to read *after* the 16-byte header (and, when
+    ``compressed`` is True, also after the 9-byte OP_COMPRESSED sub-header).
+    Raises :class:`~pymongo.errors.ProtocolError` for malformed headers.
+    """
+    length, _, response_to, op_code = _UNPACK_HEADER(header)
+    compressed = False
+    if op_code == 2012:  # OP_COMPRESSED
+        if length <= 25:
+            raise ProtocolError(
+                f"Message length ({length!r}) not longer than standard OP_COMPRESSED "
+                f"message header size (25)"
+            )
+        compressed = True
+        length -= 9
+    if length <= 16:
+        raise ProtocolError(
+            f"Message length ({length!r}) not longer than standard message header size (16)"
+        )
+    if length > max_message_size:
+        raise ProtocolError(
+            f"Message length ({length!r}) is larger than server max "
+            f"message size ({max_message_size!r})"
+        )
+    return length - 16, op_code, response_to, compressed
+
+
 _POLL_TIMEOUT = 0.5
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
 BLOCKING_IO_ERRORS = (BlockingIOError, *BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
@@ -637,26 +676,7 @@ class PyMongoProtocol(BufferedProtocol):
 
     def process_header(self) -> tuple[int, int, int, bool]:
         """Unpack a MongoDB Wire Protocol header."""
-        length, _, response_to, op_code = _UNPACK_HEADER(self._header)
-        expecting_compression = False
-        if op_code == 2012:  # OP_COMPRESSED
-            if length <= 25:
-                raise ProtocolError(
-                    f"Message length ({length!r}) not longer than standard OP_COMPRESSED message header size (25)"
-                )
-            expecting_compression = True
-            length -= 9
-        if length <= 16:
-            raise ProtocolError(
-                f"Message length ({length!r}) not longer than standard message header size (16)"
-            )
-        if length > self._max_message_size:
-            raise ProtocolError(
-                f"Message length ({length!r}) is larger than server max "
-                f"message size ({self._max_message_size!r})"
-            )
-
-        return length - 16, op_code, response_to, expecting_compression
+        return parse_wire_header(self._header, self._max_message_size)
 
     def process_compression_header(self) -> tuple[int, int]:
         """Unpack a MongoDB Wire Protocol compression header."""
@@ -758,27 +778,22 @@ def receive_message(
             deadline = time.monotonic() + timeout
         else:
             deadline = None
-    # Ignore the response's request id.
-    length, _, response_to, op_code = _UNPACK_HEADER(receive_data(conn, 16, deadline))
+    # Parse and validate the header using the shared sans-I/O core. body_length
+    # is the number of bytes to read after the 16-byte header (and after the
+    # 9-byte OP_COMPRESSED sub-header when compressed).
+    body_length, op_code, response_to, compressed = parse_wire_header(
+        receive_data(conn, 16, deadline), max_message_size
+    )
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
         if request_id != response_to:
             raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
-    if length <= 16:
-        raise ProtocolError(
-            f"Message length ({length!r}) not longer than standard message header size (16)"
-        )
-    if length > max_message_size:
-        raise ProtocolError(
-            f"Message length ({length!r}) is larger than server max "
-            f"message size ({max_message_size!r})"
-        )
     data: memoryview | bytes
-    if op_code == 2012:
+    if compressed:
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(receive_data(conn, 9, deadline))
-        data = decompress(receive_data(conn, length - 25, deadline), compressor_id)
+        data = decompress(receive_data(conn, body_length, deadline), compressor_id)
     else:
-        data = receive_data(conn, length - 16, deadline)
+        data = receive_data(conn, body_length, deadline)
 
     try:
         unpack_reply = _UNPACK_REPLY[op_code]

@@ -29,17 +29,16 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
-from pymongo import _csot, common, helpers_shared, periodic_executor
+from pymongo import _csot, common, periodic_executor
+from pymongo._sdam_error import (
+    decide_error_action,
+    error_topology_version,
+    is_stale_error_topology_version,
+)
 from pymongo.errors import (
-    ConnectionFailure,
     InvalidOperation,
-    NetworkTimeout,
-    NotPrimaryError,
-    OperationFailure,
     PyMongoError,
     ServerSelectionTimeoutError,
-    WaitQueueTimeoutError,
-    WriteError,
 )
 from pymongo.hello import Hello
 from pymongo.lock import (
@@ -847,14 +846,8 @@ class Topology:
             return True
 
         # topologyVersion check, ignore error when cur_tv >= error_tv:
-        cur_tv = server.description.topology_version
-        error = err_ctx.error
-        error_tv = None
-        if error and hasattr(error, "details"):
-            if isinstance(error.details, dict):
-                error_tv = error.details.get("topologyVersion")
-
-        return _is_stale_error_topology_version(cur_tv, error_tv)
+        error_tv = error_topology_version(err_ctx.error)
+        return is_stale_error_topology_version(server.description.topology_version, error_tv)
 
     def _handle_error(self, address: _Address, err_ctx: _ErrorContext) -> None:
         if self._is_stale_error(address, err_ctx):
@@ -862,68 +855,25 @@ class Topology:
 
         server = self._servers[address]
         error = err_ctx.error
-        service_id = err_ctx.service_id
 
-        # Ignore a handshake error if the server is behind a load balancer but
-        # the service ID is unknown. This indicates that the error happened
-        # when dialing the connection or during the MongoDB  handshake, so we
-        # don't know the service ID to use for clearing the pool.
-        if self._settings.load_balanced and not service_id and not err_ctx.completed_handshake:
-            return
-
-        if isinstance(error, NetworkTimeout) and err_ctx.completed_handshake:
-            # The socket has been closed. Don't reset the server.
-            # Server Discovery And Monitoring Spec: "When an application
-            # operation fails because of any network error besides a socket
-            # timeout...."
-            return
-        elif isinstance(error, WriteError):
-            # Ignore writeErrors.
-            return
-        elif isinstance(error, (NotPrimaryError, OperationFailure)):
-            # As per the SDAM spec if:
-            #   - the server sees a "not primary" error, and
-            #   - the server is not shutting down, and
-            #   - the server version is >= 4.2, then
-            # we keep the existing connection pool, but mark the server type
-            # as Unknown and request an immediate check of the server.
-            # Otherwise, we clear the connection pool, mark the server as
-            # Unknown and request an immediate check of the server.
-            if hasattr(error, "code"):
-                err_code = error.code
-            else:
-                # Default error code if one does not exist.
-                default = 10107 if isinstance(error, NotPrimaryError) else None
-                err_code = error.details.get("code", default)  # type: ignore[union-attr]
-            if err_code in helpers_shared._NOT_PRIMARY_CODES:
-                is_shutting_down = err_code in helpers_shared._SHUTDOWN_CODES
-                # Mark server Unknown, clear the pool, and request check.
-                if not self._settings.load_balanced:
-                    self._process_change(ServerDescription(address, error=error))
-                if is_shutting_down or (err_ctx.max_wire_version <= 7):
-                    # Clear the pool.
-                    server.reset(service_id)
-                server.request_check()
-            elif not err_ctx.completed_handshake:
-                # Unknown command error during the connection handshake.
-                if not self._settings.load_balanced:
-                    self._process_change(ServerDescription(address, error=error))
-                # Clear the pool.
-                server.reset(service_id)
-        elif isinstance(error, ConnectionFailure):
-            if isinstance(error, WaitQueueTimeoutError) or (
-                error.has_error_label("SystemOverloadedError")
-            ):
-                return
-            # "Client MUST replace the server's description with type Unknown
-            # ... MUST NOT request an immediate check of the server."
-            if not self._settings.load_balanced:
-                self._process_change(ServerDescription(address, error=error))
-            # Clear the pool.
-            server.reset(service_id)
-            # "When a client marks a server Unknown from `Network error when
-            # reading or writing`_, clients MUST cancel the hello check on
-            # that server and close the current monitoring connection."
+        # Classify the error using the shared sans-I/O SDAM core, then execute
+        # the resulting actions here (the only I/O-colored part).
+        action = decide_error_action(
+            error,
+            load_balanced=bool(self._settings.load_balanced),
+            has_service_id=bool(err_ctx.service_id),
+            completed_handshake=err_ctx.completed_handshake,
+            max_wire_version=err_ctx.max_wire_version,
+        )
+        if action.mark_unknown:
+            # Only error types that map to mark_unknown reach here, so error is
+            # a concrete Exception (see decide_error_action).
+            self._process_change(ServerDescription(address, error=cast(Exception, error)))
+        if action.reset_pool:
+            server.reset(err_ctx.service_id)
+        if action.request_check:
+            server.request_check()
+        if action.cancel_check:
             server._monitor.cancel_check()
 
     def handle_error(self, address: _Address, err_ctx: _ErrorContext) -> None:
@@ -1111,17 +1061,6 @@ class _ErrorContext:
         self.sock_generation = sock_generation
         self.completed_handshake = completed_handshake
         self.service_id = service_id
-
-
-def _is_stale_error_topology_version(
-    current_tv: Optional[Mapping[str, Any]], error_tv: Optional[Mapping[str, Any]]
-) -> bool:
-    """Return True if the error's topologyVersion is <= current."""
-    if current_tv is None or error_tv is None:
-        return False
-    if current_tv["processId"] != error_tv["processId"]:
-        return False
-    return current_tv["counter"] >= error_tv["counter"]
 
 
 def _is_stale_server_description(current_sd: ServerDescription, new_sd: ServerDescription) -> bool:
