@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
+from pymongo._sdam_monitor import is_streaming_check
 from pymongo.asynchronous.srv_resolver import _SrvResolver
 from pymongo.errors import NetworkTimeout, _OperationCancelled
 from pymongo.hello import Hello
@@ -233,10 +234,7 @@ class Monitor(MonitorBase):
                 interrupt_connections=isinstance(self._server_description.error, NetworkTimeout),
             )
 
-            if self._stream and (
-                self._server_description.is_server_type_known
-                and self._server_description.topology_version
-            ):
+            if is_streaming_check(self._stream, self._server_description):
                 await self._start_rtt_monitor()
                 # Immediately check for the next streaming response.
                 self._executor.skip_sleep()
@@ -267,7 +265,7 @@ class Monitor(MonitorBase):
             sd = self._server_description
             address = sd.address
             duration = _monotonic_duration(start)
-            awaited = bool(self._stream and sd.is_server_type_known and sd.topology_version)
+            awaited = is_streaming_check(self._stream, sd)
             if self._publish:
                 assert self._listeners is not None
                 self._listeners.publish_server_heartbeat_failed(address, duration, error, awaited)
@@ -300,9 +298,7 @@ class Monitor(MonitorBase):
 
         # XXX: "awaited" could be incorrectly set to True in the rare case
         # the pool checkout closes and recreates a connection.
-        awaited = bool(
-            self._pool.conns and self._stream and sd.is_server_type_known and sd.topology_version
-        )
+        awaited = bool(self._pool.conns) and is_streaming_check(self._stream, sd)
         if self._publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_started(address, awaited)
