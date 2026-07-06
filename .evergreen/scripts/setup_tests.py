@@ -272,7 +272,7 @@ def handle_test_env() -> None:
         LOGGER.info("Setting GSSAPI variables")
         write_env("GSSAPI_HOST", config["SASL_HOST_BUILD"])
         write_env("GSSAPI_PORT", config["SASL_PORT"])
-        write_env("GSSAPI_PRINCIPAL", config["PRINCIPAL"])
+        write_env("GSSAPI_PRINCIPAL", config["PRINCIPAL_BUILD"])
         write_env("SASL_HOST", config["SASL_HOST_BUILD"])
 
     if test_name == "doctest":
