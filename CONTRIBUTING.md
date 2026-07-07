@@ -529,14 +529,6 @@ Python errors, such as missing imports, incorrect syntax, or other fatal typos. 
 run `pre-commit run --all-files --hook-stage manual ruff` and fix all reported errors before running the `synchro`
 hook again.
 
-## Converting a test to async
-
-The `tools/convert_test_to_async.py` script takes in an existing synchronous test file and outputs a
-partially-converted asynchronous version of the same name to the `test/asynchronous` directory.
-Use this generated file as a starting point for the completed conversion.
-
-The script is used like so: `python tools/convert_test_to_async.py [test_file.py]`
-
 ## CPU profiling
 
 To profile a test script and generate a flame graph, follow these steps:
