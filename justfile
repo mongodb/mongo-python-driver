@@ -70,6 +70,11 @@ lint *args="": && resync
 lint-manual *args="": && resync
     uvx pre-commit run --all-files --hook-stage manual {{args}}
 
+# Run synchro
+[group('lint')]
+synchro: && resync
+    uvx pre-commit run --all-files synchro
+
 # Run pytest (e.g. just test test/test_uri_parser.py)
 [group('test')]
 test *args="-v --durations=5 --maxfail=10": && resync
