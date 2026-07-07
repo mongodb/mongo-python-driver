@@ -52,7 +52,6 @@ try:
 except ImportError:
     _use_c = False
 from pymongo.errors import (
-    ConfigurationError,
     DocumentTooLarge,
     InvalidOperation,
     ProtocolError,
@@ -376,54 +375,6 @@ def _op_msg(
         # Add the field back to the command.
         if identifier:
             command[identifier] = docs
-
-
-_pack_long_long = struct.Struct("<q").pack
-
-
-def _get_more_impl(collection_name: str, num_to_return: int, cursor_id: int) -> bytes:
-    """Get an OP_GET_MORE message."""
-    return b"".join(
-        [
-            _ZERO_32,
-            bson._make_c_string(collection_name),
-            _pack_int(num_to_return),
-            _pack_long_long(cursor_id),
-        ]
-    )
-
-
-def _get_more_compressed(
-    collection_name: str,
-    num_to_return: int,
-    cursor_id: int,
-    ctx: Union[SnappyContext, ZlibContext, ZstdContext],
-) -> tuple[int, bytes]:
-    """Internal compressed getMore message helper."""
-    return _compress(2005, _get_more_impl(collection_name, num_to_return, cursor_id), ctx)
-
-
-def _get_more_uncompressed(
-    collection_name: str, num_to_return: int, cursor_id: int
-) -> tuple[int, bytes]:
-    """Internal getMore message helper."""
-    return __pack_message(2005, _get_more_impl(collection_name, num_to_return, cursor_id))
-
-
-if _use_c:
-    _get_more_uncompressed = _cmessage._get_more_message
-
-
-def _get_more(
-    collection_name: str,
-    num_to_return: int,
-    cursor_id: int,
-    ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
-) -> tuple[int, bytes]:
-    """Get a **getMore** message."""
-    if ctx:
-        return _get_more_compressed(collection_name, num_to_return, cursor_id, ctx)
-    return _get_more_uncompressed(collection_name, num_to_return, cursor_id)
 
 
 # OP_MSG -------------------------------------------------------------
@@ -1292,22 +1243,6 @@ class _Query:
     def namespace(self) -> str:
         return f"{self.db}.{self.coll}"
 
-    def use_command(self, conn: _AgnosticConnection) -> bool:
-        use_find_cmd = False
-        if not self.exhaust:
-            use_find_cmd = True
-        elif conn.max_wire_version >= 8:
-            # OP_MSG supports exhaust on MongoDB 4.2+
-            use_find_cmd = True
-        elif not self.read_concern.ok_for_legacy:
-            raise ConfigurationError(
-                f"read concern level of {self.read_concern.level} is not valid "
-                f"with a max wire version of {conn.max_wire_version}."
-            )
-
-        conn.validate_session(self.client, self.session)  # type: ignore[arg-type]
-        return use_find_cmd
-
     def update_command(self, cmd: dict[str, Any]) -> None:
         self._as_command = cmd, self.db
 
@@ -1351,7 +1286,7 @@ class _Query:
         return self._as_command
 
     def get_message(
-        self, read_preference: _ServerMode, conn: _AgnosticConnection, use_cmd: bool = False
+        self, read_preference: _ServerMode, conn: _AgnosticConnection
     ) -> tuple[int, bytes, int]:
         """Get a query message"""
         # Use the read_preference decided by _socket_from_server.
@@ -1425,17 +1360,6 @@ class _GetMore:
     def namespace(self) -> str:
         return f"{self.db}.{self.coll}"
 
-    def use_command(self, conn: _AgnosticConnection) -> bool:
-        use_cmd = False
-        if not self.exhaust:
-            use_cmd = True
-        elif conn.max_wire_version >= 8:
-            # OP_MSG supports exhaust on MongoDB 4.2+
-            use_cmd = True
-
-        conn.validate_session(self.client, self.session)  # type: ignore[arg-type]
-        return use_cmd
-
     def update_command(self, cmd: dict[str, Any]) -> None:
         self._as_command = cmd, self.db
 
@@ -1465,49 +1389,22 @@ class _GetMore:
         self._as_command = cmd, self.db
         return self._as_command
 
-    def get_message(
-        self, dummy0: Any, conn: _AgnosticConnection, use_cmd: bool = False
-    ) -> Union[tuple[int, bytes, int], tuple[int, bytes]]:
+    def get_message(self, dummy0: Any, conn: _AgnosticConnection) -> tuple[int, bytes, int]:
         """Get a getmore message."""
-        ns = self.namespace()
-        ctx = conn.compression_context
-
-        if use_cmd:
-            spec = self.as_command(conn)[0]
-            if self.conn_mgr and self.exhaust:
-                flags = _OpMsg.EXHAUST_ALLOWED
-            else:
-                flags = 0
-            request_id, msg, size, _ = _op_msg(
-                flags, spec, self.db, None, self.codec_options, ctx=conn.compression_context
-            )
-            return request_id, msg, size
-
-        return _get_more(ns, self.ntoreturn, self.cursor_id, ctx)
+        spec = self.as_command(conn)[0]
+        flags = _OpMsg.EXHAUST_ALLOWED if (self.conn_mgr and self.exhaust) else 0
+        request_id, msg, size, _ = _op_msg(
+            flags, spec, self.db, None, self.codec_options, ctx=conn.compression_context
+        )
+        return request_id, msg, size
 
 
 class _RawBatchQuery(_Query):
-    def use_command(self, conn: _AgnosticConnection) -> bool:
-        # Compatibility checks.
-        super().use_command(conn)
-        if conn.max_wire_version >= 8:
-            # MongoDB 4.2+ supports exhaust over OP_MSG
-            return True
-        elif not self.exhaust:
-            return True
-        return False
+    pass
 
 
 class _RawBatchGetMore(_GetMore):
-    def use_command(self, conn: _AgnosticConnection) -> bool:
-        # Compatibility checks.
-        super().use_command(conn)
-        if conn.max_wire_version >= 8:
-            # MongoDB 4.2+ supports exhaust over OP_MSG
-            return True
-        elif not self.exhaust:
-            return True
-        return False
+    pass
 
 
 class _CursorAddress(tuple[Any, ...]):

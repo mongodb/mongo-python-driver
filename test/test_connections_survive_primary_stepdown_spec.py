@@ -74,7 +74,6 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
     def verify_pool_not_cleared(self):
         self.assertEqual(self.listener.event_count(monitoring.PoolClearedEvent), 0)
 
-    @client_context.require_version_min(4, 2, -1)
     def test_get_more_iteration(self):
         # Insert 5 documents with WC majority.
         self.coll.insert_many([{"data": k} for k in range(5)])
@@ -118,17 +117,14 @@ class TestConnectionsSurvivePrimaryStepDown(IntegrationTest):
         # Always retry here to ensure discovery of new primary.
         self.coll.insert_one({"test": 1})
 
-    @client_context.require_version_min(4, 2, -1)
     @client_context.require_test_commands
     def test_not_primary_keep_connection_pool(self):
         self.run_scenario(10107, True, self.verify_pool_not_cleared)
 
-    @client_context.require_version_min(4, 2, 0)
     @client_context.require_test_commands
     def test_shutdown_in_progress(self):
         self.run_scenario(91, False, self.verify_pool_cleared)
 
-    @client_context.require_version_min(4, 2, 0)
     @client_context.require_test_commands
     def test_interrupted_at_shutdown(self):
         self.run_scenario(11600, False, self.verify_pool_cleared)

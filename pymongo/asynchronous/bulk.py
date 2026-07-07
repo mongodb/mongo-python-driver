@@ -576,10 +576,6 @@ class _AsyncBulk:
             raise ConfigurationError(
                 "Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands."
             )
-        if unack and self.uses_hint_update and conn.max_wire_version < 8:
-            raise ConfigurationError(
-                "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
-            )
         if unack and self.uses_sort and conn.max_wire_version < 25:
             raise ConfigurationError(
                 "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."
