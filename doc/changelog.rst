@@ -8,6 +8,11 @@ Changes in Version 4.18.0
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
   and on Python 3.11+ for async clients.
+- Fixed a potential out-of-bounds read in the C extension when decoding an
+  array of BSON documents. An embedded document whose declared length exceeds
+  the bytes remaining in the array now raises
+  :class:`~bson.errors.InvalidBSON` instead of reading past the end of the
+  buffer.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
