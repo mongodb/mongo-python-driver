@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Minimal test of PyMongo in a WSGI application, see bug PYTHON-353
-"""
+"""Minimal test of PyMongo in a WSGI application, see bug PYTHON-353"""
+
 from __future__ import annotations
 
 import datetime
@@ -97,16 +97,16 @@ if _HAVE_MOD_WSGI:
             if isinstance(value, re.Pattern):
                 value = Regex.from_native(value)
             assert decoded[key] == value, f"failed on doc[{key!r}]: {decoded[key]!r} != {value!r}"
-            assert isinstance(
-                decoded[key], type(value)
-            ), f"failed on doc[{key}]: {decoded[key]!r} is not an instance of {type(value)}"
+            assert isinstance(decoded[key], type(value)), (
+                f"failed on doc[{key}]: {decoded[key]!r} is not an instance of {type(value)}"
+            )
 
         output = (
             f" python {sys.version}, mod_wsgi {mod_wsgi_version},"
             f" pymongo {pymongo.version},"
-            f' mod_wsgi.process_group = {environ["mod_wsgi.process_group"]!r}'
-            f' mod_wsgi.application_group = {environ["mod_wsgi.application_group"]!r}'
-            f' wsgi.multithread = {environ["wsgi.multithread"]!r}'
+            f" mod_wsgi.process_group = {environ['mod_wsgi.process_group']!r}"
+            f" mod_wsgi.application_group = {environ['mod_wsgi.application_group']!r}"
+            f" wsgi.multithread = {environ['wsgi.multithread']!r}"
             "\n"
         )
         response_headers = [("Content-Length", str(len(output)))]

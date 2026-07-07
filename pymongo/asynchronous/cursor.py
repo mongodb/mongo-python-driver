@@ -13,20 +13,18 @@
 # limitations under the License.
 
 """Cursor class to iterate over Mongo query results."""
+
 from __future__ import annotations
 
 import copy
 import warnings
 from collections import deque
+from collections.abc import Iterable, Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterable,
-    List,
-    Mapping,
     NoReturn,
     Optional,
-    Sequence,
     Union,
     cast,
     overload,
@@ -48,7 +46,6 @@ from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
 from pymongo.message import (
     _GetMore,
     _OpMsg,
-    _OpReply,
     _Query,
     _RawBatchGetMore,
     _RawBatchQuery,
@@ -100,9 +97,9 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
         let: Optional[bool] = None,
     ) -> None:
         """Create a new cursor.
+        Used by :meth:`~pymongo.asynchronous.collection.AsyncCollection.find` to iterate over MongoDB query results.
 
-        Should not be called directly by application developers - see
-        :meth:`~pymongo.asynchronous.collection.AsyncCollection.find` instead.
+        Should not be called directly by application developers.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
@@ -169,7 +166,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
         self._skip = skip
         self._limit = limit
         self._batch_size = batch_size
-        self._ordering = sort and helpers_shared._index_document(sort) or None
+        self._ordering = (sort and helpers_shared._index_document(sort)) or None
         self._max_scan = max_scan
         self._explain = False
         self._comment = comment
@@ -533,12 +530,10 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
         return self
 
     @overload
-    def __getitem__(self, index: int) -> _DocumentType:
-        ...
+    def __getitem__(self, index: int) -> _DocumentType: ...
 
     @overload
-    def __getitem__(self, index: slice) -> AsyncCursor[_DocumentType]:
-        ...
+    def __getitem__(self, index: slice) -> AsyncCursor[_DocumentType]: ...
 
     def __getitem__(
         self, index: Union[int, slice]
@@ -599,7 +594,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
                     limit = index.stop - skip
                     if limit < 0:
                         raise IndexError(
-                            "stop index must be greater than start index for slice %r" % index
+                            f"stop index must be greater than start index for slice {index!r}"
                         )
                     if limit == 0:
                         self._empty = True
@@ -620,7 +615,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
                 for doc in clone:  # type: ignore[attr-defined]
                     return doc
                 raise IndexError("no such item for AsyncCursor instance")
-            raise TypeError("index %r cannot be applied to AsyncCursor instances" % index)
+            raise TypeError(f"index {index!r} cannot be applied to AsyncCursor instances")
         else:
             raise IndexError("AsyncCursor does not support indexing")
 
@@ -864,7 +859,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
     def _unpack_response(
         self,
-        response: Union[_OpReply, _OpMsg],
+        response: _OpMsg,
         cursor_id: Optional[int],
         codec_options: CodecOptions,  # type: ignore[type-arg]
         user_fields: Optional[Mapping[str, Any]] = None,
@@ -1020,29 +1015,23 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
         cmd_name = operation.name
         docs = response.docs
-        if response.from_command:
-            if cmd_name != "explain":
-                cursor = docs[0]["cursor"]
-                self._id = cursor["id"]
-                if cmd_name == "find":
-                    documents = cursor["firstBatch"]
-                    # Update the namespace used for future getMore commands.
-                    ns = cursor.get("ns")
-                    if ns:
-                        self._dbname, self._collname = ns.split(".", 1)
-                else:
-                    documents = cursor["nextBatch"]
-                self._data = deque(documents)
-                self._retrieved += len(documents)
+        if cmd_name != "explain":
+            cursor = docs[0]["cursor"]
+            self._id = cursor["id"]
+            if cmd_name == "find":
+                documents = cursor["firstBatch"]
+                # Update the namespace used for future getMore commands.
+                ns = cursor.get("ns")
+                if ns:
+                    self._dbname, self._collname = ns.split(".", 1)
             else:
-                self._id = 0
-                self._data = deque(docs)
-                self._retrieved += len(docs)
+                documents = cursor["nextBatch"]
+            self._data = deque(documents)
+            self._retrieved += len(documents)
         else:
-            assert isinstance(response.data, _OpReply)
-            self._id = response.data.cursor_id
+            self._id = 0
             self._data = deque(docs)
-            self._retrieved += response.data.number_returned
+            self._retrieved += len(docs)
 
         if self._id == 0:
             # Don't wait for garbage collection to call __del__, return the
@@ -1195,7 +1184,7 @@ class AsyncRawBatchCursor(AsyncCursor[_DocumentType]):
 
     def _unpack_response(
         self,
-        response: Union[_OpReply, _OpMsg],
+        response: _OpMsg,
         cursor_id: Optional[int],
         codec_options: CodecOptions[Mapping[str, Any]],
         user_fields: Optional[Mapping[str, Any]] = None,
@@ -1206,7 +1195,7 @@ class AsyncRawBatchCursor(AsyncCursor[_DocumentType]):
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-        return cast(List["_DocumentOut"], raw_response)
+        return cast(list["_DocumentOut"], raw_response)
 
     async def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.

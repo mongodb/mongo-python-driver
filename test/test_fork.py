@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test that pymongo resets its own locks after a fork."""
+
 from __future__ import annotations
 
 import os
@@ -23,10 +24,9 @@ from multiprocessing import Pipe
 
 sys.path[0:0] = [""]
 
+from bson.objectid import ObjectId
 from test import IntegrationTest
 from test.utils_shared import is_greenthread_patched
-
-from bson.objectid import ObjectId
 
 
 @unittest.skipIf(
@@ -35,6 +35,10 @@ from bson.objectid import ObjectId
 @unittest.skipIf(
     is_greenthread_patched(),
     "gevent does not support POSIX-style forking.",
+)
+@unittest.skipIf(
+    sys.version_info >= (3, 15),
+    "fork() in multi-threaded processes is deprecated in Python 3.15+ (PYTHON-5874)",
 )
 class TestFork(IntegrationTest):
     def test_lock_client(self):

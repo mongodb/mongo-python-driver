@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the collection module."""
+
 from __future__ import annotations
 
 import asyncio
@@ -21,27 +22,14 @@ import re
 import sys
 from codecs import utf_8_decode
 from collections import defaultdict
-from test.utils import get_pool, is_mongos
-from typing import Any, Iterable, no_type_check
+from collections.abc import Iterable
+from typing import Any, no_type_check
 
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
+from test.utils import get_pool, is_mongos
 
 sys.path[0:0] = [""]
-
-from test import (  # TODO: fix sync imports in PYTHON-4528
-    IntegrationTest,
-    UnitTest,
-    client_context,
-    unittest,
-)
-from test.utils_shared import (
-    IMPOSSIBLE_WRITE_CONCERN,
-    EventListener,
-    OvertCommandListener,
-    wait_until,
-)
-from test.version import Version
 
 from bson import encode
 from bson.codec_options import CodecOptions
@@ -77,6 +65,19 @@ from pymongo.synchronous.collection import Collection, ReturnDocument
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
+from test import (  # TODO: fix sync imports in PYTHON-4528
+    IntegrationTest,
+    UnitTest,
+    client_context,
+    unittest,
+)
+from test.utils_shared import (
+    IMPOSSIBLE_WRITE_CONCERN,
+    EventListener,
+    OvertCommandListener,
+    wait_until,
+)
+from test.version import Version
 
 _IS_SYNC = True
 
@@ -229,7 +230,7 @@ class TestCollection(IntegrationTest):
         self.assertRaises(ValueError, IndexModel, [])
 
         db.test.drop_indexes()
-        db.test.insert_one({})
+        db.create_collection("test")
         self.assertEqual(len(db.test.index_information()), 1)
 
         db.test.create_indexes([IndexModel("hello")])
@@ -292,7 +293,7 @@ class TestCollection(IntegrationTest):
             db.test.create_index([])
 
         db.test.drop_indexes()
-        db.test.insert_one({})
+        db.create_collection("test")
         self.assertEqual(len(db.test.index_information()), 1)
 
         db.test.create_index("hello")
@@ -386,7 +387,7 @@ class TestCollection(IntegrationTest):
     def test_list_indexes(self):
         db = self.db
         db.test.drop()
-        db.test.insert_one({})  # create collection
+        db.create_collection("test")
 
         def map_indexes(indexes):
             return {index["name"]: index for index in indexes}
@@ -420,7 +421,7 @@ class TestCollection(IntegrationTest):
     def test_index_info(self):
         db = self.db
         db.test.drop()
-        db.test.insert_one({})  # create collection
+        db.create_collection("test")
         self.assertEqual(len(db.test.index_information()), 1)
         self.assertIn("_id_", db.test.index_information())
 

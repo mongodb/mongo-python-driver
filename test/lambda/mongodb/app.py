@@ -4,6 +4,7 @@ Lambda function for Python Driver testing
 Creates the client that is cached for all requests, subscribes to
 relevant events, and forces the connection pool to get populated.
 """
+
 from __future__ import annotations
 
 import json
@@ -161,8 +162,8 @@ def lambda_handler(event, context):
     response = json.dumps(create_response())
     reset()
     print("finished!")
-    assert (
-        streaming_heartbeat_count == 0
-    ), f"streaming_heartbeat_count was {streaming_heartbeat_count} not 0"
+    assert streaming_heartbeat_count == 0, (
+        f"streaming_heartbeat_count was {streaming_heartbeat_count} not 0"
+    )
 
     return dict(statusCode=200, body=response)

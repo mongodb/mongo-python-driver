@@ -16,10 +16,11 @@ from __future__ import annotations
 import copy
 import itertools
 import unittest
-from test import PyMongoTestCase
 from typing import Any
 
 import pytest
+
+from test import PyMongoTestCase
 
 try:
     from mockupdb import CommandBase, MockupDB, going

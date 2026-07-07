@@ -4,10 +4,9 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import unittest
-
 from bson import encode
 from bson.errors import InvalidStringData
+from test import unittest
 
 
 class TestUTF8(unittest.TestCase):

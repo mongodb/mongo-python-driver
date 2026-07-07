@@ -20,14 +20,13 @@ from typing import Any
 
 sys.path[0:0] = [""]
 
+from bson import ObjectId
 from test import UnitTest, unittest
 from test.unified_format import (
     MatchEvaluatorUtil,
     generate_test_classes,
     get_test_path,
 )
-
-from bson import ObjectId
 
 _IS_SYNC = True
 
@@ -39,9 +38,6 @@ globals().update(
         os.path.join(TEST_PATH, "valid-pass"),
         module=__name__,
         class_name_prefix="UnifiedTestFormat",
-        expected_failures=[
-            "Client side error in command starting transaction",  # PYTHON-1894
-        ],
     )
 )
 

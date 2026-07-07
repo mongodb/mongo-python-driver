@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """Test list_indexes with more than one batch."""
+
 from __future__ import annotations
 
 import unittest
-from test import PyMongoTestCase
 
 import pytest
+
+from test import PyMongoTestCase
 
 try:
     from mockupdb import MockupDB, going

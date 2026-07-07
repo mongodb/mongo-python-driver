@@ -15,9 +15,11 @@
 """Setstate and getstate functions for objects with __slots__, allowing
 compatibility with default pickling protocol
 """
+
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 
 def _setstate_slots(self: Any, state: Any) -> None:

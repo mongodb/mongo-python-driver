@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the client_session module."""
+
 from __future__ import annotations
 
 import copy
@@ -20,11 +21,22 @@ import sys
 import time
 from inspect import iscoroutinefunction
 from io import BytesIO
+from typing import Any, Callable
+
 from test.asynchronous.helpers import ExceptionCatchingTask
-from typing import Any, Callable, List, Set, Tuple
 
 sys.path[0:0] = [""]
 
+from bson import DBRef
+from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
+from pymongo import ASCENDING, AsyncMongoClient, monitoring
+from pymongo.asynchronous.command_cursor import AsyncCommandCursor
+from pymongo.asynchronous.cursor import AsyncCursor
+from pymongo.asynchronous.helpers import anext
+from pymongo.common import _MAX_END_SESSIONS
+from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
+from pymongo.operations import IndexModel, InsertOne, UpdateOne
+from pymongo.read_concern import ReadConcern
 from test.asynchronous import (
     AsyncIntegrationTest,
     AsyncUnitTest,
@@ -39,17 +51,6 @@ from test.utils_shared import (
     OvertCommandListener,
     async_wait_until,
 )
-
-from bson import DBRef
-from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
-from pymongo import ASCENDING, AsyncMongoClient, monitoring
-from pymongo.asynchronous.command_cursor import AsyncCommandCursor
-from pymongo.asynchronous.cursor import AsyncCursor
-from pymongo.asynchronous.helpers import anext
-from pymongo.common import _MAX_END_SESSIONS
-from pymongo.errors import ConfigurationError, InvalidOperation, OperationFailure
-from pymongo.operations import IndexModel, InsertOne, UpdateOne
-from pymongo.read_concern import ReadConcern
 
 _IS_SYNC = False
 
@@ -80,7 +81,7 @@ def session_ids(client):
 
 class TestSession(AsyncIntegrationTest):
     client2: AsyncMongoClient
-    sensitive_commands: Set[str]
+    sensitive_commands: set[str]
 
     @async_client_context.require_sessions
     async def asyncSetUp(self):
@@ -243,7 +244,7 @@ class TestSession(AsyncIntegrationTest):
         # sessions to be used: connection check in happens before session check in
         for _ in range(10):
             cursor = client.db.test.find({})
-            ops: List[Tuple[Callable, List[Any]]] = [
+            ops: list[tuple[Callable, list[Any]]] = [
                 (client.db.test.find_one, [{"_id": 1}]),
                 (client.db.test.delete_one, [{}]),
                 (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),
@@ -675,7 +676,7 @@ class TestSession(AsyncIntegrationTest):
         coll = client.pymongo_test.collection
         # 3.6.0 mongos only validates the aggregate pipeline when the
         # database exists.
-        await coll.insert_one({})
+        await coll.database.create_collection(coll.name)
         listener.reset()
 
         with self.assertRaises(OperationFailure):
@@ -827,7 +828,7 @@ class TestSession(AsyncIntegrationTest):
 
     async def test_unacknowledged_writes(self):
         # Ensure the collection exists.
-        await self.client.pymongo_test.test_unacked_writes.insert_one({})
+        await self.client.pymongo_test.create_collection("test_unacked_writes")
         client = await self.async_rs_or_single_client(w=0, event_listeners=[self.listener])
         db = client.pymongo_test
         coll = db.test_unacked_writes
@@ -978,6 +979,8 @@ class TestCausalConsistency(AsyncUnitTest):
         await super().asyncSetUp()
         self.listener = SessionTestListener()
         self.client = await self.async_rs_or_single_client(event_listeners=[self.listener])
+        await self.client.pymongo_test.drop_collection("test")
+        await self.client.pymongo_test.create_collection("test")
 
     @async_client_context.require_no_standalone
     async def test_core(self):
@@ -1048,9 +1051,6 @@ class TestCausalConsistency(AsyncUnitTest):
 
     @async_client_context.require_no_standalone
     async def test_reads(self):
-        # Make sure the collection exists.
-        await self.client.pymongo_test.test.insert_one({})
-
         async def aggregate(coll, session):
             return await (await coll.aggregate([], session=session)).to_list()
 
@@ -1138,52 +1138,7 @@ class TestCausalConsistency(AsyncUnitTest):
             self.assertIsNone(rc)
 
     @async_client_context.require_no_standalone
-    async def test_writes_do_not_include_read_concern(self):
-        await self._test_no_read_concern(
-            lambda coll, session: coll.bulk_write([InsertOne[dict]({})], session=session)
-        )
-        await self._test_no_read_concern(lambda coll, session: coll.insert_one({}, session=session))
-        await self._test_no_read_concern(
-            lambda coll, session: coll.insert_many([{}], session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.replace_one({"_id": 1}, {"x": 1}, session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.update_one({}, {"$set": {"X": 1}}, session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.update_many({}, {"$set": {"x": 1}}, session=session)
-        )
-        await self._test_no_read_concern(lambda coll, session: coll.delete_one({}, session=session))
-        await self._test_no_read_concern(
-            lambda coll, session: coll.delete_many({}, session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.find_one_and_replace({"x": 1}, {"y": 1}, session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.find_one_and_update(
-                {"y": 1}, {"$set": {"x": 1}}, session=session
-            )
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.find_one_and_delete({"x": 1}, session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.create_index("foo", session=session)
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.create_indexes(
-                [IndexModel([("bar", ASCENDING)])], session=session
-            )
-        )
-        await self._test_no_read_concern(
-            lambda coll, session: coll.drop_index("foo_1", session=session)
-        )
-        await self._test_no_read_concern(lambda coll, session: coll.drop_indexes(session=session))
-
-        # Not a write, but explain also doesn't support readConcern.
+    async def test_explain_does_not_include_read_concern(self):
         await self._test_no_read_concern(
             lambda coll, session: coll.find({}, session=session).explain()
         )
@@ -1251,7 +1206,6 @@ class TestCausalConsistency(AsyncUnitTest):
 
     @async_client_context.require_no_standalone
     async def test_cluster_time_with_server_support(self):
-        await self.client.pymongo_test.test.insert_one({})
         self.listener.reset()
         await self.client.pymongo_test.test.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")
@@ -1259,7 +1213,6 @@ class TestCausalConsistency(AsyncUnitTest):
 
     @async_client_context.require_standalone
     async def test_cluster_time_no_server_support(self):
-        await self.client.pymongo_test.test.insert_one({})
         self.listener.reset()
         await self.client.pymongo_test.test.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")

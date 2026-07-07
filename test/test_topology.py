@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the topology module."""
+
 from __future__ import annotations
 
 import sys
@@ -20,11 +21,6 @@ import sys
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
-
-from test import client_knobs, unittest
-from test.pymongo_mocks import DummyMonitor
-from test.utils import MockPool, flaky
-from test.utils_shared import wait_until
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -40,6 +36,10 @@ from pymongo.synchronous.server import Server
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE
+from test import client_knobs, unittest
+from test.pymongo_mocks import DummyMonitor
+from test.utils import MockPool
+from test.utils_shared import wait_until
 
 
 class SetNameDiscoverySettings(TopologySettings):
@@ -593,8 +593,8 @@ class TestMultiServerTopology(TopologyTest):
                 HelloCompat.LEGACY_CMD: True,
                 "setName": "rs",
                 "hosts": ["a"],
-                "minWireVersion": 26,
-                "maxWireVersion": 27,
+                "minWireVersion": common.MAX_SUPPORTED_WIRE_VERSION + 1,
+                "maxWireVersion": common.MAX_SUPPORTED_WIRE_VERSION + 2,
             },
         )
 
@@ -604,8 +604,9 @@ class TestMultiServerTopology(TopologyTest):
             # Error message should say which server failed and why.
             self.assertEqual(
                 str(e),
-                "Server at a:27017 requires wire version 26, but this version "
-                "of PyMongo only supports up to %d." % (common.MAX_SUPPORTED_WIRE_VERSION,),
+                "Server at a:27017 requires wire version %d, but this version "
+                "of PyMongo only supports up to %d."
+                % (common.MAX_SUPPORTED_WIRE_VERSION + 1, common.MAX_SUPPORTED_WIRE_VERSION),
             )
         else:
             self.fail("No error with incompatible wire version")
@@ -755,7 +756,6 @@ def wait_for_primary(topology):
 class TestTopologyErrors(TopologyTest):
     # Errors when calling hello.
 
-    @flaky(reason="PYTHON-5366")
     def test_pool_reset(self):
         # hello succeeds at first, then always raises socket error.
         hello_count = [0]
@@ -776,7 +776,11 @@ class TestTopologyErrors(TopologyTest):
 
         # Pool is reset by hello failure.
         t.request_check_all()
-        self.assertNotEqual(generation, server.pool.gen.get_overall())
+        # Wait for the monitor's hello failure to trigger Pool.reset() and bump the generation.
+        wait_until(
+            lambda: server.pool.gen.get_overall() != generation,
+            "pool reset after failed monitor check",
+        )
 
     def test_hello_retry(self):
         # hello succeeds at first, then raises socket error, then succeeds.

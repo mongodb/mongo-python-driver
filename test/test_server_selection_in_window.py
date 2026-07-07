@@ -13,12 +13,20 @@
 # limitations under the License.
 
 """Test the topology module's Server Selection Spec implementation."""
+
 from __future__ import annotations
 
 import asyncio
 import os
+import platform
+import sys
 import threading
 from pathlib import Path
+
+from pymongo.common import clean_node
+from pymongo.monitoring import ConnectionReadyEvent
+from pymongo.operations import _Op
+from pymongo.read_preferences import ReadPreference
 from test import IntegrationTest, client_context, unittest
 from test.helpers import ConcurrentRunner
 from test.utils import flaky
@@ -29,11 +37,6 @@ from test.utils_shared import (
     wait_until,
 )
 from test.utils_spec_runner import SpecTestCreator
-
-from pymongo.common import clean_node
-from pymongo.monitoring import ConnectionReadyEvent
-from pymongo.operations import _Op
-from pymongo.read_preferences import ReadPreference
 
 _IS_SYNC = True
 # Location of JSON test specifications.
@@ -56,7 +59,7 @@ class TestAllScenarios(unittest.TestCase):
             server.pool.operation_count = mock["operation_count"]
 
         pref = ReadPreference.NEAREST
-        counts = {address: 0 for address in topology._description.server_descriptions()}
+        counts = dict.fromkeys(topology._description.server_descriptions(), 0)
 
         # Number of times to repeat server selection
         iterations = scenario_def["iterations"]
@@ -129,7 +132,7 @@ class TestProse(IntegrationTest):
         self.assertEqual(len(events), n_finds * N_TASKS)
         nodes = client.nodes
         self.assertEqual(len(nodes), 2)
-        freqs = {address: 0.0 for address in nodes}
+        freqs = dict.fromkeys(nodes, 0.0)
         for event in events:
             freqs[event.connection_id] += 1
         for address in freqs:
@@ -138,7 +141,11 @@ class TestProse(IntegrationTest):
 
     @client_context.require_failCommand_appName
     @client_context.require_multiple_mongoses
-    @flaky(reason="PYTHON-3689")
+    @unittest.skipIf(
+        sys.platform == "darwin" and platform.machine() == "arm64" and "CI" in os.environ,
+        "PYTHON-5861: Load balancing frequency assertion is timing-sensitive on macOS ARM64 CI",
+    )
+    @flaky(reason="PYTHON-5911", affects_cpython_linux=True)
     def test_load_balancing(self):
         listener = OvertCommandListener()
         cmap_listener = CMAPListener()
@@ -165,12 +172,32 @@ class TestProse(IntegrationTest):
                 "appName": "loadBalancingTest",
             },
         }
+        coll = client.test.test
+        N_TASKS = 10
         with self.fail_point(delay_finds):
             nodes = client_context.client.nodes
             self.assertEqual(len(nodes), 1)
             delayed_server = next(iter(nodes))
+            # Start background tasks to build up op_count on the delayed server.
+            # This ensures the measurement phase sees a stable op_count imbalance
+            # rather than a 50/50 random distribution from equal initial counts.
+            background_tasks = [FinderTask(coll, 1) for _ in range(N_TASKS)]
+            for task in background_tasks:
+                task.start()
+            # Wait until all background finds are dispatched so the delayed
+            # server's finds are in-flight (each blocked for 500ms).
+            wait_until(
+                lambda: len(listener.started_events) >= N_TASKS,
+                "background tasks to dispatch finds",
+            )
+            # Measure distribution while the delayed server is busy.
+            listener.reset()
             freqs = self.frequencies(client, listener)
             self.assertLessEqual(freqs[delayed_server], 0.25)
+            for task in background_tasks:
+                task.join()
+            for task in background_tasks:
+                self.assertTrue(task.passed)
         listener.reset()
         freqs = self.frequencies(client, listener, n_finds=150)
         self.assertAlmostEqual(freqs[delayed_server], 0.50, delta=0.15)

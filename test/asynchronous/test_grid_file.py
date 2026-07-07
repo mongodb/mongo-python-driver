@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Tests for the grid_file module."""
+
 from __future__ import annotations
 
 import datetime
@@ -21,6 +22,8 @@ import io
 import sys
 import zipfile
 from io import BytesIO
+
+from pymongo.asynchronous.database import AsyncDatabase
 from test.asynchronous import (
     AsyncIntegrationTest,
     AsyncUnitTest,
@@ -29,11 +32,7 @@ from test.asynchronous import (
     unittest,
 )
 
-from pymongo.asynchronous.database import AsyncDatabase
-
 sys.path[0:0] = [""]
-
-from test.utils_shared import OvertCommandListener
 
 from bson.objectid import ObjectId
 from gridfs.asynchronous.grid_file import (
@@ -50,6 +49,7 @@ from pymongo import AsyncMongoClient
 from pymongo.asynchronous.helpers import aiter, anext
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress
+from test.utils_shared import OvertCommandListener
 
 _IS_SYNC = False
 

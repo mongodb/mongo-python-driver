@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Test the bson module."""
+
 from __future__ import annotations
 
 import array
@@ -32,9 +33,6 @@ from collections import OrderedDict, abc
 from io import BytesIO
 
 sys.path[0:0] = [""]
-
-from test import qcheck, unittest
-from test.helpers import ExceptionCatchingTask
 
 import bson
 from bson import (
@@ -71,6 +69,8 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import FixedOffset, utc
+from test import qcheck, unittest
+from test.helpers import ExceptionCatchingTask
 
 _NUMPY_AVAILABLE = importlib.util.find_spec("numpy") is not None
 
@@ -223,9 +223,7 @@ class TestBSON(unittest.TestCase):
         )
         self.assertInvalid(b"\x15\x00\x00\x00\x03foo\x00\x0c\x00\x00\x00\x08bar\x00\x01\x00\x00")
         self.assertInvalid(
-            b"\x1c\x00\x00\x00\x03foo\x00"
-            b"\x12\x00\x00\x00\x02bar\x00"
-            b"\x05\x00\x00\x00baz\x00\x00\x00"
+            b"\x1c\x00\x00\x00\x03foo\x00\x12\x00\x00\x00\x02bar\x00\x05\x00\x00\x00baz\x00\x00\x00"
         )
         self.assertInvalid(b"\x10\x00\x00\x00\x02a\x00\x04\x00\x00\x00abc\xff\x00")
 
@@ -238,9 +236,7 @@ class TestBSON(unittest.TestCase):
             b"\x18\x00\x00\x00\x0c\x00\x00\x00\x00\x00\x00RY\xb5j\xfa[\xd8A\xd6X]\x99\x00"
         )
         self.assertInvalid(
-            b"\x1e\x00\x00\x00\x0c\x00"
-            b"\xff\xff\xff\xfffoobar\x00"
-            b"RY\xb5j\xfa[\xd8A\xd6X]\x99\x00"
+            b"\x1e\x00\x00\x00\x0c\x00\xff\xff\xff\xfffoobar\x00RY\xb5j\xfa[\xd8A\xd6X]\x99\x00"
         )
         self.assertInvalid(b"\x0c\x00\x00\x00\r\x00\x00\x00\x00\x00\x00\x00")
         self.assertInvalid(b"\x0c\x00\x00\x00\r\x00\xff\xff\xff\xff\x00\x00")
@@ -282,17 +278,17 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(
             {"test": "hello world"},
             decode(
-                b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74\x00\x0C"
-                b"\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F"
-                b"\x72\x6C\x64\x00\x00"
+                b"\x1b\x00\x00\x00\x0e\x74\x65\x73\x74\x00\x0c"
+                b"\x00\x00\x00\x68\x65\x6c\x6c\x6f\x20\x77\x6f"
+                b"\x72\x6c\x64\x00\x00"
             ),
         )
         self.assertEqual(
             [{"test": "hello world"}, {}],
             decode_all(
-                b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
-                b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-                b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+                b"\x1b\x00\x00\x00\x0e\x74\x65\x73\x74"
+                b"\x00\x0c\x00\x00\x00\x68\x65\x6c\x6c"
+                b"\x6f\x20\x77\x6f\x72\x6c\x64\x00\x00"
                 b"\x05\x00\x00\x00\x00"
             ),
         )
@@ -300,9 +296,9 @@ class TestBSON(unittest.TestCase):
             [{"test": "hello world"}, {}],
             list(
                 decode_iter(
-                    b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
-                    b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-                    b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+                    b"\x1b\x00\x00\x00\x0e\x74\x65\x73\x74"
+                    b"\x00\x0c\x00\x00\x00\x68\x65\x6c\x6c"
+                    b"\x6f\x20\x77\x6f\x72\x6c\x64\x00\x00"
                     b"\x05\x00\x00\x00\x00"
                 )
             ),
@@ -312,9 +308,9 @@ class TestBSON(unittest.TestCase):
             list(
                 decode_file_iter(
                     BytesIO(
-                        b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
-                        b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-                        b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+                        b"\x1b\x00\x00\x00\x0e\x74\x65\x73\x74"
+                        b"\x00\x0c\x00\x00\x00\x68\x65\x6c\x6c"
+                        b"\x6f\x20\x77\x6f\x72\x6c\x64\x00\x00"
                         b"\x05\x00\x00\x00\x00"
                     )
                 )
@@ -350,7 +346,7 @@ class TestBSON(unittest.TestCase):
         # Invalid object size (not enough bytes in document for even
         # an object size of first object.
         # NOTE: decode_all and decode_iter don't care, not sure if they should?
-        self.assertRaises(InvalidBSON, list, decode_file_iter(BytesIO(b"\x1B")))
+        self.assertRaises(InvalidBSON, list, decode_file_iter(BytesIO(b"\x1b")))
 
         bad_bsons = [
             # An object size that's too small to even include the object size,
@@ -359,25 +355,25 @@ class TestBSON(unittest.TestCase):
             # One object, but with object size listed smaller than it is in the
             # data.
             (
-                b"\x1A\x00\x00\x00\x0E\x74\x65\x73\x74"
-                b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-                b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+                b"\x1a\x00\x00\x00\x0e\x74\x65\x73\x74"
+                b"\x00\x0c\x00\x00\x00\x68\x65\x6c\x6c"
+                b"\x6f\x20\x77\x6f\x72\x6c\x64\x00\x00"
                 b"\x05\x00\x00\x00\x00"
             ),
             # One object, missing the EOO at the end.
             (
-                b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
-                b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-                b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+                b"\x1b\x00\x00\x00\x0e\x74\x65\x73\x74"
+                b"\x00\x0c\x00\x00\x00\x68\x65\x6c\x6c"
+                b"\x6f\x20\x77\x6f\x72\x6c\x64\x00\x00"
                 b"\x05\x00\x00\x00"
             ),
             # One object, sized correctly, with a spot for an EOO, but the EOO
             # isn't 0x00.
             (
-                b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
-                b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-                b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
-                b"\x05\x00\x00\x00\xFF"
+                b"\x1b\x00\x00\x00\x0e\x74\x65\x73\x74"
+                b"\x00\x0c\x00\x00\x00\x68\x65\x6c\x6c"
+                b"\x6f\x20\x77\x6f\x72\x6c\x64\x00\x00"
+                b"\x05\x00\x00\x00\xff"
             ),
         ]
         for i, data in enumerate(bad_bsons):
@@ -417,31 +413,31 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(encode({}), b"\x05\x00\x00\x00\x00")
         self.assertEqual(
             encode({"test": "hello world"}),
-            b"\x1B\x00\x00\x00\x02\x74\x65\x73\x74\x00\x0C\x00"
-            b"\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C"
+            b"\x1b\x00\x00\x00\x02\x74\x65\x73\x74\x00\x0c\x00"
+            b"\x00\x00\x68\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c"
             b"\x64\x00\x00",
         )
         self.assertEqual(
             encode({"mike": 100}),
-            b"\x0F\x00\x00\x00\x10\x6D\x69\x6B\x65\x00\x64\x00\x00\x00\x00",
+            b"\x0f\x00\x00\x00\x10\x6d\x69\x6b\x65\x00\x64\x00\x00\x00\x00",
         )
         self.assertEqual(
             encode({"hello": 1.5}),
-            b"\x14\x00\x00\x00\x01\x68\x65\x6C\x6C\x6F\x00\x00\x00\x00\x00\x00\x00\xF8\x3F\x00",
+            b"\x14\x00\x00\x00\x01\x68\x65\x6c\x6c\x6f\x00\x00\x00\x00\x00\x00\x00\xf8\x3f\x00",
         )
         self.assertEqual(
-            encode({"true": True}), b"\x0C\x00\x00\x00\x08\x74\x72\x75\x65\x00\x01\x00"
+            encode({"true": True}), b"\x0c\x00\x00\x00\x08\x74\x72\x75\x65\x00\x01\x00"
         )
         self.assertEqual(
-            encode({"false": False}), b"\x0D\x00\x00\x00\x08\x66\x61\x6C\x73\x65\x00\x00\x00"
+            encode({"false": False}), b"\x0d\x00\x00\x00\x08\x66\x61\x6c\x73\x65\x00\x00\x00"
         )
         self.assertEqual(
             encode({"empty": []}),
-            b"\x11\x00\x00\x00\x04\x65\x6D\x70\x74\x79\x00\x05\x00\x00\x00\x00\x00",
+            b"\x11\x00\x00\x00\x04\x65\x6d\x70\x74\x79\x00\x05\x00\x00\x00\x00\x00",
         )
         self.assertEqual(
             encode({"none": {}}),
-            b"\x10\x00\x00\x00\x03\x6E\x6F\x6E\x65\x00\x05\x00\x00\x00\x00\x00",
+            b"\x10\x00\x00\x00\x03\x6e\x6f\x6e\x65\x00\x05\x00\x00\x00\x00\x00",
         )
         self.assertEqual(
             encode({"test": Binary(b"test", 0)}),
@@ -470,14 +466,14 @@ class TestBSON(unittest.TestCase):
             ),
             b"$\x00\x00\x00\x05vector_float32\x00\n\x00\x00\x00\t'\x00\xcd\xcc\x8c\xbf\xac\xe9#P\x00",
         )
-        self.assertEqual(encode({"test": None}), b"\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
+        self.assertEqual(encode({"test": None}), b"\x0b\x00\x00\x00\x0a\x74\x65\x73\x74\x00\x00")
         self.assertEqual(
             encode({"date": datetime.datetime(2007, 1, 8, 0, 30, 11)}),
-            b"\x13\x00\x00\x00\x09\x64\x61\x74\x65\x00\x38\xBE\x1C\xFF\x0F\x01\x00\x00\x00",
+            b"\x13\x00\x00\x00\x09\x64\x61\x74\x65\x00\x38\xbe\x1c\xff\x0f\x01\x00\x00\x00",
         )
         self.assertEqual(
             encode({"regex": re.compile(b"a*b", re.IGNORECASE)}),
-            b"\x12\x00\x00\x00\x0B\x72\x65\x67\x65\x78\x00\x61\x2A\x62\x00\x69\x00\x00",
+            b"\x12\x00\x00\x00\x0b\x72\x65\x67\x65\x78\x00\x61\x2a\x62\x00\x69\x00\x00",
         )
         self.assertEqual(
             encode({"$where": Code("test")}),
@@ -500,17 +496,17 @@ class TestBSON(unittest.TestCase):
             b"\x00\x00function(){ return 'h\xc3\xa9llo';}\x00\x05"
             b"\x00\x00\x00\x00\x00",
         )
-        a = ObjectId(b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B")
+        a = ObjectId(b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b")
         self.assertEqual(
             encode({"oid": a}),
-            b"\x16\x00\x00\x00\x07\x6F\x69\x64\x00\x00\x01\x02"
-            b"\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00",
+            b"\x16\x00\x00\x00\x07\x6f\x69\x64\x00\x00\x01\x02"
+            b"\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x00",
         )
         self.assertEqual(
             encode({"ref": DBRef("coll", a)}),
-            b"\x2F\x00\x00\x00\x03ref\x00\x25\x00\x00\x00\x02"
+            b"\x2f\x00\x00\x00\x03ref\x00\x25\x00\x00\x00\x02"
             b"$ref\x00\x05\x00\x00\x00coll\x00\x07$id\x00\x00"
-            b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00"
+            b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x00"
             b"\x00",
         )
 
@@ -680,14 +676,13 @@ class TestBSON(unittest.TestCase):
         d = {"x": datetime.datetime(1993, 4, 4, 2)}
         self.assertEqual(d, decode(encode(d)))
 
-    @unittest.skip("Disabled due to http://bugs.python.org/issue25222")
     def test_bad_encode(self):
         evil_list: dict = {"a": []}
         evil_list["a"].append(evil_list)
         evil_dict: dict = {}
         evil_dict["a"] = evil_dict
         for evil_data in [evil_dict, evil_list]:
-            self.assertRaises(Exception, encode, evil_data)
+            self.assertRaises(RecursionError, encode, evil_data)
 
     def test_overflow(self):
         self.assertTrue(encode({"x": 9223372036854775807}))
@@ -966,8 +961,7 @@ class TestBSON(unittest.TestCase):
 
     def test_move_id(self):
         self.assertEqual(
-            b"\x19\x00\x00\x00\x02_id\x00\x02\x00\x00\x00a\x00"
-            b"\x02a\x00\x02\x00\x00\x00a\x00\x00",
+            b"\x19\x00\x00\x00\x02_id\x00\x02\x00\x00\x00a\x00\x02a\x00\x02\x00\x00\x00a\x00\x00",
             encode(SON([("a", "a"), ("_id", "a")])),
         )
 
@@ -1046,9 +1040,7 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(0, bson_re1.flags)
 
         doc1 = {"r": bson_re1}
-        doc1_bson = (
-            b"\x11\x00\x00\x00\x0br\x00[\\w-\\.]\x00\x00\x00"
-        )  # document length  # r: regex  # document terminator
+        doc1_bson = b"\x11\x00\x00\x00\x0br\x00[\\w-\\.]\x00\x00\x00"  # document length  # r: regex  # document terminator
 
         self.assertEqual(doc1_bson, encode(doc1))
         self.assertEqual(doc1, decode(doc1_bson))
@@ -1059,9 +1051,7 @@ class TestBSON(unittest.TestCase):
 
         doc2_with_re = {"r": re2}
         doc2_with_bson_re = {"r": bson_re2}
-        doc2_bson = (
-            b"\x11\x00\x00\x00\x0br\x00.*\x00imsux\x00\x00"
-        )  # document length  # r: regex  # document terminator
+        doc2_bson = b"\x11\x00\x00\x00\x0br\x00.*\x00imsux\x00\x00"  # document length  # r: regex  # document terminator
 
         self.assertEqual(doc2_bson, encode(doc2_with_re))
         self.assertEqual(doc2_bson, encode(doc2_with_bson_re))
@@ -1284,6 +1274,18 @@ class TestBSON(unittest.TestCase):
 
         with self.assertRaises(InvalidBSON):
             decode(payload)
+
+    def test_large_list_encoding(self):
+        # gen_list_name yields pre-cached names for indices 0-999 then
+        # generates on the fly for 1000+. Encode a list that crosses that
+        # boundary and verify the round-trip is correct.
+        values = list(range(1002))
+        decoded = decode(encode({"a": values}))
+        self.assertEqual(decoded["a"], values)
+        # Spot-check elements on both sides of the cache/on-demand boundary.
+        self.assertEqual(decoded["a"][999], 999)
+        self.assertEqual(decoded["a"][1000], 1000)
+        self.assertEqual(decoded["a"][1001], 1001)
 
 
 class TestCodecOptions(unittest.TestCase):
@@ -1755,6 +1757,40 @@ class TestDatetimeConversion(unittest.TestCase):
         buf = b"\x14\x00\x00\x00\x04a\x00\xff\xff\xff\x00\x100\x00\x01\x00\x00\x00\x00\x00"
         with self.assertRaises(InvalidBSON):
             _array_of_documents_to_buffer(buf)
+
+    def test_datetime_ms_hash(self):
+        # Equal values must have equal hashes.
+        self.assertEqual(hash(DatetimeMS(0)), hash(DatetimeMS(0)))
+        self.assertEqual(hash(DatetimeMS(-1)), hash(DatetimeMS(-1)))
+        self.assertEqual(hash(DatetimeMS(2**62)), hash(DatetimeMS(2**62)))
+        # Usable as a dict key.
+        d = {DatetimeMS(0): "epoch", DatetimeMS(1): "one"}
+        self.assertEqual(d[DatetimeMS(0)], "epoch")
+        self.assertEqual(d[DatetimeMS(1)], "one")
+        # Usable in a set.
+        s = {DatetimeMS(0), DatetimeMS(1), DatetimeMS(0)}
+        self.assertEqual(len(s), 2)
+
+    def test_datetime_ms_repr(self):
+        self.assertEqual(repr(DatetimeMS(0)), "DatetimeMS(0)")
+        self.assertEqual(repr(DatetimeMS(-1)), "DatetimeMS(-1)")
+        self.assertEqual(repr(DatetimeMS(2**62)), f"DatetimeMS({2**62})")
+        # repr round-trips through eval.
+        for value in (0, 1, -1, 2**32):
+            obj = DatetimeMS(value)
+            self.assertEqual(eval(repr(obj)), obj)
+
+    def test_datetime_ms_invalid_type(self):
+        # Non-int, non-datetime arguments must raise TypeError.
+        for bad in ("2024-01-01", 3.14, [], None, b"bytes"):
+            with self.assertRaises(TypeError):
+                DatetimeMS(bad)  # type: ignore[arg-type]
+        # Out-of-range int must raise OverflowError directly, not only
+        # when encoding.
+        with self.assertRaises(OverflowError):
+            DatetimeMS(2**63)
+        with self.assertRaises(OverflowError):
+            DatetimeMS(-(2**63) - 1)
 
 
 class TestLongLongToString(unittest.TestCase):

@@ -13,20 +13,18 @@
 # limitations under the License.
 
 """Bits and pieces used by the driver that don't really fit elsewhere."""
+
 from __future__ import annotations
 
 import sys
 import traceback
 from collections import abc
+from collections.abc import Container, Iterable, Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Container,
-    Iterable,
-    Mapping,
     NoReturn,
     Optional,
-    Sequence,
     Union,
 )
 
@@ -240,15 +238,6 @@ def _check_command_response(
         return
 
     details = response
-    # Mongos returns the error details in a 'raw' object
-    # for some errors.
-    if "raw" in response:
-        for shard in response["raw"].values():
-            # Grab the first non-empty raw error from a shard.
-            if shard.get("errmsg") and not shard.get("ok"):
-                details = shard
-                break
-
     errmsg = details["errmsg"]
     code = details.get("code")
 

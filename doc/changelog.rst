@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Changes in Version 4.18.0
+-------------------------
+
+- Improved TLS connection performance by reusing TLS sessions across connections
+  to the same server, avoiding a full handshake on each new connection.
+  Session resumption is supported on all Python versions for synchronous clients
+  and on Python 3.11+ for async clients.
+
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
 
@@ -13,9 +21,8 @@ PyMongo 4.17 brings a number of changes including:
 - Added the :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.bind` and :meth:`~pymongo.client_session.ClientSession.bind` methods
   that allow users to bind a session to all database operations within the scope of a context manager instead of having to explicitly pass the session to each individual operation.
   See the `Transactions docs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/transactions/#methods>`_ for examples and more information.
-- Added support for MongoDB's Intelligent Workload Management (IWM) and ingress connection rate limiting features.
-  The driver now gracefully handles write-blocking scenarios and optimizes connection establishment during high-load conditions to maintain application availability.
-  See the `IWM <https://www.mongodb.com/docs/atlas/intelligent-workload-management>`_ or `Overload Errors <https://www.mongodb.com/docs/atlas/overload-errors/?interface=driver&language=python>`_ docs for more information.
+- Added support for MongoDB's Intelligent Workload Management (IWM) and ingress connection rate limiting features in MongoDB server version 9.0.
+  The driver will gracefully handle write-blocking scenarios and optimizes connection establishment during high-load conditions to maintain application availability.
 
 Changes in Version 4.16.0 (2026/01/07)
 --------------------------------------

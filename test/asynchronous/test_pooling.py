@@ -13,15 +13,17 @@
 # limitations under the License.
 
 """Test built in connection-pooling with threads."""
+
 from __future__ import annotations
 
 import asyncio
 import gc
+import os
+import platform
 import random
 import socket
 import sys
 import time
-from test.asynchronous.utils import async_get_pool, async_joinall, flaky
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -29,15 +31,15 @@ from pymongo import AsyncMongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _async_create_lock
+from test.asynchronous.utils import async_get_pool, async_joinall, flaky
 
 sys.path[0:0] = [""]
 
+from pymongo.asynchronous.pool import Pool, PoolOptions
+from pymongo.socket_checker import SocketChecker
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.helpers import ConcurrentRunner
 from test.utils_shared import delay
-
-from pymongo.asynchronous.pool import Pool, PoolOptions
-from pymongo.socket_checker import SocketChecker
 
 _IS_SYNC = False
 
@@ -267,9 +269,7 @@ class TestPooling(_TestPoolingBase):
         self.assertTrue(socket_checker.select(s, write=True, timeout=0))
         self.assertTrue(socket_checker.select(s, write=True, timeout=0.05))
         # Make the socket readable
-        _, msg, _ = message._query(
-            0, "admin.$cmd", 0, -1, SON([("ping", 1)]), None, DEFAULT_CODEC_OPTIONS
-        )
+        _, msg, _, _ = message._op_msg(0, SON([("ping", 1)]), "admin", None, DEFAULT_CODEC_OPTIONS)
         s.sendall(msg)
         # Block until the socket is readable.
         self.assertTrue(socket_checker.select(s, read=True, timeout=None))
@@ -346,13 +346,13 @@ class TestPooling(_TestPoolingBase):
         async with pool.checkout() as s1:
             t = SocketGetter(self.c, pool)
             await t.start()
-            while t.state != "get_socket":
+            while t.state != "get_socket":  # noqa: ASYNC110, RUF100
                 await asyncio.sleep(0.1)
 
             await asyncio.sleep(1)
             self.assertEqual(t.state, "get_socket")
 
-        while t.state != "connection":
+        while t.state != "connection":  # noqa: ASYNC110, RUF100
             await asyncio.sleep(0.1)
 
         self.assertEqual(t.state, "connection")
@@ -521,7 +521,7 @@ class TestPooling(_TestPoolingBase):
         await coll.insert_many([{"x": 1} for _ in range(10)])
         t = SocketGetter(self.c, pool)
         await t.start()
-        while t.state != "connection":
+        while t.state != "connection":  # noqa: ASYNC110, RUF100
             await asyncio.sleep(0.1)
 
         assert not t.sock.conn_closed()
@@ -548,6 +548,10 @@ class TestPooling(_TestPoolingBase):
 
 
 class TestPoolMaxSize(_TestPoolingBase):
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     async def test_max_pool_size(self):
         max_pool_size = 4
         c = await self.async_rs_or_single_client(maxPoolSize=max_pool_size)
@@ -584,6 +588,10 @@ class TestPoolMaxSize(_TestPoolingBase):
         self.assertGreater(len(cx_pool.conns), 1)
         self.assertEqual(0, cx_pool.requests)
 
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     async def test_max_pool_size_none(self):
         c = await self.async_rs_or_single_client(maxPoolSize=None)
         collection = c[DB].test

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the client bulk write API."""
+
 from __future__ import annotations
 
 import os
@@ -20,15 +21,6 @@ import sys
 
 sys.path[0:0] = [""]
 
-from test import (
-    IntegrationTest,
-    client_context,
-    unittest,
-)
-from test.utils import flaky
-from test.utils_shared import (
-    OvertCommandListener,
-)
 from unittest.mock import patch
 
 import pymongo
@@ -42,6 +34,15 @@ from pymongo.errors import (
 from pymongo.operations import *
 from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.write_concern import WriteConcern
+from test import (
+    IntegrationTest,
+    client_context,
+    unittest,
+)
+from test.utils import flaky
+from test.utils_shared import (
+    OvertCommandListener,
+)
 
 _IS_SYNC = True
 

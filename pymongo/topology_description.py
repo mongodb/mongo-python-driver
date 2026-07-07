@@ -16,15 +16,14 @@
 
 .. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
 """
+
 from __future__ import annotations
 
+from collections.abc import Mapping, MutableMapping
 from random import sample
 from typing import (
     Any,
     Callable,
-    List,
-    Mapping,
-    MutableMapping,
     NamedTuple,
     Optional,
     cast,
@@ -57,7 +56,7 @@ TOPOLOGY_TYPE = _TopologyType(*range(6))
 SRV_POLLING_TOPOLOGIES: tuple[int, int] = (TOPOLOGY_TYPE.Unknown, TOPOLOGY_TYPE.Sharded)
 
 
-_ServerSelector = Callable[[List[ServerDescription]], List[ServerDescription]]
+_ServerSelector = Callable[[list[ServerDescription]], list[ServerDescription]]
 
 
 class TopologyDescription:
@@ -134,27 +133,17 @@ class TopologyDescription:
 
             if server_too_new:
                 self._incompatible_err = (
-                    "Server at %s:%d requires wire version %d, but this "  # type: ignore
-                    "version of PyMongo only supports up to %d."
-                    % (
-                        s.address[0],
-                        s.address[1] or 0,
-                        s.min_wire_version,
-                        common.MAX_SUPPORTED_WIRE_VERSION,
-                    )
+                    f"Server at {s.address[0]}:{s.address[1] or 0} requires wire version "  # type: ignore[assignment]
+                    f"{s.min_wire_version}, but this version of PyMongo only supports up to "
+                    f"{common.MAX_SUPPORTED_WIRE_VERSION}."
                 )
 
             elif server_too_old:
                 self._incompatible_err = (
-                    "Server at %s:%d reports wire version %d, but this "  # type: ignore
-                    "version of PyMongo requires at least %d (MongoDB %s)."
-                    % (
-                        s.address[0],
-                        s.address[1] or 0,
-                        s.max_wire_version,
-                        common.MIN_SUPPORTED_WIRE_VERSION,
-                        common.MIN_SUPPORTED_SERVER_VERSION,
-                    )
+                    f"Server at {s.address[0]}:{s.address[1] or 0} reports wire version "  # type: ignore[assignment]
+                    f"{s.max_wire_version}, but this version of PyMongo requires at least "
+                    f"{common.MIN_SUPPORTED_WIRE_VERSION} (MongoDB "
+                    f"{common.MIN_SUPPORTED_SERVER_VERSION})."
                 )
 
                 break
@@ -329,8 +318,8 @@ class TopologyDescription:
             common_wv = self.common_wire_version
             if common_wv and common_wv < selector.min_wire_version:
                 raise ConfigurationError(
-                    "%s requires min wire version %d, but topology's min"
-                    " wire version is %d" % (selector, selector.min_wire_version, common_wv)
+                    f"{selector} requires min wire version {selector.min_wire_version}, "
+                    f"but topology's min wire version is {common_wv}"
                 )
 
         if isinstance(selector, _AggWritePref):
@@ -412,12 +401,7 @@ class TopologyDescription:
     def __repr__(self) -> str:
         # Sort the servers by address.
         servers = sorted(self._server_descriptions.values(), key=lambda sd: sd.address)
-        return "<{} id: {}, topology_type: {}, servers: {!r}>".format(
-            self.__class__.__name__,
-            self._topology_settings._topology_id,
-            self.topology_type_name,
-            servers,
-        )
+        return f"<{self.__class__.__name__} id: {self._topology_settings._topology_id}, topology_type: {self.topology_type_name}, servers: {servers!r}>"
 
 
 # If topology type is Unknown and we receive a hello response, what should
@@ -465,9 +449,7 @@ def updated_topology_description(
         if set_name is not None and set_name != server_description.replica_set_name:
             error = ConfigurationError(
                 "client is configured to connect to a replica set named "
-                "'{}' but this node belongs to a set named '{}'".format(
-                    set_name, server_description.replica_set_name
-                )
+                f"'{set_name}' but this node belongs to a set named '{server_description.replica_set_name}'"
             )
             sds[address] = server_description.to_unknown(error=error)
         # Single type never changes.

@@ -20,8 +20,8 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
         if spec.name in ["asynchronous"]:
             continue
         try:
-            subprocess.run(
-                ["bash", "./.evergreen/resync-specs.sh", spec.name],  # noqa: S603, S607
+            subprocess.run(  # noqa: S603
+                ["bash", "./.evergreen/resync-specs.sh", spec.name],  # noqa: S607
                 capture_output=True,
                 text=True,
                 check=True,
@@ -34,28 +34,32 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
 def apply_patches(errored):
     print("Beginning to apply patches")
     subprocess.run(
-        ["bash", "./.evergreen/remove-unimplemented-tests.sh"],  # noqa: S603, S607
+        ["bash", "./.evergreen/remove-unimplemented-tests.sh"],  # noqa: S607
         check=True,
     )
-    try:
-        # Avoid shell=True by passing arguments as a list.
-        # Note: glob expansion doesn't work in shell=False, so we use a list of files.
-        patches = [str(p) for p in pathlib.Path("./.evergreen/spec-patch/").glob("*")]
-        if patches:
-            subprocess.run(
-                [  # noqa: S603, S607
-                    "git",
-                    "apply",
-                    "-R",
-                    "--allow-empty",
-                    "--whitespace=fix",
-                    *patches,
-                ],
-                check=True,
-                stderr=subprocess.PIPE,
-            )
-    except CalledProcessError as exc:
-        errored["applying patches"] = exc.stderr
+    # Avoid shell=True by passing arguments as a list.
+    # Note: glob expansion doesn't work in shell=False, so we use a list of files.
+    spec_patch_dir = pathlib.Path("./.evergreen/spec-patch/")
+    patches = [str(p) for p in spec_patch_dir.glob("*.patch")]
+    patches += [str(p) for p in (spec_patch_dir / "permanent").glob("*.patch")]
+    if patches:
+        for patch in patches:
+            print(f"Applying patch {patch}")
+            try:
+                subprocess.run(  # noqa: S603
+                    [  # noqa: S607
+                        "git",
+                        "apply",
+                        "-R",
+                        "--allow-empty",
+                        "--whitespace=fix",
+                        str(patch),
+                    ],
+                    check=True,
+                    stderr=subprocess.PIPE,
+                )
+            except CalledProcessError as exc:
+                errored[f"{patch}"] = exc.stderr
 
 
 def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
@@ -92,7 +96,7 @@ def write_summary(errored: dict[str, str], new: list[str], filename: str | None)
     pr_body = ""
     # Avoid shell=True and complex pipes by using Python to process git output
     process = subprocess.run(
-        ["git", "diff", "--name-only"],  # noqa: S603, S607
+        ["git", "diff", "--name-only"],  # noqa: S607
         capture_output=True,
         text=True,
         check=True,

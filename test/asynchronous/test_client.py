@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the mongo_client module."""
+
 from __future__ import annotations
 
 import _thread as thread
@@ -33,7 +34,8 @@ import sys
 import threading
 import time
 import uuid
-from typing import Any, Iterable, Type, no_type_check
+from collections.abc import Iterable
+from typing import Any, no_type_check
 from unittest import mock, skipIf
 from unittest.mock import patch
 
@@ -44,38 +46,6 @@ from bson.binary import CSHARP_LEGACY, JAVA_LEGACY, PYTHON_LEGACY, Binary, UuidR
 from pymongo.operations import _Op
 
 sys.path[0:0] = [""]
-
-from test.asynchronous import (
-    HAVE_IPADDRESS,
-    AsyncIntegrationTest,
-    AsyncMockClientTest,
-    AsyncUnitTest,
-    SkipTest,
-    async_client_context,
-    client_knobs,
-    connected,
-    db_pwd,
-    db_user,
-    remove_all_users,
-    unittest,
-)
-from test.asynchronous.pymongo_mocks import AsyncMockClient
-from test.asynchronous.utils import (
-    async_get_pool,
-    async_wait_until,
-    asyncAssertRaisesExactly,
-)
-from test.test_binary import BinaryData
-from test.utils_shared import (
-    NTHREADS,
-    CMAPListener,
-    FunctionCallRecorder,
-    delay,
-    gevent_monkey_patched,
-    is_greenthread_patched,
-    lazy_client_trial,
-    one,
-)
 
 import bson
 import pymongo
@@ -124,6 +94,37 @@ from pymongo.server_selectors import readable_server_selector, writable_server_s
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TopologyDescription
 from pymongo.write_concern import WriteConcern
+from test.asynchronous import (
+    HAVE_IPADDRESS,
+    AsyncIntegrationTest,
+    AsyncMockClientTest,
+    AsyncUnitTest,
+    SkipTest,
+    async_client_context,
+    client_knobs,
+    connected,
+    db_pwd,
+    db_user,
+    remove_all_users,
+    unittest,
+)
+from test.asynchronous.pymongo_mocks import AsyncMockClient
+from test.asynchronous.utils import (
+    async_get_pool,
+    async_wait_until,
+    asyncAssertRaisesExactly,
+)
+from test.test_binary import BinaryData
+from test.utils_shared import (
+    NTHREADS,
+    CMAPListener,
+    FunctionCallRecorder,
+    delay,
+    gevent_monkey_patched,
+    is_greenthread_patched,
+    lazy_client_trial,
+    one,
+)
 
 _IS_SYNC = False
 
@@ -437,7 +438,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
                 return int(value)
 
         # Ensure codec options are passed in correctly
-        document_class: Type[SON] = SON
+        document_class: type[SON] = SON
         type_registry = TypeRegistry([MyFloatAsIntEncoder()])
         tz_aware = True
         uuid_representation_label = "javaLegacy"
@@ -2305,10 +2306,10 @@ class TestExhaustCursor(AsyncIntegrationTest):
             # Discard the actual server response.
             await AsyncConnection.receive_message(conn, request_id)
 
-            # responseFlags bit 1 is QueryFailure.
-            msg = struct.pack("<iiiii", 1 << 1, 0, 0, 0, 0)
-            msg += encode({"$err": "mock err", "code": 0})
-            return message._OpReply.unpack(msg)
+            # Construct a valid OP_MSG error response.
+            doc = encode({"ok": 0, "errmsg": "mock err", "code": 0})
+            msg = struct.pack("<IB", 0, 0) + doc
+            return message._OpMsg.unpack(msg)
 
         conn.receive_message = receive_message
         with self.assertRaises(OperationFailure):
@@ -2711,11 +2712,11 @@ class TestClientPool(AsyncMockClientTest):
 
         await async_wait_until(lambda: len(c.nodes) == 1, "connect")
         self.assertEqual(await c.address, ("c", 3))
-        # Assert that we create 1 pooled connection.
+        # Wait for the pooled connection to be registered
         await listener.async_wait_for_event(monitoring.ConnectionReadyEvent, 1)
         self.assertEqual(listener.event_count(monitoring.ConnectionCreatedEvent), 1)
         arbiter = c._topology.get_server_by_address(("c", 3))
-        self.assertEqual(len(arbiter.pool.conns), 1)
+        await async_wait_until(lambda: len(arbiter.pool.conns) == 1, "create 1 pooled connection")
         # Arbiter pool is marked ready.
         self.assertEqual(listener.event_count(monitoring.PoolReadyEvent), 1)
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test client side encryption spec."""
+
 from __future__ import annotations
 
 import base64
@@ -30,17 +31,18 @@ import textwrap
 import traceback
 import uuid
 import warnings
-from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, async_client_context
-from test.asynchronous.test_bulk import AsyncBulkTestBase
-from test.asynchronous.utils import flaky
+from collections.abc import Mapping
 from threading import Thread
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Optional
 
 import pytest
 
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.daemon import _spawn_daemon
 from pymongo.uri_parser_shared import _parse_kms_tls_options
+from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, async_client_context
+from test.asynchronous.test_bulk import AsyncBulkTestBase
+from test.asynchronous.utils import flaky
 
 try:
     from pymongo.pyopenssl_context import IS_PYOPENSSL
@@ -48,32 +50,6 @@ except ImportError:
     IS_PYOPENSSL = False
 
 sys.path[0:0] = [""]
-
-from test import (
-    unittest,
-)
-from test.asynchronous.test_bulk import AsyncBulkTestBase
-from test.asynchronous.unified_format import generate_test_classes, get_test_path
-from test.helpers_shared import (
-    ALL_KMS_PROVIDERS,
-    AWS_CREDS,
-    AWS_TEMP_CREDS,
-    AZURE_CREDS,
-    CA_PEM,
-    CLIENT_PEM,
-    DEFAULT_KMS_TLS,
-    GCP_CREDS,
-    KMIP_CREDS,
-    LOCAL_MASTER_KEY,
-)
-from test.utils_shared import (
-    AllowListEventListener,
-    OvertCommandListener,
-    TopologyEventListener,
-    async_wait_until,
-    camel_to_snake_args,
-    is_greenthread_patched,
-)
 
 from bson import BSON, DatetimeMS, Decimal128, encode, json_util
 from bson.binary import UUID_SUBTYPE, Binary, UuidRepresentation
@@ -103,6 +79,31 @@ from pymongo.errors import (
 )
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.write_concern import WriteConcern
+from test import (
+    unittest,
+)
+from test.asynchronous.test_bulk import AsyncBulkTestBase
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
+from test.helpers_shared import (
+    ALL_KMS_PROVIDERS,
+    AWS_CREDS,
+    AWS_TEMP_CREDS,
+    AZURE_CREDS,
+    CA_PEM,
+    CLIENT_PEM,
+    DEFAULT_KMS_TLS,
+    GCP_CREDS,
+    KMIP_CREDS,
+    LOCAL_MASTER_KEY,
+)
+from test.utils_shared import (
+    AllowListEventListener,
+    OvertCommandListener,
+    TopologyEventListener,
+    async_wait_until,
+    camel_to_snake_args,
+    is_greenthread_patched,
+)
 
 _IS_SYNC = False
 
@@ -2207,6 +2208,13 @@ class TestExplicitQueryableEncryption(AsyncEncryptionIntegrationTest):
         self.assertEqual(docs[0]["encryptedIndexed"], val)
 
     async def test_02_insert_encrypted_indexed_and_find_contention(self):
+        # setUp creates the collection with contention=0 (from encryptedFields.json).
+        # This test uses contention_factor=10, so recreate the collection with contention=10.
+        await self.db.drop_collection("explicit_encryption", encrypted_fields=self.encrypted_fields)
+        encrypted_fields = copy.deepcopy(self.encrypted_fields)
+        encrypted_fields["fields"][0]["queries"]["contention"] = 10
+        await self.db.command("create", "explicit_encryption", encryptedFields=encrypted_fields)
+
         val = "encrypted indexed value"
         contention = 10
         for _ in range(contention):
@@ -2217,20 +2225,7 @@ class TestExplicitQueryableEncryption(AsyncEncryptionIntegrationTest):
                 {"encryptedIndexed": insert_payload}
             )
 
-        find_payload = await self.client_encryption.encrypt(
-            val, Algorithm.INDEXED, self.key1_id, query_type=QueryType.EQUALITY, contention_factor=0
-        )
-        docs = (
-            await self.encrypted_client[self.db.name]
-            .explicit_encryption.find({"encryptedIndexed": find_payload})
-            .to_list()
-        )
-
-        self.assertLessEqual(len(docs), 10)
-        for doc in docs:
-            self.assertEqual(doc["encryptedIndexed"], val)
-
-        # Find with contention_factor will return all 10 documents.
+        # Find with matching contention_factor returns all 10 documents.
         find_payload = await self.client_encryption.encrypt(
             val,
             Algorithm.INDEXED,
@@ -2927,7 +2922,7 @@ class TestRangeQueryProse(AsyncEncryptionIntegrationTest):
                 EncryptionError, "expected matching 'min' and value type. Got range option"
             ):
                 await self.client_encryption.encrypt(
-                    6 if cast_func != int else float(6),
+                    6 if cast_func is not int else float(6),
                     key_id=self.key1_id,
                     algorithm=Algorithm.RANGE,
                     contention_factor=0,
@@ -3195,7 +3190,7 @@ class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
         self.assertIsNone(encrypted_fields["fields"][0]["keyId"])
 
     async def test_options_forward(self):
-        coll, ef = await self.client_encryption.create_encrypted_collection(
+        coll, _ = await self.client_encryption.create_encrypted_collection(
             database=self.db,
             name="testing1",
             kms_provider="local",
@@ -3319,6 +3314,7 @@ class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#27-text-explicit-encryption
+@unittest.skip("PYTHON-5799 need to add support for the new query type")
 class TestExplicitTextEncryptionProse(AsyncEncryptionIntegrationTest):
     @async_client_context.require_no_standalone
     @async_client_context.require_version_min(8, 2, -1)

@@ -13,16 +13,17 @@
 # limitations under the License.
 
 """Utilities for testing driver specs."""
+
 from __future__ import annotations
 
 import asyncio
 import os
-from test.asynchronous import async_client_context
-from test.asynchronous.helpers import ConcurrentRunner
-from test.utils_shared import ScenarioDict
 
 from bson import json_util
 from pymongo.lock import _async_cond_wait, _async_create_condition, _async_create_lock
+from test.asynchronous import async_client_context
+from test.asynchronous.helpers import ConcurrentRunner
+from test.utils_shared import ScenarioDict
 
 _IS_SYNC = False
 
@@ -159,7 +160,7 @@ class AsyncSpecTestCreator:
             dirname = os.path.split(dirpath)[-1]
 
             for filename in filenames:
-                with open(os.path.join(dirpath, filename)) as scenario_stream:  # noqa: ASYNC101, RUF100
+                with open(os.path.join(dirpath, filename)) as scenario_stream:  # noqa: ASYNC230, RUF100
                     # Use tz_aware=False to match how CodecOptions decodes
                     # dates.
                     opts = json_util.JSONOptions(tz_aware=False)

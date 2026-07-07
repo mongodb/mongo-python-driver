@@ -13,24 +13,17 @@
 # limitations under the License.
 
 """Utilities for testing Server Selection and Max Staleness."""
+
 from __future__ import annotations
 
 import datetime
 import os
 import sys
+
 from test.asynchronous import AsyncPyMongoTestCase
 from test.asynchronous.utils import AsyncMockPool
 
 sys.path[0:0] = [""]
-
-from test import unittest
-from test.pymongo_mocks import DummyMonitor
-from test.utils_selection_tests_shared import (
-    get_addresses,
-    get_topology_type_name,
-    make_server_description,
-)
-from test.utils_shared import parse_read_preference
 
 from bson import json_util
 from pymongo.asynchronous.settings import TopologySettings
@@ -39,6 +32,14 @@ from pymongo.common import HEARTBEAT_FREQUENCY, clean_node
 from pymongo.errors import AutoReconnect, ConfigurationError
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
+from test import unittest
+from test.pymongo_mocks import DummyMonitor
+from test.utils_selection_tests_shared import (
+    get_addresses,
+    get_topology_type_name,
+    make_server_description,
+)
+from test.utils_shared import parse_read_preference
 
 _IS_SYNC = False
 

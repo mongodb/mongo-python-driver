@@ -30,6 +30,7 @@ access:
   >>> c["test-database"]
   AsyncDatabase(AsyncMongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test-database')
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -39,22 +40,15 @@ import time as time  # noqa: PLC0414 # needed in sync version
 import warnings
 import weakref
 from collections import defaultdict
+from collections.abc import AsyncGenerator, Collection, Coroutine, Mapping, MutableMapping, Sequence
+from contextlib import AbstractAsyncContextManager
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncContextManager,
-    AsyncGenerator,
     Callable,
-    Collection,
-    Coroutine,
-    FrozenSet,
     Generic,
-    Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
-    Sequence,
-    Type,
     TypeVar,
     Union,
     cast,
@@ -186,7 +180,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self,
         host: Optional[Union[str, Sequence[str]]] = None,
         port: Optional[int] = None,
-        document_class: Optional[Type[_DocumentType]] = None,
+        document_class: Optional[type[_DocumentType]] = None,
         tz_aware: Optional[bool] = None,
         connect: Optional[bool] = None,
         type_registry: Optional[TypeRegistry] = None,
@@ -615,6 +609,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             details.
 
           | **Overload retry options:**
+          | (Requires MongoDB server version 9.0+.)
 
           - `max_adaptive_retries`: (int) How many retries to allow for overload errors. Defaults to ``2``.
           - `enable_overload_retargeting`: (boolean) Whether overload retargeting is enabled for this client.
@@ -1255,7 +1250,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._topology.description
 
     @property
-    def nodes(self) -> FrozenSet[_Address]:
+    def _topology_id(self) -> Optional[ObjectId]:
+        return self._topology_settings._topology_id
+
+    @property
+    def nodes(self) -> frozenset[_Address]:
         """Set of all currently connected servers.
 
         .. warning:: When connected to a replica set the value of :attr:`nodes`
@@ -1317,11 +1316,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             options = [f"host='mongodb+srv://{self._resolve_srv_info['fqdn']}'"]
         else:
             options = [
-                "host=%r"
-                % [
-                    "%s:%d" % (host, port) if port is not None else host
-                    for host, port in self._topology_settings.seeds
-                ]
+                "host={!r}".format(
+                    [
+                        f"{host}:{port}" if port is not None else host
+                        for host, port in self._topology_settings.seeds
+                    ]
+                )
             ]
         # ... then everything in self._constructor_args...
         options.extend(
@@ -1868,7 +1868,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     async def _conn_for_writes(
         self, session: Optional[AsyncClientSession], operation: str
-    ) -> AsyncContextManager[AsyncConnection]:
+    ) -> AbstractAsyncContextManager[AsyncConnection]:
         server = await self._select_server(writable_server_selector, session, operation)
         return self._checkout(server, session)
 
@@ -1902,7 +1902,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         read_preference: _ServerMode,
         session: Optional[AsyncClientSession],
         operation: str,
-    ) -> AsyncContextManager[tuple[AsyncConnection, _ServerMode]]:
+    ) -> AbstractAsyncContextManager[tuple[AsyncConnection, _ServerMode]]:
         assert read_preference is not None, "read_preference must not be None"
         server = await self._select_server(read_preference, session, operation)
         return self._conn_from_server(read_preference, server, session)
@@ -2677,13 +2677,13 @@ class _MongoClientErrorHandler:
 
     __slots__ = (
         "client",
-        "server_address",
-        "session",
-        "max_wire_version",
-        "sock_generation",
         "completed_handshake",
-        "service_id",
         "handled",
+        "max_wire_version",
+        "server_address",
+        "service_id",
+        "session",
+        "sock_generation",
     )
 
     def __init__(
@@ -2718,7 +2718,7 @@ class _MongoClientErrorHandler:
         self.completed_handshake = completed_handshake
 
     async def handle(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException]
+        self, exc_type: Optional[type[BaseException]], exc_val: Optional[BaseException]
     ) -> None:
         if self.handled or exc_val is None:
             return
@@ -2751,7 +2751,7 @@ class _MongoClientErrorHandler:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[Exception]],
+        exc_type: Optional[type[Exception]],
         exc_val: Optional[Exception],
         exc_tb: Optional[TracebackType],
     ) -> None:
@@ -2870,8 +2870,8 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._last_error = exc
                         self._attempt_number += 1
 
-                        # Revert back to starting state if we're in a transaction but haven't completed the first
-                        # command.
+                        # Revert back to starting state only if the first
+                        # transactional command was never completed.
                         if (
                             overloaded
                             and self._session is not None
@@ -2921,8 +2921,8 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._last_error = exc
                     if self._last_error is None:
                         self._last_error = exc
-                    # Revert back to starting state if we're in a transaction but haven't completed the first
-                    # command.
+                    # Revert back to starting state only if the first
+                    # transactional command was never completed.
                     if overloaded and self._session is not None and self._session.in_transaction:
                         transaction = self._session._transaction
                         if not transaction.has_completed_command:
@@ -3017,7 +3017,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     _debug_log(
                         _COMMAND_LOGGER,
                         message=f"Retrying write attempt number {self._attempt_number}",
-                        clientId=self._client._topology_settings._topology_id,
+                        clientId=self._client._topology_id,
                         commandName=self._operation,
                         operationId=self._operation_id,
                     )

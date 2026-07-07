@@ -13,15 +13,17 @@
 # limitations under the License.
 
 """Test connections to various Atlas cluster types."""
+
 from __future__ import annotations
 
 import os
 import sys
 import unittest
 from collections import defaultdict
-from test import PyMongoTestCase
 
 import pytest
+
+from test import PyMongoTestCase
 
 sys.path[0:0] = [""]
 

@@ -13,49 +13,29 @@
 # limitations under the License.
 
 """Test the topology module."""
+
 from __future__ import annotations
 
 import asyncio
 import os
+import platform
 import socketserver
 import sys
 import threading
 import time
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
-from test.asynchronous.helpers import ConcurrentRunner
-from test.asynchronous.utils import flaky
-from test.utils_shared import delay
 
 from pymongo.asynchronous.pool import AsyncConnection
 from pymongo.errors import ConnectionFailure
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
+from test.asynchronous.helpers import ConcurrentRunner
+from test.asynchronous.utils import flaky
+from test.utils_shared import delay
 
 sys.path[0:0] = [""]
 
-from test.asynchronous import (
-    AsyncIntegrationTest,
-    AsyncPyMongoTestCase,
-    AsyncUnitTest,
-    async_client_context,
-    unittest,
-)
-from test.asynchronous.pymongo_mocks import DummyMonitor
-from test.asynchronous.unified_format import generate_test_classes, get_test_path
-from test.asynchronous.utils import (
-    async_get_pool,
-)
-from test.utils_shared import (
-    CMAPListener,
-    HeartbeatEventListener,
-    HeartbeatEventsListListener,
-    assertion_context,
-    async_barrier_wait,
-    async_create_barrier,
-    async_wait_until,
-    server_name_to_type,
-)
 from unittest.mock import patch
 
 from bson import Timestamp, json_util
@@ -80,6 +60,28 @@ from pymongo.monitoring import (
 )
 from pymongo.server_description import SERVER_TYPE, ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    AsyncUnitTest,
+    async_client_context,
+    unittest,
+)
+from test.asynchronous.pymongo_mocks import DummyMonitor
+from test.asynchronous.unified_format import generate_test_classes, get_test_path
+from test.asynchronous.utils import (
+    async_get_pool,
+)
+from test.utils_shared import (
+    CMAPListener,
+    HeartbeatEventListener,
+    HeartbeatEventsListListener,
+    assertion_context,
+    async_barrier_wait,
+    async_create_barrier,
+    async_wait_until,
+    server_name_to_type,
+)
 
 _IS_SYNC = False
 
@@ -303,6 +305,10 @@ class TestClusterTimeComparison(AsyncPyMongoTestCase):
 
 
 class TestIgnoreStaleErrors(AsyncIntegrationTest):
+    @unittest.skipIf(
+        sys.platform == "darwin" and platform.machine() == "arm64" and "CI" in os.environ,
+        "PYTHON-5861: asyncio.Barrier hangs on macOS ARM64 CI",
+    )
     async def test_ignore_stale_connection_errors(self):
         if not _IS_SYNC and sys.version_info < (3, 11):
             self.skipTest("Test requires asyncio.Barrier (added in Python 3.11)")
@@ -451,31 +457,50 @@ class TestPoolManagement(AsyncIntegrationTest):
 
 class TestPoolBackpressure(AsyncIntegrationTest):
     @async_client_context.require_version_min(7, 0, 0)
+    @unittest.skipIf(
+        sys.platform == "darwin" and "CI" in os.environ,
+        "PYTHON-5861: $where is too slow on macOS CI",
+    )
     async def test_connection_pool_is_not_cleared(self):
         listener = CMAPListener()
 
         # Create a client that listens to CMAP events, with maxConnecting=100.
         client = await self.async_rs_or_single_client(maxConnecting=100, event_listeners=[listener])
 
-        # Enable the ingress rate limiter.
-        await client.admin.command(
-            "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
-        )
-        await client.admin.command("setParameter", 1, ingressConnectionEstablishmentRatePerSec=20)
-        await client.admin.command(
-            "setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1
-        )
-        await client.admin.command("setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1)
+        # setParameter needs to be set on each mongos in a sharded cluster
+        if async_client_context.mongoses:
+            admin_clients = [
+                await self.async_single_client("{}:{}".format(*address))
+                for address in async_client_context.mongoses
+            ]
+        else:
+            admin_clients = [client]
 
         # Disable the ingress rate limiter on teardown.
         # Sleep for 1 second before disabling to avoid the rate limiter.
         async def teardown():
             await asyncio.sleep(1)
-            await client.admin.command(
-                "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
-            )
+            for admin_client in admin_clients:
+                await admin_client.admin.command(
+                    "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
+                )
 
         self.addAsyncCleanup(teardown)
+
+        # Enable the ingress rate limiter.
+        for admin_client in admin_clients:
+            await admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
+            )
+            await admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentRatePerSec=20
+            )
+            await admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1
+            )
+            await admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1
+            )
 
         # Make sure the collection has at least one document.
         await client.test.test.delete_many({})

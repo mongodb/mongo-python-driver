@@ -24,15 +24,12 @@ import ssl
 import sys
 import time
 import weakref
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generator,
-    Mapping,
-    MutableMapping,
     NoReturn,
     Optional,
-    Sequence,
     Union,
 )
 
@@ -81,6 +78,7 @@ from pymongo.pool_shared import (
     SSLErrors,
     _CancellationContext,
     _configured_socket_interface,
+    _ConnectionTelemetryInfo,
     _raise_connection_failure,
 )
 from pymongo.read_preferences import ReadPreference
@@ -88,8 +86,8 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.client_session import _validate_session_write_concern
+from pymongo.synchronous.command_runner import run_command
 from pymongo.synchronous.helpers import _handle_reauth
-from pymongo.synchronous.network import command
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -99,7 +97,7 @@ if TYPE_CHECKING:
         ZlibContext,
         ZstdContext,
     )
-    from pymongo.message import _OpMsg, _OpReply
+    from pymongo.message import _OpMsg
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.auth import _AuthContext
@@ -112,7 +110,7 @@ if TYPE_CHECKING:
 _IS_SYNC = True
 
 
-class Connection:
+class Connection(_ConnectionTelemetryInfo):
     """Store a connection with some metadata.
 
     :param conn: a raw connection object
@@ -146,7 +144,6 @@ class Connection:
         self.supports_sessions = False
         self.hello_ok: bool = False
         self.is_mongos = False
-        self.op_msg_enabled = False
         self.listeners = pool.opts._event_listeners
         self.enabled_for_cmap = pool.enabled_for_cmap
         self.enabled_for_logging = pool.enabled_for_logging
@@ -235,13 +232,11 @@ class Connection:
             self.close_conn(ConnectionClosedReason.STALE)
 
     def hello_cmd(self) -> dict[str, Any]:
-        # Handshake spec requires us to use OP_MSG+hello command for the
-        # initial handshake in load balanced or stable API mode.
+        # As of PYTHON-5713, always use OP_MSG for the handshake since all
+        # supported servers (MongoDB 4.2+, wire version >= 8) support it.
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
-            self.op_msg_enabled = True
             return {HelloCompat.CMD: 1}
-        else:
-            return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
+        return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
 
     def hello(self) -> Hello[dict[str, Any]]:
         return self._hello(None, None)
@@ -314,7 +309,6 @@ class Connection:
             ctx = self.compression_settings.get_compression_context(hello.compressors)
             self.compression_context = ctx
 
-        self.op_msg_enabled = True
         self.server_connection_id = hello.connection_id
         if creds:
             self.negotiated_mechs = hello.sasl_supported_mechs
@@ -397,28 +391,27 @@ class Connection:
         self.send_cluster_time(spec, session, client)
         listeners = self.listeners if publish_events else None
         unacknowledged = bool(write_concern and not write_concern.acknowledged)
-        if self.op_msg_enabled:
-            self._raise_if_not_writable(unacknowledged)
+        if unacknowledged:
+            self._raise_if_not_writable()
         try:
-            return command(
+            if session is not None and session._starting_transaction:
+                session._transaction.set_in_progress()
+            return run_command(
                 self,
                 dbname,
                 spec,
-                self.is_mongos,
                 read_preference,
                 codec_options,  # type: ignore[arg-type]
                 session,
                 client,
                 check,
                 allowable_errors,
-                self.address,
                 listeners,
                 self.max_bson_size,
                 read_concern,
                 parse_write_concern_error=parse_write_concern_error,
                 collation=collation,
                 compression_ctx=self.compression_context,
-                use_op_msg=self.op_msg_enabled,
                 unacknowledged=unacknowledged,
                 user_fields=user_fields,
                 exhaust_allowed=exhaust_allowed,
@@ -437,8 +430,8 @@ class Connection:
         """
         if self.max_bson_size is not None and max_doc_size > self.max_bson_size:
             raise DocumentTooLarge(
-                "BSON document too large (%d bytes) - the connected server "
-                "supports BSON document sizes up to %d bytes." % (max_doc_size, self.max_bson_size)
+                f"BSON document too large ({max_doc_size} bytes) - the connected server "
+                f"supports BSON document sizes up to {self.max_bson_size} bytes."
             )
 
         try:
@@ -447,7 +440,7 @@ class Connection:
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def receive_message(self, request_id: Optional[int]) -> Union[_OpReply, _OpMsg]:
+    def receive_message(self, request_id: Optional[int]) -> _OpMsg:
         """Receive a raw BSON message or raise ConnectionFailure.
 
         If any exception is raised, the socket is closed.
@@ -458,42 +451,10 @@ class Connection:
         except BaseException as error:
             self._raise_connection_failure(error)
 
-    def _raise_if_not_writable(self, unacknowledged: bool) -> None:
-        """Raise NotPrimaryError on unacknowledged write if this socket is not
-        writable.
-        """
-        if unacknowledged and not self.is_writable:
-            # Write won't succeed, bail as if we'd received a not primary error.
+    def _raise_if_not_writable(self) -> None:
+        """Raise NotPrimaryError if this connection is not writable."""
+        if not self.is_writable:
             raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
-
-    def unack_write(self, msg: bytes, max_doc_size: int) -> None:
-        """Send unack OP_MSG.
-
-        Can raise ConnectionFailure or InvalidDocument.
-
-        :param msg: bytes, an OP_MSG message.
-        :param max_doc_size: size in bytes of the largest document in `msg`.
-        """
-        self._raise_if_not_writable(True)
-        self.send_message(msg, max_doc_size)
-
-    def write_command(
-        self, request_id: int, msg: bytes, codec_options: CodecOptions[Mapping[str, Any]]
-    ) -> dict[str, Any]:
-        """Send "insert" etc. command, returning response as a dict.
-
-        Can raise ConnectionFailure or OperationFailure.
-
-        :param request_id: an int.
-        :param msg: bytes, the command message.
-        """
-        self.send_message(msg, 0)
-        reply = self.receive_message(request_id)
-        result = reply.command_response(codec_options)
-
-        # Raises NotPrimaryError or OperationFailure.
-        helpers_shared._check_command_response(result, self.max_wire_version)
-        return result
 
     def authenticate(self, reauthenticate: bool = False) -> None:
         """Authenticate to the server if needed.
@@ -515,9 +476,7 @@ class Connection:
                 auth.authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
             duration = time.monotonic() - self.creation_time
-            if self.enabled_for_cmap:
-                assert self.listeners is not None
-                self.listeners.publish_connection_ready(self.address, self.id, duration)
+            # Log before publishing event to prevent potential listener preemption in tests
             if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
                 _debug_log(
                     _CONNECTION_LOGGER,
@@ -528,6 +487,9 @@ class Connection:
                     driverConnectionId=self.id,
                     durationMS=duration,
                 )
+            if self.enabled_for_cmap:
+                assert self.listeners is not None
+                self.listeners.publish_connection_ready(self.address, self.id, duration)
 
     def validate_session(
         self, client: Optional[MongoClient[Any]], session: Optional[ClientSession]
@@ -632,7 +594,7 @@ class Connection:
             details = _get_timeout_details(self.opts)
             _raise_connection_failure(self.address, error, timeout_details=details)
         else:
-            raise
+            raise error
 
     def __eq__(self, other: Any) -> bool:
         return self.conn == other.conn
@@ -646,7 +608,7 @@ class Connection:
     def __repr__(self) -> str:
         return "Connection({}){} at {}".format(
             repr(self.conn),
-            self.closed and " CLOSED" or "",
+            (self.closed and " CLOSED") or "",
             id(self),
         )
 
@@ -758,6 +720,9 @@ class Pool:
         self._pending = 0
         self._max_connecting = self.opts.max_connecting
         self._client_id = client_id
+        self._ssl_session_cache: Optional[list[Any]] = (
+            [None] if self.opts._ssl_context is not None else None
+        )
         # Log before publishing event to prevent potential listener preemption in tests
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
@@ -837,6 +802,32 @@ class Pool:
 
             if close:
                 self.state = PoolState.CLOSED
+
+            # Publish PoolClearedEvent while holding the lock and before
+            # notify_all(). This guarantees it is recorded before any waiting
+            # thread wakes up and emits ConnectionCheckOutFailedEvent, which
+            # also requires size_cond. Without this ordering, a race on PyPy
+            # and free-threaded Python causes ConnectionCheckOutFailedEvent to
+            # arrive before PoolClearedEvent (PYTHON-3519).
+            if not close and old_state != PoolState.PAUSED:
+                _listeners = self.opts._event_listeners
+                if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
+                    _debug_log(
+                        _CONNECTION_LOGGER,
+                        message=_ConnectionStatusMessage.POOL_CLEARED,
+                        clientId=self._client_id,
+                        serverHost=self.address[0],
+                        serverPort=self.address[1],
+                        serviceId=service_id,
+                    )
+                if self.enabled_for_cmap:
+                    assert _listeners is not None
+                    _listeners.publish_pool_cleared(
+                        self.address,
+                        service_id=service_id,
+                        interrupt_connections=interrupt_connections,
+                    )
+
             # Clear the wait queue
             self._max_connecting_cond.notify_all()
             self.size_cond.notify_all()
@@ -870,23 +861,6 @@ class Pool:
                 assert listeners is not None
                 listeners.publish_pool_closed(self.address)
         else:
-            if old_state != PoolState.PAUSED:
-                if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _CONNECTION_LOGGER,
-                        message=_ConnectionStatusMessage.POOL_CLEARED,
-                        clientId=self._client_id,
-                        serverHost=self.address[0],
-                        serverPort=self.address[1],
-                        serviceId=service_id,
-                    )
-                if self.enabled_for_cmap:
-                    assert listeners is not None
-                    listeners.publish_pool_cleared(
-                        self.address,
-                        service_id=service_id,
-                        interrupt_connections=interrupt_connections,
-                    )
             if not _IS_SYNC:
                 asyncio.gather(
                     *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
@@ -1019,9 +993,7 @@ class Pool:
             self.active_contexts.add(tmp_context)
 
         listeners = self.opts._event_listeners
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_created(self.address, conn_id)
+        # Log before publishing event to prevent potential listener preemption in tests
         if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
             _debug_log(
                 _CONNECTION_LOGGER,
@@ -1031,9 +1003,14 @@ class Pool:
                 serverPort=self.address[1],
                 driverConnectionId=conn_id,
             )
+        if self.enabled_for_cmap:
+            assert listeners is not None
+            listeners.publish_connection_created(self.address, conn_id)
 
         try:
-            networking_interface = _configured_socket_interface(self.address, self.opts)
+            networking_interface = _configured_socket_interface(
+                self.address, self.opts, self._ssl_session_cache
+            )
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException as error:
             with self.lock:
@@ -1054,10 +1031,16 @@ class Pool:
                     reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
                     error=ConnectionClosedReason.ERROR,
                 )
-            self._handle_connection_error(error)
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
-                _raise_connection_failure(self.address, error, timeout_details=details)
+                # Wrap to AutoReconnect/NetworkTimeout BEFORE labeling so the
+                # SystemOverloadedError label lands on the propagated exception.
+                try:
+                    _raise_connection_failure(self.address, error, timeout_details=details)
+                except (AutoReconnect, NetworkTimeout) as wrapped:
+                    self._handle_connection_error(wrapped)
+                    raise
+            self._handle_connection_error(error)
             raise
 
         conn = Connection(networking_interface, self, self.address, conn_id, self.is_sdam)  # type: ignore[arg-type]
@@ -1460,15 +1443,9 @@ class Pool:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
             raise WaitQueueTimeoutError(
                 "Timeout waiting for connection from the connection pool. "
-                "maxPoolSize: {}, connections in use by cursors: {}, "
-                "connections in use by transactions: {}, connections in use "
-                "by other operations: {}, timeout: {}".format(
-                    self.opts.max_pool_size,
-                    self.ncursors,
-                    self.ntxns,
-                    other_ops,
-                    timeout,
-                )
+                f"maxPoolSize: {self.opts.max_pool_size}, connections in use by cursors: {self.ncursors}, "
+                f"connections in use by transactions: {self.ntxns}, connections in use "
+                f"by other operations: {other_ops}, timeout: {timeout}"
             )
         raise WaitQueueTimeoutError(
             "Timed out while checking out a connection from connection pool. "

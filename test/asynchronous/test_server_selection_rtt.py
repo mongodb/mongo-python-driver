@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the topology module."""
+
 from __future__ import annotations
 
 import json
@@ -22,10 +23,9 @@ from pathlib import Path
 
 sys.path[0:0] = [""]
 
+from pymongo.read_preferences import MovingAverage
 from test import unittest
 from test.asynchronous import AsyncPyMongoTestCase
-
-from pymongo.read_preferences import MovingAverage
 
 _IS_SYNC = False
 

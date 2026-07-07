@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Re-import of synchronous ClientSession API for compatibility."""
+
 from __future__ import annotations
 
 from pymongo.synchronous.client_session import *  # noqa: F403

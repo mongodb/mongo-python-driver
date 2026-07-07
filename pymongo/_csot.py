@@ -20,9 +20,10 @@ import functools
 import inspect
 import time
 from collections import deque
+from collections.abc import MutableMapping
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
-from typing import TYPE_CHECKING, Any, Callable, Deque, MutableMapping, Optional, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, cast
 
 if TYPE_CHECKING:
     from pymongo.write_concern import WriteConcern
@@ -147,7 +148,7 @@ _MIN_RTT_SAMPLES: int = 2
 class MovingMinimum:
     """Tracks a minimum RTT within the last 10 RTT samples."""
 
-    samples: Deque[float]
+    samples: deque[float]
 
     def __init__(self) -> None:
         self.samples = deque(maxlen=_MAX_RTT_SAMPLES)

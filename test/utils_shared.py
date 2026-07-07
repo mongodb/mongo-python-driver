@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Shared utilities for testing pymongo"""
+
 from __future__ import annotations
 
 import asyncio
@@ -22,6 +23,7 @@ import functools
 import random
 import re
 import shutil
+import struct
 import sys
 import threading
 import unittest
@@ -29,10 +31,6 @@ import warnings
 from collections import abc, defaultdict
 from functools import partial
 from inspect import iscoroutinefunction
-from test import client_context
-from test.asynchronous.utils import async_wait_until
-from test.utils import wait_until
-from typing import List
 
 from bson.objectid import ObjectId
 from pymongo import monitoring, operations, read_preferences
@@ -58,6 +56,9 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous.collection import ReturnDocument
 from pymongo.synchronous.pool import _CancellationContext, _PoolGeneration
 from pymongo.write_concern import WriteConcern
+from test import client_context
+from test.asynchronous.utils import async_wait_until
+from test.utils import wait_until
 
 IMPOSSIBLE_WRITE_CONCERN = WriteConcern(w=50)
 
@@ -149,15 +150,15 @@ class EventListener(BaseListener, monitoring.CommandListener):
         self.results = defaultdict(list)
 
     @property
-    def started_events(self) -> List[monitoring.CommandStartedEvent]:
+    def started_events(self) -> list[monitoring.CommandStartedEvent]:
         return self.results["started"]
 
     @property
-    def succeeded_events(self) -> List[monitoring.CommandSucceededEvent]:
+    def succeeded_events(self) -> list[monitoring.CommandSucceededEvent]:
         return self.results["succeeded"]
 
     @property
-    def failed_events(self) -> List[monitoring.CommandFailedEvent]:
+    def failed_events(self) -> list[monitoring.CommandFailedEvent]:
         return self.results["failed"]
 
     def started(self, event: monitoring.CommandStartedEvent) -> None:
@@ -172,7 +173,7 @@ class EventListener(BaseListener, monitoring.CommandListener):
         self.failed_events.append(event)
         self.add_event(event)
 
-    def started_command_names(self) -> List[str]:
+    def started_command_names(self) -> list[str]:
         """Return list of command names started."""
         return [event.command_name for event in self.started_events]
 
@@ -743,3 +744,13 @@ async def async_barrier_wait(barrier, timeout: float | None = None):
 
 def barrier_wait(barrier, timeout: float | None = None):
     barrier.wait(timeout=timeout)
+
+
+def pack_msg_header(length: int, request_id: int, response_to: int, op_code: int) -> bytes:
+    """Pack a MongoDB wire-protocol message header (``<iiii``: length,
+    request_id, response_to, op_code).
+
+    Lets tests set an arbitrary ``length`` (including invalid values), which
+    production header-packing never does.
+    """
+    return struct.pack("<iiii", length, request_id, response_to, op_code)

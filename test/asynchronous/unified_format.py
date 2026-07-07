@@ -16,6 +16,7 @@
 
 https://github.com/mongodb/specifications/blob/master/source/unified-test-format/unified-test-format.md
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -23,45 +24,16 @@ import binascii
 import copy
 import functools
 import os
+import platform
 import re
 import sys
 import time
 import traceback
 from collections import defaultdict
+from collections.abc import Mapping
 from inspect import iscoroutinefunction
 from pathlib import Path
-from test.asynchronous import (
-    AsyncIntegrationTest,
-    async_client_context,
-    client_knobs,
-    unittest,
-)
-from test.asynchronous.utils import async_get_pool, flaky
-from test.asynchronous.utils_spec_runner import SpecRunnerTask
-from test.helpers_shared import ALL_KMS_PROVIDERS, DEFAULT_KMS_TLS
-from test.unified_format_shared import (
-    KMS_TLS_OPTS,
-    PLACEHOLDER_MAP,
-    EventListenerUtil,
-    MatchEvaluatorUtil,
-    coerce_result,
-    parse_bulk_write_error_result,
-    parse_bulk_write_result,
-    parse_client_bulk_write_error_result,
-    parse_collection_or_database_options,
-    with_metaclass,
-)
-from test.utils_shared import (
-    async_wait_until,
-    camel_to_snake,
-    camel_to_snake_args,
-    parse_spec_options,
-    prepare_spec_arguments,
-    snake_to_camel,
-    wait_until,
-)
-from test.version import Version
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Optional
 
 import pytest
 
@@ -107,6 +79,37 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TopologyDescription
 from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    async_client_context,
+    client_knobs,
+    unittest,
+)
+from test.asynchronous.utils import async_get_pool, flaky
+from test.asynchronous.utils_spec_runner import SpecRunnerTask
+from test.helpers_shared import ALL_KMS_PROVIDERS, DEFAULT_KMS_TLS
+from test.unified_format_shared import (
+    KMS_TLS_OPTS,
+    PLACEHOLDER_MAP,
+    EventListenerUtil,
+    MatchEvaluatorUtil,
+    coerce_result,
+    parse_bulk_write_error_result,
+    parse_bulk_write_result,
+    parse_client_bulk_write_error_result,
+    parse_collection_or_database_options,
+    with_metaclass,
+)
+from test.utils_shared import (
+    async_wait_until,
+    camel_to_snake,
+    camel_to_snake_args,
+    parse_spec_options,
+    prepare_spec_arguments,
+    snake_to_camel,
+    wait_until,
+)
+from test.version import Version
 
 _IS_SYNC = False
 
@@ -224,9 +227,9 @@ class EntityMapUtil:
     """
 
     def __init__(self, test_class):
-        self._entities: Dict[str, Any] = {}
-        self._listeners: Dict[str, EventListenerUtil] = {}
-        self._session_lsids: Dict[str, Mapping[str, Any]] = {}
+        self._entities: dict[str, Any] = {}
+        self._listeners: dict[str, EventListenerUtil] = {}
+        self._session_lsids: dict[str, Mapping[str, Any]] = {}
         self.test: UnifiedSpecTestMixinV1 = test_class
 
     def __contains__(self, item):
@@ -569,8 +572,6 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         class_name = self.__class__.__name__.lower()
         description = spec["description"].lower()
 
-        if "client side error in command starting transaction" in description:
-            self.skipTest("Implement PYTHON-1894")
         if "type=symbol" in description:
             self.skipTest("PyMongo does not support the symbol type")
         if "timeoutms applied to entire download" in description:
@@ -618,10 +619,8 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 self.skipTest("CSOT not implemented for watch()")
             if "cursors" in class_name:
                 self.skipTest("CSOT not implemented for cursors")
-            if (
-                "tailable" in class_name
-                or "tailable" in description
-                and "non-tailable" not in description
+            if "tailable" in class_name or (
+                "tailable" in description and "non-tailable" not in description
             ):
                 self.skipTest("CSOT not implemented for tailable cursors")
             if "sessions" in class_name:
@@ -648,7 +647,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
     def process_error(self, exception, spec):
         if isinstance(exception, unittest.SkipTest):
-            raise
+            raise exception
         is_error = spec.get("isError")
         is_client_error = spec.get("isClientError")
         is_timeout_error = spec.get("isTimeoutError")
@@ -760,6 +759,12 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
     async def _collectionOperation_createChangeStream(self, target, *args, **kwargs):
         return await self.__entityOperation_createChangeStream(target, *args, **kwargs)
+
+    async def _clientOperation_dropDatabase(self, target, **kwargs):
+        self.__raise_if_unsupported("dropDatabase", target, AsyncMongoClient)
+        return await target.drop_database(
+            name_or_database=kwargs.pop("database"), session=kwargs.pop("session", None)
+        )
 
     async def _databaseOperation_runCommand(self, target, **kwargs):
         self.__raise_if_unsupported("runCommand", target, AsyncDatabase)
@@ -992,7 +997,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
     async def _bucketOperation_find(
         self, target: AsyncGridFSBucket, *args: Any, **kwargs: Any
-    ) -> List[GridOut]:
+    ) -> list[GridOut]:
         return await target.find(*args, **kwargs).to_list()
 
     async def run_entity_operation(self, spec):
@@ -1108,7 +1113,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         session = self.entity_map[spec["session"]]
         if not session._pinned_address:
             self.fail(
-                "Cannot use targetedFailPoint operation with unpinned " "session {}".format(
+                "Cannot use targetedFailPoint operation with unpinned session {}".format(
                     spec["session"]
                 )
             )
@@ -1141,8 +1146,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 cmd_started_events.append(event)
         if len(cmd_started_events) < 2:
             self.fail(
-                "Needed 2 CommandStartedEvents to compare lsids, "
-                "got %s" % (len(cmd_started_events))
+                "Needed 2 CommandStartedEvents to compare lsids, got %s" % (len(cmd_started_events))
             )
         return tuple([e.command["lsid"] for e in cmd_started_events][:2])
 
@@ -1464,13 +1468,22 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 self.assertListEqual(sorted_expected_documents, actual_documents)
 
     async def run_scenario(self, spec, uri=None):
+        # Skip tests that rely on $where performance on macOS CI.
+        if sys.platform == "darwin" and "CI" in os.environ:
+            macos_skip_tests = [
+                ("PYTHON-5861", ".*InterruptInUsePoolClear.*is_retryable"),
+                ("PYTHON-5861", ".*timeoutms_can_be_overridden_for_upload"),
+            ]
+            for reason, skip_pattern in macos_skip_tests:
+                if re.match(skip_pattern.lower(), self.id().lower()) is not None:
+                    self.skipTest(f"{reason}: $where is too slow on macOS CI")
+
         # Handle flaky tests.
         flaky_tests = [
             ("PYTHON-5170", ".*test_discovery_and_monitoring.*"),
             ("PYTHON-5174", ".*Driver_extends_timeout_while_streaming"),
             ("PYTHON-5315", ".*TestSrvPolling.test_recover_from_initially_.*"),
             ("PYTHON-4987", ".*UnknownTransactionCommitResult_labels_to_connection_errors"),
-            ("PYTHON-3689", ".*TestProse.test_load_balancing"),
             ("PYTHON-3522", ".*csot.*"),
         ]
         for reason, flaky_test in flaky_tests:

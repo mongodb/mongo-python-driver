@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Azure helpers."""
+
 from __future__ import annotations
 
 import json
 from typing import Any, Optional
+from urllib.parse import quote
 
 
 def _get_azure_response(
@@ -29,7 +31,7 @@ def _get_azure_response(
     url += "?api-version=2018-02-01"
     url += f"&resource={resource}"
     if client_id:
-        url += f"&client_id={client_id}"
+        url += f"&client_id={quote(client_id)}"
     headers = {"Metadata": "true", "Accept": "application/json"}
     request = Request(url, headers=headers)  # noqa: S310
     try:
@@ -37,7 +39,7 @@ def _get_azure_response(
             status = response.status
             body = response.read().decode("utf8")
     except Exception as e:
-        msg = "Failed to acquire IMDS access token: %s" % e
+        msg = f"Failed to acquire IMDS access token: {e}"
         raise ValueError(msg) from None
 
     if status != 200:

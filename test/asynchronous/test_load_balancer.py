@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the Load Balancer unified spec tests."""
+
 from __future__ import annotations
 
 import asyncio
@@ -22,21 +23,21 @@ import pathlib
 import sys
 import threading
 from asyncio import Event
-from test.asynchronous.helpers import ConcurrentRunner, ExceptionCatchingTask
-from test.asynchronous.utils import async_get_pool
 
 import pytest
 
+from test.asynchronous.helpers import ConcurrentRunner, ExceptionCatchingTask
+from test.asynchronous.utils import async_get_pool
+
 sys.path[0:0] = [""]
 
+from pymongo.asynchronous.helpers import anext
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import (
     async_wait_until,
     create_async_event,
 )
-
-from pymongo.asynchronous.helpers import anext
 
 _IS_SYNC = False
 
@@ -50,14 +51,17 @@ class TestLB(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
     async def test_connections_are_only_returned_once(self):
-        if "PyPy" in sys.version:
-            # Tracked in PYTHON-3011
-            self.skipTest("Test is flaky on PyPy")
         pool = await async_get_pool(self.client)
         n_conns = len(pool.conns)
         await self.db.test.find_one({})
+        # On PyPy it can take a few rounds to collect the cursor.
+        for _ in range(3):
+            gc.collect()
         self.assertEqual(len(pool.conns), n_conns)
         await (await self.db.test.aggregate([{"$limit": 1}])).to_list()
+        # On PyPy it can take a few rounds to collect the cursor.
+        for _ in range(3):
+            gc.collect()
         self.assertEqual(len(pool.conns), n_conns)
 
     @async_client_context.require_load_balancer
