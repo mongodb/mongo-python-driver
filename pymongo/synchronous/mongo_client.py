@@ -2231,6 +2231,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         namespace = address.namespace
         db, coll = namespace.split(".", 1)
         spec = {"killCursors": coll, "cursors": cursor_ids}
+        # killCursors is its own op; drop any op_id left on a pinned cursor conn.
+        conn.op_id = None
         conn.command(db, spec, session=session, client=self)
 
     def _process_kill_cursors(self) -> None:

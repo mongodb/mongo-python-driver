@@ -66,7 +66,6 @@ class TestOperationIdRetry(AsyncIntegrationTest):
     RETRIES = 5  # fail this many attempts; the (RETRIES + 1)th succeeds.
 
     @async_client_context.require_failCommand_fail_point
-    @async_client_context.require_failCommand_appName
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
 

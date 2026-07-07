@@ -66,7 +66,6 @@ class TestOperationIdRetry(IntegrationTest):
     RETRIES = 5  # fail this many attempts; the (RETRIES + 1)th succeeds.
 
     @client_context.require_failCommand_fail_point
-    @client_context.require_failCommand_appName
     def setUp(self) -> None:
         super().setUp()
 

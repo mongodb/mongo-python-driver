@@ -68,7 +68,11 @@ def _handle_reauth(func: F) -> F:
                         conn = arg.conn  # type: ignore[assignment]
                         break
                 if conn:
+                    # Don't let reauth's auth commands inherit the in-flight op's id.
+                    prev_op_id = conn.op_id
+                    conn.op_id = None
                     await conn.authenticate(reauthenticate=True)
+                    conn.op_id = prev_op_id
                 else:
                     raise
                 return await func(*args, **kwargs)
