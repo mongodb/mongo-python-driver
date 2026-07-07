@@ -1666,7 +1666,7 @@ requires-dist = [
     { name = "backports-zstd", marker = "python_full_version < '3.14' and extra == 'zstd'", specifier = ">=1.0.0" },
     { name = "certifi", marker = "(os_name == 'nt' and extra == 'encryption') or (sys_platform == 'darwin' and extra == 'encryption')", specifier = ">=2023.7.22" },
     { name = "certifi", marker = "(os_name == 'nt' and extra == 'ocsp') or (sys_platform == 'darwin' and extra == 'ocsp')", specifier = ">=2023.7.22" },
-    { name = "cryptography", marker = "extra == 'ocsp'", specifier = ">=42.0.0" },
+    { name = "cryptography", marker = "extra == 'ocsp'", specifier = ">=47.0.0" },
     { name = "dnspython", specifier = ">=2.7.0,<3.0.0" },
     { name = "furo", marker = "extra == 'docs'", specifier = "==2025.12.19" },
     { name = "importlib-metadata", marker = "python_full_version < '3.13' and extra == 'test'", specifier = ">=7.0" },
