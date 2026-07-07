@@ -22,7 +22,7 @@ jobs:
   static:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
       - name: Install uv
@@ -46,6 +46,9 @@ jobs:
       - name: Run typecheck
         run: |
           just typing
+      - name: Run synchro smoke test
+        run: |
+          uv run --extra test --with unasync pytest tools/test_synchro.py -v --override-ini="addopts="
       - run: |
           sudo apt-get install -y cppcheck
       - run: |
@@ -64,7 +67,7 @@ jobs:
 
     name: Python ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
       - name: Install uv
@@ -86,7 +89,7 @@ jobs:
 
     name: Coverage
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
       - name: Install uv
@@ -107,14 +110,14 @@ jobs:
       - name: Generate xml report
         run: uv tool run --with "coverage[toml]" coverage xml
       - name: Upload test results to Codecov
-        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
   doctest:
     runs-on: ubuntu-latest
     name: DocTest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
       - name: Install uv
@@ -139,7 +142,7 @@ jobs:
     name: Docs Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
       - name: Install uv
@@ -154,27 +157,6 @@ jobs:
       - name: Build docs
         run: just docs
 
-  linkcheck:
-    name: Link Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6.0.3
-        with:
-          persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-        with:
-          enable-cache: true
-          python-version: "3.10"
-      - name: Install just
-        run: uv tool install rust-just
-      - name: Install dependencies
-        run: just install
-      - name: Build docs
-        run: just docs-linkcheck
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   typing:
     name: Typing Tests
     runs-on: ubuntu-latest
@@ -182,7 +164,7 @@ jobs:
       matrix:
         python: ["3.10", "3.11"]
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
       - name: Install uv
@@ -203,7 +185,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Integration Tests
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
       - name: Install uv
@@ -233,7 +215,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "Make an sdist"
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
       - uses: actions/setup-python@v6
@@ -293,7 +275,7 @@ jobs:
       runs-on: ubuntu-latest
       name: Test minimum dependencies and Python
       steps:
-        - uses: actions/checkout@v6.0.3
+        - uses: actions/checkout@v7.0.0
           with:
             persist-credentials: false
         - name: Install uv

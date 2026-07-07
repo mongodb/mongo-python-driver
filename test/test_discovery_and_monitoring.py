@@ -465,23 +465,39 @@ class TestPoolBackpressure(IntegrationTest):
         # Create a client that listens to CMAP events, with maxConnecting=100.
         client = self.rs_or_single_client(maxConnecting=100, event_listeners=[listener])
 
-        # Enable the ingress rate limiter.
-        client.admin.command(
-            "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
-        )
-        client.admin.command("setParameter", 1, ingressConnectionEstablishmentRatePerSec=20)
-        client.admin.command("setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1)
-        client.admin.command("setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1)
+        # setParameter needs to be set on each mongos in a sharded cluster
+        if client_context.mongoses:
+            admin_clients = [
+                self.single_client("{}:{}".format(*address)) for address in client_context.mongoses
+            ]
+        else:
+            admin_clients = [client]
 
         # Disable the ingress rate limiter on teardown.
         # Sleep for 1 second before disabling to avoid the rate limiter.
         def teardown():
             time.sleep(1)
-            client.admin.command(
-                "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
-            )
+            for admin_client in admin_clients:
+                admin_client.admin.command(
+                    "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
+                )
 
         self.addCleanup(teardown)
+
+        # Enable the ingress rate limiter.
+        for admin_client in admin_clients:
+            admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
+            )
+            admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentRatePerSec=20
+            )
+            admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1
+            )
+            admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1
+            )
 
         # Make sure the collection has at least one document.
         client.test.test.delete_many({})
