@@ -42,7 +42,18 @@ _IS_SYNC = True
 
 
 class CommandCursor(_CursorBase[_DocumentType]):
-    """A cursor / iterator over command cursors."""
+    """A cursor / iterator over command cursors.
+    Used by :meth:`~pymongo.collection.Collection.aggregate`,
+    :meth:`~pymongo.database.Database.aggregate`,
+    :meth:`~pymongo.collection.Collection.list_indexes`,
+    :meth:`~pymongo.collection.Collection.list_search_indexes`
+    :meth:`~pymongo.database.Database.list_collections`,
+    :meth:`~pymongo.database.Database.cursor_command`,
+    and :meth:`~pymongo.mongo_client.MongoClient.list_databases`
+    to iterate MongoDB command results.
+
+    Should not be called directly by application developers.
+    """
 
     _getmore_class = _GetMore
 

@@ -97,9 +97,9 @@ class Cursor(_CursorBase[_DocumentType]):
         let: Optional[bool] = None,
     ) -> None:
         """Create a new cursor.
+        Used by :meth:`~pymongo.collection.Collection.find` to iterate over MongoDB query results.
 
-        Should not be called directly by application developers - see
-        :meth:`~pymongo.collection.Collection.find` instead.
+        Should not be called directly by application developers.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
