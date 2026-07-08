@@ -3294,6 +3294,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#27-text-explicit-encryption
+@unittest.skip("PYTHON-5799 need to add support for the new query type")
 class TestExplicitTextEncryptionProse(EncryptionIntegrationTest):
     @client_context.require_no_standalone
     @client_context.require_version_min(8, 2, -1)
