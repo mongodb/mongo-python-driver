@@ -153,6 +153,7 @@ class Monitor(MonitorBase):
         self._cancel_context: Optional[_CancellationContext] = None
         self._conn_id: Optional[int] = None
         self._current_hb: Optional[_HeartbeatTelemetry] = None
+        self._awaited: bool = False
         self._rtt_monitor = _RttMonitor(
             topology,
             topology_settings,
@@ -257,6 +258,7 @@ class Monitor(MonitorBase):
         """
         self._conn_id = None
         self._current_hb = None
+        self._awaited = False
         try:
             return await self._check_once()
         except ReferenceError:
@@ -265,7 +267,7 @@ class Monitor(MonitorBase):
             _sanitize(error)
             address = self._server_description.address
             if self._current_hb is not None:
-                self._current_hb.failed(error, self._conn_id)
+                self._current_hb.failed(error, self._conn_id, self._awaited)
             await self._reset_connection()
             if isinstance(error, _OperationCancelled):
                 raise
@@ -283,17 +285,17 @@ class Monitor(MonitorBase):
 
         # XXX: "awaited" could be incorrectly set to True in the rare case
         # the pool checkout closes and recreates a connection.
-        awaited = bool(
+        self._awaited = bool(
             self._pool.conns and self._stream and sd.is_server_type_known and sd.topology_version
         )
-        hb = _HeartbeatTelemetry(self._topology._topology_id, address, self._listeners, awaited)
+        hb = _HeartbeatTelemetry(self._topology._topology_id, address, self._listeners)
         self._current_hb = hb
-        hb.started()
+        hb.started(self._awaited)
 
         if self._cancel_context and self._cancel_context.cancelled:
             await self._reset_connection()
         async with self._pool.checkout() as conn:
-            hb.emit_started_log(conn.id, conn.server_connection_id)
+            hb.emit_started_log(conn.id, conn.server_connection_id, self._awaited)
             self._cancel_context = conn.cancel_context
             # Record the connection id so we can later attach it to the failed log message.
             self._conn_id = conn.id

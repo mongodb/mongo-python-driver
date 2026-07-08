@@ -393,7 +393,6 @@ class _HeartbeatTelemetry:
 
     __slots__ = (
         "_address",
-        "_awaited",
         "_listeners",
         "_should_log",
         "_should_publish",
@@ -406,42 +405,41 @@ class _HeartbeatTelemetry:
         topology_id: ObjectId,
         address: _Address,
         listeners: Optional[_EventListeners],
-        awaited: bool,
     ) -> None:
         self._topology_id = topology_id
         self._address = address
         self._listeners = listeners
-        self._awaited = awaited
         # Cached at construction: this object is short-lived (one heartbeat check) so
         # listener registration and logging level are stable for its lifetime.
         self._should_publish = listeners is not None and listeners.enabled_for_server_heartbeat
         self._should_log = _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
         self._start: float = 0.0
 
-    def _emit_log(self, message: _SDAMStatusMessage, **extra: Any) -> None:
+    def _emit_log(self, message: _SDAMStatusMessage, awaited: bool, **extra: Any) -> None:
         _debug_log(
             _SDAM_LOGGER,
             message=message,
             topologyId=self._topology_id,
             serverHost=self._address[0],
             serverPort=self._address[1],
-            awaited=self._awaited,
+            awaited=awaited,
             **extra,
         )
 
-    def started(self) -> None:
+    def started(self, awaited: bool) -> None:
         """Publish the APM heartbeat-started event (before connection checkout)."""
         if self._should_publish or self._should_log:
             self._start = time.monotonic()
         if self._should_publish:
             assert self._listeners is not None
-            self._listeners.publish_server_heartbeat_started(self._address, self._awaited)
+            self._listeners.publish_server_heartbeat_started(self._address, awaited)
 
-    def emit_started_log(self, conn_id: int, server_conn_id: Optional[int]) -> None:
+    def emit_started_log(self, conn_id: int, server_conn_id: Optional[int], awaited: bool) -> None:
         """Emit the log entry for heartbeat started (after connection checkout)."""
         if self._should_log:
             self._emit_log(
                 _SDAMStatusMessage.HEARTBEAT_START,
+                awaited=awaited,
                 driverConnectionId=conn_id,
                 serverConnectionId=server_conn_id,
             )
@@ -462,13 +460,14 @@ class _HeartbeatTelemetry:
         if self._should_log:
             self._emit_log(
                 _SDAMStatusMessage.HEARTBEAT_SUCCESS,
+                awaited=response.awaitable,
                 driverConnectionId=conn_id,
                 serverConnectionId=server_conn_id,
                 durationMS=round_trip_time * 1000,
                 reply=response.document,
             )
 
-    def failed(self, error: Exception, conn_id: Optional[int]) -> None:
+    def failed(self, error: Exception, conn_id: Optional[int], awaited: bool) -> None:
         """Emit the FAILED log entry and APM event."""
         should_publish = self._should_publish
         should_log = self._should_log
@@ -477,12 +476,11 @@ class _HeartbeatTelemetry:
         duration = max(0.0, time.monotonic() - self._start)
         if should_publish:
             assert self._listeners is not None
-            self._listeners.publish_server_heartbeat_failed(
-                self._address, duration, error, self._awaited
-            )
+            self._listeners.publish_server_heartbeat_failed(self._address, duration, error, awaited)
         if should_log:
             self._emit_log(
                 _SDAMStatusMessage.HEARTBEAT_FAIL,
+                awaited=awaited,
                 durationMS=duration * 1000,
                 failure=error,
                 driverConnectionId=conn_id,
