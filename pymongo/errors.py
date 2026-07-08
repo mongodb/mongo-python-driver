@@ -37,12 +37,12 @@ class PyMongoError(Exception):
         self,
         message: str = "",
         error_labels: Optional[Iterable[str]] = None,
-        retry_after_ms: Optional[int] = None,
+        base_backoff_ms: Optional[int] = None,
     ) -> None:
         super().__init__(message)
         self._message = message
         self._error_labels = set(error_labels or [])
-        self._retry_after_ms = retry_after_ms
+        self._base_backoff_ms = base_backoff_ms
 
     def has_error_label(self, label: str) -> bool:
         """Return True if this error contains the given label.
@@ -196,14 +196,14 @@ class OperationFailure(PyMongoError):
         max_wire_version: Optional[int] = None,
     ) -> None:
         error_labels = None
-        retry_after_ms = None
+        base_backoff_ms = None
         if details is not None:
             error_labels = details.get("errorLabels")
-            retry_after_ms = details.get("retryAfterMS")
+            base_backoff_ms = details.get("baseBackoffMS")
         super().__init__(
             _format_detailed_error(error, details),
             error_labels=error_labels,
-            retry_after_ms=retry_after_ms,
+            base_backoff_ms=base_backoff_ms,
         )
         self.__code = code
         self.__details = details

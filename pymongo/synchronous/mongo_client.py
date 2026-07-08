@@ -2790,7 +2790,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._attempt_number = 0
         self._is_run_command = is_run_command
         self._is_aggregate_write = is_aggregate_write
-        self._retry_after_backoff_ms: Optional[float] = None
+        self._base_backoff_ms: Optional[float] = None
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2846,7 +2846,7 @@ class _ClientConnectionRetryable(Generic[T]):
                         overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                         if overloaded:
                             self._max_retries = self._client.options.max_adaptive_retries
-                            self._retry_after_backoff_ms = exc_to_check._retry_after_ms
+                            self._base_backoff_ms = exc_to_check._base_backoff_ms
                         always_retryable = (
                             exc_to_check.has_error_label("RetryableError") and overloaded
                         )
@@ -2889,7 +2889,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                     if overloaded:
                         self._max_retries = self._client.options.max_adaptive_retries
-                        self._retry_after_backoff_ms = exc_to_check._retry_after_ms
+                        self._base_backoff_ms = exc_to_check._base_backoff_ms
                     always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
 
                     # Always retry abortTransaction and commitTransaction up to once
@@ -2935,9 +2935,7 @@ class _ClientConnectionRetryable(Generic[T]):
                 if overloaded:
                     delay = self._retry_policy.backoff(
                         self._attempt_number,
-                        self._retry_after_backoff_ms / 1000
-                        if self._retry_after_backoff_ms
-                        else None,
+                        self._base_backoff_ms / 1000 if self._base_backoff_ms else None,
                     )
                     if not self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:

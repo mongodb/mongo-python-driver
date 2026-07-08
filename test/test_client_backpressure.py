@@ -296,7 +296,7 @@ class TestClientBackpressure(IntegrationTest):
     @client_context.require_version_min(9, 0, 0, -1)
     @client_context.require_failCommand_appName
     def test_05_overload_errors_with_retryafterms_override_backoff(self, random_func):
-        # Drivers should test that overload errors with `retryAfterMS` override the default backoff duration.
+        # Drivers should test that overload errors with `baseBackoffMS` override the default backoff duration.
 
         # 1. Let `client` be a `MongoClient`.
         client = self.client
@@ -327,24 +327,24 @@ class TestClientBackpressure(IntegrationTest):
             end0 = perf_counter()
             exponential_backoff_time = end0 - start0
 
-            # 6. Run the following command to set up `retryAfterMS` on overload errors.
+            # 6. Run the following command to set up `baseBackoffMS` on overload errors.
             try:
-                client.admin.command("setParameter", 1, overloadRetryAfterMS=50)
+                client.admin.command("setParameter", 1, externalClientBaseBackoffMS=50)
 
                 # 7. Execute step 5 again.
                 start1 = perf_counter()
                 with self.assertRaises(OperationFailure):
                     coll.insert_one({"a": 1})
                 end1 = perf_counter()
-                with_retry_after_ms_time = end1 - start1
+                with_base_backoff_ms_time = end1 - start1
             finally:
-                # 8. Run the following command to disable `retryAfterMS` on overload errors.
-                client.admin.command("setParameter", 1, overloadRetryAfterMS=0)
+                # 8. Run the following command to disable `baseBackoffMS` on overload errors.
+                client.admin.command("setParameter", 1, externalClientBaseBackoffMS=0)
 
         # 9. Compare the time between the two runs.
         # The difference in the backoffs is 0.2 seconds. There is a 0.2-second window to account for potential variance
         # between the two runs.
-        self.assertTrue(abs(exponential_backoff_time - (with_retry_after_ms_time + 0.2)) < 0.2)
+        self.assertTrue(abs(exponential_backoff_time - (with_base_backoff_ms_time + 0.2)) < 0.2)
 
 
 # Location of JSON test specifications.
