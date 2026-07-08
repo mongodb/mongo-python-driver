@@ -3040,11 +3040,7 @@ class TestKmsRetryProse(AsyncEncryptionIntegrationTest):
     async def http_post(self, path, data=None):
         # Note, the connection to the mock server needs to be closed after
         # each request because the server is single threaded.
-        # The failpoint server uses a hardcoded cert from drivers-evergreen-tools
-        # that we cannot configure, so cert verification must be disabled.
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
+        ctx = ssl.create_default_context(cafile=CA_PEM)
         ctx.load_cert_chain(CLIENT_PEM)
         conn = http.client.HTTPSConnection("127.0.0.1:9003", context=ctx)
         try:
