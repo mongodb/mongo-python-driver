@@ -102,6 +102,10 @@ def _ragged_eof(exc: BaseException) -> bool:
     return exc.args == (-1, "Unexpected EOF")
 
 
+# PyOpenSSL's equivalent of stdlib's ssl.SSLEOFError/ssl.SSLZeroReturnError.
+EOF_ERRORS = (_SSL.SysCallError, _SSL.ZeroReturnError)
+
+
 # https://github.com/pyca/pyopenssl/issues/168
 # https://github.com/pyca/pyopenssl/issues/176
 # https://docs.python.org/3/library/ssl.html#notes-on-non-blocking-sockets

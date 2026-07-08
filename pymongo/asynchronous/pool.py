@@ -20,7 +20,6 @@ import contextlib
 import logging
 import os
 import socket
-import ssl
 import sys
 import time
 import weakref
@@ -88,6 +87,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
+from pymongo.ssl_support import SSL_EOF_ERRORS
 
 if TYPE_CHECKING:
     from bson import CodecOptions
@@ -983,7 +983,7 @@ class Pool:
         if isinstance(error.__cause__, (_CertificateError, SSLErrors, socket.gaierror)):
             # End of file errors are excluded, because the server may have disconnected
             # during the handshake.
-            if not isinstance(error.__cause__, (ssl.SSLEOFError, ssl.SSLZeroReturnError)):
+            if not isinstance(error.__cause__, SSL_EOF_ERRORS):
                 return
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
