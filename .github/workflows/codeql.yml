@@ -36,7 +36,7 @@ jobs:
         - language: actions
           build-mode: none
     steps:
-    - uses: mongodb-labs/drivers-github-tools/codeql@6916a008ec612b4575d8f630c6745e776207e30a # PYTHON-5877
+    - uses: mongodb-labs/drivers-github-tools/codeql@95f9ce909bf0e44707fffdb92c18ed86e74aa2fd # PYTHON-5877
       with:
         language: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
