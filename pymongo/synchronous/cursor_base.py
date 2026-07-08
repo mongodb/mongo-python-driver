@@ -136,7 +136,6 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
             more_to_come=more_to_come,
             unpack_res=self._unpack_response,
             cursor_id=operation.cursor_id,
-            op_id=conn.op_id,
         )
         assert reply is not None
         if client._should_pin_cursor(operation.session) or operation.exhaust:  # type: ignore[arg-type]

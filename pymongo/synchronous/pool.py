@@ -177,11 +177,12 @@ class Connection(_ConnectionTelemetryInfo):
         self.creation_time = time.monotonic()
         # For gossiping $clusterTime from the connection handshake to the client.
         self._cluster_time = None
-        # APM operation id of the op currently using this connection. Kept on the
-        # connection for simplicity: retries reuse it without threading an op_id
-        # kwarg through every command. Cleared on checkin; an op that runs a
-        # command directly on a pinned connection must clear it (see killCursors,
-        # reauth) so it isn't attributed to an unrelated command.
+        # APM operation id of the op currently using this connection, read by
+        # command(). Kept here for simplicity: retries reuse it without threading
+        # an op_id kwarg through every command. Reset to None on checkout; only
+        # the retryable read/write logic sets a real value. An op running a
+        # command directly on a pinned connection (see killCursors, reauth) must
+        # clear it so it isn't attributed to an unrelated command.
         self.op_id: Optional[int] = None
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
@@ -422,7 +423,6 @@ class Connection(_ConnectionTelemetryInfo):
                 user_fields=user_fields,
                 exhaust_allowed=exhaust_allowed,
                 write_concern=write_concern,
-                op_id=self.op_id,
             )
         except (OperationFailure, NotPrimaryError):
             raise
@@ -1322,7 +1322,6 @@ class Pool:
         txn = conn.pinned_txn
         cursor = conn.pinned_cursor
         conn.active = False
-        conn.op_id = None
         conn.pinned_txn = False
         conn.pinned_cursor = False
         self.__pinned_sockets.discard(conn)

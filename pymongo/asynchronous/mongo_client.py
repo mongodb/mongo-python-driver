@@ -1797,6 +1797,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 yield session._pinned_connection
                 return
             async with await server.checkout(handler=err_handler) as conn:
+                conn.op_id = None  # Only retryable read/write logic sets an op_id.
                 # Pin this session to the selected server or connection.
                 if (
                     in_txn
@@ -1935,8 +1936,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             async with operation.conn_mgr._lock:
                 async with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
-                    # Each getMore on a pinned connection is its own operation.
-                    operation.conn_mgr.conn.op_id = _randint()
+                    # Non-retryable getMore on a pinned conn; no shared op_id.
+                    operation.conn_mgr.conn.op_id = None
                     return await run_with_conn(
                         operation.conn_mgr.conn, operation, operation.read_preference
                     )

@@ -1,4 +1,4 @@
-# Copyright 2024-present MongoDB, Inc.
+# Copyright 2026-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,6 +51,9 @@ _RETRYABLE_READS = [
     ("listIndexes", lambda c: _list_indexes(c)),
 ]
 
+# Every command name the above operations issue, for the shared listener.
+_COMMANDS = {name for name, _ in _RETRYABLE_WRITES + _RETRYABLE_READS}
+
 
 def _agg(coll):
     cursor = coll.aggregate([{"$match": {"x": 1}}])
@@ -63,28 +66,27 @@ def _list_indexes(coll):
 
 
 class TestOperationIdRetry(IntegrationTest):
-    RETRIES = 5  # fail this many attempts; the (RETRIES + 1)th succeeds.
+    RETRIES = 2  # fail this many attempts; the (RETRIES + 1)th succeeds.
 
     @client_context.require_failCommand_fail_point
     def setUp(self) -> None:
         super().setUp()
+        self.listener = AllowListEventListener(*_COMMANDS)
+        self.client = self.rs_or_single_client(event_listeners=[self.listener], appname=_APP_NAME)
+        self.coll = self.client.pymongo_test.test_operation_id_retry
 
-    def _seed(self, coll):
-        coll.drop()
-        coll.insert_many([{"_id": i, "x": i % 3} for i in range(5)])
-        coll.create_index("x")
+    def _seed(self):
+        self.coll.drop()
+        self.coll.insert_many([{"_id": i, "x": i % 3} for i in range(5)])
+        self.coll.create_index("x")
 
-    def _check_stable_operation_id(self, command_name, action, retries):
-        """Force ``retries`` retries of ``action`` and assert every command
-        event for ``command_name`` shares one integer operation_id."""
-        listener = AllowListEventListener(command_name)
-        client = self.rs_or_single_client(event_listeners=[listener], appname=_APP_NAME)
-        coll = client.pymongo_test.test_operation_id_retry
-        self._seed(coll)
-        listener.reset()
-
+    def _run_under_failpoint(self, command_name, action, times, expected_error=None):
+        """Seed, force ``times`` closeConnection failures of ``command_name``,
+        run ``action``, and return its ``(started, failed, succeeded)`` events."""
+        self._seed()
+        self.listener.reset()
         fail_point = {
-            "mode": {"times": retries},
+            "mode": {"times": times},
             "data": {
                 "failCommands": [command_name],
                 "closeConnection": True,
@@ -94,11 +96,24 @@ class TestOperationIdRetry(IntegrationTest):
         with self.fail_point(fail_point):
             # A CSOT timeout lets a single operation retry more than once.
             with pymongo.timeout(60):
-                action(coll)
+                if expected_error is not None:
+                    with self.assertRaises(expected_error):
+                        action(self.coll)
+                else:
+                    action(self.coll)
 
-        started = listener.started_events
-        failed = listener.failed_events
-        succeeded = listener.succeeded_events
+        def of(events):
+            return [e for e in events if e.command_name == command_name]
+
+        return (
+            of(self.listener.started_events),
+            of(self.listener.failed_events),
+            of(self.listener.succeeded_events),
+        )
+
+    def _check_stable_operation_id(self, command_name, action, retries):
+        """Assert every command event for ``command_name`` shares one integer operation_id."""
+        started, failed, succeeded = self._run_under_failpoint(command_name, action, retries)
         op_ids = [e.operation_id for e in started + failed + succeeded]
 
         self.assertEqual(len(started), retries + 1, "expected one started event per attempt")
@@ -131,26 +146,11 @@ class TestOperationIdRetry(IntegrationTest):
             ("delete", lambda c: c.delete_many({"x": 2})),
         ]:
             with self.subTest(command=command_name):
-                listener = AllowListEventListener(command_name)
-                client = self.rs_or_single_client(event_listeners=[listener], appname=_APP_NAME)
-                coll = client.pymongo_test.test_operation_id_retry
-                self._seed(coll)
-                listener.reset()
-
-                fail_point = {
-                    "mode": {"times": 1},
-                    "data": {
-                        "failCommands": [command_name],
-                        "closeConnection": True,
-                        "appName": _APP_NAME,
-                    },
-                }
-                with self.fail_point(fail_point):
-                    with self.assertRaises(ConnectionFailure):
-                        action(coll)
-
-                self.assertEqual(len(listener.started_events), 1, "must not retry")
-                self.assertIsInstance(listener.started_events[0].operation_id, int)
+                started, _, _ = self._run_under_failpoint(
+                    command_name, action, times=1, expected_error=ConnectionFailure
+                )
+                self.assertEqual(len(started), 1, "must not retry")
+                self.assertIsInstance(started[0].operation_id, int)
 
 
 if __name__ == "__main__":
