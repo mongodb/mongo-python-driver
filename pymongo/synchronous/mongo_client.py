@@ -1908,13 +1908,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _run_operation(
         self,
         operation: Union[_Query, _GetMore],
-        unpack_res: Callable,  # type: ignore[type-arg]
+        run_with_conn: Callable,  # type: ignore[type-arg]
         address: Optional[_Address] = None,
     ) -> Response:
         """Run a _Query/_GetMore operation and return a Response.
 
         :param operation: a _Query or _GetMore object.
-        :param unpack_res: A callable that decodes the wire protocol response.
+        :param run_with_conn: A callable ``(conn, operation, read_preference) -> Response``
+            that executes the operation on a given connection.
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
         """
@@ -1929,30 +1930,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             with operation.conn_mgr._lock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
-                    return server.run_operation(
-                        operation.conn_mgr.conn,
-                        operation,
-                        operation.read_preference,
-                        self._event_listeners,
-                        unpack_res,
-                        self,
+                    return run_with_conn(
+                        operation.conn_mgr.conn, operation, operation.read_preference
                     )
 
         def _cmd(
             _session: Optional[ClientSession],
-            server: Server,
+            _server: Server,
             conn: Connection,
             read_preference: _ServerMode,
         ) -> Response:
             operation.reset()  # Reset op in case of retry.
-            return server.run_operation(
-                conn,
-                operation,
-                read_preference,
-                self._event_listeners,
-                unpack_res,
-                self,
-            )
+            return run_with_conn(conn, operation, read_preference)
 
         return self._retryable_read(
             _cmd,
