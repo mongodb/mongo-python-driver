@@ -53,7 +53,6 @@ class Server:
         self._description = server_description
         self._pool = pool
         self._monitor = monitor
-        self._topology_id = topology_id
         _events = events() if listeners is not None and listeners.enabled_for_server else None  # type: ignore[misc]
         self._sdam = _SdamTelemetry(topology_id, listeners, _events)  # type: ignore[arg-type]
 
