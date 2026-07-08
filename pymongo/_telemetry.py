@@ -41,6 +41,8 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.hello import Hello
     from pymongo.monitoring import _EventListeners
+    from pymongo.server_description import ServerDescription
+    from pymongo.topology_description import TopologyDescription
     from pymongo.typings import _Address, _DocumentOut
 
 
@@ -540,7 +542,9 @@ class _SdamTelemetry:
             assert self._listeners is not None
             self._enqueue(self._listeners.publish_topology_opened, (self._topology_id,))
 
-    def topology_description_changed(self, old_td: Any, new_td: Any) -> None:
+    def topology_description_changed(
+        self, old_td: TopologyDescription, new_td: TopologyDescription
+    ) -> None:
         """Emit the topology description changed APM event and log entry."""
         if self._publish_tp:
             assert self._listeners is not None
@@ -555,7 +559,7 @@ class _SdamTelemetry:
                 newDescription=repr(new_td),
             )
 
-    def topology_closed(self, old_td: Any, new_td: Any) -> None:
+    def topology_closed(self, old_td: TopologyDescription, new_td: TopologyDescription) -> None:
         """Emit APM and log events for topology description change + topology closed."""
         if self._publish_tp:
             assert self._listeners is not None
@@ -584,7 +588,9 @@ class _SdamTelemetry:
                 serverPort=address[1],
             )
 
-    def server_description_changed(self, sd_old: Any, sd_new: Any, address: _Address) -> None:
+    def server_description_changed(
+        self, sd_old: ServerDescription, sd_new: ServerDescription, address: _Address
+    ) -> None:
         """Emit the server description changed APM event."""
         if self._publish_server:
             assert self._listeners is not None
@@ -626,11 +632,11 @@ class _ServerSelectionTelemetry:
 
     def __init__(
         self,
-        topology_id: Any,
+        topology_id: ObjectId,
         selector: Any,
         operation: str,
         operation_id: Optional[int],
-        topology_description: Any,
+        topology_description: TopologyDescription,
     ) -> None:
         self._topology_id = topology_id
         self._selector = selector
@@ -642,7 +648,10 @@ class _ServerSelectionTelemetry:
         self._should_log = _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
 
     def _emit_log(
-        self, message: _ServerSelectionStatusMessage, topology_description: Any, **extra: Any
+        self,
+        message: _ServerSelectionStatusMessage,
+        topology_description: TopologyDescription,
+        **extra: Any,
     ) -> None:
         _debug_log(
             _SERVER_SELECTION_LOGGER,
@@ -669,7 +678,7 @@ class _ServerSelectionTelemetry:
                 remainingTimeMS=remaining_time_ms,
             )
 
-    def failed(self, failure: str, topology_description: Any) -> None:
+    def failed(self, failure: str, topology_description: TopologyDescription) -> None:
         """Emit the server selection FAILED log entry with the current topology description."""
         if self._should_log:
             self._emit_log(
@@ -679,7 +688,10 @@ class _ServerSelectionTelemetry:
             )
 
     def succeeded(
-        self, server_host: str, server_port: Optional[int], topology_description: Any
+        self,
+        server_host: str,
+        server_port: Optional[int],
+        topology_description: TopologyDescription,
     ) -> None:
         """Emit the server selection SUCCEEDED log entry."""
         if self._should_log:
@@ -698,7 +710,7 @@ def log_srv_monitor_failure(failure: Exception) -> None:
 
 
 def log_command_retry(
-    topology_id: Any,
+    topology_id: Optional[ObjectId],
     command_name: str,
     operation_id: Optional[int],
     attempt_number: int,
