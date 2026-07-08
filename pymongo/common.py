@@ -482,14 +482,16 @@ def validate_document_class(
     option: str, value: Any
 ) -> Union[type[MutableMapping[str, Any]], type[RawBSONDocument]]:
     """Validate the document_class option."""
-    # issubclass can raise TypeError for generic aliases like SON[str, Any].
-    # In that case we can use the base class for the comparison.
-    is_mapping = False
+    # Generic aliases like SON[str, Any] or dict[str, Any] aren't classes, so
+    # resolve to their origin before the subclass check. Whether issubclass()
+    # raises TypeError or just returns False for such aliases is inconsistent
+    # across Python implementations (e.g. PyPy vs CPython), so check the
+    # origin proactively instead of relying on catching the error.
+    check_class = getattr(value, "__origin__", value)
     try:
-        is_mapping = issubclass(value, abc.MutableMapping)
+        is_mapping = issubclass(check_class, abc.MutableMapping)
     except TypeError:
-        if hasattr(value, "__origin__"):
-            is_mapping = issubclass(value.__origin__, abc.MutableMapping)
+        is_mapping = False
     if not is_mapping and not issubclass(value, RawBSONDocument):
         raise TypeError(
             f"{option} must be dict, bson.son.SON, "

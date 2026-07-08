@@ -22,7 +22,7 @@ The async-only tests live in ``test/asynchronous/test_async_network_layer.py``.
 from __future__ import annotations
 
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 sys.path[0:0] = [""]
 
@@ -43,47 +43,52 @@ def _make_conn():
     return conn
 
 
+def _mock_recv_into(conn, *chunks: bytes) -> None:
+    # Scope the mock to this conn's recv_into to avoid races
+    # with SDAM monitor threads owned by the shared test client
+    it = iter(chunks)
+
+    def _recv_into(buf) -> int:
+        chunk = next(it)
+        buf[: len(chunk)] = chunk
+        return len(chunk)
+
+    conn.conn.recv_into.side_effect = _recv_into
+
+
 class TestReceiveMessage(UnitTest):
     def test_request_id_mismatch_raises(self):
-        with patch.object(
-            network_layer,
-            "receive_data",
-            return_value=pack_msg_header(length=32, request_id=0, response_to=99, op_code=2013),
-        ):
-            with self.assertRaisesRegex(ProtocolError, "Got response id"):
-                network_layer.receive_message(_make_conn(), request_id=1)
+        conn = _make_conn()
+        _mock_recv_into(
+            conn, pack_msg_header(length=32, request_id=0, response_to=99, op_code=2013)
+        )
+        with self.assertRaisesRegex(ProtocolError, "Got response id"):
+            network_layer.receive_message(conn, request_id=1)
 
     def test_length_too_small_raises(self):
-        with patch.object(
-            network_layer,
-            "receive_data",
-            return_value=pack_msg_header(length=16, request_id=0, response_to=0, op_code=2013),
-        ):
-            with self.assertRaisesRegex(ProtocolError, "not longer than standard message header"):
-                network_layer.receive_message(_make_conn(), request_id=None)
+        conn = _make_conn()
+        _mock_recv_into(conn, pack_msg_header(length=16, request_id=0, response_to=0, op_code=2013))
+        with self.assertRaisesRegex(ProtocolError, "not longer than standard message header"):
+            network_layer.receive_message(conn, request_id=None)
 
     def test_length_exceeds_max_raises(self):
-        with patch.object(
-            network_layer,
-            "receive_data",
-            return_value=pack_msg_header(
-                length=MAX_MESSAGE_SIZE + 1, request_id=0, response_to=0, op_code=2013
-            ),
-        ):
-            with self.assertRaisesRegex(ProtocolError, "larger than server max"):
-                network_layer.receive_message(_make_conn(), request_id=None)
+        conn = _make_conn()
+        _mock_recv_into(
+            conn,
+            pack_msg_header(length=MAX_MESSAGE_SIZE + 1, request_id=0, response_to=0, op_code=2013),
+        )
+        with self.assertRaisesRegex(ProtocolError, "larger than server max"):
+            network_layer.receive_message(conn, request_id=None)
 
     def test_unknown_opcode_raises(self):
-        with patch.object(
-            network_layer,
-            "receive_data",
-            side_effect=[
-                pack_msg_header(length=20, request_id=0, response_to=0, op_code=9999),
-                b"data",
-            ],
-        ):
-            with self.assertRaisesRegex(ProtocolError, "Got opcode"):
-                network_layer.receive_message(_make_conn(), request_id=None)
+        conn = _make_conn()
+        _mock_recv_into(
+            conn,
+            pack_msg_header(length=20, request_id=0, response_to=0, op_code=9999),
+            b"data",
+        )
+        with self.assertRaisesRegex(ProtocolError, "Got opcode"):
+            network_layer.receive_message(conn, request_id=None)
 
 
 class TestReceiveData(UnitTest):
