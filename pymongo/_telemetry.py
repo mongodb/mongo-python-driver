@@ -694,20 +694,29 @@ class _ServerSelectionTelemetry:
                 failure=failure,
             )
 
-    def succeeded(
-        self,
-        server_host: str,
-        server_port: Optional[int],
-        topology_description: TopologyDescription,
-    ) -> None:
-        """Emit the server selection SUCCEEDED log entry."""
-        if self._should_log:
-            self._emit_log(
-                _ServerSelectionStatusMessage.SUCCEEDED,
-                topology_description,
-                serverHost=server_host,
-                serverPort=server_port,
-            )
+
+def log_server_selection_succeeded(
+    topology_id: ObjectId,
+    selector: Any,
+    operation: str,
+    operation_id: Optional[int],
+    topology_description: TopologyDescription,
+    server_host: str,
+    server_port: Optional[int],
+) -> None:
+    """Emit the server selection SUCCEEDED log entry."""
+    if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+        _debug_log(
+            _SERVER_SELECTION_LOGGER,
+            message=_ServerSelectionStatusMessage.SUCCEEDED,
+            clientId=topology_id,
+            selector=selector,
+            operation=operation,
+            operationId=operation_id,
+            topologyDescription=topology_description,
+            serverHost=server_host,
+            serverPort=server_port,
+        )
 
 
 def log_srv_monitor_failure(failure: Exception) -> None:

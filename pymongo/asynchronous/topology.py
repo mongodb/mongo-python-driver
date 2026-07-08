@@ -29,7 +29,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 from pymongo import _csot, common, helpers_shared, periodic_executor
-from pymongo._telemetry import _SdamTelemetry, _ServerSelectionTelemetry
+from pymongo._telemetry import (
+    _SdamTelemetry,
+    _ServerSelectionTelemetry,
+    log_server_selection_succeeded,
+)
 from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import MonitorBase, SrvMonitor
 from pymongo.asynchronous.pool import Pool
@@ -227,8 +231,8 @@ class Topology:
         address: Optional[_Address] = None,
         operation_id: Optional[int] = None,
         deprioritized_servers: Optional[list[Server]] = None,
-    ) -> tuple[list[Server], _ServerSelectionTelemetry]:
-        """Return (servers, server_selection_telemetry) matching selector, or time out.
+    ) -> list[Server]:
+        """Return a list of Servers matching selector, or time out.
 
         :param selector: function that takes a list of Servers and returns
             a subset of them.
@@ -253,7 +257,7 @@ class Topology:
             await self.cleanup_monitors()
 
         async with self._lock:
-            server_descriptions, ss = await self._select_servers_loop(
+            server_descriptions = await self._select_servers_loop(
                 selector,
                 server_timeout,
                 operation,
@@ -264,7 +268,7 @@ class Topology:
 
             return [
                 cast(Server, self.get_server_by_address(sd.address)) for sd in server_descriptions
-            ], ss
+            ]
 
     async def _select_servers_loop(
         self,
@@ -274,7 +278,7 @@ class Topology:
         operation_id: Optional[int],
         address: Optional[_Address],
         deprioritized_servers: Optional[list[Server]] = None,
-    ) -> tuple[list[ServerDescription], _ServerSelectionTelemetry]:
+    ) -> list[ServerDescription]:
         """select_servers() guts. Hold the lock when calling this."""
         now = time.monotonic()
         end_time = now + timeout
@@ -320,7 +324,7 @@ class Topology:
             )
 
         self._description.check_compatible()
-        return server_descriptions, ss
+        return server_descriptions
 
     async def _select_server(
         self,
@@ -330,8 +334,8 @@ class Topology:
         address: Optional[_Address] = None,
         deprioritized_servers: Optional[list[Server]] = None,
         operation_id: Optional[int] = None,
-    ) -> tuple[Server, _ServerSelectionTelemetry]:
-        servers, ss = await self.select_servers(
+    ) -> Server:
+        servers = await self.select_servers(
             selector,
             operation,
             server_selection_timeout,
@@ -340,12 +344,12 @@ class Topology:
             deprioritized_servers,
         )
         if len(servers) == 1:
-            return servers[0], ss
+            return servers[0]
         server1, server2 = random.sample(servers, 2)
         if server1.pool.operation_count <= server2.pool.operation_count:
-            return server1, ss
+            return server1
         else:
-            return server2, ss
+            return server2
 
     async def select_server(
         self,
@@ -357,7 +361,7 @@ class Topology:
         operation_id: Optional[int] = None,
     ) -> Server:
         """Like select_servers, but choose a random server if several match."""
-        server, ss = await self._select_server(
+        server = await self._select_server(
             selector,
             operation,
             server_selection_timeout,
@@ -367,7 +371,15 @@ class Topology:
         )
         if _csot.get_timeout():
             _csot.set_rtt(server.description.min_round_trip_time)
-        ss.succeeded(server.description.address[0], server.description.address[1], self.description)
+        log_server_selection_succeeded(
+            self._topology_id,
+            selector,
+            operation,
+            operation_id,
+            self.description,
+            server.description.address[0],
+            server.description.address[1],
+        )
         return server
 
     async def select_server_by_address(
