@@ -22,6 +22,7 @@ import os
 import platform
 import random
 import socket
+import ssl
 import sys
 import time
 
@@ -40,6 +41,13 @@ from pymongo.socket_checker import SocketChecker
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.helpers import ConcurrentRunner
 from test.utils_shared import delay
+
+try:
+    import OpenSSL
+
+    _HAVE_PYOPENSSL = True
+except ImportError:
+    _HAVE_PYOPENSSL = False
 
 _IS_SYNC = False
 
@@ -649,6 +657,52 @@ class TestPoolMaxSize(_TestPoolingBase):
             # is sufficient right *now* to catch a semaphore leak. But that
             # seems error-prone, so check the message too.
             self.assertNotIn("waiting for socket from pool", str(context.exception))
+
+
+class TestPoolHandleConnectionError(unittest.TestCase):
+    """PYTHON-5919: PyOpenSSL raises OpenSSL.SSL.SysCallError/ZeroReturnError
+    (not ssl.SSLEOFError/ssl.SSLZeroReturnError) when the server closes the
+    socket during the TLS handshake, e.g. when an ingress rate limiter rejects
+    a connection. Pool._handle_connection_error must recognize these as
+    handshake-EOF errors and still add the SystemOverloadedError label.
+    """
+
+    def _make_pool(self):
+        return Pool(("localhost", 27017), PoolOptions())
+
+    def test_stdlib_ssl_eof_error_is_labeled_overloaded(self):
+        pool = self._make_pool()
+        err = AutoReconnect("connection closed")
+        err.__cause__ = ssl.SSLEOFError("EOF occurred in violation of protocol")
+        pool._handle_connection_error(err)
+        self.assertTrue(err.has_error_label("SystemOverloadedError"))
+
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
+    def test_pyopenssl_syscall_error_is_labeled_overloaded(self):
+        from OpenSSL.SSL import SysCallError
+
+        pool = self._make_pool()
+        err = AutoReconnect("connection closed")
+        err.__cause__ = SysCallError(-1, "Unexpected EOF")
+        pool._handle_connection_error(err)
+        self.assertTrue(err.has_error_label("SystemOverloadedError"))
+
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
+    def test_pyopenssl_zero_return_error_is_labeled_overloaded(self):
+        from OpenSSL.SSL import ZeroReturnError
+
+        pool = self._make_pool()
+        err = AutoReconnect("connection closed")
+        err.__cause__ = ZeroReturnError()
+        pool._handle_connection_error(err)
+        self.assertTrue(err.has_error_label("SystemOverloadedError"))
+
+    def test_certificate_error_is_not_labeled_overloaded(self):
+        pool = self._make_pool()
+        err = AutoReconnect("connection closed")
+        err.__cause__ = ssl.SSLCertVerificationError("certificate verify failed")
+        pool._handle_connection_error(err)
+        self.assertFalse(err.has_error_label("SystemOverloadedError"))
 
 
 if __name__ == "__main__":
