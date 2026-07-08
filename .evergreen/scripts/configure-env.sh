@@ -20,6 +20,10 @@ DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
 MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
 # GNU date on Linux and Windows, BSD date on macOS.
 UV_EXCLUDE_NEWER="$(date -u -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-7d +%Y-%m-%d)"
+if [ -z "$UV_EXCLUDE_NEWER" ]; then
+  echo "Failed to compute UV_EXCLUDE_NEWER" >&2
+  exit 1
+fi
 
 # On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
 if [ "${CI:-}" == "true" ]; then
