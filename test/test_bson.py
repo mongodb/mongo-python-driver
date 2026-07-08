@@ -1784,6 +1784,19 @@ class TestDatetimeConversion(unittest.TestCase):
         with self.assertRaisesRegex(InvalidBSON, expected):
             _array_of_documents_to_buffer(bytes(malformed))
 
+    def test_array_of_documents_to_buffer_rejects_element_consuming_terminator(self):
+        doc = dict(a=1)
+        valid = encode({"0": doc})
+        self.assertEqual(_array_of_documents_to_buffer(valid), encode(doc))
+        offset = 4 + 1 + 2
+        malformed = bytearray(valid)
+        value_length = len(valid) - offset
+        malformed[offset:offset + 4] = struct.pack("<i", value_length)
+        # Covers the exact boundary where the embedded doc consumes the array's EOO byte.
+        expected = "invalid array content" if bson.has_c() else "invalid object length"
+        with self.assertRaisesRegex(InvalidBSON, expected):
+            _array_of_documents_to_buffer(bytes(malformed))
+
     def test_datetime_ms_hash(self):
         # Equal values must have equal hashes.
         self.assertEqual(hash(DatetimeMS(0)), hash(DatetimeMS(0)))
