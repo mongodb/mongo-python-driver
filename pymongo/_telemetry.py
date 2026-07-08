@@ -46,6 +46,15 @@ if TYPE_CHECKING:
     from pymongo.typings import _Address, _DocumentOut
 
 
+def _monotonic_duration(start: float) -> float:
+    """Return the duration since the given start time.
+
+    Accounts for buggy platforms where time.monotonic() is not monotonic.
+    See PYTHON-4600.
+    """
+    return max(0.0, time.monotonic() - start)
+
+
 class _CommandTelemetry:
     """Combines structured logging and APM event publishing for a single command.
 
@@ -301,7 +310,7 @@ class _CmapTelemetry:
         should_publish = self._should_publish
         if not should_log and not should_publish:
             return
-        duration = max(0.0, time.monotonic() - creation_time)
+        duration = _monotonic_duration(creation_time)
         # Log before publishing to prevent potential listener preemption in tests.
         if should_log:
             self._emit_log(
@@ -344,7 +353,7 @@ class _CmapTelemetry:
         should_publish = self._should_publish
         if not should_log and not should_publish:
             return
-        duration = max(0.0, time.monotonic() - start)
+        duration = _monotonic_duration(start)
         if should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_checked_out(self._address, conn_id, duration)
@@ -361,7 +370,7 @@ class _CmapTelemetry:
         should_publish = self._should_publish
         if not should_log and not should_publish:
             return
-        duration = max(0.0, time.monotonic() - start)
+        duration = _monotonic_duration(start)
         if should_publish:
             assert self._listeners is not None
             self._listeners.publish_connection_check_out_failed(self._address, error, duration)
@@ -473,7 +482,7 @@ class _HeartbeatTelemetry:
         should_log = self._should_log
         if not should_publish and not should_log:
             return
-        duration = max(0.0, time.monotonic() - self._start)
+        duration = _monotonic_duration(self._start)
         if should_publish:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_failed(self._address, duration, error, awaited)

@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
-from pymongo._telemetry import _HeartbeatTelemetry, log_srv_monitor_failure
+from pymongo._telemetry import _HeartbeatTelemetry, _monotonic_duration, log_srv_monitor_failure
 from pymongo.asynchronous.srv_resolver import _SrvResolver
 from pymongo.errors import NetworkTimeout, _OperationCancelled
 from pymongo.hello import Hello
@@ -51,15 +51,6 @@ def _sanitize(error: Exception) -> None:
     error.__traceback__ = None
     error.__context__ = None
     error.__cause__ = None
-
-
-def _monotonic_duration(start: float) -> float:
-    """Return the duration since the given start time.
-
-    Accounts for buggy platforms where time.monotonic() is not monotonic.
-    See PYTHON-4600.
-    """
-    return max(0.0, time.monotonic() - start)
 
 
 class MonitorBase:
