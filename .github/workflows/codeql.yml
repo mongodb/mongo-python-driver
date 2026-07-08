@@ -35,6 +35,13 @@ jobs:
           build-mode: none
         - language: actions
           build-mode: none
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7.0.0
+      with:
+        ref: ${{ inputs.ref }}
+        persist-credentials: false
+    - uses: actions/setup-python@v6
 
     steps:
     - uses: mongodb-labs/drivers-github-tools/codeql@6916a008ec612b4575d8f630c6745e776207e30a # PYTHON-5877
