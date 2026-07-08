@@ -1793,8 +1793,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         async with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
             if in_txn and session and session._pinned_connection:
-                err_handler.contribute_socket(session._pinned_connection)
-                yield session._pinned_connection
+                conn = session._pinned_connection
+                conn.op_id = None
+                err_handler.contribute_socket(conn)
+                yield conn
                 return
             async with await server.checkout(handler=err_handler) as conn:
                 conn.op_id = None  # Only retryable read/write logic sets an op_id.

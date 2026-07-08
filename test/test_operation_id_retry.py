@@ -30,8 +30,6 @@ _IS_SYNC = True
 
 _APP_NAME = "operationIdRetryTest"
 
-# Each operation, paired with the wire command it issues and an awaitable action.
-# These are all retryable; a stable operation_id must span every retry attempt.
 _RETRYABLE_WRITES = [
     ("insert", lambda c: c.insert_one({"_id": 100})),
     ("update", lambda c: c.update_one({"_id": 1}, {"$set": {"y": 1}})),
@@ -51,7 +49,6 @@ _RETRYABLE_READS = [
     ("listIndexes", lambda c: _list_indexes(c)),
 ]
 
-# Every command name the above operations issue, for the shared listener.
 _COMMANDS = {name for name, _ in _RETRYABLE_WRITES + _RETRYABLE_READS}
 
 
