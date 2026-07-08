@@ -24,7 +24,7 @@ Three public entry points each wrap the private :func:`_run_command`:
   batches. Pre-encrypted, so decryption is skipped. Callers: ``bulk.py``,
   ``client_bulk.py``.
 - :func:`run_cursor_command` — cursor ``find``/``getMore`` operations with
-  exhaust-cursor handling. Caller: ``server.py``.
+  exhaust-cursor handling. Caller: ``cursor_base.py``.
 
 :func:`_run_command` owns the entire shared skeleton: command logging, APM
 event publishing, ``send``/``receive``, ``$clusterTime`` gossip,

@@ -467,25 +467,40 @@ class TestPoolBackpressure(AsyncIntegrationTest):
         # Create a client that listens to CMAP events, with maxConnecting=100.
         client = await self.async_rs_or_single_client(maxConnecting=100, event_listeners=[listener])
 
-        # Enable the ingress rate limiter.
-        await client.admin.command(
-            "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
-        )
-        await client.admin.command("setParameter", 1, ingressConnectionEstablishmentRatePerSec=20)
-        await client.admin.command(
-            "setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1
-        )
-        await client.admin.command("setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1)
+        # setParameter needs to be set on each mongos in a sharded cluster
+        if async_client_context.mongoses:
+            admin_clients = [
+                await self.async_single_client("{}:{}".format(*address))
+                for address in async_client_context.mongoses
+            ]
+        else:
+            admin_clients = [client]
 
         # Disable the ingress rate limiter on teardown.
         # Sleep for 1 second before disabling to avoid the rate limiter.
         async def teardown():
             await asyncio.sleep(1)
-            await client.admin.command(
-                "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
-            )
+            for admin_client in admin_clients:
+                await admin_client.admin.command(
+                    "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=False
+                )
 
         self.addAsyncCleanup(teardown)
+
+        # Enable the ingress rate limiter.
+        for admin_client in admin_clients:
+            await admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentRateLimiterEnabled=True
+            )
+            await admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentRatePerSec=20
+            )
+            await admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentBurstCapacitySecs=1
+            )
+            await admin_client.admin.command(
+                "setParameter", 1, ingressConnectionEstablishmentMaxQueueDepth=1
+            )
 
         # Make sure the collection has at least one document.
         await client.test.test.delete_many({})

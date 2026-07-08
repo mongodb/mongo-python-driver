@@ -1913,13 +1913,14 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     async def _run_operation(
         self,
         operation: Union[_Query, _GetMore],
-        unpack_res: Callable,  # type: ignore[type-arg]
+        run_with_conn: Callable,  # type: ignore[type-arg]
         address: Optional[_Address] = None,
     ) -> Response:
         """Run a _Query/_GetMore operation and return a Response.
 
         :param operation: a _Query or _GetMore object.
-        :param unpack_res: A callable that decodes the wire protocol response.
+        :param run_with_conn: A callable ``(conn, operation, read_preference) -> Awaitable[Response]``
+            that executes the operation on a given connection.
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
         """
@@ -1934,31 +1935,20 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             async with operation.conn_mgr._lock:
                 async with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
+                    # Each getMore on a pinned connection is its own operation.
                     operation.conn_mgr.conn.op_id = _randint()
-                    return await server.run_operation(
-                        operation.conn_mgr.conn,
-                        operation,
-                        operation.read_preference,
-                        self._event_listeners,
-                        unpack_res,
-                        self,
+                    return await run_with_conn(
+                        operation.conn_mgr.conn, operation, operation.read_preference
                     )
 
         async def _cmd(
             _session: Optional[AsyncClientSession],
-            server: Server,
+            _server: Server,
             conn: AsyncConnection,
             read_preference: _ServerMode,
         ) -> Response:
             operation.reset()  # Reset op in case of retry.
-            return await server.run_operation(
-                conn,
-                operation,
-                read_preference,
-                self._event_listeners,
-                unpack_res,
-                self,
-            )
+            return await run_with_conn(conn, operation, read_preference)
 
         return await self._retryable_read(
             _cmd,

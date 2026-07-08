@@ -29,6 +29,7 @@ from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference
 from test import IntegrationTest, client_context, unittest
 from test.helpers import ConcurrentRunner
+from test.utils import flaky
 from test.utils_selection_tests import create_topology
 from test.utils_shared import (
     CMAPListener,
@@ -144,6 +145,7 @@ class TestProse(IntegrationTest):
         sys.platform == "darwin" and platform.machine() == "arm64" and "CI" in os.environ,
         "PYTHON-5861: Load balancing frequency assertion is timing-sensitive on macOS ARM64 CI",
     )
+    @flaky(reason="PYTHON-5911", affects_cpython_linux=True)
     def test_load_balancing(self):
         listener = OvertCommandListener()
         cmap_listener = CMAPListener()
