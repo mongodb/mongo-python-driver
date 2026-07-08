@@ -31,6 +31,7 @@ jobs:
         include:
         - language: c-cpp
           build-mode: manual
+          manual-build-command: pip install -e .
         - language: python
           build-mode: none
         - language: actions
@@ -40,6 +41,7 @@ jobs:
       with:
         language: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
+        manual-build-command: ${{ matrix.manual-build-command }}
         ref: ${{ inputs.ref }}
         config: |
           paths-ignore:
