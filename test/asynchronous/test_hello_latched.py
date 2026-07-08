@@ -19,13 +19,13 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
-
 from pymongo.asynchronous.pool import AsyncConnection
+from test.asynchronous import AsyncUnitTest
 
 _IS_SYNC = False
 
 
-class TestHelloLatched(unittest.IsolatedAsyncioTestCase):
+class TestHelloLatched(AsyncUnitTest):
     def setUp(self):
         self._sent = []
 
