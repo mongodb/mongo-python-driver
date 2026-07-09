@@ -351,6 +351,11 @@ class FunctionCallRecorder:
         else:
             return self._function(*args, **kwargs)
 
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        return functools.partial(self, obj)
+
     def reset(self):
         """Wipes the call list."""
         self._call_list = []

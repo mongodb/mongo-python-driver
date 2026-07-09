@@ -21,7 +21,6 @@ import sys
 import time
 from typing import Any
 
-from test.asynchronous.utils import flaky
 from test.utils_shared import FunctionCallRecorder
 
 sys.path[0:0] = [""]
@@ -226,7 +225,6 @@ class TestSrvPolling(AsyncPyMongoTestCase):
 
             await self.run_scenario(response_callback, False)
 
-    @flaky(reason="PYTHON-5500", max_runs=3)
     async def test_dns_failures_logging(self):
         from dns import exception
 
@@ -236,6 +234,11 @@ class TestSrvPolling(AsyncPyMongoTestCase):
                 raise exception.Timeout("DNS Failure!")
 
             await self.run_scenario(response_callback, False)
+
+            await async_wait_until(
+                lambda: any("SRV monitor check failed" in r.getMessage() for r in cm.records),
+                "log the SRV monitor check failure",
+            )
 
         srv_failure_logs = [r for r in cm.records if "SRV monitor check failed" in r.getMessage()]
         self.assertEqual(len(srv_failure_logs), 1)
@@ -270,14 +273,12 @@ class TestSrvPolling(AsyncPyMongoTestCase):
             # Nodelist should reflect new valid DNS resolver response.
             await self.assert_nodelist_change(response_final, client)
 
-    @flaky(reason="PYTHON-5315")
     async def test_recover_from_initially_empty_seedlist(self):
         def empty_seedlist():
             return []
 
         await self._test_recover_from_initial(empty_seedlist)
 
-    @flaky(reason="PYTHON-5315")
     async def test_recover_from_initially_erroring_seedlist(self):
         def erroring_seedlist():
             raise ConfigurationError
