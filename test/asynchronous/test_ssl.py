@@ -136,6 +136,42 @@ class TestClientSSL(AsyncPyMongoTestCase):
     def test_use_pyopenssl_when_available(self):
         self.assertTrue(HAVE_PYSSL)
 
+    def test_ssl_cert_file_env_var_preserves_default_fallback_off_windows(self):
+        # PYTHON-5930: on platforms/backends where load_default_certs() doesn't
+        # merge in an OS/certifi store (e.g. stdlib ssl on Linux/macOS), setting
+        # only SSL_CERT_FILE must still fall back to the platform's default CA
+        # directory for SSL_CERT_DIR, matching OpenSSL's own semantics. Bypassing
+        # load_default_certs() unconditionally would silently drop that fallback.
+        env = dict(os.environ)
+        env.pop("SSL_CERT_DIR", None)
+        env["SSL_CERT_FILE"] = CA_PEM
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch.object(sys, "platform", "linux"),
+            mock.patch("ssl.SSLContext.load_default_certs") as mock_default,
+            mock.patch("ssl.SSLContext.load_verify_locations") as mock_verify,
+        ):
+            get_ssl_context(None, None, None, None, False, False, False, False)
+            mock_default.assert_called_once()
+            mock_verify.assert_not_called()
+
+    def test_ssl_cert_file_env_var_bypasses_default_certs_on_windows(self):
+        # PYTHON-5930: on win32 (and macOS+PyOpenSSL), load_default_certs() merges
+        # the OS/certifi store with SSL_CERT_FILE/SSL_CERT_DIR, so it must be
+        # bypassed in favor of loading the env vars exclusively.
+        env = dict(os.environ)
+        env.pop("SSL_CERT_DIR", None)
+        env["SSL_CERT_FILE"] = CA_PEM
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch.object(sys, "platform", "win32"),
+            mock.patch("ssl.SSLContext.load_default_certs") as mock_default,
+            mock.patch("ssl.SSLContext.load_verify_locations") as mock_verify,
+        ):
+            get_ssl_context(None, None, None, None, False, False, False, False)
+            mock_verify.assert_called_once_with(cafile=CA_PEM, capath=None)
+            mock_default.assert_not_called()
+
     def test_ssl_session_cache(self):
         cache: list = [None]
         self.assertIsNone(cache[0])

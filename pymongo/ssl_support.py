@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import types
 import warnings
 from typing import Any, Optional, Union
@@ -136,11 +137,16 @@ if HAVE_SSL:
         elif verify_mode != CERT_NONE:
             cert_file = os.environ.get("SSL_CERT_FILE")
             cert_dir = os.environ.get("SSL_CERT_DIR")
-            if cert_file or cert_dir:
-                # On Windows, load_default_certs() merges the OS certificate store
-                # with SSL_CERT_FILE/SSL_CERT_DIR, unlike other platforms where these
-                # variables are the sole source of trust. Honor them exclusively for
-                # consistent cross-platform behavior.
+            # On Windows, and on macOS when using PyOpenSSL, load_default_certs()
+            # merges the OS/certifi certificate store with SSL_CERT_FILE/SSL_CERT_DIR
+            # instead of letting them replace it. Elsewhere, load_default_certs()
+            # already honors these variables correctly -- including falling back to
+            # the platform default for whichever of the two is left unset -- so only
+            # bypass it where the unwanted merge actually happens.
+            merges_os_store = sys.platform == "win32" or (
+                ssl.IS_PYOPENSSL and sys.platform == "darwin"
+            )
+            if (cert_file or cert_dir) and merges_os_store:
                 ctx.load_verify_locations(cafile=cert_file, capath=cert_dir)
             else:
                 ctx.load_default_certs()
