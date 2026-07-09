@@ -467,7 +467,7 @@ buildvariants:
       - name: .test-standard !.pypy .async .replica_set-noauth-ssl
     display_name: PyOpenSSL macOS
     run_on:
-      - rhel87-small
+      - macos-14
     batchtime: 1440
     expansions:
       SUB_TEST_NAME: pyopenssl

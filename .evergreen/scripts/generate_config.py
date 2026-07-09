@@ -251,6 +251,7 @@ def create_pyopenssl_variants():
             create_variant(
                 tasks,
                 display_name,
+                host=host,
                 expansions=expansions,
                 batchtime=batchtime,
             )
