@@ -351,12 +351,12 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
                 await client.admin.command("setParameter", 1, externalClientBaseBackoffMS=0)
 
         # 10. Assert absolute bounds on each run's duration.
-        # A run can never be faster than the sum of its backoff sleeps.
-        # With jitter pinned to 1, the default backoff sleeps are 0.1 + 0.2 = 0.3s
-        # and the baseBackoffMS=50 sleeps are 0.05 + 0.1 = 0.15s.
-        self.assertGreaterEqual(exponential_backoff_time, 0.3)
-        self.assertGreaterEqual(with_base_backoff_ms_time, 0.15)
-        self.assertLess(with_base_backoff_ms_time, 0.3)
+        # A run can never be faster than the sum of its backoffs.
+        # With jitter pinned to 1, the default backoffs are 0.2 + 0.4 = 0.6s
+        # and the baseBackoffMS=50 backoffs are 0.1 + 0.2 = 0.3s.
+        self.assertGreaterEqual(exponential_backoff_time, 0.6)
+        self.assertGreaterEqual(with_base_backoff_ms_time, 0.3)
+        self.assertLess(with_base_backoff_ms_time, 0.6)
 
 
 # Location of JSON test specifications.
