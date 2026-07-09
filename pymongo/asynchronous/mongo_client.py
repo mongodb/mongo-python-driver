@@ -2617,8 +2617,7 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mong
 class _ClientCheckout:
     """Context manager for checking out a connection from the pool.
 
-    Handles pool checkout, SDAM error handling, and session pinning in a
-    single class-based CM to eliminate generator overhead on the hot path.
+    Handles pool checkout, SDAM error handling, and session pinning.
     """
 
     __slots__ = (
