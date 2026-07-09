@@ -240,9 +240,6 @@ class TestSrvPolling(PyMongoTestCase):
                 "log the SRV monitor check failure",
             )
 
-        srv_failure_logs = [r for r in cm.records if "SRV monitor check failed" in r.getMessage()]
-        self.assertGreaterEqual(len(srv_failure_logs), 1)
-
     def test_dns_record_lookup_empty(self):
         response: list = []
         self.run_scenario(response, False)

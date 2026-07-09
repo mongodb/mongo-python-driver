@@ -338,7 +338,14 @@ class CompareType:
 
 
 class FunctionCallRecorder:
-    """Utility class to wrap a callable and record its invocations."""
+    """Utility class to wrap a callable and record its invocations.
+
+    A synchronous callable is recorded immediately, before it runs. A
+    coroutine function is recorded only once the returned coroutine
+    finishes running, whether it returns, raises, or is cancelled, so
+    callers can rely on a recorded call meaning the wrapped coroutine
+    actually ran rather than merely having been scheduled.
+    """
 
     def __init__(self, function):
         self._function = function
