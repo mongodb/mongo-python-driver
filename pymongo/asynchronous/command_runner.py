@@ -47,7 +47,7 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo import _csot, helpers_shared, message
+from pymongo import _csot, _op_id, helpers_shared, message
 from pymongo._telemetry import _CommandTelemetry
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import NotPrimaryError, OperationFailure
@@ -325,7 +325,7 @@ async def run_cursor_command(
         more_to_come=more_to_come,
         unpack_res=unpack_res,
         cursor_id=cursor_id,
-        op_id=conn.op_id,
+        op_id=_op_id.OP_ID.get(),
     )
 
 
@@ -429,7 +429,7 @@ async def run_command(
         codec_options=codec_options,
         user_fields=user_fields,
         orig=orig,
-        op_id=conn.op_id,
+        op_id=_op_id.OP_ID.get(),
         check=check,
         allowable_errors=allowable_errors,
         parse_write_concern_error=parse_write_concern_error,

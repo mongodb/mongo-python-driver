@@ -56,7 +56,7 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, common, helpers_shared, periodic_executor
+from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
 from pymongo.client_options import ClientOptions
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
@@ -1790,13 +1790,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         with _MongoClientErrorHandler(self, server, session) as err_handler:
             # Reuse the pinned connection, if it exists.
             if in_txn and session and session._pinned_connection:
-                conn = session._pinned_connection
-                conn.op_id = None
-                err_handler.contribute_socket(conn)
-                yield conn
+                err_handler.contribute_socket(session._pinned_connection)
+                yield session._pinned_connection
                 return
             with server.checkout(handler=err_handler) as conn:
-                conn.op_id = None  # Only retryable read/write logic sets an op_id.
                 # Pin this session to the selected server or connection.
                 if (
                     in_txn
@@ -1935,8 +1932,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             with operation.conn_mgr._lock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
-                    # Non-retryable getMore on a pinned conn; no shared op_id.
-                    operation.conn_mgr.conn.op_id = None
                     return run_with_conn(
                         operation.conn_mgr.conn, operation, operation.read_preference
                     )
@@ -2224,8 +2219,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         namespace = address.namespace
         db, coll = namespace.split(".", 1)
         spec = {"killCursors": coll, "cursors": cursor_ids}
-        # killCursors is its own op; drop any op_id left on a pinned cursor conn.
-        conn.op_id = None
         conn.command(db, spec, session=session, client=self)
 
     def _process_kill_cursors(self) -> None:
@@ -2993,7 +2986,6 @@ class _ClientConnectionRetryable(Generic[T]):
             is_mongos = False
             self._server = self._get_server()
             with self._client._checkout(self._server, self._session) as conn:
-                conn.op_id = self._operation_id
                 max_wire_version = conn.max_wire_version
                 sessions_supported = (
                     self._session
@@ -3014,7 +3006,12 @@ class _ClientConnectionRetryable(Generic[T]):
                         commandName=self._operation,
                         operationId=self._operation_id,
                     )
-                return self._func(self._session, conn, self._retryable)  # type: ignore
+                # Publish this op's id on every command of every attempt.
+                token = _op_id.OP_ID.set(self._operation_id)
+                try:
+                    return self._func(self._session, conn, self._retryable)  # type: ignore
+                finally:
+                    _op_id.OP_ID.reset(token)
         except PyMongoError as exc:
             if not self._retryable:
                 raise
@@ -3033,7 +3030,6 @@ class _ClientConnectionRetryable(Generic[T]):
             conn,
             read_pref,
         ):
-            conn.op_id = self._operation_id
             if self._retrying and not self._retryable and not self._always_retryable:
                 self._check_last_error()
             if self._retrying:
@@ -3044,7 +3040,12 @@ class _ClientConnectionRetryable(Generic[T]):
                     commandName=self._operation,
                     operationId=self._operation_id,
                 )
-            return self._func(self._session, self._server, conn, read_pref)  # type: ignore
+            # Publish this op's id on every command of every attempt.
+            token = _op_id.OP_ID.set(self._operation_id)
+            try:
+                return self._func(self._session, self._server, conn, read_pref)  # type: ignore
+            finally:
+                _op_id.OP_ID.reset(token)
 
 
 def _after_fork_child() -> None:

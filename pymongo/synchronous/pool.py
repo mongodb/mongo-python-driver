@@ -177,13 +177,6 @@ class Connection(_ConnectionTelemetryInfo):
         self.creation_time = time.monotonic()
         # For gossiping $clusterTime from the connection handshake to the client.
         self._cluster_time = None
-        # APM operation id of the op currently using this connection, read by
-        # command(). Kept here for simplicity: retries reuse it without threading
-        # an op_id kwarg through every command. Reset to None on checkout; only
-        # the retryable read/write logic sets a real value. An op running a
-        # command directly on a pinned connection (see killCursors, reauth) must
-        # clear it so it isn't attributed to an unrelated command.
-        self.op_id: Optional[int] = None
 
     def set_conn_timeout(self, timeout: Optional[float]) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""

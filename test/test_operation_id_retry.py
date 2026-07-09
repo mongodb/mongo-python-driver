@@ -71,16 +71,13 @@ class TestOperationIdRetry(IntegrationTest):
         self.listener = AllowListEventListener(*_COMMANDS)
         self.client = self.rs_or_single_client(event_listeners=[self.listener], appname=_APP_NAME)
         self.coll = self.client.pymongo_test.test_operation_id_retry
-
-    def _seed(self):
         self.coll.drop()
         self.coll.insert_many([{"_id": i, "x": i % 3} for i in range(5)])
         self.coll.create_index("x")
 
     def _run_under_failpoint(self, command_name, action, times, expected_error=None):
-        """Seed, force ``times`` closeConnection failures of ``command_name``,
-        run ``action``, and return its ``(started, failed, succeeded)`` events."""
-        self._seed()
+        """Force ``times`` closeConnection failures of ``command_name``, run
+        ``action``, and return its ``(started, failed, succeeded)`` events."""
         self.listener.reset()
         fail_point = {
             "mode": {"times": times},
