@@ -1791,7 +1791,7 @@ class TestDatetimeConversion(unittest.TestCase):
         offset = 4 + 1 + 2
         malformed = bytearray(valid)
         value_length = len(valid) - offset
-        malformed[offset:offset + 4] = struct.pack("<i", value_length)
+        malformed[offset : offset + 4] = struct.pack("<i", value_length)
         # Covers the exact boundary where the embedded doc consumes the array's EOO byte.
         expected = "invalid array content" if bson.has_c() else "invalid object length"
         with self.assertRaisesRegex(InvalidBSON, expected):
