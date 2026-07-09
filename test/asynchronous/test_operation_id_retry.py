@@ -49,8 +49,6 @@ _RETRYABLE_READS = [
     ("listIndexes", lambda c: _list_indexes(c)),
 ]
 
-_COMMANDS = {name for name, _ in _RETRYABLE_WRITES + _RETRYABLE_READS}
-
 
 async def _agg(coll):
     cursor = await coll.aggregate([{"$match": {"x": 1}}])
@@ -63,12 +61,14 @@ async def _list_indexes(coll):
 
 
 class TestOperationIdRetry(AsyncIntegrationTest):
-    RETRIES = 2  # fail this many attempts; the (RETRIES + 1)th succeeds.
+    RETRIES = 2
 
     @async_client_context.require_failCommand_fail_point
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
-        self.listener = AllowListEventListener(*_COMMANDS)
+        self.listener = AllowListEventListener(
+            *{name for name, _ in _RETRYABLE_WRITES + _RETRYABLE_READS}
+        )
         self.client = await self.async_rs_or_single_client(
             event_listeners=[self.listener], appname=_APP_NAME
         )
@@ -77,14 +77,13 @@ class TestOperationIdRetry(AsyncIntegrationTest):
         await self.coll.insert_many([{"_id": i, "x": i % 3} for i in range(5)])
         await self.coll.create_index("x")
 
-    async def _run_under_failpoint(self, command_name, action, times, expected_error=None):
-        """Force ``times`` closeConnection failures of ``command_name``, run
-        ``action``, and return its ``(started, failed, succeeded)`` events."""
+    async def _run_under_failpoint(self, name, f, times, expected_error=None):
+        """Set a failpoint for the given command and return the corresponding events published during its execution."""
         self.listener.reset()
         fail_point = {
             "mode": {"times": times},
             "data": {
-                "failCommands": [command_name],
+                "failCommands": [name],
                 "closeConnection": True,
                 "appName": _APP_NAME,
             },
@@ -94,12 +93,12 @@ class TestOperationIdRetry(AsyncIntegrationTest):
             with pymongo.timeout(60):
                 if expected_error is not None:
                     with self.assertRaises(expected_error):
-                        await action(self.coll)
+                        await f(self.coll)
                 else:
-                    await action(self.coll)
+                    await f(self.coll)
 
         def of(events):
-            return [e for e in events if e.command_name == command_name]
+            return [e for e in events if e.command_name == name]
 
         return (
             of(self.listener.started_events),
@@ -107,9 +106,9 @@ class TestOperationIdRetry(AsyncIntegrationTest):
             of(self.listener.succeeded_events),
         )
 
-    async def _check_stable_operation_id(self, command_name, action, retries):
-        """Assert every command event for ``command_name`` shares one integer operation_id."""
-        started, failed, succeeded = await self._run_under_failpoint(command_name, action, retries)
+    async def _check_stable_operation_id(self, name, f, retries):
+        """Assert every command event for ``name`` shares one integer operation_id."""
+        started, failed, succeeded = await self._run_under_failpoint(name, f, retries)
         op_ids = [e.operation_id for e in started + failed + succeeded]
 
         self.assertEqual(len(started), retries + 1, "expected one started event per attempt")
@@ -119,31 +118,31 @@ class TestOperationIdRetry(AsyncIntegrationTest):
         self.assertEqual(
             len(set(op_ids)),
             1,
-            f"operation_id not stable across retries for {command_name}: {op_ids}",
+            f"operation_id not stable across retries for {name}: {op_ids}",
         )
 
     @async_client_context.require_no_standalone
     async def test_retryable_writes_reuse_operation_id(self):
-        for command_name, action in _RETRYABLE_WRITES:
-            with self.subTest(command=command_name):
-                await self._check_stable_operation_id(command_name, action, self.RETRIES)
+        for name, f in _RETRYABLE_WRITES:
+            with self.subTest(command=name):
+                await self._check_stable_operation_id(name, f, self.RETRIES)
 
     async def test_retryable_reads_reuse_operation_id(self):
-        for command_name, action in _RETRYABLE_READS:
-            with self.subTest(command=command_name):
-                await self._check_stable_operation_id(command_name, action, self.RETRIES)
+        for name, f in _RETRYABLE_READS:
+            with self.subTest(command=name):
+                await self._check_stable_operation_id(name, f, self.RETRIES)
 
     @async_client_context.require_no_standalone
     async def test_non_retryable_write_is_not_retried(self):
         # Multi-document writes are not retryable: a single network error must
         # surface immediately, with exactly one attempt.
-        for command_name, action in [
+        for name, f in [
             ("update", lambda c: c.update_many({"x": 1}, {"$set": {"z": 1}})),
             ("delete", lambda c: c.delete_many({"x": 2})),
         ]:
-            with self.subTest(command=command_name):
+            with self.subTest(command=name):
                 started, _, _ = await self._run_under_failpoint(
-                    command_name, action, times=1, expected_error=ConnectionFailure
+                    name, f, times=1, expected_error=ConnectionFailure
                 )
                 self.assertEqual(len(started), 1, "must not retry")
                 self.assertIsInstance(started[0].operation_id, int)

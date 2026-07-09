@@ -128,7 +128,8 @@ async def _run_command(
     :param orig: The command document published in the ``STARTED`` APM event;
         defaults to ``cmd`` (differs only when the wire command was mutated,
         e.g. with a read preference or after encryption).
-    :param op_id: The APM operation id; defaults to ``request_id``.
+    :param op_id: The APM operation id; defaults to the ``OP_ID`` contextvar,
+        then ``request_id``.
     :param command_name: The command name for the ``SUCCEEDED``/``FAILED`` APM
         events; defaults to the first key of ``cmd``.
     :param check: Raise OperationFailure on a command error.
@@ -158,6 +159,8 @@ async def _run_command(
         command_name = name
     if orig is None:
         orig = cmd
+    if op_id is None:
+        op_id = _op_id.OP_ID.get()
 
     telemetry = _CommandTelemetry(topology_id, conn, listeners, cmd, dbname, request_id, op_id)
     telemetry.started(orig, ensure_db)
@@ -325,7 +328,6 @@ async def run_cursor_command(
         more_to_come=more_to_come,
         unpack_res=unpack_res,
         cursor_id=cursor_id,
-        op_id=_op_id.OP_ID.get(),
     )
 
 
@@ -429,7 +431,6 @@ async def run_command(
         codec_options=codec_options,
         user_fields=user_fields,
         orig=orig,
-        op_id=_op_id.OP_ID.get(),
         check=check,
         allowable_errors=allowable_errors,
         parse_write_concern_error=parse_write_concern_error,
