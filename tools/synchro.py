@@ -140,7 +140,7 @@ replacements = {
     "_async_create_connection": "_create_connection",
     "pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts": "pymongo.synchronous.srv_resolver._SrvResolver.get_hosts",
     "dns.asyncresolver.resolve": "dns.resolver.resolve",
-    "AsyncMock": "Mock",
+    "AsyncLatchedHelloMock": "LatchedHelloMock",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {

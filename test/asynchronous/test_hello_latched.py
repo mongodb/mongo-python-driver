@@ -18,7 +18,12 @@ from __future__ import annotations
 
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+
+# Use a test-specific alias here because a generic AsyncMock replacement caused
+# unintended rewrites in generated sync tests. Keeping the alias narrow limits
+# the unasync/synchro transform to this test.
+from unittest.mock import AsyncMock as AsyncLatchedHelloMock
+
 from pymongo.asynchronous.pool import AsyncConnection
 from test.asynchronous import AsyncUnitTest
 
@@ -52,7 +57,7 @@ class TestHelloLatched(AsyncUnitTest):
         Switches from ismaster to hello
         """
         conn = self.create_connection()
-        conn.command = AsyncMock(side_effect=self.mock_conn_command)
+        conn.command = AsyncLatchedHelloMock(side_effect=self.mock_conn_command)
 
         # First hello
         await conn._hello(None, None)
