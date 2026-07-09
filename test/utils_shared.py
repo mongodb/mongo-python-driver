@@ -345,11 +345,23 @@ class FunctionCallRecorder:
         self._call_list = []
 
     def __call__(self, *args, **kwargs):
-        self._call_list.append((args, kwargs))
         if iscoroutinefunction(self._function):
-            return self._function(*args, **kwargs)
+
+            async def _run_and_record():
+                try:
+                    return await self._function(*args, **kwargs)
+                finally:
+                    self._call_list.append((args, kwargs))
+
+            return _run_and_record()
         else:
+            self._call_list.append((args, kwargs))
             return self._function(*args, **kwargs)
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        return functools.partial(self, obj)
 
     def reset(self):
         """Wipes the call list."""
