@@ -294,6 +294,10 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
         # 6. Assert that the total number of started commands is max_retries + 1.
         self.assertEqual(len(self.listener.started_events), max_retries + 1)
 
+    @unittest.skipIf(
+        sys.platform == "darwin",
+        "externalClientBaseBackoffMS is not supported on macOS",
+    )
     @patch("random.random")
     @async_client_context.require_version_min(9, 0, 0, -1)
     @async_client_context.require_failCommand_appName
