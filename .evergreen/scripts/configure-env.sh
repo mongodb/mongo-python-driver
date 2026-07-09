@@ -74,10 +74,8 @@ EOT
 
 # Write the .env file for drivers-tools.
 rm -rf $DRIVERS_TOOLS
-# TEMPORARY: testing PYTHON-5040 against unmerged drivers-evergreen-tools branch.
-# Revert to BRANCH=master ORG=mongodb-labs once that PR is merged.
-BRANCH=PYTHON-5040
-ORG=blink1073
+BRANCH=master
+ORG=mongodb-labs
 git clone --branch $BRANCH https://github.com/$ORG/drivers-evergreen-tools.git $DRIVERS_TOOLS
 
 cat <<EOT > ${DRIVERS_TOOLS}/.env
