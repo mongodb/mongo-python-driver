@@ -56,6 +56,7 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, common, helpers_shared, periodic_executor
+from pymongo._telemetry import log_command_retry
 from pymongo.client_options import ClientOptions
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
@@ -79,8 +80,6 @@ from pymongo.lock import (
 )
 from pymongo.logger import (
     _CLIENT_LOGGER,
-    _COMMAND_LOGGER,
-    _debug_log,
     _log_client_error,
     _log_or_warn,
 )
@@ -1856,13 +1855,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _run_operation(
         self,
         operation: Union[_Query, _GetMore],
-        unpack_res: Callable,  # type: ignore[type-arg]
+        run_with_conn: Callable,  # type: ignore[type-arg]
         address: Optional[_Address] = None,
     ) -> Response:
         """Run a _Query/_GetMore operation and return a Response.
 
         :param operation: a _Query or _GetMore object.
-        :param unpack_res: A callable that decodes the wire protocol response.
+        :param run_with_conn: A callable ``(conn, operation, read_preference) -> Response``
+            that executes the operation on a given connection.
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
         """
@@ -1881,30 +1881,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     operation.session,  # type: ignore[arg-type]
                     operation.conn_mgr.conn,
                 ):
-                    return server.run_operation(
-                        operation.conn_mgr.conn,
-                        operation,
-                        operation.read_preference,
-                        self._event_listeners,
-                        unpack_res,
-                        self,
+                    return run_with_conn(
+                        operation.conn_mgr.conn, operation, operation.read_preference
                     )
 
         def _cmd(
             _session: Optional[ClientSession],
-            server: Server,
+            _server: Server,
             conn: Connection,
             read_preference: _ServerMode,
         ) -> Response:
             operation.reset()  # Reset op in case of retry.
-            return server.run_operation(
-                conn,
-                operation,
-                read_preference,
-                self._event_listeners,
-                unpack_res,
-                self,
-            )
+            return run_with_conn(conn, operation, read_preference)
 
         return self._retryable_read(
             _cmd,
@@ -3073,6 +3061,15 @@ class _ClientConnectionRetryable(Generic[T]):
             operation_id=self._operation_id,
         )
 
+    def _log_retry(self, is_write: bool) -> None:
+        log_command_retry(
+            self._client._topology_id,
+            self._operation,
+            self._operation_id,
+            self._attempt_number,
+            is_write,
+        )
+
     def _write(self) -> T:
         """Wrapper method for write-type retryable client executions
 
@@ -3096,13 +3093,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     self._check_last_error()
                     self._retryable = False
                 if self._retrying:
-                    _debug_log(
-                        _COMMAND_LOGGER,
-                        message=f"Retrying write attempt number {self._attempt_number}",
-                        clientId=self._client._topology_id,
-                        commandName=self._operation,
-                        operationId=self._operation_id,
-                    )
+                    self._log_retry(is_write=True)
                 return self._func(self._session, conn, self._retryable)  # type: ignore
         except PyMongoError as exc:
             if not self._retryable:
@@ -3125,13 +3116,7 @@ class _ClientConnectionRetryable(Generic[T]):
             if self._retrying and not self._retryable and not self._always_retryable:
                 self._check_last_error()
             if self._retrying:
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=f"Retrying read attempt number {self._attempt_number}",
-                    clientId=self._client._topology_settings._topology_id,
-                    commandName=self._operation,
-                    operationId=self._operation_id,
-                )
+                self._log_retry(is_write=False)
             return self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 

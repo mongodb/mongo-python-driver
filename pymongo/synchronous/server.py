@@ -16,24 +16,13 @@
 
 from __future__ import annotations
 
-import logging
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Optional,
-    Union,
 )
 
-from pymongo.logger import (
-    _SDAM_LOGGER,
-    _debug_log,
-    _SDAMStatusMessage,
-)
-from pymongo.message import _GetMore, _OpMsg, _Query
-from pymongo.response import PinnedResponse, Response
-from pymongo.synchronous.command_runner import run_cursor_command
-from pymongo.synchronous.helpers import _handle_reauth
+from pymongo._telemetry import _SdamTelemetry
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -41,16 +30,11 @@ if TYPE_CHECKING:
 
     from bson.objectid import ObjectId
     from pymongo.monitoring import _EventListeners
-    from pymongo.read_preferences import _ServerMode
     from pymongo.server_description import ServerDescription
-    from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.monitor import Monitor
-    from pymongo.synchronous.pool import Connection, Pool
-    from pymongo.typings import _DocumentOut
+    from pymongo.synchronous.pool import Pool
 
 _IS_SYNC = True
-
-_CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
 class Server:
@@ -67,12 +51,8 @@ class Server:
         self._description = server_description
         self._pool = pool
         self._monitor = monitor
-        self._topology_id = topology_id
-        self._publish = listeners is not None and listeners.enabled_for_server
-        self._listener = listeners
-        self._events = None
-        if self._publish:
-            self._events = events()  # type: ignore[misc]
+        _events = events() if listeners is not None and listeners.enabled_for_server else None  # type: ignore[misc]
+        self._sdam = _SdamTelemetry(topology_id, listeners, _events)  # type: ignore[arg-type]
 
     def open(self) -> None:
         """Start monitoring, or restart after a fork.
@@ -91,23 +71,7 @@ class Server:
 
         Reconnect with open().
         """
-        if self._publish:
-            assert self._listener is not None
-            assert self._events is not None
-            self._events.put(
-                (
-                    self._listener.publish_server_closed,
-                    (self._description.address, self._topology_id),
-                )
-            )
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.STOP_SERVER,
-                topologyId=self._topology_id,
-                serverHost=self._description.address[0],
-                serverPort=self._description.address[1],
-            )
+        self._sdam.server_closed(self._description.address)
 
         self._monitor.close()
         self._pool.close()
@@ -115,112 +79,6 @@ class Server:
     def request_check(self) -> None:
         """Check the server's state soon."""
         self._monitor.request_check()
-
-    def operation_to_command(
-        self, operation: Union[_Query, _GetMore], conn: Connection, apply_timeout: bool = False
-    ) -> tuple[dict[str, Any], str]:
-        cmd, db = operation.as_command(conn, apply_timeout)
-        # Support auto encryption
-        if operation.client._encrypter and not operation.client._encrypter._bypass_auto_encryption:
-            cmd = operation.client._encrypter.encrypt(  # type: ignore[misc, assignment]
-                operation.db, cmd, operation.codec_options
-            )
-        operation.update_command(cmd)
-
-        return cmd, db
-
-    @_handle_reauth
-    def run_operation(
-        self,
-        conn: Connection,
-        operation: Union[_Query, _GetMore],
-        read_preference: _ServerMode,
-        listeners: Optional[_EventListeners],
-        unpack_res: Callable[..., list[_DocumentOut]],
-        client: MongoClient[Any],
-    ) -> Response:
-        """Run a _Query or _GetMore operation and return a Response object.
-
-        This method is used only to run _Query/_GetMore operations from
-        cursors.
-        Can raise ConnectionFailure, OperationFailure, etc.
-
-        :param conn: A Connection instance.
-        :param operation: A _Query or _GetMore object.
-        :param read_preference: The read preference to use.
-        :param listeners: Instance of _EventListeners or None.
-        :param unpack_res: A callable that decodes the wire protocol response.
-        :param client: A MongoClient instance.
-        """
-        assert listeners is not None
-
-        use_cmd = operation.use_command(conn)
-        more_to_come = bool(operation.conn_mgr and operation.conn_mgr.more_to_come)
-        cmd, dbn = self.operation_to_command(operation, conn, use_cmd)
-        if more_to_come:
-            request_id = 0
-            data = b""
-            max_doc_size = 0
-        else:
-            message = operation.get_message(read_preference, conn, use_cmd)
-            request_id, data, max_doc_size = self._split_message(message)
-
-        user_fields = _CURSOR_DOC_FIELDS if use_cmd else None
-
-        docs, reply, duration = run_cursor_command(
-            conn,
-            cmd,
-            dbn,
-            request_id,
-            data,
-            client=client,
-            session=operation.session,  # type: ignore[arg-type]
-            listeners=listeners,
-            codec_options=operation.codec_options,
-            user_fields=user_fields,
-            command_name=operation.name,
-            pool_opts=conn.opts,
-            max_doc_size=max_doc_size,
-            more_to_come=more_to_come,
-            unpack_res=unpack_res,
-            cursor_id=operation.cursor_id,
-        )
-        assert reply is not None
-
-        response: Response
-
-        if client._should_pin_cursor(operation.session) or operation.exhaust:  # type: ignore[arg-type]
-            conn.pin_cursor()
-            if isinstance(reply, _OpMsg):
-                # In OP_MSG, the server keeps sending only if the
-                # more_to_come flag is set.
-                more_to_come = reply.more_to_come
-            else:
-                # In OP_REPLY, the server keeps sending until cursor_id is 0.
-                more_to_come = bool(operation.exhaust and reply.cursor_id)
-            if operation.conn_mgr:
-                operation.conn_mgr.update_exhaust(more_to_come)
-            response = PinnedResponse(
-                data=reply,
-                address=self._description.address,
-                conn=conn,
-                duration=duration,
-                request_id=request_id,
-                from_command=use_cmd,
-                docs=docs,  # type: ignore[arg-type]
-                more_to_come=more_to_come,
-            )
-        else:
-            response = Response(
-                data=reply,
-                address=self._description.address,
-                duration=duration,
-                request_id=request_id,
-                from_command=use_cmd,
-                docs=docs,  # type: ignore[arg-type]
-            )
-
-        return response
 
     @property
     def description(self) -> ServerDescription:
@@ -234,20 +92,6 @@ class Server:
     @property
     def pool(self) -> Pool:
         return self._pool
-
-    def _split_message(
-        self, message: Union[tuple[int, Any], tuple[int, Any, int]]
-    ) -> tuple[int, Any, int]:
-        """Return request_id, data, max_doc_size.
-
-        :param message: (request_id, data, max_doc_size) or (request_id, data)
-        """
-        if len(message) == 3:
-            return message  # type: ignore[return-value]
-        else:
-            # get_more and kill_cursors messages don't include BSON documents.
-            request_id, data = message  # type: ignore[misc]
-            return request_id, data, 0
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self._description!r}>"

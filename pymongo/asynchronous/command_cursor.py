@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CommandCursor class to iterate over command results."""
+"""AsyncCommandCursor class to iterate over command results."""
 
 from __future__ import annotations
 
@@ -42,7 +42,18 @@ _IS_SYNC = False
 
 
 class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
-    """An asynchronous cursor / iterator over command cursors."""
+    """An asynchronous cursor / iterator over command cursors.
+    Used by :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate`,
+    :meth:`~pymongo.asynchronous.database.AsyncDatabase.aggregate`,
+    :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_indexes`,
+    :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_search_indexes`
+    :meth:`~pymongo.asynchronous.database.AsyncDatabase.list_collections`,
+    :meth:`~pymongo.asynchronous.database.AsyncDatabase.cursor_command`,
+    and :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.list_databases`
+    to iterate MongoDB command results.
+
+    Should not be called directly by application developers.
+    """
 
     _getmore_class = _GetMore
 
@@ -162,7 +173,7 @@ class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
         client = self._collection.database.client
         try:
             response = await client._run_operation(
-                operation, self._unpack_response, address=self._address
+                operation, self._run_with_conn, address=self._address
             )
         except OperationFailure as exc:
             if exc.code in _CURSOR_CLOSED_ERRORS:

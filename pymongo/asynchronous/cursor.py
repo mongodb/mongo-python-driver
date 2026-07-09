@@ -97,9 +97,9 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
         let: Optional[bool] = None,
     ) -> None:
         """Create a new cursor.
+        Used by :meth:`~pymongo.asynchronous.collection.AsyncCollection.find` to iterate over MongoDB query results.
 
-        Should not be called directly by application developers - see
-        :meth:`~pymongo.asynchronous.collection.AsyncCollection.find` instead.
+        Should not be called directly by application developers.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
@@ -980,7 +980,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
         try:
             response = await client._run_operation(
-                operation, self._unpack_response, address=self._address
+                operation, self._run_with_conn, address=self._address
             )
         except OperationFailure as exc:
             if exc.code in _CURSOR_CLOSED_ERRORS or self._exhaust:

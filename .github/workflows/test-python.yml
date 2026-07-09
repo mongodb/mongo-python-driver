@@ -17,14 +17,18 @@ defaults:
 permissions:
   contents: read
 
+env:
+  UV_NO_LOCK: "1"
+
 jobs:
 
   static:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
+      - uses: ./.github/actions/set-uv-exclude-newer
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
@@ -67,9 +71,10 @@ jobs:
 
     name: Python ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
+      - uses: ./.github/actions/set-uv-exclude-newer
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
@@ -89,9 +94,10 @@ jobs:
 
     name: Coverage
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
+      - uses: ./.github/actions/set-uv-exclude-newer
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
@@ -117,9 +123,10 @@ jobs:
     runs-on: ubuntu-latest
     name: DocTest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
+      - uses: ./.github/actions/set-uv-exclude-newer
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
@@ -142,9 +149,10 @@ jobs:
     name: Docs Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
+      - uses: ./.github/actions/set-uv-exclude-newer
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
@@ -164,9 +172,10 @@ jobs:
       matrix:
         python: ["3.10", "3.11"]
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
+      - uses: ./.github/actions/set-uv-exclude-newer
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
@@ -185,9 +194,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Integration Tests
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
+      - uses: ./.github/actions/set-uv-exclude-newer
       - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
@@ -215,7 +225,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "Make an sdist"
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           persist-credentials: false
       - uses: actions/setup-python@v6
@@ -275,9 +285,10 @@ jobs:
       runs-on: ubuntu-latest
       name: Test minimum dependencies and Python
       steps:
-        - uses: actions/checkout@v6.0.3
+        - uses: actions/checkout@v7.0.0
           with:
             persist-credentials: false
+        - uses: ./.github/actions/set-uv-exclude-newer
         - name: Install uv
           uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
           with:
