@@ -337,18 +337,24 @@ class TestClientBackpressure(IntegrationTest):
 
                 # 7. Execute step 5 again.
                 start1 = perf_counter()
-                with self.assertRaises(OperationFailure):
+                with self.assertRaises(OperationFailure) as ctx:
                     coll.insert_one({"a": 1})
                 end1 = perf_counter()
                 with_base_backoff_ms_time = end1 - start1
+
+                # 8. Assert the server attached `baseBackoffMS` to the error and the driver parsed it.
+                self.assertEqual(ctx.exception._base_backoff_ms, 50)
             finally:
-                # 8. Run the following command to disable `baseBackoffMS` on overload errors.
+                # 9. Run the following command to disable `baseBackoffMS` on overload errors.
                 client.admin.command("setParameter", 1, externalClientBaseBackoffMS=0)
 
-        # 9. Compare the time between the two runs.
-        # The difference in the backoffs is 0.2 seconds. There is a 0.2-second window to account for potential variance
-        # between the two runs.
-        self.assertTrue(abs(exponential_backoff_time - (with_base_backoff_ms_time + 0.2)) < 0.2)
+        # 10. Assert absolute bounds on each run's duration.
+        # A run can never be faster than the sum of its backoff sleeps.
+        # With jitter pinned to 1, the default backoff sleeps are 0.1 + 0.2 = 0.3s
+        # and the baseBackoffMS=50 sleeps are 0.05 + 0.1 = 0.15s.
+        self.assertGreaterEqual(exponential_backoff_time, 0.3)
+        self.assertGreaterEqual(with_base_backoff_ms_time, 0.15)
+        self.assertLess(with_base_backoff_ms_time, 0.3)
 
 
 # Location of JSON test specifications.
