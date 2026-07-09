@@ -8,6 +8,9 @@ Changes in Version 4.18.0
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
   and on Python 3.11+ for async clients.
+- Fixed a bug on Windows, and on macOS when using PyOpenSSL, where
+  ``SSL_CERT_FILE``/``SSL_CERT_DIR`` were merged with, rather than replacing,
+  the OS/certifi certificate store.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
