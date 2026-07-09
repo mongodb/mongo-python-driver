@@ -1,6 +1,6 @@
 <!-- Thanks for contributing! -->
 <!-- Please ensure that the title of the PR is in the following form:
-[JIRA TICKET]: Issue Title
+PYTHON-XXXX - Issue Title
 
 If you are an external contributor and there is no JIRA ticket associated with your change, then use your best judgement
 for the PR title. A MongoDB employee will create a JIRA ticket and edit the name and links as appropriate.
@@ -9,7 +9,9 @@ Note on AI Contributions:
 We only accept pull requests that are authored and submitted by human contributors who fully understand the changes they are proposing.
 All contributions must be written and understood by human contributors. Please read about our policy in our contributing guide.
 -->
-[JIRA TICKET]
+<!-- Replace XXXX with ticket number. If no ticket, make sure PYTHON-XXXX is in the title; our system will automatically generate
+a JIRA ticket code -->
+PYTHON-XXXX
 
 ## Changes in this PR
 <!-- What changes did you make to the code? What new APIs (public or private) were added, removed, or edited to generate
