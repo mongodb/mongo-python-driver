@@ -960,7 +960,7 @@ class Pool:
         Returns a :class:`_PoolCheckout` context manager that yields a
         :class:`Connection` object wrapping a connected socket.
 
-        This method should always be used in an async-with-statement::
+        This method should always be used in a with-statement::
 
             with pool.checkout() as connection:
                 connection.send_message(msg)

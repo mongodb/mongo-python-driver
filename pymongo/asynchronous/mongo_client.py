@@ -2742,6 +2742,12 @@ class _ClientCheckout:
             try:
                 await self.handle(type(exc), exc)
             finally:
+                # Clear pinned flags so _PoolCheckout.__aexit__ calls checkin()
+                # rather than silently skipping it. session._pin() may have set
+                # conn.pinned_txn=True before the exception was raised, but the
+                # session never completed setup, so the connection must be returned.
+                conn.pinned_txn = False
+                conn.pinned_cursor = False
                 await pool_checkout.__aexit__(type(exc), exc, exc.__traceback__)
                 self._pool_checkout = None
             raise
@@ -2786,7 +2792,7 @@ class _ClientReadCheckout(_ClientCheckout):
     adjustment and return the effective read preference alongside the connection.
     """
 
-    __slots__ = ("_effective_read_pref",)
+    __slots__ = ("_read_preference",)
 
     def __init__(
         self,
@@ -2796,7 +2802,7 @@ class _ClientReadCheckout(_ClientCheckout):
         read_preference: _ServerMode,
     ) -> None:
         super().__init__(client, server, session)
-        self._effective_read_pref: _ServerMode = read_preference
+        self._read_preference: _ServerMode = read_preference
 
     async def __aenter__(self) -> tuple[AsyncConnection, _ServerMode]:  # type: ignore[override]
         conn = await super().__aenter__()
@@ -2804,13 +2810,14 @@ class _ClientReadCheckout(_ClientCheckout):
         # standalones and to always send primaryPreferred when directly
         # connected to a replica set member.
         # Thread safe: topology type cannot change once set to Single.
+        read_pref = self._read_preference
         single = self.client._topology.description.topology_type == TOPOLOGY_TYPE.Single
         if single:
             if conn.is_repl and not (self.session and self.session.in_transaction):
-                self._effective_read_pref = ReadPreference.PRIMARY_PREFERRED
+                read_pref = ReadPreference.PRIMARY_PREFERRED
             elif conn.is_standalone:
-                self._effective_read_pref = ReadPreference.PRIMARY
-        return conn, self._effective_read_pref
+                read_pref = ReadPreference.PRIMARY
+        return conn, read_pref
 
 
 class _ClientConnectionRetryable(Generic[T]):
