@@ -137,12 +137,8 @@ if HAVE_SSL:
         elif verify_mode != CERT_NONE:
             cert_file = os.environ.get("SSL_CERT_FILE")
             cert_dir = os.environ.get("SSL_CERT_DIR")
-            # On Windows, and on macOS when using PyOpenSSL, load_default_certs()
-            # merges the OS/certifi certificate store with SSL_CERT_FILE/SSL_CERT_DIR
-            # instead of letting them replace it. Elsewhere, load_default_certs()
-            # already honors these variables correctly -- including falling back to
-            # the platform default for whichever of the two is left unset -- so only
-            # bypass it where the unwanted merge actually happens.
+            # load_default_certs() wrongly merges in the OS/certifi store on
+            # Windows, and on macOS with PyOpenSSL; bypass it only there.
             merges_os_store = sys.platform == "win32" or (
                 ssl.IS_PYOPENSSL and sys.platform == "darwin"
             )
