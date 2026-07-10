@@ -172,6 +172,23 @@ class TestClientSSL(AsyncPyMongoTestCase):
             mock_verify.assert_called_once_with(cafile=CA_PEM, capath=None)
             mock_default.assert_not_called()
 
+    @unittest.skipUnless(_HAVE_PYOPENSSL, "PyOpenSSL is not available.")
+    def test_ssl_cert_file_env_var_bypasses_default_certs_on_macos_pyopenssl(self):
+        # PYTHON-5930: on macOS with PyOpenSSL, load_default_certs() merges in
+        # certifi certs, so it must be bypassed just like on win32.
+        env = dict(os.environ)
+        env.pop("SSL_CERT_DIR", None)
+        env["SSL_CERT_FILE"] = CA_PEM
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch.object(sys, "platform", "darwin"),
+            mock.patch("pymongo.pyopenssl_context.SSLContext.load_default_certs") as mock_default,
+            mock.patch("pymongo.pyopenssl_context.SSLContext.load_verify_locations") as mock_verify,
+        ):
+            get_ssl_context(None, None, None, None, False, False, False, True)
+            mock_verify.assert_called_once_with(cafile=CA_PEM, capath=None)
+            mock_default.assert_not_called()
+
     def test_ssl_session_cache(self):
         cache: list = [None]
         self.assertIsNone(cache[0])
