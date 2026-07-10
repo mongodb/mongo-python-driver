@@ -135,8 +135,8 @@ if HAVE_SSL:
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
         elif verify_mode != CERT_NONE:
-            cert_file = os.environ.get("SSL_CERT_FILE")
-            cert_dir = os.environ.get("SSL_CERT_DIR")
+            cert_file = os.environ.get("SSL_CERT_FILE") or None
+            cert_dir = os.environ.get("SSL_CERT_DIR") or None
             # load_default_certs() wrongly merges in the OS/certifi store on
             # Windows and on macOS with PyOpenSSL
             merges_os_store = sys.platform == "win32" or (
