@@ -58,7 +58,7 @@ jobs:
           uvx --from 'validate-pyproject[all]' validate-pyproject pyproject.toml
       - name: Check package metadata
         run: |
-          uv build --sdist
+          uv build
           uvx twine check --strict dist/*
       - run: |
           sudo apt-get install -y cppcheck
