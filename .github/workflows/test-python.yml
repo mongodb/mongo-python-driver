@@ -55,7 +55,7 @@ jobs:
           uv run --extra test --with unasync pytest tools/test_synchro.py -v --override-ini="addopts="
       - name: Validate pyproject.toml
         run: |
-          uvx validate-pyproject pyproject.toml
+          uvx --from 'validate-pyproject[all]' validate-pyproject pyproject.toml
       - name: Check package metadata
         run: |
           uv build --sdist
