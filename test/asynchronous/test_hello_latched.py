@@ -19,11 +19,6 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-# Use a test-specific alias here because a generic AsyncMock replacement caused
-# unintended rewrites in generated sync tests. Keeping the alias narrow limits
-# the unasync/synchro transform to this test.
-from unittest.mock import AsyncMock as AsyncLatchedHelloMock
-
 from pymongo.asynchronous.pool import AsyncConnection
 from test.asynchronous import AsyncUnitTest
 
@@ -43,21 +38,22 @@ class TestHelloLatched(AsyncUnitTest):
 
         return conn
 
-    async def mock_conn_command(self, db, cmd, **kwargs):
-        """Returns mocked hello and ismaster results for conn.command"""
-        self._sent.append(cmd.copy())
-        if cmd.get("ismaster") == 1:
-            return {"ok": 1, "helloOk": True, "ismaster": True, "maxWireVersion": 25}
-        return {"ok": 1, "isWritablePrimary": True, "maxWireVersion": 25}
-
     async def test_hello_is_latched(self):
         """
         Regression Test for PYTHON-5904
         Tests for connection hello_ok persistence when connection
         Switches from ismaster to hello
         """
+
+        async def mock_conn_command(db, cmd, **kwargs):
+            """Returns mocked hello and ismaster results for conn.command"""
+            self._sent.append(cmd.copy())
+            if cmd.get("ismaster") == 1:
+                return {"ok": 1, "helloOk": True, "ismaster": True, "maxWireVersion": 25}
+            return {"ok": 1, "isWritablePrimary": True, "maxWireVersion": 25}
+
         conn = self.create_connection()
-        conn.command = AsyncLatchedHelloMock(side_effect=self.mock_conn_command)
+        conn.command = mock_conn_command
 
         # First hello
         await conn._hello(None, None)
