@@ -21,9 +21,10 @@ set -o xtrace
 
 # Install a c compiler.
 apt-get -qq update  < /dev/null > /dev/null
-apt-get -q install -y build-essential git
+apt-get -q install -y build-essential
 
 export SET_XTRACE_ON=1
+export CI=true
 cd src
 rm -rf .venv
 rm -f .evergreen/scripts/test-env.sh || true
