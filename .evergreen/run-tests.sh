@@ -28,8 +28,6 @@ fi
 
 # Start the test runner.
 export UV_NO_LOCK=1
-# GNU date on Linux and Windows, BSD date on macOS.
-export UV_EXCLUDE_NEWER="${UV_EXCLUDE_NEWER:-$(date -u -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-7d +%Y-%m-%d)}"
 echo "Running tests with UV_PYTHON=${UV_PYTHON:-}..."
 echo "UV_ARGS=${UV_ARGS}"
 uv run ${UV_ARGS} --reinstall-package pymongo .evergreen/scripts/run_tests.py "$@"

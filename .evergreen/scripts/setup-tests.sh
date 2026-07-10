@@ -22,8 +22,6 @@ if [ -f $SCRIPT_DIR/env.sh ]; then
 fi
 
 export UV_NO_LOCK=1
-# GNU date on Linux and Windows, BSD date on macOS.
-export UV_EXCLUDE_NEWER="${UV_EXCLUDE_NEWER:-$(date -u -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-7d +%Y-%m-%d)}"
 
 echo "Setting up tests with args \"$*\"..."
 uv run ${USE_ACTIVE_VENV:+--active} "$SCRIPT_DIR/setup_tests.py" "$@"
