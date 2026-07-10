@@ -37,7 +37,7 @@ class TestAsyncContextVarsReset(AsyncIntegrationTest):
             for context in [
                 c
                 for c in server._monitor._executor._task.get_context()
-                if c.name in ["TIMEOUT", "RTT", "DEADLINE"]
+                if c.name in ["TIMEOUT", "RTT", "DEADLINE", "OP_ID"]
             ]:
                 self.assertIn(context.get(), [None, float("inf"), 0.0])
         await self.client.db.test.delete_many({})

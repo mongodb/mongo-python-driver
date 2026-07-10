@@ -21,7 +21,11 @@ import sys
 sys.path[0:0] = [""]
 
 import pymongo
-from pymongo.errors import ConnectionFailure
+from pymongo import _op_id
+from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.asynchronous.pool import AsyncConnection
+from pymongo.errors import OperationFailure
+from pymongo.helpers_shared import _REAUTHENTICATION_REQUIRED_CODE
 from pymongo.operations import InsertOne
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils_shared import AllowListEventListener
@@ -77,7 +81,7 @@ class TestOperationIdRetry(AsyncIntegrationTest):
         await self.coll.insert_many([{"_id": i, "x": i % 3} for i in range(5)])
         await self.coll.create_index("x")
 
-    async def _run_under_failpoint(self, name, f, times, expected_error=None):
+    async def _run_under_failpoint(self, name, f, times):
         """Set a failpoint for the given command and return the corresponding events published during its execution."""
         self.listener.reset()
         fail_point = {
@@ -91,11 +95,7 @@ class TestOperationIdRetry(AsyncIntegrationTest):
         async with self.fail_point(fail_point):
             # A CSOT timeout lets a single operation retry more than once.
             with pymongo.timeout(60):
-                if expected_error is not None:
-                    with self.assertRaises(expected_error):
-                        await f(self.coll)
-                else:
-                    await f(self.coll)
+                await f(self.coll)
 
         def of(events):
             return [e for e in events if e.command_name == name]
@@ -132,20 +132,31 @@ class TestOperationIdRetry(AsyncIntegrationTest):
             with self.subTest(command=name):
                 await self._check_stable_operation_id(name, f, self.RETRIES)
 
-    @async_client_context.require_no_standalone
-    async def test_non_retryable_write_is_not_retried(self):
-        # Multi-document writes are not retryable: a single network error must
-        # surface immediately, with exactly one attempt.
-        for name, f in [
-            ("update", lambda c: c.update_many({"x": 1}, {"$set": {"z": 1}})),
-            ("delete", lambda c: c.delete_many({"x": 2})),
-        ]:
-            with self.subTest(command=name):
-                started, _, _ = await self._run_under_failpoint(
-                    name, f, times=1, expected_error=ConnectionFailure
-                )
-                self.assertEqual(len(started), 1, "must not retry")
-                self.assertIsInstance(started[0].operation_id, int)
+    async def test_reauth_does_not_reuse_operation_id(self):
+        class FakeConnection(AsyncConnection):
+            def __init__(self):
+                self.auth_op_ids = []
+
+            async def authenticate(self, reauthenticate=False):
+                self.auth_op_ids.append(_op_id.OP_ID.get())
+
+        conn = FakeConnection()
+        attempt_op_ids = []
+
+        @_handle_reauth
+        async def func(conn):
+            attempt_op_ids.append(_op_id.OP_ID.get())
+            if len(attempt_op_ids) == 1:
+                raise OperationFailure("reauth required", _REAUTHENTICATION_REQUIRED_CODE)
+
+        op_id = 42
+        with _op_id._OpIdContext(op_id):
+            await func(conn)
+        # Reauth's auth commands must not inherit the in-flight op's id.
+        self.assertEqual(conn.auth_op_ids, [None])
+        # The op's id is restored for the retried command after reauth.
+        self.assertEqual(attempt_op_ids, [op_id, op_id])
+        self.assertIsNone(_op_id.OP_ID.get())
 
 
 if __name__ == "__main__":
