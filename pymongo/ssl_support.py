@@ -138,7 +138,7 @@ if HAVE_SSL:
             cert_file = os.environ.get("SSL_CERT_FILE")
             cert_dir = os.environ.get("SSL_CERT_DIR")
             # load_default_certs() wrongly merges in the OS/certifi store on
-            # Windows, and on macOS with PyOpenSSL; bypass it only there.
+            # Windows and on macOS with PyOpenSSL
             merges_os_store = sys.platform == "win32" or (
                 ssl.IS_PYOPENSSL and sys.platform == "darwin"
             )
