@@ -21,7 +21,7 @@ set -o xtrace
 
 # Install a c compiler.
 apt-get -qq update  < /dev/null > /dev/null
-apt-get -q install -y build-essential
+apt-get -q install -y build-essential git
 
 export SET_XTRACE_ON=1
 cd src
