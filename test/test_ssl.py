@@ -135,12 +135,10 @@ class TestClientSSL(PyMongoTestCase):
     def test_use_pyopenssl_when_available(self):
         self.assertTrue(HAVE_PYSSL)
 
-    def test_ssl_cert_file_env_var_preserves_default_fallback_off_windows(self):
-        # PYTHON-5930: on platforms/backends where load_default_certs() doesn't
-        # merge in an OS/certifi store (e.g. stdlib ssl on Linux/macOS), setting
-        # only SSL_CERT_FILE must still fall back to the platform's default CA
-        # directory for SSL_CERT_DIR, matching OpenSSL's own semantics. Bypassing
-        # load_default_certs() unconditionally would silently drop that fallback.
+    def test_ssl_cert_file_env_var_uses_default_certs_on_linux(self):
+        # PYTHON-5930: on Linux, load_default_certs() already honors SSL_CERT_FILE
+        # correctly (unlike Windows/macOS+PyOpenSSL), so it must still be called
+        # instead of bypassed.
         env = dict(os.environ)
         env.pop("SSL_CERT_DIR", None)
         env["SSL_CERT_FILE"] = CA_PEM
@@ -155,9 +153,9 @@ class TestClientSSL(PyMongoTestCase):
             mock_verify.assert_not_called()
 
     def test_ssl_cert_file_env_var_bypasses_default_certs_on_windows(self):
-        # PYTHON-5930: on win32 (and macOS+PyOpenSSL), load_default_certs() merges
-        # the OS/certifi store with SSL_CERT_FILE/SSL_CERT_DIR, so it must be
-        # bypassed in favor of loading the env vars exclusively.
+        # PYTHON-5930: on win32, load_default_certs() merges the OS certificate
+        # store with SSL_CERT_FILE/SSL_CERT_DIR, so it must be bypassed in favor
+        # of loading the env vars exclusively.
         env = dict(os.environ)
         env.pop("SSL_CERT_DIR", None)
         env["SSL_CERT_FILE"] = CA_PEM
