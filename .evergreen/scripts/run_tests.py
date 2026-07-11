@@ -182,6 +182,10 @@ def run() -> None:
 
     # Send ecs tests to run remotely.
     if TEST_NAME == "auth_aws" and SUB_TEST_NAME == "ecs":
+        # Lock dependencies here, where git is available, so the ecs
+        # container (which has no git) can install from the lock frozen,
+        # without needing to resolve mockupdb's git dependency itself.
+        run_command("uv lock", cwd=ROOT)
         run_command(f"{DRIVERS_TOOLS}/.evergreen/auth_aws/aws_setup.sh ecs")
         return
 

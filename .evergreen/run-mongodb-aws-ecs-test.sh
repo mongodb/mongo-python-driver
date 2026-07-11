@@ -25,6 +25,9 @@ apt-get -q install -y build-essential
 
 export SET_XTRACE_ON=1
 export CI=true
+# Install from the uv.lock generated on the host (which has git); this
+# container doesn't, so it must not try to resolve mockupdb itself.
+export UV_FROZEN=1
 cd src
 rm -rf .venv
 rm -f .evergreen/scripts/test-env.sh || true
