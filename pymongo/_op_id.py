@@ -23,7 +23,7 @@ getMores) read the default None and fall back to their request_id.
 from __future__ import annotations
 
 from contextlib import AbstractContextManager
-from contextvars import ContextVar, Token
+from contextvars import ContextVar
 from typing import Any, Optional
 
 OP_ID: ContextVar[Optional[int]] = ContextVar("OP_ID", default=None)
@@ -38,11 +38,9 @@ class _OpIdContext(AbstractContextManager[Any]):
 
     def __init__(self, op_id: Optional[int]):
         self._op_id = op_id
-        self._token: Optional[Token[Optional[int]]] = None
 
     def __enter__(self) -> None:
         self._token = OP_ID.set(self._op_id)
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        if self._token:
-            OP_ID.reset(self._token)
+        OP_ID.reset(self._token)
