@@ -53,6 +53,13 @@ jobs:
       - name: Run synchro smoke test
         run: |
           uv run --extra test --with unasync pytest tools/test_synchro.py -v --override-ini="addopts="
+      - name: Validate pyproject.toml
+        run: |
+          uvx --from 'validate-pyproject[all]' validate-pyproject pyproject.toml
+      - name: Check package metadata
+        run: |
+          uv build
+          uvx twine check --strict dist/*
       - run: |
           sudo apt-get install -y cppcheck
       - run: |
