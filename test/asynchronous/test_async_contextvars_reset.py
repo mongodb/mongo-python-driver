@@ -34,10 +34,8 @@ class TestAsyncContextVarsReset(AsyncIntegrationTest):
 
         await self.client.db.test.insert_one({"x": 1})
         for server in self.client._topology._servers.values():
-            for context in [
-                c
-                for c in server._monitor._executor._task.get_context()
-                if c.name in ["TIMEOUT", "RTT", "DEADLINE", "OP_ID"]
-            ]:
-                self.assertIn(context.get(), [None, float("inf"), 0.0])
+            ctx = server._monitor._executor._task.get_context()
+            for var in ctx:
+                if var.name in ["TIMEOUT", "RTT", "DEADLINE", "OP_ID"]:
+                    self.assertIn(ctx[var], [None, float("inf"), 0.0])
         await self.client.db.test.delete_many({})
