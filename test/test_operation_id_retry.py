@@ -121,13 +121,13 @@ class TestOperationIdRetry(IntegrationTest):
 
     @client_context.require_no_standalone
     def test_retryable_writes_reuse_operation_id(self):
-        for name, f in _RETRYABLE_WRITES:
-            with self.subTest(command=name):
+        for i, (name, f) in enumerate(_RETRYABLE_WRITES):
+            with self.subTest(command=name, index=i):
                 self._check_stable_operation_id(name, f, self.RETRIES)
 
     def test_retryable_reads_reuse_operation_id(self):
-        for name, f in _RETRYABLE_READS:
-            with self.subTest(command=name):
+        for i, (name, f) in enumerate(_RETRYABLE_READS):
+            with self.subTest(command=name, index=i):
                 self._check_stable_operation_id(name, f, self.RETRIES)
 
     def test_reauth_does_not_reuse_operation_id(self):

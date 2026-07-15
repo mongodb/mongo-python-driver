@@ -123,13 +123,13 @@ class TestOperationIdRetry(AsyncIntegrationTest):
 
     @async_client_context.require_no_standalone
     async def test_retryable_writes_reuse_operation_id(self):
-        for name, f in _RETRYABLE_WRITES:
-            with self.subTest(command=name):
+        for i, (name, f) in enumerate(_RETRYABLE_WRITES):
+            with self.subTest(command=name, index=i):
                 await self._check_stable_operation_id(name, f, self.RETRIES)
 
     async def test_retryable_reads_reuse_operation_id(self):
-        for name, f in _RETRYABLE_READS:
-            with self.subTest(command=name):
+        for i, (name, f) in enumerate(_RETRYABLE_READS):
+            with self.subTest(command=name, index=i):
                 await self._check_stable_operation_id(name, f, self.RETRIES)
 
     async def test_reauth_does_not_reuse_operation_id(self):

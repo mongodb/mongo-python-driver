@@ -36,6 +36,9 @@ class TestAsyncContextVarsReset(AsyncIntegrationTest):
         for server in self.client._topology._servers.values():
             ctx = server._monitor._executor._task.get_context()
             for var in ctx:
-                if var.name in ["TIMEOUT", "RTT", "DEADLINE", "OP_ID"]:
+                if var.name == "OP_ID":
+                    # OP_ID resets to None; 0 is a valid op_id so don't accept it.
+                    self.assertIsNone(ctx[var])
+                elif var.name in ["TIMEOUT", "RTT", "DEADLINE"]:
                     self.assertIn(ctx[var], [None, float("inf"), 0.0])
         await self.client.db.test.delete_many({})
