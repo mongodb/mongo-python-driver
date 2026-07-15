@@ -9,8 +9,8 @@ Note on AI Contributions:
 We only accept pull requests that are authored and submitted by human contributors who fully understand the changes they are proposing.
 All contributions must be written and understood by human contributors. Please read about our policy in our contributing guide.
 -->
-<!-- Replace XXXX with ticket number. If no ticket, make sure PYTHON-XXXX is in the title; our system will automatically generate
-a JIRA ticket code -->
+<!-- Replace XXXX with the ticket number. If you do not have a ticket (external contributors), you may leave PYTHON-XXXX;
+a MongoDB employee will create a JIRA ticket and update the PR title/links as appropriate. -->
 PYTHON-XXXX
 
 ## Changes in this PR
