@@ -1,6 +1,6 @@
 <!-- Thanks for contributing! -->
 <!-- Please ensure that the title of the PR is in the following form:
-PYTHON-XXXX - Issue Title
+PYTHON-XXXX Issue Title
 
 If you are an external contributor and there is no JIRA ticket associated with your change, then use your best judgement
 for the PR title. A MongoDB employee will create a JIRA ticket and edit the name and links as appropriate.
