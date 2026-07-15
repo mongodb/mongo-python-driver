@@ -95,13 +95,13 @@ class TestOperationIdRetry(IntegrationTest):
             with pymongo.timeout(60):
                 f(self.coll)
 
-        def of(events):
+        def matching(events):
             return [e for e in events if e.command_name == name]
 
         return (
-            of(self.listener.started_events),
-            of(self.listener.failed_events),
-            of(self.listener.succeeded_events),
+            matching(self.listener.started_events),
+            matching(self.listener.failed_events),
+            matching(self.listener.succeeded_events),
         )
 
     def _check_stable_operation_id(self, name, f, retries):
