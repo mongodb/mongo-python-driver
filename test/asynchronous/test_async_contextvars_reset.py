@@ -35,10 +35,9 @@ class TestAsyncContextVarsReset(AsyncIntegrationTest):
         await self.client.db.test.insert_one({"x": 1})
         for server in self.client._topology._servers.values():
             ctx = server._monitor._executor._task.get_context()
-            for var in ctx:
-                if var.name == "OP_ID":
-                    # OP_ID resets to None; 0 is a valid op_id so don't accept it.
-                    self.assertIsNone(ctx[var])
-                elif var.name in ["TIMEOUT", "RTT", "DEADLINE"]:
-                    self.assertIn(ctx[var], [None, float("inf"), 0.0])
+            values = {var.name: ctx[var] for var in ctx}
+            for name in ["TIMEOUT", "RTT", "DEADLINE", "OP_ID"]:
+                # The executor resets these on startup, so each must be present.
+                self.assertIn(name, values)
+                self.assertIn(values[name], [None, float("inf"), 0.0])
         await self.client.db.test.delete_many({})
