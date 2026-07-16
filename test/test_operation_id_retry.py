@@ -21,10 +21,12 @@ import sys
 sys.path[0:0] = [""]
 
 import pymongo
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from pymongo import _op_id
 from pymongo.errors import OperationFailure
 from pymongo.helpers_shared import _REAUTHENTICATION_REQUIRED_CODE
 from pymongo.operations import InsertOne
+from pymongo.synchronous.encryption import _Encrypter
 from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.synchronous.pool import Connection
 from test import IntegrationTest, client_context, unittest
@@ -155,6 +157,32 @@ class TestOperationIdRetry(IntegrationTest):
         # The op's id is restored for the retried command after reauth.
         self.assertEqual(attempt_op_ids, [op_id, op_id])
         self.assertIsNone(_op_id.OP_ID.get())
+
+    def test_auto_encryption_does_not_reuse_operation_id(self):
+        class FakeAutoEncrypter:
+            def __init__(self):
+                self.op_ids = []
+
+            def encrypt(self, database, cmd):
+                self.op_ids.append(_op_id.OP_ID.get())
+                return cmd
+
+            def decrypt(self, response):
+                self.op_ids.append(_op_id.OP_ID.get())
+                return response
+
+        encrypter = _Encrypter.__new__(_Encrypter)
+        encrypter._closed = False
+        encrypter._auto_encrypter = FakeAutoEncrypter()
+
+        op_id = 42
+        with _op_id._OpIdContext(op_id):
+            encrypter.encrypt("db", {"find": "test"}, DEFAULT_CODEC_OPTIONS)
+            encrypter.decrypt(b"")
+            # The op's id is restored for the operation's own command.
+            self.assertEqual(_op_id.OP_ID.get(), op_id)
+        # Encryption's sub-commands must not inherit the in-flight op's id.
+        self.assertEqual(encrypter._auto_encrypter.op_ids, [None, None])
 
 
 if __name__ == "__main__":
