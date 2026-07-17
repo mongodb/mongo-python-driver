@@ -21,11 +21,8 @@ if [ -f $SCRIPT_DIR/env.sh ]; then
   source $SCRIPT_DIR/env.sh
 fi
 
-# UV_FROZEN means a uv.lock was already generated where git is available
-# (e.g. for the ecs remote host); don't fight it by disabling lock usage.
-if [ -z "${UV_FROZEN:-}" ]; then
-  export UV_NO_LOCK=1
-fi
+# Never create or read a uv.lock; hosts without git can't resolve mockupdb.
+export UV_NO_LOCK=1
 
 echo "Setting up tests with args \"$*\"..."
 uv run ${USE_ACTIVE_VENV:+--active} "$SCRIPT_DIR/setup_tests.py" "$@"

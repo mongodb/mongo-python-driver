@@ -27,11 +27,8 @@ else
 fi
 
 # Start the test runner.
-# UV_FROZEN means a uv.lock was already generated where git is available
-# (e.g. for the ecs remote host); don't fight it by disabling lock usage.
-if [ -z "${UV_FROZEN:-}" ]; then
-  export UV_NO_LOCK=1
-fi
+# Never create or read a uv.lock; hosts without git can't resolve mockupdb.
+export UV_NO_LOCK=1
 echo "Running tests with UV_PYTHON=${UV_PYTHON:-}..."
 echo "UV_ARGS=${UV_ARGS}"
 uv run ${UV_ARGS} --reinstall-package pymongo .evergreen/scripts/run_tests.py "$@"
