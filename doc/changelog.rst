@@ -8,6 +8,11 @@ Changes in Version 4.18.0
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
   and on Python 3.11+ for async clients.
+- Command monitoring events and command log messages for a single logical
+  operation now share one stable ``operation_id`` across all of its retry
+  attempts, so consumers can correlate a retried operation's events. As a
+  result, ``operation_id`` is no longer equal to the per-attempt ``request_id``
+  for these operations.
 - Fixed a potential out-of-bounds read in the C extension when decoding an
   array of BSON documents. An embedded document whose declared length exceeds
   the bytes remaining in the array now raises

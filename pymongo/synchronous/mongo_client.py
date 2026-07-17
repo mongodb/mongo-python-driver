@@ -56,7 +56,8 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, common, helpers_shared, periodic_executor
+from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
+from pymongo._telemetry import log_command_retry
 from pymongo.client_options import ClientOptions
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
@@ -80,12 +81,10 @@ from pymongo.lock import (
 )
 from pymongo.logger import (
     _CLIENT_LOGGER,
-    _COMMAND_LOGGER,
-    _debug_log,
     _log_client_error,
     _log_or_warn,
 )
-from pymongo.message import _CursorAddress, _GetMore, _Query
+from pymongo.message import _CursorAddress, _GetMore, _Query, _randint
 from pymongo.monitoring import ConnectionClosedReason, _EventListeners
 from pymongo.operations import (
     DeleteMany,
@@ -1834,6 +1833,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             be pinned to a mongos server address.
           - `address` (optional): Address when sending a message
             to a specific server, used for getMore.
+          - `operation_id` (optional): Stable operation id shared across retries,
+            used for command monitoring.
         """
         try:
             topology = self._get_topology()
@@ -1908,13 +1909,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def _run_operation(
         self,
         operation: Union[_Query, _GetMore],
-        unpack_res: Callable,  # type: ignore[type-arg]
+        run_with_conn: Callable,  # type: ignore[type-arg]
         address: Optional[_Address] = None,
     ) -> Response:
         """Run a _Query/_GetMore operation and return a Response.
 
         :param operation: a _Query or _GetMore object.
-        :param unpack_res: A callable that decodes the wire protocol response.
+        :param run_with_conn: A callable ``(conn, operation, read_preference) -> Response``
+            that executes the operation on a given connection.
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
         """
@@ -1929,30 +1931,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             with operation.conn_mgr._lock:
                 with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
                     err_handler.contribute_socket(operation.conn_mgr.conn)
-                    return server.run_operation(
-                        operation.conn_mgr.conn,
-                        operation,
-                        operation.read_preference,
-                        self._event_listeners,
-                        unpack_res,
-                        self,
+                    return run_with_conn(
+                        operation.conn_mgr.conn, operation, operation.read_preference
                     )
 
         def _cmd(
             _session: Optional[ClientSession],
-            server: Server,
+            _server: Server,
             conn: Connection,
             read_preference: _ServerMode,
         ) -> Response:
             operation.reset()  # Reset op in case of retry.
-            return server.run_operation(
-                conn,
-                operation,
-                read_preference,
-                self._event_listeners,
-                unpack_res,
-                self,
-            )
+            return run_with_conn(conn, operation, read_preference)
 
         return self._retryable_read(
             _cmd,
@@ -2020,6 +2010,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param retryable: If the operation should be retried once, defaults to None
         :param is_run_command: If this is a runCommand operation, defaults to False
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
+        :param operation_id: Stable operation id shared across retries, defaults to None
 
         :return: Output of the calling func()
         """
@@ -2066,6 +2057,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             (may not always be supported even if supplied), defaults to False
         :param is_run_command: If this is a runCommand operation, defaults to False.
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
+        :param operation_id: Stable operation id shared across retries, defaults to None
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2109,6 +2101,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param session: Client session we will use to execute write operation
         :param operation: The name of the operation that the server is being selected for
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
+        :param operation_id: Stable operation id shared across retries, defaults to None
         """
         with self._tmp_session(session) as s:
             return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
@@ -2786,7 +2779,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._server: Server = None  # type: ignore
         self._deprioritized_servers: list[Server] = []
         self._operation = operation
-        self._operation_id = operation_id
+        self._operation_id = operation_id if operation_id is not None else _randint()
         self._attempt_number = 0
         self._is_run_command = is_run_command
         self._is_aggregate_write = is_aggregate_write
@@ -2982,6 +2975,15 @@ class _ClientConnectionRetryable(Generic[T]):
             operation_id=self._operation_id,
         )
 
+    def _log_retry(self, is_write: bool) -> None:
+        log_command_retry(
+            self._client._topology_id,
+            self._operation,
+            self._operation_id,
+            self._attempt_number,
+            is_write,
+        )
+
     def _write(self) -> T:
         """Wrapper method for write-type retryable client executions
 
@@ -3005,14 +3007,10 @@ class _ClientConnectionRetryable(Generic[T]):
                     self._check_last_error()
                     self._retryable = False
                 if self._retrying:
-                    _debug_log(
-                        _COMMAND_LOGGER,
-                        message=f"Retrying write attempt number {self._attempt_number}",
-                        clientId=self._client._topology_id,
-                        commandName=self._operation,
-                        operationId=self._operation_id,
-                    )
-                return self._func(self._session, conn, self._retryable)  # type: ignore
+                    self._log_retry(is_write=True)
+                # One operation id across all attempts of this operation.
+                with _op_id._OpIdContext(self._operation_id):
+                    return self._func(self._session, conn, self._retryable)  # type: ignore
         except PyMongoError as exc:
             if not self._retryable:
                 raise
@@ -3034,14 +3032,10 @@ class _ClientConnectionRetryable(Generic[T]):
             if self._retrying and not self._retryable and not self._always_retryable:
                 self._check_last_error()
             if self._retrying:
-                _debug_log(
-                    _COMMAND_LOGGER,
-                    message=f"Retrying read attempt number {self._attempt_number}",
-                    clientId=self._client._topology_settings._topology_id,
-                    commandName=self._operation,
-                    operationId=self._operation_id,
-                )
-            return self._func(self._session, self._server, conn, read_pref)  # type: ignore
+                self._log_retry(is_write=False)
+            # One operation id across all attempts of this operation.
+            with _op_id._OpIdContext(self._operation_id):
+                return self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 
 def _after_fork_child() -> None:

@@ -977,9 +977,7 @@ class Cursor(_CursorBase[_DocumentType]):
             raise InvalidOperation("exhaust cursors do not support auto encryption")
 
         try:
-            response = client._run_operation(
-                operation, self._unpack_response, address=self._address
-            )
+            response = client._run_operation(operation, self._run_with_conn, address=self._address)
         except OperationFailure as exc:
             if exc.code in _CURSOR_CLOSED_ERRORS or self._exhaust:
                 # Don't send killCursors because the cursor is already closed.

@@ -49,12 +49,8 @@ async def async_get_pool(client: AsyncMongoClient) -> Pool:
 
 async def async_get_pools(client: AsyncMongoClient) -> list[Pool]:
     """Get all pools."""
-    return [
-        server.pool
-        for server in await (await client._get_topology()).select_servers(
-            any_server_selector, _Op.TEST
-        )
-    ]
+    servers = await (await client._get_topology()).select_servers(any_server_selector, _Op.TEST)
+    return [server.pool for server in servers]
 
 
 async def async_wait_until(predicate, success_description, timeout=10):

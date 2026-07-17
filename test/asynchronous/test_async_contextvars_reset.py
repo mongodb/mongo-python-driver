@@ -33,11 +33,13 @@ class TestAsyncContextVarsReset(AsyncIntegrationTest):
             self.skipTest("Test requires asyncio.Task.get_context (added in Python 3.12)")
 
         await self.client.db.test.insert_one({"x": 1})
+        # Value each contextvar is reset to at the start of the executor task.
+        expected = {"TIMEOUT": None, "RTT": 0.0, "DEADLINE": float("inf"), "OP_ID": None}
         for server in self.client._topology._servers.values():
-            for context in [
-                c
-                for c in server._monitor._executor._task.get_context()
-                if c.name in ["TIMEOUT", "RTT", "DEADLINE"]
-            ]:
-                self.assertIn(context.get(), [None, float("inf"), 0.0])
+            ctx = server._monitor._executor._task.get_context()
+            values = {var.name: ctx[var] for var in ctx}
+            for name, value in expected.items():
+                # The executor resets these on startup, so each must be present.
+                self.assertIn(name, values)
+                self.assertEqual(values[name], value)
         await self.client.db.test.delete_many({})
