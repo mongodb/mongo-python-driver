@@ -46,6 +46,13 @@ Documentation = "https://www.mongodb.com/docs/languages/python/pymongo-driver/cu
 Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
+[tool.uv]
+# Only sync the (empty) dev group by default; groups like mockupdb require
+# an explicit --group flag so hosts without git aren't forced to resolve it.
+default-groups = ["dev"]
+# Wait 7 days before resolving newly published package versions.
+exclude-newer = "7 days"
+
 [dependency-groups]
 dev = []
 lint = [
