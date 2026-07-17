@@ -8,6 +8,10 @@ Changes in Version 4.18.0
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
   and on Python 3.11+ for async clients.
+- Redacted potentially sensitive authentication mechanism properties, including
+  AWS session tokens, from the representations of
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`.
 - Command monitoring events and command log messages for a single logical
   operation now share one stable ``operation_id`` across all of its retry
   attempts, so consumers can correlate a retried operation's events. As a
