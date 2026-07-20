@@ -250,6 +250,16 @@ client = MongoClient(
 If you want to use the actual certificate file then set `tlsCertificateKeyFile` to the local path
 to `<repo_roo>/test/certificates/client.pem` and `tlsCAFile` to the local path to `<repo_roo>/test/certificates/ca.pem`.
 
+#### Regenerating test certificates
+
+If the test certificates in `test/certificates/` need to be regenerated (e.g. after expiry or to add missing extensions), run:
+
+```bash
+cd test/certificates && uv run gen-certs.py
+```
+
+See `test/certificates/README.md` for full details and constraints on certificate subjects/Subject Alternative Names that must be preserved.
+
 ### Encryption tests
 
 - Run `just run-server` to start the server.

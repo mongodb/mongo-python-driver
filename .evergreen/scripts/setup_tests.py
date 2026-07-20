@@ -341,10 +341,8 @@ def handle_test_env() -> None:
         run_command(cmd, cwd=DRIVERS_TOOLS)
 
     if SSL != "nossl":
-        if not DRIVERS_TOOLS:
-            raise RuntimeError("Missing DRIVERS_TOOLS")
-        write_env("CLIENT_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/client.pem")
-        write_env("CA_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/ca.pem")
+        write_env("CLIENT_PEM", ROOT / "test/certificates/client.pem")
+        write_env("CA_PEM", ROOT / "test/certificates/ca.pem")
 
     compressors = os.environ.get("COMPRESSORS") or opts.compressor
     if compressors == "snappy":
@@ -382,6 +380,24 @@ def handle_test_env() -> None:
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")
         csfle_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/csfle")
+
+        # Set CSFLE TLS cert paths to our AKI-enabled test/certificates/ before
+        # setup-secrets.sh runs. setup-secrets.sh uses ${VAR:-default} so
+        # pre-setting these vars causes them to flow into secrets-export.sh via
+        # csfle/setup_secrets.py (which reads os.environ for these keys).
+        # load_config_from_file then persists all vars from that file for the
+        # test runner, so no separate write_env calls are needed.
+        certs = ROOT / "test/certificates"
+        os.environ["CSFLE_TLS_CA_FILE"] = str(certs / "ca.pem")
+        os.environ["CSFLE_TLS_CERT_FILE"] = str(certs / "kms-server.pem")
+        os.environ["CSFLE_TLS_CLIENT_CERT_FILE"] = str(certs / "client.pem")
+        os.environ["CSFLE_TLS_WRONG_HOST_FILE"] = str(certs / "kms-wrong-host.pem")
+        os.environ["CSFLE_TLS_EXPIRED_FILE"] = str(certs / "kms-expired.pem")
+        # The KMS failpoint server (port 9003) must also present a cert signed
+        # by our test CA so the driver's own TLS verification succeeds.
+        os.environ["CSFLE_TLS_FAILPOINT_CERT_FILE"] = str(certs / "kms-server.pem")
+        os.environ["CSFLE_TLS_FAILPOINT_CA_FILE"] = str(certs / "ca.pem")
+
         run_command(f"bash {csfle_dir.as_posix()}/setup-secrets.sh", cwd=csfle_dir)
         load_config_from_file(csfle_dir / "secrets-export.sh")
         run_command(f"bash {csfle_dir.as_posix()}/start-servers.sh")
