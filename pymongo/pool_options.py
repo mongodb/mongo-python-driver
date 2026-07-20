@@ -151,7 +151,7 @@ def _is_faas() -> bool:
 
 # Environment variables that indicate a coding agent, checked in order. The
 # first match determines the value of the client.env.agent metadata field.
-# See DRIVERS-3529.
+# See DRIVERS-3529 and PYTHON-5929.
 _AGENT_ENV_VARS = [
     ("CLAUDECODE", "CLAUDECODE"),
     ("CURSOR_AGENT", "CURSOR"),
