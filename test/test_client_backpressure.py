@@ -299,7 +299,7 @@ class TestClientBackpressure(IntegrationTest):
     @patch("random.random")
     @client_context.require_version_min(9, 0, 0, -1)
     @client_context.require_failCommand_appName
-    def test_05_overload_errors_with_retryafterms_override_backoff(self, random_func):
+    def test_05_overload_errors_with_basebackoffms_override_backoff(self, random_func):
         # Drivers should test that overload errors with `baseBackoffMS` override the default backoff duration.
 
         # 1. Let `client` be a `MongoClient`.
