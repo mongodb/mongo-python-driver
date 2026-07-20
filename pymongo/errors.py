@@ -37,12 +37,10 @@ class PyMongoError(Exception):
         self,
         message: str = "",
         error_labels: Optional[Iterable[str]] = None,
-        base_backoff_ms: Optional[int] = None,
     ) -> None:
         super().__init__(message)
         self._message = message
         self._error_labels = set(error_labels or [])
-        self._base_backoff_ms = base_backoff_ms
 
     def has_error_label(self, label: str) -> bool:
         """Return True if this error contains the given label.
@@ -203,11 +201,11 @@ class OperationFailure(PyMongoError):
         super().__init__(
             _format_detailed_error(error, details),
             error_labels=error_labels,
-            base_backoff_ms=base_backoff_ms,
         )
         self.__code = code
         self.__details = details
         self.__max_wire_version = max_wire_version
+        self.__base_backoff_ms = base_backoff_ms
 
     @property
     def _max_wire_version(self) -> Optional[int]:
@@ -233,6 +231,10 @@ class OperationFailure(PyMongoError):
     @property
     def timeout(self) -> bool:
         return self.__code in (50,)
+
+    @property
+    def _base_backoff_ms(self) -> Optional[int]:
+        return self.__base_backoff_ms
 
 
 class CursorNotFound(OperationFailure):
