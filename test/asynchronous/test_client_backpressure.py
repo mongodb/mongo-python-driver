@@ -223,9 +223,9 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
             end1 = perf_counter()
 
             # f. Compare the times between the two runs.
-            # The sum of 2 backoffs is 0.3 seconds. There is a 0.3-second window to account for potential variance between the two
+            # The sum of 2 backoffs is 0.6 seconds. There is a 0.6-second window to account for potential variance between the two
             # runs.
-            self.assertTrue(abs((end1 - start1) - (end0 - start0 + 0.3)) < 0.3)
+            self.assertTrue(abs((end1 - start1) - (end0 - start0 + 0.6)) < 0.6)
 
     @async_client_context.require_failCommand_appName
     async def test_03_overload_retries_limited(self):

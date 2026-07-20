@@ -33,11 +33,7 @@ if TYPE_CHECKING:
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""
 
-    def __init__(
-        self,
-        message: str = "",
-        error_labels: Optional[Iterable[str]] = None,
-    ) -> None:
+    def __init__(self, message: str = "", error_labels: Optional[Iterable[str]] = None) -> None:
         super().__init__(message)
         self._message = message
         self._error_labels = set(error_labels or [])
@@ -198,10 +194,7 @@ class OperationFailure(PyMongoError):
         if details is not None:
             error_labels = details.get("errorLabels")
             base_backoff_ms = details.get("baseBackoffMS")
-        super().__init__(
-            _format_detailed_error(error, details),
-            error_labels=error_labels,
-        )
+        super().__init__(_format_detailed_error(error, details), error_labels=error_labels)
         self.__code = code
         self.__details = details
         self.__max_wire_version = max_wire_version
