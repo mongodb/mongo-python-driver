@@ -2204,6 +2204,25 @@ class TestClient(AsyncIntegrationTest):
             },
         )
 
+    async def test_handshake_10_agent_known(self):
+        # A known coding-agent env var maps to its metadata value.
+        await self._test_handshake({"CLAUDECODE": "1"}, {"agent": "CLAUDECODE"})
+        await self._test_handshake({"CURSOR_AGENT": "1"}, {"agent": "CURSOR"})
+        await self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "OPENCODE"})
+
+    async def test_handshake_11_agent_generic(self):
+        # Generic AI_AGENT/AGENT vars are used verbatim and take precedence.
+        await self._test_handshake({"AI_AGENT": "myagent"}, {"agent": "myagent"})
+        await self._test_handshake({"AGENT": "myagent"}, {"agent": "myagent"})
+        await self._test_handshake({"AI_AGENT": "myagent", "CLAUDECODE": "1"}, {"agent": "myagent"})
+
+    async def test_handshake_12_agent_with_provider(self):
+        # agent is reported alongside a FaaS provider.
+        await self._test_handshake(
+            {"FUNCTIONS_WORKER_RUNTIME": "python", "CLAUDECODE": "1"},
+            {"name": "azure.func", "agent": "CLAUDECODE"},
+        )
+
     def test_dict_hints(self):
         self.db.t.find(hint={"x": 1})
 
