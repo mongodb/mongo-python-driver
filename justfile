@@ -1,6 +1,9 @@
 # See https://just.systems/man/en/ for instructions
 set shell := ["bash", "-c"]
 
+# Don't let `uv` create or read uv.lock.
+export UV_NO_LOCK := "1"
+
 # Commonly used command segments.
 typing_run := "uv run --group typing --extra aws --extra encryption --with numpy --extra ocsp --extra snappy --extra test --extra zstd"
 docs_run := "uv run --extra docs"

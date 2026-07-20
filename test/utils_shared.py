@@ -23,6 +23,7 @@ import functools
 import random
 import re
 import shutil
+import struct
 import sys
 import threading
 import unittest
@@ -337,18 +338,37 @@ class CompareType:
 
 
 class FunctionCallRecorder:
-    """Utility class to wrap a callable and record its invocations."""
+    """Utility class to wrap a callable and record its invocations.
+
+    A synchronous callable is recorded immediately, before it runs. A
+    coroutine function is recorded only once the returned coroutine
+    finishes running, whether it returns, raises, or is cancelled, so
+    callers can rely on a recorded call meaning the wrapped coroutine
+    actually ran rather than merely having been scheduled.
+    """
 
     def __init__(self, function):
         self._function = function
         self._call_list = []
 
     def __call__(self, *args, **kwargs):
-        self._call_list.append((args, kwargs))
         if iscoroutinefunction(self._function):
-            return self._function(*args, **kwargs)
+
+            async def _run_and_record():
+                try:
+                    return await self._function(*args, **kwargs)
+                finally:
+                    self._call_list.append((args, kwargs))
+
+            return _run_and_record()
         else:
+            self._call_list.append((args, kwargs))
             return self._function(*args, **kwargs)
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        return functools.partial(self, obj)
 
     def reset(self):
         """Wipes the call list."""
@@ -743,3 +763,13 @@ async def async_barrier_wait(barrier, timeout: float | None = None):
 
 def barrier_wait(barrier, timeout: float | None = None):
     barrier.wait(timeout=timeout)
+
+
+def pack_msg_header(length: int, request_id: int, response_to: int, op_code: int) -> bytes:
+    """Pack a MongoDB wire-protocol message header (``<iiii``: length,
+    request_id, response_to, op_code).
+
+    Lets tests set an arbitrary ``length`` (including invalid values), which
+    production header-packing never does.
+    """
+    return struct.pack("<iiii", length, request_id, response_to, op_code)

@@ -31,7 +31,7 @@ from typing import (
     cast,
 )
 
-from pymongo import _csot
+from pymongo import _csot, _op_id
 from pymongo.common import MAX_ADAPTIVE_RETRIES
 from pymongo.errors import (
     OperationFailure,
@@ -69,7 +69,9 @@ def _handle_reauth(func: F) -> F:
                         conn = arg.conn  # type: ignore[assignment]
                         break
                 if conn:
-                    conn.authenticate(reauthenticate=True)
+                    # Don't let reauth's auth commands inherit the in-flight op's id.
+                    with _op_id._OpIdContext(None):
+                        conn.authenticate(reauthenticate=True)
                 else:
                     raise
                 return func(*args, **kwargs)

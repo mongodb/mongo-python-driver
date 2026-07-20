@@ -11,6 +11,15 @@ PyMongo 4.18 brings a number of changes including:
   Session resumption is supported on all Python versions for synchronous clients
   and on Python 3.11+ for async clients.
 - Improved performance for MongoDB's Intelligent Workload Management (IWM) by only retrying overload errors when doing so is expected to not worsen server conditions.
+- Redacted potentially sensitive authentication mechanism properties, including
+  AWS session tokens, from the representations of
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`.
+- Command monitoring events and command log messages for a single logical
+  operation now share one stable ``operation_id`` across all of its retry
+  attempts, so consumers can correlate a retried operation's events. As a
+  result, ``operation_id`` is no longer equal to the per-attempt ``request_id``
+  for these operations.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
