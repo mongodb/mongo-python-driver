@@ -775,6 +775,10 @@ def receive_message(
         )
     data: memoryview | bytes
     if op_code == 2012:
+        if length <= 25:
+            raise ProtocolError(
+                f"Message length ({length!r}) not longer than standard OP_COMPRESSED message header size (25)"
+            )
         op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(receive_data(conn, 9, deadline))
         data = decompress(receive_data(conn, length - 25, deadline), compressor_id)
     else:
