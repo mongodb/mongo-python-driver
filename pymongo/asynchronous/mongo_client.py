@@ -615,7 +615,24 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             If enabled, server overload errors will cause retry attempts to select a server that has not yet returned an overload error, if possible.
             Defaults to ``False``.
 
+          | **OpenTelemetry options:**
+          | (Requires the ``opentelemetry-api`` package; install with the ``pymongo[opentelemetry]`` extra.)
+
+          - `tracing`: (dict) Configuration for OpenTelemetry command spans, with keys:
+
+            - ``enabled``: (boolean) Whether to create spans for server commands issued by
+              this client. Defaults to ``False``. Also controlled by the
+              ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable; either
+              being enabled is sufficient.
+            - ``query_text_max_length``: (int) The maximum length of the ``db.query.text``
+              span attribute. Defaults to ``0``, which omits the attribute. Also controlled
+              by the ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH``
+              environment variable.
+
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
+
+        .. versionchanged:: 4.18
+           Added the ``tracing`` keyword argument.
 
         .. versionchanged:: 4.17
            Added the ``max_adaptive_retries`` and ``enable_overload_retargeting`` URI and keyword arguments.

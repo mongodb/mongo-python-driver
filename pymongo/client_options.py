@@ -40,6 +40,7 @@ from pymongo.write_concern import WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
+    from pymongo import _otel
     from pymongo.auth_shared import MongoCredential
     from pymongo.encryption_options import AutoEncryptionOpts
     from pymongo.pyopenssl_context import SSLContext
@@ -247,6 +248,10 @@ class ClientOptions:
             if "enable_overload_retargeting" in options
             else options.get("enableoverloadretargeting", common.ENABLE_OVERLOAD_RETARGETING)
         )
+        self.__tracing = cast(
+            "_otel.TracingOptions",
+            options.get("tracing") or {"enabled": False, "query_text_max_length": 0},
+        )
 
     @property
     def _options(self) -> Mapping[str, Any]:
@@ -374,3 +379,11 @@ class ClientOptions:
         .. versionadded:: 4.17
         """
         return self.__enable_overload_retargeting
+
+    @property
+    def tracing(self) -> _otel.TracingOptions:
+        """The configured ``tracing`` option for OpenTelemetry command spans.
+
+        .. versionadded:: 4.18
+        """
+        return self.__tracing
