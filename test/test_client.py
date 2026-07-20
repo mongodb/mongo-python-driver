@@ -2180,6 +2180,13 @@ class TestClient(IntegrationTest):
             {"name": "azure.func", "agent": "CLAUDECODE"},
         )
 
+    def test_handshake_13_agent_too_long(self):
+        # A too-long agent value is dropped during truncation before env.name.
+        self._test_handshake(
+            {"FUNCTIONS_WORKER_RUNTIME": "python", "AI_AGENT": "a" * 512},
+            {"name": "azure.func"},
+        )
+
     def test_dict_hints(self):
         self.db.t.find(hint={"x": 1})
 
