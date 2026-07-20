@@ -249,6 +249,16 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         metadata["os"] = {"type": os_type}
     if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
         return
+    # 2b. Drop env.agent (which may hold an arbitrarily large AI_AGENT/AGENT
+    # value) before sacrificing env.name by dropping the env document entirely.
+    if "agent" in trimmed_env:
+        del trimmed_env["agent"]
+        if trimmed_env:
+            metadata["env"] = trimmed_env
+        else:
+            metadata.pop("env", None)
+    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
+        return
     # 3. Omit the env document entirely.
     metadata.pop("env", None)
     encoded_size = len(bson.encode(metadata))
