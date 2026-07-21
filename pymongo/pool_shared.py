@@ -55,7 +55,7 @@ class _ConnectionTelemetryInfo(Protocol):
 
     id: int
     server_connection_id: Optional[int]
-    address: tuple[str, int]
+    address: _Address
     service_id: Optional[ObjectId]
 
 

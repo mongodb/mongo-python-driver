@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 import sys
+from typing import Optional
 from unittest.mock import patch
 
 sys.path[0:0] = [""]
@@ -26,6 +27,7 @@ import pytest
 
 import pymongo._otel as _otel
 from pymongo.errors import OperationFailure
+from pymongo.typings import _Address
 from test import IntegrationTest, unittest
 
 if _otel._HAS_OPENTELEMETRY:
@@ -116,6 +118,43 @@ class TestOTelSpans(IntegrationTest):
             self.assertEqual(span.attributes["db.collection.name"], "test_otel_getmore")
             self.assertEqual(span.attributes["db.command.name"], "getMore")
 
+    def test_explain_retains_collection_name(self):
+        # explain wraps the real command ({"explain": {"find": "coll", ...}}), the
+        # same shape as getMore's indirection, so it needs the same handling.
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        client[self.db.name].command("explain", {"find": "test_otel", "filter": {}})
+
+        spans = self.spans("explain")
+        self.assertEqual(len(spans), 1)
+        attrs = spans[0].attributes
+        self.assertEqual(attrs["db.collection.name"], "test_otel")
+        self.assertEqual(attrs["db.query.summary"], f"explain {self.db.name}.test_otel")
+
+    def test_server_port_omitted_for_unix_socket(self):
+        class _FakeUnixConn:
+            id = 1
+            server_connection_id: Optional[int] = None
+            address: _Address = ("/tmp/fake-otel-test.sock", None)
+            service_id = None
+
+        self.exporter.clear()
+        span = _otel.start_span(
+            {"enabled": True, "query_text_max_length": None},
+            _FakeUnixConn(),
+            {"ping": 1},
+            "admin",
+            "ping",
+            False,
+        )
+        _otel.end_span_success(span, {"ok": 1})
+
+        spans = self.spans("ping")
+        self.assertEqual(len(spans), 1)
+        attrs = spans[0].attributes
+        self.assertNotIn("server.port", attrs)
+        self.assertEqual(attrs["network.transport"], "unix")
+
     def test_sensitive_command_produces_no_span(self):
         client = self.rs_or_single_client(tracing={"enabled": True})
         self.exporter.clear()
@@ -205,6 +244,36 @@ class TestOTelSpans(IntegrationTest):
         self.assertEqual(len(spans), 1)
         self.assertIn("db.query.text", spans[0].attributes)
         self.assertNotIn("lsid", spans[0].attributes["db.query.text"])
+
+    def test_explicit_query_text_max_length_zero_overrides_env_var(self):
+        # An explicit client-side 0 must win over the environment variable, unlike
+        # unset (which defers to it) - otherwise an app can't reliably opt out.
+        env = {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH": "1024"}
+        with patch.dict(os.environ, env):
+            client = self.rs_or_single_client(tracing={"enabled": True, "query_text_max_length": 0})
+            self.exporter.clear()
+            client.admin.command("ping")
+
+        spans = self.spans("ping")
+        self.assertEqual(len(spans), 1)
+        self.assertNotIn("db.query.text", spans[0].attributes)
+
+    def test_query_text_truncation_shrinks_oversized_field_values(self):
+        client = self.rs_or_single_client(tracing={"enabled": True, "query_text_max_length": 200})
+        coll = client[self.db.name].test_otel
+        coll.drop()
+        self.exporter.clear()
+        coll.insert_one({"x": "a" * 500})
+
+        spans = self.spans("insert")
+        self.assertEqual(len(spans), 1)
+        query_text = spans[0].attributes["db.query.text"]
+        # The oversized field value must be truncated at the field level (not
+        # just a blind cut of the fully-serialized string), keeping the result
+        # close to the configured bound; a "..." marker signals the (possible)
+        # safety-net cut, mirroring the driver's existing log-truncation approach.
+        self.assertLessEqual(len(query_text), 200 + len("..."))
+        self.assertNotIn("a" * 500, query_text)
 
 
 if __name__ == "__main__":

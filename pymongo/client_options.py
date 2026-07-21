@@ -250,7 +250,7 @@ class ClientOptions:
         )
         self.__tracing = cast(
             "_otel.TracingOptions",
-            options.get("tracing") or {"enabled": False, "query_text_max_length": 0},
+            options.get("tracing") or {"enabled": False, "query_text_max_length": None},
         )
 
     @property

@@ -626,9 +626,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
               ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable; either
               being enabled is sufficient.
             - ``query_text_max_length``: (int) The maximum length of the ``db.query.text``
-              span attribute. Defaults to ``0``, which omits the attribute. Also controlled
-              by the ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH``
-              environment variable.
+              span attribute. Unset by default, which defers to the
+              ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH`` environment
+              variable (itself defaulting to ``0``, which omits the attribute). Setting
+              this explicitly, including to ``0``, always overrides the environment
+              variable.
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 

@@ -26,8 +26,9 @@ from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING, Any, Optional, TypedDict
 
 from bson import json_util
+from bson.json_util import _truncate_documents
 from pymongo._version import __version__
-from pymongo.logger import _HELLO_COMMANDS, _SENSITIVE_COMMANDS
+from pymongo.logger import _HELLO_COMMANDS, _JSON_OPTIONS, _SENSITIVE_COMMANDS
 
 try:
     from opentelemetry import trace
@@ -45,10 +46,15 @@ if TYPE_CHECKING:
 
 
 class TracingOptions(TypedDict):
-    """The shape of the ``MongoClient`` ``tracing`` option."""
+    """The shape of the ``MongoClient`` ``tracing`` option.
+
+    ``query_text_max_length`` is None when the client didn't configure it, so
+    the environment variable can be consulted; any explicit value (including
+    0, to force ``db.query.text`` off) overrides the environment variable.
+    """
 
     enabled: bool
-    query_text_max_length: int
+    query_text_max_length: Optional[int]
 
 
 _OTEL_ENABLED_ENV = "OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED"
@@ -63,6 +69,11 @@ _QUERY_TEXT_EXCLUDED_FIELDS = frozenset({"lsid", "$db", "$clusterTime", "signatu
 # collection lives under a separate "collection" key instead.
 # See _gen_get_more_command in pymongo/message.py.
 _GET_MORE = "getMore"
+
+# explain wraps the real command (e.g. find/aggregate) rather than naming a
+# collection directly: {"explain": {"find": "coll", ...}}. See _Query.as_command
+# in pymongo/message.py.
+_EXPLAIN = "explain"
 
 # Commands against this database (e.g. user/role management, renameCollection)
 # never have a real collection name, even when their command value is a string.
@@ -94,10 +105,14 @@ def _get_tracer() -> Tracer:
 
 
 def _get_query_text_max_length(tracing_options: Optional[TracingOptions]) -> int:
-    """Return the configured db.query.text truncation length, or 0 to omit the attribute."""
-    client_value = tracing_options.get("query_text_max_length", 0) if tracing_options else 0
-    if client_value > 0:
-        return client_value
+    """Return the configured db.query.text truncation length, or 0 to omit the attribute.
+
+    An explicit client value (including 0) always wins; the environment
+    variable is only consulted when the client didn't configure it at all.
+    """
+    client_value = tracing_options.get("query_text_max_length") if tracing_options else None
+    if client_value is not None:
+        return max(0, client_value)
     try:
         return max(0, int(os.getenv(_OTEL_QUERY_TEXT_MAX_LENGTH_ENV, "0")))
     except ValueError:
@@ -105,10 +120,20 @@ def _get_query_text_max_length(tracing_options: Optional[TracingOptions]) -> int
 
 
 def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
-    """Serialize ``cmd`` to extended JSON, redacted and truncated to ``max_length``."""
+    """Serialize ``cmd`` to extended JSON, redacted and truncated to ``max_length``.
+
+    Mirrors the truncation approach used for log messages: truncate field
+    values first, which usually keeps the result well-formed JSON (unlike a
+    blind cut of the fully-serialized string), then fall back to a hard
+    string cut with a "..." marker as a safety net for whatever the field
+    truncation's size estimate still leaves over ``max_length``.
+    """
     filtered = {k: v for k, v in cmd.items() if k not in _QUERY_TEXT_EXCLUDED_FIELDS}
-    text = json_util.dumps(filtered)
-    return text[:max_length]
+    truncated_cmd = _truncate_documents(filtered, max_length)[0]
+    text = json_util.dumps(truncated_cmd, json_options=_JSON_OPTIONS)
+    if len(text) > max_length:
+        text = text[:max_length] + "..."
+    return text
 
 
 def _extract_collection_name(
@@ -122,6 +147,12 @@ def _extract_collection_name(
     """
     if dbname == _ADMIN_DB:
         return None
+    if command_name == _EXPLAIN:
+        inner = cmd.get(_EXPLAIN)
+        if not isinstance(inner, Mapping) or not inner:
+            return None
+        inner_name = next(iter(inner))
+        return _extract_collection_name(inner_name, dbname, inner)
     key = "collection" if command_name == _GET_MORE else command_name
     value = cmd.get(key)
     return value if isinstance(value, str) else None
@@ -178,10 +209,12 @@ def start_span(
         "db.command.name": command_name,
         "db.query.summary": _build_query_summary(command_name, dbname, collection),
         "server.address": address[0],
-        "server.port": address[1],
         "network.transport": "unix" if address[0].endswith(".sock") else "tcp",
         "db.mongodb.driver_connection_id": conn.id,
     }
+    # Unix domain socket addresses have no port.
+    if address[1] is not None:
+        attributes["server.port"] = address[1]
     if collection:
         attributes["db.collection.name"] = collection
     if conn.server_connection_id is not None:

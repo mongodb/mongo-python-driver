@@ -618,8 +618,9 @@ def validate_tracing_or_none(option: str, value: Any) -> Optional[_otel.TracingO
         raise ConfigurationError(f"Unknown tracing option(s): {sorted(unknown)}")
     enabled = value.get("enabled", False)
     validate_boolean("tracing.enabled", enabled)
-    query_text_max_length = value.get("query_text_max_length", 0)
-    validate_non_negative_integer("tracing.query_text_max_length", query_text_max_length)
+    query_text_max_length = value.get("query_text_max_length")
+    if query_text_max_length is not None:
+        validate_non_negative_integer("tracing.query_text_max_length", query_text_max_length)
     return {"enabled": enabled, "query_text_max_length": query_text_max_length}
 
 
