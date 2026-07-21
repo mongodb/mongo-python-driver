@@ -202,6 +202,41 @@ class AsyncClientUnitTest(AsyncUnitTest):
 
         self.assertRaises(ConfigurationError, AsyncMongoClient, [])
 
+    async def test_repr_redacts_aws_session_token(self):
+        token = "SECRET_AWS_SESSION_TOKEN"
+        client = AsyncMongoClient(
+            "mongodb://AKIA:SECRET@localhost:27017/"
+            f"?authMechanism=MONGODB-AWS&authMechanismProperties=AWS_SESSION_TOKEN:{token}",
+            connect=False,
+        )
+
+        the_repr = repr(client)
+
+        self.assertNotIn(token, the_repr)
+        self.assertIn("'AWS_SESSION_TOKEN': '<redacted>'", the_repr)
+
+    async def test_repr_redacts_secret_auth_mechanism_properties(self):
+        token = "SECRET_AWS_SESSION_TOKEN"
+        api_key = "SECRET_API_KEY"
+        client = AsyncMongoClient(
+            "mongodb://AKIA:SECRET@localhost:27017/",
+            authMechanism="MONGODB-AWS",
+            authMechanismProperties={
+                "aws_session_token": token,
+                "CUSTOM_API_KEY": api_key,
+                "TOKEN_RESOURCE": "mongodb://cluster.example",
+            },
+            connect=False,
+        )
+
+        the_repr = repr(client)
+
+        self.assertNotIn(token, the_repr)
+        self.assertNotIn(api_key, the_repr)
+        self.assertIn("'aws_session_token': '<redacted>'", the_repr)
+        self.assertIn("'CUSTOM_API_KEY': '<redacted>'", the_repr)
+        self.assertIn("'TOKEN_RESOURCE': 'mongodb://cluster.example'", the_repr)
+
     async def test_max_pool_size_zero(self):
         self.simple_client(maxPoolSize=0)
 
