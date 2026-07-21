@@ -200,6 +200,9 @@ class TestOTelSpans(AsyncIntegrationTest):
         await client.admin.command("ping")
         self.assertEqual(self.spans(), [])
 
+    # TODO(PYTHON-5947): once operation spans exist, also assert that the
+    # "ping" *operation* span (not just the command span) is absent/present
+    # here, and that self.spans() counts both.
     async def test_prose_1_tracing_enable_disable_via_env_var(self):
         """Prose Test 1: Tracing Enable/Disable via Environment Variable."""
         with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "false"}):
@@ -214,6 +217,10 @@ class TestOTelSpans(AsyncIntegrationTest):
             await client.admin.command("ping")
         self.assertIn("ping", [s.name for s in self.spans()])
 
+    # TODO(PYTHON-5947): once operation spans exist, self.spans("find") will
+    # also match the outer find *operation* span; disambiguate (e.g. by
+    # db.command.name vs db.operation.name) so this only asserts on the
+    # command span's db.query.text attribute.
     async def test_prose_2_command_payload_emission_via_env_var(self):
         """Prose Test 2: Command Payload Emission via Environment Variable."""
         env = {

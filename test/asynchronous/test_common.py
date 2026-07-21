@@ -182,6 +182,9 @@ class TestCommon(AsyncIntegrationTest):
             await self.db.test.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
 
 
+# TODO(PYTHON-5947): superseded once the unified test format's
+# expectTracingMessages/observeTracingMessages tests exercise this validator
+# indirectly through real client construction; remove this class then.
 class TestValidateTracingOrNone(unittest.TestCase):
     def test_none(self):
         self.assertIsNone(common.validate_tracing_or_none("tracing", None))
