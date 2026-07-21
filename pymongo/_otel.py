@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Optional OpenTelemetry command-span support (DRIVERS-719).
+"""Optional OpenTelemetry command-span support.
 
 Kept separate from :mod:`pymongo._telemetry` so that module stays free of
 ``opentelemetry`` import guards. Every function here is a no-op when
@@ -66,6 +66,7 @@ _GET_MORE = "getMore"
 
 
 def _env_truthy(name: str) -> bool:
+    """Return True if the environment variable ``name`` is set to "1", "true", or "yes"."""
     return os.getenv(name, "").strip().lower() in _TRUTHY
 
 
@@ -84,6 +85,7 @@ def _is_tracing_enabled(tracing_options: Optional[TracingOptions]) -> bool:
 
 
 def _get_tracer() -> Tracer:
+    """Return a Tracer scoped to this driver's name and version."""
     return trace.get_tracer("PyMongo", __version__)
 
 
@@ -99,6 +101,7 @@ def _get_query_text_max_length(tracing_options: Optional[TracingOptions]) -> int
 
 
 def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
+    """Serialize ``cmd`` to extended JSON, redacted and truncated to ``max_length``."""
     filtered = {k: v for k, v in cmd.items() if k not in _QUERY_TEXT_EXCLUDED_FIELDS}
     text = json_util.dumps(filtered)
     return text[:max_length]
@@ -112,6 +115,7 @@ def _extract_collection_name(command_name: str, cmd: Mapping[str, Any]) -> Optio
 
 
 def _build_query_summary(command_name: str, dbname: str, collection: Optional[str]) -> str:
+    """Build the ``db.query.summary`` attribute value for a command."""
     if collection:
         return f"{command_name} {dbname}.{collection}"
     return f"{command_name} {dbname}"
@@ -125,6 +129,7 @@ def _is_sensitive_command(command_name: str, speculative_hello: bool) -> bool:
 
 
 def _format_lsid(lsid: Mapping[str, Any]) -> Optional[str]:
+    """Return the ``db.mongodb.lsid`` attribute value for a session id document."""
     id_value = lsid.get("id")
     if id_value is None:
         return None
@@ -145,7 +150,7 @@ def start_span(
     """Start and return a CLIENT-kind span for a server command, or None.
 
     Returns None when tracing is disabled/unavailable or the command is
-    sensitive (mirroring the redaction applied to logs and APM events).
+    sensitive (mirroring the redaction applied to logs).
     """
     if not _is_tracing_enabled(tracing_options):
         return None
