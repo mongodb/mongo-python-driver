@@ -80,6 +80,21 @@ class TestReceiveMessage(UnitTest):
         with self.assertRaisesRegex(ProtocolError, "larger than server max"):
             network_layer.receive_message(conn, request_id=None)
 
+    def test_compressed_length_too_small_raises(self):
+        # An OP_COMPRESSED frame with 16 < length <= 25 is malformed: it lacks
+        # room for the 9-byte compression sub-header plus payload. It must raise
+        # ProtocolError (not ValueError from a negative receive_data count).
+        for length in (17, 24, 25):
+            conn = _make_conn()
+            _mock_recv_into(
+                conn,
+                pack_msg_header(length=length, request_id=0, response_to=0, op_code=2012),
+            )
+            with self.assertRaisesRegex(
+                ProtocolError, "not longer than standard OP_COMPRESSED message header"
+            ):
+                network_layer.receive_message(conn, request_id=None)
+
     def test_unknown_opcode_raises(self):
         conn = _make_conn()
         _mock_recv_into(

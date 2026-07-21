@@ -24,6 +24,10 @@ apt-get -qq update  < /dev/null > /dev/null
 apt-get -q install -y build-essential
 
 export SET_XTRACE_ON=1
+export CI=true
+# This container has no git, so uv must never try to resolve the mockupdb
+# git dependency; UV_NO_LOCK makes uv ignore any lock file entirely.
+export UV_NO_LOCK=1
 cd src
 rm -rf .venv
 rm -f .evergreen/scripts/test-env.sh || true
