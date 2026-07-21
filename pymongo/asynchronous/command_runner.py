@@ -222,7 +222,7 @@ async def _run_command(
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
             failure = _convert_exception(exc)
-        telemetry.failed(failure, command_name, isinstance(exc, OperationFailure), exc)
+        telemetry.failed(failure, command_name, exc)
         raise
 
     telemetry.succeeded(docs[0], command_name, speculative_hello)

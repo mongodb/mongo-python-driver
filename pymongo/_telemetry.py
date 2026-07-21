@@ -24,6 +24,7 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Any, Optional
 
 from pymongo import _otel
+from pymongo.errors import OperationFailure
 from pymongo.logger import (
     _COMMAND_LOGGER,
     _CONNECTION_LOGGER,
@@ -204,8 +205,7 @@ class _CommandTelemetry:
         self,
         failure: _DocumentOut,
         command_name: str,
-        is_server_side_error: bool,
-        exc: Optional[BaseException] = None,
+        exc: BaseException,
     ) -> None:
         """Emit the FAILED log entry and APM event, and end the span."""
         self._duration = datetime.datetime.now() - self._start
@@ -216,7 +216,7 @@ class _CommandTelemetry:
                 _CommandStatusMessage.FAILED,
                 durationMS=self._duration,
                 failure=failure,
-                isServerSideError=is_server_side_error,
+                isServerSideError=isinstance(exc, OperationFailure),
             )
         if self._publish:
             assert self._listeners is not None

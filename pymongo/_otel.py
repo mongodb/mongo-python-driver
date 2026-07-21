@@ -197,13 +197,12 @@ def end_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
 def end_span_failure(
     span: Optional[Span],
     failure: _DocumentOut,
-    exc: Optional[BaseException],
+    exc: BaseException,
 ) -> None:
     """Record the exception, set the error status, and end the span."""
     if span is None:
         return
-    if exc is not None:
-        span.record_exception(exc)
+    span.record_exception(exc)
     code = failure.get("code")
     if code is not None:
         span.set_attribute("db.response.status_code", str(code))
