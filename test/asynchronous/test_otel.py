@@ -158,13 +158,41 @@ class TestOTelSpans(AsyncIntegrationTest):
         await client.admin.command("ping")
         self.assertEqual(self.spans(), [])
 
-    async def test_env_var_enables_tracing(self):
-        client = await self.async_rs_or_single_client()
-        self.exporter.clear()
-        with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
+    async def test_prose_1_tracing_enable_disable_via_env_var(self):
+        """Prose Test 1: Tracing Enable/Disable via Environment Variable."""
+        with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "false"}):
+            client = await self.async_rs_or_single_client()
+            self.exporter.clear()
             await client.admin.command("ping")
+        self.assertEqual(self.spans(), [])
 
+        with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
+            client = await self.async_rs_or_single_client()
+            self.exporter.clear()
+            await client.admin.command("ping")
         self.assertIn("ping", [s.name for s in self.spans()])
+
+    async def test_prose_2_command_payload_emission_via_env_var(self):
+        """Prose Test 2: Command Payload Emission via Environment Variable."""
+        env = {
+            "OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true",
+            "OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH": "1024",
+        }
+        with patch.dict(os.environ, env):
+            client = await self.async_rs_or_single_client()
+            self.exporter.clear()
+            await client[self.db.name].test_otel.find({}).to_list()
+        spans = self.spans("find")
+        self.assertEqual(len(spans), 1)
+        self.assertIn("db.query.text", spans[0].attributes)
+
+        with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
+            client = await self.async_rs_or_single_client()
+            self.exporter.clear()
+            await client[self.db.name].test_otel.find({}).to_list()
+        spans = self.spans("find")
+        self.assertEqual(len(spans), 1)
+        self.assertNotIn("db.query.text", spans[0].attributes)
 
     async def test_query_text_included_when_configured(self):
         client = await self.async_rs_or_single_client(
