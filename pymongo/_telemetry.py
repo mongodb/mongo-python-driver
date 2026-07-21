@@ -153,7 +153,7 @@ class _CommandTelemetry:
                 service_id=self._conn.service_id,
             )
         if self._tracing_enabled:
-            self._span = _otel.start_span(
+            self._span = _otel.start_command_span(
                 self._tracing_options,
                 self._conn,
                 self._cmd,
@@ -199,7 +199,7 @@ class _CommandTelemetry:
                 database_name=self._dbname,
             )
         if self._span is not None:
-            _otel.end_span_success(self._span, reply)
+            _otel.end_command_span_success(self._span, reply)
 
     def failed(
         self,
@@ -232,7 +232,7 @@ class _CommandTelemetry:
                 database_name=self._dbname,
             )
         if self._span is not None:
-            _otel.end_span_failure(self._span, failure, exc)
+            _otel.end_command_span_failure(self._span, failure, exc)
 
 
 class _CmapTelemetry:

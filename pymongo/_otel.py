@@ -183,7 +183,7 @@ def _format_lsid(lsid: Mapping[str, Any]) -> Optional[str]:
         return str(id_value)
 
 
-def start_span(
+def start_command_span(
     tracing_options: Optional[TracingOptions],
     conn: _ConnectionTelemetryInfo,
     cmd: MutableMapping[str, Any],
@@ -235,7 +235,7 @@ def start_span(
     return tracer.start_span(command_name, kind=SpanKind.CLIENT, attributes=attributes)
 
 
-def end_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
+def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
     """Set the cursor id (if any) and end the span."""
     if span is None:
         return
@@ -245,7 +245,7 @@ def end_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
     span.end()
 
 
-def end_span_failure(
+def end_command_span_failure(
     span: Optional[Span],
     failure: _DocumentOut,
     exc: BaseException,

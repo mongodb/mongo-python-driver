@@ -142,7 +142,7 @@ class TestOTelSpans(IntegrationTest):
             service_id = None
 
         self.exporter.clear()
-        span = _otel.start_span(
+        span = _otel.start_command_span(
             {"enabled": True, "query_text_max_length": None},
             _FakeUnixConn(),
             {"ping": 1},
@@ -150,7 +150,7 @@ class TestOTelSpans(IntegrationTest):
             "ping",
             False,
         )
-        _otel.end_span_success(span, {"ok": 1})
+        _otel.end_command_span_success(span, {"ok": 1})
 
         spans = self.spans("ping")
         self.assertEqual(len(spans), 1)
