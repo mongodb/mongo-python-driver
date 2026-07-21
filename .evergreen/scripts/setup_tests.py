@@ -466,9 +466,10 @@ def handle_test_env() -> None:
         else:
             TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
 
-    # Add coverage if requested.
+    # Add coverage if requested, either via --cov or a pre-set COVERAGE expansion
+    # (e.g. a buildvariant that wants its coverage merged into the combined report).
     # Only cover CPython. PyPy reports suspiciously low coverage.
-    if opts.cov and platform.python_implementation() == "CPython":
+    if (opts.cov or is_set("COVERAGE")) and platform.python_implementation() == "CPython":
         # Keep in sync with combine-coverage.sh.
         # coverage >=5 is needed for relative_files=true.
         UV_ARGS.append("--group coverage")

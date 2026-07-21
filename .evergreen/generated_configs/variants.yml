@@ -450,6 +450,7 @@ buildvariants:
       - rhel87-small
     expansions:
       TEST_NAME: otel
+      COVERAGE: "1"
     tags: [pr]
 
   # Perf tests

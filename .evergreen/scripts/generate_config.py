@@ -453,7 +453,8 @@ def create_doctests_variants():
 
 def create_otel_variants():
     host = DEFAULT_HOST
-    expansions = dict(TEST_NAME="otel")
+    # Merge otel's coverage into the combined report; see setup_tests.py's COVERAGE handling.
+    expansions = dict(TEST_NAME="otel", COVERAGE="1")
     return [
         create_variant(
             [".test-non-standard .standalone-noauth-nossl"],
