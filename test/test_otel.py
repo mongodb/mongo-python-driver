@@ -26,7 +26,8 @@ sys.path[0:0] = [""]
 import pytest
 
 import pymongo._otel as _otel
-from pymongo.errors import OperationFailure
+from pymongo import common
+from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.typings import _Address
 from test import IntegrationTest, unittest
 
@@ -286,6 +287,56 @@ class TestOTelSpans(IntegrationTest):
         # never exceed the configured bound, even when a "..." marker is added.
         self.assertLessEqual(len(query_text), 200)
         self.assertNotIn("a" * 500, query_text)
+
+
+# TODO(PYTHON-5947): superseded once the unified test format's
+# expectTracingMessages/observeTracingMessages tests exercise this validator
+# indirectly through real client construction; remove this class then.
+class TestValidateTracingOrNone(unittest.TestCase):
+    def test_none(self):
+        self.assertIsNone(common.validate_tracing_or_none("tracing", None))
+
+    def test_defaults(self):
+        self.assertEqual(
+            common.validate_tracing_or_none("tracing", {}),
+            {"enabled": False, "query_text_max_length": None},
+        )
+
+    def test_enabled_and_query_text_max_length(self):
+        self.assertEqual(
+            common.validate_tracing_or_none(
+                "tracing", {"enabled": True, "query_text_max_length": 500}
+            ),
+            {"enabled": True, "query_text_max_length": 500},
+        )
+
+    def test_explicit_zero_query_text_max_length_preserved(self):
+        # 0 must stay distinct from "unset" (None) so it can override the
+        # environment variable instead of being treated as not configured.
+        result = common.validate_tracing_or_none(
+            "tracing", {"enabled": True, "query_text_max_length": 0}
+        )
+        self.assertEqual(result["query_text_max_length"], 0)
+
+    def test_rejects_non_mapping(self):
+        with self.assertRaises(TypeError):
+            common.validate_tracing_or_none("tracing", "enabled")
+
+    def test_rejects_unknown_option(self):
+        with self.assertRaisesRegex(ConfigurationError, "Unknown tracing option"):
+            common.validate_tracing_or_none("tracing", {"bogus": True})
+
+    def test_rejects_non_boolean_enabled(self):
+        with self.assertRaises(TypeError):
+            common.validate_tracing_or_none("tracing", {"enabled": "yes"})
+
+    def test_rejects_non_integer_query_text_max_length(self):
+        with self.assertRaises(TypeError):
+            common.validate_tracing_or_none("tracing", {"query_text_max_length": [1]})
+
+    def test_rejects_negative_query_text_max_length(self):
+        with self.assertRaises(ValueError):
+            common.validate_tracing_or_none("tracing", {"query_text_max_length": -1})
 
 
 if __name__ == "__main__":
