@@ -125,6 +125,20 @@ class TestOTelSpans(AsyncIntegrationTest):
         names = [s.name for s in self.spans()]
         self.assertNotIn("saslStart", names)
 
+    async def test_admin_command_omits_collection_name(self):
+        # usersInfo's command value is a username string, not a collection, and
+        # it always runs against admin; querying a nonexistent user is a no-op.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        await client.admin.command("usersInfo", "pymongo_otel_nonexistent_user")
+
+        spans = self.spans("usersInfo")
+        self.assertEqual(len(spans), 1)
+        attrs = spans[0].attributes
+        self.assertEqual(attrs["db.namespace"], "admin")
+        self.assertNotIn("db.collection.name", attrs)
+        self.assertEqual(attrs["db.query.summary"], "usersInfo admin")
+
     async def test_failure_records_exception_and_status_code(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         self.exporter.clear()

@@ -64,6 +64,10 @@ _QUERY_TEXT_EXCLUDED_FIELDS = frozenset({"lsid", "$db", "$clusterTime", "signatu
 # See _gen_get_more_command in pymongo/message.py.
 _GET_MORE = "getMore"
 
+# Commands against this database (e.g. user/role management, renameCollection)
+# never have a real collection name, even when their command value is a string.
+_ADMIN_DB = "admin"
+
 
 def _env_truthy(name: str) -> bool:
     """Return True if the environment variable ``name`` is set to "1", "true", or "yes"."""
@@ -107,8 +111,17 @@ def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
     return text[:max_length]
 
 
-def _extract_collection_name(command_name: str, cmd: Mapping[str, Any]) -> Optional[str]:
-    """Return the collection name targeted by ``cmd``, or None if it doesn't target one."""
+def _extract_collection_name(
+    command_name: str, dbname: str, cmd: Mapping[str, Any]
+) -> Optional[str]:
+    """Return the collection name targeted by ``cmd``, or None if it doesn't target one.
+
+    Always None for commands against the admin database: several (e.g. dropUser,
+    renameCollection) carry a string command value that names a user, role, or
+    namespace rather than a collection.
+    """
+    if dbname == _ADMIN_DB:
+        return None
     key = "collection" if command_name == _GET_MORE else command_name
     value = cmd.get(key)
     return value if isinstance(value, str) else None
@@ -157,7 +170,7 @@ def start_span(
     if _is_sensitive_command(command_name, speculative_hello):
         return None
 
-    collection = _extract_collection_name(command_name, cmd)
+    collection = _extract_collection_name(command_name, dbname, cmd)
     address = conn.address
     attributes: dict[str, Any] = {
         "db.system.name": "mongodb",
