@@ -281,10 +281,9 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(len(spans), 1)
         query_text = spans[0].attributes["db.query.text"]
         # The oversized field value must be truncated at the field level (not
-        # just a blind cut of the fully-serialized string), keeping the result
-        # close to the configured bound; a "..." marker signals the (possible)
-        # safety-net cut, mirroring the driver's existing log-truncation approach.
-        self.assertLessEqual(len(query_text), 200 + len("..."))
+        # just a blind cut of the fully-serialized string), and the result must
+        # never exceed the configured bound, even when a "..." marker is added.
+        self.assertLessEqual(len(query_text), 200)
         self.assertNotIn("a" * 500, query_text)
 
 

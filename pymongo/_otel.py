@@ -125,14 +125,17 @@ def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
     Mirrors the truncation approach used for log messages: truncate field
     values first, which usually keeps the result well-formed JSON (unlike a
     blind cut of the fully-serialized string), then fall back to a hard
-    string cut with a "..." marker as a safety net for whatever the field
-    truncation's size estimate still leaves over ``max_length``.
+    string cut as a safety net for whatever the field truncation's size
+    estimate still leaves over ``max_length``. The "..." marker is carved out
+    of the budget (not appended on top of it) so the result never exceeds
+    ``max_length``.
     """
     filtered = {k: v for k, v in cmd.items() if k not in _QUERY_TEXT_EXCLUDED_FIELDS}
     truncated_cmd = _truncate_documents(filtered, max_length)[0]
     text = json_util.dumps(truncated_cmd, json_options=_JSON_OPTIONS)
     if len(text) > max_length:
-        text = text[:max_length] + "..."
+        suffix = "..."
+        text = text[: max(0, max_length - len(suffix))] + suffix
     return text
 
 
