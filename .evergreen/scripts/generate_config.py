@@ -459,6 +459,7 @@ def create_otel_variants():
             [".test-non-standard .standalone-noauth-nossl"],
             get_variant_name("OTel", host),
             host=host,
+            tags=["pr"],
             expansions=expansions,
         )
     ]

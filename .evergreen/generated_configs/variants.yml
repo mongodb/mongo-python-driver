@@ -450,6 +450,7 @@ buildvariants:
       - rhel87-small
     expansions:
       TEST_NAME: otel
+    tags: [pr]
 
   # Perf tests
   - name: performance-benchmarks
