@@ -74,6 +74,9 @@ class TestOTelSpans(AsyncIntegrationTest):
             return list(finished)
         return [s for s in finished if s.name == name]
 
+    # TODO(PYTHON-5947): once the unified test format runner supports
+    # expectTracingMessages/operation spans, this is superseded by the spec's
+    # find_without_query_text.yml and insert.yml.
     async def test_span_created_for_insert_and_find(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test_otel
@@ -233,6 +236,9 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(len(spans), 1)
         self.assertNotIn("db.query.text", spans[0].attributes)
 
+    # TODO(PYTHON-5947): once the unified test format runner supports
+    # expectTracingMessages/operation spans, this is superseded by the spec's
+    # find.yml (db.query.text assertion).
     async def test_query_text_included_when_configured(self):
         client = await self.async_rs_or_single_client(
             tracing={"enabled": True, "query_text_max_length": 1000}
