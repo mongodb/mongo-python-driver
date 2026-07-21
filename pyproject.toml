@@ -145,6 +145,7 @@ markers = [
     "encryption: encryption tests",
     "load_balancer: load balancer tests",
     "mockupdb: tests that rely on mockupdb",
+    "otel: tests that rely on opentelemetry",
     "default: default test suite",
     "default_async: default async test suite",
 ]

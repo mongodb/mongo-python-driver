@@ -22,6 +22,8 @@ from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
+import pytest
+
 import pymongo._otel as _otel
 from pymongo.errors import OperationFailure
 from test import IntegrationTest, unittest
@@ -33,6 +35,8 @@ if _otel._HAS_OPENTELEMETRY:
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 _IS_SYNC = True
+
+pytestmark = pytest.mark.otel
 
 
 def _shared_test_provider() -> TracerProvider:

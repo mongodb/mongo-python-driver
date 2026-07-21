@@ -451,6 +451,19 @@ def create_doctests_variants():
     ]
 
 
+def create_otel_variants():
+    host = DEFAULT_HOST
+    expansions = dict(TEST_NAME="otel")
+    return [
+        create_variant(
+            [".test-non-standard .standalone-noauth-nossl"],
+            get_variant_name("OTel", host),
+            host=host,
+            expansions=expansions,
+        )
+    ]
+
+
 def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [

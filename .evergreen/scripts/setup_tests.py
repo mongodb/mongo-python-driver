@@ -42,6 +42,7 @@ EXTRAS_MAP = {
     "enterprise_auth": "gssapi",
     "kms": "encryption",
     "ocsp": "ocsp",
+    "otel": "opentelemetry",
     "pyopenssl": "ocsp",
 }
 
@@ -438,6 +439,11 @@ def handle_test_env() -> None:
 
     if test_name == "numpy":
         UV_ARGS.append("--with numpy")
+
+    if test_name == "otel":
+        # The SDK is test-only tooling (for the in-memory span exporter); the driver
+        # itself must not depend on it, only on opentelemetry-api (the "opentelemetry" extra).
+        UV_ARGS.append("--with opentelemetry-sdk")
 
     if test_name == "perf":
         data_dir = ROOT / "specifications/source/benchmarking/data"

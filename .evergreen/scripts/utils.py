@@ -43,6 +43,7 @@ TEST_SUITE_MAP = {
     "load_balancer": "load_balancer",
     "mockupdb": "mockupdb",
     "ocsp": "ocsp",
+    "otel": "otel",
     "perf": "perf",
     "numpy": "",
 }
