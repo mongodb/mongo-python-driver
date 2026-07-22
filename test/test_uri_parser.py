@@ -16,7 +16,9 @@
 
 from __future__ import annotations
 
+import ast
 import copy
+import subprocess
 import sys
 import warnings
 from typing import Any
@@ -693,6 +695,34 @@ class TestURI(unittest.TestCase):
                 parse_uri,
                 "mongodb+srv://host1.example.com",
             )
+
+
+class TestMainBlock(unittest.TestCase):
+    def test_valid_uri_prints_parsed_dict(self):
+        # Run uri_parser.py as a script; a valid URI is pretty-printed.
+        result = subprocess.run(
+            [sys.executable, "-m", "pymongo.uri_parser", "mongodb://localhost:27017/mydb"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        self.assertEqual(0, result.returncode)
+        # The output is a valid Python literal; parse it and assert on values
+        # rather than the formatting of the pretty-printed text.
+        parsed = ast.literal_eval(result.stdout)
+        self.assertEqual("mydb", parsed["database"])
+        self.assertEqual([("localhost", 27017)], parsed["nodelist"])
+
+    def test_invalid_uri_prints_error(self):
+        # An invalid URI is caught and its message printed, still exiting 0.
+        result = subprocess.run(
+            [sys.executable, "-m", "pymongo.uri_parser", "not-a-valid-uri"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        self.assertEqual(0, result.returncode)
+        self.assertIn("Invalid URI scheme", result.stdout)
 
 
 if __name__ == "__main__":
