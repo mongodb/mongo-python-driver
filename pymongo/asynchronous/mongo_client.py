@@ -2747,12 +2747,12 @@ class _ClientCheckout:
             try:
                 await self.handle(type(exc), exc)
             finally:
-                # Clear pinned flags so _PoolCheckout.__aexit__ calls checkin()
-                # rather than silently skipping it. session._pin() may have set
-                # conn.pinned_txn=True before the exception was raised, but the
-                # session never completed setup, so the connection must be returned.
+                # Reset before checkin so pool.checkin() does not decrement ntxns.
                 conn.pinned_txn = False
                 conn.pinned_cursor = False
+                # Clear stale session pin state so future ops don't reuse it.
+                if session and session.in_transaction:
+                    await session._unpin()
                 await pool_checkout.__aexit__(type(exc), exc, exc.__traceback__)
                 self._pool_checkout = None
             raise
