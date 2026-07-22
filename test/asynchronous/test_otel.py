@@ -31,11 +31,17 @@ from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.typings import _Address
 from test.asynchronous import AsyncIntegrationTest, unittest
 
+_HAS_OTEL_TEST_DEPS = False
 if _otel._HAS_OPENTELEMETRY:
-    from opentelemetry import trace
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        _HAS_OTEL_TEST_DEPS = True
+    except ImportError:
+        pass
 
 _IS_SYNC = False
 
@@ -57,7 +63,7 @@ def _shared_test_provider() -> TracerProvider:
     return provider
 
 
-@unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
 class TestOTelSpans(AsyncIntegrationTest):
     @classmethod
     def setUpClass(cls):

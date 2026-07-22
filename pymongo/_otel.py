@@ -132,7 +132,9 @@ def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
     """
     filtered = {k: v for k, v in cmd.items() if k not in _QUERY_TEXT_EXCLUDED_FIELDS}
     truncated_cmd = _truncate_documents(filtered, max_length)[0]
-    text = json_util.dumps(truncated_cmd, json_options=_JSON_OPTIONS)
+    # default=repr mirrors the structured logger: tracing is best-effort and must
+    # not raise for commands containing custom/codec-managed Python types.
+    text = json_util.dumps(truncated_cmd, json_options=_JSON_OPTIONS, default=repr)
     if len(text) > max_length:
         suffix = "..."
         text = text[: max(0, max_length - len(suffix))] + suffix
@@ -212,10 +214,10 @@ def start_command_span(
         "db.command.name": command_name,
         "db.query.summary": _build_query_summary(command_name, dbname, collection),
         "server.address": address[0],
-        "network.transport": "unix" if address[0].endswith(".sock") else "tcp",
+        # Unix domain socket addresses have no port; _Address encodes that as None.
+        "network.transport": "unix" if address[1] is None else "tcp",
         "db.mongodb.driver_connection_id": conn.id,
     }
-    # Unix domain socket addresses have no port.
     if address[1] is not None:
         attributes["server.port"] = address[1]
     if collection:
@@ -223,7 +225,7 @@ def start_command_span(
     if conn.server_connection_id is not None:
         attributes["db.mongodb.server_connection_id"] = conn.server_connection_id
     lsid = cmd.get("lsid")
-    if lsid:
+    if isinstance(lsid, Mapping):
         formatted_lsid = _format_lsid(lsid)
         if formatted_lsid is not None:
             attributes["db.mongodb.lsid"] = formatted_lsid
