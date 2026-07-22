@@ -2700,7 +2700,7 @@ class _ClientCheckout:
         try:
             conn = pool_checkout.__enter__()
         except BaseException as exc:
-            # __aenter__ raised — pool already cleaned up internally.
+            # Pool checkout raised — pool already cleaned up internally.
             # Run SDAM error handling so the topology learns about the failure.
             self.handle(type(exc), exc)
             raise
@@ -2730,7 +2730,7 @@ class _ClientCheckout:
             try:
                 self.handle(type(exc), exc)
             finally:
-                # Clear pinned flags so _PoolCheckout.__aexit__ calls checkin()
+                # Clear pinned flags so _PoolCheckout calls checkin()
                 # rather than silently skipping it. session._pin() may have set
                 # conn.pinned_txn=True before the exception was raised, but the
                 # session never completed setup, so the connection must be returned.
