@@ -706,8 +706,9 @@ class TestMainBlock(unittest.TestCase):
             timeout=15,
         )
         self.assertEqual(0, result.returncode)
-        self.assertIn("localhost", result.stdout)
-        self.assertIn("mydb", result.stdout)
+        # Assert on the pretty-printed dict structure, not bare substrings.
+        self.assertRegex(result.stdout, r"'database': 'mydb'")
+        self.assertRegex(result.stdout, r"'nodelist': \[\('localhost', 27017\)\]")
 
     def test_invalid_uri_prints_error(self):
         # An invalid URI is caught and its message printed, still exiting 0.
