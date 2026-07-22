@@ -830,7 +830,7 @@ class TestClient(IntegrationTest):
 
     def test_client_checkout_setup_failure_returns_connection(self):
         # Verify that the connection is returned to the pool when an exception
-        # is raised during _ClientCheckout.__aenter__ post-checkout setup
+        # is raised during _ClientCheckout.__enter__ post-checkout setup
         # (e.g. session pinning or the auto-encryption wire-version check).
         # Use a subclass to override contribute_socket because __slots__ prevents
         # instance-level patching of methods.

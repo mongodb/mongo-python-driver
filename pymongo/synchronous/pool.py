@@ -1256,7 +1256,7 @@ class _PoolCheckout:
             # Exception in caller. Ensure the connection gets returned.
             # Note that when pinned is True, the session owns the connection
             # and is responsible for checking it back into the pool.
-            # SDAM error handling is performed by _ClientCheckout
+            # SDAM error handling is performed by _ClientCheckout.__exit__
             # before this method is called.
             pinned = conn.pinned_txn or conn.pinned_cursor
             if not pinned and conn.active:
