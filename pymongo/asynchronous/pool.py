@@ -961,12 +961,7 @@ class Pool:
         return conn
 
     def checkout(self, handler: Optional[_ClientCheckout] = None) -> _PoolCheckout:
-        """Get a connection from the pool. Use with an "async with" statement.
-
-        Returns a :class:`_PoolCheckout` context manager that yields a
-        :class:`AsyncConnection` object wrapping a connected socket.
-
-        This method should always be used in a with-statement::
+        """Get a connection from the pool. Always use in an async with statement::
 
             async with pool.checkout() as connection:
                 connection.send_message(msg)

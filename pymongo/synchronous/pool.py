@@ -957,12 +957,7 @@ class Pool:
         return conn
 
     def checkout(self, handler: Optional[_ClientCheckout] = None) -> _PoolCheckout:
-        """Get a connection from the pool. Use with an "with" statement.
-
-        Returns a :class:`_PoolCheckout` context manager that yields a
-        :class:`Connection` object wrapping a connected socket.
-
-        This method should always be used in a with-statement::
+        """Get a connection from the pool. Always use in a with statement::
 
             with pool.checkout() as connection:
                 connection.send_message(msg)

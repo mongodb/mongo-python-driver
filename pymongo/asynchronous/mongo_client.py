@@ -65,7 +65,6 @@ from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import (
     _RetryPolicy,
 )
-from pymongo.asynchronous.pool import _PoolCheckout
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
 from pymongo.client_options import ClientOptions
@@ -138,7 +137,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.client_session import AsyncClientSession, _ServerSession
     from pymongo.asynchronous.cursor_base import _ConnectionManager
     from pymongo.asynchronous.encryption import _Encrypter
-    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.asynchronous.pool import AsyncConnection, _PoolCheckout
     from pymongo.asynchronous.server import Server
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response

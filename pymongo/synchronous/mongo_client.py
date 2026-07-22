@@ -107,7 +107,6 @@ from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.helpers import (
     _RetryPolicy,
 )
-from pymongo.synchronous.pool import _PoolCheckout
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology, _ErrorContext
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
@@ -141,7 +140,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.client_session import ClientSession, _ServerSession
     from pymongo.synchronous.cursor_base import _ConnectionManager
     from pymongo.synchronous.encryption import _Encrypter
-    from pymongo.synchronous.pool import Connection
+    from pymongo.synchronous.pool import Connection, _PoolCheckout
     from pymongo.synchronous.server import Server
 
 

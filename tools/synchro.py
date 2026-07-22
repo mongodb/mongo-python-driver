@@ -305,6 +305,8 @@ def translate_docstrings(lines: list[str]) -> list[str]:
             if "Sync" in lines[i] and "Synchronous" not in lines[i] and value in lines[i]:
                 lines[i] = lines[i].replace("Sync", "")
         if "async for" in lines[i] or "async with" in lines[i] or "async def" in lines[i]:
+            if "an async " in lines[i]:
+                lines[i] = lines[i].replace("an async ", "a ")
             lines[i] = lines[i].replace("async ", "")
         if "await " in lines[i] and "tailable" not in lines[i]:
             lines[i] = lines[i].replace("await ", "")
