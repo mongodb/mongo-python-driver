@@ -44,6 +44,7 @@ TEST_SUITE_MAP = {
     "mockupdb": "mockupdb",
     "ocsp": "ocsp",
     "perf": "perf",
+    "sfp": "sfp",
     "numpy": "",
 }
 
@@ -59,6 +60,7 @@ NO_RUN_ORCHESTRATION = [
     "aws_lambda",
     "mockupdb",
     "ocsp",
+    "sfp",
 ]
 
 # Mapping of env variables to options

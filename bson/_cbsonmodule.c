@@ -3238,6 +3238,15 @@ static PyObject* _cbson_array_of_documents_to_buffer(PyObject* self, PyObject* a
             goto fail;
          }
 
+        if (value_length >= (uint32_t)(size - position)) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            if (InvalidBSON) {
+                PyErr_SetString(InvalidBSON, "invalid array content");
+                Py_DECREF(InvalidBSON);
+            }
+            goto fail;
+        }
+
         if (pymongo_buffer_write(buffer, string + position, value_length) == 1) {
             goto fail;
         }

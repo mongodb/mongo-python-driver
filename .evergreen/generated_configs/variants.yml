@@ -564,6 +564,17 @@ buildvariants:
       VERSION: latest
     tags: [coverage_tag]
 
+  # Sfp tests
+  - name: sfp-rhel8
+    tasks:
+      - name: .test-no-orchestration
+    display_name: SFP RHEL8
+    run_on:
+      - rhel87-small
+    expansions:
+      TEST_NAME: sfp
+    tags: [pr]
+
   # Stable api tests
   - name: stable-api-require-v1-rhel8-auth
     tasks:
