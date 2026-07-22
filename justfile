@@ -5,7 +5,7 @@ set shell := ["bash", "-c"]
 export UV_NO_LOCK := "1"
 
 # Commonly used command segments.
-typing_run := "uv run --group typing --extra aws --extra encryption --with numpy --extra ocsp --extra snappy --extra test --extra zstd"
+typing_run := "uv run --group typing --extra aws --extra encryption --with numpy --extra ocsp --extra opentelemetry --with opentelemetry-sdk --extra snappy --extra test --extra zstd"
 docs_run := "uv run --extra docs"
 doc_build := "./doc/_build"
 mypy_args := "--install-types --non-interactive"

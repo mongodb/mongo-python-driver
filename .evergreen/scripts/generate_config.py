@@ -451,6 +451,21 @@ def create_doctests_variants():
     ]
 
 
+def create_otel_variants():
+    host = DEFAULT_HOST
+    # Merge otel's coverage into the combined report; see setup_tests.py's COVERAGE handling.
+    expansions = dict(TEST_NAME="otel", COVERAGE="1")
+    return [
+        create_variant(
+            [".test-non-standard .standalone-noauth-nossl"],
+            get_variant_name("OTel", host),
+            host=host,
+            tags=["pr"],
+            expansions=expansions,
+        )
+    ]
+
+
 def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [
