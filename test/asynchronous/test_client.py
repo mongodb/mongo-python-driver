@@ -2220,6 +2220,13 @@ class TestClient(AsyncIntegrationTest):
         await self._test_handshake({"CURSOR_AGENT": "1"}, {"agent": "CURSOR"})
         await self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "OPENCODE"})
 
+    async def test_handshake_10b_agent_known_precedence(self):
+        # When multiple known agent vars are set, the first in _AGENT_ENV_VARS
+        # order wins, regardless of which comes first in the environment dict.
+        first_var, first_name = _AGENT_ENV_VARS[0]
+        last_var, _ = _AGENT_ENV_VARS[-1]
+        await self._test_handshake({last_var: "1", first_var: "1"}, {"agent": first_name})
+
     async def test_handshake_11_agent_generic(self):
         # Generic AI_AGENT/AGENT vars are used verbatim and take precedence.
         await self._test_handshake({"AI_AGENT": "myagent"}, {"agent": "myagent"})
