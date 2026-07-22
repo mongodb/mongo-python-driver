@@ -87,7 +87,13 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo.pool_options import _MAX_METADATA_SIZE, _METADATA, ENV_VAR_K8S, PoolOptions
+from pymongo.pool_options import (
+    _AGENT_ENV_VARS,
+    _MAX_METADATA_SIZE,
+    _METADATA,
+    ENV_VAR_K8S,
+    PoolOptions,
+)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
@@ -2099,7 +2105,11 @@ class TestClient(AsyncIntegrationTest):
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
     async def _test_handshake(self, env_vars, expected_env):
-        with patch.dict("os.environ", env_vars):
+        # Clear any ambient agent-detection vars (e.g. AI_AGENT/AGENT set by the
+        # CI runner) so detection is deterministic and only reflects env_vars.
+        agent_vars = ["AI_AGENT", "AGENT", *(var for var, _ in _AGENT_ENV_VARS)]
+        cleared = {var: "" for var in agent_vars if var not in env_vars}
+        with patch.dict("os.environ", {**cleared, **env_vars}):
             metadata = copy.deepcopy(_METADATA)
             if has_c():
                 metadata["driver"]["name"] = "PyMongo|c|async"
