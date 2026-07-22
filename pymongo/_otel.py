@@ -208,14 +208,14 @@ def start_command_span(
 
     collection = _extract_collection_name(command_name, dbname, cmd)
     address = conn.address
+    transport = "unix" if address[1] is None else "tcp"
     attributes: dict[str, Any] = {
         "db.system.name": "mongodb",
         "db.namespace": dbname,
         "db.command.name": command_name,
         "db.query.summary": _build_query_summary(command_name, dbname, collection),
         "server.address": address[0],
-        # Unix domain socket addresses have no port; _Address encodes that as None.
-        "network.transport": "unix" if address[1] is None else "tcp",
+        "network.transport": transport,
         "db.mongodb.driver_connection_id": conn.id,
     }
     if address[1] is not None:
