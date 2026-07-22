@@ -55,7 +55,7 @@ from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
-from pymongo import _csot
+from pymongo import _csot, _op_id
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
@@ -468,7 +468,9 @@ class _Encrypter:
         self._check_closed()
         encoded_cmd = _dict_to_bson(cmd, False, codec_options)
         with _wrap_encryption_errors():
-            encrypted_cmd = await self._auto_encrypter.encrypt(database, encoded_cmd)
+            # Don't let encryption's sub-commands inherit the in-flight op's id.
+            with _op_id._OpIdContext(None):
+                encrypted_cmd = await self._auto_encrypter.encrypt(database, encoded_cmd)
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
             return _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
 
@@ -481,7 +483,9 @@ class _Encrypter:
         """
         self._check_closed()
         with _wrap_encryption_errors():
-            return cast(bytes, await self._auto_encrypter.decrypt(response))
+            # Don't let decryption's sub-commands inherit the in-flight op's id.
+            with _op_id._OpIdContext(None):
+                return cast(bytes, await self._auto_encrypter.decrypt(response))
 
     def _check_closed(self) -> None:
         if self._closed:
