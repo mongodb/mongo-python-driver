@@ -226,7 +226,7 @@ class OperationFailure(PyMongoError):
         return self.__code in (50,)
 
     @property
-    def _base_backoff_ms(self) -> Optional[int]:
+    def _base_backoff_ms(self) -> Optional[float]:
         return self.__base_backoff_ms
 
 
