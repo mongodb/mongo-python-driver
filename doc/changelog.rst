@@ -17,6 +17,11 @@ Changes in Version 4.18.0
   attempts, so consumers can correlate a retried operation's events. As a
   result, ``operation_id`` is no longer equal to the per-attempt ``request_id``
   for these operations.
+- Fixed a potential out-of-bounds read in the C extension when decoding an
+  array of BSON documents. An embedded document whose declared length exceeds
+  the bytes remaining in the array now raises
+  :class:`~bson.errors.InvalidBSON` instead of reading past the end of the
+  buffer.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
