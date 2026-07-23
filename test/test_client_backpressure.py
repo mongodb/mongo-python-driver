@@ -223,9 +223,9 @@ class TestClientBackpressure(IntegrationTest):
             end1 = perf_counter()
 
             # f. Compare the times between the two runs.
-            # The sum of 2 backoffs is 0.3 seconds. There is a 0.3-second window to account for potential variance between the two
+            # The sum of 2 backoffs is 0.6 seconds. There is a 0.6-second window to account for potential variance between the two
             # runs.
-            self.assertTrue(abs((end1 - start1) - (end0 - start0 + 0.3)) < 0.3)
+            self.assertTrue(abs((end1 - start1) - (end0 - start0 + 0.6)) < 0.6)
 
     @client_context.require_failCommand_appName
     def test_03_overload_retries_limited(self):
@@ -291,6 +291,70 @@ class TestClientBackpressure(IntegrationTest):
 
         # 6. Assert that the total number of started commands is max_retries + 1.
         self.assertEqual(len(self.listener.started_events), max_retries + 1)
+
+    @unittest.skipIf(
+        sys.platform == "darwin",
+        "externalClientBaseBackoffMS is not supported on macOS",
+    )
+    @patch("random.random")
+    @client_context.require_version_min(9, 0, 0, -1)
+    @client_context.require_failCommand_appName
+    def test_05_overload_errors_with_basebackoffms_override_backoff(self, random_func):
+        # Drivers should test that overload errors with `baseBackoffMS` override the default backoff duration.
+
+        # 1. Let `client` be a `MongoClient`.
+        client = self.client
+
+        # 2. Let `coll` be a collection.
+        coll = client.test.test
+
+        # 3. Configure the random number generator used for exponential backoff jitter to always return a number as
+        # close as possible to `1`.
+        random_func.return_value = 1
+
+        # 4. Configure the following failPoint:
+        fail_point = dict(
+            mode="alwaysOn",
+            data=dict(
+                failCommands=["insert"],
+                errorCode=462,
+                errorLabels=["SystemOverloadedError", "RetryableError"],
+                appName=self.app_name,
+            ),
+        )
+        with self.fail_point(fail_point):
+            # 5. Insert the document `{ a: 1 }`. Expect that the command errors. Measure the duration of the command
+            # execution.
+            start0 = perf_counter()
+            with self.assertRaises(OperationFailure):
+                coll.insert_one({"a": 1})
+            end0 = perf_counter()
+            exponential_backoff_time = end0 - start0
+
+            # 6. Run the following command to set up `baseBackoffMS` on overload errors.
+            try:
+                client.admin.command("setParameter", 1, externalClientBaseBackoffMS=50)
+
+                # 7. Execute step 5 again.
+                start1 = perf_counter()
+                with self.assertRaises(OperationFailure) as ctx:
+                    coll.insert_one({"a": 1})
+                end1 = perf_counter()
+                with_base_backoff_ms_time = end1 - start1
+
+                # 8. Assert the server attached `baseBackoffMS` to the error and the driver parsed it.
+                self.assertEqual(ctx.exception._base_backoff_ms, 50)
+            finally:
+                # 9. Run the following command to disable `baseBackoffMS` on overload errors.
+                client.admin.command("setParameter", 1, externalClientBaseBackoffMS=0)
+
+        # 10. Assert absolute bounds on each run's duration.
+        # A run can never be faster than the sum of its backoffs.
+        # With jitter pinned to 1, the default backoffs are 0.2 + 0.4 = 0.6s
+        # and the baseBackoffMS=50 backoffs are 0.1 + 0.2 = 0.3s.
+        self.assertGreaterEqual(exponential_backoff_time, 0.6)
+        self.assertGreaterEqual(with_base_backoff_ms_time, 0.3)
+        self.assertLess(with_base_backoff_ms_time, 0.6)
 
 
 # Location of JSON test specifications.

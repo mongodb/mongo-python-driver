@@ -26,6 +26,7 @@ import time as time  # noqa: PLC0414 # needed in sync version
 from typing import (
     Any,
     Callable,
+    Optional,
     TypeVar,
     cast,
 )
@@ -84,10 +85,12 @@ _BACKOFF_MAX = 10
 
 
 def _backoff(
-    attempt: int, initial_delay: float = _BACKOFF_INITIAL, max_delay: float = _BACKOFF_MAX
+    attempt: int,
+    base_backoff: float,
+    max_delay: float = _BACKOFF_MAX,
 ) -> float:
     jitter = random.random()  # noqa: S311
-    return jitter * min(initial_delay * (2**attempt), max_delay)
+    return jitter * min(base_backoff * (2**attempt), max_delay)
 
 
 class _RetryPolicy:
@@ -103,9 +106,13 @@ class _RetryPolicy:
         self.backoff_initial = backoff_initial
         self.backoff_max = backoff_max
 
-    def backoff(self, attempt: int) -> float:
-        """Return the backoff duration for the given attempt."""
-        return _backoff(max(0, attempt - 1), self.backoff_initial, self.backoff_max)
+    def backoff(self, attempt: int, base_backoff: Optional[float] = None) -> float:
+        """Return the actual backoff duration for the given attempt and base backoff."""
+        return _backoff(
+            max(0, attempt),
+            self.backoff_initial if base_backoff is None or base_backoff < 0 else base_backoff,
+            self.backoff_max,
+        )
 
     async def should_retry(self, attempt: int, delay: float) -> bool:
         """Return if we have retry attempts remaining and the next backoff would not exceed a timeout."""
