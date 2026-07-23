@@ -71,7 +71,13 @@ from pymongo.asynchronous.settings import TOPOLOGY_TYPE
 from pymongo.asynchronous.topology import _ErrorContext
 from pymongo.client_options import ClientOptions
 from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT, MIN_SUPPORTED_WIRE_VERSION, has_c
-from pymongo.compression_support import _have_snappy, _have_zstd
+from pymongo.compression_support import (
+    SnappyContext,
+    ZlibContext,
+    ZstdContext,
+    _have_snappy,
+    _have_zstd,
+)
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
@@ -1846,6 +1852,48 @@ class TestClient(AsyncIntegrationTest):
                 client = await self.async_single_client(zlibcompressionlevel=level)
                 # No error
                 await client.pymongo_test.test.find_one()
+
+    async def test_compression_commands(self):
+        # Ensure the compression logic is actually exercised end-to-end by
+        # sending commands with each available compressor negotiated.
+        candidates: list[tuple[str, type]] = [("zlib", ZlibContext)]
+        if _have_snappy():
+            candidates.append(("snappy", SnappyContext))
+        if _have_zstd():
+            candidates.append(("zstd", ZstdContext))
+
+        for name, ctx_type in candidates:
+            with self.subTest(compressor=name):
+                # maxPoolSize=1 ensures the operations below reuse the same
+                # connection the spy is installed on.
+                client = await self.async_single_client(compressors=name, maxPoolSize=1)
+                # Trigger the connection handshake so the compressor is negotiated.
+                await client.admin.command("ping")
+                pool = await async_get_pool(client)
+                async with pool.checkout() as conn:
+                    if conn.compression_context is None:
+                        self.skipTest(f"server did not negotiate {name} compression")
+                    self.assertIsInstance(conn.compression_context, ctx_type)
+
+                    # Spy on the compress method to confirm the outgoing message
+                    # is actually compressed.
+                    compressed = []
+                    original = conn.compression_context.compress
+
+                    def spy(data, _original=original, _sink=compressed):
+                        _sink.append(data)
+                        return _original(data)
+
+                    conn.compression_context.compress = spy
+
+                # Round-trip a command large enough to compress. The response is
+                # decompressed via compression_support.decompress.
+                coll = client.pymongo_test.test_compression
+                await coll.delete_many({})
+                await coll.insert_one({"x": "y" * 1024})
+                doc = await coll.find_one({}, {"_id": 0})
+                self.assertEqual(doc, {"x": "y" * 1024})
+                self.assertTrue(compressed, "compress() was never called")
 
     @async_client_context.require_sync
     async def test_reset_during_update_pool(self):
