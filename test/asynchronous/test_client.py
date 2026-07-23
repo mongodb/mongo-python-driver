@@ -87,7 +87,13 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo.pool_options import _MAX_METADATA_SIZE, _METADATA, ENV_VAR_K8S, PoolOptions
+from pymongo.pool_options import (
+    _AGENT_ENV_VARS,
+    _MAX_METADATA_SIZE,
+    _METADATA,
+    ENV_VAR_K8S,
+    PoolOptions,
+)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
@@ -2099,7 +2105,11 @@ class TestClient(AsyncIntegrationTest):
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
     async def _test_handshake(self, env_vars, expected_env):
-        with patch.dict("os.environ", env_vars):
+        # Clear any ambient agent-detection vars (e.g. AI_AGENT/AGENT set by the
+        # CI runner) so detection is deterministic and only reflects env_vars.
+        agent_vars = ["AI_AGENT", "AGENT", *(var for var, _ in _AGENT_ENV_VARS)]
+        cleared = {var: "" for var in agent_vars if var not in env_vars}
+        with patch.dict("os.environ", {**cleared, **env_vars}):
             metadata = copy.deepcopy(_METADATA)
             if has_c():
                 metadata["driver"]["name"] = "PyMongo|c|async"
@@ -2202,6 +2212,39 @@ class TestClient(AsyncIntegrationTest):
                 "region": "us-east-1",
                 "memory_mb": 256,
             },
+        )
+
+    async def test_handshake_10_agent_known(self):
+        # A known coding-agent env var maps to its metadata value.
+        await self._test_handshake({"CLAUDECODE": "1"}, {"agent": "CLAUDECODE"})
+        await self._test_handshake({"CURSOR_AGENT": "1"}, {"agent": "CURSOR"})
+        await self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "OPENCODE"})
+
+    async def test_handshake_10b_agent_known_precedence(self):
+        # When multiple known agent vars are set, the first in _AGENT_ENV_VARS
+        # order wins, regardless of which comes first in the environment dict.
+        first_var, first_name = _AGENT_ENV_VARS[0]
+        last_var, _ = _AGENT_ENV_VARS[-1]
+        await self._test_handshake({last_var: "1", first_var: "1"}, {"agent": first_name})
+
+    async def test_handshake_11_agent_generic(self):
+        # Generic AI_AGENT/AGENT vars are used verbatim and take precedence.
+        await self._test_handshake({"AI_AGENT": "myagent"}, {"agent": "myagent"})
+        await self._test_handshake({"AGENT": "myagent"}, {"agent": "myagent"})
+        await self._test_handshake({"AI_AGENT": "myagent", "CLAUDECODE": "1"}, {"agent": "myagent"})
+
+    async def test_handshake_12_agent_with_provider(self):
+        # agent is reported alongside a FaaS provider.
+        await self._test_handshake(
+            {"FUNCTIONS_WORKER_RUNTIME": "python", "CLAUDECODE": "1"},
+            {"name": "azure.func", "agent": "CLAUDECODE"},
+        )
+
+    async def test_handshake_13_agent_too_long(self):
+        # A too-long agent value is dropped during truncation before env.name.
+        await self._test_handshake(
+            {"FUNCTIONS_WORKER_RUNTIME": "python", "AI_AGENT": "a" * 512},
+            {"name": "azure.func"},
         )
 
     def test_dict_hints(self):
