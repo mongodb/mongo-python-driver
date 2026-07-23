@@ -25,6 +25,7 @@ import socket
 import ssl
 import sys
 import time
+from unittest.mock import patch
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -32,6 +33,7 @@ from pymongo import MongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _create_lock
+from pymongo.monitoring import _EventListeners
 from test.utils import flaky, get_pool, joinall
 
 sys.path[0:0] = [""]
@@ -40,7 +42,7 @@ from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.pool import Pool, PoolOptions
 from test import IntegrationTest, client_context, unittest
 from test.helpers import ConcurrentRunner
-from test.utils_shared import delay
+from test.utils_shared import CMAPListener, delay
 
 try:
     import OpenSSL
@@ -222,6 +224,29 @@ class TestPooling(_TestPoolingBase):
             self.assertEqual(conn, new_connection)
 
         self.assertEqual(1, len(cx_pool.conns))
+
+    def test_checkout_event_listener_failure_no_leak(self):
+        # Connection is returned to the pool when publish_connection_checked_out raises.
+        cx_pool = self.create_pool(
+            max_pool_size=1, event_listeners=_EventListeners([CMAPListener()])
+        )
+
+        with patch.object(
+            cx_pool.opts._event_listeners,
+            "publish_connection_checked_out",
+            side_effect=RuntimeError("simulated failure"),
+        ):
+            with self.assertRaises(RuntimeError):
+                with cx_pool.checkout():
+                    pass
+
+        # Connection was returned to the pool — not leaked.
+        self.assertEqual(1, len(cx_pool.conns))
+        self.assertEqual(0, cx_pool.active_sockets)
+
+        # Pool is still functional.
+        with cx_pool.checkout():
+            pass
 
     def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.

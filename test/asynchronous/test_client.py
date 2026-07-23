@@ -63,7 +63,7 @@ from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor, CursorType
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import anext
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from pymongo.asynchronous.mongo_client import AsyncMongoClient, _ClientCheckout
 from pymongo.asynchronous.pool import (
     AsyncConnection,
 )
@@ -852,6 +852,29 @@ class TestClient(AsyncIntegrationTest):
             async with server._pool.checkout() as new_con:
                 self.assertEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
+
+    async def test_client_checkout_setup_failure_returns_connection(self):
+        # Verify that the connection is returned to the pool when an exception
+        # is raised during _ClientCheckout.__aenter__ post-checkout setup
+        # (e.g. session pinning or the auto-encryption wire-version check).
+        # Use a subclass to override contribute_socket because __slots__ prevents
+        # instance-level patching of methods.
+        class _BrokenSetupCheckout(_ClientCheckout):
+            def contribute_socket(self, conn, completed_handshake=True):
+                raise RuntimeError("simulated failure in post-checkout setup")
+
+        client = await self.async_rs_or_single_client()
+        server = await (await client._get_topology()).select_server(
+            writable_server_selector, _Op.TEST
+        )
+        pool = server.pool
+
+        with self.assertRaises(RuntimeError):
+            async with _BrokenSetupCheckout(client, server, None):
+                pass
+
+        # Connection was returned to pool, not leaked.
+        self.assertEqual(0, pool.active_sockets)
 
     async def test_constants(self):
         """This test uses AsyncMongoClient explicitly to make sure that host and
