@@ -87,6 +87,7 @@ URI_OPTIONS = frozenset(
         "socketTimeoutMS",
         "srvMaxHosts",
         "srvServiceName",
+        "srvAllowedHostsSuffix",
         "ssl",
         "tls",
         "tlsAllowInvalidCertificates",
@@ -581,6 +582,10 @@ def _validate_uri(
     elif not is_srv and options.get("srvServiceName") is not None:
         raise ConfigurationError(
             "The srvServiceName option is only allowed with 'mongodb+srv://' URIs"
+        )
+    elif not is_srv and options.get("srvAllowedHostsSuffix") is not None:
+        raise ConfigurationError(
+            "The srvAllowedHostsSuffix option is only allowed with 'mongodb+srv://' URIs"
         )
     elif not is_srv and srv_max_hosts:
         raise ConfigurationError(
