@@ -2,7 +2,7 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ "master", "v*"]
+    branches: [ "main", "v*"]
     tags: ['*']
   pull_request:
   workflow_call:

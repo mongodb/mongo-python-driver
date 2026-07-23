@@ -171,7 +171,7 @@ just run lint-manual
 
 To contribute to the [API documentation](https://pymongo.readthedocs.io/en/stable/) just make your
 changes to the inline documentation of the appropriate [source code](https://github.com/mongodb/mongo-python-driver) or
-[rst file](https://github.com/mongodb/mongo-python-driver/tree/master/doc) in
+[rst file](https://github.com/mongodb/mongo-python-driver/tree/main/doc) in
 a branch and submit a [pull request](https://help.github.com/articles/using-pull-requests). You
 might also use the GitHub
 [Edit](https://github.com/blog/844-forking-with-the-edit-button) button.
