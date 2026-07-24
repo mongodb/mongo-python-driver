@@ -382,6 +382,8 @@ def handle_test_env() -> None:
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")
         csfle_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/csfle")
+        # Opt in to corporate Azure credentials (DRIVERS-3392)
+        os.environ["FLE_AZURE_USE_CORPORATE"] = "YES"
         run_command(f"bash {csfle_dir.as_posix()}/setup-secrets.sh", cwd=csfle_dir)
         load_config_from_file(csfle_dir / "secrets-export.sh")
         run_command(f"bash {csfle_dir.as_posix()}/start-servers.sh")
