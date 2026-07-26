@@ -789,6 +789,8 @@ def _parse_binary(doc: Any, json_options: JSONOptions) -> Union[Binary, uuid.UUI
 
 def _parse_timestamp(doc: Any, dummy0: Any) -> Timestamp:
     tsp = doc["$timestamp"]
+    if set(tsp) != {"t", "i"}:
+        raise TypeError(f'$timestamp must include exactly "t" and "i" components: {doc}')
     return Timestamp(tsp["t"], tsp["i"])
 
 
