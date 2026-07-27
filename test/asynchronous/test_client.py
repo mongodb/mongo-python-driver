@@ -1882,8 +1882,10 @@ class TestClient(AsyncIntegrationTest):
                     compressed = []
                     original = conn.compression_context.compress
 
-                    def spy(data, _original=original, _sink=compressed):
-                        _sink.append(data)
+                    # Default args bind the current iteration's values so the
+                    # closure does not late-bind the loop variables.
+                    def spy(data, _original=original, _recorded=compressed):
+                        _recorded.append(data)
                         return _original(data)
 
                     conn.compression_context.compress = spy
@@ -1893,8 +1895,8 @@ class TestClient(AsyncIntegrationTest):
                 decompressed = []
                 original_decompress = network_layer.decompress
 
-                def decompress_spy(data, compressor_id, _sink=decompressed):
-                    _sink.append(compressor_id)
+                def decompress_spy(data, compressor_id, _recorded=decompressed):
+                    _recorded.append(compressor_id)
                     return original_decompress(data, compressor_id)
 
                 # Round-trip a command large enough to compress.
