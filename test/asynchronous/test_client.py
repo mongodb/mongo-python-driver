@@ -1895,9 +1895,11 @@ class TestClient(AsyncIntegrationTest):
                 decompressed = []
                 original_decompress = network_layer.decompress
 
-                def decompress_spy(data, compressor_id, _recorded=decompressed):
+                def decompress_spy(
+                    data, compressor_id, _original=original_decompress, _recorded=decompressed
+                ):
                     _recorded.append(compressor_id)
-                    return original_decompress(data, compressor_id)
+                    return _original(data, compressor_id)
 
                 # Round-trip a command large enough to compress.
                 coll = client.pymongo_test.test_compression
