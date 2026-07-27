@@ -35,8 +35,15 @@ try:
     from opentelemetry.trace import SpanKind, Status, StatusCode
 
     _HAS_OPENTELEMETRY = True
+    # Safe to cache at import time: opentelemetry.trace.get_tracer() returns a
+    # ProxyTracer when no real TracerProvider is registered yet, and that proxy
+    # transparently starts delegating to the real tracer once the application
+    # calls trace.set_tracer_provider() later, so this doesn't bind us to a
+    # permanently-inert no-op tracer.
+    _TRACER: Optional[Tracer] = trace.get_tracer("PyMongo", __version__)
 except ImportError:
     _HAS_OPENTELEMETRY = False
+    _TRACER = None
 
 if TYPE_CHECKING:
     from opentelemetry.trace import Span, Tracer
@@ -97,11 +104,6 @@ def _is_tracing_enabled(tracing_options: Optional[TracingOptions]) -> bool:
     if tracing_options and tracing_options.get("enabled"):
         return True
     return _env_truthy(_OTEL_ENABLED_ENV)
-
-
-def _get_tracer() -> Tracer:
-    """Return a Tracer scoped to this driver's name and version."""
-    return trace.get_tracer("PyMongo", __version__)
 
 
 def _get_query_text_max_length(tracing_options: Optional[TracingOptions]) -> int:
@@ -236,8 +238,8 @@ def start_command_span(
     if max_query_text_length > 0:
         attributes["db.query.text"] = _build_query_text(cmd, max_query_text_length)
 
-    tracer = _get_tracer()
-    return tracer.start_span(command_name, kind=SpanKind.CLIENT, attributes=attributes)
+    assert _TRACER is not None  # _is_tracing_enabled already checked _HAS_OPENTELEMETRY
+    return _TRACER.start_span(command_name, kind=SpanKind.CLIENT, attributes=attributes)
 
 
 def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
