@@ -2835,6 +2835,7 @@ class _ClientConnectionRetryable(Generic[T]):
         "_address",
         "_always_retryable",
         "_attempt_number",
+        "_base_backoff_ms",
         "_bulk",
         "_client",
         "_deprioritized_servers",
