@@ -57,7 +57,7 @@ from bson.codec_options import (
 )
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import event_loggers, message, monitoring
+from pymongo import event_loggers, message, monitoring, network_layer
 from pymongo.client_options import ClientOptions
 from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT, MIN_SUPPORTED_WIRE_VERSION, has_c
 from pymongo.compression_support import (
@@ -1819,17 +1819,19 @@ class TestClient(IntegrationTest):
         if _have_zstd():
             candidates.append(("zstd", ZstdContext))
 
+        negotiated = []
         for name, ctx_type in candidates:
             with self.subTest(compressor=name):
                 # maxPoolSize=1 ensures the operations below reuse the same
-                # connection the spy is installed on.
+                # connection the spy is installed on, unless it is replaced.
                 client = self.single_client(compressors=name, maxPoolSize=1)
                 # Trigger the connection handshake so the compressor is negotiated.
                 client.admin.command("ping")
                 pool = get_pool(client)
                 with pool.checkout() as conn:
                     if conn.compression_context is None:
-                        self.skipTest(f"server did not negotiate {name} compression")
+                        continue
+                    negotiated.append(name)
                     self.assertIsInstance(conn.compression_context, ctx_type)
 
                     # Spy on the compress method to confirm the outgoing message
@@ -1843,14 +1845,29 @@ class TestClient(IntegrationTest):
 
                     conn.compression_context.compress = spy
 
-                # Round-trip a command large enough to compress. The response is
-                # decompressed via compression_support.decompress.
+                # Spy on the read path's decompress() to confirm the server's
+                # replies are actually compressed too.
+                decompressed = []
+                original_decompress = network_layer.decompress
+
+                def decompress_spy(data, compressor_id, _sink=decompressed):
+                    _sink.append(compressor_id)
+                    return original_decompress(data, compressor_id)
+
+                # Round-trip a command large enough to compress.
                 coll = client.pymongo_test.test_compression
-                coll.delete_many({})
-                coll.insert_one({"x": "y" * 1024})
-                doc = coll.find_one({}, {"_id": 0})
+                coll.drop()
+                with patch.object(network_layer, "decompress", decompress_spy):
+                    coll.insert_one({"x": "y" * 1024})
+                    doc = coll.find_one({}, {"_id": 0})
                 self.assertEqual(doc, {"x": "y" * 1024})
                 self.assertTrue(compressed, "compress() was never called")
+                self.assertTrue(decompressed, "decompress() was never called")
+                self.assertEqual(set(decompressed), {ctx_type.compressor_id})
+                coll.drop()
+
+        if not negotiated:
+            self.skipTest("server did not negotiate compression for any compressor")
 
     @client_context.require_sync
     def test_reset_during_update_pool(self):
