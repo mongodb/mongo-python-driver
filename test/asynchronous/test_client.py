@@ -879,11 +879,10 @@ class TestClient(AsyncIntegrationTest):
     async def test_client_checkout_setup_failure_unpins_session(self):
         # Verify that session._unpin() is called when an exception is raised
         # during _ClientCheckout.__aenter__ after session._pin() has run (e.g.
-        # the auto-encryption wire-version check at line 2743).
+        # the auto-encryption wire-version check).
         class _PinThenFailCheckout(_ClientCheckout):
             def contribute_socket(self, conn, completed_handshake=True):
-                # Simulate session._pin() having already been called by
-                # directly pinning the session to the server, then fail.
+                # Simulate session._pin() having already been called, then fail.
                 if self.session:
                     self.session._pin(self._server, conn)
                 raise RuntimeError("simulated post-pin failure")
@@ -900,7 +899,7 @@ class TestClient(AsyncIntegrationTest):
                     pass
 
         # Session must be unpinned so future operations don't route to a stale
-        # server address or double-checkin via conn_mgr.
+        # server address or attempt a double-checkin through conn_mgr.
         self.assertIsNone(session._transaction.pinned_address)
         self.assertIsNone(session._transaction.conn_mgr)
 
