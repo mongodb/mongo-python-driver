@@ -248,6 +248,35 @@ class TestPooling(_TestPoolingBase):
         with cx_pool.checkout():
             pass
 
+    def test_get_conn_reused_connection_rolls_back_on_cancel(self):
+        # _get_conn's reused-connection bookkeeping (registering the
+        # cancel_context for a connection popped from the idle queue) must
+        # roll back pool accounting on failure, the same all-or-nothing
+        # contract _get_conn already provides when connect() fails for a
+        # brand new connection.
+        cx_pool = self.create_pool(max_pool_size=1)
+
+        with cx_pool.checkout() as conn:
+            pass
+        self.assertEqual(1, len(cx_pool.conns))
+        reused_context = conn.cancel_context
+
+        class _CancelOnReusedContext(set):
+            def add(self, item):
+                if item is reused_context:
+                    raise asyncio.CancelledError()
+                super().add(item)
+
+        cx_pool.active_contexts = _CancelOnReusedContext(cx_pool.active_contexts)
+
+        with self.assertRaises(asyncio.CancelledError):
+            with cx_pool.checkout():
+                pass
+
+        # Bookkeeping must be rolled back, not left half-updated.
+        self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool.requests)
+
     def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.
         cx_pool = self.create_pool()

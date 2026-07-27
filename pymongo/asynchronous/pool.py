@@ -1072,6 +1072,13 @@ class Pool:
                         async with self._max_connecting_cond:
                             self._pending -= 1
                             self._max_connecting_cond.notify()
+
+            conn.active = True
+            # connect() already adds cancel_context for new connections; only add
+            # here for reused connections taken from the idle pool.
+            if not is_new_conn:
+                async with self.lock:
+                    self.active_contexts.add(conn.cancel_context)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             if conn:
@@ -1091,12 +1098,6 @@ class Pool:
                 )
             raise
 
-        conn.active = True
-        # connect() already adds cancel_context for new connections; only add
-        # here for reused connections taken from the idle pool.
-        if not is_new_conn:
-            async with self.lock:
-                self.active_contexts.add(conn.cancel_context)
         return conn
 
     async def checkin(self, conn: AsyncConnection) -> None:
