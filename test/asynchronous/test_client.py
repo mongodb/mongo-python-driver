@@ -893,7 +893,7 @@ class TestClient(AsyncIntegrationTest):
         )
 
         async with client.start_session() as session:
-            session.start_transaction()
+            await session.start_transaction()
             with self.assertRaises(RuntimeError):
                 async with _PinThenFailCheckout(client, server, session):
                     pass
