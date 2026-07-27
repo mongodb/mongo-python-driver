@@ -345,5 +345,38 @@ class TestValidateTracingOrNone(unittest.TestCase):
             common.validate_tracing_or_none("tracing", {"query_text_max_length": -1})
 
 
+class TestOTelTracerCaching(unittest.TestCase):
+    """Regression test for the tracer-caching fix in ``pymongo/_otel.py``.
+
+    ``opentelemetry.trace.get_tracer()`` must only be called once, at import
+    time (cached as module-level ``_otel._TRACER``). Calling it per command
+    allocates two objects, takes a process-wide lock, and mutates the global
+    ``warnings`` filter list on every call, even on a cache hit.
+    """
+
+    @unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
+    def test_start_command_span_does_not_call_get_tracer(self):
+        class _FakeConn:
+            id = 1
+            server_connection_id: Optional[int] = None
+            address: _Address = ("localhost", 27017)
+            service_id = None
+
+        with patch.object(_otel, "trace") as mock_trace:
+            for _ in range(3):
+                span = _otel.start_command_span(
+                    {"enabled": True, "query_text_max_length": None},
+                    _FakeConn(),
+                    {"ping": 1},
+                    "admin",
+                    "ping",
+                    False,
+                )
+                self.assertIsNotNone(span)
+                span.end()
+
+        mock_trace.get_tracer.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
