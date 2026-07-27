@@ -876,6 +876,34 @@ class TestClient(AsyncIntegrationTest):
         # Connection was returned to pool, not leaked.
         self.assertEqual(0, pool.active_sockets)
 
+    async def test_client_checkout_setup_failure_unpins_session(self):
+        # Verify that session._unpin() is called when an exception is raised
+        # during _ClientCheckout.__aenter__ after session._pin() has run (e.g.
+        # the auto-encryption wire-version check at line 2743).
+        class _PinThenFailCheckout(_ClientCheckout):
+            def contribute_socket(self, conn, completed_handshake=True):
+                # Simulate session._pin() having already been called by
+                # directly pinning the session to the server, then fail.
+                if self.session:
+                    self.session._pin(self._server, conn)
+                raise RuntimeError("simulated post-pin failure")
+
+        client = await self.async_rs_or_single_client()
+        server = await (await client._get_topology()).select_server(
+            writable_server_selector, _Op.TEST
+        )
+
+        async with client.start_session() as session:
+            session.start_transaction()
+            with self.assertRaises(RuntimeError):
+                async with _PinThenFailCheckout(client, server, session):
+                    pass
+
+        # Session must be unpinned so future operations don't route to a stale
+        # server address or double-checkin via conn_mgr.
+        self.assertIsNone(session._transaction.pinned_address)
+        self.assertIsNone(session._transaction.conn_mgr)
+
     async def test_constants(self):
         """This test uses AsyncMongoClient explicitly to make sure that host and
         port are not overloaded.
