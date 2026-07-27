@@ -2,7 +2,7 @@ name: GitHub Actions Security Analysis with zizmor 🌈
 
 on:
   push:
-    branches: ["master"]
+    branches: ["main"]
   pull_request:
     branches: ["**"]
 
@@ -14,8 +14,8 @@ jobs:
       security-events: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - name: Run zizmor 🌈
-        uses: zizmorcore/zizmor-action@192e21d79ab29983730a13d1382995c2307fbcaa # v0.5.7
+        uses: zizmorcore/zizmor-action@6599ee8b7a49aef6a770f63d261d214911a7ce02 # v0.6.0

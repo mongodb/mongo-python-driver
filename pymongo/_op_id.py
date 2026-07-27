@@ -14,7 +14,7 @@
 
 """Internal helpers for the APM operation id.
 
-The retryable read/write logic sets OP_ID for the duration of each attempt so
+The retryable read/write logic sets OP_ID if APM/logging is enabled for the duration of each attempt so
 that every attempt of one logical operation publishes the same operation_id.
 Commands run outside that scope (handshake, auth, killCursors, pinned-cursor
 getMores) read the default None and fall back to their request_id.

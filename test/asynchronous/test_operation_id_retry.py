@@ -16,18 +16,23 @@
 
 from __future__ import annotations
 
+import logging
 import sys
+from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
 import pymongo
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from pymongo import _op_id
+from pymongo._telemetry import _CommandTelemetry
+from pymongo.asynchronous import mongo_client
 from pymongo.asynchronous.encryption import _Encrypter
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.asynchronous.pool import AsyncConnection
 from pymongo.errors import OperationFailure
 from pymongo.helpers_shared import _REAUTHENTICATION_REQUIRED_CODE
+from pymongo.logger import _COMMAND_LOGGER, _SERVER_SELECTION_LOGGER
 from pymongo.operations import InsertOne
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils_shared import AllowListEventListener
@@ -133,6 +138,49 @@ class TestOperationIdRetry(AsyncIntegrationTest):
         for i, (name, f) in enumerate(_RETRYABLE_READS):
             with self.subTest(command=name, index=i):
                 await self._check_stable_operation_id(name, f, self.RETRIES)
+
+    async def test_retry_without_listeners_or_logging_creates_no_operation_id(self):
+        appname = _APP_NAME + "noapm"
+        client = await self.async_rs_or_single_client(appname=appname)
+
+        # Make sure APM and logging are disabled
+        for logger in (_COMMAND_LOGGER, _SERVER_SELECTION_LOGGER):
+            self.assertFalse(logger.isEnabledFor(logging.DEBUG))
+        self.assertFalse(client._event_listeners.enabled_for_commands)
+
+        find_op_ids = []
+        original_init = _CommandTelemetry.__init__
+
+        def recording_init(self, topology_id, conn, listeners, cmd, dbname, request_id, op_id):
+            if next(iter(cmd)) == "find":
+                find_op_ids.append(op_id)
+            original_init(self, topology_id, conn, listeners, cmd, dbname, request_id, op_id)
+
+        fail_point = {
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "closeConnection": True,
+                "appName": appname,
+            },
+        }
+        async with self.fail_point(fail_point):
+            with (
+                patch.object(mongo_client, "_randint") as randint,
+                patch.object(_CommandTelemetry, "__init__", recording_init),
+            ):
+                self.assertIsNotNone(
+                    await client.pymongo_test.test_operation_id_retry.find_one({"_id": 1})
+                )
+
+        self.assertEqual(
+            randint.call_count, 0, "generated an operation id without APM/logging enabled"
+        )
+        self.assertEqual(
+            find_op_ids,
+            [None, None],
+            "expected two attempts, neither carrying a shared operation id",
+        )
 
     async def test_reauth_does_not_reuse_operation_id(self):
         class FakeConnection(AsyncConnection):
