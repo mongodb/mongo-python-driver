@@ -424,9 +424,7 @@ class TestJsonUtil(unittest.TestCase):
     def test_timestamp_with_non_document_value(self):
         for value in ('["t", "i"]', '"ti"', "5"):
             with self.subTest(value=value):
-                with self.assertRaisesRegex(
-                    TypeError, r"\$timestamp value must be a document"
-                ):
+                with self.assertRaisesRegex(TypeError, r"\$timestamp value must be a document"):
                     json_util.loads(f'{{"ts": {{"$timestamp": {value}}}}}')
 
     def test_uuid_default(self):
