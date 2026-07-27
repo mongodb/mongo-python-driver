@@ -346,7 +346,7 @@ class TestValidateTracingOrNone(unittest.TestCase):
 
 
 class TestOTelTracerCaching(unittest.TestCase):
-    """Regression test for the tracer-caching fix in ``pymongo/_otel.py``.
+    """Regression test for the tracer-caching implementation in ``pymongo/_otel.py``.
 
     ``opentelemetry.trace.get_tracer()`` must only be called once, at import
     time (cached as module-level ``_otel._TRACER``). Calling it per command
