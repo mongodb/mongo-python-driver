@@ -1868,50 +1868,56 @@ class TestClient(AsyncIntegrationTest):
                 # maxPoolSize=1 ensures the operations below reuse the same
                 # connection the spy is installed on, unless it is replaced.
                 client = await self.async_single_client(compressors=name, maxPoolSize=1)
-                # Trigger the connection handshake so the compressor is negotiated.
-                await client.admin.command("ping")
-                pool = await async_get_pool(client)
-                async with pool.checkout() as conn:
-                    if conn.compression_context is None:
-                        continue
-                    negotiated.append(name)
-                    self.assertIsInstance(conn.compression_context, ctx_type)
+                # Close each client before moving on: decompress() is patched
+                # globally below, so app traffic from a client left over from an
+                # earlier subtest could otherwise pollute the recorded ids.
+                try:
+                    # Trigger the connection handshake so the compressor is negotiated.
+                    await client.admin.command("ping")
+                    pool = await async_get_pool(client)
+                    async with pool.checkout() as conn:
+                        if conn.compression_context is None:
+                            continue
+                        negotiated.append(name)
+                        self.assertIsInstance(conn.compression_context, ctx_type)
 
-                    # Spy on the compress method to confirm the outgoing message
-                    # is actually compressed.
-                    compressed = []
-                    original = conn.compression_context.compress
+                        # Spy on the compress method to confirm the outgoing message
+                        # is actually compressed.
+                        compressed = []
+                        original = conn.compression_context.compress
 
-                    # Default args bind the current iteration's values so the
-                    # closure does not late-bind the loop variables.
-                    def spy(data, _original=original, _recorded=compressed):
-                        _recorded.append(data)
-                        return _original(data)
+                        # Default args bind the current iteration's values so the
+                        # closure does not late-bind the loop variables.
+                        def spy(data, _original=original, _recorded=compressed):
+                            _recorded.append(data)
+                            return _original(data)
 
-                    conn.compression_context.compress = spy
+                        conn.compression_context.compress = spy
 
-                # Spy on the read path's decompress() to confirm the server's
-                # replies are actually compressed too.
-                decompressed = []
-                original_decompress = network_layer.decompress
+                    # Spy on the read path's decompress() to confirm the server's
+                    # replies are actually compressed too.
+                    decompressed = []
+                    original_decompress = network_layer.decompress
 
-                def decompress_spy(
-                    data, compressor_id, _original=original_decompress, _recorded=decompressed
-                ):
-                    _recorded.append(compressor_id)
-                    return _original(data, compressor_id)
+                    def decompress_spy(
+                        data, compressor_id, _original=original_decompress, _recorded=decompressed
+                    ):
+                        _recorded.append(compressor_id)
+                        return _original(data, compressor_id)
 
-                # Round-trip a command large enough to compress.
-                coll = client.pymongo_test.test_compression
-                await coll.drop()
-                with patch.object(network_layer, "decompress", decompress_spy):
-                    await coll.insert_one({"x": "y" * 1024})
-                    doc = await coll.find_one({}, {"_id": 0})
-                self.assertEqual(doc, {"x": "y" * 1024})
-                self.assertTrue(compressed, "compress() was never called")
-                self.assertTrue(decompressed, "decompress() was never called")
-                self.assertEqual(set(decompressed), {ctx_type.compressor_id})
-                await coll.drop()
+                    # Round-trip a command large enough to compress.
+                    coll = client.pymongo_test.test_compression
+                    await coll.drop()
+                    with patch.object(network_layer, "decompress", decompress_spy):
+                        await coll.insert_one({"x": "y" * 1024})
+                        doc = await coll.find_one({}, {"_id": 0})
+                    self.assertEqual(doc, {"x": "y" * 1024})
+                    self.assertTrue(compressed, "compress() was never called")
+                    self.assertTrue(decompressed, "decompress() was never called")
+                    self.assertEqual(set(decompressed), {ctx_type.compressor_id})
+                    await coll.drop()
+                finally:
+                    await client.close()
 
         if not negotiated:
             self.skipTest("server did not negotiate compression for any compressor")
