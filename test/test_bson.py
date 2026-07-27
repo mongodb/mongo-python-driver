@@ -1758,6 +1758,45 @@ class TestDatetimeConversion(unittest.TestCase):
         with self.assertRaises(InvalidBSON):
             _array_of_documents_to_buffer(buf)
 
+    def test_array_of_documents_to_buffer_rejects_oversized_element(self):
+        # Regression test for the bound check in
+        # _cbson_array_of_documents_to_buffer: an embedded document whose
+        # declared length exceeds the bytes remaining in the array document
+        # must raise InvalidBSON before any copy, rather than reading out of
+        # bounds (CWE-125).
+        doc = dict(a=1)
+        valid = encode({"0": doc})
+        # A well-formed buffer is unaffected by the guard.
+        self.assertEqual(_array_of_documents_to_buffer(valid), encode(doc))
+        # The first embedded document starts after the array header:
+        # 4-byte array length + 1-byte element type (0x03) + "0\x00" key = 7.
+        # Its leading 4 bytes are the embedded document's declared length.
+        offset = 4 + 1 + 2
+        malformed = bytearray(valid)
+        # Claim a length far larger than what remains (but >= BSON_MIN_SIZE so
+        # the existing lower-bound check still passes), forcing the new
+        # upper-bound guard to reject it.
+        malformed[offset : offset + 4] = struct.pack("<i", 0x7FFF)
+        # The C fast-path raises a dedicated "invalid array content" error from the
+        # new bound check; the pure-Python path reaches the same invariant through
+        # _get_object_size, which raises "invalid object length".
+        expected = "invalid array content" if bson.has_c() else "invalid object length"
+        with self.assertRaisesRegex(InvalidBSON, expected):
+            _array_of_documents_to_buffer(bytes(malformed))
+
+    def test_array_of_documents_to_buffer_rejects_element_consuming_terminator(self):
+        doc = dict(a=1)
+        valid = encode({"0": doc})
+        self.assertEqual(_array_of_documents_to_buffer(valid), encode(doc))
+        offset = 4 + 1 + 2
+        malformed = bytearray(valid)
+        value_length = len(valid) - offset
+        malformed[offset : offset + 4] = struct.pack("<i", value_length)
+        # Covers the exact boundary where the embedded doc consumes the array's EOO byte.
+        expected = "invalid array content" if bson.has_c() else "invalid object length"
+        with self.assertRaisesRegex(InvalidBSON, expected):
+            _array_of_documents_to_buffer(bytes(malformed))
+
     def test_datetime_ms_hash(self):
         # Equal values must have equal hashes.
         self.assertEqual(hash(DatetimeMS(0)), hash(DatetimeMS(0)))

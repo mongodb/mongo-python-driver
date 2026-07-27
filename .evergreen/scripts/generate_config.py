@@ -464,6 +464,19 @@ def create_atlas_connect_variants():
     ]
 
 
+def create_sfp_variants():
+    host = DEFAULT_HOST
+    return [
+        create_variant(
+            [".test-no-orchestration"],
+            get_variant_name("SFP", host),
+            tags=["pr"],
+            host=host,
+            expansions=dict(TEST_NAME="sfp"),
+        )
+    ]
+
+
 def create_coverage_report_variants():
     return [create_variant(["coverage-report"], "Coverage Report", host=DEFAULT_HOST)]
 

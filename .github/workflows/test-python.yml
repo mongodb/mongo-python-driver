@@ -2,7 +2,7 @@ name: Python Tests
 
 on:
   push:
-    branches: ["master", "v**"]
+    branches: ["main", "v**"]
   pull_request:
   workflow_dispatch:
 
@@ -25,7 +25,7 @@ jobs:
   static:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/set-uv-exclude-newer
@@ -78,7 +78,7 @@ jobs:
 
     name: Python ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/set-uv-exclude-newer
@@ -101,7 +101,7 @@ jobs:
 
     name: Coverage
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/set-uv-exclude-newer
@@ -130,7 +130,7 @@ jobs:
     runs-on: ubuntu-latest
     name: DocTest
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/set-uv-exclude-newer
@@ -156,7 +156,7 @@ jobs:
     name: Docs Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/set-uv-exclude-newer
@@ -179,7 +179,7 @@ jobs:
       matrix:
         python: ["3.10", "3.11"]
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/set-uv-exclude-newer
@@ -201,7 +201,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Integration Tests
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/set-uv-exclude-newer
@@ -232,10 +232,10 @@ jobs:
     runs-on: ubuntu-latest
     name: "Make an sdist"
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v6.3.0
         with:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
@@ -269,7 +269,7 @@ jobs:
             mkdir test
             tar --strip-components=1 -zxf *.tar.gz -C ./test
             ls test
-        - uses: actions/setup-python@v6
+        - uses: actions/setup-python@v6.3.0
           with:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
@@ -292,7 +292,7 @@ jobs:
       runs-on: ubuntu-latest
       name: Test minimum dependencies and Python
       steps:
-        - uses: actions/checkout@v7.0.0
+        - uses: actions/checkout@v7.0.1
           with:
             persist-credentials: false
         - uses: ./.github/actions/set-uv-exclude-newer
