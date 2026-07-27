@@ -441,6 +441,18 @@ buildvariants:
       - windows-2022-latest-small
     batchtime: 1440
 
+  # Otel tests
+  - name: otel-rhel8
+    tasks:
+      - name: .test-non-standard .standalone-noauth-nossl
+    display_name: OTel RHEL8
+    run_on:
+      - rhel87-small
+    expansions:
+      TEST_NAME: otel
+      COVERAGE: "1"
+    tags: [pr]
+
   # Perf tests
   - name: performance-benchmarks
     tasks:

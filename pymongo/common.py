@@ -51,6 +51,7 @@ from pymongo.server_api import ServerApi
 from pymongo.write_concern import DEFAULT_WRITE_CONCERN, WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
+    from pymongo import _otel
     from pymongo.typings import _AgnosticClientSession
 
 
@@ -607,6 +608,26 @@ def validate_server_api_or_none(option: Any, value: Any) -> Optional[ServerApi]:
     return value
 
 
+def validate_tracing_or_none(option: str, value: Any) -> Optional[_otel.TracingOptions]:
+    """Validate the tracing keyword arg."""
+    if value is None:
+        return value
+    validate_is_mapping(option, value)
+    unknown = set(value) - {"enabled", "query_text_max_length"}
+    if unknown:
+        raise ConfigurationError(f"Unknown tracing option(s): {sorted(unknown)}")
+    enabled = value.get("enabled", False)
+    validate_boolean("tracing.enabled", enabled)
+    query_text_max_length = value.get("query_text_max_length")
+    if query_text_max_length is not None:
+        # bool is a subclass of int; reject it explicitly rather than silently
+        # treating True/False as 1/0.
+        if isinstance(query_text_max_length, bool):
+            raise TypeError("tracing.query_text_max_length must be an integer, not a boolean")
+        validate_non_negative_integer("tracing.query_text_max_length", query_text_max_length)
+    return {"enabled": enabled, "query_text_max_length": query_text_max_length}
+
+
 def validate_is_callable_or_none(option: Any, value: Any) -> Optional[Callable[..., Any]]:
     """Validates that 'value' is a callable."""
     if value is None:
@@ -784,6 +805,7 @@ KW_VALIDATORS: dict[str, Callable[[Any, Any], Any]] = {
     "authoidcallowedhosts": validate_list,
     "max_adaptive_retries": validate_non_negative_integer,
     "enable_overload_retargeting": validate_boolean_or_string,
+    "tracing": validate_tracing_or_none,
 }
 
 # Dictionary where keys are any URI option name, and values are the

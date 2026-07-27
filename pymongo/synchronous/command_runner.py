@@ -162,7 +162,18 @@ def _run_command(
     if op_id is None:
         op_id = _op_id.OP_ID.get()
 
-    telemetry = _CommandTelemetry(topology_id, conn, listeners, cmd, dbname, request_id, op_id)
+    tracing_options = client.options.tracing if client is not None else None
+    telemetry = _CommandTelemetry(
+        topology_id,
+        conn,
+        listeners,
+        cmd,
+        dbname,
+        request_id,
+        op_id,
+        tracing_options,
+        speculative_hello,
+    )
     telemetry.started(orig, ensure_db)
 
     reply: Optional[_OpMsg] = None
@@ -211,7 +222,7 @@ def _run_command(
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
             failure = _convert_exception(exc)
-        telemetry.failed(failure, command_name, isinstance(exc, OperationFailure))
+        telemetry.failed(failure, command_name, exc)
         raise
 
     telemetry.succeeded(docs[0], command_name, speculative_hello)

@@ -23,6 +23,8 @@ import time
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Any, Optional
 
+from pymongo import _otel
+from pymongo.errors import OperationFailure
 from pymongo.logger import (
     _COMMAND_LOGGER,
     _CONNECTION_LOGGER,
@@ -75,8 +77,12 @@ class _CommandTelemetry:
         "_publish",
         "_request_id",
         "_should_log",
+        "_span",
+        "_speculative_hello",
         "_start",
         "_topology_id",
+        "_tracing_enabled",
+        "_tracing_options",
     )
 
     def __init__(
@@ -88,11 +94,15 @@ class _CommandTelemetry:
         dbname: str,
         request_id: int,
         op_id: Optional[int],
+        tracing_options: Optional[_otel.TracingOptions] = None,
+        speculative_hello: bool = False,
     ) -> None:
         self._topology_id = topology_id
         self._should_log = topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)
         self._publish = listeners is not None and listeners.enabled_for_commands
-        self._active = self._should_log or self._publish
+        self._tracing_options = tracing_options
+        self._tracing_enabled = _otel._is_tracing_enabled(tracing_options)
+        self._active = self._should_log or self._publish or self._tracing_enabled
         self._listeners = listeners
         self._conn = conn
         self._cmd = cmd
@@ -100,6 +110,8 @@ class _CommandTelemetry:
         self._dbname = dbname
         self._request_id = request_id
         self._op_id = op_id
+        self._speculative_hello = speculative_hello
+        self._span: Optional[Any] = None
         self._start: datetime.datetime
         self._duration: datetime.timedelta
 
@@ -121,7 +133,7 @@ class _CommandTelemetry:
         )
 
     def started(self, orig: MutableMapping[str, Any], ensure_db: bool) -> None:
-        """Emit the STARTED log entry and APM event, and start the duration clock."""
+        """Emit the STARTED log entry and APM event, start the span, and start the duration clock."""
         self._start = datetime.datetime.now()
         if not self._active:
             return
@@ -140,6 +152,15 @@ class _CommandTelemetry:
                 self._op_id,
                 service_id=self._conn.service_id,
             )
+        if self._tracing_enabled:
+            self._span = _otel.start_command_span(
+                self._tracing_options,
+                self._conn,
+                self._cmd,
+                self._dbname,
+                self._name,
+                self._speculative_hello,
+            )
 
     @property
     def duration(self) -> datetime.timedelta:
@@ -152,7 +173,7 @@ class _CommandTelemetry:
         command_name: str,
         speculative_hello: bool,
     ) -> None:
-        """Emit the SUCCEEDED log entry and APM event."""
+        """Emit the SUCCEEDED log entry and APM event, and end the span."""
         self._duration = datetime.datetime.now() - self._start
         if not self._active:
             return
@@ -177,14 +198,16 @@ class _CommandTelemetry:
                 speculative_hello=speculative_hello,
                 database_name=self._dbname,
             )
+        if self._span is not None:
+            _otel.end_command_span_success(self._span, reply)
 
     def failed(
         self,
         failure: _DocumentOut,
         command_name: str,
-        is_server_side_error: bool,
+        exc: BaseException,
     ) -> None:
-        """Emit the FAILED log entry and APM event."""
+        """Emit the FAILED log entry and APM event, and end the span."""
         self._duration = datetime.datetime.now() - self._start
         if not self._active:
             return
@@ -193,7 +216,7 @@ class _CommandTelemetry:
                 _CommandStatusMessage.FAILED,
                 durationMS=self._duration,
                 failure=failure,
-                isServerSideError=is_server_side_error,
+                isServerSideError=isinstance(exc, OperationFailure),
             )
         if self._publish:
             assert self._listeners is not None
@@ -208,6 +231,8 @@ class _CommandTelemetry:
                 service_id=self._conn.service_id,
                 database_name=self._dbname,
             )
+        if self._span is not None:
+            _otel.end_command_span_failure(self._span, failure, exc)
 
 
 class _CmapTelemetry:
