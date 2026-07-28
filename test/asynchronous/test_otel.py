@@ -857,10 +857,13 @@ class TestOTelSpans(AsyncIntegrationTest):
         # Explicitly retrying a successful commit moves the transaction state
         # COMMITTED -> IN_PROGRESS -> (back through the try/finally) ->
         # COMMITTED again. The prior attempt's span was already ended and
-        # cleared, so the retry gets a fresh "transaction" span of its own;
-        # each span's ending finally block must run exactly once for its own
-        # span, never double-ending the same span and never leaving one
-        # unended.
+        # cleared, so the retry gets a fresh "transaction" span of its own
+        # (this is the direct-API path, not with_transaction -- see
+        # test_with_transaction_retry_reuses_one_transaction_span for the
+        # with_transaction case, which shares a single span across retries
+        # instead); each span's ending finally block must run exactly once
+        # for its own span, never double-ending the same span and never
+        # leaving one unended.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
         self.exporter.clear()
@@ -880,7 +883,12 @@ class TestOTelSpans(AsyncIntegrationTest):
             self.assertTrue(txn_span.end_time is not None)
 
     @async_client_context.require_transactions
-    async def test_with_transaction_retry_nests_transaction_spans(self):
+    async def test_with_transaction_retry_reuses_one_transaction_span(self):
+        # A retried with_transaction() call must still produce exactly one
+        # "transaction" span for the whole logical call -- not one sibling
+        # span per full-transaction retry, and no separately-named wrapper
+        # span either (the vendored transaction/convenient.json fixture
+        # pins "transaction" itself as the trace root for withTransaction).
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client.pymongo_test.with_txn_spans
         await coll.drop()
@@ -902,14 +910,19 @@ class TestOTelSpans(AsyncIntegrationTest):
 
         self.assertEqual(len(attempts), 2)
         finished = self.exporter.get_finished_spans()
-        with_txn_spans = [s for s in finished if s.name.startswith("withTransaction")]
-        self.assertEqual(len(with_txn_spans), 1, [s.name for s in finished])
-        (with_txn_span,) = with_txn_spans
+        self.assertFalse(
+            [s.name for s in finished if s.name.startswith("withTransaction")],
+            [s.name for s in finished],
+        )
 
         txn_spans = [s for s in finished if s.name == "transaction"]
-        self.assertEqual(len(txn_spans), 2)
-        for txn_span in txn_spans:
-            self.assertEqual(txn_span.parent.span_id, with_txn_span.context.span_id)
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        self.assertTrue(txn_spans[0].end_time is not None)
+
+        insert_op_spans = [s for s in finished if s.attributes.get("db.operation.name") == "insert"]
+        self.assertEqual(len(insert_op_spans), 2)
+        for op_span in insert_op_spans:
+            self.assertEqual(op_span.parent.span_id, txn_spans[0].context.span_id)
 
     @async_client_context.require_transactions
     async def test_retried_commit_has_a_transaction_span(self):
