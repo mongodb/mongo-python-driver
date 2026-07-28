@@ -151,10 +151,14 @@ class TestOperationIdRetry(AsyncIntegrationTest):
         find_op_ids = []
         original_init = _CommandTelemetry.__init__
 
-        def recording_init(self, topology_id, conn, listeners, cmd, dbname, request_id, op_id):
+        def recording_init(
+            self, topology_id, conn, listeners, cmd, dbname, request_id, op_id, name=None
+        ):
             if next(iter(cmd)) == "find":
                 find_op_ids.append(op_id)
-            original_init(self, topology_id, conn, listeners, cmd, dbname, request_id, op_id)
+            original_init(
+                self, topology_id, conn, listeners, cmd, dbname, request_id, op_id, name=name
+            )
 
         fail_point = {
             "mode": {"times": 1},

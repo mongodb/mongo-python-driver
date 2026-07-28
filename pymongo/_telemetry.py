@@ -23,6 +23,7 @@ import time
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Any, Optional
 
+from pymongo import _op_id
 from pymongo.logger import (
     _COMMAND_LOGGER,
     _CONNECTION_LOGGER,
@@ -55,12 +56,28 @@ def _monotonic_duration(start: float) -> float:
     return max(0.0, time.monotonic() - start)
 
 
+def _should_generate_op_id(listeners: Optional[_EventListeners]) -> bool:
+    """Return True if an operation id would be consumed by APM command events
+    or command/server-selection log entries; generating one is otherwise wasted work.
+    """
+    return (
+        (listeners is not None and listeners.enabled_for_commands)
+        or _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)
+        or _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
+    )
+
+
 class _CommandTelemetry:
     """Combines structured logging and APM event publishing for a single command.
 
     Construct once per command, call :meth:`started` before the network send,
     then call :meth:`succeeded` or :meth:`failed` when the outcome is known.
     Duration is measured from the :meth:`started` call.
+
+    This sits on the hot path of every command: when neither APM nor command
+    logging is enabled, only the gate flags and the monotonic duration clock
+    are maintained — the identifying fields are not stored and the ``OP_ID``
+    contextvar is not read.
     """
 
     __slots__ = (
@@ -68,7 +85,7 @@ class _CommandTelemetry:
         "_cmd",
         "_conn",
         "_dbname",
-        "_duration",
+        "_duration_s",
         "_listeners",
         "_name",
         "_op_id",
@@ -88,20 +105,23 @@ class _CommandTelemetry:
         dbname: str,
         request_id: int,
         op_id: Optional[int],
+        name: Optional[str] = None,
     ) -> None:
-        self._topology_id = topology_id
         self._should_log = topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)
         self._publish = listeners is not None and listeners.enabled_for_commands
         self._active = self._should_log or self._publish
+        self._start = 0.0
+        self._duration_s = 0.0
+        if not self._active:
+            return
+        self._topology_id = topology_id
         self._listeners = listeners
         self._conn = conn
         self._cmd = cmd
-        self._name = next(iter(cmd))
+        self._name = name if name is not None else next(iter(cmd))
         self._dbname = dbname
         self._request_id = request_id
-        self._op_id = op_id
-        self._start: datetime.datetime
-        self._duration: datetime.timedelta
+        self._op_id = op_id if op_id is not None else _op_id.OP_ID.get()
 
     def _emit_log(self, message: _CommandStatusMessage, **extra: Any) -> None:
         _debug_log(
@@ -122,7 +142,7 @@ class _CommandTelemetry:
 
     def started(self, orig: MutableMapping[str, Any], ensure_db: bool) -> None:
         """Emit the STARTED log entry and APM event, and start the duration clock."""
-        self._start = datetime.datetime.now()
+        self._start = time.monotonic()
         if not self._active:
             return
         if self._should_log:
@@ -142,9 +162,9 @@ class _CommandTelemetry:
             )
 
     @property
-    def duration(self) -> datetime.timedelta:
-        """Duration from :meth:`started` to :meth:`succeeded` or :meth:`failed`."""
-        return self._duration
+    def duration_s(self) -> float:
+        """Duration in seconds from :meth:`started` to :meth:`succeeded` or :meth:`failed`."""
+        return self._duration_s
 
     def succeeded(
         self,
@@ -153,20 +173,21 @@ class _CommandTelemetry:
         speculative_hello: bool,
     ) -> None:
         """Emit the SUCCEEDED log entry and APM event."""
-        self._duration = datetime.datetime.now() - self._start
+        self._duration_s = _monotonic_duration(self._start)
         if not self._active:
             return
+        duration = datetime.timedelta(seconds=self._duration_s)
         if self._should_log:
             self._emit_log(
                 _CommandStatusMessage.SUCCEEDED,
-                durationMS=self._duration,
+                durationMS=duration,
                 reply=reply,
                 speculative_authenticate=speculative_hello,
             )
         if self._publish:
             assert self._listeners is not None
             self._listeners.publish_command_success(
-                self._duration,
+                duration,
                 reply,
                 command_name,
                 self._request_id,
@@ -185,20 +206,21 @@ class _CommandTelemetry:
         is_server_side_error: bool,
     ) -> None:
         """Emit the FAILED log entry and APM event."""
-        self._duration = datetime.datetime.now() - self._start
+        self._duration_s = _monotonic_duration(self._start)
         if not self._active:
             return
+        duration = datetime.timedelta(seconds=self._duration_s)
         if self._should_log:
             self._emit_log(
                 _CommandStatusMessage.FAILED,
-                durationMS=self._duration,
+                durationMS=duration,
                 failure=failure,
                 isServerSideError=is_server_side_error,
             )
         if self._publish:
             assert self._listeners is not None
             self._listeners.publish_command_failure(
-                self._duration,
+                duration,
                 failure,
                 command_name,
                 self._request_id,

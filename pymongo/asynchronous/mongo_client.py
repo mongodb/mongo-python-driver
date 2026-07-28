@@ -35,7 +35,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import logging
 import os
 import time as time  # noqa: PLC0414 # needed in sync version
 import warnings
@@ -57,7 +56,7 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
-from pymongo._telemetry import log_command_retry
+from pymongo._telemetry import _should_generate_op_id, log_command_retry
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
@@ -91,8 +90,6 @@ from pymongo.lock import (
 )
 from pymongo.logger import (
     _CLIENT_LOGGER,
-    _COMMAND_LOGGER,
-    _SERVER_SELECTION_LOGGER,
     _log_client_error,
     _log_or_warn,
 )
@@ -2891,14 +2888,7 @@ class _ClientConnectionRetryable(Generic[T]):
         self._deprioritized_servers: Optional[list[Server]] = None
         self._operation = operation
         # Only generate an operation id when APM/logging is enabled
-        if operation_id is None and (
-            (
-                self._client._event_listeners is not None
-                and self._client._event_listeners.enabled_for_commands
-            )
-            or _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)
-            or _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
-        ):
+        if operation_id is None and _should_generate_op_id(self._client._event_listeners):
             operation_id = _randint()
         self._operation_id = operation_id
         self._attempt_number = 0
@@ -3142,8 +3132,11 @@ class _ClientConnectionRetryable(Generic[T]):
                 # One operation id across all attempts of this operation if APM/logging is enabled
                 if self._operation_id is None:
                     return await self._func(self._session, conn, self._retryable)  # type: ignore
-                with _op_id._OpIdContext(self._operation_id):
+                token = _op_id.OP_ID.set(self._operation_id)
+                try:
                     return await self._func(self._session, conn, self._retryable)  # type: ignore
+                finally:
+                    _op_id.OP_ID.reset(token)
         except PyMongoError as exc:
             if not self._retryable:
                 raise
@@ -3169,8 +3162,11 @@ class _ClientConnectionRetryable(Generic[T]):
             # One operation id across all attempts of this operation if APM/logging is enabled
             if self._operation_id is None:
                 return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
-            with _op_id._OpIdContext(self._operation_id):
+            token = _op_id.OP_ID.set(self._operation_id)
+            try:
                 return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
+            finally:
+                _op_id.OP_ID.reset(token)
 
 
 def _after_fork_child() -> None:

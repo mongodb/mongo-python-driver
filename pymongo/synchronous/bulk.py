@@ -32,6 +32,7 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
+from pymongo._telemetry import _should_generate_op_id
 from pymongo.bulk_shared import (
     _COMMANDS,
     _DELETE_ALL,
@@ -339,7 +340,7 @@ class _Bulk:
         write_concern: WriteConcern,
         session: Optional[ClientSession],
         conn: Connection,
-        op_id: int,
+        op_id: Optional[int],
         retryable: bool,
         full_result: MutableMapping[str, Any],
         final_write_concern: Optional[WriteConcern] = None,
@@ -455,7 +456,8 @@ class _Bulk:
             "nRemoved": 0,
             "upserted": [],
         }
-        op_id = _randint()
+        client = self.collection.database.client
+        op_id = _randint() if _should_generate_op_id(client._event_listeners) else None
 
         def retryable_bulk(
             session: Optional[ClientSession], conn: Connection, retryable: bool
@@ -470,7 +472,6 @@ class _Bulk:
                 full_result,
             )
 
-        client = self.collection.database.client
         _ = client._retryable_write(
             self.is_retryable,
             retryable_bulk,
@@ -489,7 +490,7 @@ class _Bulk:
         db_name = self.collection.database.name
         client = self.collection.database.client
         listeners = client._event_listeners
-        op_id = _randint()
+        op_id = _randint() if _should_generate_op_id(listeners) else None
 
         if not self.current_run:
             self.current_run = next(generator)
@@ -542,7 +543,11 @@ class _Bulk:
         # processing at the first error, even when the application
         # specified unacknowledged writeConcern.
         initial_write_concern = WriteConcern()
-        op_id = _randint()
+        op_id = (
+            _randint()
+            if _should_generate_op_id(self.collection.database.client._event_listeners)
+            else None
+        )
         try:
             self._execute_command(
                 generator,

@@ -516,9 +516,10 @@ def register(listener: _EventListener) -> None:
 # The "hello" command is also deemed sensitive when attempting speculative
 # authentication.
 def _is_speculative_authenticate(command_name: str, doc: Mapping[str, Any]) -> bool:
+    # Called on every command; probe the dict first, it is cheaper than str.lower().
     return bool(
-        command_name.lower() in ("hello", HelloCompat.LEGACY_CMD)
-        and "speculativeAuthenticate" in doc
+        "speculativeAuthenticate" in doc
+        and command_name.lower() in ("hello", HelloCompat.LEGACY_CMD)
     )
 
 

@@ -32,6 +32,7 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
+from pymongo._telemetry import _should_generate_op_id
 from pymongo.synchronous.client_session import (
     ClientSession,
     _validate_session_write_concern,
@@ -368,7 +369,7 @@ class _ClientBulk:
         write_concern: WriteConcern,
         session: Optional[ClientSession],
         conn: Connection,
-        op_id: int,
+        op_id: Optional[int],
         retryable: bool,
         full_result: MutableMapping[str, Any],
         final_write_concern: Optional[WriteConcern] = None,
@@ -522,7 +523,7 @@ class _ClientBulk:
             "updateResults": {},
             "deleteResults": {},
         }
-        op_id = _randint()
+        op_id = _randint() if _should_generate_op_id(self.client._event_listeners) else None
 
         def retryable_bulk(
             session: Optional[ClientSession],
@@ -563,7 +564,7 @@ class _ClientBulk:
         db_name = "admin"
         cmd_name = "bulkWrite"
         listeners = self.client._event_listeners
-        op_id = _randint()
+        op_id = _randint() if _should_generate_op_id(listeners) else None
 
         bwc = self.bulk_ctx_class(
             db_name,
