@@ -639,10 +639,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
         .. versionchanged:: 4.18
-           Added the ``tracing`` keyword argument. It also creates one span per
-           public API call (nesting each call's command spans underneath) and a
-           ``"transaction"`` pseudo-span wrapping ``start_transaction()`` through
-           ``commit_transaction()``/``abort_transaction()``.
+           Added the ``tracing`` keyword argument. The ``tracing`` option
+           creates one span per public API call (nesting each call's command
+           spans underneath, including a cursor's whole lifetime of
+           ``getMore`` commands, so a cursor's operation span stays open
+           across all of its batches) and a ``"transaction"`` pseudo-span
+           wrapping either ``start_transaction()`` through
+           ``commit_transaction()``/``abort_transaction()`` or all retries of
+           one ``with_transaction()`` call.
 
         .. versionchanged:: 4.17
            Added the ``max_adaptive_retries`` and ``enable_overload_retargeting`` URI and keyword arguments.
