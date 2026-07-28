@@ -1,13 +1,32 @@
 Changelog
 =========
 
-Changes in Version 4.18.0
--------------------------
+Changes in Version 4.18.0 (2026/XX/XX)
+--------------------------------------
+
+PyMongo 4.18 brings a number of changes including:
 
 - Improved TLS connection performance by reusing TLS sessions across connections
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
   and on Python 3.11+ for async clients.
+- Improved performance for MongoDB 9.0's Intelligent Workload Management (IWM) by only retrying overload errors when doing so is expected to not worsen server conditions.
+- Redacted potentially sensitive authentication mechanism properties, including
+  AWS session tokens, from the representations of
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`.
+- Command monitoring events and command log messages for a single logical
+  operation now share one stable ``operation_id`` across all of its retry
+  attempts, so consumers can correlate a retried operation's events. As a
+  result, ``operation_id`` is no longer equal to the per-attempt ``request_id``
+  for these operations.
+- Fixed a potential out-of-bounds read in the C extension when decoding an
+  array of BSON documents. An embedded document whose declared length exceeds
+  the bytes remaining in the array now raises
+  :class:`~bson.errors.InvalidBSON` instead of reading past the end of the
+  buffer.
+- Fixed :func:`bson.json_util.loads` to reject ``$timestamp`` values containing
+  fields other than ``t`` and ``i``.
 - Fixed a bug on Windows, and on macOS when using PyOpenSSL, where
   ``SSL_CERT_FILE``/``SSL_CERT_DIR`` were merged with, rather than replacing,
   the OS/certifi certificate store.

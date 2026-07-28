@@ -47,7 +47,7 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo import _csot, helpers_shared, message
+from pymongo import _csot, _op_id, helpers_shared, message
 from pymongo._telemetry import _CommandTelemetry
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import NotPrimaryError, OperationFailure
@@ -128,7 +128,8 @@ async def _run_command(
     :param orig: The command document published in the ``STARTED`` APM event;
         defaults to ``cmd`` (differs only when the wire command was mutated,
         e.g. with a read preference or after encryption).
-    :param op_id: The APM operation id; defaults to ``request_id``.
+    :param op_id: The APM operation id; defaults to the ``OP_ID`` contextvar,
+        then ``request_id``.
     :param command_name: The command name for the ``SUCCEEDED``/``FAILED`` APM
         events; defaults to the first key of ``cmd``.
     :param check: Raise OperationFailure on a command error.
@@ -158,6 +159,8 @@ async def _run_command(
         command_name = name
     if orig is None:
         orig = cmd
+    if op_id is None:
+        op_id = _op_id.OP_ID.get()
 
     telemetry = _CommandTelemetry(topology_id, conn, listeners, cmd, dbname, request_id, op_id)
     telemetry.started(orig, ensure_db)

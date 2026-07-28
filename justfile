@@ -3,9 +3,6 @@ set shell := ["bash", "-c"]
 
 # Don't let `uv` create or read uv.lock.
 export UV_NO_LOCK := "1"
-# Match CI's resolution window so local installs agree.
-# GNU date on Linux and Windows, BSD date on macOS.
-export UV_EXCLUDE_NEWER := `date -u -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-7d +%Y-%m-%d`
 
 # Commonly used command segments.
 typing_run := "uv run --group typing --extra aws --extra encryption --with numpy --extra ocsp --extra snappy --extra test --extra zstd"

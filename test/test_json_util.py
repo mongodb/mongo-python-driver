@@ -405,6 +405,28 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(dct, rtdct)
         self.assertEqual('{"ts": {"$timestamp": {"t": 4, "i": 13}}}', res)
 
+    def test_timestamp_with_invalid_fields(self):
+        invalid_values = [
+            '{"t": 4, "i": 13, "extra": 1}',
+            '{"t": 4, "unexpected": 13}',
+        ]
+        for value in invalid_values:
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(
+                    TypeError, r'\$timestamp must include exactly "t" and "i" components'
+                ):
+                    json_util.loads(f'{{"ts": {{"$timestamp": {value}}}}}')
+
+    def test_timestamp_with_extra_wrapper_fields(self):
+        with self.assertRaisesRegex(TypeError, r"Bad \$timestamp, extra field\(s\)"):
+            json_util.loads('{"ts": {"$timestamp": {"t": 4, "i": 13}, "extra": 1}}')
+
+    def test_timestamp_with_non_document_value(self):
+        for value in ('["t", "i"]', '"ti"', "5"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(TypeError, r"\$timestamp value must be a document"):
+                    json_util.loads(f'{{"ts": {{"$timestamp": {value}}}}}')
+
     def test_uuid_default(self):
         # Cannot directly encode native UUIDs with the default
         # uuid_representation.

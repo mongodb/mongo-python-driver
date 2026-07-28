@@ -111,7 +111,7 @@ class _CommandTelemetry:
             commandName=self._name,
             databaseName=self._dbname,
             requestId=self._request_id,
-            operationId=self._request_id,
+            operationId=self._op_id if self._op_id is not None else self._request_id,
             driverConnectionId=self._conn.id,
             serverConnectionId=self._conn.server_connection_id,
             serverHost=self._conn.address[0],
