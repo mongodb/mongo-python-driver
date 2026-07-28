@@ -445,6 +445,7 @@ buildvariants:
   - name: otel-rhel8
     tasks:
       - name: .test-non-standard .standalone-noauth-nossl
+      - name: .test-non-standard .replica_set-noauth-ssl
     display_name: OTel RHEL8
     run_on:
       - rhel87-small
