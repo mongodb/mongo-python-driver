@@ -26,7 +26,7 @@ sys.path[0:0] = [""]
 import pytest
 
 import pymongo._otel as _otel
-from pymongo import common
+from pymongo import _telemetry, common
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.typings import _Address
 from test import IntegrationTest, unittest
@@ -153,6 +153,61 @@ class TestOTelTransactionSpanPrimitives(unittest.TestCase):
 
     def test_end_transaction_span_is_none_safe(self):
         _otel.end_transaction_span(None)  # must not raise
+
+
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
+class TestOperationTelemetry(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        cls.exporter = InMemorySpanExporter()
+        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    def setUp(self):
+        self.exporter.clear()
+
+    def test_succeeded_with_no_session(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        telemetry = _telemetry._OperationTelemetry(opts, "find", None)
+        telemetry.succeeded()
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "find")
+        self.assertIsNone(span.parent)
+
+    def test_failed_records_exception(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        telemetry = _telemetry._OperationTelemetry(opts, "insert", None)
+        telemetry.failed(RuntimeError("nope"))
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+    def test_nests_under_active_transaction_span(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        txn_span = _otel.start_transaction_span(opts)
+
+        class _FakeTransaction:
+            span = txn_span
+
+        class _FakeSession:
+            in_transaction = True
+            _transaction = _FakeTransaction()
+
+        telemetry = _telemetry._OperationTelemetry(opts, "insert", _FakeSession())
+        telemetry.succeeded()
+        _otel.end_transaction_span(txn_span)
+        child, parent = self.exporter.get_finished_spans()
+        self.assertEqual(child.parent.span_id, parent.context.span_id)
+
+    def test_disabled_is_a_no_op(self):
+        telemetry = _telemetry._OperationTelemetry(None, "find", None)
+        telemetry.succeeded()  # must not raise
+        telemetry2 = _telemetry._OperationTelemetry(None, "find", None)
+        telemetry2.failed(RuntimeError("x"))  # must not raise
+        self.assertEqual(self.exporter.get_finished_spans(), ())
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")

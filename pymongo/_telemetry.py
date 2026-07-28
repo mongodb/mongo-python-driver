@@ -235,6 +235,34 @@ class _CommandTelemetry:
             _otel.end_command_span_failure(self._span, failure, exc)
 
 
+class _OperationTelemetry:
+    """One span-scoped context per logical operation (spanning all retry attempts).
+
+    Construct once per call to ``_retry_internal``; call :meth:`succeeded` or
+    :meth:`failed` exactly once when the operation's outcome is known. A
+    no-op throughout when tracing is disabled.
+    """
+
+    __slots__ = ("_handle",)
+
+    def __init__(
+        self,
+        tracing_options: Optional[_otel.TracingOptions],
+        operation: str,
+        session: Optional[Any],
+    ) -> None:
+        parent_span = None
+        if session is not None and session.in_transaction:
+            parent_span = session._transaction.span
+        self._handle = _otel.start_operation_span(tracing_options, operation, parent_span)
+
+    def succeeded(self) -> None:
+        _otel.end_operation_span_success(self._handle)
+
+    def failed(self, exc: BaseException) -> None:
+        _otel.end_operation_span_failure(self._handle, exc)
+
+
 class _CmapTelemetry:
     """Combines CMAP structured logging and APM event publishing for pool and connection events."""
 
