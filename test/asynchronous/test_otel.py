@@ -545,6 +545,61 @@ class TestOTelSpans(AsyncIntegrationTest):
         txn_span = next(s for s in finished if s.name == "transaction")
         self.assertTrue(txn_span.end_time is not None)
 
+    @async_client_context.require_transactions
+    async def test_committing_empty_transaction_ends_span(self):
+        # No operation is ever run against the server, so commit_transaction
+        # takes the STARTING/COMMITTED_EMPTY early-return path rather than
+        # actually sending a commitTransaction command.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+
+        async with client.start_session() as session:
+            await session.start_transaction()
+            await session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_span = next(s for s in finished if s.name == "transaction")
+        self.assertTrue(txn_span.end_time is not None)
+
+    @async_client_context.require_transactions
+    async def test_aborting_empty_transaction_ends_span(self):
+        # No operation is ever run against the server, so abort_transaction
+        # takes the STARTING early-return path rather than actually sending
+        # an abortTransaction command.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+
+        async with client.start_session() as session:
+            await session.start_transaction()
+            await session.abort_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_span = next(s for s in finished if s.name == "transaction")
+        self.assertTrue(txn_span.end_time is not None)
+
+    @async_client_context.require_transactions
+    async def test_retried_commit_ends_span_exactly_once(self):
+        # Explicitly retrying a successful commit moves the transaction state
+        # COMMITTED -> IN_PROGRESS -> (back through the try/finally) ->
+        # COMMITTED again, running the span-ending finally block a second
+        # time. end_transaction_span(None) must be a no-op so exactly one
+        # "transaction" span is ever produced, never a second/duplicate end.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name].test
+        self.exporter.clear()
+
+        async with client.start_session() as session:
+            async with await session.start_transaction():
+                await coll.insert_one({"x": 5}, session=session)
+            # The transaction context manager already committed on clean
+            # exit; retry the commit explicitly.
+            await session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1)
+        self.assertTrue(txn_spans[0].end_time is not None)
+
 
 # TODO(PYTHON-5947): superseded once the unified test format's
 # expectTracingMessages/observeTracingMessages tests exercise this validator
