@@ -248,7 +248,7 @@ client = MongoClient(
 ```
 
 If you want to use the actual certificate file then set `tlsCertificateKeyFile` to the local path
-to `<repo_roo>/test/certificates/client.pem` and `tlsCAFile` to the local path to `<repo_roo>/test/certificates/ca.pem`.
+to `<repo_root>/test/certificates/client.pem` and `tlsCAFile` to the local path to `<repo_root>/test/certificates/ca.pem`.
 
 #### Regenerating test certificates
 
