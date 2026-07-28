@@ -862,13 +862,24 @@ def get_loop() -> asyncio.AbstractEventLoop:
 def _close_and_join_monitors(client) -> None:
     """Close ``client`` and wait for its background monitors to actually stop.
 
-    Used instead of a plain ``client.close()`` cleanup for tracing-enabled
-    test clients: a monitor that is still mid-flight when the next test
-    starts can emit its own otel command span (e.g. for a heartbeat
-    cancelled by close()) onto the shared, process-wide TracerProvider used
-    by the otel test suite (see test.unified_format_shared._shared_test_provider),
-    landing in whichever other test's span-capture window happens to be open
-    at that moment. ``client.close()`` alone does not prevent this:
+    Registered as every managed test client's cleanup (instead of a plain
+    ``client.close()``), unconditionally: a client can end up tracing-enabled
+    either via an explicit ``tracing={"enabled": True}`` kwarg *or* via the
+    ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable (see
+    e.g. test_otel.py's ``test_prose_1_tracing_enable_disable_via_env_var``),
+    and there is no cheap, reliable way to tell from the outside which one
+    applies -- so every managed client gets the safer cleanup rather than
+    gating on the kwarg alone and silently missing the env-var case. This was
+    verified not to meaningfully slow the broader suite (see the PYTHON-5947
+    commit message/task report for timing).
+
+    For a tracing-enabled client specifically, a monitor that is still
+    mid-flight when the next test starts can emit its own otel command span
+    (e.g. for a heartbeat cancelled by close()) onto the shared, process-wide
+    TracerProvider used by the otel test suite (see
+    test.unified_format_shared._shared_test_provider), landing in whichever
+    other test's span-capture window happens to be open at that moment.
+    ``client.close()`` alone does not prevent this:
 
     - The sync driver's ``Monitor.join()`` wraps two synchronous ``.join()``
       calls in an ``asyncio.gather(...)`` that is never awaited (a leftover
@@ -1075,11 +1086,7 @@ class PyMongoTestCase(unittest.TestCase):
         client = MongoClient(uri, port, **client_options)
         if client._options.connect:
             client._connect()
-        tracing_opts = client_options.get("tracing")
-        if isinstance(tracing_opts, dict) and tracing_opts.get("enabled"):
-            self.addCleanup(_close_and_join_monitors, client)
-        else:
-            self.addCleanup(client.close)
+        self.addCleanup(_close_and_join_monitors, client)
         return client
 
     @classmethod
@@ -1163,11 +1170,7 @@ class PyMongoTestCase(unittest.TestCase):
             client = MongoClient(**kwargs)
         else:
             client = MongoClient(h, p, **kwargs)
-        tracing_opts = kwargs.get("tracing")
-        if isinstance(tracing_opts, dict) and tracing_opts.get("enabled"):
-            self.addCleanup(_close_and_join_monitors, client)
-        else:
-            self.addCleanup(client.close)
+        self.addCleanup(_close_and_join_monitors, client)
         return client
 
     @classmethod
