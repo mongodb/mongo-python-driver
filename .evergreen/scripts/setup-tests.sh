@@ -21,6 +21,9 @@ if [ -f $SCRIPT_DIR/env.sh ]; then
   source $SCRIPT_DIR/env.sh
 fi
 
+# Never create or read a uv.lock; hosts without git can't resolve mockupdb.
+export UV_NO_LOCK=1
+
 echo "Setting up tests with args \"$*\"..."
 uv run ${USE_ACTIVE_VENV:+--active} "$SCRIPT_DIR/setup_tests.py" "$@"
 echo "Setting up tests with args \"$*\"... done."

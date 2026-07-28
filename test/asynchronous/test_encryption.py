@@ -671,8 +671,8 @@ class TestDataKeyDoubleEncryption(AsyncEncryptionIntegrationTest):
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
         },
         "azure": {
-            "keyVaultEndpoint": "key-vault-csfle.vault.azure.net",
-            "keyName": "key-name-csfle",
+            "keyVaultEndpoint": "drivers-3392-key-vault.vault.azure.net",
+            "keyName": "drivers-3392-keyname",
         },
         "gcp": {
             "projectId": "devprod-drivers",
@@ -1263,8 +1263,8 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
     @unittest.skipUnless(any(AZURE_CREDS.values()), "Azure environment credentials are not set")
     async def test_07_azure(self):
         master_key = {
-            "keyVaultEndpoint": "key-vault-csfle.vault.azure.net",
-            "keyName": "key-name-csfle",
+            "keyVaultEndpoint": "drivers-3392-key-vault.vault.azure.net",
+            "keyName": "drivers-3392-keyname",
         }
         await self.run_test_expected_success("azure", master_key)
 
@@ -2585,8 +2585,8 @@ class TestRewrapWithSeparateClientEncryption(AsyncEncryptionIntegrationTest):
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
         },
         "azure": {
-            "keyVaultEndpoint": "key-vault-csfle.vault.azure.net",
-            "keyName": "key-name-csfle",
+            "keyVaultEndpoint": "drivers-3392-key-vault.vault.azure.net",
+            "keyName": "drivers-3392-keyname",
         },
         "gcp": {
             "projectId": "devprod-drivers",

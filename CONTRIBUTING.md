@@ -171,7 +171,7 @@ just run lint-manual
 
 To contribute to the [API documentation](https://pymongo.readthedocs.io/en/stable/) just make your
 changes to the inline documentation of the appropriate [source code](https://github.com/mongodb/mongo-python-driver) or
-[rst file](https://github.com/mongodb/mongo-python-driver/tree/master/doc) in
+[rst file](https://github.com/mongodb/mongo-python-driver/tree/main/doc) in
 a branch and submit a [pull request](https://help.github.com/articles/using-pull-requests). You
 might also use the GitHub
 [Edit](https://github.com/blog/844-forking-with-the-edit-button) button.
@@ -576,7 +576,4 @@ From the spawn host or Ubuntu image, do the following:
 ## Dependabot updates
 
 Dependabot will raise PRs at most once per week, grouped by GitHub Actions updates and Python requirement
-file updates.  We have a pre-commit hook that will update the `uv.lock` file when requirements change.
-To update the lock file on a failing PR, you can use a method like `gh pr checkout <pr number>`, then run
-`just lint uv-lock` to update the lock file, and then push the changes.  If a typing dependency has changed,
-also run `just typing` and handle any new findings.
+file updates. If a typing dependency has changed, run `just typing` and handle any new findings.

@@ -16,19 +16,13 @@
 
 from __future__ import annotations
 
-import logging
-from contextlib import AbstractContextManager
 from typing import (
     TYPE_CHECKING,
     Any,
     Optional,
 )
 
-from pymongo.logger import (
-    _SDAM_LOGGER,
-    _debug_log,
-    _SDAMStatusMessage,
-)
+from pymongo._telemetry import _SdamTelemetry
 
 if TYPE_CHECKING:
     from queue import Queue
@@ -37,9 +31,8 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.monitoring import _EventListeners
     from pymongo.server_description import ServerDescription
-    from pymongo.synchronous.mongo_client import _MongoClientErrorHandler
     from pymongo.synchronous.monitor import Monitor
-    from pymongo.synchronous.pool import Connection, Pool
+    from pymongo.synchronous.pool import Pool
 
 _IS_SYNC = True
 
@@ -58,12 +51,8 @@ class Server:
         self._description = server_description
         self._pool = pool
         self._monitor = monitor
-        self._topology_id = topology_id
-        self._publish = listeners is not None and listeners.enabled_for_server
-        self._listener = listeners
-        self._events = None
-        if self._publish:
-            self._events = events()  # type: ignore[misc]
+        _events = events() if listeners is not None and listeners.enabled_for_server else None  # type: ignore[misc]
+        self._sdam = _SdamTelemetry(topology_id, listeners, _events)  # type: ignore[arg-type]
 
     def open(self) -> None:
         """Start monitoring, or restart after a fork.
@@ -82,23 +71,7 @@ class Server:
 
         Reconnect with open().
         """
-        if self._publish:
-            assert self._listener is not None
-            assert self._events is not None
-            self._events.put(
-                (
-                    self._listener.publish_server_closed,
-                    (self._description.address, self._topology_id),
-                )
-            )
-        if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _SDAM_LOGGER,
-                message=_SDAMStatusMessage.STOP_SERVER,
-                topologyId=self._topology_id,
-                serverHost=self._description.address[0],
-                serverPort=self._description.address[1],
-            )
+        self._sdam.server_closed(self._description.address)
 
         self._monitor.close()
         self._pool.close()
@@ -106,11 +79,6 @@ class Server:
     def request_check(self) -> None:
         """Check the server's state soon."""
         self._monitor.request_check()
-
-    def checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AbstractContextManager[Connection]:
-        return self.pool.checkout(handler)
 
     @property
     def description(self) -> ServerDescription:

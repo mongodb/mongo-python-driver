@@ -63,7 +63,7 @@ from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor, CursorType
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import anext
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from pymongo.asynchronous.mongo_client import AsyncMongoClient, _ClientCheckout
 from pymongo.asynchronous.pool import (
     AsyncConnection,
 )
@@ -195,6 +195,41 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertRaises(TypeError, AsyncMongoClient, "localhost", [])
 
         self.assertRaises(ConfigurationError, AsyncMongoClient, [])
+
+    async def test_repr_redacts_aws_session_token(self):
+        token = "SECRET_AWS_SESSION_TOKEN"
+        client = AsyncMongoClient(
+            "mongodb://AKIA:SECRET@localhost:27017/"
+            f"?authMechanism=MONGODB-AWS&authMechanismProperties=AWS_SESSION_TOKEN:{token}",
+            connect=False,
+        )
+
+        the_repr = repr(client)
+
+        self.assertNotIn(token, the_repr)
+        self.assertIn("'AWS_SESSION_TOKEN': '<redacted>'", the_repr)
+
+    async def test_repr_redacts_secret_auth_mechanism_properties(self):
+        token = "SECRET_AWS_SESSION_TOKEN"
+        api_key = "SECRET_API_KEY"
+        client = AsyncMongoClient(
+            "mongodb://AKIA:SECRET@localhost:27017/",
+            authMechanism="MONGODB-AWS",
+            authMechanismProperties={
+                "aws_session_token": token,
+                "CUSTOM_API_KEY": api_key,
+                "TOKEN_RESOURCE": "mongodb://cluster.example",
+            },
+            connect=False,
+        )
+
+        the_repr = repr(client)
+
+        self.assertNotIn(token, the_repr)
+        self.assertNotIn(api_key, the_repr)
+        self.assertIn("'aws_session_token': '<redacted>'", the_repr)
+        self.assertIn("'CUSTOM_API_KEY': '<redacted>'", the_repr)
+        self.assertIn("'TOKEN_RESOURCE': 'mongodb://cluster.example'", the_repr)
 
     async def test_max_pool_size_zero(self):
         self.simple_client(maxPoolSize=0)
@@ -817,6 +852,56 @@ class TestClient(AsyncIntegrationTest):
             async with server._pool.checkout() as new_con:
                 self.assertEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
+
+    async def test_client_checkout_setup_failure_returns_connection(self):
+        # Verify that the connection is returned to the pool when an exception
+        # is raised during _ClientCheckout.__aenter__ post-checkout setup
+        # (e.g. session pinning or the auto-encryption wire-version check).
+        # Use a subclass to override contribute_socket because __slots__ prevents
+        # instance-level patching of methods.
+        class _BrokenSetupCheckout(_ClientCheckout):
+            def contribute_socket(self, conn, completed_handshake=True):
+                raise RuntimeError("simulated failure in post-checkout setup")
+
+        client = await self.async_rs_or_single_client()
+        server = await (await client._get_topology()).select_server(
+            writable_server_selector, _Op.TEST
+        )
+        pool = server.pool
+
+        with self.assertRaises(RuntimeError):
+            async with _BrokenSetupCheckout(client, server, None):
+                pass
+
+        # Connection was returned to pool, not leaked.
+        self.assertEqual(0, pool.active_sockets)
+
+    async def test_client_checkout_setup_failure_unpins_session(self):
+        # Verify that session._unpin() is called when an exception is raised
+        # during _ClientCheckout.__aenter__ after session._pin() has run (e.g.
+        # the auto-encryption wire-version check).
+        class _PinThenFailCheckout(_ClientCheckout):
+            def contribute_socket(self, conn, completed_handshake=True):
+                # Simulate session._pin() having already been called, then fail.
+                if self.session:
+                    self.session._pin(self._server, conn)
+                raise RuntimeError("simulated post-pin failure")
+
+        client = await self.async_rs_or_single_client()
+        server = await (await client._get_topology()).select_server(
+            writable_server_selector, _Op.TEST
+        )
+
+        async with client.start_session() as session:
+            await session.start_transaction()
+            with self.assertRaises(RuntimeError):
+                async with _PinThenFailCheckout(client, server, session):
+                    pass
+
+        # Session must be unpinned so future operations don't route to a stale
+        # server address or attempt a double-checkin through conn_mgr.
+        self.assertIsNone(session._transaction.pinned_address)
+        self.assertIsNone(session._transaction.conn_mgr)
 
     async def test_constants(self):
         """This test uses AsyncMongoClient explicitly to make sure that host and
