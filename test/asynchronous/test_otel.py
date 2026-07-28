@@ -29,7 +29,7 @@ import pymongo._otel as _otel
 from pymongo import _telemetry, common
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.typings import _Address
-from test.asynchronous import AsyncIntegrationTest, unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 
 _HAS_OTEL_TEST_DEPS = False
 if _otel._HAS_OPENTELEMETRY:
@@ -502,6 +502,48 @@ class TestOTelSpans(AsyncIntegrationTest):
         # never exceed the configured bound, even when a "..." marker is added.
         self.assertLessEqual(len(query_text), 200)
         self.assertNotIn("a" * 500, query_text)
+
+    @async_client_context.require_transactions
+    async def test_transaction_span_parents_operation_and_command_spans(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name].test
+        await coll.insert_one({"x": 1})
+        self.exporter.clear()
+
+        async with client.start_session() as session:
+            async with await session.start_transaction():
+                await coll.insert_one({"x": 2}, session=session)
+                await coll.insert_one({"x": 3}, session=session)
+
+        finished = self.exporter.get_finished_spans()
+        txn_span = next(s for s in finished if s.name == "transaction")
+        self.assertEqual(dict(txn_span.attributes), {"db.system.name": "mongodb"})
+
+        insert_op_spans = [s for s in finished if s.attributes.get("db.operation.name") == "insert"]
+        self.assertEqual(len(insert_op_spans), 2)
+        for op_span in insert_op_spans:
+            self.assertEqual(op_span.parent.span_id, txn_span.context.span_id)
+
+        commit_op_spans = [
+            s for s in finished if s.attributes.get("db.operation.name") == "commitTransaction"
+        ]
+        self.assertEqual(len(commit_op_spans), 1)
+        self.assertEqual(commit_op_spans[0].parent.span_id, txn_span.context.span_id)
+
+    @async_client_context.require_transactions
+    async def test_aborted_transaction_still_ends_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name].test
+        self.exporter.clear()
+
+        async with client.start_session() as session:
+            async with await session.start_transaction():
+                await coll.insert_one({"x": 4}, session=session)
+                await session.abort_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_span = next(s for s in finished if s.name == "transaction")
+        self.assertTrue(txn_span.end_time is not None)
 
 
 # TODO(PYTHON-5947): superseded once the unified test format's

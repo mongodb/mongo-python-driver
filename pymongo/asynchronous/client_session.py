@@ -156,7 +156,7 @@ from typing import (
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.timestamp import Timestamp
-from pymongo import _csot
+from pymongo import _csot, _otel
 from pymongo.asynchronous.cursor_base import _ConnectionManager
 from pymongo.errors import (
     ConfigurationError,
@@ -427,6 +427,7 @@ class _Transaction:
         self.attempt = 0
         self.client = client
         self.has_completed_command = False
+        self.span: Optional[Any] = None
 
     def active(self) -> bool:
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
@@ -467,6 +468,7 @@ class _Transaction:
         self.recovery_token = None
         self.attempt = 0
         self.has_completed_command = False
+        self.span = None
 
     def __del__(self) -> None:
         if self.conn_mgr:
@@ -864,6 +866,9 @@ class AsyncClientSession:
         )
         await self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
+        self._transaction.span = _otel.start_transaction_span(
+            self._transaction.client.options.tracing
+        )
         self._start_retryable_write()
         return _TransactionContext(self)
 
@@ -879,6 +884,8 @@ class AsyncClientSession:
         elif state in (_TxnState.STARTING, _TxnState.COMMITTED_EMPTY):
             # Server transaction was never started, no need to send a command.
             self._transaction.state = _TxnState.COMMITTED_EMPTY
+            _otel.end_transaction_span(self._transaction.span)
+            self._transaction.span = None
             return
         elif state is _TxnState.ABORTED:
             raise InvalidOperation("Cannot call commitTransaction after calling abortTransaction")
@@ -909,6 +916,8 @@ class AsyncClientSession:
             _reraise_with_unknown_commit(exc)
         finally:
             self._transaction.state = _TxnState.COMMITTED
+            _otel.end_transaction_span(self._transaction.span)
+            self._transaction.span = None
 
     async def abort_transaction(self) -> None:
         """Abort a multi-statement transaction.
@@ -923,6 +932,8 @@ class AsyncClientSession:
         elif state is _TxnState.STARTING:
             # Server transaction was never started, no need to send a command.
             self._transaction.state = _TxnState.ABORTED
+            _otel.end_transaction_span(self._transaction.span)
+            self._transaction.span = None
             return
         elif state is _TxnState.ABORTED:
             raise InvalidOperation("Cannot call abortTransaction twice")
@@ -936,6 +947,8 @@ class AsyncClientSession:
             pass
         finally:
             self._transaction.state = _TxnState.ABORTED
+            _otel.end_transaction_span(self._transaction.span)
+            self._transaction.span = None
             await self._unpin()
 
     async def _finish_transaction_with_retry(self, command_name: str) -> dict[str, Any]:
