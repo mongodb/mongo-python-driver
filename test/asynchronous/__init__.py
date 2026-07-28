@@ -53,6 +53,7 @@ from urllib.parse import quote_plus
 import pymongo
 import pymongo.errors
 from bson.son import SON
+from pymongo import _otel
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.common import partition_node
@@ -859,24 +860,41 @@ def get_loop() -> asyncio.AbstractEventLoop:
     return LOOP
 
 
+def _tracing_enabled_for_cleanup(client_kwargs) -> bool:
+    """Return True if a client created with ``client_kwargs`` is tracing-enabled.
+
+    Mirrors ``pymongo._otel._is_tracing_enabled``'s two ways a client ends up
+    tracing-enabled -- an explicit ``tracing={"enabled": True}`` kwarg, or the
+    ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable (see
+    e.g. test_otel.py's ``test_prose_1_tracing_enable_disable_via_env_var``,
+    which patches the env var around a client with no ``tracing=`` kwarg at
+    all) -- so the join-based cleanup below gets applied to every client that
+    can actually emit otel spans, without imposing its cost on the vast
+    majority of clients that can't. Reuses ``pymongo._otel``'s own
+    ``_OTEL_ENABLED_ENV``/``_env_truthy`` rather than re-parsing the env var,
+    so the test harness can't disagree with the driver about what "enabled"
+    means.
+
+    Must be called at client-creation time (when this decision is captured
+    into which cleanup callable gets registered), not deferred into the
+    cleanup itself: ``test_prose_1_.../test_prose_2_...`` patch the env var
+    only around client creation with ``patch.dict(...)``, so it is back to
+    its original value by the time cleanups run.
+    """
+    tracing_opts = client_kwargs.get("tracing")
+    if isinstance(tracing_opts, dict) and tracing_opts.get("enabled"):
+        return True
+    return _otel._env_truthy(_otel._OTEL_ENABLED_ENV)
+
+
 async def _close_and_join_monitors(client) -> None:
     """Close ``client`` and wait for its background monitors to actually stop.
 
-    Registered as every managed test client's cleanup (instead of a plain
-    ``client.close()``), unconditionally: a client can end up tracing-enabled
-    either via an explicit ``tracing={"enabled": True}`` kwarg *or* via the
-    ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable (see
-    e.g. test_otel.py's ``test_prose_1_tracing_enable_disable_via_env_var``),
-    and there is no cheap, reliable way to tell from the outside which one
-    applies -- so every managed client gets the safer cleanup rather than
-    gating on the kwarg alone and silently missing the env-var case. This was
-    verified not to meaningfully slow the broader suite (see the PYTHON-5947
-    commit message/task report for timing).
-
-    For a tracing-enabled client specifically, a monitor that is still
-    mid-flight when the next test starts can emit its own otel command span
-    (e.g. for a heartbeat cancelled by close()) onto the shared, process-wide
-    TracerProvider used by the otel test suite (see
+    Registered instead of a plain ``client.close()`` cleanup for
+    tracing-enabled test clients (see ``_tracing_enabled_for_cleanup``): a
+    monitor that is still mid-flight when the next test starts can emit its
+    own otel command span (e.g. for a heartbeat cancelled by close()) onto
+    the shared, process-wide TracerProvider used by the otel test suite (see
     test.unified_format_shared._shared_test_provider), landing in whichever
     other test's span-capture window happens to be open at that moment.
     ``client.close()`` alone does not prevent this:
@@ -1088,7 +1106,10 @@ class AsyncPyMongoTestCase(unittest.TestCase):
         client = AsyncMongoClient(uri, port, **client_options)
         if client._options.connect:
             await client.aconnect()
-        self.addAsyncCleanup(_close_and_join_monitors, client)
+        if _tracing_enabled_for_cleanup(client_options):
+            self.addAsyncCleanup(_close_and_join_monitors, client)
+        else:
+            self.addAsyncCleanup(client.close)
         return client
 
     @classmethod
@@ -1184,7 +1205,10 @@ class AsyncPyMongoTestCase(unittest.TestCase):
             client = AsyncMongoClient(**kwargs)
         else:
             client = AsyncMongoClient(h, p, **kwargs)
-        self.addAsyncCleanup(_close_and_join_monitors, client)
+        if _tracing_enabled_for_cleanup(kwargs):
+            self.addAsyncCleanup(_close_and_join_monitors, client)
+        else:
+            self.addAsyncCleanup(client.close)
         return client
 
     @classmethod
