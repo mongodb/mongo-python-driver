@@ -21,9 +21,10 @@ Kept separate from :mod:`pymongo._telemetry` so that module stays free of
 
 from __future__ import annotations
 
+import contextlib
 import os
 import traceback
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Iterator, Mapping, MutableMapping
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Optional, TypedDict
 
@@ -322,55 +323,112 @@ def end_command_span_failure(
 
 
 class _OperationSpanHandle:
-    """Bundles what start_operation_span hands back so callers can end the span correctly.
+    """Bundles an operation span with what's needed to end it later.
 
-    ``span`` is exposed directly so a transaction span can be looked up
-    (``handle.span``) and passed as another operation span's ``parent_span``.
+    ``_cm`` is the ``start_as_current_span`` context manager when the span was
+    made current at creation, or None in detached mode (see
+    ``start_operation_span``'s ``set_current``), where the span is made current
+    per-use by ``use_operation_span`` instead.
     """
 
-    __slots__ = ("_cm", "_name_token", "span")
+    __slots__ = ("_cm", "_name_token", "operation_name", "span")
 
-    def __init__(self, span: Span, cm: Any, name_token: Any) -> None:
+    def __init__(
+        self,
+        span: Span,
+        cm: Any,
+        name_token: Any,
+        operation_name: str,
+    ) -> None:
         self.span = span
         self._cm = cm
         self._name_token = name_token
+        self.operation_name = operation_name
 
 
 def start_operation_span(
     tracing_options: Optional[TracingOptions],
     operation: str,
     parent_span: Optional[Span],
+    dbname: Optional[str] = None,
+    collection: Optional[str] = None,
+    set_current: bool = True,
 ) -> Optional[_OperationSpanHandle]:
-    """Start (and make current) a CLIENT-kind span for one logical operation, or None.
+    """Start a CLIENT-kind span for one logical operation, or None.
 
-    Spans all retry attempts of one call to _retry_internal. Named
-    provisionally after the bare operation name -- dbname/collection aren't
-    known yet, since server selection hasn't happened -- and backfilled by
-    start_command_span once the first command inside it is built.
+    Spans all retry attempts of one call to _retry_internal. When ``dbname`` is
+    given, the spec-required ``db.namespace``/``db.operation.summary`` (and
+    ``db.collection.name``, when ``collection`` is given) are set immediately,
+    so an operation that fails before any command is ever built -- e.g. server
+    selection timing out -- still produces a conformant span.
+    ``start_command_span`` still backfills these from the real command once one
+    is built, overwriting these values with the authoritative ones.
 
     ``parent_span`` (the active transaction span, if any) becomes this span's
     *explicit* parent; it is deliberately not read from ambient context, to
     avoid a concurrently-running unrelated session's operations picking up
     this transaction by accident. Pass None outside of a transaction.
+
+    With ``set_current=False`` the span is created but not made current and the
+    operation-name contextvar is left alone -- for spans whose lifetime spans
+    several ``_retry_internal`` calls (cursor getMores), where the caller makes
+    it current per-call via ``use_operation_span``.
     """
     if not _is_tracing_enabled(tracing_options):
         return None
     assert _TRACER is not None  # _is_tracing_enabled already checked _HAS_OPENTELEMETRY
     context = trace.set_span_in_context(parent_span) if parent_span is not None else None
+    attributes: dict[str, Any] = {
+        "db.system.name": "mongodb",
+        "db.operation.name": operation,
+    }
+    name = operation
+    if dbname:
+        name = _build_query_summary(operation, dbname, collection)
+        attributes["db.namespace"] = dbname
+        attributes["db.operation.summary"] = name
+        if collection:
+            attributes["db.collection.name"] = collection
+    if not set_current:
+        span = _TRACER.start_span(
+            name, kind=SpanKind.CLIENT, context=context, attributes=attributes
+        )
+        return _OperationSpanHandle(span, None, None, operation)
     cm = _TRACER.start_as_current_span(
-        operation,
+        name,
         kind=SpanKind.CLIENT,
         context=context,
-        attributes={"db.system.name": "mongodb", "db.operation.name": operation},
+        attributes=attributes,
     )
     span = cm.__enter__()
     name_token = _CURRENT_OPERATION_NAME.set(operation)
-    return _OperationSpanHandle(span, cm, name_token)
+    return _OperationSpanHandle(span, cm, name_token, operation)
+
+
+@contextlib.contextmanager
+def use_operation_span(handle: Optional[_OperationSpanHandle]) -> Iterator[None]:
+    """Make a detached operation span current for the duration of the block.
+
+    Does not end the span -- the owner (e.g. a cursor, across all of its
+    getMore calls) ends it explicitly. A no-op when ``handle`` is None.
+    """
+    if handle is None:
+        yield
+        return
+    token = _CURRENT_OPERATION_NAME.set(handle.operation_name)
+    try:
+        with trace.use_span(handle.span, end_on_exit=False):
+            yield
+    finally:
+        _CURRENT_OPERATION_NAME.reset(token)
 
 
 def end_operation_span_success(handle: Optional[_OperationSpanHandle]) -> None:
     """End the operation span with no error status."""
     if handle is None:
+        return
+    if handle._cm is None:
+        handle.span.end()
         return
     _CURRENT_OPERATION_NAME.reset(handle._name_token)
     handle._cm.__exit__(None, None, None)
@@ -380,10 +438,13 @@ def end_operation_span_failure(handle: Optional[_OperationSpanHandle], exc: Base
     """Record the exception, set the error status, and end the operation span."""
     if handle is None:
         return
-    _CURRENT_OPERATION_NAME.reset(handle._name_token)
     handle.span.record_exception(exc)
     _set_exception_attributes(handle.span, exc)
     handle.span.set_status(Status(StatusCode.ERROR, description=str(exc)))
+    if handle._cm is None:
+        handle.span.end()
+        return
+    _CURRENT_OPERATION_NAME.reset(handle._name_token)
     handle._cm.__exit__(None, None, None)
 
 

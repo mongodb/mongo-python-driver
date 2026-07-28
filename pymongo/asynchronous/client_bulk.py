@@ -634,8 +634,8 @@ class _AsyncClientBulk:
             operation_telemetry = _OperationTelemetry(
                 self.client.options.tracing, operation, session
             )
-            if operation_telemetry._handle is not None:
-                span = operation_telemetry._handle.span
+            if operation_telemetry.handle is not None:
+                span = operation_telemetry.handle.span
                 summary = f"{operation_telemetry.operation_name} admin"
                 span.update_name(summary)
                 span.set_attribute("db.namespace", "admin")

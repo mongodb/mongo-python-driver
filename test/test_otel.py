@@ -27,6 +27,7 @@ import pytest
 
 import pymongo._otel as _otel
 from pymongo import _telemetry, common
+from pymongo._telemetry import _OperationTelemetry
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.operations import InsertOne
 from pymongo.typings import _Address
@@ -107,6 +108,70 @@ class TestOTelOperationSpanPrimitives(unittest.TestCase):
         self.assertEqual(_otel._CURRENT_OPERATION_NAME.get(), "find")
         _otel.end_operation_span_success(handle)
         self.assertIsNone(_otel._CURRENT_OPERATION_NAME.get())
+
+    def test_eager_dbname_and_collection_set_at_creation(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None, dbname="mydb", collection="mycoll")
+        self.assertIsNotNone(handle)
+        _otel.end_operation_span_success(handle)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "find mydb.mycoll")
+        self.assertEqual(span.attributes["db.namespace"], "mydb")
+        self.assertEqual(span.attributes["db.collection.name"], "mycoll")
+        self.assertEqual(span.attributes["db.operation.summary"], "find mydb.mycoll")
+        self.assertEqual(span.attributes["db.operation.name"], "find")
+
+    def test_eager_dbname_without_collection_omits_collection_attribute(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "listCollections", None, dbname="mydb")
+        _otel.end_operation_span_success(handle)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "listCollections mydb")
+        self.assertEqual(span.attributes["db.operation.summary"], "listCollections mydb")
+        self.assertNotIn("db.collection.name", span.attributes)
+
+    def test_no_eager_attributes_leaves_provisional_name(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None)
+        _otel.end_operation_span_success(handle)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "find")
+        self.assertNotIn("db.namespace", span.attributes)
+
+    def test_detached_span_is_not_current_until_used(self):
+        from opentelemetry import trace
+
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None, set_current=False)
+        self.assertIsNotNone(handle)
+        # Not current, and the operation-name contextvar is untouched.
+        self.assertIsNot(trace.get_current_span(), handle.span)
+        self.assertIsNone(_otel._CURRENT_OPERATION_NAME.get())
+        with _otel.use_operation_span(handle):
+            self.assertIs(trace.get_current_span(), handle.span)
+            self.assertEqual(_otel._CURRENT_OPERATION_NAME.get(), "find")
+        # Restored afterwards, and the span is still open (not ended).
+        self.assertIsNot(trace.get_current_span(), handle.span)
+        self.assertIsNone(_otel._CURRENT_OPERATION_NAME.get())
+        self.assertEqual(self.exporter.get_finished_spans(), ())
+        _otel.end_operation_span_success(handle)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "find")
+
+    def test_detached_span_reused_across_multiple_use_blocks(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None, set_current=False)
+        for _ in range(3):
+            with _otel.use_operation_span(handle):
+                pass
+        self.assertEqual(self.exporter.get_finished_spans(), ())
+        _otel.end_operation_span_success(handle)
+        self.assertEqual(len(self.exporter.get_finished_spans()), 1)
+
+    def test_use_operation_span_with_none_handle_is_noop(self):
+        with _otel.use_operation_span(None):
+            pass
+        self.assertEqual(self.exporter.get_finished_spans(), ())
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
@@ -226,6 +291,60 @@ class TestOperationTelemetry(unittest.TestCase):
         (span,) = self.exporter.get_finished_spans()
         self.assertEqual(span.name, "runCommand")
         self.assertEqual(span.attributes["db.operation.name"], "runCommand")
+
+
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
+class TestOperationTelemetryContextManager(unittest.TestCase):
+    """Unit tests for _OperationTelemetry's context-manager and detached modes."""
+
+    @classmethod
+    def setUpClass(cls):
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        cls.exporter = InMemorySpanExporter()
+        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    def setUp(self):
+        self.exporter.clear()
+
+    def test_context_manager_success_ends_span(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        with _OperationTelemetry(opts, "killCursors", None, dbname="mydb", collection="c"):
+            pass
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "killCursors mydb.c")
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+
+    def test_context_manager_failure_records_exception(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        with self.assertRaises(ValueError):
+            with _OperationTelemetry(opts, "killCursors", None, dbname="mydb"):
+                raise ValueError("boom")
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.attributes["exception.type"], "ValueError")
+
+    def test_context_manager_disabled_is_noop(self):
+        with _OperationTelemetry(None, "killCursors", None, dbname="mydb"):
+            pass
+        self.assertEqual(self.exporter.get_finished_spans(), ())
+
+    def test_detached_telemetry_use_makes_span_current(self):
+        from opentelemetry import trace
+
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        telemetry = _OperationTelemetry(
+            opts, "find", None, dbname="mydb", collection="c", set_current=False
+        )
+        self.assertIsNot(trace.get_current_span(), telemetry.handle.span)
+        with telemetry.use():
+            self.assertIs(trace.get_current_span(), telemetry.handle.span)
+        self.assertEqual(self.exporter.get_finished_spans(), ())
+        telemetry.succeeded()
+        self.assertEqual(len(self.exporter.get_finished_spans()), 1)
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")

@@ -281,11 +281,16 @@ class _OperationTelemetry:
     """One span-scoped context per logical operation (spanning all retry attempts).
 
     Construct once per call to ``_retry_internal``; call :meth:`succeeded` or
-    :meth:`failed` exactly once when the operation's outcome is known. A
-    no-op throughout when tracing is disabled.
+    :meth:`failed` exactly once when the operation's outcome is known, or use
+    it as a context manager to do so automatically. A no-op throughout when
+    tracing is disabled.
+
+    With ``set_current=False`` the span is not made current at construction --
+    for spans outliving one ``_retry_internal`` call (cursor getMores), where
+    each call makes it current via :meth:`use`.
     """
 
-    __slots__ = ("_handle", "operation_name")
+    __slots__ = ("handle", "operation_name")
 
     def __init__(
         self,
@@ -293,6 +298,9 @@ class _OperationTelemetry:
         operation: str,
         session: Optional[Any],
         is_run_command: bool = False,
+        dbname: Optional[str] = None,
+        collection: Optional[str] = None,
+        set_current: bool = True,
     ) -> None:
         parent_span = None
         if session is not None and session.in_transaction:
@@ -303,13 +311,33 @@ class _OperationTelemetry:
             name = _normalize_operation_name(operation)
             otel_operation = _OTEL_OPERATION_NAME_OVERRIDES.get(name, name)
         self.operation_name = otel_operation
-        self._handle = _otel.start_operation_span(tracing_options, otel_operation, parent_span)
+        self.handle = _otel.start_operation_span(
+            tracing_options,
+            otel_operation,
+            parent_span,
+            dbname=dbname,
+            collection=collection,
+            set_current=set_current,
+        )
+
+    def use(self) -> Any:
+        """Make this operation's span current for the duration of a block."""
+        return _otel.use_operation_span(self.handle)
 
     def succeeded(self) -> None:
-        _otel.end_operation_span_success(self._handle)
+        _otel.end_operation_span_success(self.handle)
 
     def failed(self, exc: BaseException) -> None:
-        _otel.end_operation_span_failure(self._handle, exc)
+        _otel.end_operation_span_failure(self.handle, exc)
+
+    def __enter__(self) -> _OperationTelemetry:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if exc_val is None:
+            self.succeeded()
+        else:
+            self.failed(exc_val)
 
 
 class _CmapTelemetry:
