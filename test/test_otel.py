@@ -195,6 +195,38 @@ class TestOperationTelemetry(unittest.TestCase):
         telemetry2.failed(RuntimeError("x"))  # must not raise
         self.assertEqual(self.exporter.get_finished_spans(), ())
 
+    def test_operation_name_normalizes_enum_operation(self):
+        # Regression test for PYTHON-5947 Finding #1: most _retry_internal
+        # call sites pass an `_Op` enum member (a `str`-mixin enum), not a
+        # plain string, as the `operation` argument. Python 3.11 changed
+        # `Enum.__format__` for `str`-mixin enums so that
+        # f"{_Op.INSERT}"/str(_Op.INSERT) produce "_Op.INSERT" instead of
+        # "insert" -- on 3.10 the same code happened to already produce the
+        # bare value, which is why this bug wasn't caught there. This test is
+        # meaningful (and must pass) on every supported Python version.
+        from pymongo.operations import _Op
+
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        telemetry = _telemetry._OperationTelemetry(opts, _Op.INSERT, None)
+        telemetry.succeeded()
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "insert")
+        self.assertEqual(span.attributes["db.operation.name"], "insert")
+        self.assertIs(type(span.attributes["db.operation.name"]), str)
+
+    def test_run_command_operation_name_override(self):
+        # Regression test for PYTHON-5947 Finding #2: Database.command()
+        # (is_run_command=True) must produce a "runCommand" operation span,
+        # per the OTel driver spec's span-name rule and db.namespace/
+        # db.collection.name examples, not one named after the specific
+        # command sent.
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        telemetry = _telemetry._OperationTelemetry(opts, "ping", None, is_run_command=True)
+        telemetry.succeeded()
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "runCommand")
+        self.assertEqual(span.attributes["db.operation.name"], "runCommand")
+
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
 class TestOTelSpans(IntegrationTest):
@@ -251,7 +283,16 @@ class TestOTelSpans(IntegrationTest):
             if s.attributes.get("db.operation.name") == "find"
         ]
         self.assertEqual(len(matching), 1)
-        self.assertEqual(matching[0].status.status_code, StatusCode.ERROR)
+        op_span = matching[0]
+        self.assertEqual(op_span.status.status_code, StatusCode.ERROR)
+        # The operation-span Exceptions section of the OTel spec requires the
+        # same exception.type/message/stacktrace *attributes* as the command
+        # span, not just the exception *event* that record_exception alone
+        # attaches (PYTHON-5947 Finding #4).
+        self.assertTrue(any(event.name == "exception" for event in op_span.events))
+        self.assertIn("exception.type", op_span.attributes)
+        self.assertIn("exception.message", op_span.attributes)
+        self.assertIn("exception.stacktrace", op_span.attributes)
 
     def test_span_created_for_get_more(self):
         client = self.rs_or_single_client(tracing={"enabled": True})
@@ -316,17 +357,22 @@ class TestOTelSpans(IntegrationTest):
         command_span_names = [s.name for s in self.spans() if "db.command.name" in s.attributes]
         self.assertNotIn("saslStart", command_span_names)
 
-        # TODO(PYTHON-5947): start_operation_span (pymongo/_otel.py) has no
-        # sensitivity check, unlike start_command_span -- the wrapping
-        # *operation* span is not suppressed and still carries the sensitive
-        # command's name (no payload leaks, just the bare command name and
-        # timing). This assertion pins the current (gap) behavior so it's
-        # tracked rather than silently uncovered; reassess for Task 9 whether
-        # the operation span should also be redacted/suppressed here.
-        operation_names = [
-            s.attributes.get("db.operation.name") for s in self.exporter.get_finished_spans()
-        ]
-        self.assertIn("saslStart", operation_names)
+        # The sensitive command name must never leak onto the wrapping
+        # *operation* span either: Database.command() always runs with
+        # is_run_command=True, so the operation span is named/attributed
+        # "runCommand" regardless of the actual (sensitive) command sent --
+        # the bare "saslStart" name never appears anywhere. The operation
+        # span must still carry its Required db.namespace/db.operation.summary
+        # attributes (backfilled before start_command_span's sensitive-command
+        # early return), even though the command itself produced no span.
+        finished = self.exporter.get_finished_spans()
+        operation_names = [s.attributes.get("db.operation.name") for s in finished]
+        self.assertNotIn("saslStart", operation_names)
+        self.assertIn("runCommand", operation_names)
+        op_span = next(s for s in finished if s.attributes.get("db.operation.name") == "runCommand")
+        self.assertEqual(op_span.name, "runCommand admin")
+        self.assertEqual(op_span.attributes["db.namespace"], "admin")
+        self.assertEqual(op_span.attributes["db.operation.summary"], "runCommand admin")
 
     def test_admin_command_omits_collection_name(self):
         # usersInfo's command value is a username string, not a collection, and
@@ -342,15 +388,38 @@ class TestOTelSpans(IntegrationTest):
         self.assertNotIn("db.collection.name", attrs)
         self.assertEqual(attrs["db.query.summary"], "usersInfo admin")
 
+    def test_database_command_produces_run_command_operation_span(self):
+        # Regression test for PYTHON-5947 Finding #2 (live): the OTel driver
+        # spec names "runCommand" as the driver-operation name for any
+        # operation reached via the generic Database.command() API, so
+        # c.admin.command("ping") must produce an operation span named
+        # "runCommand admin" with db.operation.name="runCommand" -- not one
+        # named "ping"/"ping admin".
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        client.admin.command("ping")
+
+        finished = self.exporter.get_finished_spans()
+        matching = [s for s in finished if s.attributes.get("db.operation.name") == "runCommand"]
+        self.assertEqual(len(matching), 1)
+        op_span = matching[0]
+        self.assertEqual(op_span.name, "runCommand admin")
+        self.assertEqual(op_span.attributes["db.namespace"], "admin")
+        # The wire-level command span is unaffected -- it's still named/attributed
+        # after the actual command sent.
+        cmd_spans = [s for s in finished if s.attributes.get("db.command.name") == "ping"]
+        self.assertEqual(len(cmd_spans), 1)
+        self.assertEqual(cmd_spans[0].name, "ping")
+
     def test_failure_records_exception_and_status_code(self):
         client = self.rs_or_single_client(tracing={"enabled": True})
         self.exporter.clear()
         with self.assertRaises(OperationFailure):
             client[self.db.name].command("thisCommandDoesNotExist")
 
-        # TODO(PYTHON-5947): now that operation spans wrap command spans, this
-        # also produces an ERROR-status operation span alongside the command
-        # span; narrow to the command span specifically (it alone carries
+        # Operation spans wrap command spans, so this also produces an
+        # ERROR-status operation span alongside the command span; narrow to
+        # the command span specifically (it alone carries
         # db.response.status_code) rather than asserting there's only one span.
         spans = [s for s in self.spans() if "db.response.status_code" in s.attributes]
         self.assertEqual(len(spans), 1)
@@ -384,9 +453,11 @@ class TestOTelSpans(IntegrationTest):
         # Disambiguate the command span (db.command.name) from the operation
         # span (db.operation.name) that wraps it -- start_command_span renames
         # the operation span in place once the command runs, so span.name
-        # alone can't tell them apart, but these attributes can.
+        # alone can't tell them apart, but these attributes can. The operation
+        # span reads "runCommand" (not "ping"): Database.command() always runs
+        # with is_run_command=True, per the OTel spec's runCommand naming rule.
         self.assertIn("ping", [s.attributes.get("db.command.name") for s in finished])
-        self.assertIn("ping", [s.attributes.get("db.operation.name") for s in finished])
+        self.assertIn("runCommand", [s.attributes.get("db.operation.name") for s in finished])
 
     def test_prose_2_command_payload_emission_via_env_var(self):
         """Prose Test 2: Command Payload Emission via Environment Variable."""
@@ -579,9 +650,12 @@ class TestOTelSpans(IntegrationTest):
         self.assertEqual(matching[0].attributes["db.namespace"], "admin")
 
 
-# TODO(PYTHON-5947): superseded once the unified test format's
-# expectTracingMessages/observeTracingMessages tests exercise this validator
-# indirectly through real client construction; remove this class then.
+# The unified test format's expectTracingMessages/observeTracingMessages
+# tests (test_open_telemetry_unified.py) now exercise this validator
+# indirectly through real client construction, but these direct unit tests
+# are kept for the validator's edge cases (rejection paths, the explicit-zero
+# vs. unset distinction for query_text_max_length) that aren't necessarily
+# covered by the vendored fixtures.
 class TestValidateTracingOrNone(unittest.TestCase):
     def test_none(self):
         self.assertIsNone(common.validate_tracing_or_none("tracing", None))

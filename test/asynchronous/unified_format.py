@@ -664,11 +664,18 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             self.skipTest("PyMongo does not support the symbol type")
         if "timeoutms applied to entire download" in description:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
+        # Removed API: PyMongo no longer exposes map_reduce/inline_map_reduce at
+        # all (mapReduce is deprecated server-side), so there's no code path left
+        # that could send this command -- this operation can never be exercised.
         if class_name == "testoperationmapreduce" and description == "mapreduce":
             self.skipTest(
                 "PyMongo removed the map_reduce/inline_map_reduce Collection methods "
                 "(mapReduce is deprecated server-side); this operation cannot be exercised"
             )
+        # Not a removed-API gap like the above: this is a genuine fixture-vs-driver
+        # divergence. PyMongo *can* run this update, it just always sends explicit
+        # multi/upsert fields (even at their default False value), which the
+        # vendored fixture's db.query.text $$matchAsRoot assertion doesn't allow for.
         if class_name == "testoperationupdate" and description == "update one element":
             self.skipTest(
                 "PyMongo always sends explicit multi/upsert fields in the update "
