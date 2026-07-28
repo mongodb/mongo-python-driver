@@ -499,6 +499,41 @@ class TestOTelSpans(AsyncIntegrationTest):
         for cmd_span in getmore_cmd_spans:
             self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
 
+    async def test_aggregate_getmores_nest_under_one_operation_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.agg_nesting
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(10)])
+        self.exporter.clear()
+
+        docs = await (await coll.aggregate([{"$match": {}}], batchSize=2)).to_list()
+        self.assertEqual(len(docs), 10)
+
+        finished = self.exporter.get_finished_spans()
+        agg_op_spans = [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == "aggregate"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(agg_op_spans), 1, [s.name for s in finished])
+        op_span = agg_op_spans[0]
+
+        getmore_op_spans = [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == "getMore"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(getmore_op_spans, [])
+
+        getmore_cmd_spans = [
+            s for s in finished if s.attributes.get("db.command.name") == "getMore"
+        ]
+        self.assertGreater(len(getmore_cmd_spans), 1)
+        for cmd_span in getmore_cmd_spans:
+            self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
+
     async def test_abandoned_cursor_still_ends_operation_span(self):
         import gc
 

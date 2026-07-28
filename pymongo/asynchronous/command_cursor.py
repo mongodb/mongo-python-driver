@@ -173,9 +173,13 @@ class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
         client = self._collection.database.client
         try:
             response = await client._run_operation(
-                operation, self._run_with_conn, address=self._address
+                operation,
+                self._run_with_conn,
+                address=self._address,
+                operation_telemetry=self._operation_telemetry,
             )
         except OperationFailure as exc:
+            self._end_operation_telemetry(exc)
             if exc.code in _CURSOR_CLOSED_ERRORS:
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
@@ -185,13 +189,15 @@ class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
                 # Return the session and pinned connection, if necessary.
                 await self.close()
             raise
-        except ConnectionFailure:
+        except ConnectionFailure as exc:
+            self._end_operation_telemetry(exc)
             # Don't send killCursors because the cursor is already closed.
             self._killed = True
             # Return the session and pinned connection, if necessary.
             await self.close()
             raise
-        except Exception:
+        except Exception as exc:
+            self._end_operation_telemetry(exc)
             await self.close()
             raise
 

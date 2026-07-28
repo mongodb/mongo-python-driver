@@ -2486,16 +2486,32 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         admin = self._database_default_options("admin")
-        res = await admin._retryable_read_command(
-            cmd, session=session, operation=_Op.LIST_DATABASES
+        operation_telemetry = _OperationTelemetry(
+            self.options.tracing,
+            _Op.LIST_DATABASES,
+            session,
+            dbname="admin",
+            set_current=False,
         )
+        try:
+            res = await admin._retryable_read_command(
+                cmd,
+                session=session,
+                operation=_Op.LIST_DATABASES,
+                operation_telemetry=operation_telemetry,
+            )
+        except BaseException as exc:
+            operation_telemetry.failed(exc)
+            raise
         # listDatabases doesn't return a cursor (yet). Fake one.
         cursor = {
             "id": 0,
             "firstBatch": res["databases"],
             "ns": "admin.$cmd",
         }
-        return AsyncCommandCursor(admin["$cmd"], cursor, None, comment=comment)
+        cmd_cursor = AsyncCommandCursor(admin["$cmd"], cursor, None, comment=comment)
+        cmd_cursor._operation_telemetry = operation_telemetry
+        return cmd_cursor
 
     async def list_databases(
         self,

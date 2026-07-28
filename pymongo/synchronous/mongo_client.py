@@ -2479,14 +2479,32 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         admin = self._database_default_options("admin")
-        res = admin._retryable_read_command(cmd, session=session, operation=_Op.LIST_DATABASES)
+        operation_telemetry = _OperationTelemetry(
+            self.options.tracing,
+            _Op.LIST_DATABASES,
+            session,
+            dbname="admin",
+            set_current=False,
+        )
+        try:
+            res = admin._retryable_read_command(
+                cmd,
+                session=session,
+                operation=_Op.LIST_DATABASES,
+                operation_telemetry=operation_telemetry,
+            )
+        except BaseException as exc:
+            operation_telemetry.failed(exc)
+            raise
         # listDatabases doesn't return a cursor (yet). Fake one.
         cursor = {
             "id": 0,
             "firstBatch": res["databases"],
             "ns": "admin.$cmd",
         }
-        return CommandCursor(admin["$cmd"], cursor, None, comment=comment)
+        cmd_cursor = CommandCursor(admin["$cmd"], cursor, None, comment=comment)
+        cmd_cursor._operation_telemetry = operation_telemetry
+        return cmd_cursor
 
     def list_databases(
         self,

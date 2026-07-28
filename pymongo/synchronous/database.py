@@ -33,6 +33,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
+from pymongo._telemetry import _OperationTelemetry
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.database_shared import _check_name, _CodecDocumentType
 from pymongo.errors import CollectionInvalid, InvalidOperation
@@ -708,14 +709,28 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 kwargs,
                 user_fields={"cursor": {"firstBatch": 1}},
             )
-            return self.client._retryable_read(
-                cmd.get_cursor,
-                cmd.get_read_preference(s),  # type: ignore[arg-type]
+            operation_telemetry = _OperationTelemetry(
+                self.client.options.tracing,
+                _Op.AGGREGATE,
                 s,
-                retryable=not cmd._performs_write,
-                operation=_Op.AGGREGATE,
                 dbname=self.name,
+                set_current=False,
             )
+            try:
+                cmd_cursor: CommandCursor[_DocumentType] = self.client._retryable_read(
+                    cmd.get_cursor,
+                    cmd.get_read_preference(s),  # type: ignore[arg-type]
+                    s,
+                    retryable=not cmd._performs_write,
+                    operation=_Op.AGGREGATE,
+                    dbname=self.name,
+                    operation_telemetry=operation_telemetry,
+                )
+            except BaseException as exc:
+                operation_telemetry.failed(exc)
+                raise
+            cmd_cursor._operation_telemetry = operation_telemetry
+            return cmd_cursor
 
     @overload
     def _command(
@@ -1059,21 +1074,36 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
 
-            return self.client._retryable_read(
-                inner,
-                read_preference,
-                tmp_session,
+            operation_telemetry = _OperationTelemetry(
+                self.client.options.tracing,
                 command_name,
-                None,
-                False,
+                tmp_session,
                 dbname=self.name,
+                set_current=False,
             )
+            try:
+                cmd_cursor = self.client._retryable_read(
+                    inner,
+                    read_preference,
+                    tmp_session,
+                    command_name,
+                    None,
+                    False,
+                    dbname=self.name,
+                    operation_telemetry=operation_telemetry,
+                )
+            except BaseException as exc:
+                operation_telemetry.failed(exc)
+                raise
+            cmd_cursor._operation_telemetry = operation_telemetry
+            return cmd_cursor
 
     def _retryable_read_command(
         self,
         command: Union[str, MutableMapping[str, Any]],
         operation: str,
         session: Optional[ClientSession] = None,
+        operation_telemetry: Optional[_OperationTelemetry] = None,
     ) -> dict[str, Any]:
         """Same as command but used for retryable read commands."""
         read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
@@ -1092,7 +1122,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             )
 
         return self._client._retryable_read(
-            _cmd, read_preference, session, operation, dbname=self.name
+            _cmd,
+            read_preference,
+            session,
+            operation,
+            dbname=self.name,
+            operation_telemetry=operation_telemetry,
         )
 
     def _list_collections(
@@ -1163,9 +1198,27 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ) -> CommandCursor[MutableMapping[str, Any]]:
             return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
-        return self._client._retryable_read(
-            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS, dbname=self.name
+        operation_telemetry = _OperationTelemetry(
+            self._client.options.tracing,
+            _Op.LIST_COLLECTIONS,
+            session,
+            dbname=self.name,
+            set_current=False,
         )
+        try:
+            cmd_cursor = self._client._retryable_read(
+                _cmd,
+                read_pref,
+                session,
+                operation=_Op.LIST_COLLECTIONS,
+                dbname=self.name,
+                operation_telemetry=operation_telemetry,
+            )
+        except BaseException as exc:
+            operation_telemetry.failed(exc)
+            raise
+        cmd_cursor._operation_telemetry = operation_telemetry
+        return cmd_cursor
 
     def list_collections(
         self,

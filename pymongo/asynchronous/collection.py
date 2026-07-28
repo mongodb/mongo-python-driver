@@ -38,6 +38,7 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import ASCENDING, _csot, common, helpers_shared, message
+from pymongo._telemetry import _OperationTelemetry
 from pymongo.asynchronous.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
@@ -2614,14 +2615,29 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             return cmd_cursor
 
         async with self._database.client._tmp_session(session) as s:
-            return await self._database.client._retryable_read(
-                _cmd,
-                read_pref,
+            operation_telemetry = _OperationTelemetry(
+                self._database.client.options.tracing,
+                _Op.LIST_INDEXES,
                 s,
-                operation=_Op.LIST_INDEXES,
                 dbname=self._database.name,
                 collection=self._name,
+                set_current=False,
             )
+            try:
+                cmd_cursor = await self._database.client._retryable_read(
+                    _cmd,
+                    read_pref,
+                    s,
+                    operation=_Op.LIST_INDEXES,
+                    dbname=self._database.name,
+                    collection=self._name,
+                    operation_telemetry=operation_telemetry,
+                )
+            except BaseException as exc:
+                operation_telemetry.failed(exc)
+                raise
+            cmd_cursor._operation_telemetry = operation_telemetry
+            return cmd_cursor
 
     async def index_information(
         self,
@@ -2718,15 +2734,32 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return await self._database.client._retryable_read(
-            cmd.get_cursor,
-            cmd.get_read_preference(session),  # type: ignore[arg-type]
+        operation_telemetry = _OperationTelemetry(
+            self._database.client.options.tracing,
+            _Op.LIST_SEARCH_INDEX,
             session,
-            retryable=not cmd._performs_write,
-            operation=_Op.LIST_SEARCH_INDEX,
             dbname=self._database.name,
             collection=self.name,
+            set_current=False,
         )
+        try:
+            cmd_cursor: AsyncCommandCursor[
+                Mapping[str, Any]
+            ] = await self._database.client._retryable_read(
+                cmd.get_cursor,
+                cmd.get_read_preference(session),  # type: ignore[arg-type]
+                session,
+                retryable=not cmd._performs_write,
+                operation=_Op.LIST_SEARCH_INDEX,
+                dbname=self._database.name,
+                collection=self.name,
+                operation_telemetry=operation_telemetry,
+            )
+        except BaseException as exc:
+            operation_telemetry.failed(exc)
+            raise
+        cmd_cursor._operation_telemetry = operation_telemetry
+        return cmd_cursor
 
     async def create_search_index(
         self,
@@ -2988,16 +3021,33 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return await self._database.client._retryable_read(
-            cmd.get_cursor,
-            cmd.get_read_preference(session),  # type: ignore[arg-type]
+        operation_telemetry = _OperationTelemetry(
+            self._database.client.options.tracing,
+            _Op.AGGREGATE,
             session,
-            retryable=not cmd._performs_write,
-            operation=_Op.AGGREGATE,
-            is_aggregate_write=cmd._performs_write,
             dbname=self._database.name,
             collection=self._name,
+            set_current=False,
         )
+        try:
+            cmd_cursor: AsyncCommandCursor[
+                _DocumentType
+            ] = await self._database.client._retryable_read(
+                cmd.get_cursor,
+                cmd.get_read_preference(session),  # type: ignore[arg-type]
+                session,
+                retryable=not cmd._performs_write,
+                operation=_Op.AGGREGATE,
+                is_aggregate_write=cmd._performs_write,
+                dbname=self._database.name,
+                collection=self._name,
+                operation_telemetry=operation_telemetry,
+            )
+        except BaseException as exc:
+            operation_telemetry.failed(exc)
+            raise
+        cmd_cursor._operation_telemetry = operation_telemetry
+        return cmd_cursor
 
     async def aggregate(
         self,
