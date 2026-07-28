@@ -237,22 +237,22 @@ class ChangeStream(Generic[_DocumentType]):
                     )
 
     def _target_namespace(self) -> tuple[Optional[str], Optional[str]]:
-        """Return (dbname, collection) for the watched target, for span attributes.
+        """Return (dbname, collection) for the watched target, for span attributes."""
+        # Imported here rather than at module scope: collection.py/database.py
+        # import this module, so a module-scope import would be circular. By
+        # call time both modules are fully loaded. isinstance is used instead of
+        # attribute probing because Database.__getattr__ synthesizes a
+        # collection for any unknown attribute name, so getattr(target,
+        # "database", ...) returns a phantom Collection for a database
+        # target rather than None.
+        from pymongo.synchronous.collection import Collection
+        from pymongo.synchronous.database import Database
 
-        The target is a Collection, a Database, or (for
-        ClusterChangeStream) a Database (``client.admin``).
-        Importing Collection/Database at module scope here would be
-        circular (collection.py and database.py both import from this module
-        at module scope), so probe for the distinguishing attribute instead of
-        using isinstance.
-        """
         target = self._target
-        database = getattr(target, "database", None)
-        if database is not None:  # a Collection
-            return database.name, target.name
-        name = getattr(target, "name", None)
-        if name is not None:  # a Database
-            return name, None
+        if isinstance(target, Collection):
+            return target.database.name, target.name
+        if isinstance(target, Database):
+            return target.name, None
         return None, None
 
     def _run_aggregation_cmd(self, session: Optional[ClientSession]) -> CommandCursor:  # type: ignore[type-arg]

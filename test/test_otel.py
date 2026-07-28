@@ -872,6 +872,57 @@ class TestOTelSpans(IntegrationTest):
                 self.assertEqual(span.attributes["db.operation.summary"], expected_name)
                 self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
 
+    def _aggregate_operation_span(self):
+        matching = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "aggregate"
+        ]
+        self.assertEqual(len(matching), 1)
+        return matching[0]
+
+    @client_context.require_version_min(4, 2, 0)
+    @client_context.require_change_streams
+    def test_change_stream_collection_level_operation_span_has_full_namespace(self):
+        # ChangeStream._target_namespace must recognize a Collection
+        # target via isinstance, not via attribute-probing: Database's
+        # __getattr__ synthesizes a collection for any unknown attribute name
+        # (including "database"), so a naive getattr(target, "database", None)
+        # probe misidentifies a database/cluster target as a collection.
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test
+        coll = db.test_otel_change_stream_coll
+        coll.drop()
+        self.exporter.clear()
+        with coll.watch():
+            pass
+        span = self._aggregate_operation_span()
+        self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
+        self.assertEqual(span.attributes["db.collection.name"], "test_otel_change_stream_coll")
+
+    @client_context.require_version_min(4, 2, 0)
+    @client_context.require_change_streams
+    def test_change_stream_database_level_operation_span_omits_collection_name(self):
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test
+        self.exporter.clear()
+        with db.watch():
+            pass
+        span = self._aggregate_operation_span()
+        self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
+        self.assertNotIn("db.collection.name", span.attributes)
+
+    @client_context.require_version_min(4, 2, 0)
+    @client_context.require_change_streams
+    def test_change_stream_cluster_level_operation_span_targets_admin(self):
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        with client.watch():
+            pass
+        span = self._aggregate_operation_span()
+        self.assertEqual(span.attributes["db.namespace"], "admin")
+        self.assertNotIn("db.collection.name", span.attributes)
+
 
 # The unified test format's expectTracingMessages/observeTracingMessages
 # tests (test_open_telemetry_unified.py) now exercise this validator

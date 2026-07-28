@@ -237,22 +237,22 @@ class AsyncChangeStream(Generic[_DocumentType]):
                     )
 
     def _target_namespace(self) -> tuple[Optional[str], Optional[str]]:
-        """Return (dbname, collection) for the watched target, for span attributes.
+        """Return (dbname, collection) for the watched target, for span attributes."""
+        # Imported here rather than at module scope: collection.py/database.py
+        # import this module, so a module-scope import would be circular. By
+        # call time both modules are fully loaded. isinstance is used instead of
+        # attribute probing because AsyncDatabase.__getattr__ synthesizes a
+        # collection for any unknown attribute name, so getattr(target,
+        # "database", ...) returns a phantom AsyncCollection for a database
+        # target rather than None.
+        from pymongo.asynchronous.collection import AsyncCollection
+        from pymongo.asynchronous.database import AsyncDatabase
 
-        The target is an AsyncCollection, an AsyncDatabase, or (for
-        AsyncClusterChangeStream) an AsyncDatabase (``client.admin``).
-        Importing AsyncCollection/AsyncDatabase at module scope here would be
-        circular (collection.py and database.py both import from this module
-        at module scope), so probe for the distinguishing attribute instead of
-        using isinstance.
-        """
         target = self._target
-        database = getattr(target, "database", None)
-        if database is not None:  # an AsyncCollection
-            return database.name, target.name
-        name = getattr(target, "name", None)
-        if name is not None:  # an AsyncDatabase
-            return name, None
+        if isinstance(target, AsyncCollection):
+            return target.database.name, target.name
+        if isinstance(target, AsyncDatabase):
+            return target.name, None
         return None, None
 
     async def _run_aggregation_cmd(

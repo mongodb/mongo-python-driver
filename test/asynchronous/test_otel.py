@@ -876,6 +876,57 @@ class TestOTelSpans(AsyncIntegrationTest):
                 self.assertEqual(span.attributes["db.operation.summary"], expected_name)
                 self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
 
+    def _aggregate_operation_span(self):
+        matching = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "aggregate"
+        ]
+        self.assertEqual(len(matching), 1)
+        return matching[0]
+
+    @async_client_context.require_version_min(4, 2, 0)
+    @async_client_context.require_change_streams
+    async def test_change_stream_collection_level_operation_span_has_full_namespace(self):
+        # AsyncChangeStream._target_namespace must recognize an AsyncCollection
+        # target via isinstance, not via attribute-probing: AsyncDatabase's
+        # __getattr__ synthesizes a collection for any unknown attribute name
+        # (including "database"), so a naive getattr(target, "database", None)
+        # probe misidentifies a database/cluster target as a collection.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test
+        coll = db.test_otel_change_stream_coll
+        await coll.drop()
+        self.exporter.clear()
+        async with await coll.watch():
+            pass
+        span = self._aggregate_operation_span()
+        self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
+        self.assertEqual(span.attributes["db.collection.name"], "test_otel_change_stream_coll")
+
+    @async_client_context.require_version_min(4, 2, 0)
+    @async_client_context.require_change_streams
+    async def test_change_stream_database_level_operation_span_omits_collection_name(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test
+        self.exporter.clear()
+        async with await db.watch():
+            pass
+        span = self._aggregate_operation_span()
+        self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
+        self.assertNotIn("db.collection.name", span.attributes)
+
+    @async_client_context.require_version_min(4, 2, 0)
+    @async_client_context.require_change_streams
+    async def test_change_stream_cluster_level_operation_span_targets_admin(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        async with await client.watch():
+            pass
+        span = self._aggregate_operation_span()
+        self.assertEqual(span.attributes["db.namespace"], "admin")
+        self.assertNotIn("db.collection.name", span.attributes)
+
 
 # The unified test format's expectTracingMessages/observeTracingMessages
 # tests (test_open_telemetry_unified.py) now exercise this validator
