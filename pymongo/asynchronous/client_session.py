@@ -777,6 +777,22 @@ class AsyncClientSession:
         .. _transactions specification:
             https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback
         """
+        if self._with_transaction_span is not None:
+            # Guard against a callback illegally re-entering with_transaction()
+            # on this same session (already unsupported -- the callback "should
+            # not attempt to start new transactions", and sessions are "not
+            # thread-safe or fork-safe"). Without this check, the inner call's
+            # own span bookkeeping below would overwrite, and then null,
+            # self._with_transaction_span/self._transaction.span out from under
+            # the outer call, leaking the outer call's "transaction" span (it
+            # would end up completely unreferenced, never ended). Raising here,
+            # before touching any shared state, turns that silent leak into an
+            # immediate, clear error instead.
+            raise InvalidOperation(
+                "Cannot call with_transaction() while a previous with_transaction() "
+                "call on this session has not returned -- sessions do not support "
+                "nested or concurrent with_transaction() calls"
+            )
         # One "transaction" span shared across every retry of this whole
         # logical with_transaction() call -- start_transaction reuses it
         # instead of creating a new one (see its "if self._with_transaction_span

@@ -31,6 +31,7 @@ from pymongo._telemetry import _OperationTelemetry
 from pymongo.errors import (
     ClientBulkWriteException,
     ConfigurationError,
+    InvalidOperation,
     OperationFailure,
     ServerSelectionTimeoutError,
 )
@@ -853,7 +854,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertTrue(txn_span.end_time is not None)
 
     @async_client_context.require_transactions
-    async def test_retried_commit_ends_span_exactly_once(self):
+    async def test_direct_commit_retry_gives_each_span_its_own_end(self):
         # Explicitly retrying a successful commit moves the transaction state
         # COMMITTED -> IN_PROGRESS -> (back through the try/finally) ->
         # COMMITTED again. The prior attempt's span was already ended and
@@ -923,6 +924,38 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(len(insert_op_spans), 2)
         for op_span in insert_op_spans:
             self.assertEqual(op_span.parent.span_id, txn_spans[0].context.span_id)
+
+    @async_client_context.require_transactions
+    async def test_reentrant_with_transaction_raises_and_does_not_leak_span(self):
+        # A callback that illegally re-enters with_transaction() on the same
+        # session must be rejected with a clear InvalidOperation, and the
+        # outer call's "transaction" span must still end exactly once --
+        # never leaked (created but never ended) and never double-ended.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.reentrant_with_txn
+        await coll.drop()
+        await client.pymongo_test.create_collection("reentrant_with_txn")
+
+        async def inner_callback(session):
+            await coll.insert_one({"x": 1}, session=session)
+
+        async def outer_callback(session):
+            await coll.insert_one({"x": 2}, session=session)
+            # Illegal: with_transaction() is not reentrant on one session.
+            await session.with_transaction(inner_callback)
+
+        self.exporter.clear()
+        async with client.start_session() as session:
+            with self.assertRaises(InvalidOperation):
+                await session.with_transaction(outer_callback)
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        # Only the outer call ever gets far enough to create a span -- the
+        # guard rejects the inner call before it creates one of its own.
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        for txn_span in txn_spans:
+            self.assertIsNotNone(txn_span.end_time)
 
     @async_client_context.require_transactions
     async def test_retried_commit_has_a_transaction_span(self):
