@@ -460,6 +460,67 @@ class TestOTelSpans(AsyncIntegrationTest):
             self.assertEqual(span.attributes["db.collection.name"], "test_otel_getmore")
             self.assertEqual(span.attributes["db.command.name"], "getMore")
 
+    async def test_find_getmores_nest_under_one_operation_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.getmore_nesting
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(10)])
+        self.exporter.clear()
+
+        docs = await coll.find({}, batch_size=2).to_list()
+        self.assertEqual(len(docs), 10)
+
+        finished = self.exporter.get_finished_spans()
+        # Exactly one operation span for the whole cursor.
+        find_op_spans = [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == "find"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(find_op_spans), 1, [s.name for s in finished])
+        op_span = find_op_spans[0]
+        self.assertEqual(op_span.name, "find pymongo_test.getmore_nesting")
+
+        # No getMore *operation* spans at all.
+        getmore_op_spans = [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == "getMore"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(getmore_op_spans, [])
+
+        # Every getMore *command* span is a child of that one operation span.
+        getmore_cmd_spans = [
+            s for s in finished if s.attributes.get("db.command.name") == "getMore"
+        ]
+        self.assertGreater(len(getmore_cmd_spans), 1)
+        for cmd_span in getmore_cmd_spans:
+            self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
+
+    async def test_abandoned_cursor_still_ends_operation_span(self):
+        import gc
+
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.getmore_abandoned
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(10)])
+        self.exporter.clear()
+
+        cursor = coll.find({}, batch_size=2)
+        await cursor.next()  # Leaves the cursor open with batches pending.
+        del cursor
+        gc.collect()
+
+        find_op_spans = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "find"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(find_op_spans), 1)
+
     async def test_explain_retains_collection_name(self):
         # explain wraps the real command ({"explain": {"find": "coll", ...}}), the
         # same shape as getMore's indirection, so it needs the same handling.

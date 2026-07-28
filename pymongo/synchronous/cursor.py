@@ -34,6 +34,7 @@ from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers_shared
+from pymongo._telemetry import _OperationTelemetry
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
@@ -977,8 +978,14 @@ class Cursor(_CursorBase[_DocumentType]):
             raise InvalidOperation("exhaust cursors do not support auto encryption")
 
         try:
-            response = client._run_operation(operation, self._run_with_conn, address=self._address)
+            response = client._run_operation(
+                operation,
+                self._run_with_conn,
+                address=self._address,
+                operation_telemetry=self._operation_telemetry,
+            )
         except OperationFailure as exc:
+            self._end_operation_telemetry(exc)
             if exc.code in _CURSOR_CLOSED_ERRORS or self._exhaust:
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
@@ -996,12 +1003,14 @@ class Cursor(_CursorBase[_DocumentType]):
             ):
                 return
             raise
-        except ConnectionFailure:
+        except ConnectionFailure as exc:
+            self._end_operation_telemetry(exc)
             self._killed = True
             self.close()
             raise
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException:
+        except BaseException as exc:
+            self._end_operation_telemetry(exc)
             self.close()
             raise
         self._address = response.address
@@ -1073,6 +1082,15 @@ class Cursor(_CursorBase[_DocumentType]):
                 self._collection.database.client,
                 self._allow_disk_use,
                 self._exhaust,
+            )
+            client = self._collection.database.client
+            self._operation_telemetry = _OperationTelemetry(
+                client.options.tracing,
+                q.name,
+                self._session,
+                dbname=self._collection.database.name,
+                collection=self._collection.name,
+                set_current=False,
             )
             self._send_message(q)
         elif self._id:  # Get More
