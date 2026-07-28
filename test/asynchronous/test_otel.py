@@ -28,8 +28,9 @@ import pytest
 import pymongo._otel as _otel
 from pymongo import _telemetry, common
 from pymongo._telemetry import _OperationTelemetry
-from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.errors import ConfigurationError, OperationFailure, ServerSelectionTimeoutError
 from pymongo.operations import InsertOne
+from pymongo.read_preferences import ReadPreference
 from pymongo.typings import _Address
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.unified_format_shared import _shared_test_provider
@@ -801,6 +802,59 @@ class TestOTelSpans(AsyncIntegrationTest):
         ]
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0].attributes["db.namespace"], "admin")
+
+    async def test_operation_span_has_namespace_when_no_command_is_sent(self):
+        # An operation that fails during server selection never builds a
+        # command, so the lazy backfill never runs -- the eagerly-set
+        # namespace/summary attributes are the only ones it will ever have.
+        client = await self.async_rs_or_single_client(
+            "mongodb://localhost:1/",
+            tracing={"enabled": True},
+            serverSelectionTimeoutMS=10,
+            connect=False,
+        )
+        self.exporter.clear()
+        with self.assertRaises(ServerSelectionTimeoutError):
+            await client.mydb.mycoll.find_one({})
+        (span,) = [s for s in self.exporter.get_finished_spans() if s.name.startswith("find")]
+        self.assertEqual(span.name, "find mydb.mycoll")
+        self.assertEqual(span.attributes["db.namespace"], "mydb")
+        self.assertEqual(span.attributes["db.collection.name"], "mycoll")
+        self.assertEqual(span.attributes["db.operation.summary"], "find mydb.mycoll")
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+    async def test_caller_owned_operation_telemetry_is_not_ended_by_retry_internal(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        telemetry = _OperationTelemetry(
+            client.options.tracing,
+            "find",
+            None,
+            dbname="mydb",
+            collection="c",
+            set_current=False,
+        )
+        self.exporter.clear()
+
+        async def _noop_read(_session, _server, _conn, _read_pref):
+            return "ok"
+
+        result = await client._retryable_read(
+            _noop_read,
+            ReadPreference.PRIMARY,
+            None,
+            operation="find",
+            operation_telemetry=telemetry,
+        )
+        self.assertEqual(result, "ok")
+        # _retry_internal must not have ended the caller's span.
+        self.assertEqual(
+            [s for s in self.exporter.get_finished_spans() if s.name.startswith("find")], []
+        )
+        telemetry.succeeded()
+        self.assertEqual(
+            len([s for s in self.exporter.get_finished_spans() if s.name.startswith("find")]),
+            1,
+        )
 
 
 # The unified test format's expectTracingMessages/observeTracingMessages
