@@ -1071,6 +1071,62 @@ class TestOTelSpans(IntegrationTest):
         self.assertEqual(span.attributes["db.namespace"], "admin")
         self.assertNotIn("db.collection.name", span.attributes)
 
+    def test_kill_cursors_gets_operation_span(self):
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.kill_cursors_span
+        coll.drop()
+        coll.insert_many([{"i": i} for i in range(10)])
+        cursor = coll.find({}, batch_size=2)
+        cursor.next()
+        self.exporter.clear()
+        cursor.close()  # Sends killCursors, since batches remain.
+
+        op_spans = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "killCursors"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(op_spans), 1, [s.name for s in self.exporter.get_finished_spans()])
+        (op_span,) = op_spans
+        self.assertEqual(op_span.name, "killCursors pymongo_test.kill_cursors_span")
+        self.assertEqual(op_span.attributes["db.namespace"], "pymongo_test")
+        self.assertEqual(op_span.attributes["db.collection.name"], "kill_cursors_span")
+
+        cmd_spans = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.command.name") == "killCursors"
+        ]
+        self.assertEqual(len(cmd_spans), 1)
+        self.assertEqual(cmd_spans[0].parent.span_id, op_span.context.span_id)
+
+    def test_end_sessions_gets_operation_span(self):
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        client.pymongo_test.end_sessions_span.find_one({})  # Uses an implicit session.
+        self.exporter.clear()
+        client.close()  # Sends endSessions.
+
+        op_spans = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "endSessions"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(op_spans), 1, [s.name for s in self.exporter.get_finished_spans()])
+        (op_span,) = op_spans
+        self.assertEqual(op_span.name, "endSessions admin")
+        self.assertEqual(op_span.attributes["db.namespace"], "admin")
+        self.assertNotIn("db.collection.name", op_span.attributes)
+
+        cmd_spans = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.command.name") == "endSessions"
+        ]
+        self.assertEqual(len(cmd_spans), 1)
+        self.assertEqual(cmd_spans[0].parent.span_id, op_span.context.span_id)
+
 
 # The unified test format's expectTracingMessages/observeTracingMessages
 # tests (test_open_telemetry_unified.py) now exercise this validator

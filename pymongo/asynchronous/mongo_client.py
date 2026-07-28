@@ -1743,7 +1743,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
                 for i in range(0, len(session_ids), common._MAX_END_SESSIONS):
                     spec = {"endSessions": session_ids[i : i + common._MAX_END_SESSIONS]}
-                    await conn.command("admin", spec, read_preference=read_pref, client=self)
+                    # endSessions deliberately bypasses _retry_internal (errors are
+                    # ignored per spec, and it must not be retried), so its
+                    # operation span is created here instead.
+                    with _OperationTelemetry(
+                        self.options.tracing, _Op.END_SESSIONS, None, dbname="admin"
+                    ):
+                        await conn.command("admin", spec, read_preference=read_pref, client=self)
         except PyMongoError:
             # Drivers MUST ignore any errors returned by the endSessions
             # command.
@@ -2378,7 +2384,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         namespace = address.namespace
         db, coll = namespace.split(".", 1)
         spec = {"killCursors": coll, "cursors": cursor_ids}
-        await conn.command(db, spec, session=session, client=self)
+        # killCursors deliberately bypasses _retry_internal (it must never be
+        # retried), so its operation span is created here instead.
+        with _OperationTelemetry(
+            self.options.tracing, _Op.KILL_CURSORS, session, dbname=db, collection=coll
+        ):
+            await conn.command(db, spec, session=session, client=self)
 
     async def _process_kill_cursors(self) -> None:
         """Process any pending kill cursors requests."""
