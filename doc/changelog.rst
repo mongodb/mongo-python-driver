@@ -25,6 +25,8 @@ PyMongo 4.18 brings a number of changes including:
   the bytes remaining in the array now raises
   :class:`~bson.errors.InvalidBSON` instead of reading past the end of the
   buffer.
+- Fixed :func:`bson.json_util.loads` to reject ``$timestamp`` values containing
+  fields other than ``t`` and ``i``.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
