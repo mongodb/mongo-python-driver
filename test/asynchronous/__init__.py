@@ -859,6 +859,46 @@ def get_loop() -> asyncio.AbstractEventLoop:
     return LOOP
 
 
+async def _close_and_join_monitors(client) -> None:
+    """Close ``client`` and wait for its background monitors to actually stop.
+
+    Used instead of a plain ``client.close()`` cleanup for tracing-enabled
+    test clients: a monitor that is still mid-flight when the next test
+    starts can emit its own otel command span (e.g. for a heartbeat
+    cancelled by close()) onto the shared, process-wide TracerProvider used
+    by the otel test suite (see test.unified_format_shared._shared_test_provider),
+    landing in whichever other test's span-capture window happens to be open
+    at that moment. ``client.close()`` alone does not prevent this:
+
+    - The sync driver's ``Monitor.join()`` wraps two synchronous ``.join()``
+      calls in an ``asyncio.gather(...)`` that is never awaited (a leftover
+      of generating the sync file from the async source, where the
+      equivalent call is properly awaited), so it does not actually block.
+    - Neither sync ``Topology.close()``/``MongoClient.close()`` nor async
+      ``AsyncMongoClient.close()`` (for topologies where monitors aren't
+      registered in ``_monitor_tasks``) guarantee every monitor executor has
+      fully exited by the time ``close()`` returns.
+
+    Bypass ``Monitor.join()`` and wait on each server's monitor executors
+    (and the RTT/streaming monitor, and any SRV monitor) directly instead.
+    """
+    await client.close()
+    topology = client._topology
+    if topology is None:
+        return
+    for server in topology._servers.values():
+        monitor = server._monitor
+        executor = getattr(monitor, "_executor", None)
+        if executor is not None:
+            await executor.join(5)
+        rtt_monitor = getattr(monitor, "_rtt_monitor", None)
+        if rtt_monitor is not None:
+            await rtt_monitor._executor.join(5)
+    srv_monitor = getattr(topology, "_srv_monitor", None)
+    if srv_monitor is not None:
+        await srv_monitor._executor.join(5)
+
+
 class AsyncPyMongoTestCase(unittest.TestCase):
     if not _IS_SYNC:
         # An async TestCase that uses a single event loop for all tests.
@@ -1037,7 +1077,11 @@ class AsyncPyMongoTestCase(unittest.TestCase):
         client = AsyncMongoClient(uri, port, **client_options)
         if client._options.connect:
             await client.aconnect()
-        self.addAsyncCleanup(client.close)
+        tracing_opts = client_options.get("tracing")
+        if isinstance(tracing_opts, dict) and tracing_opts.get("enabled"):
+            self.addAsyncCleanup(_close_and_join_monitors, client)
+        else:
+            self.addAsyncCleanup(client.close)
         return client
 
     @classmethod
@@ -1133,7 +1177,11 @@ class AsyncPyMongoTestCase(unittest.TestCase):
             client = AsyncMongoClient(**kwargs)
         else:
             client = AsyncMongoClient(h, p, **kwargs)
-        self.addAsyncCleanup(client.close)
+        tracing_opts = kwargs.get("tracing")
+        if isinstance(tracing_opts, dict) and tracing_opts.get("enabled"):
+            self.addAsyncCleanup(_close_and_join_monitors, client)
+        else:
+            self.addAsyncCleanup(client.close)
         return client
 
     @classmethod

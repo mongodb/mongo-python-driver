@@ -73,6 +73,15 @@ class TestOTelOperationSpanPrimitives(unittest.TestCase):
         cls.exporter = InMemorySpanExporter()
         _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
 
+    @classmethod
+    def tearDownClass(cls):
+        # See the matching comment in test/asynchronous/unified_format.py's
+        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
+        # be removed from the shared process-wide TracerProvider, so without
+        # this shutdown() the exporter keeps accumulating every span from
+        # every client for the rest of the test run.
+        cls.exporter.shutdown()
+
     def setUp(self):
         self.exporter.clear()
 
@@ -226,6 +235,15 @@ class TestOTelTransactionSpanPrimitives(unittest.TestCase):
         cls.exporter = InMemorySpanExporter()
         _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
 
+    @classmethod
+    def tearDownClass(cls):
+        # See the matching comment in test/asynchronous/unified_format.py's
+        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
+        # be removed from the shared process-wide TracerProvider, so without
+        # this shutdown() the exporter keeps accumulating every span from
+        # every client for the rest of the test run.
+        cls.exporter.shutdown()
+
     def setUp(self):
         self.exporter.clear()
 
@@ -255,6 +273,15 @@ class TestOperationTelemetry(unittest.TestCase):
 
         cls.exporter = InMemorySpanExporter()
         _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    @classmethod
+    def tearDownClass(cls):
+        # See the matching comment in test/asynchronous/unified_format.py's
+        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
+        # be removed from the shared process-wide TracerProvider, so without
+        # this shutdown() the exporter keeps accumulating every span from
+        # every client for the rest of the test run.
+        cls.exporter.shutdown()
 
     def setUp(self):
         self.exporter.clear()
@@ -345,6 +372,15 @@ class TestOperationTelemetryContextManager(unittest.TestCase):
         cls.exporter = InMemorySpanExporter()
         _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
 
+    @classmethod
+    def tearDownClass(cls):
+        # See the matching comment in test/asynchronous/unified_format.py's
+        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
+        # be removed from the shared process-wide TracerProvider, so without
+        # this shutdown() the exporter keeps accumulating every span from
+        # every client for the rest of the test run.
+        cls.exporter.shutdown()
+
     def setUp(self):
         self.exporter.clear()
 
@@ -392,6 +428,16 @@ class TestOTelSpans(AsyncIntegrationTest):
         super().setUpClass()
         cls.exporter = InMemorySpanExporter()
         _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    @classmethod
+    def tearDownClass(cls):
+        # See the matching comment in test/asynchronous/unified_format.py's
+        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
+        # be removed from the shared process-wide TracerProvider, so without
+        # this shutdown() the exporter keeps accumulating every span from
+        # every client for the rest of the test run.
+        cls.exporter.shutdown()
+        super().tearDownClass()
 
     async def asyncSetUp(self):
         await super().asyncSetUp()

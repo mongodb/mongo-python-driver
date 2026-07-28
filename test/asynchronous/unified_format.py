@@ -626,6 +626,16 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.knobs.disable()
+        # The exporter's span processor can never be removed from the shared
+        # process-wide TracerProvider (see _shared_test_provider), so without
+        # this, every span emitted by any client anywhere in the process for
+        # the rest of the test run keeps getting appended to this (otherwise
+        # dead) class's exporter -- an unbounded memory leak across a full
+        # test run, and needless per-span export overhead for every other
+        # tracing-enabled test class that runs afterwards. shutdown() makes
+        # further export() calls into this exporter no-ops.
+        if cls._tracing_exporter is not None:
+            cls._tracing_exporter.shutdown()
 
     async def asyncSetUp(self):
         # super call creates internal client cls.client
