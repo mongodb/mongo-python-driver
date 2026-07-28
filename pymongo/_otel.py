@@ -383,11 +383,11 @@ def start_operation_span(
         "db.operation.name": operation,
     }
     name = operation
-    if dbname:
+    if dbname is not None:
         name = _build_query_summary(operation, dbname, collection)
         attributes["db.namespace"] = dbname
         attributes["db.operation.summary"] = name
-        if collection:
+        if collection is not None:
             attributes["db.collection.name"] = collection
     if not set_current:
         span = _TRACER.start_span(
@@ -417,7 +417,18 @@ def use_operation_span(handle: Optional[_OperationSpanHandle]) -> Iterator[None]
         return
     token = _CURRENT_OPERATION_NAME.set(handle.operation_name)
     try:
-        with trace.use_span(handle.span, end_on_exit=False):
+        # record_exception/set_status_on_exception default to True, which would
+        # auto-record any exception propagating out of the block and set ERROR
+        # status here -- duplicating what the caller's own
+        # end_operation_span_failure does explicitly once the operation's
+        # final outcome is known. Disabled for the same reason the
+        # attached-mode path passes hardcoded Nones to cm.__exit__.
+        with trace.use_span(
+            handle.span,
+            end_on_exit=False,
+            record_exception=False,
+            set_status_on_exception=False,
+        ):
             yield
     finally:
         _CURRENT_OPERATION_NAME.reset(token)

@@ -173,6 +173,36 @@ class TestOTelOperationSpanPrimitives(unittest.TestCase):
             pass
         self.assertEqual(self.exporter.get_finished_spans(), ())
 
+    def test_detached_span_failure_inside_use_block_records_exception_once(self):
+        # Regression test: trace.use_span's record_exception/
+        # set_status_on_exception default to True, so without explicitly
+        # disabling them, an exception propagating out of a `with
+        # use_operation_span(handle):` block gets auto-recorded there *and
+        # again* by the caller's own end_operation_span_failure -- producing
+        # two identical "exception" events on the finished span.
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None, set_current=False)
+        exc = ValueError("boom")
+        try:
+            with _otel.use_operation_span(handle):
+                raise exc
+        except ValueError:
+            pass
+        _otel.end_operation_span_failure(handle, exc)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        exception_events = [e for e in span.events if e.name == "exception"]
+        self.assertEqual(len(exception_events), 1)
+
+    def test_detached_span_failure_without_use_block(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None, set_current=False)
+        _otel.end_operation_span_failure(handle, ValueError("boom"))
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        exception_events = [e for e in span.events if e.name == "exception"]
+        self.assertEqual(len(exception_events), 1)
+
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
 class TestOTelTransactionSpanPrimitives(unittest.TestCase):
