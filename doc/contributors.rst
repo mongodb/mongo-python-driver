@@ -109,3 +109,4 @@ The following is a list of people who have contributed to
 - Noah Stapp (NoahStapp)
 - Cal Jacobson (cj81499)
 - Sophia Yang (sophiayangDB)
+- Madan Kumar (winklemad)
