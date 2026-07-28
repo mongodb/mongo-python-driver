@@ -963,7 +963,7 @@ class AsyncClientSession:
             return await self._finish_transaction(conn, command_name)
 
         return await self._client._retry_internal(
-            func, self, None, retryable=True, operation=command_name
+            func, self, None, retryable=True, operation=command_name, dbname="admin"
         )
 
     async def _finish_transaction(self, conn: AsyncConnection, command_name: str) -> dict[str, Any]:

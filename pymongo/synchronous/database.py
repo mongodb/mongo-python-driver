@@ -714,6 +714,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 s,
                 retryable=not cmd._performs_write,
                 operation=_Op.AGGREGATE,
+                dbname=self.name,
             )
 
     @overload
@@ -944,7 +945,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             )
 
         return self._client._retryable_read(
-            inner, read_preference, session, command_name, None, False, is_run_command=True
+            inner,
+            read_preference,
+            session,
+            command_name,
+            None,
+            False,
+            is_run_command=True,
+            dbname=self.name,
         )
 
     @_csot.apply
@@ -1052,7 +1060,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                     raise InvalidOperation("Command does not return a cursor.")
 
             return self.client._retryable_read(
-                inner, read_preference, tmp_session, command_name, None, False
+                inner,
+                read_preference,
+                tmp_session,
+                command_name,
+                None,
+                False,
+                dbname=self.name,
             )
 
     def _retryable_read_command(
@@ -1077,7 +1091,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return self._client._retryable_read(_cmd, read_preference, session, operation)
+        return self._client._retryable_read(
+            _cmd, read_preference, session, operation, dbname=self.name
+        )
 
     def _list_collections(
         self,
@@ -1148,7 +1164,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
         return self._client._retryable_read(
-            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
+            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS, dbname=self.name
         )
 
     def list_collections(
@@ -1265,7 +1281,9 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return self.client._retryable_write(False, inner, session, _Op.DROP)
+        return self.client._retryable_write(
+            False, inner, session, _Op.DROP, dbname=self.name, collection=name
+        )
 
     @_csot.apply
     def drop_collection(

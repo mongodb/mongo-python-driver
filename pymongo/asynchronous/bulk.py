@@ -478,6 +478,8 @@ class _AsyncBulk:
             operation,
             bulk=self,  # type: ignore[arg-type]
             operation_id=op_id,
+            dbname=self.collection.database.name,
+            collection=self.collection.name,
         )
 
         if full_result["writeErrors"] or full_result["writeConcernErrors"]:

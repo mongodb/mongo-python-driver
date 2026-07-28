@@ -659,7 +659,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        await self.database.client._retryable_write(False, inner, session, _Op.CREATE)
+        await self.database.client._retryable_write(
+            False, inner, session, _Op.CREATE, dbname=self._database.name, collection=name
+        )
 
     async def _create(
         self,
@@ -822,7 +824,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             _check_write_command_response(result)
 
         await self._database.client._retryable_write(
-            acknowledged, _insert_command, session, operation=_Op.INSERT
+            acknowledged,
+            _insert_command,
+            session,
+            operation=_Op.INSERT,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
         if not isinstance(doc, RawBSONDocument):
@@ -1113,6 +1120,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             _update,
             session,
             operation,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     async def replace_one(
@@ -1582,6 +1591,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             _delete,
             session,
             operation=_Op.DELETE,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     async def delete_one(
@@ -2169,7 +2180,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """Non-cursor read helper to handle implicit session creation."""
         client = self._database.client
         async with client._tmp_session(session) as s:
-            return await client._retryable_read(func, self._read_preference_for(s), s, operation)
+            return await client._retryable_read(
+                func,
+                self._read_preference_for(s),
+                s,
+                operation,
+                dbname=self._database.name,
+                collection=self._name,
+            )
 
     async def create_indexes(
         self,
@@ -2267,7 +2285,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             return names
 
         return await self.database.client._retryable_write(
-            False, inner, session, _Op.CREATE_INDEXES
+            False,
+            inner,
+            session,
+            _Op.CREATE_INDEXES,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     async def create_index(
@@ -2501,7 +2524,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        await self.database.client._retryable_write(False, inner, session, _Op.DROP_INDEXES)
+        await self.database.client._retryable_write(
+            False,
+            inner,
+            session,
+            _Op.DROP_INDEXES,
+            dbname=self._database.name,
+            collection=self._name,
+        )
 
     async def list_indexes(
         self,
@@ -2585,7 +2615,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         async with self._database.client._tmp_session(session) as s:
             return await self._database.client._retryable_read(
-                _cmd, read_pref, s, operation=_Op.LIST_INDEXES
+                _cmd,
+                read_pref,
+                s,
+                operation=_Op.LIST_INDEXES,
+                dbname=self._database.name,
+                collection=self._name,
             )
 
     async def index_information(
@@ -2689,6 +2724,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             session,
             retryable=not cmd._performs_write,
             operation=_Op.LIST_SEARCH_INDEX,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     async def create_search_index(
@@ -2779,7 +2816,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             return [index["name"] for index in resp["indexesCreated"]]
 
         return await self.database.client._retryable_write(
-            False, inner, session, _Op.CREATE_SEARCH_INDEXES
+            False,
+            inner,
+            session,
+            _Op.CREATE_SEARCH_INDEXES,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     async def drop_search_index(
@@ -2820,7 +2862,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        await self.database.client._retryable_write(False, inner, session, _Op.DROP_SEARCH_INDEXES)
+        await self.database.client._retryable_write(
+            False,
+            inner,
+            session,
+            _Op.DROP_SEARCH_INDEXES,
+            dbname=self._database.name,
+            collection=self._name,
+        )
 
     async def update_search_index(
         self,
@@ -2862,7 +2911,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        await self.database.client._retryable_write(False, inner, session, _Op.UPDATE_SEARCH_INDEX)
+        await self.database.client._retryable_write(
+            False,
+            inner,
+            session,
+            _Op.UPDATE_SEARCH_INDEX,
+            dbname=self._database.name,
+            collection=self._name,
+        )
 
     async def options(
         self,
@@ -2939,6 +2995,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             retryable=not cmd._performs_write,
             operation=_Op.AGGREGATE,
             is_aggregate_write=cmd._performs_write,
+            dbname=self._database.name,
+            collection=self._name,
         )
 
     async def aggregate(
@@ -3158,7 +3216,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 client=client,
             )
 
-        return await client._retryable_write(False, inner, session, _Op.RENAME)
+        return await client._retryable_write(
+            False,
+            inner,
+            session,
+            _Op.RENAME,
+            dbname=self._database.name,
+            collection=self.name,
+        )
 
     async def distinct(
         self,
@@ -3323,6 +3388,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             _find_and_modify_helper,
             session,
             operation=_Op.FIND_AND_MODIFY,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     async def find_one_and_delete(

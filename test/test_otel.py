@@ -852,6 +852,26 @@ class TestOTelSpans(IntegrationTest):
             1,
         )
 
+    def test_eager_namespace_for_collection_and_database_operations(self):
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test
+        cases = [
+            # (coroutine factory, expected span name)
+            (lambda: db.mycoll.insert_one({"x": 1}), "insert pymongo_test.mycoll"),
+            (lambda: db.mycoll.find_one({}), "find pymongo_test.mycoll"),
+            (lambda: db.mycoll.count_documents({}), "count pymongo_test.mycoll"),
+            (lambda: db.list_collection_names(), "listCollections pymongo_test"),
+        ]
+        for factory, expected_name in cases:
+            with self.subTest(expected_name=expected_name):
+                self.exporter.clear()
+                factory()
+                names = [s.name for s in self.exporter.get_finished_spans()]
+                self.assertIn(expected_name, names)
+                (span,) = [s for s in self.exporter.get_finished_spans() if s.name == expected_name]
+                self.assertEqual(span.attributes["db.operation.summary"], expected_name)
+                self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
+
 
 # The unified test format's expectTracingMessages/observeTracingMessages
 # tests (test_open_telemetry_unified.py) now exercise this validator

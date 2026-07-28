@@ -661,7 +661,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        self.database.client._retryable_write(False, inner, session, _Op.CREATE)
+        self.database.client._retryable_write(
+            False, inner, session, _Op.CREATE, dbname=self._database.name, collection=name
+        )
 
     def _create(
         self,
@@ -822,7 +824,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             _check_write_command_response(result)
 
         self._database.client._retryable_write(
-            acknowledged, _insert_command, session, operation=_Op.INSERT
+            acknowledged,
+            _insert_command,
+            session,
+            operation=_Op.INSERT,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
         if not isinstance(doc, RawBSONDocument):
@@ -1113,6 +1120,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             _update,
             session,
             operation,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     def replace_one(
@@ -1582,6 +1591,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             _delete,
             session,
             operation=_Op.DELETE,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     def delete_one(
@@ -2167,7 +2178,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Non-cursor read helper to handle implicit session creation."""
         client = self._database.client
         with client._tmp_session(session) as s:
-            return client._retryable_read(func, self._read_preference_for(s), s, operation)
+            return client._retryable_read(
+                func,
+                self._read_preference_for(s),
+                s,
+                operation,
+                dbname=self._database.name,
+                collection=self._name,
+            )
 
     def create_indexes(
         self,
@@ -2264,7 +2282,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             )
             return names
 
-        return self.database.client._retryable_write(False, inner, session, _Op.CREATE_INDEXES)
+        return self.database.client._retryable_write(
+            False,
+            inner,
+            session,
+            _Op.CREATE_INDEXES,
+            dbname=self._database.name,
+            collection=self.name,
+        )
 
     def create_index(
         self,
@@ -2497,7 +2522,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        self.database.client._retryable_write(False, inner, session, _Op.DROP_INDEXES)
+        self.database.client._retryable_write(
+            False,
+            inner,
+            session,
+            _Op.DROP_INDEXES,
+            dbname=self._database.name,
+            collection=self._name,
+        )
 
     def list_indexes(
         self,
@@ -2581,7 +2613,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         with self._database.client._tmp_session(session) as s:
             return self._database.client._retryable_read(
-                _cmd, read_pref, s, operation=_Op.LIST_INDEXES
+                _cmd,
+                read_pref,
+                s,
+                operation=_Op.LIST_INDEXES,
+                dbname=self._database.name,
+                collection=self._name,
             )
 
     def index_information(
@@ -2685,6 +2722,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             session,
             retryable=not cmd._performs_write,
             operation=_Op.LIST_SEARCH_INDEX,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     def create_search_index(
@@ -2775,7 +2814,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             return [index["name"] for index in resp["indexesCreated"]]
 
         return self.database.client._retryable_write(
-            False, inner, session, _Op.CREATE_SEARCH_INDEXES
+            False,
+            inner,
+            session,
+            _Op.CREATE_SEARCH_INDEXES,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     def drop_search_index(
@@ -2816,7 +2860,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        self.database.client._retryable_write(False, inner, session, _Op.DROP_SEARCH_INDEXES)
+        self.database.client._retryable_write(
+            False,
+            inner,
+            session,
+            _Op.DROP_SEARCH_INDEXES,
+            dbname=self._database.name,
+            collection=self._name,
+        )
 
     def update_search_index(
         self,
@@ -2858,7 +2909,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        self.database.client._retryable_write(False, inner, session, _Op.UPDATE_SEARCH_INDEX)
+        self.database.client._retryable_write(
+            False,
+            inner,
+            session,
+            _Op.UPDATE_SEARCH_INDEX,
+            dbname=self._database.name,
+            collection=self._name,
+        )
 
     def options(
         self,
@@ -2933,6 +2991,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             retryable=not cmd._performs_write,
             operation=_Op.AGGREGATE,
             is_aggregate_write=cmd._performs_write,
+            dbname=self._database.name,
+            collection=self._name,
         )
 
     def aggregate(
@@ -3152,7 +3212,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 client=client,
             )
 
-        return client._retryable_write(False, inner, session, _Op.RENAME)
+        return client._retryable_write(
+            False,
+            inner,
+            session,
+            _Op.RENAME,
+            dbname=self._database.name,
+            collection=self.name,
+        )
 
     def distinct(
         self,
@@ -3317,6 +3384,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             _find_and_modify_helper,
             session,
             operation=_Op.FIND_AND_MODIFY,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     def find_one_and_delete(

@@ -714,6 +714,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 s,
                 retryable=not cmd._performs_write,
                 operation=_Op.AGGREGATE,
+                dbname=self.name,
             )
 
     @overload
@@ -944,7 +945,14 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             )
 
         return await self._client._retryable_read(
-            inner, read_preference, session, command_name, None, False, is_run_command=True
+            inner,
+            read_preference,
+            session,
+            command_name,
+            None,
+            False,
+            is_run_command=True,
+            dbname=self.name,
         )
 
     @_csot.apply
@@ -1052,7 +1060,13 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                     raise InvalidOperation("Command does not return a cursor.")
 
             return await self.client._retryable_read(
-                inner, read_preference, tmp_session, command_name, None, False
+                inner,
+                read_preference,
+                tmp_session,
+                command_name,
+                None,
+                False,
+                dbname=self.name,
             )
 
     async def _retryable_read_command(
@@ -1077,7 +1091,9 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return await self._client._retryable_read(_cmd, read_preference, session, operation)
+        return await self._client._retryable_read(
+            _cmd, read_preference, session, operation, dbname=self.name
+        )
 
     async def _list_collections(
         self,
@@ -1150,7 +1166,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             )
 
         return await self._client._retryable_read(
-            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
+            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS, dbname=self.name
         )
 
     async def list_collections(
@@ -1268,7 +1284,9 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return await self.client._retryable_write(False, inner, session, _Op.DROP)
+        return await self.client._retryable_write(
+            False, inner, session, _Op.DROP, dbname=self.name, collection=name
+        )
 
     @_csot.apply
     async def drop_collection(

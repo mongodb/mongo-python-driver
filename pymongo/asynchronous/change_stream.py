@@ -236,6 +236,25 @@ class AsyncChangeStream(Generic[_DocumentType]):
                         f"Expected field 'operationTime' missing from command response : {result!r}"
                     )
 
+    def _target_namespace(self) -> tuple[Optional[str], Optional[str]]:
+        """Return (dbname, collection) for the watched target, for span attributes.
+
+        The target is an AsyncCollection, an AsyncDatabase, or (for
+        AsyncClusterChangeStream) an AsyncDatabase (``client.admin``).
+        Importing AsyncCollection/AsyncDatabase at module scope here would be
+        circular (collection.py and database.py both import from this module
+        at module scope), so probe for the distinguishing attribute instead of
+        using isinstance.
+        """
+        target = self._target
+        database = getattr(target, "database", None)
+        if database is not None:  # an AsyncCollection
+            return database.name, target.name
+        name = getattr(target, "name", None)
+        if name is not None:  # an AsyncDatabase
+            return name, None
+        return None, None
+
     async def _run_aggregation_cmd(
         self, session: Optional[AsyncClientSession]
     ) -> AsyncCommandCursor:  # type: ignore[type-arg]
@@ -250,11 +269,14 @@ class AsyncChangeStream(Generic[_DocumentType]):
             result_processor=self._process_result,
             comment=self._comment,
         )
+        dbname, collname = self._target_namespace()
         return await self._client._retryable_read(
             cmd.get_cursor,
             self._target._read_preference_for(session),
             session,
             operation=_Op.AGGREGATE,
+            dbname=dbname,
+            collection=collname,
         )
 
     async def _create_cursor(self) -> AsyncCommandCursor:  # type: ignore[type-arg]

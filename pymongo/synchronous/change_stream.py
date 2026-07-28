@@ -236,6 +236,25 @@ class ChangeStream(Generic[_DocumentType]):
                         f"Expected field 'operationTime' missing from command response : {result!r}"
                     )
 
+    def _target_namespace(self) -> tuple[Optional[str], Optional[str]]:
+        """Return (dbname, collection) for the watched target, for span attributes.
+
+        The target is a Collection, a Database, or (for
+        ClusterChangeStream) a Database (``client.admin``).
+        Importing Collection/Database at module scope here would be
+        circular (collection.py and database.py both import from this module
+        at module scope), so probe for the distinguishing attribute instead of
+        using isinstance.
+        """
+        target = self._target
+        database = getattr(target, "database", None)
+        if database is not None:  # a Collection
+            return database.name, target.name
+        name = getattr(target, "name", None)
+        if name is not None:  # a Database
+            return name, None
+        return None, None
+
     def _run_aggregation_cmd(self, session: Optional[ClientSession]) -> CommandCursor:  # type: ignore[type-arg]
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
@@ -248,11 +267,14 @@ class ChangeStream(Generic[_DocumentType]):
             result_processor=self._process_result,
             comment=self._comment,
         )
+        dbname, collname = self._target_namespace()
         return self._client._retryable_read(
             cmd.get_cursor,
             self._target._read_preference_for(session),
             session,
             operation=_Op.AGGREGATE,
+            dbname=dbname,
+            collection=collname,
         )
 
     def _create_cursor(self) -> CommandCursor:  # type: ignore[type-arg]

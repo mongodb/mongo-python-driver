@@ -960,7 +960,7 @@ class ClientSession:
             return self._finish_transaction(conn, command_name)
 
         return self._client._retry_internal(
-            func, self, None, retryable=True, operation=command_name
+            func, self, None, retryable=True, operation=command_name, dbname="admin"
         )
 
     def _finish_transaction(self, conn: Connection, command_name: str) -> dict[str, Any]:

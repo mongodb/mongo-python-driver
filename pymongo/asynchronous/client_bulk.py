@@ -552,6 +552,7 @@ class _AsyncClientBulk:
             operation,
             bulk=self,
             operation_id=op_id,
+            dbname="admin",
         )
 
         if full_result["error"] or full_result["writeErrors"] or full_result["writeConcernErrors"]:
