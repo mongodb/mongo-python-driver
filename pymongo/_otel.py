@@ -350,3 +350,27 @@ def end_operation_span_failure(handle: Optional[_OperationSpanHandle], exc: Base
     handle.span.record_exception(exc)
     handle.span.set_status(Status(StatusCode.ERROR, description=str(exc)))
     handle._cm.__exit__(None, None, None)
+
+
+def start_transaction_span(tracing_options: Optional[TracingOptions]) -> Optional[Span]:
+    """Start (but do not make current) the ``"transaction"`` pseudo-span, or None.
+
+    Not pushed as ambient/current context -- it's stored explicitly on
+    ``session._transaction.span`` and passed as the explicit ``parent_span``
+    wherever an operation span is started under this transaction (see
+    :func:`start_operation_span`). Per the OTel driver spec, this span has
+    exactly one attribute.
+    """
+    if not _is_tracing_enabled(tracing_options):
+        return None
+    assert _TRACER is not None
+    return _TRACER.start_span(
+        "transaction", kind=SpanKind.CLIENT, attributes={"db.system.name": "mongodb"}
+    )
+
+
+def end_transaction_span(span: Optional[Span]) -> None:
+    """End the transaction span, if any."""
+    if span is None:
+        return
+    span.end()

@@ -124,6 +124,38 @@ class TestOTelOperationSpanPrimitives(unittest.TestCase):
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
+class TestOTelTransactionSpanPrimitives(unittest.TestCase):
+    """Unit tests for the pymongo._otel transaction-span primitives (no live server needed)."""
+
+    @classmethod
+    def setUpClass(cls):
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        cls.exporter = InMemorySpanExporter()
+        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    def setUp(self):
+        self.exporter.clear()
+
+    def test_start_transaction_span_disabled_returns_none(self):
+        self.assertIsNone(_otel.start_transaction_span(None))
+
+    def test_start_transaction_span_has_only_one_attribute(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        span = _otel.start_transaction_span(opts)
+        _otel.end_transaction_span(span)
+        (finished,) = self.exporter.get_finished_spans()
+        self.assertEqual(finished.name, "transaction")
+        self.assertEqual(dict(finished.attributes), {"db.system.name": "mongodb"})
+
+    def test_end_transaction_span_is_none_safe(self):
+        _otel.end_transaction_span(None)  # must not raise
+
+
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
 class TestOTelSpans(AsyncIntegrationTest):
     @classmethod
     def setUpClass(cls):
