@@ -638,12 +638,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
         .. versionchanged:: 4.18
-           Added the ``tracing`` keyword argument.
-
-        .. versionchanged:: 4.18
-           The ``tracing`` option now also creates one span per public API call
-           (nesting each call's command spans underneath) and a ``"transaction"``
-           pseudo-span wrapping ``start_transaction()`` through
+           Added the ``tracing`` keyword argument. It also creates one span per
+           public API call (nesting each call's command spans underneath) and a
+           ``"transaction"`` pseudo-span wrapping ``start_transaction()`` through
            ``commit_transaction()``/``abort_transaction()``.
 
         .. versionchanged:: 4.17
@@ -2048,7 +2045,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :return: Output of the calling func()
         """
-        operation_telemetry = _OperationTelemetry(self.options.tracing, operation, session)
+        operation_telemetry = _OperationTelemetry(
+            self.options.tracing, operation, session, is_run_command=is_run_command
+        )
         try:
             result = await _ClientConnectionRetryable(
                 mongo_client=self,

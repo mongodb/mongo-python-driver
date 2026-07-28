@@ -215,10 +215,13 @@ def start_command_span(
     """
     if not _is_tracing_enabled(tracing_options):
         return None
-    if _is_sensitive_command(command_name, speculative_hello):
-        return None
 
     collection = _extract_collection_name(command_name, dbname, cmd)
+    # Backfill the ambient operation span's name/namespace/summary from the
+    # first command built inside it, before the sensitive-command early
+    # return below -- the operation span still needs its (Required, per the
+    # OTel spec) db.namespace/db.operation.summary attributes even when the
+    # command itself is sensitive and gets no command span of its own.
     current_operation = _CURRENT_OPERATION_NAME.get()
     if current_operation is not None:
         current_span = trace.get_current_span()
@@ -229,6 +232,10 @@ def start_command_span(
             current_span.set_attribute("db.operation.summary", summary)
             if collection:
                 current_span.set_attribute("db.collection.name", collection)
+
+    if _is_sensitive_command(command_name, speculative_hello):
+        return None
+
     address = conn.address
     transport = "unix" if address[1] is None else "tcp"
     attributes: dict[str, Any] = {
@@ -277,19 +284,15 @@ def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
     span.end()
 
 
-def end_command_span_failure(
-    span: Optional[Span],
-    failure: _DocumentOut,
-    exc: BaseException,
-) -> None:
-    """Record the exception, set the error status, and end the span."""
-    if span is None:
-        return
-    span.record_exception(exc)
-    # record_exception (above) only attaches exception.type/message/stacktrace
-    # to an "exception" *event*, but the OTel spec requires them as span
-    # *attributes* too ("drivers SHOULD add the following attributes to the
-    # span"); mirror record_exception's own formatting for consistency.
+def _set_exception_attributes(span: Span, exc: BaseException) -> None:
+    """Set exception.type/exception.message/exception.stacktrace span attributes.
+
+    ``span.record_exception`` only attaches these to an "exception" *event*,
+    but the OTel spec requires them as span *attributes* too ("drivers SHOULD
+    add the following attributes to the span"); mirror record_exception's own
+    formatting for consistency. Shared by the command-span and operation-span
+    failure paths, since the spec states the same requirement for both.
+    """
     module = type(exc).__module__
     qualname = type(exc).__qualname__
     exception_type = f"{module}.{qualname}" if module and module != "builtins" else qualname
@@ -299,6 +302,18 @@ def end_command_span_failure(
         "exception.stacktrace",
         "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
     )
+
+
+def end_command_span_failure(
+    span: Optional[Span],
+    failure: _DocumentOut,
+    exc: BaseException,
+) -> None:
+    """Record the exception, set the error status, and end the span."""
+    if span is None:
+        return
+    span.record_exception(exc)
+    _set_exception_attributes(span, exc)
     code = failure.get("code")
     if code is not None:
         span.set_attribute("db.response.status_code", str(code))
@@ -367,6 +382,7 @@ def end_operation_span_failure(handle: Optional[_OperationSpanHandle], exc: Base
         return
     _CURRENT_OPERATION_NAME.reset(handle._name_token)
     handle.span.record_exception(exc)
+    _set_exception_attributes(handle.span, exc)
     handle.span.set_status(Status(StatusCode.ERROR, description=str(exc)))
     handle._cm.__exit__(None, None, None)
 

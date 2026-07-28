@@ -634,9 +634,10 @@ class _ClientBulk:
             )
             if operation_telemetry._handle is not None:
                 span = operation_telemetry._handle.span
-                span.update_name(f"{operation} admin")
+                summary = f"{operation_telemetry.operation_name} admin"
+                span.update_name(summary)
                 span.set_attribute("db.namespace", "admin")
-                span.set_attribute("db.operation.summary", f"{operation} admin")
+                span.set_attribute("db.operation.summary", summary)
             try:
                 with self.client._conn_for_writes(session, operation) as connection:
                     if connection.max_wire_version < 25:

@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import datetime
+import enum
 import logging
 import queue
 import time
@@ -250,6 +251,31 @@ _OTEL_OPERATION_NAME_OVERRIDES = {
     "dropSearchIndexes": "dropSearchIndex",
 }
 
+# Per the OTel driver spec's span-name rule ("`driver_operation_name db` if
+# there is no specific collection"), db.namespace examples, and
+# db.collection.name examples (omitted for runCommand), any operation
+# reaching the server via the generic `Database.command()` API -- signaled by
+# `is_run_command` -- is named "runCommand" regardless of the actual command
+# sent, rather than being named after that command.
+_RUN_COMMAND_OPERATION_NAME = "runCommand"
+
+
+def _normalize_operation_name(operation: Any) -> str:
+    """Return the plain ``str`` form of an operation name.
+
+    Most `_retry_internal` call sites pass an `_Op` enum member (a `str`
+    mixin enum) rather than a plain string. Python 3.11 changed
+    ``Enum.__format__`` for such mixin enums so that ``str()``/f-string
+    formatting includes the class name (e.g. ``"_Op.INSERT"`` instead of
+    ``"insert"``); on 3.10 the same code happened to produce the correct bare
+    value. Normalize to the actual string value once, here, so every caller
+    that builds a span name/attribute from an operation gets a stable,
+    version-independent result.
+    """
+    if isinstance(operation, enum.Enum):
+        return operation.value
+    return str(operation)
+
 
 class _OperationTelemetry:
     """One span-scoped context per logical operation (spanning all retry attempts).
@@ -259,18 +285,24 @@ class _OperationTelemetry:
     no-op throughout when tracing is disabled.
     """
 
-    __slots__ = ("_handle",)
+    __slots__ = ("_handle", "operation_name")
 
     def __init__(
         self,
         tracing_options: Optional[_otel.TracingOptions],
         operation: str,
         session: Optional[Any],
+        is_run_command: bool = False,
     ) -> None:
         parent_span = None
         if session is not None and session.in_transaction:
             parent_span = session._transaction.span
-        otel_operation = _OTEL_OPERATION_NAME_OVERRIDES.get(operation, operation)
+        if is_run_command:
+            otel_operation = _RUN_COMMAND_OPERATION_NAME
+        else:
+            name = _normalize_operation_name(operation)
+            otel_operation = _OTEL_OPERATION_NAME_OVERRIDES.get(name, name)
+        self.operation_name = otel_operation
         self._handle = _otel.start_operation_span(tracing_options, otel_operation, parent_span)
 
     def succeeded(self) -> None:
