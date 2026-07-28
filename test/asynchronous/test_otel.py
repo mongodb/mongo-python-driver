@@ -28,6 +28,7 @@ import pytest
 import pymongo._otel as _otel
 from pymongo import _telemetry, common
 from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.operations import InsertOne
 from pymongo.typings import _Address
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 
@@ -599,6 +600,36 @@ class TestOTelSpans(AsyncIntegrationTest):
         txn_spans = [s for s in finished if s.name == "transaction"]
         self.assertEqual(len(txn_spans), 1)
         self.assertTrue(txn_spans[0].end_time is not None)
+
+    @async_client_context.require_version_min(8, 0, 0, -24)
+    async def test_bulk_write_acknowledged_gets_operation_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        await client.bulk_write([InsertOne(namespace=f"{self.db.name}.test", document={"x": 1})])
+        matching = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "bulkWrite"
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0].attributes["db.namespace"], "admin")
+        self.assertNotIn("db.collection.name", matching[0].attributes)
+
+    @async_client_context.require_version_min(8, 0, 0, -24)
+    async def test_bulk_write_unacknowledged_gets_operation_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True}, w=0)
+        self.exporter.clear()
+        await client.bulk_write(
+            [InsertOne(namespace=f"{self.db.name}.test", document={"x": 1})],
+            ordered=False,
+        )
+        matching = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "bulkWrite"
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0].attributes["db.namespace"], "admin")
 
 
 # TODO(PYTHON-5947): superseded once the unified test format's
