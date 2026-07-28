@@ -157,6 +157,7 @@ from bson.binary import Binary
 from bson.int64 import Int64
 from bson.timestamp import Timestamp
 from pymongo import _csot, _otel
+from pymongo._telemetry import _OperationTelemetry
 from pymongo.asynchronous.cursor_base import _ConnectionManager
 from pymongo.errors import (
     ConfigurationError,
@@ -771,63 +772,70 @@ class AsyncClientSession:
         .. _transactions specification:
             https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback
         """
-        start_time = time.monotonic()
-        retry = 0
-        last_error: Optional[BaseException] = None
-        while True:
-            if retry:  # Implement exponential backoff on retry.
-                jitter = random.random()  # noqa: S311
-                backoff = jitter * min(_BACKOFF_INITIAL * (1.5**retry), _BACKOFF_MAX)
-                if not _within_time_limit(start_time, backoff):
-                    assert last_error is not None
-                    raise _make_timeout_error(last_error) from last_error
-                await asyncio.sleep(backoff)
-            retry += 1
-            await self.start_transaction(
-                read_concern, write_concern, read_preference, max_commit_time_ms
-            )
-            try:
-                ret = await callback(self)
-            # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-            except BaseException as exc:
-                last_error = exc
-                if self.in_transaction:
-                    await self.abort_transaction()
-                if isinstance(exc, PyMongoError) and exc.has_error_label(
-                    "TransientTransactionError"
-                ):
-                    if _within_time_limit(start_time):
-                        # Retry the entire transaction.
-                        continue
-                    raise _make_timeout_error(last_error) from exc
-                raise
-
-            if not self.in_transaction:
-                # Assume callback intentionally ended the transaction.
-                return ret
-
+        # One span for the whole logical withTransaction call. Made current, so
+        # each retry's "transaction" span (started by start_transaction, which
+        # reads ambient context for its parent) nests under this one instead of
+        # becoming a sibling.
+        with _OperationTelemetry(
+            self._client.options.tracing, "withTransaction", None, dbname="admin"
+        ):
+            start_time = time.monotonic()
+            retry = 0
+            last_error: Optional[BaseException] = None
             while True:
+                if retry:  # Implement exponential backoff on retry.
+                    jitter = random.random()  # noqa: S311
+                    backoff = jitter * min(_BACKOFF_INITIAL * (1.5**retry), _BACKOFF_MAX)
+                    if not _within_time_limit(start_time, backoff):
+                        assert last_error is not None
+                        raise _make_timeout_error(last_error) from last_error
+                    await asyncio.sleep(backoff)
+                retry += 1
+                await self.start_transaction(
+                    read_concern, write_concern, read_preference, max_commit_time_ms
+                )
                 try:
-                    await self.commit_transaction()
-                except PyMongoError as exc:
+                    ret = await callback(self)
+                # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
+                except BaseException as exc:
                     last_error = exc
-                    if exc.has_error_label(
-                        "UnknownTransactionCommitResult"
-                    ) and not _max_time_expired_error(exc):
-                        if not _within_time_limit(start_time):
-                            raise _make_timeout_error(last_error) from exc
-                        # Retry the commit.
-                        continue
-
-                    if exc.has_error_label("TransientTransactionError"):
-                        if not _within_time_limit(start_time):
-                            raise _make_timeout_error(last_error) from exc
-                        # Retry the entire transaction.
-                        break
+                    if self.in_transaction:
+                        await self.abort_transaction()
+                    if isinstance(exc, PyMongoError) and exc.has_error_label(
+                        "TransientTransactionError"
+                    ):
+                        if _within_time_limit(start_time):
+                            # Retry the entire transaction.
+                            continue
+                        raise _make_timeout_error(last_error) from exc
                     raise
 
-                # Commit succeeded.
-                return ret
+                if not self.in_transaction:
+                    # Assume callback intentionally ended the transaction.
+                    return ret
+
+                while True:
+                    try:
+                        await self.commit_transaction()
+                    except PyMongoError as exc:
+                        last_error = exc
+                        if exc.has_error_label(
+                            "UnknownTransactionCommitResult"
+                        ) and not _max_time_expired_error(exc):
+                            if not _within_time_limit(start_time):
+                                raise _make_timeout_error(last_error) from exc
+                            # Retry the commit.
+                            continue
+
+                        if exc.has_error_label("TransientTransactionError"):
+                            if not _within_time_limit(start_time):
+                                raise _make_timeout_error(last_error) from exc
+                            # Retry the entire transaction.
+                            break
+                        raise
+
+                    # Commit succeeded.
+                    return ret
 
     async def start_transaction(
         self,
@@ -893,6 +901,14 @@ class AsyncClientSession:
             # We're explicitly retrying the commit, move the state back to
             # "in progress" so that in_transaction returns true.
             self._transaction.state = _TxnState.IN_PROGRESS
+            # The prior attempt's finally block already ended and cleared the
+            # transaction span, so this retry needs a fresh one -- otherwise it
+            # would run with no transaction span and its command span would
+            # have no parent.
+            if self._transaction.span is None:
+                self._transaction.span = _otel.start_transaction_span(
+                    self._transaction.client.options.tracing
+                )
 
         try:
             await self._finish_transaction_with_retry("commitTransaction")

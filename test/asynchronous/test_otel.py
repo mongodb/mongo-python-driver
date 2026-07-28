@@ -856,9 +856,11 @@ class TestOTelSpans(AsyncIntegrationTest):
     async def test_retried_commit_ends_span_exactly_once(self):
         # Explicitly retrying a successful commit moves the transaction state
         # COMMITTED -> IN_PROGRESS -> (back through the try/finally) ->
-        # COMMITTED again, running the span-ending finally block a second
-        # time. end_transaction_span(None) must be a no-op so exactly one
-        # "transaction" span is ever produced, never a second/duplicate end.
+        # COMMITTED again. The prior attempt's span was already ended and
+        # cleared, so the retry gets a fresh "transaction" span of its own;
+        # each span's ending finally block must run exactly once for its own
+        # span, never double-ending the same span and never leaving one
+        # unended.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
         self.exporter.clear()
@@ -872,8 +874,68 @@ class TestOTelSpans(AsyncIntegrationTest):
 
         finished = self.exporter.get_finished_spans()
         txn_spans = [s for s in finished if s.name == "transaction"]
-        self.assertEqual(len(txn_spans), 1)
-        self.assertTrue(txn_spans[0].end_time is not None)
+        self.assertEqual(len(txn_spans), 2)
+        self.assertNotEqual(txn_spans[0].context.span_id, txn_spans[1].context.span_id)
+        for txn_span in txn_spans:
+            self.assertTrue(txn_span.end_time is not None)
+
+    @async_client_context.require_transactions
+    async def test_with_transaction_retry_nests_transaction_spans(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.with_txn_spans
+        await coll.drop()
+        await client.pymongo_test.create_collection("with_txn_spans")
+
+        attempts = []
+
+        async def callback(session):
+            attempts.append(1)
+            await coll.insert_one({"n": len(attempts)}, session=session)
+            if len(attempts) == 1:
+                exc = OperationFailure("transient", 251)
+                exc._add_error_label("TransientTransactionError")
+                raise exc
+
+        self.exporter.clear()
+        async with client.start_session() as session:
+            await session.with_transaction(callback)
+
+        self.assertEqual(len(attempts), 2)
+        finished = self.exporter.get_finished_spans()
+        with_txn_spans = [s for s in finished if s.name.startswith("withTransaction")]
+        self.assertEqual(len(with_txn_spans), 1, [s.name for s in finished])
+        (with_txn_span,) = with_txn_spans
+
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 2)
+        for txn_span in txn_spans:
+            self.assertEqual(txn_span.parent.span_id, with_txn_span.context.span_id)
+
+    @async_client_context.require_transactions
+    async def test_retried_commit_has_a_transaction_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.retried_commit_spans
+        await coll.drop()
+        await client.pymongo_test.create_collection("retried_commit_spans")
+
+        async with client.start_session() as session:
+            await session.start_transaction()
+            await coll.insert_one({"x": 1}, session=session)
+            await session.commit_transaction()
+            self.exporter.clear()
+            # An explicit second commit re-enters the COMMITTED -> IN_PROGRESS
+            # branch, which previously ran with no transaction span at all.
+            await session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        commit_cmd_spans = [
+            s for s in finished if s.attributes.get("db.command.name") == "commitTransaction"
+        ]
+        self.assertGreaterEqual(len(commit_cmd_spans), 1)
+        for cmd_span in commit_cmd_spans:
+            self.assertIsNotNone(cmd_span.parent)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
     async def test_bulk_write_acknowledged_gets_operation_span(self):

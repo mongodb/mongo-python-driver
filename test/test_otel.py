@@ -852,9 +852,11 @@ class TestOTelSpans(IntegrationTest):
     def test_retried_commit_ends_span_exactly_once(self):
         # Explicitly retrying a successful commit moves the transaction state
         # COMMITTED -> IN_PROGRESS -> (back through the try/finally) ->
-        # COMMITTED again, running the span-ending finally block a second
-        # time. end_transaction_span(None) must be a no-op so exactly one
-        # "transaction" span is ever produced, never a second/duplicate end.
+        # COMMITTED again. The prior attempt's span was already ended and
+        # cleared, so the retry gets a fresh "transaction" span of its own;
+        # each span's ending finally block must run exactly once for its own
+        # span, never double-ending the same span and never leaving one
+        # unended.
         client = self.rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
         self.exporter.clear()
@@ -868,8 +870,68 @@ class TestOTelSpans(IntegrationTest):
 
         finished = self.exporter.get_finished_spans()
         txn_spans = [s for s in finished if s.name == "transaction"]
-        self.assertEqual(len(txn_spans), 1)
-        self.assertTrue(txn_spans[0].end_time is not None)
+        self.assertEqual(len(txn_spans), 2)
+        self.assertNotEqual(txn_spans[0].context.span_id, txn_spans[1].context.span_id)
+        for txn_span in txn_spans:
+            self.assertTrue(txn_span.end_time is not None)
+
+    @client_context.require_transactions
+    def test_with_transaction_retry_nests_transaction_spans(self):
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.with_txn_spans
+        coll.drop()
+        client.pymongo_test.create_collection("with_txn_spans")
+
+        attempts = []
+
+        def callback(session):
+            attempts.append(1)
+            coll.insert_one({"n": len(attempts)}, session=session)
+            if len(attempts) == 1:
+                exc = OperationFailure("transient", 251)
+                exc._add_error_label("TransientTransactionError")
+                raise exc
+
+        self.exporter.clear()
+        with client.start_session() as session:
+            session.with_transaction(callback)
+
+        self.assertEqual(len(attempts), 2)
+        finished = self.exporter.get_finished_spans()
+        with_txn_spans = [s for s in finished if s.name.startswith("withTransaction")]
+        self.assertEqual(len(with_txn_spans), 1, [s.name for s in finished])
+        (with_txn_span,) = with_txn_spans
+
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 2)
+        for txn_span in txn_spans:
+            self.assertEqual(txn_span.parent.span_id, with_txn_span.context.span_id)
+
+    @client_context.require_transactions
+    def test_retried_commit_has_a_transaction_span(self):
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.retried_commit_spans
+        coll.drop()
+        client.pymongo_test.create_collection("retried_commit_spans")
+
+        with client.start_session() as session:
+            session.start_transaction()
+            coll.insert_one({"x": 1}, session=session)
+            session.commit_transaction()
+            self.exporter.clear()
+            # An explicit second commit re-enters the COMMITTED -> IN_PROGRESS
+            # branch, which previously ran with no transaction span at all.
+            session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        commit_cmd_spans = [
+            s for s in finished if s.attributes.get("db.command.name") == "commitTransaction"
+        ]
+        self.assertGreaterEqual(len(commit_cmd_spans), 1)
+        for cmd_span in commit_cmd_spans:
+            self.assertIsNotNone(cmd_span.parent)
 
     @client_context.require_version_min(8, 0, 0, -24)
     def test_bulk_write_acknowledged_gets_operation_span(self):
