@@ -1000,6 +1000,52 @@ class TestOTelSpans(IntegrationTest):
             self.assertIsNotNone(txn_span.end_time)
 
     @client_context.require_transactions
+    def test_with_transaction_while_direct_api_transaction_active_does_not_corrupt_span(
+        self,
+    ):
+        # Calling with_transaction() while a transaction started via the
+        # DIRECT API is already active on the same session is illegal --
+        # start_transaction() inside with_transaction() raises "Transaction
+        # already in progress" -- but the direct-API transaction's own
+        # "transaction" span must survive that failure: with_transaction()'s
+        # finally must not end/null it out from under the still-active
+        # transaction (Important #1). Operations run on the session
+        # afterwards must still parent to that span rather than becoming
+        # trace roots, and the failed call must not leave behind a second,
+        # spurious "transaction" span of its own.
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.direct_api_with_txn_conflict
+        coll.drop()
+        client.pymongo_test.create_collection("direct_api_with_txn_conflict")
+
+        def callback(session):
+            raise AssertionError("never reached -- start_transaction() raises first")
+
+        self.exporter.clear()
+        with client.start_session() as session:
+            session.start_transaction()
+            coll.insert_one({"x": 1}, session=session)
+
+            with self.assertRaises(InvalidOperation):
+                session.with_transaction(callback)
+
+            # The original transaction is still active; this must still
+            # nest under its span, not become a trace root.
+            coll.insert_one({"x": 2}, session=session)
+            session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        txn_span = txn_spans[0]
+        self.assertIsNotNone(txn_span.end_time)
+
+        insert_op_spans = [s for s in finished if s.attributes.get("db.operation.name") == "insert"]
+        self.assertEqual(len(insert_op_spans), 2)
+        for op_span in insert_op_spans:
+            self.assertEqual(op_span.parent.span_id, txn_span.context.span_id)
+
+    @client_context.require_transactions
     def test_retried_commit_has_a_transaction_span(self):
         client = self.rs_or_single_client(tracing={"enabled": True})
         coll = client.pymongo_test.retried_commit_spans

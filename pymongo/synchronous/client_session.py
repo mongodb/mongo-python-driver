@@ -799,7 +799,15 @@ class ClientSession:
         # ending/clearing it (same check) so it survives every full-transaction
         # retry and every commit retry. Ended exactly once here, when this
         # method finally returns or raises.
-        self._with_transaction_span = _otel.start_transaction_span(self._client.options.tracing)
+        #
+        # Only create it when this call is actually about to start its own
+        # transaction. If a transaction started via the direct API is already
+        # active on this session, the start_transaction() call below raises
+        # "Transaction already in progress" immediately -- creating a span
+        # here would just be a spurious, zero-work "transaction" span with
+        # nothing ever recorded under it.
+        if not self.in_transaction:
+            self._with_transaction_span = _otel.start_transaction_span(self._client.options.tracing)
         try:
             start_time = time.monotonic()
             retry = 0
@@ -860,7 +868,15 @@ class ClientSession:
                     return ret
         finally:
             _otel.end_transaction_span(self._with_transaction_span)
-            self._transaction.span = None
+            # Only clear the span this call owns. If a transaction started via
+            # the direct API was already active (see the guard above), this
+            # call never touched self._transaction.span -- it still points at
+            # that unrelated, still-in-progress transaction's span, and must
+            # not be clobbered here (Important #1: doing so unconditionally
+            # would leak that span -- never ended, never exported -- and turn
+            # every later operation on it into a spurious trace root).
+            if self._transaction.span is self._with_transaction_span:
+                self._transaction.span = None
             self._with_transaction_span = None
 
     def start_transaction(
