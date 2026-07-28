@@ -235,6 +235,22 @@ class _CommandTelemetry:
             _otel.end_command_span_failure(self._span, failure, exc)
 
 
+# A handful of internal `_Op` values (used elsewhere for retry/server-selection
+# and cluster-time-advancing logic, e.g. `_WRITES_WITH_CLUSTER_TIME` in
+# pymongo/operations.py) are literally the wire protocol command name --
+# "drop"/"create" -- rather than the OTel spec's canonical db.operation.name
+# for that logical operation ("dropCollection"/"createCollection", per the
+# open-telemetry spec's "Covered operations" table and its vendored
+# drop_collection.json/create_collection.json tests). Translate only the
+# name used for the span; leave the `operation` value used for retry
+# selection/logging untouched everywhere else.
+_OTEL_OPERATION_NAME_OVERRIDES = {
+    "drop": "dropCollection",
+    "create": "createCollection",
+    "dropSearchIndexes": "dropSearchIndex",
+}
+
+
 class _OperationTelemetry:
     """One span-scoped context per logical operation (spanning all retry attempts).
 
@@ -254,7 +270,8 @@ class _OperationTelemetry:
         parent_span = None
         if session is not None and session.in_transaction:
             parent_span = session._transaction.span
-        self._handle = _otel.start_operation_span(tracing_options, operation, parent_span)
+        otel_operation = _OTEL_OPERATION_NAME_OVERRIDES.get(operation, operation)
+        self._handle = _otel.start_operation_span(tracing_options, otel_operation, parent_span)
 
     def succeeded(self) -> None:
         _otel.end_operation_span_success(self._handle)

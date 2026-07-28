@@ -1,0 +1,110 @@
+{
+  "description": "operation create collection",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-create-collection"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "create collection",
+      "operations": [
+        {
+          "object": "database0",
+          "name": "createCollection",
+          "arguments": {
+            "collection": "newlyCreatedCollection"
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "createCollection operation-create-collection.newlyCreatedCollection",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-create-collection",
+                "db.collection.name": "newlyCreatedCollection",
+                "db.operation.name": "createCollection",
+                "db.operation.summary": "createCollection operation-create-collection.newlyCreatedCollection"
+              },
+              "nested": [
+                {
+                  "name": "create",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-create-collection",
+                    "db.collection.name": "newlyCreatedCollection",
+                    "db.command.name": "create",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "create operation-create-collection.newlyCreatedCollection",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "create": "newlyCreatedCollection"
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

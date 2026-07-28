@@ -22,6 +22,7 @@ Kept separate from :mod:`pymongo._telemetry` so that module stays free of
 from __future__ import annotations
 
 import os
+import traceback
 from collections.abc import Mapping, MutableMapping
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Optional, TypedDict
@@ -262,11 +263,16 @@ def start_command_span(
 
 
 def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
-    """Set the cursor id (if any) and end the span."""
+    """Set the cursor id (if any open cursor) and end the span."""
     if span is None:
         return
     cursor = reply.get("cursor")
-    if isinstance(cursor, Mapping) and "id" in cursor:
+    if isinstance(cursor, Mapping) and cursor.get("id"):
+        # A cursor id of 0 means the cursor is already exhausted -- i.e. there
+        # is no cursor left to track -- so per the OTel spec ("If the command
+        # returns a cursor, or uses a cursor, the cursor_id attribute SHOULD
+        # be added") the attribute is only meaningful, and only added, when
+        # id is nonzero.
         span.set_attribute("db.mongodb.cursor_id", cursor["id"])
     span.end()
 
@@ -280,6 +286,19 @@ def end_command_span_failure(
     if span is None:
         return
     span.record_exception(exc)
+    # record_exception (above) only attaches exception.type/message/stacktrace
+    # to an "exception" *event*, but the OTel spec requires them as span
+    # *attributes* too ("drivers SHOULD add the following attributes to the
+    # span"); mirror record_exception's own formatting for consistency.
+    module = type(exc).__module__
+    qualname = type(exc).__qualname__
+    exception_type = f"{module}.{qualname}" if module and module != "builtins" else qualname
+    span.set_attribute("exception.type", exception_type)
+    span.set_attribute("exception.message", str(exc))
+    span.set_attribute(
+        "exception.stacktrace",
+        "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+    )
     code = failure.get("code")
     if code is not None:
         span.set_attribute("db.response.status_code", str(code))

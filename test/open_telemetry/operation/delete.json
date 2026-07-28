@@ -1,0 +1,132 @@
+{
+  "description": "operation delete",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-delete"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "delete elements",
+      "operations": [
+        {
+          "object": "collection0",
+          "name": "deleteMany",
+          "arguments": {
+            "filter": {
+              "_id": {
+                "$gt": 1
+              }
+            }
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "delete operation-delete.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-delete",
+                "db.collection.name": "test",
+                "db.operation.name": "delete",
+                "db.operation.summary": "delete operation-delete.test"
+              },
+              "nested": [
+                {
+                  "name": "delete",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.command.name": "delete",
+                    "db.namespace": "operation-delete",
+                    "db.collection.name": "test",
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "long",
+                        "string"
+                      ]
+                    },
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "network.transport": "tcp",
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "delete operation-delete.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "delete": "test",
+                          "ordered": true,
+                          "deletes": [
+                            {
+                              "q": {
+                                "_id": {
+                                  "$gt": 1
+                                }
+                              },
+                              "limit": 0
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

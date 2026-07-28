@@ -1,0 +1,127 @@
+{
+  "description": "operation distinct",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-distinct"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-distinct",
+      "documents": []
+    }
+  ],
+  "tests": [
+    {
+      "description": "distinct on a field",
+      "operations": [
+        {
+          "object": "collection0",
+          "name": "distinct",
+          "arguments": {
+            "fieldName": "x",
+            "filter": {}
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "distinct operation-distinct.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-distinct",
+                "db.collection.name": "test",
+                "db.operation.name": "distinct",
+                "db.operation.summary": "distinct operation-distinct.test"
+              },
+              "nested": [
+                {
+                  "name": "distinct",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-distinct",
+                    "db.collection.name": "test",
+                    "db.command.name": "distinct",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "distinct operation-distinct.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "distinct": "test",
+                          "key": "x",
+                          "query": {}
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "description": "operation create_indexes",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-create-indexes"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "create indexes",
+      "operations": [
+        {
+          "object": "collection0",
+          "name": "createIndex",
+          "arguments": {
+            "keys": {
+              "x": 1
+            }
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "createIndexes operation-create-indexes.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-create-indexes",
+                "db.collection.name": "test",
+                "db.operation.name": "createIndexes",
+                "db.operation.summary": "createIndexes operation-create-indexes.test"
+              },
+              "nested": [
+                {
+                  "name": "createIndexes",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-create-indexes",
+                    "db.collection.name": "test",
+                    "db.command.name": "createIndexes",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "createIndexes operation-create-indexes.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "createIndexes": "test",
+                          "indexes": [
+                            {
+                              "key": {
+                                "x": 1
+                              },
+                              "name": "x_1"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

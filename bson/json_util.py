@@ -1109,20 +1109,18 @@ def _truncate_documents(obj: Any, max_length: int) -> tuple[Any, int]:
     if hasattr(obj, "items"):
         truncated: Any = {}
         for k, v in obj.items():
-            truncated_v, remaining = _truncate_documents(v, remaining)
-            if truncated_v:
-                truncated[k] = truncated_v
             if remaining <= 0:
                 break
+            truncated_v, remaining = _truncate_documents(v, remaining)
+            truncated[k] = truncated_v
         return truncated, remaining
     elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes)):
         truncated: Any = []  # type:ignore[no-redef]
         for v in obj:
-            truncated_v, remaining = _truncate_documents(v, remaining)
-            if truncated_v:
-                truncated.append(truncated_v)
             if remaining <= 0:
                 break
+            truncated_v, remaining = _truncate_documents(v, remaining)
+            truncated.append(truncated_v)
         return truncated, remaining
     else:
         return _truncate(obj, remaining)

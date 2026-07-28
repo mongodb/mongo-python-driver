@@ -1,0 +1,143 @@
+{
+  "description": "operation find_one_and_update",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-find-one-and-update"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "findOneAndUpdate",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.4"
+        }
+      ],
+      "operations": [
+        {
+          "name": "findOneAndUpdate",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "update": [
+              {
+                "$set": {
+                  "x": 5
+                }
+              }
+            ],
+            "comment": "comment"
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "findAndModify operation-find-one-and-update.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-find-one-and-update",
+                "db.collection.name": "test",
+                "db.operation.name": "findAndModify",
+                "db.operation.summary": "findAndModify operation-find-one-and-update.test"
+              },
+              "nested": [
+                {
+                  "name": "findAndModify",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-find-one-and-update",
+                    "db.collection.name": "test",
+                    "db.command.name": "findAndModify",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "findAndModify operation-find-one-and-update.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "findAndModify": "test",
+                          "query": {
+                            "_id": 1
+                          },
+                          "update": [
+                            {
+                              "$set": {
+                                "x": 5
+                              }
+                            }
+                          ],
+                          "comment": "comment"
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

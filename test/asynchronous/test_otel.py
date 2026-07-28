@@ -214,37 +214,6 @@ class TestOTelSpans(AsyncIntegrationTest):
             return list(finished)
         return [s for s in finished if s.name == name]
 
-    # TODO(PYTHON-5947): once the unified test format runner supports
-    # expectTracingMessages/operation spans, this is superseded by the spec's
-    # find_without_query_text.yml and insert.yml.
-    async def test_span_created_for_insert_and_find(self):
-        client = await self.async_rs_or_single_client(tracing={"enabled": True})
-        coll = client[self.db.name].test_otel
-        await coll.drop()
-        self.exporter.clear()
-        await coll.insert_one({"x": 1})
-
-        insert_spans = self.spans("insert")
-        self.assertEqual(len(insert_spans), 1)
-        attrs = insert_spans[0].attributes
-        self.assertEqual(attrs["db.system.name"], "mongodb")
-        self.assertEqual(attrs["db.namespace"], self.db.name)
-        self.assertEqual(attrs["db.collection.name"], "test_otel")
-        self.assertEqual(attrs["db.command.name"], "insert")
-        self.assertEqual(attrs["db.query.summary"], f"insert {self.db.name}.test_otel")
-        self.assertIn("server.address", attrs)
-        self.assertIn("server.port", attrs)
-        self.assertIn(attrs["network.transport"], ("tcp", "unix"))
-        self.assertIn("db.mongodb.driver_connection_id", attrs)
-        self.assertNotIn("db.query.text", attrs)
-
-        self.exporter.clear()
-        docs = await coll.find({}).to_list()
-        self.assertEqual(len(docs), 1)
-        find_spans = self.spans("find")
-        self.assertEqual(len(find_spans), 1)
-        self.assertEqual(find_spans[0].attributes["db.command.name"], "find")
-
     async def test_operation_span_wraps_command_span_for_find(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
@@ -396,29 +365,43 @@ class TestOTelSpans(AsyncIntegrationTest):
         await client.admin.command("ping")
         self.assertEqual(self.spans(), [])
 
-    # TODO(PYTHON-5947): once operation spans exist, also assert that the
-    # "ping" *operation* span (not just the command span) is absent/present
-    # here, and that self.spans() counts both.
     async def test_prose_1_tracing_enable_disable_via_env_var(self):
         """Prose Test 1: Tracing Enable/Disable via Environment Variable."""
         with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "false"}):
             client = await self.async_rs_or_single_client()
             self.exporter.clear()
             await client.admin.command("ping")
+        # Disabled must suppress both the operation span and the command span
+        # it wraps -- db.command() routes through _retry_internal same as any
+        # CRUD call, so both would exist if tracing weren't fully off.
         self.assertEqual(self.spans(), [])
 
         with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
             client = await self.async_rs_or_single_client()
             self.exporter.clear()
             await client.admin.command("ping")
-        self.assertIn("ping", [s.name for s in self.spans()])
+        finished = self.exporter.get_finished_spans()
+        # Disambiguate the command span (db.command.name) from the operation
+        # span (db.operation.name) that wraps it -- start_command_span renames
+        # the operation span in place once the command runs, so span.name
+        # alone can't tell them apart, but these attributes can.
+        self.assertIn("ping", [s.attributes.get("db.command.name") for s in finished])
+        self.assertIn("ping", [s.attributes.get("db.operation.name") for s in finished])
 
-    # TODO(PYTHON-5947): once operation spans exist, self.spans("find") will
-    # also match the outer find *operation* span; disambiguate (e.g. by
-    # db.command.name vs db.operation.name) so this only asserts on the
-    # command span's db.query.text attribute.
     async def test_prose_2_command_payload_emission_via_env_var(self):
         """Prose Test 2: Command Payload Emission via Environment Variable."""
+
+        def command_spans():
+            # self.spans("find") would also match the outer find *operation*
+            # span (renamed to a "find <db>.<coll>" summary once the command
+            # runs, not literally "find"); filter on db.command.name instead
+            # to isolate the inner command span that carries db.query.text.
+            return [
+                s
+                for s in self.exporter.get_finished_spans()
+                if s.attributes.get("db.command.name") == "find"
+            ]
+
         env = {
             "OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true",
             "OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH": "1024",
@@ -427,7 +410,7 @@ class TestOTelSpans(AsyncIntegrationTest):
             client = await self.async_rs_or_single_client()
             self.exporter.clear()
             await client[self.db.name].test_otel.find({}).to_list()
-        spans = self.spans("find")
+        spans = command_spans()
         self.assertEqual(len(spans), 1)
         self.assertIn("db.query.text", spans[0].attributes)
 
@@ -435,26 +418,9 @@ class TestOTelSpans(AsyncIntegrationTest):
             client = await self.async_rs_or_single_client()
             self.exporter.clear()
             await client[self.db.name].test_otel.find({}).to_list()
-        spans = self.spans("find")
+        spans = command_spans()
         self.assertEqual(len(spans), 1)
         self.assertNotIn("db.query.text", spans[0].attributes)
-
-    # TODO(PYTHON-5947): once the unified test format runner supports
-    # expectTracingMessages/operation spans, this is superseded by the spec's
-    # find.yml (db.query.text assertion).
-    async def test_query_text_included_when_configured(self):
-        client = await self.async_rs_or_single_client(
-            tracing={"enabled": True, "query_text_max_length": 1000}
-        )
-        coll = client[self.db.name].test_otel
-        await coll.drop()
-        self.exporter.clear()
-        await coll.insert_one({"x": 1})
-
-        spans = self.spans("insert")
-        self.assertEqual(len(spans), 1)
-        self.assertIn("db.query.text", spans[0].attributes)
-        self.assertNotIn("lsid", spans[0].attributes["db.query.text"])
 
     async def test_explicit_query_text_max_length_zero_overrides_env_var(self):
         # An explicit client-side 0 must win over the environment variable, unlike

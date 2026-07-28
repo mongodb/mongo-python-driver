@@ -1,0 +1,317 @@
+{
+  "description": "operation atlas_search",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-atlas-search"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "runOnRequirements": [
+    {
+      "minServerVersion": "7.0.5",
+      "maxServerVersion": "7.0.99",
+      "topologies": [
+        "replicaset",
+        "load-balanced",
+        "sharded"
+      ],
+      "serverless": "forbid"
+    },
+    {
+      "minServerVersion": "7.2.0",
+      "topologies": [
+        "replicaset",
+        "load-balanced",
+        "sharded"
+      ],
+      "serverless": "forbid"
+    }
+  ],
+  "tests": [
+    {
+      "description": "atlas search indexes",
+      "operations": [
+        {
+          "name": "createSearchIndex",
+          "object": "collection0",
+          "arguments": {
+            "model": {
+              "definition": {
+                "mappings": {
+                  "dynamic": true
+                }
+              },
+              "type": "search"
+            }
+          },
+          "expectError": {
+            "isError": true,
+            "errorContains": "Atlas"
+          }
+        },
+        {
+          "name": "updateSearchIndex",
+          "object": "collection0",
+          "arguments": {
+            "name": "test index",
+            "definition": {}
+          },
+          "expectError": {
+            "isError": true,
+            "errorContains": "Atlas"
+          }
+        },
+        {
+          "name": "dropSearchIndex",
+          "object": "collection0",
+          "arguments": {
+            "name": "test index"
+          },
+          "expectError": {
+            "isError": true,
+            "errorContains": "Atlas"
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "createSearchIndexes operation-atlas-search.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-atlas-search",
+                "db.collection.name": "test",
+                "db.operation.name": "createSearchIndexes",
+                "db.operation.summary": "createSearchIndexes operation-atlas-search.test"
+              },
+              "nested": [
+                {
+                  "name": "createSearchIndexes",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-atlas-search",
+                    "db.command.name": "createSearchIndexes",
+                    "db.collection.name": "test",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": true
+                    },
+                    "network.transport": "tcp",
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "exception.message": {
+                      "$$exists": true
+                    },
+                    "exception.type": {
+                      "$$exists": true
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": true
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "long",
+                        "string"
+                      ]
+                    },
+                    "db.query.summary": "createSearchIndexes operation-atlas-search.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "createSearchIndexes": "test",
+                          "indexes": [
+                            {
+                              "type": "search",
+                              "definition": {
+                                "mappings": {
+                                  "dynamic": true
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "updateSearchIndex operation-atlas-search.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-atlas-search",
+                "db.collection.name": "test",
+                "db.operation.name": "updateSearchIndex",
+                "db.operation.summary": "updateSearchIndex operation-atlas-search.test"
+              },
+              "nested": [
+                {
+                  "name": "updateSearchIndex",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-atlas-search",
+                    "db.command.name": "updateSearchIndex",
+                    "db.collection.name": "test",
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "long",
+                        "string"
+                      ]
+                    },
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": true
+                    },
+                    "exception.message": {
+                      "$$exists": true
+                    },
+                    "exception.type": {
+                      "$$exists": true
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": true
+                    },
+                    "network.transport": "tcp",
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "updateSearchIndex operation-atlas-search.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "updateSearchIndex": "test",
+                          "name": "test index",
+                          "definition": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "dropSearchIndex operation-atlas-search.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-atlas-search",
+                "db.collection.name": "test",
+                "db.operation.name": "dropSearchIndex",
+                "db.operation.summary": "dropSearchIndex operation-atlas-search.test"
+              },
+              "nested": [
+                {
+                  "name": "dropSearchIndex",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-atlas-search",
+                    "db.command.name": "dropSearchIndex",
+                    "db.collection.name": "test",
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "long",
+                        "string"
+                      ]
+                    },
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": true
+                    },
+                    "exception.message": {
+                      "$$exists": true
+                    },
+                    "exception.type": {
+                      "$$exists": true
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": true
+                    },
+                    "network.transport": "tcp",
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "dropSearchIndex operation-atlas-search.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "dropSearchIndex": "test",
+                          "name": "test index"
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
