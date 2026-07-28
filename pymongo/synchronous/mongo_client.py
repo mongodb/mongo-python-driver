@@ -622,7 +622,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           | **OpenTelemetry options:**
           | (Requires the ``opentelemetry-api`` package; install with the ``pymongo[opentelemetry]`` extra.)
 
-          - `tracing`: (dict) Configuration for OpenTelemetry command spans, with keys:
+          - `tracing`: (dict) Configuration for OpenTelemetry command, operation, and
+            transaction spans, with keys:
 
             - ``enabled``: (boolean) Whether to create spans for server commands issued by
               this client. Defaults to ``False``. Also controlled by the
@@ -639,6 +640,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionchanged:: 4.18
            Added the ``tracing`` keyword argument.
+
+        .. versionchanged:: 4.18
+           The ``tracing`` option now also creates one span per public API call
+           (nesting each call's command spans underneath) and a ``"transaction"``
+           pseudo-span wrapping ``start_transaction()`` through
+           ``commit_transaction()``/``abort_transaction()``.
 
         .. versionchanged:: 4.17
            Added the ``max_adaptive_retries`` and ``enable_overload_retargeting`` URI and keyword arguments.

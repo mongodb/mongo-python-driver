@@ -20,7 +20,8 @@ PyMongo 4.18 brings a number of changes including:
   attempts, so consumers can correlate a retried operation's events. As a
   result, ``operation_id`` is no longer equal to the per-attempt ``request_id``
   for these operations.
-- Added optional OpenTelemetry command-span support, conforming to the
+- Added optional OpenTelemetry command, operation, and transaction span
+  support, conforming to the
   `OpenTelemetry driver specification <https://github.com/mongodb/specifications/blob/master/source/open-telemetry/open-telemetry.md>`_.
   Enable it with the ``tracing`` :class:`~pymongo.mongo_client.MongoClient`
   option or the ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment
