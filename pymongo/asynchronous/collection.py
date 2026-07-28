@@ -2636,7 +2636,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             except BaseException as exc:
                 operation_telemetry.failed(exc)
                 raise
-            cmd_cursor._operation_telemetry = operation_telemetry
+            cmd_cursor._attach_operation_telemetry(operation_telemetry)
             return cmd_cursor
 
     async def index_information(
@@ -2758,7 +2758,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         except BaseException as exc:
             operation_telemetry.failed(exc)
             raise
-        cmd_cursor._operation_telemetry = operation_telemetry
+        cmd_cursor._attach_operation_telemetry(operation_telemetry)
         return cmd_cursor
 
     async def create_search_index(
@@ -3046,7 +3046,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         except BaseException as exc:
             operation_telemetry.failed(exc)
             raise
-        cmd_cursor._operation_telemetry = operation_telemetry
+        cmd_cursor._attach_operation_telemetry(operation_telemetry)
         return cmd_cursor
 
     async def aggregate(

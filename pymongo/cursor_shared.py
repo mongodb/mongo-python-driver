@@ -137,6 +137,24 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
         else:
             telemetry.failed(exc)
 
+    def _attach_operation_telemetry(self, telemetry: Any) -> None:
+        """Attach a command cursor's already-started operation span.
+
+        Command cursors (AsyncCommandCursor/CommandCursor -- never
+        AsyncCursor/Cursor, whose span is attached before the query even
+        runs, and is already correct) whose first batch exhausts them are
+        marked ``_killed`` in ``__init__`` without a call to ``close()``: no
+        getMore is ever sent, so ``_refresh()``/``_die_lock()`` never run and
+        the span would otherwise only be ended by an explicit ``close()`` or
+        by ``__del__`` -- i.e. whenever GC happens to run, or never, if the
+        cursor is retained. Ending it here instead makes a single-batch
+        command cursor's span end promptly at construction, consistent with
+        a multi-batch one ending promptly at exhaustion.
+        """
+        self._operation_telemetry = telemetry
+        if self._killed:
+            self._end_operation_telemetry()
+
     def _die_no_lock(self) -> None:
         """Closes this cursor without acquiring a lock."""
         try:

@@ -587,6 +587,40 @@ class TestOTelSpans(AsyncIntegrationTest):
         for cmd_span in getmore_cmd_spans:
             self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
 
+    async def test_single_batch_aggregate_ends_span_promptly_not_at_gc(self):
+        # A command cursor whose first batch exhausts it is marked _killed in
+        # __init__ without ever calling close() -- no getMore is sent, so
+        # _refresh()/_die_lock() never run. Without explicit attachment its
+        # operation span would only be ended by __del__, i.e. whenever GC
+        # happens to run (or never, if the cursor is retained) -- Important
+        # #2. Assert the span is already ended while a reference to the
+        # cursor is still held, proving it ended at construction rather than
+        # waiting on GC.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.agg_single_batch
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(3)])
+        self.exporter.clear()
+
+        cursor = await coll.aggregate([{"$match": {}}])
+        # Confirm this test actually exercises the single-batch path.
+        self.assertTrue(cursor._killed)
+
+        finished = self.exporter.get_finished_spans()
+        agg_op_spans = [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == "aggregate"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(agg_op_spans), 1, [s.name for s in finished])
+        self.assertIsNotNone(agg_op_spans[0].end_time)
+
+        # The cursor reference is kept alive through this assertion -- if the
+        # span only ended via __del__, get_finished_spans() above would not
+        # have included it yet.
+        self.assertIsNotNone(cursor)
+
     async def test_abandoned_cursor_still_ends_operation_span(self):
         import gc
 

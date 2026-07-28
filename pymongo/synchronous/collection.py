@@ -2634,7 +2634,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             except BaseException as exc:
                 operation_telemetry.failed(exc)
                 raise
-            cmd_cursor._operation_telemetry = operation_telemetry
+            cmd_cursor._attach_operation_telemetry(operation_telemetry)
             return cmd_cursor
 
     def index_information(
@@ -2754,7 +2754,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         except BaseException as exc:
             operation_telemetry.failed(exc)
             raise
-        cmd_cursor._operation_telemetry = operation_telemetry
+        cmd_cursor._attach_operation_telemetry(operation_telemetry)
         return cmd_cursor
 
     def create_search_index(
@@ -3038,7 +3038,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         except BaseException as exc:
             operation_telemetry.failed(exc)
             raise
-        cmd_cursor._operation_telemetry = operation_telemetry
+        cmd_cursor._attach_operation_telemetry(operation_telemetry)
         return cmd_cursor
 
     def aggregate(

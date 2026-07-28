@@ -729,7 +729,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             except BaseException as exc:
                 operation_telemetry.failed(exc)
                 raise
-            cmd_cursor._operation_telemetry = operation_telemetry
+            cmd_cursor._attach_operation_telemetry(operation_telemetry)
             return cmd_cursor
 
     @overload
@@ -1095,7 +1095,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             except BaseException as exc:
                 operation_telemetry.failed(exc)
                 raise
-            cmd_cursor._operation_telemetry = operation_telemetry
+            cmd_cursor._attach_operation_telemetry(operation_telemetry)
             return cmd_cursor
 
     def _retryable_read_command(
@@ -1217,7 +1217,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         except BaseException as exc:
             operation_telemetry.failed(exc)
             raise
-        cmd_cursor._operation_telemetry = operation_telemetry
+        cmd_cursor._attach_operation_telemetry(operation_telemetry)
         return cmd_cursor
 
     def list_collections(

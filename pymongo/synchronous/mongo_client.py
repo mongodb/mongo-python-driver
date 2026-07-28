@@ -2557,7 +2557,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             "ns": "admin.$cmd",
         }
         cmd_cursor = CommandCursor(admin["$cmd"], cursor, None, comment=comment)
-        cmd_cursor._operation_telemetry = operation_telemetry
+        cmd_cursor._attach_operation_telemetry(operation_telemetry)
         return cmd_cursor
 
     def list_databases(
