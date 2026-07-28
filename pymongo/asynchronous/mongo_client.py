@@ -58,7 +58,7 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
-from pymongo._telemetry import log_command_retry
+from pymongo._telemetry import _OperationTelemetry, log_command_retry
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
@@ -2041,20 +2041,28 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :return: Output of the calling func()
         """
-        return await _ClientConnectionRetryable(
-            mongo_client=self,
-            func=func,
-            bulk=bulk,
-            operation=operation,
-            is_read=is_read,
-            session=session,
-            read_pref=read_pref,
-            address=address,
-            retryable=retryable,
-            operation_id=operation_id,
-            is_run_command=is_run_command,
-            is_aggregate_write=is_aggregate_write,
-        ).run()
+        operation_telemetry = _OperationTelemetry(self.options.tracing, operation, session)
+        try:
+            result = await _ClientConnectionRetryable(
+                mongo_client=self,
+                func=func,
+                bulk=bulk,
+                operation=operation,
+                is_read=is_read,
+                session=session,
+                read_pref=read_pref,
+                address=address,
+                retryable=retryable,
+                operation_id=operation_id,
+                is_run_command=is_run_command,
+                is_aggregate_write=is_aggregate_write,
+            ).run()
+        except BaseException as exc:
+            operation_telemetry.failed(exc)
+            raise
+        else:
+            operation_telemetry.succeeded()
+            return result
 
     async def _retryable_read(
         self,
