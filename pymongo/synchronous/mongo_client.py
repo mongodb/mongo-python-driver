@@ -2098,9 +2098,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :return: Output of the calling func()
         """
         if reuse_current_span:
-            assert operation_telemetry is None, (
-                "reuse_current_span and operation_telemetry are mutually exclusive"
-            )
+            if operation_telemetry is not None:
+                raise ValueError(
+                    "reuse_current_span and operation_telemetry are mutually exclusive"
+                )
             return _ClientConnectionRetryable(
                 mongo_client=self,
                 func=func,

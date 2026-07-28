@@ -636,15 +636,13 @@ class _ClientBulk:
         session = _validate_session_write_concern(session, self.write_concern)
 
         if not self.write_concern.acknowledged:
+            # Unacknowledged client bulk writes always target admin.$cmd.bulkWrite
+            # (there's no per-operation collection to report), so dbname="admin"
+            # alone gives _OperationTelemetry the same name/db.namespace/
+            # db.operation.summary that used to be poked onto the span by hand.
             operation_telemetry = _OperationTelemetry(
-                self.client.options.tracing, operation, session
+                self.client.options.tracing, operation, session, dbname="admin"
             )
-            if operation_telemetry.handle is not None:
-                span = operation_telemetry.handle.span
-                summary = f"{operation_telemetry.operation_name} admin"
-                span.update_name(summary)
-                span.set_attribute("db.namespace", "admin")
-                span.set_attribute("db.operation.summary", summary)
             try:
                 with self.client._conn_for_writes(session, operation) as connection:
                     if connection.max_wire_version < 25:

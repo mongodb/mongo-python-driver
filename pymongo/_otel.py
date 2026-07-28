@@ -387,7 +387,7 @@ def start_operation_span(
         name = _build_query_summary(operation, dbname, collection)
         attributes["db.namespace"] = dbname
         attributes["db.operation.summary"] = name
-        if collection is not None:
+        if collection:
             attributes["db.collection.name"] = collection
     if not set_current:
         span = _TRACER.start_span(
