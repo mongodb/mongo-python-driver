@@ -32,11 +32,13 @@ PyMongo 4.18 brings a number of changes including:
   operation that created the cursor instead of starting a sibling span of its
   own; this also covers command cursors such as the client bulk write results
   cursor. ``killCursors`` and ``endSessions`` now get operation spans of their
-  own as well. A single ``transaction`` span now covers all retries of one
-  ``with_transaction()`` call or of a directly retried
-  ``commit_transaction()``, and operation spans keep their namespace,
-  collection, and operation-summary attributes even when the operation fails
-  before any command is sent, such as on a server-selection timeout.
+  own as well, and background monitoring spans no longer attach to a stale
+  parent from client startup. A single ``transaction`` span now covers all
+  retries of one ``with_transaction()`` call or of a directly retried
+  ``commit_transaction()``. Operation spans also keep their ``db.namespace``,
+  ``db.collection.name``, and ``db.operation.summary`` attributes even when
+  the operation fails before any command is sent, such as on a
+  server-selection timeout.
 - Fixed a potential out-of-bounds read in the C extension when decoding an
   array of BSON documents. An embedded document whose declared length exceeds
   the bytes remaining in the array now raises
