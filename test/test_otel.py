@@ -357,12 +357,21 @@ class TestOTelSpans(IntegrationTest):
         with self.assertRaises(OperationFailure):
             client.admin.command("saslStart", mechanism="SCRAM-SHA-256", payload=b"")
 
-        # TODO(PYTHON-5947): the wrapping *operation* span is still created and
-        # named "saslStart" (only the inner command span is suppressed for
-        # sensitive commands) -- reassess for Task 9 whether the operation
-        # span should also be redacted/renamed for sensitive commands.
+        # The inner command span must stay fully suppressed for sensitive commands.
         command_span_names = [s.name for s in self.spans() if "db.command.name" in s.attributes]
         self.assertNotIn("saslStart", command_span_names)
+
+        # TODO(PYTHON-5947): start_operation_span (pymongo/_otel.py) has no
+        # sensitivity check, unlike start_command_span -- the wrapping
+        # *operation* span is not suppressed and still carries the sensitive
+        # command's name (no payload leaks, just the bare command name and
+        # timing). This assertion pins the current (gap) behavior so it's
+        # tracked rather than silently uncovered; reassess for Task 9 whether
+        # the operation span should also be redacted/suppressed here.
+        operation_names = [
+            s.attributes.get("db.operation.name") for s in self.exporter.get_finished_spans()
+        ]
+        self.assertIn("saslStart", operation_names)
 
     def test_admin_command_omits_collection_name(self):
         # usersInfo's command value is a username string, not a collection, and
