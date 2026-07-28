@@ -372,6 +372,28 @@ def verify() -> int:
     if errors == prev_errors:
         print("    ca.pem: OK (has basicConstraints critical, keyUsage critical, SKI; no AKI/SAN)")
 
+    # Trusted CA (separate root used only by CA-bundle tests) must have critical basicConstraints
+    # and critical keyUsage; must NOT have AKI or SAN.
+    trusted_ca_text = cert_text(SCRIPT_DIR / "trusted-ca.pem")
+    prev_errors = errors
+    if "Basic Constraints: critical" not in trusted_ca_text:
+        print("    trusted-ca.pem: ERROR — basicConstraints not critical", file=sys.stderr)
+        errors += 1
+    if "Key Usage: critical" not in trusted_ca_text:
+        print("    trusted-ca.pem: ERROR — missing critical keyUsage", file=sys.stderr)
+        errors += 1
+    for ext in ("Authority Key Identifier", "Subject Alternative Name"):
+        if ext in trusted_ca_text:
+            print(
+                f"    trusted-ca.pem: ERROR — has {ext} (unexpected on a bare CA-bundle cert)",
+                file=sys.stderr,
+            )
+            errors += 1
+    if errors == prev_errors:
+        print(
+            "    trusted-ca.pem: OK (has basicConstraints critical, keyUsage critical; no AKI/SAN)"
+        )
+
     # MongoDB certs must NOT have AKI.
     for name in ("server.pem", "client.pem"):
         text = cert_text(SCRIPT_DIR / name)
