@@ -383,8 +383,8 @@ def handle_test_env() -> None:
 
         # Set CSFLE TLS cert paths to our AKI-enabled test/certificates/ before
         # setup-secrets.sh runs. setup-secrets.sh uses ${VAR:-default} so
-        # pre-setting these vars causes them to flow into secrets-export.sh via
-        # csfle/setup_secrets.py (which reads os.environ for these keys).
+        # pre-setting these vars causes them to flow into secrets-export.sh
+        # through csfle/setup_secrets.py (which reads os.environ for these keys).
         # load_config_from_file then persists all vars from that file for the
         # test runner, so no separate write_env calls are needed.
         certs = ROOT / "test/certificates"
