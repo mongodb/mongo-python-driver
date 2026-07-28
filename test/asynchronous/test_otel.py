@@ -38,6 +38,7 @@ from pymongo.operations import InsertOne
 from pymongo.read_preferences import ReadPreference
 from pymongo.typings import _Address
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.utils import async_wait_until
 from test.unified_format_shared import _shared_test_provider
 
 _HAS_OTEL_TEST_DEPS = False
@@ -1104,6 +1105,70 @@ class TestOTelSpans(AsyncIntegrationTest):
         ]
         self.assertEqual(len(cmd_spans), 1)
         self.assertEqual(cmd_spans[0].parent.span_id, op_span.context.span_id)
+
+    async def test_background_kill_cursors_span_is_a_trace_root(self):
+        # Regression test for PYTHON-5947: asyncio.create_task freezes the
+        # calling coroutine's contextvars.Context, and the kill-cursors
+        # executor is opened lazily from inside the client's first traced
+        # operation (_get_topology -> executor.open() -> create_task, reached
+        # while that operation's _OperationTelemetry has already made its
+        # span ambient-current). Without resetting the OTel context inside
+        # AsyncPeriodicExecutor._run, every killCursors span the background
+        # tick emits for the rest of the process's life gets parented under
+        # that first, long-since-ended operation and shares its trace id.
+        #
+        # Calling client._process_kill_cursors() directly from this test
+        # coroutine would NOT reproduce the bug: this coroutine's own
+        # context is clean, so the span would come out parentless even with
+        # the bug present. Instead we drive the *existing* kill-cursors
+        # executor task -- the one whose context was frozen inside
+        # find_one() below -- via wake()/skip_sleep(), so the tick actually
+        # runs inside that frozen context, and poll (async_wait_until) for
+        # the resulting span rather than sleeping a fixed amount.
+        import gc
+
+        # connect=False is essential here: the test helper's default
+        # connect=True calls client.aconnect() -> _get_topology() right after
+        # construction, *before* any traced operation runs and thus with no
+        # span current -- which would open (and freeze) the kill-cursors
+        # executor with a clean context and make this test pass regardless of
+        # the bug. With connect=False, _get_topology() (and therefore the
+        # executor's create_task) is only reached lazily, from inside the
+        # find_one() call below, while that operation's span is current.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True}, connect=False)
+        coll = client.pymongo_test.bg_kill_cursors
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(10)])
+
+        # This first traced operation is what opens the kill-cursors executor,
+        # freezing its context while this operation's span is current.
+        await coll.find_one({})
+
+        cursor = coll.find({}, batch_size=2)
+        await cursor.next()
+        del cursor
+        gc.collect()  # Queues a deferred killCursors.
+
+        self.exporter.clear()
+
+        def _kill_op_spans():
+            return [
+                s
+                for s in self.exporter.get_finished_spans()
+                if s.attributes.get("db.operation.name") == "killCursors"
+                and "db.command.name" not in s.attributes
+            ]
+
+        executor = client._kill_cursors_executor
+        executor.skip_sleep()
+        executor.wake()
+        await async_wait_until(_kill_op_spans, "background killCursors span emitted")
+
+        kill_spans = _kill_op_spans()
+        self.assertEqual(len(kill_spans), 1, [s.name for s in self.exporter.get_finished_spans()])
+        # The background tick must not inherit a parent from whatever span
+        # happened to be current when the executor task was created.
+        self.assertIsNone(kill_spans[0].parent)
 
     async def test_end_sessions_gets_operation_span(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})

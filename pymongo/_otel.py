@@ -34,7 +34,7 @@ from pymongo._version import __version__
 from pymongo.logger import _HELLO_COMMANDS, _JSON_OPTIONS, _SENSITIVE_COMMANDS
 
 try:
-    from opentelemetry import trace
+    from opentelemetry import context, trace
     from opentelemetry.trace import SpanKind, Status, StatusCode
 
     _HAS_OPENTELEMETRY = True
@@ -432,6 +432,24 @@ def use_operation_span(handle: Optional[_OperationSpanHandle]) -> Iterator[None]
             yield
     finally:
         _CURRENT_OPERATION_NAME.reset(token)
+
+
+def reset_context() -> None:
+    """Clear the OTel ambient span and operation-name contextvar.
+
+    For long-lived background tasks whose context was copied from whatever
+    happened to be running when they were created (``asyncio.create_task``
+    freezes the caller's ``contextvars.Context``). Without this, spans the task
+    emits are parented under an unrelated, long-since-ended operation and share
+    its trace id. Attaching an empty context makes ``get_current_span()`` return
+    the non-recording invalid span, so spans started afterwards become trace
+    roots. Deliberately does not detach: the task's context is wrong for its
+    whole life, and it dies with the task.
+    """
+    if not _HAS_OPENTELEMETRY:
+        return
+    _CURRENT_OPERATION_NAME.set(None)
+    context.attach(context.Context())
 
 
 def end_operation_span_success(handle: Optional[_OperationSpanHandle]) -> None:

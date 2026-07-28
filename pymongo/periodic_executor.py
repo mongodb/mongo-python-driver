@@ -23,7 +23,7 @@ import time
 import weakref
 from typing import Any, Optional
 
-from pymongo import _csot, _op_id
+from pymongo import _csot, _op_id, _otel
 from pymongo._asyncio_task import create_task
 from pymongo.lock import _create_lock
 
@@ -94,9 +94,14 @@ class AsyncPeriodicExecutor:
         self._skip_sleep = True
 
     async def _run(self) -> None:
-        # The CSOT and op id contextvars must be cleared inside the executor task before execution begins
+        # The CSOT, op id, and OpenTelemetry contextvars must be cleared inside
+        # the executor task before execution begins: create_task froze a copy of
+        # whatever context was current when this executor was opened, which for
+        # the kill-cursors executor is the middle of the client's first
+        # operation.
         _csot.reset_all()
         _op_id.reset()
+        _otel.reset_context()
         while not self._stopped:
             if self._task and self._task.cancelling():  # type: ignore[unused-ignore, attr-defined]
                 raise asyncio.CancelledError
