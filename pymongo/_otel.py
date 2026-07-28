@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping, MutableMapping
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Optional, TypedDict
 
 from bson import json_util
@@ -44,6 +45,14 @@ try:
 except ImportError:
     _HAS_OPENTELEMETRY = False
     _TRACER = None
+
+# The operation name of whichever operation span is currently active (entered
+# via start_operation_span), so start_command_span can backfill the operation
+# span's name/namespace attributes from the first command executed inside it
+# (dbname/collection aren't known until then -- see start_operation_span).
+_CURRENT_OPERATION_NAME: ContextVar[Optional[str]] = ContextVar(
+    "_CURRENT_OPERATION_NAME", default=None
+)
 
 if TYPE_CHECKING:
     from opentelemetry.trace import Span, Tracer
@@ -209,6 +218,16 @@ def start_command_span(
         return None
 
     collection = _extract_collection_name(command_name, dbname, cmd)
+    current_operation = _CURRENT_OPERATION_NAME.get()
+    if current_operation is not None:
+        current_span = trace.get_current_span()
+        if current_span.is_recording():
+            summary = _build_query_summary(current_operation, dbname, collection)
+            current_span.update_name(summary)
+            current_span.set_attribute("db.namespace", dbname)
+            current_span.set_attribute("db.operation.summary", summary)
+            if collection:
+                current_span.set_attribute("db.collection.name", collection)
     address = conn.address
     transport = "unix" if address[1] is None else "tcp"
     attributes: dict[str, Any] = {
@@ -266,3 +285,68 @@ def end_command_span_failure(
         span.set_attribute("db.response.status_code", str(code))
     span.set_status(Status(StatusCode.ERROR, description=failure.get("errmsg")))
     span.end()
+
+
+class _OperationSpanHandle:
+    """Bundles what start_operation_span hands back so callers can end the span correctly.
+
+    ``span`` is exposed directly so a transaction span can be looked up
+    (``handle.span``) and passed as another operation span's ``parent_span``.
+    """
+
+    __slots__ = ("_cm", "_name_token", "span")
+
+    def __init__(self, span: Span, cm: Any, name_token: Any) -> None:
+        self.span = span
+        self._cm = cm
+        self._name_token = name_token
+
+
+def start_operation_span(
+    tracing_options: Optional[TracingOptions],
+    operation: str,
+    parent_span: Optional[Span],
+) -> Optional[_OperationSpanHandle]:
+    """Start (and make current) a CLIENT-kind span for one logical operation, or None.
+
+    Spans all retry attempts of one call to _retry_internal. Named
+    provisionally after the bare operation name -- dbname/collection aren't
+    known yet, since server selection hasn't happened -- and backfilled by
+    start_command_span once the first command inside it is built.
+
+    ``parent_span`` (the active transaction span, if any) becomes this span's
+    *explicit* parent; it is deliberately not read from ambient context, to
+    avoid a concurrently-running unrelated session's operations picking up
+    this transaction by accident. Pass None outside of a transaction.
+    """
+    if not _is_tracing_enabled(tracing_options):
+        return None
+    assert _TRACER is not None  # _is_tracing_enabled already checked _HAS_OPENTELEMETRY
+    context = trace.set_span_in_context(parent_span) if parent_span is not None else None
+    cm = _TRACER.start_as_current_span(
+        operation,
+        kind=SpanKind.CLIENT,
+        context=context,
+        attributes={"db.system.name": "mongodb", "db.operation.name": operation},
+    )
+    span = cm.__enter__()
+    name_token = _CURRENT_OPERATION_NAME.set(operation)
+    return _OperationSpanHandle(span, cm, name_token)
+
+
+def end_operation_span_success(handle: Optional[_OperationSpanHandle]) -> None:
+    """End the operation span with no error status."""
+    if handle is None:
+        return
+    _CURRENT_OPERATION_NAME.reset(handle._name_token)
+    handle._cm.__exit__(None, None, None)
+
+
+def end_operation_span_failure(handle: Optional[_OperationSpanHandle], exc: BaseException) -> None:
+    """Record the exception, set the error status, and end the operation span."""
+    if handle is None:
+        return
+    _CURRENT_OPERATION_NAME.reset(handle._name_token)
+    handle.span.record_exception(exc)
+    handle.span.set_status(Status(StatusCode.ERROR, description=str(exc)))
+    handle._cm.__exit__(None, None, None)

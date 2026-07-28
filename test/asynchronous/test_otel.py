@@ -38,6 +38,7 @@ if _otel._HAS_OPENTELEMETRY:
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import SimpleSpanProcessor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+        from opentelemetry.trace import StatusCode
 
         _HAS_OTEL_TEST_DEPS = True
     except ImportError:
@@ -61,6 +62,65 @@ def _shared_test_provider() -> TracerProvider:
     provider = TracerProvider()
     trace.set_tracer_provider(provider)
     return provider
+
+
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
+class TestOTelOperationSpanPrimitives(unittest.TestCase):
+    """Unit tests for the pymongo._otel operation-span primitives (no live server needed)."""
+
+    @classmethod
+    def setUpClass(cls):
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        cls.exporter = InMemorySpanExporter()
+        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    def setUp(self):
+        self.exporter.clear()
+
+    def test_start_operation_span_disabled_returns_none(self):
+        handle = _otel.start_operation_span(None, "find", None)
+        self.assertIsNone(handle)
+
+    def test_start_operation_span_success_sets_provisional_attributes(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None)
+        self.assertIsNotNone(handle)
+        _otel.end_operation_span_success(handle)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "find")
+        self.assertEqual(span.attributes["db.system.name"], "mongodb")
+        self.assertEqual(span.attributes["db.operation.name"], "find")
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+
+    def test_start_operation_span_failure_records_exception(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "insert", None)
+        _otel.end_operation_span_failure(handle, ValueError("boom"))
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+
+    def test_start_operation_span_with_parent(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        parent_handle = _otel.start_operation_span(opts, "transaction", None)
+        handle = _otel.start_operation_span(opts, "insert", parent_handle.span)
+        _otel.end_operation_span_success(handle)
+        _otel.end_operation_span_success(parent_handle)
+        child, parent = self.exporter.get_finished_spans()
+        self.assertEqual(child.parent.span_id, parent.context.span_id)
+
+    def test_current_operation_name_contextvar_scoped_correctly(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        self.assertIsNone(_otel._CURRENT_OPERATION_NAME.get())
+        handle = _otel.start_operation_span(opts, "find", None)
+        self.assertEqual(_otel._CURRENT_OPERATION_NAME.get(), "find")
+        _otel.end_operation_span_success(handle)
+        self.assertIsNone(_otel._CURRENT_OPERATION_NAME.get())
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
