@@ -56,6 +56,10 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
     _session: Optional[Any]
     _killed: bool
     _operation_telemetry: Optional[Any] = None
+    # Set by callers whose getMores belong under an operation span that is
+    # already current (the client bulk-write results cursor), rather than under
+    # a getMore operation span of their own.
+    _reuse_current_span_for_getmore: bool = False
 
     @abstractmethod
     def _get_namespace(self) -> str:

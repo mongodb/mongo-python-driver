@@ -177,6 +177,7 @@ class CommandCursor(_CursorBase[_DocumentType]):
                 self._run_with_conn,
                 address=self._address,
                 operation_telemetry=self._operation_telemetry,
+                reuse_current_span=self._reuse_current_span_for_getmore,
             )
         except OperationFailure as exc:
             self._end_operation_telemetry(exc)

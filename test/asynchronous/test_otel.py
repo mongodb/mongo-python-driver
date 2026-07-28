@@ -28,7 +28,12 @@ import pytest
 import pymongo._otel as _otel
 from pymongo import _telemetry, common
 from pymongo._telemetry import _OperationTelemetry
-from pymongo.errors import ConfigurationError, OperationFailure, ServerSelectionTimeoutError
+from pymongo.errors import (
+    ClientBulkWriteException,
+    ConfigurationError,
+    OperationFailure,
+    ServerSelectionTimeoutError,
+)
 from pymongo.operations import InsertOne
 from pymongo.read_preferences import ReadPreference
 from pymongo.typings import _Address
@@ -898,6 +903,53 @@ class TestOTelSpans(AsyncIntegrationTest):
         ]
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0].attributes["db.namespace"], "admin")
+
+    @async_client_context.require_version_min(8, 0)
+    async def test_client_bulk_write_results_cursor_getmores_nest_under_bulk_write(self):
+        # A successful InsertOne's verbose result doc is tiny (~{"ok": 1, "idx":
+        # i, "n": 1}) regardless of the inserted document's size, and the driver
+        # never sends more than maxWriteBatchSize (100_000 by default) ops in one
+        # bulkWrite command -- so plain successful inserts can never make the
+        # results cursor's first batch exceed the 16MB per-batch limit, no
+        # matter how many operations are given. Duplicate-key write errors,
+        # whose result docs embed the offending key (here padded to 3000 bytes),
+        # blow past that limit at a much smaller, fast-running operation count
+        # while still exercising the exact same code path (a real
+        # AsyncCommandCursor built and iterated by _process_results_cursor).
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.bulk_results_cursor
+        await coll.drop()
+        await coll.create_index("dup", unique=True)
+        dup_value = "d" * 3000
+        models = [
+            InsertOne(namespace=coll.full_name, document={"dup": dup_value}) for _ in range(10000)
+        ]
+        self.exporter.clear()
+        with self.assertRaises(ClientBulkWriteException):
+            await client.bulk_write(models, verbose_results=True, ordered=False)
+
+        finished = self.exporter.get_finished_spans()
+        # Exactly one operation span, for the bulkWrite itself.
+        op_spans = [
+            s
+            for s in finished
+            if "db.command.name" not in s.attributes
+            and s.attributes.get("db.operation.name") is not None
+        ]
+        self.assertEqual(
+            [s.attributes["db.operation.name"] for s in op_spans],
+            ["bulkWrite"],
+            [s.name for s in finished],
+        )
+        (op_span,) = op_spans
+
+        # Any getMore command spans parent directly to the bulkWrite span.
+        getmore_cmd_spans = [
+            s for s in finished if s.attributes.get("db.command.name") == "getMore"
+        ]
+        self.assertGreater(len(getmore_cmd_spans), 0, "expected a multi-batch results cursor")
+        for cmd_span in getmore_cmd_spans:
+            self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
 
     async def test_operation_span_has_namespace_when_no_command_is_sent(self):
         # An operation that fails during server selection never builds a
