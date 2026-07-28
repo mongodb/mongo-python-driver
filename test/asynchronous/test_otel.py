@@ -31,12 +31,12 @@ from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.operations import InsertOne
 from pymongo.typings import _Address
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.unified_format_shared import _shared_test_provider
 
 _HAS_OTEL_TEST_DEPS = False
 if _otel._HAS_OPENTELEMETRY:
     try:
         from opentelemetry import trace
-        from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import SimpleSpanProcessor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
         from opentelemetry.trace import StatusCode
@@ -48,21 +48,6 @@ if _otel._HAS_OPENTELEMETRY:
 _IS_SYNC = False
 
 pytestmark = pytest.mark.otel
-
-
-def _shared_test_provider() -> TracerProvider:
-    """Return a process-wide SDK TracerProvider for tests to attach exporters to.
-
-    ``trace.set_tracer_provider`` only takes effect once per process (later calls
-    are silently ignored), so tests must share one provider and each register
-    their own span processor rather than trying to install a fresh provider.
-    """
-    current = trace.get_tracer_provider()
-    if isinstance(current, TracerProvider):
-        return current
-    provider = TracerProvider()
-    trace.set_tracer_provider(provider)
-    return provider
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
