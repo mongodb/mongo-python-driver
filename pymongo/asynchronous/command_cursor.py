@@ -29,6 +29,7 @@ from bson import CodecOptions, _convert_raw_document_lists_to_streams
 from pymongo.asynchronous.cursor_base import _AsyncCursorBase, _ConnectionManager
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.helpers_shared import _split_namespace
 from pymongo.message import _GetMore, _OpMsg, _RawBatchGetMore
 from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _DocumentOut, _DocumentType
@@ -225,7 +226,7 @@ class AsyncCommandCursor(_AsyncCursorBase[_DocumentType]):
             return len(self._data)
 
         if self._id:  # Get More
-            dbname, collname = self._ns.split(".", 1)
+            dbname, collname = _split_namespace(self._ns)
             read_pref = self._collection._read_preference_for(self.session)
             await self._send_message(
                 self._getmore_class(

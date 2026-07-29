@@ -1028,7 +1028,7 @@ class Cursor(_CursorBase[_DocumentType]):
                 # Update the namespace used for future getMore commands.
                 ns = cursor.get("ns")
                 if ns:
-                    self._dbname, self._collname = ns.split(".", 1)
+                    self._dbname, self._collname = helpers_shared._split_namespace(ns)
             else:
                 documents = cursor["nextBatch"]
             self._data = deque(documents)

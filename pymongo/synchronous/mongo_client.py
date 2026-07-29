@@ -2350,7 +2350,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         conn: Connection,
     ) -> None:
         namespace = address.namespace
-        db, coll = namespace.split(".", 1)
+        db, coll = helpers_shared._split_namespace(namespace)
         spec = {"killCursors": coll, "cursors": cursor_ids}
         # killCursors deliberately bypasses _retry_internal (it must never be
         # retried), so its operation span is created here instead.
