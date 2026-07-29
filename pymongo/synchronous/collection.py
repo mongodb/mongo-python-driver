@@ -2584,7 +2584,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 _cmd,
                 read_pref,
                 s,
-                _Op.LIST_INDEXES,
+                operation=_Op.LIST_INDEXES,
                 dbname=self._database.name,
                 collection=self._name,
             )
@@ -2688,10 +2688,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
-            _Op.LIST_SEARCH_INDEX,
+            retryable=not cmd._performs_write,
+            operation=_Op.LIST_SEARCH_INDEX,
             dbname=self._database.name,
             collection=self.name,
-            retryable=not cmd._performs_write,
         )
 
     def create_search_index(
@@ -2937,11 +2937,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
-            _Op.AGGREGATE,
+            retryable=not cmd._performs_write,
+            operation=_Op.AGGREGATE,
+            is_aggregate_write=cmd._performs_write,
             dbname=self._database.name,
             collection=self._name,
-            retryable=not cmd._performs_write,
-            is_aggregate_write=cmd._performs_write,
         )
 
     def aggregate(

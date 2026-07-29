@@ -2169,18 +2169,23 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         read_pref: _ServerMode,
         session: Optional[AsyncClientSession],
         operation: str,
+        address: Optional[_Address] = None,
+        retryable: bool = True,
+        operation_id: Optional[int] = None,
+        is_run_command: bool = False,
+        is_aggregate_write: bool = False,
         *,
         dbname: str,
         collection: Optional[str] = None,
-        **kwargs: Any,
     ) -> _CommandCursor:
         """Run a command-cursor read, nesting its getMores under one operation span.
 
-        A command cursor's first batch is fetched inside :meth:`_retryable_read`,
-        before the cursor exists, so the span cannot be owned by the cursor the
-        way a find cursor's is. Create it here, keep it open across the call, and
-        hand it to the cursor that comes back so every later getMore nests under
-        the operation that produced the cursor.
+        Takes the same arguments as :meth:`_retryable_read`, plus the namespace
+        for the span. A command cursor's first batch is fetched inside that
+        call, before the cursor exists, so the span cannot be owned by the
+        cursor the way a find cursor's is. Create it here, keep it open across
+        the call, and hand it to the cursor that comes back so every later
+        getMore nests under the operation that produced the cursor.
         """
         operation_telemetry = _OperationTelemetry(
             self.options.tracing,
@@ -2196,8 +2201,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 read_pref,
                 session,
                 operation,
+                address,
+                retryable,
+                operation_id,
+                is_run_command,
+                is_aggregate_write,
                 operation_telemetry=operation_telemetry,
-                **kwargs,
             )
         except BaseException as exc:
             operation_telemetry.failed(exc)

@@ -712,9 +712,9 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 cmd.get_cursor,
                 cmd.get_read_preference(s),  # type: ignore[arg-type]
                 s,
-                _Op.AGGREGATE,
-                dbname=self.name,
                 retryable=not cmd._performs_write,
+                operation=_Op.AGGREGATE,
+                dbname=self.name,
             )
 
     @overload
@@ -1059,12 +1059,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                     raise InvalidOperation("Command does not return a cursor.")
 
             return await self.client._retryable_read_cursor(
-                inner,
-                read_preference,
-                tmp_session,
-                command_name,
-                dbname=self.name,
-                retryable=False,
+                inner, read_preference, tmp_session, command_name, None, False, dbname=self.name
             )
 
     async def _retryable_read_command(
@@ -1162,11 +1157,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             )
 
         return await self._client._retryable_read_cursor(
-            _cmd,
-            read_pref,
-            session,
-            _Op.LIST_COLLECTIONS,
-            dbname=self.name,
+            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS, dbname=self.name
         )
 
     async def list_collections(
