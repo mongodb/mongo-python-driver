@@ -2081,70 +2081,22 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         :return: Output of the calling func()
         """
-        if reuse_current_span:
-            if operation_telemetry is not None:
-                raise ValueError(
-                    "reuse_current_span and operation_telemetry are mutually exclusive"
-                )
-            return _ClientConnectionRetryable(
-                mongo_client=self,
-                func=func,
-                bulk=bulk,
-                operation=operation,
-                is_read=is_read,
-                session=session,
-                read_pref=read_pref,
-                address=address,
-                retryable=retryable,
-                operation_id=operation_id,
-                is_run_command=is_run_command,
-                is_aggregate_write=is_aggregate_write,
-            ).run()
-
-        if operation_telemetry is not None:
-            with operation_telemetry.use():
-                return _ClientConnectionRetryable(
-                    mongo_client=self,
-                    func=func,
-                    bulk=bulk,
-                    operation=operation,
-                    is_read=is_read,
-                    session=session,
-                    read_pref=read_pref,
-                    address=address,
-                    retryable=retryable,
-                    operation_id=operation_id,
-                    is_run_command=is_run_command,
-                    is_aggregate_write=is_aggregate_write,
-                ).run()
-
-        owned_telemetry = _OperationTelemetry(
-            self.options.tracing,
-            operation,
-            session,
+        return _ClientConnectionRetryable(
+            mongo_client=self,
+            func=func,
+            bulk=bulk,
+            operation=operation,
+            is_read=is_read,
+            session=session,
+            read_pref=read_pref,
+            address=address,
+            retryable=retryable,
+            operation_id=operation_id,
             is_run_command=is_run_command,
-        )
-        try:
-            result = _ClientConnectionRetryable(
-                mongo_client=self,
-                func=func,
-                bulk=bulk,
-                operation=operation,
-                is_read=is_read,
-                session=session,
-                read_pref=read_pref,
-                address=address,
-                retryable=retryable,
-                operation_id=operation_id,
-                is_run_command=is_run_command,
-                is_aggregate_write=is_aggregate_write,
-            ).run()
-        except BaseException as exc:
-            owned_telemetry.failed(exc)
-            raise
-        else:
-            owned_telemetry.succeeded()
-            return result
+            is_aggregate_write=is_aggregate_write,
+            operation_telemetry=operation_telemetry,
+            reuse_current_span=reuse_current_span,
+        ).run()
 
     def _retryable_read(
         self,
@@ -2916,6 +2868,8 @@ class _ClientConnectionRetryable(Generic[T]):
         operation_id: Optional[int] = None,
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
+        operation_telemetry: Optional[_OperationTelemetry] = None,
+        reuse_current_span: bool = False,
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
@@ -2947,12 +2901,42 @@ class _ClientConnectionRetryable(Generic[T]):
         ):
             operation_id = _randint()
         self._operation_id = operation_id
+        if reuse_current_span and operation_telemetry is not None:
+            raise ValueError("reuse_current_span and operation_telemetry are mutually exclusive")
+        # An operation span covering every attempt of this operation. A caller
+        # that needs the span to outlive this object (a cursor, whose getMores
+        # belong under the operation that created it) passes its own and keeps
+        # ownership; reuse_current_span means an enclosing span is already
+        # current and a second one would be spurious. Otherwise this object
+        # owns the span for its own lifetime.
+        self._owns_telemetry = operation_telemetry is None and not reuse_current_span
+        if self._owns_telemetry:
+            operation_telemetry = _OperationTelemetry(
+                mongo_client.options.tracing, operation, session, is_run_command=is_run_command
+            )
+        self._operation_telemetry = operation_telemetry
         self._attempt_number = 0
         self._is_run_command = is_run_command
         self._is_aggregate_write = is_aggregate_write
         self._base_backoff_ms: Optional[float] = None
 
     def run(self) -> T:
+        """Run the operation, retrying as allowed, within its operation span."""
+        if self._operation_telemetry is None:
+            return self._run()
+        if not self._owns_telemetry:
+            with self._operation_telemetry.use():
+                return self._run()
+        try:
+            result = self._run()
+        except BaseException as exc:
+            self._operation_telemetry.failed(exc)
+            raise
+        else:
+            self._operation_telemetry.succeeded()
+            return result
+
+    def _run(self) -> T:
         """Runs the supplied func() and attempts a retry
 
         :raises: self._last_error: Last exception raised
