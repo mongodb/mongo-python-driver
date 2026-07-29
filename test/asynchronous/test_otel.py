@@ -867,7 +867,8 @@ class TestOTelSpans(AsyncIntegrationTest):
     async def test_transaction_span_parents_operation_and_command_spans(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
-        await coll.insert_one({"x": 1})
+        await coll.drop()
+        await client[self.db.name].create_collection("test")
         self.exporter.clear()
 
         async with client.start_session() as session:
@@ -894,6 +895,8 @@ class TestOTelSpans(AsyncIntegrationTest):
     async def test_aborted_transaction_still_ends_span(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
+        await coll.drop()
+        await client[self.db.name].create_collection("test")
         self.exporter.clear()
 
         async with client.start_session() as session:
@@ -951,6 +954,8 @@ class TestOTelSpans(AsyncIntegrationTest):
         # leaving one unended.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
+        await coll.drop()
+        await client[self.db.name].create_collection("test")
         self.exporter.clear()
 
         async with client.start_session() as session:

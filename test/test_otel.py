@@ -863,7 +863,8 @@ class TestOTelSpans(IntegrationTest):
     def test_transaction_span_parents_operation_and_command_spans(self):
         client = self.rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
-        coll.insert_one({"x": 1})
+        coll.drop()
+        client[self.db.name].create_collection("test")
         self.exporter.clear()
 
         with client.start_session() as session:
@@ -890,6 +891,8 @@ class TestOTelSpans(IntegrationTest):
     def test_aborted_transaction_still_ends_span(self):
         client = self.rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
+        coll.drop()
+        client[self.db.name].create_collection("test")
         self.exporter.clear()
 
         with client.start_session() as session:
@@ -947,6 +950,8 @@ class TestOTelSpans(IntegrationTest):
         # leaving one unended.
         client = self.rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
+        coll.drop()
+        client[self.db.name].create_collection("test")
         self.exporter.clear()
 
         with client.start_session() as session:
