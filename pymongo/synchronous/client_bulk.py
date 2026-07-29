@@ -635,10 +635,10 @@ class _ClientBulk:
         session = _validate_session_write_concern(session, self.write_concern)
 
         if not self.write_concern.acknowledged:
-            # Unacknowledged client bulk writes always target admin.$cmd.bulkWrite
-            # (there's no per-operation collection to report), so dbname="admin"
-            # alone gives _OperationTelemetry the same name/db.namespace/
-            # db.operation.summary that used to be poked onto the span by hand.
+            # This path never reaches the command-span code that would
+            # otherwise fill in the span's namespace, so pass it here. A client
+            # bulk write always runs against admin and spans multiple
+            # namespaces, so there is no single collection to report.
             operation_telemetry = _OperationTelemetry(
                 self.client.options.tracing, operation, session, dbname="admin"
             )
