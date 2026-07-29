@@ -823,10 +823,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             _check_write_command_response(result)
 
         await self._database.client._retryable_write(
-            acknowledged,
-            _insert_command,
-            session,
-            operation=_Op.INSERT,
+            acknowledged, _insert_command, session, operation=_Op.INSERT
         )
 
         if not isinstance(doc, RawBSONDocument):
@@ -2271,10 +2268,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             return names
 
         return await self.database.client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.CREATE_INDEXES,
+            False, inner, session, _Op.CREATE_INDEXES
         )
 
     async def create_index(
@@ -2821,10 +2815,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             return [index["name"] for index in resp["indexesCreated"]]
 
         return await self.database.client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.CREATE_SEARCH_INDEXES,
+            False, inner, session, _Op.CREATE_SEARCH_INDEXES
         )
 
     async def drop_search_index(

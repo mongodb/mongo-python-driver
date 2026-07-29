@@ -823,10 +823,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             _check_write_command_response(result)
 
         self._database.client._retryable_write(
-            acknowledged,
-            _insert_command,
-            session,
-            operation=_Op.INSERT,
+            acknowledged, _insert_command, session, operation=_Op.INSERT
         )
 
         if not isinstance(doc, RawBSONDocument):
@@ -2268,12 +2265,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             )
             return names
 
-        return self.database.client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.CREATE_INDEXES,
-        )
+        return self.database.client._retryable_write(False, inner, session, _Op.CREATE_INDEXES)
 
     def create_index(
         self,
@@ -2817,10 +2809,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             return [index["name"] for index in resp["indexesCreated"]]
 
         return self.database.client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.CREATE_SEARCH_INDEXES,
+            False, inner, session, _Op.CREATE_SEARCH_INDEXES
         )
 
     def drop_search_index(
