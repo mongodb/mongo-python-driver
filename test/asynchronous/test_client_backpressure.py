@@ -354,8 +354,9 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
         # A run can never be faster than the sum of its backoffs.
         # With jitter pinned to 1, the default backoffs are 0.2 + 0.4 = 0.6s
         # and the baseBackoffMS=50 backoffs are 0.1 + 0.2 = 0.3s.
-        self.assertGreaterEqual(exponential_backoff_time, 0.6)
-        self.assertGreaterEqual(with_base_backoff_ms_time, 0.3)
+        # Allow for slight timing slack due to asyncio timing resolution on Windows <= Python 3.12
+        self.assertGreaterEqual(exponential_backoff_time, 0.55)
+        self.assertGreaterEqual(with_base_backoff_ms_time, 0.25)
         self.assertLess(with_base_backoff_ms_time, 0.6)
 
 
