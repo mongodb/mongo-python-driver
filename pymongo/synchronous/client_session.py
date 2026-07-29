@@ -777,107 +777,98 @@ class ClientSession:
             https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback
         """
         if self._with_transaction_span is not None:
-            # Guard against a callback illegally re-entering with_transaction()
-            # on this same session (already unsupported -- the callback "should
-            # not attempt to start new transactions", and sessions are "not
-            # thread-safe or fork-safe"). Without this check, the inner call's
-            # own span bookkeeping below would overwrite, and then null,
-            # self._with_transaction_span/self._transaction.span out from under
-            # the outer call, leaking the outer call's "transaction" span (it
-            # would end up completely unreferenced, never ended). Raising here,
-            # before touching any shared state, turns that silent leak into an
-            # immediate, clear error instead.
+            # Nested/concurrent with_transaction() calls on one session are
+            # unsupported. Raise here, before any span bookkeeping, so we
+            # don't silently clobber and leak the outer call's span.
             raise InvalidOperation(
                 "Cannot call with_transaction() while a previous with_transaction() "
                 "call on this session has not returned -- sessions do not support "
                 "nested or concurrent with_transaction() calls"
             )
-        # One "transaction" span shared across every retry of this whole
-        # logical with_transaction() call -- start_transaction reuses it
-        # instead of creating a new one (see its "if self._with_transaction_span
-        # is not None" check), and commit_transaction/abort_transaction skip
-        # ending/clearing it (same check) so it survives every full-transaction
-        # retry and every commit retry. Ended exactly once here, when this
-        # method finally returns or raises.
-        #
-        # Only create it when this call is actually about to start its own
-        # transaction. If a transaction started via the direct API is already
-        # active on this session, the start_transaction() call below raises
-        # "Transaction already in progress" immediately -- creating a span
-        # here would just be a spurious, zero-work "transaction" span with
-        # nothing ever recorded under it.
+        # One span for the whole call: start_transaction reuses it instead of
+        # creating one per retry, and commit/abort leave it open, so a
+        # retried with_transaction() yields a single span. Skipped when a
+        # direct-API transaction is already active, because start_transaction()
+        # will raise immediately below and the span would record nothing.
         if not self.in_transaction:
             self._with_transaction_span = _otel.start_transaction_span(self._client.options.tracing)
         try:
-            start_time = time.monotonic()
-            retry = 0
-            last_error: Optional[BaseException] = None
-            while True:
-                if retry:  # Implement exponential backoff on retry.
-                    jitter = random.random()  # noqa: S311
-                    backoff = jitter * min(_BACKOFF_INITIAL * (1.5**retry), _BACKOFF_MAX)
-                    if not _within_time_limit(start_time, backoff):
-                        assert last_error is not None
-                        raise _make_timeout_error(last_error) from last_error
-                    time.sleep(backoff)
-                retry += 1
-                self.start_transaction(
-                    read_concern, write_concern, read_preference, max_commit_time_ms
-                )
-                try:
-                    ret = callback(self)
-                # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-                except BaseException as exc:
-                    last_error = exc
-                    if self.in_transaction:
-                        self.abort_transaction()
-                    if isinstance(exc, PyMongoError) and exc.has_error_label(
-                        "TransientTransactionError"
-                    ):
-                        if _within_time_limit(start_time):
-                            # Retry the entire transaction.
-                            continue
-                        raise _make_timeout_error(last_error) from exc
-                    raise
-
-                if not self.in_transaction:
-                    # Assume callback intentionally ended the transaction.
-                    return ret
-
-                while True:
-                    try:
-                        self.commit_transaction()
-                    except PyMongoError as exc:
-                        last_error = exc
-                        if exc.has_error_label(
-                            "UnknownTransactionCommitResult"
-                        ) and not _max_time_expired_error(exc):
-                            if not _within_time_limit(start_time):
-                                raise _make_timeout_error(last_error) from exc
-                            # Retry the commit.
-                            continue
-
-                        if exc.has_error_label("TransientTransactionError"):
-                            if not _within_time_limit(start_time):
-                                raise _make_timeout_error(last_error) from exc
-                            # Retry the entire transaction.
-                            break
-                        raise
-
-                    # Commit succeeded.
-                    return ret
+            return self._with_transaction_retry_loop(
+                callback, read_concern, write_concern, read_preference, max_commit_time_ms
+            )
         finally:
             _otel.end_transaction_span(self._with_transaction_span)
-            # Only clear the span this call owns. If a transaction started via
-            # the direct API was already active (see the guard above), this
-            # call never touched self._transaction.span -- it still points at
-            # that unrelated, still-in-progress transaction's span, and must
-            # not be clobbered here (Important #1: doing so unconditionally
-            # would leak that span -- never ended, never exported -- and turn
-            # every later operation on it into a spurious trace root).
+            # Only clear the span this call owns -- if a direct-API
+            # transaction was already active, self._transaction.span belongs
+            # to that transaction and must not be nulled here.
             if self._transaction.span is self._with_transaction_span:
                 self._transaction.span = None
             self._with_transaction_span = None
+
+    def _with_transaction_retry_loop(
+        self,
+        callback: Callable[[ClientSession], _T],
+        read_concern: Optional[ReadConcern],
+        write_concern: Optional[WriteConcern],
+        read_preference: Optional[_ServerMode],
+        max_commit_time_ms: Optional[int],
+    ) -> _T:
+        """Run with_transaction's retry loop; see with_transaction."""
+        start_time = time.monotonic()
+        retry = 0
+        last_error: Optional[BaseException] = None
+        while True:
+            if retry:  # Implement exponential backoff on retry.
+                jitter = random.random()  # noqa: S311
+                backoff = jitter * min(_BACKOFF_INITIAL * (1.5**retry), _BACKOFF_MAX)
+                if not _within_time_limit(start_time, backoff):
+                    assert last_error is not None
+                    raise _make_timeout_error(last_error) from last_error
+                time.sleep(backoff)
+            retry += 1
+            self.start_transaction(read_concern, write_concern, read_preference, max_commit_time_ms)
+            try:
+                ret = callback(self)
+            # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
+            except BaseException as exc:
+                last_error = exc
+                if self.in_transaction:
+                    self.abort_transaction()
+                if isinstance(exc, PyMongoError) and exc.has_error_label(
+                    "TransientTransactionError"
+                ):
+                    if _within_time_limit(start_time):
+                        # Retry the entire transaction.
+                        continue
+                    raise _make_timeout_error(last_error) from exc
+                raise
+
+            if not self.in_transaction:
+                # Assume callback intentionally ended the transaction.
+                return ret
+
+            while True:
+                try:
+                    self.commit_transaction()
+                except PyMongoError as exc:
+                    last_error = exc
+                    if exc.has_error_label(
+                        "UnknownTransactionCommitResult"
+                    ) and not _max_time_expired_error(exc):
+                        if not _within_time_limit(start_time):
+                            raise _make_timeout_error(last_error) from exc
+                        # Retry the commit.
+                        continue
+
+                    if exc.has_error_label("TransientTransactionError"):
+                        if not _within_time_limit(start_time):
+                            raise _make_timeout_error(last_error) from exc
+                        # Retry the entire transaction.
+                        break
+                    raise
+
+                # Commit succeeded.
+                return ret
 
     def start_transaction(
         self,
