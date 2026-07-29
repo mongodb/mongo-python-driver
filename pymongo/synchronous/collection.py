@@ -2171,12 +2171,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Non-cursor read helper to handle implicit session creation."""
         client = self._database.client
         with client._tmp_session(session) as s:
-            return client._retryable_read(
-                func,
-                self._read_preference_for(s),
-                s,
-                operation,
-            )
+            return client._retryable_read(func, self._read_preference_for(s), s, operation)
 
     def create_indexes(
         self,
@@ -2511,12 +2506,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        self.database.client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.DROP_INDEXES,
-        )
+        self.database.client._retryable_write(False, inner, session, _Op.DROP_INDEXES)
 
     def list_indexes(
         self,
@@ -2871,12 +2861,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        self.database.client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.DROP_SEARCH_INDEXES,
-        )
+        self.database.client._retryable_write(False, inner, session, _Op.DROP_SEARCH_INDEXES)
 
     def update_search_index(
         self,
@@ -2918,12 +2903,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        self.database.client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.UPDATE_SEARCH_INDEX,
-        )
+        self.database.client._retryable_write(False, inner, session, _Op.UPDATE_SEARCH_INDEX)
 
     def options(
         self,
@@ -3232,12 +3212,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 client=client,
             )
 
-        return client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.RENAME,
-        )
+        return client._retryable_write(False, inner, session, _Op.RENAME)
 
     def distinct(
         self,

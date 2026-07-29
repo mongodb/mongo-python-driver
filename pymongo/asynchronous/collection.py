@@ -2173,12 +2173,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """Non-cursor read helper to handle implicit session creation."""
         client = self._database.client
         async with client._tmp_session(session) as s:
-            return await client._retryable_read(
-                func,
-                self._read_preference_for(s),
-                s,
-                operation,
-            )
+            return await client._retryable_read(func, self._read_preference_for(s), s, operation)
 
     async def create_indexes(
         self,
@@ -2513,12 +2508,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        await self.database.client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.DROP_INDEXES,
-        )
+        await self.database.client._retryable_write(False, inner, session, _Op.DROP_INDEXES)
 
     async def list_indexes(
         self,
@@ -2875,12 +2865,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        await self.database.client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.DROP_SEARCH_INDEXES,
-        )
+        await self.database.client._retryable_write(False, inner, session, _Op.DROP_SEARCH_INDEXES)
 
     async def update_search_index(
         self,
@@ -2922,12 +2907,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        await self.database.client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.UPDATE_SEARCH_INDEX,
-        )
+        await self.database.client._retryable_write(False, inner, session, _Op.UPDATE_SEARCH_INDEX)
 
     async def options(
         self,
@@ -3240,12 +3220,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 client=client,
             )
 
-        return await client._retryable_write(
-            False,
-            inner,
-            session,
-            _Op.RENAME,
-        )
+        return await client._retryable_write(False, inner, session, _Op.RENAME)
 
     async def distinct(
         self,
