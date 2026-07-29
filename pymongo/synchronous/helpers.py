@@ -90,7 +90,7 @@ def _backoff(
     max_delay: float = _BACKOFF_MAX,
 ) -> float:
     jitter = random.random()  # noqa: S311
-    return jitter * min(base_backoff * (2**attempt), max_delay)
+    return jitter * min(base_backoff * (2 ** (attempt)), max_delay)
 
 
 class _RetryPolicy:
@@ -109,7 +109,7 @@ class _RetryPolicy:
     def backoff(self, attempt: int, base_backoff: Optional[float] = None) -> float:
         """Return the actual backoff duration for the given attempt and base backoff."""
         return _backoff(
-            max(0, attempt),
+            max(0, attempt - 1),
             self.backoff_initial if base_backoff is None or base_backoff < 0 else base_backoff,
             self.backoff_max,
         )
