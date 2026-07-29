@@ -586,6 +586,19 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         ):
             self.skipTest("Implement PYTHON-4597")
 
+        # PYTHON-5966
+        python_5966_tests = [
+            "reset server and pool after network timeout error during authentication",
+            "driver extends timeout while streaming",
+            "connection pool clear uses interruptinuseconnections=true after monitor timeout",
+            "error returned from connection pool clear with interruptinuseconnections=true is retryable",
+            "error returned from connection pool clear with interruptinuseconnections=true is retryable for write",
+        ]
+        if description in python_5966_tests:
+            self.skipTest(
+                "PYTHON pre-auth streamable hello floor causes spurious heartbeat timeouts"
+            )
+
         if "csot" in class_name:
             # Skip tests that are too slow to run on a given platform.
             slow_macos = [
