@@ -2711,9 +2711,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             set_current=False,
         )
         try:
-            cmd_cursor: AsyncCommandCursor[
-                Mapping[str, Any]
-            ] = await self._database.client._retryable_read(
+            cmd_cursor: AsyncCommandCursor[Mapping[str, Any]]
+            cmd_cursor = await self._database.client._retryable_read(
                 cmd.get_cursor,
                 cmd.get_read_preference(session),  # type: ignore[arg-type]
                 session,
@@ -2977,9 +2976,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             set_current=False,
         )
         try:
-            cmd_cursor: AsyncCommandCursor[
-                _DocumentType
-            ] = await self._database.client._retryable_read(
+            cmd_cursor: AsyncCommandCursor[_DocumentType]
+            cmd_cursor = await self._database.client._retryable_read(
                 cmd.get_cursor,
                 cmd.get_read_preference(session),  # type: ignore[arg-type]
                 session,

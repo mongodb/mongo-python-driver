@@ -2707,7 +2707,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             set_current=False,
         )
         try:
-            cmd_cursor: CommandCursor[Mapping[str, Any]] = self._database.client._retryable_read(
+            cmd_cursor: CommandCursor[Mapping[str, Any]]
+            cmd_cursor = self._database.client._retryable_read(
                 cmd.get_cursor,
                 cmd.get_read_preference(session),  # type: ignore[arg-type]
                 session,
@@ -2969,7 +2970,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             set_current=False,
         )
         try:
-            cmd_cursor: CommandCursor[_DocumentType] = self._database.client._retryable_read(
+            cmd_cursor: CommandCursor[_DocumentType]
+            cmd_cursor = self._database.client._retryable_read(
                 cmd.get_cursor,
                 cmd.get_read_preference(session),  # type: ignore[arg-type]
                 session,
