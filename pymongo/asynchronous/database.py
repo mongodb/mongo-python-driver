@@ -33,7 +33,6 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
-from pymongo._telemetry import _OperationTelemetry
 from pymongo.asynchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.asynchronous.change_stream import AsyncDatabaseChangeStream
 from pymongo.asynchronous.collection import AsyncCollection
@@ -709,27 +708,14 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 kwargs,
                 user_fields={"cursor": {"firstBatch": 1}},
             )
-            operation_telemetry = _OperationTelemetry(
-                self.client.options.tracing,
-                _Op.AGGREGATE,
+            return await self.client._retryable_read_cursor(
+                cmd.get_cursor,
+                cmd.get_read_preference(s),  # type: ignore[arg-type]
                 s,
+                _Op.AGGREGATE,
                 dbname=self.name,
-                set_current=False,
+                retryable=not cmd._performs_write,
             )
-            try:
-                cmd_cursor: AsyncCommandCursor[_DocumentType] = await self.client._retryable_read(
-                    cmd.get_cursor,
-                    cmd.get_read_preference(s),  # type: ignore[arg-type]
-                    s,
-                    retryable=not cmd._performs_write,
-                    operation=_Op.AGGREGATE,
-                    operation_telemetry=operation_telemetry,
-                )
-            except BaseException as exc:
-                operation_telemetry.failed(exc)
-                raise
-            cmd_cursor._attach_operation_telemetry(operation_telemetry)
-            return cmd_cursor
 
     @overload
     async def _command(
@@ -1072,59 +1058,14 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
 
-            operation_telemetry = _OperationTelemetry(
-                self.client.options.tracing,
-                command_name,
+            return await self.client._retryable_read_cursor(
+                inner,
+                read_preference,
                 tmp_session,
+                command_name,
                 dbname=self.name,
-                set_current=False,
+                retryable=False,
             )
-            try:
-                cmd_cursor = await self.client._retryable_read(
-                    inner,
-                    read_preference,
-                    tmp_session,
-                    command_name,
-                    None,
-                    False,
-                    operation_telemetry=operation_telemetry,
-                )
-            except BaseException as exc:
-                operation_telemetry.failed(exc)
-                raise
-            cmd_cursor._attach_operation_telemetry(operation_telemetry)
-            return cmd_cursor
-
-    async def _retryable_read_command(
-        self,
-        command: Union[str, MutableMapping[str, Any]],
-        operation: str,
-        session: Optional[AsyncClientSession] = None,
-        operation_telemetry: Optional[_OperationTelemetry] = None,
-    ) -> dict[str, Any]:
-        """Same as command but used for retryable read commands."""
-        read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-
-        async def _cmd(
-            session: Optional[AsyncClientSession],
-            _server: Server,
-            conn: AsyncConnection,
-            read_preference: _ServerMode,
-        ) -> dict[str, Any]:
-            return await self._command(
-                conn,
-                command,
-                read_preference=read_preference,
-                session=session,
-            )
-
-        return await self._client._retryable_read(
-            _cmd,
-            read_preference,
-            session,
-            operation,
-            operation_telemetry=operation_telemetry,
-        )
 
     async def _list_collections(
         self,
@@ -1196,26 +1137,13 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 conn, session, read_preference=read_preference, **kwargs
             )
 
-        operation_telemetry = _OperationTelemetry(
-            self._client.options.tracing,
-            _Op.LIST_COLLECTIONS,
+        return await self._client._retryable_read_cursor(
+            _cmd,
+            read_pref,
             session,
+            _Op.LIST_COLLECTIONS,
             dbname=self.name,
-            set_current=False,
         )
-        try:
-            cmd_cursor = await self._client._retryable_read(
-                _cmd,
-                read_pref,
-                session,
-                operation=_Op.LIST_COLLECTIONS,
-                operation_telemetry=operation_telemetry,
-            )
-        except BaseException as exc:
-            operation_telemetry.failed(exc)
-            raise
-        cmd_cursor._attach_operation_telemetry(operation_telemetry)
-        return cmd_cursor
 
     async def list_collections(
         self,

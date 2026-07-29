@@ -149,6 +149,7 @@ if TYPE_CHECKING:
 
 
 T = TypeVar("T")
+_CommandCursor = TypeVar("_CommandCursor", bound=AsyncCommandCursor[Any])
 
 _WriteCall = Callable[
     [Optional["AsyncClientSession"], "AsyncConnection", bool], Coroutine[Any, Any, T]
@@ -2162,6 +2163,48 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 operation_telemetry=operation_telemetry,
             )
 
+    async def _retryable_read_cursor(
+        self,
+        func: _ReadCall[_CommandCursor],
+        read_pref: _ServerMode,
+        session: Optional[AsyncClientSession],
+        operation: str,
+        *,
+        dbname: str,
+        collection: Optional[str] = None,
+        **kwargs: Any,
+    ) -> _CommandCursor:
+        """Run a command-cursor read, nesting its getMores under one operation span.
+
+        A command cursor's first batch is fetched inside :meth:`_retryable_read`,
+        before the cursor exists, so the span cannot be owned by the cursor the
+        way a find cursor's is. Create it here, keep it open across the call, and
+        hand it to the cursor that comes back so every later getMore nests under
+        the operation that produced the cursor.
+        """
+        operation_telemetry = _OperationTelemetry(
+            self.options.tracing,
+            operation,
+            session,
+            dbname=dbname,
+            collection=collection,
+            set_current=False,
+        )
+        try:
+            cmd_cursor = await self._retryable_read(
+                func,
+                read_pref,
+                session,
+                operation,
+                operation_telemetry=operation_telemetry,
+                **kwargs,
+            )
+        except BaseException as exc:
+            operation_telemetry.failed(exc)
+            raise
+        cmd_cursor._attach_operation_telemetry(operation_telemetry)
+        return cmd_cursor
+
     async def _retryable_write(
         self,
         retryable: bool,
@@ -2459,32 +2502,30 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         admin = self._database_default_options("admin")
-        operation_telemetry = _OperationTelemetry(
-            self.options.tracing,
-            _Op.LIST_DATABASES,
+        read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
+
+        async def _cmd(
+            session: Optional[AsyncClientSession],
+            _server: Server,
+            conn: AsyncConnection,
+            read_preference: _ServerMode,
+        ) -> AsyncCommandCursor[dict[str, Any]]:
+            res = await admin._command(conn, cmd, read_preference=read_preference, session=session)
+            # listDatabases doesn't return a cursor (yet). Fake one.
+            cursor = {
+                "id": 0,
+                "firstBatch": res["databases"],
+                "ns": "admin.$cmd",
+            }
+            return AsyncCommandCursor(admin["$cmd"], cursor, None, comment=comment)
+
+        return await self._retryable_read_cursor(
+            _cmd,
+            read_preference,
             session,
+            _Op.LIST_DATABASES,
             dbname="admin",
-            set_current=False,
         )
-        try:
-            res = await admin._retryable_read_command(
-                cmd,
-                session=session,
-                operation=_Op.LIST_DATABASES,
-                operation_telemetry=operation_telemetry,
-            )
-        except BaseException as exc:
-            operation_telemetry.failed(exc)
-            raise
-        # listDatabases doesn't return a cursor (yet). Fake one.
-        cursor = {
-            "id": 0,
-            "firstBatch": res["databases"],
-            "ns": "admin.$cmd",
-        }
-        cmd_cursor = AsyncCommandCursor(admin["$cmd"], cursor, None, comment=comment)
-        cmd_cursor._attach_operation_telemetry(operation_telemetry)
-        return cmd_cursor
 
     async def list_databases(
         self,

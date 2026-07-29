@@ -38,7 +38,6 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import ASCENDING, _csot, common, helpers_shared, message
-from pymongo._telemetry import _OperationTelemetry
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import (
@@ -2581,27 +2580,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             return cmd_cursor
 
         with self._database.client._tmp_session(session) as s:
-            operation_telemetry = _OperationTelemetry(
-                self._database.client.options.tracing,
-                _Op.LIST_INDEXES,
+            return self._database.client._retryable_read_cursor(
+                _cmd,
+                read_pref,
                 s,
+                _Op.LIST_INDEXES,
                 dbname=self._database.name,
                 collection=self._name,
-                set_current=False,
             )
-            try:
-                cmd_cursor = self._database.client._retryable_read(
-                    _cmd,
-                    read_pref,
-                    s,
-                    operation=_Op.LIST_INDEXES,
-                    operation_telemetry=operation_telemetry,
-                )
-            except BaseException as exc:
-                operation_telemetry.failed(exc)
-                raise
-            cmd_cursor._attach_operation_telemetry(operation_telemetry)
-            return cmd_cursor
 
     def index_information(
         self,
@@ -2698,29 +2684,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        operation_telemetry = _OperationTelemetry(
-            self._database.client.options.tracing,
-            _Op.LIST_SEARCH_INDEX,
+        return self._database.client._retryable_read_cursor(
+            cmd.get_cursor,
+            cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
+            _Op.LIST_SEARCH_INDEX,
             dbname=self._database.name,
             collection=self.name,
-            set_current=False,
+            retryable=not cmd._performs_write,
         )
-        try:
-            cmd_cursor: CommandCursor[Mapping[str, Any]]
-            cmd_cursor = self._database.client._retryable_read(
-                cmd.get_cursor,
-                cmd.get_read_preference(session),  # type: ignore[arg-type]
-                session,
-                retryable=not cmd._performs_write,
-                operation=_Op.LIST_SEARCH_INDEX,
-                operation_telemetry=operation_telemetry,
-            )
-        except BaseException as exc:
-            operation_telemetry.failed(exc)
-            raise
-        cmd_cursor._attach_operation_telemetry(operation_telemetry)
-        return cmd_cursor
 
     def create_search_index(
         self,
@@ -2961,30 +2933,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        operation_telemetry = _OperationTelemetry(
-            self._database.client.options.tracing,
-            _Op.AGGREGATE,
+        return self._database.client._retryable_read_cursor(
+            cmd.get_cursor,
+            cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
+            _Op.AGGREGATE,
             dbname=self._database.name,
             collection=self._name,
-            set_current=False,
+            retryable=not cmd._performs_write,
+            is_aggregate_write=cmd._performs_write,
         )
-        try:
-            cmd_cursor: CommandCursor[_DocumentType]
-            cmd_cursor = self._database.client._retryable_read(
-                cmd.get_cursor,
-                cmd.get_read_preference(session),  # type: ignore[arg-type]
-                session,
-                retryable=not cmd._performs_write,
-                operation=_Op.AGGREGATE,
-                is_aggregate_write=cmd._performs_write,
-                operation_telemetry=operation_telemetry,
-            )
-        except BaseException as exc:
-            operation_telemetry.failed(exc)
-            raise
-        cmd_cursor._attach_operation_telemetry(operation_telemetry)
-        return cmd_cursor
 
     def aggregate(
         self,
