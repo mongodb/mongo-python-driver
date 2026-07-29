@@ -1067,6 +1067,30 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 retryable=False,
             )
 
+    def _retryable_read_command(
+        self,
+        command: Union[str, MutableMapping[str, Any]],
+        operation: str,
+        session: Optional[ClientSession] = None,
+    ) -> dict[str, Any]:
+        """Same as command but used for retryable read commands."""
+        read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
+
+        def _cmd(
+            session: Optional[ClientSession],
+            _server: Server,
+            conn: Connection,
+            read_preference: _ServerMode,
+        ) -> dict[str, Any]:
+            return self._command(
+                conn,
+                command,
+                read_preference=read_preference,
+                session=session,
+            )
+
+        return self._client._retryable_read(_cmd, read_preference, session, operation)
+
     def _list_collections(
         self,
         conn: Connection,

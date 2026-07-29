@@ -1067,6 +1067,30 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 retryable=False,
             )
 
+    async def _retryable_read_command(
+        self,
+        command: Union[str, MutableMapping[str, Any]],
+        operation: str,
+        session: Optional[AsyncClientSession] = None,
+    ) -> dict[str, Any]:
+        """Same as command but used for retryable read commands."""
+        read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
+
+        async def _cmd(
+            session: Optional[AsyncClientSession],
+            _server: Server,
+            conn: AsyncConnection,
+            read_preference: _ServerMode,
+        ) -> dict[str, Any]:
+            return await self._command(
+                conn,
+                command,
+                read_preference=read_preference,
+                session=session,
+            )
+
+        return await self._client._retryable_read(_cmd, read_preference, session, operation)
+
     async def _list_collections(
         self,
         conn: AsyncConnection,

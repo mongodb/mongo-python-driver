@@ -2495,30 +2495,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         admin = self._database_default_options("admin")
-        read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-
-        def _cmd(
-            session: Optional[ClientSession],
-            _server: Server,
-            conn: Connection,
-            read_preference: _ServerMode,
-        ) -> CommandCursor[dict[str, Any]]:
-            res = admin._command(conn, cmd, read_preference=read_preference, session=session)
-            # listDatabases doesn't return a cursor (yet). Fake one.
-            cursor = {
-                "id": 0,
-                "firstBatch": res["databases"],
-                "ns": "admin.$cmd",
-            }
-            return CommandCursor(admin["$cmd"], cursor, None, comment=comment)
-
-        return self._retryable_read_cursor(
-            _cmd,
-            read_preference,
-            session,
-            _Op.LIST_DATABASES,
-            dbname="admin",
-        )
+        res = admin._retryable_read_command(cmd, session=session, operation=_Op.LIST_DATABASES)
+        # listDatabases doesn't return a cursor (yet). Fake one.
+        cursor = {
+            "id": 0,
+            "firstBatch": res["databases"],
+            "ns": "admin.$cmd",
+        }
+        return CommandCursor(admin["$cmd"], cursor, None, comment=comment)
 
     def list_databases(
         self,

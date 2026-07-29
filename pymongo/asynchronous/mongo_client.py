@@ -2502,30 +2502,16 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
         admin = self._database_default_options("admin")
-        read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
-
-        async def _cmd(
-            session: Optional[AsyncClientSession],
-            _server: Server,
-            conn: AsyncConnection,
-            read_preference: _ServerMode,
-        ) -> AsyncCommandCursor[dict[str, Any]]:
-            res = await admin._command(conn, cmd, read_preference=read_preference, session=session)
-            # listDatabases doesn't return a cursor (yet). Fake one.
-            cursor = {
-                "id": 0,
-                "firstBatch": res["databases"],
-                "ns": "admin.$cmd",
-            }
-            return AsyncCommandCursor(admin["$cmd"], cursor, None, comment=comment)
-
-        return await self._retryable_read_cursor(
-            _cmd,
-            read_preference,
-            session,
-            _Op.LIST_DATABASES,
-            dbname="admin",
+        res = await admin._retryable_read_command(
+            cmd, session=session, operation=_Op.LIST_DATABASES
         )
+        # listDatabases doesn't return a cursor (yet). Fake one.
+        cursor = {
+            "id": 0,
+            "firstBatch": res["databases"],
+            "ns": "admin.$cmd",
+        }
+        return AsyncCommandCursor(admin["$cmd"], cursor, None, comment=comment)
 
     async def list_databases(
         self,
