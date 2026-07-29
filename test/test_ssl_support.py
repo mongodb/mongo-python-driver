@@ -27,7 +27,7 @@ import unittest.mock as mock
 sys.path[0:0] = [""]
 
 from pymongo.ssl_support import HAVE_SSL, get_ssl_context
-from test import unittest
+from test import PyMongoTestCase, unittest
 from test.helpers_shared import CA_PEM
 
 _HAVE_PYOPENSSL = False
@@ -40,7 +40,7 @@ except ImportError:
 
 
 @unittest.skipUnless(HAVE_SSL, "The ssl module is not available.")
-class TestSSLCertFileEnvVar(unittest.TestCase):
+class TestSSLCertFileEnvVar(PyMongoTestCase):
     def test_uses_default_certs_on_linux(self):
         # PYTHON-5930: on Linux, load_default_certs() already honors SSL_CERT_FILE
         # correctly (unlike Windows/macOS+PyOpenSSL), so it must still be called
