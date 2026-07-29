@@ -945,13 +945,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             )
 
         return await self._client._retryable_read(
-            inner,
-            read_preference,
-            session,
-            command_name,
-            None,
-            False,
-            is_run_command=True,
+            inner, read_preference, session, command_name, None, False, is_run_command=True
         )
 
     @_csot.apply
