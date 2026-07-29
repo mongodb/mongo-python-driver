@@ -19,17 +19,19 @@ fi
 # Now we can safely enable xtrace
 set -o xtrace
 
-# Install a c compiler.
+# Install a C compiler (for the C extensions) and git (needed by uv to
+# resolve the mockupdb git dependency).
 apt-get -qq update  < /dev/null > /dev/null
-apt-get -q install -y build-essential
+apt-get -q install -y build-essential git
 
 export SET_XTRACE_ON=1
 export CI=true
-# This container has no git, so uv must never try to resolve the mockupdb
-# git dependency; UV_NO_LOCK makes uv ignore any lock file entirely.
-export UV_NO_LOCK=1
 cd src
 rm -rf .venv
+# Discard the lock file the host's uv runs wrote into src; exclude-newer
+# invalidates it in the container anyway, so resolve fresh rather than from
+# shipped host state.
+rm -f uv.lock
 rm -f .evergreen/scripts/test-env.sh || true
 rm -f .evergreen/scripts/env.sh || true
 bash ./.evergreen/just.sh setup-tests auth_aws ecs-remote
