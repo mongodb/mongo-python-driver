@@ -20,25 +20,15 @@ PyMongo 4.18 brings a number of changes including:
   attempts, so consumers can correlate a retried operation's events. As a
   result, ``operation_id`` is no longer equal to the per-attempt ``request_id``
   for these operations.
-- Added optional OpenTelemetry command, operation, and transaction span
-  support, conforming to the
+- Added optional OpenTelemetry tracing support, conforming to the
   `OpenTelemetry driver specification <https://github.com/mongodb/specifications/blob/master/source/open-telemetry/open-telemetry.md>`_.
-  Enable it with the ``tracing`` :class:`~pymongo.mongo_client.MongoClient`
-  option or the ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment
-  variable. Install the ``opentelemetry-api`` package, or use the
+  Each public API call produces an operation span, with a span for every
+  command it sends nested underneath, and a transaction produces a
+  ``transaction`` span covering the operations it contains. Enable it with the
+  ``tracing`` :class:`~pymongo.mongo_client.MongoClient` option or the
+  ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable.
+  Install the ``opentelemetry-api`` package, or use the
   ``pymongo[opentelemetry]`` extra, to enable this feature.
-  An operation span now covers a cursor's entire lifetime, so every
-  ``getMore`` nests under the ``find``/``aggregate``/``listIndexes``/etc.
-  operation that created the cursor instead of starting a sibling span of its
-  own; this also covers command cursors such as the client bulk write results
-  cursor. ``killCursors`` and ``endSessions`` now get operation spans of their
-  own as well, and background monitoring spans no longer attach to a stale
-  parent from client startup. A single ``transaction`` span now covers all
-  retries of one ``with_transaction()`` call or of a directly retried
-  ``commit_transaction()``. Operation spans also keep their ``db.namespace``,
-  ``db.collection.name``, and ``db.operation.summary`` attributes even when
-  the operation fails before any command is sent, such as on a
-  server-selection timeout.
 - Fixed a potential out-of-bounds read in the C extension when decoding an
   array of BSON documents. An embedded document whose declared length exceeds
   the bytes remaining in the array now raises
