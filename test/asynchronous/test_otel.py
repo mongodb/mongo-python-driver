@@ -1279,11 +1279,10 @@ class TestOTelSpans(AsyncIntegrationTest):
     @async_client_context.require_version_min(4, 2, 0)
     @async_client_context.require_change_streams
     async def test_change_stream_collection_level_operation_span_has_full_namespace(self):
-        # AsyncChangeStream._target_namespace must recognize an AsyncCollection
-        # target via isinstance, not via attribute-probing: AsyncDatabase's
-        # __getattr__ synthesizes a collection for any unknown attribute name
-        # (including "database"), so a naive getattr(target, "database", None)
-        # probe misidentifies a database/cluster target as a collection.
+        # A collection-level change stream's operation span carries both the
+        # database and the collection, derived from the aggregate command by
+        # _otel's lazy backfill. The database- and cluster-level cases below
+        # must omit db.collection.name, since neither targets one collection.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         db = client.pymongo_test
         coll = db.test_otel_change_stream_coll

@@ -1275,11 +1275,10 @@ class TestOTelSpans(IntegrationTest):
     @client_context.require_version_min(4, 2, 0)
     @client_context.require_change_streams
     def test_change_stream_collection_level_operation_span_has_full_namespace(self):
-        # ChangeStream._target_namespace must recognize a Collection
-        # target via isinstance, not via attribute-probing: Database's
-        # __getattr__ synthesizes a collection for any unknown attribute name
-        # (including "database"), so a naive getattr(target, "database", None)
-        # probe misidentifies a database/cluster target as a collection.
+        # A collection-level change stream's operation span carries both the
+        # database and the collection, derived from the aggregate command by
+        # _otel's lazy backfill. The database- and cluster-level cases below
+        # must omit db.collection.name, since neither targets one collection.
         client = self.rs_or_single_client(tracing={"enabled": True})
         db = client.pymongo_test
         coll = db.test_otel_change_stream_coll
