@@ -723,7 +723,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                     s,
                     retryable=not cmd._performs_write,
                     operation=_Op.AGGREGATE,
-                    dbname=self.name,
                     operation_telemetry=operation_telemetry,
                 )
             except BaseException as exc:
@@ -967,7 +966,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             None,
             False,
             is_run_command=True,
-            dbname=self.name,
         )
 
     @_csot.apply
@@ -1089,7 +1087,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                     command_name,
                     None,
                     False,
-                    dbname=self.name,
                     operation_telemetry=operation_telemetry,
                 )
             except BaseException as exc:
@@ -1126,7 +1123,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             read_preference,
             session,
             operation,
-            dbname=self.name,
             operation_telemetry=operation_telemetry,
         )
 
@@ -1213,7 +1209,6 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 read_pref,
                 session,
                 operation=_Op.LIST_COLLECTIONS,
-                dbname=self.name,
                 operation_telemetry=operation_telemetry,
             )
         except BaseException as exc:
@@ -1337,9 +1332,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return await self.client._retryable_write(
-            False, inner, session, _Op.DROP, dbname=self.name, collection=name
-        )
+        return await self.client._retryable_write(False, inner, session, _Op.DROP)
 
     @_csot.apply
     async def drop_collection(

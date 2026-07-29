@@ -356,13 +356,15 @@ def start_operation_span(
 ) -> Optional[_OperationSpanHandle]:
     """Start a CLIENT-kind span for one logical operation, or None.
 
-    Spans all retry attempts of one call to _retry_internal. When ``dbname`` is
-    given, the spec-required ``db.namespace``/``db.operation.summary`` (and
-    ``db.collection.name``, when ``collection`` is given) are set immediately,
-    so an operation that fails before any command is ever built -- e.g. server
-    selection timing out -- still produces a conformant span.
-    ``start_command_span`` still backfills these from the real command once one
-    is built, overwriting these values with the authoritative ones.
+    Spans all retry attempts of one call to _retry_internal. The (Required,
+    per the OTel spec) ``db.operation.summary`` is always set immediately,
+    to the bare operation name unless ``dbname`` is given, in which case it
+    (and, when ``collection`` is also given, the "if available"
+    ``db.namespace``/``db.collection.name``) are built from those instead.
+    This guarantees a conformant span even for an operation that fails
+    before any command is ever built -- e.g. server selection timing out.
+    ``start_command_span`` still backfills these from the real command once
+    one is built, overwriting these values with the authoritative ones.
 
     ``parent_span`` (the active transaction span, if any) becomes this span's
     *explicit* parent; it is deliberately not read from ambient context, to
@@ -386,9 +388,9 @@ def start_operation_span(
     if dbname is not None:
         name = _build_query_summary(operation, dbname, collection)
         attributes["db.namespace"] = dbname
-        attributes["db.operation.summary"] = name
         if collection:
             attributes["db.collection.name"] = collection
+    attributes["db.operation.summary"] = name
     if not set_current:
         span = _TRACER.start_span(
             name, kind=SpanKind.CLIENT, context=context, attributes=attributes

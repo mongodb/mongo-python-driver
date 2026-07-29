@@ -660,9 +660,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        await self.database.client._retryable_write(
-            False, inner, session, _Op.CREATE, dbname=self._database.name, collection=name
-        )
+        await self.database.client._retryable_write(False, inner, session, _Op.CREATE)
 
     async def _create(
         self,
@@ -829,8 +827,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             _insert_command,
             session,
             operation=_Op.INSERT,
-            dbname=self._database.name,
-            collection=self.name,
         )
 
         if not isinstance(doc, RawBSONDocument):
@@ -1121,8 +1117,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             _update,
             session,
             operation,
-            dbname=self._database.name,
-            collection=self.name,
         )
 
     async def replace_one(
@@ -1592,8 +1586,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             _delete,
             session,
             operation=_Op.DELETE,
-            dbname=self._database.name,
-            collection=self.name,
         )
 
     async def delete_one(
@@ -2186,8 +2178,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 self._read_preference_for(s),
                 s,
                 operation,
-                dbname=self._database.name,
-                collection=self._name,
             )
 
     async def create_indexes(
@@ -2290,8 +2280,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             inner,
             session,
             _Op.CREATE_INDEXES,
-            dbname=self._database.name,
-            collection=self.name,
         )
 
     async def create_index(
@@ -2530,8 +2518,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             inner,
             session,
             _Op.DROP_INDEXES,
-            dbname=self._database.name,
-            collection=self._name,
         )
 
     async def list_indexes(
@@ -2629,8 +2615,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                     read_pref,
                     s,
                     operation=_Op.LIST_INDEXES,
-                    dbname=self._database.name,
-                    collection=self._name,
                     operation_telemetry=operation_telemetry,
                 )
             except BaseException as exc:
@@ -2751,8 +2735,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 session,
                 retryable=not cmd._performs_write,
                 operation=_Op.LIST_SEARCH_INDEX,
-                dbname=self._database.name,
-                collection=self.name,
                 operation_telemetry=operation_telemetry,
             )
         except BaseException as exc:
@@ -2853,8 +2835,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             inner,
             session,
             _Op.CREATE_SEARCH_INDEXES,
-            dbname=self._database.name,
-            collection=self.name,
         )
 
     async def drop_search_index(
@@ -2900,8 +2880,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             inner,
             session,
             _Op.DROP_SEARCH_INDEXES,
-            dbname=self._database.name,
-            collection=self._name,
         )
 
     async def update_search_index(
@@ -2949,8 +2927,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             inner,
             session,
             _Op.UPDATE_SEARCH_INDEX,
-            dbname=self._database.name,
-            collection=self._name,
         )
 
     async def options(
@@ -3039,8 +3015,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 retryable=not cmd._performs_write,
                 operation=_Op.AGGREGATE,
                 is_aggregate_write=cmd._performs_write,
-                dbname=self._database.name,
-                collection=self._name,
                 operation_telemetry=operation_telemetry,
             )
         except BaseException as exc:
@@ -3271,8 +3245,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             inner,
             session,
             _Op.RENAME,
-            dbname=self._database.name,
-            collection=self.name,
         )
 
     async def distinct(
@@ -3438,8 +3410,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             _find_and_modify_helper,
             session,
             operation=_Op.FIND_AND_MODIFY,
-            dbname=self._database.name,
-            collection=self.name,
         )
 
     async def find_one_and_delete(

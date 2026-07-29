@@ -154,6 +154,10 @@ class TestOTelOperationSpanPrimitives(unittest.TestCase):
         (span,) = self.exporter.get_finished_spans()
         self.assertEqual(span.name, "find")
         self.assertNotIn("db.namespace", span.attributes)
+        # db.operation.summary is Required (unlike db.namespace, which is only
+        # "Required if available"), so it always falls back to the bare
+        # operation name when no dbname is given.
+        self.assertEqual(span.attributes["db.operation.summary"], "find")
 
     def test_detached_span_is_not_current_until_used(self):
         from opentelemetry import trace
@@ -1186,10 +1190,14 @@ class TestOTelSpans(AsyncIntegrationTest):
         for cmd_span in getmore_cmd_spans:
             self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
 
-    async def test_operation_span_has_namespace_when_no_command_is_sent(self):
+    async def test_operation_span_falls_back_to_bare_name_when_no_command_is_sent(self):
         # An operation that fails during server selection never builds a
-        # command, so the lazy backfill never runs -- the eagerly-set
-        # namespace/summary attributes are the only ones it will ever have.
+        # command, so the lazy backfill in start_command_span never runs.
+        # insert_one doesn't go through a cursor (unlike find), so nothing
+        # eagerly threads dbname/collection to the operation span either --
+        # db.operation.summary (Required, per the OTel spec) still falls back
+        # to the bare operation name, but db.namespace/db.collection.name
+        # (only "Required if available") are simply absent.
         client = await self.async_rs_or_single_client(
             "mongodb://localhost:1/",
             tracing={"enabled": True},
@@ -1198,12 +1206,12 @@ class TestOTelSpans(AsyncIntegrationTest):
         )
         self.exporter.clear()
         with self.assertRaises(ServerSelectionTimeoutError):
-            await client.mydb.mycoll.find_one({})
-        (span,) = [s for s in self.exporter.get_finished_spans() if s.name.startswith("find")]
-        self.assertEqual(span.name, "find mydb.mycoll")
-        self.assertEqual(span.attributes["db.namespace"], "mydb")
-        self.assertEqual(span.attributes["db.collection.name"], "mycoll")
-        self.assertEqual(span.attributes["db.operation.summary"], "find mydb.mycoll")
+            await client.mydb.mycoll.insert_one({})
+        (span,) = [s for s in self.exporter.get_finished_spans() if s.name == "insert"]
+        self.assertEqual(span.attributes["db.operation.name"], "insert")
+        self.assertEqual(span.attributes["db.operation.summary"], "insert")
+        self.assertNotIn("db.namespace", span.attributes)
+        self.assertNotIn("db.collection.name", span.attributes)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
     async def test_caller_owned_operation_telemetry_is_not_ended_by_retry_internal(self):

@@ -2006,8 +2006,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             address=address,
             retryable=isinstance(operation, _Query),
             operation=operation.name,
-            dbname=operation.db,
-            collection=operation.coll,
             operation_telemetry=operation_telemetry,
             reuse_current_span=reuse_current_span,
         )
@@ -2020,8 +2018,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         bulk: Optional[Union[_AsyncBulk, _AsyncClientBulk]],
         operation: str,
         operation_id: Optional[int] = None,
-        dbname: Optional[str] = None,
-        collection: Optional[str] = None,
     ) -> T:
         """Execute an operation with at most one consecutive retries
 
@@ -2042,8 +2038,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             operation=operation,
             retryable=retryable,
             operation_id=operation_id,
-            dbname=dbname,
-            collection=collection,
         )
 
     @_csot.apply
@@ -2060,8 +2054,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         operation_id: Optional[int] = None,
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
-        dbname: Optional[str] = None,
-        collection: Optional[str] = None,
         operation_telemetry: Optional[_OperationTelemetry] = None,
         reuse_current_span: bool = False,
     ) -> T:
@@ -2078,10 +2070,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
-        :param dbname: The database this operation targets, for the operation span's
-            ``db.namespace``, defaults to None
-        :param collection: The collection this operation targets, for the operation
-            span's ``db.collection.name``, defaults to None
         :param operation_telemetry: A caller-owned operation span outliving this call
             (a cursor's, shared by its getMores). When given, this method neither
             creates nor ends a span -- it only makes the caller's current for this
@@ -2138,8 +2126,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             operation,
             session,
             is_run_command=is_run_command,
-            dbname=dbname,
-            collection=collection,
         )
         try:
             result = await _ClientConnectionRetryable(
@@ -2174,8 +2160,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         operation_id: Optional[int] = None,
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
-        dbname: Optional[str] = None,
-        collection: Optional[str] = None,
         operation_telemetry: Optional[_OperationTelemetry] = None,
         reuse_current_span: bool = False,
     ) -> T:
@@ -2196,10 +2180,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False.
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
-        :param dbname: The database this operation targets, for the operation span's
-            ``db.namespace``, defaults to None
-        :param collection: The collection this operation targets, for the operation
-            span's ``db.collection.name``, defaults to None
         :param operation_telemetry: A caller-owned operation span outliving this call,
             defaults to None, meaning this method owns a fresh span.
         :param reuse_current_span: Create no operation span at all and leave the
@@ -2226,8 +2206,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 operation_id=operation_id,
                 is_run_command=is_run_command,
                 is_aggregate_write=is_aggregate_write,
-                dbname=dbname,
-                collection=collection,
                 reuse_current_span=reuse_current_span,
                 operation_telemetry=operation_telemetry,
             )
@@ -2240,8 +2218,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         operation: str,
         bulk: Optional[Union[_AsyncBulk, _AsyncClientBulk]] = None,
         operation_id: Optional[int] = None,
-        dbname: Optional[str] = None,
-        collection: Optional[str] = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -2256,10 +2232,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation: The name of the operation that the server is being selected for
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
         :param operation_id: Stable operation id shared across retries, defaults to None
-        :param dbname: The database this operation targets, for the operation span's
-            ``db.namespace``, defaults to None
-        :param collection: The collection this operation targets, for the operation
-            span's ``db.collection.name``, defaults to None
         """
         async with self._tmp_session(session) as s:
             return await self._retry_with_session(
@@ -2269,8 +2241,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 bulk,
                 operation,
                 operation_id,
-                dbname=dbname,
-                collection=collection,
             )
 
     def _cleanup_cursor_no_lock(

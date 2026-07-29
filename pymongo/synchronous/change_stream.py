@@ -236,25 +236,6 @@ class ChangeStream(Generic[_DocumentType]):
                         f"Expected field 'operationTime' missing from command response : {result!r}"
                     )
 
-    def _target_namespace(self) -> tuple[Optional[str], Optional[str]]:
-        """Return (dbname, collection) for the watched target, for span attributes."""
-        # Imported here rather than at module scope: collection.py/database.py
-        # import this module, so a module-scope import would be circular. By
-        # call time both modules are fully loaded. isinstance is used instead of
-        # attribute probing because Database.__getattr__ synthesizes a
-        # collection for any unknown attribute name, so getattr(target,
-        # "database", ...) returns a phantom Collection for a database
-        # target rather than None.
-        from pymongo.synchronous.collection import Collection
-        from pymongo.synchronous.database import Database
-
-        target = self._target
-        if isinstance(target, Collection):
-            return target.database.name, target.name
-        if isinstance(target, Database):
-            return target.name, None
-        return None, None
-
     def _run_aggregation_cmd(self, session: Optional[ClientSession]) -> CommandCursor:  # type: ignore[type-arg]
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
@@ -267,7 +248,6 @@ class ChangeStream(Generic[_DocumentType]):
             result_processor=self._process_result,
             comment=self._comment,
         )
-        dbname, collname = self._target_namespace()
         # Deliberately no operation_telemetry is attached to the resulting
         # cursor here: a change stream can tail indefinitely, so an operation
         # span covering its whole lifetime (initial query + every getMore,
@@ -281,8 +261,6 @@ class ChangeStream(Generic[_DocumentType]):
             self._target._read_preference_for(session),
             session,
             operation=_Op.AGGREGATE,
-            dbname=dbname,
-            collection=collname,
         )
 
     def _create_cursor(self) -> CommandCursor:  # type: ignore[type-arg]

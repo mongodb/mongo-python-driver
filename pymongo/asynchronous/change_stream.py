@@ -236,25 +236,6 @@ class AsyncChangeStream(Generic[_DocumentType]):
                         f"Expected field 'operationTime' missing from command response : {result!r}"
                     )
 
-    def _target_namespace(self) -> tuple[Optional[str], Optional[str]]:
-        """Return (dbname, collection) for the watched target, for span attributes."""
-        # Imported here rather than at module scope: collection.py/database.py
-        # import this module, so a module-scope import would be circular. By
-        # call time both modules are fully loaded. isinstance is used instead of
-        # attribute probing because AsyncDatabase.__getattr__ synthesizes a
-        # collection for any unknown attribute name, so getattr(target,
-        # "database", ...) returns a phantom AsyncCollection for a database
-        # target rather than None.
-        from pymongo.asynchronous.collection import AsyncCollection
-        from pymongo.asynchronous.database import AsyncDatabase
-
-        target = self._target
-        if isinstance(target, AsyncCollection):
-            return target.database.name, target.name
-        if isinstance(target, AsyncDatabase):
-            return target.name, None
-        return None, None
-
     async def _run_aggregation_cmd(
         self, session: Optional[AsyncClientSession]
     ) -> AsyncCommandCursor:  # type: ignore[type-arg]
@@ -269,7 +250,6 @@ class AsyncChangeStream(Generic[_DocumentType]):
             result_processor=self._process_result,
             comment=self._comment,
         )
-        dbname, collname = self._target_namespace()
         # Deliberately no operation_telemetry is attached to the resulting
         # cursor here: a change stream can tail indefinitely, so an operation
         # span covering its whole lifetime (initial query + every getMore,
@@ -283,8 +263,6 @@ class AsyncChangeStream(Generic[_DocumentType]):
             self._target._read_preference_for(session),
             session,
             operation=_Op.AGGREGATE,
-            dbname=dbname,
-            collection=collname,
         )
 
     async def _create_cursor(self) -> AsyncCommandCursor:  # type: ignore[type-arg]
