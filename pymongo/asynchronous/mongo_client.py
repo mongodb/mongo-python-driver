@@ -638,10 +638,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
         .. versionchanged:: 4.18
-           Added the ``tracing`` keyword argument. Each public API call
-           produces an operation span, with a span for every command it sends
-           nested underneath, and a transaction produces a ``"transaction"``
-           span covering the operations it contains.
+           Added the ``tracing`` keyword argument. Every public API call
+           produces an operation span, which contains one span per command
+           sent to the server. Inside a transaction, those operation spans
+           nest under a ``"transaction"`` span.
 
         .. versionchanged:: 4.17
            Added the ``max_adaptive_retries`` and ``enable_overload_retargeting`` URI and keyword arguments.

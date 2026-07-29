@@ -22,9 +22,9 @@ PyMongo 4.18 brings a number of changes including:
   for these operations.
 - Added optional OpenTelemetry tracing support, conforming to the
   `OpenTelemetry driver specification <https://github.com/mongodb/specifications/blob/master/source/open-telemetry/open-telemetry.md>`_.
-  Each public API call produces an operation span, with a span for every
-  command it sends nested underneath, and a transaction produces a
-  ``transaction`` span covering the operations it contains. Enable it with the
+  Every public API call produces an operation span, which contains one span
+  per command sent to the server. Inside a transaction, those operation spans
+  nest under a ``transaction`` span. Enable it with the
   ``tracing`` :class:`~pymongo.mongo_client.MongoClient` option or the
   ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable.
   Install the ``opentelemetry-api`` package, or use the
