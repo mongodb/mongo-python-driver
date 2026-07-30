@@ -282,9 +282,9 @@ class _OperationTelemetry:
     it as a context manager to do so automatically. A no-op throughout when
     tracing is disabled.
 
-    With ``set_current=False`` the span is not made current at construction:
-    for spans outliving one ``_retry_internal`` call (cursor getMores), where
-    each call makes it current with :meth:`use`.
+    With ``set_current=False`` the span is not made current at construction.
+    That suits a span outliving one ``_retry_internal`` call (cursor getMores),
+    where each call makes it current with :meth:`use`.
     """
 
     __slots__ = ("handle", "operation_name")

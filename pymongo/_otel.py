@@ -371,10 +371,10 @@ def start_operation_span(
     avoid a concurrently-running unrelated session's operations picking up
     this transaction by accident. Pass None outside of a transaction.
 
-    With ``set_current=False`` the span is created but not made current and
-    the operation-name contextvar is left alone: for spans whose lifetime
-    spans several ``_retry_internal`` calls (cursor getMores), where the
-    caller makes it current per-call with ``use_operation_span``.
+    With ``set_current=False`` the span is created but not made current, and
+    the operation-name contextvar is left alone. That suits a span whose
+    lifetime covers several ``_retry_internal`` calls (cursor getMores), where
+    the caller makes it current per call with ``use_operation_span``.
     """
     if not _is_tracing_enabled(tracing_options):
         return None
