@@ -257,6 +257,9 @@ class _CmapTelemetry:
         # The CMAP listener set is fixed once the client is constructed
         # (_EventListeners copies the global listeners at __init__), so this
         # gate is static for the life of the pool.
+        # NOTE: the checkout/checkin fast paths in pool.py read _publish and
+        # _log directly and inline the "_should_publish or _should_log" gate;
+        # keep them in sync with any change to this gating logic.
         self._publish = publish and listeners is not None and listeners.enabled_for_cmap
         self._log = log
 
