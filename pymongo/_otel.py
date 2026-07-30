@@ -12,16 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Optional OpenTelemetry command-span support.
+"""Optional OpenTelemetry span support.
 
 Kept separate from :mod:`pymongo._telemetry` so that module stays free of
 ``opentelemetry`` import guards. Every function here is a no-op when
 ``opentelemetry`` isn't installed or tracing isn't enabled.
+
+This module also owns the OpenTelemetry driver specification's naming and
+attribute rules, such as how a span name, ``db.operation.name`` or
+``db.query.summary`` is built. :mod:`pymongo._telemetry` only handles span
+lifecycles, so a specification change should not require touching it.
 """
 
 from __future__ import annotations
 
 import contextlib
+import enum
 import os
 import traceback
 from collections.abc import Iterator, Mapping, MutableMapping
@@ -181,6 +187,51 @@ def _build_query_summary(command_name: str, dbname: str, collection: Optional[st
     if collection:
         return f"{command_name} {dbname}.{collection}"
     return f"{command_name} {dbname}"
+
+
+# A handful of internal `_Op` values (used elsewhere for retry/server-selection and
+# cluster-time-advancing logic, e.g. `_WRITES_WITH_CLUSTER_TIME` in pymongo/operations.py) are
+# literally the wire protocol command name (e.g. "drop"/"create") rather than the OTel spec's
+# canonical db.operation.name for that logical operation ("dropCollection"/"createCollection", per
+# the spec's "Covered operations" table and its vendored
+# drop_collection.json/create_collection.json tests). Translate only the name used for the span;
+# leave the `operation` value used for retry selection and logging untouched everywhere else.
+_OPERATION_NAME_OVERRIDES = {
+    "drop": "dropCollection",
+    "create": "createCollection",
+    "dropSearchIndexes": "dropSearchIndex",
+}
+
+# Per the spec's span-name rule ("`driver_operation_name db` if there is no specific collection"),
+# its db.namespace examples, and its db.collection.name examples (omitted for runCommand), any
+# operation reaching the server through the generic `Database.command()` API is named "runCommand"
+# regardless of the actual command sent, rather than being named after that command.
+_RUN_COMMAND_OPERATION_NAME = "runCommand"
+
+
+def _normalize_operation_name(operation: Any) -> str:
+    """Return the plain ``str`` form of an operation name.
+
+    Most `_retry_internal` call sites pass an `_Op` enum member (a `str`
+    mixin enum) rather than a plain string. Python 3.11 changed
+    ``Enum.__format__`` for such mixin enums so that ``str()``/f-string
+    formatting includes the class name (e.g. ``"_Op.INSERT"`` instead of
+    ``"insert"``); on 3.10 the same code happened to produce the correct bare
+    value. Normalize to the actual string value once, here, so every caller
+    that builds a span name or attribute from an operation gets a stable,
+    version-independent result.
+    """
+    if isinstance(operation, enum.Enum):
+        return operation.value
+    return str(operation)
+
+
+def _build_operation_name(operation: Any, is_run_command: bool = False) -> str:
+    """Return the ``db.operation.name`` the spec wants for this operation."""
+    if is_run_command:
+        return _RUN_COMMAND_OPERATION_NAME
+    name = _normalize_operation_name(operation)
+    return _OPERATION_NAME_OVERRIDES.get(name, name)
 
 
 def _is_sensitive_command(command_name: str, speculative_hello: bool) -> bool:

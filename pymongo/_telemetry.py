@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import datetime
-import enum
 import logging
 import queue
 import time
@@ -236,44 +235,6 @@ class _CommandTelemetry:
             _otel.end_command_span_failure(self._span, failure, exc)
 
 
-# A handful of internal `_Op` values (used elsewhere for retry/server-selection and
-# cluster-time-advancing logic, e.g. `_WRITES_WITH_CLUSTER_TIME` in pymongo/operations.py) are
-# literally the wire protocol command name (e.g. "drop"/"create") rather than the OTel spec's
-# canonical db.operation.name for that logical operation ("dropCollection"/"createCollection", per
-# the open-telemetry spec's "Covered operations" table and its vendored
-# drop_collection.json/create_collection.json tests). Translate only the name used for the span;
-# leave the `operation` value used for retry selection/logging untouched everywhere else.
-_OTEL_OPERATION_NAME_OVERRIDES = {
-    "drop": "dropCollection",
-    "create": "createCollection",
-    "dropSearchIndexes": "dropSearchIndex",
-}
-
-# Per the OTel driver spec's span-name rule ("`driver_operation_name db` if there is no specific
-# collection"), db.namespace examples, and db.collection.name examples (omitted for runCommand),
-# any operation reaching the server through the generic `Database.command()` API (signaled by
-# `is_run_command`) is named "runCommand" regardless of the actual command sent, rather than being
-# named after that command.
-_RUN_COMMAND_OPERATION_NAME = "runCommand"
-
-
-def _normalize_operation_name(operation: Any) -> str:
-    """Return the plain ``str`` form of an operation name.
-
-    Most `_retry_internal` call sites pass an `_Op` enum member (a `str`
-    mixin enum) rather than a plain string. Python 3.11 changed
-    ``Enum.__format__`` for such mixin enums so that ``str()``/f-string
-    formatting includes the class name (e.g. ``"_Op.INSERT"`` instead of
-    ``"insert"``); on 3.10 the same code happened to produce the correct bare
-    value. Normalize to the actual string value once, here, so every caller
-    that builds a span name/attribute from an operation gets a stable,
-    version-independent result.
-    """
-    if isinstance(operation, enum.Enum):
-        return operation.value
-    return str(operation)
-
-
 class _OperationTelemetry:
     """One span-scoped context per logical operation (spanning all retry attempts).
 
@@ -287,7 +248,7 @@ class _OperationTelemetry:
     where each call makes it current with :meth:`use`.
     """
 
-    __slots__ = ("handle", "operation_name")
+    __slots__ = ("handle",)
 
     def __init__(
         self,
@@ -302,15 +263,9 @@ class _OperationTelemetry:
         parent_span = None
         if session is not None and session.in_transaction:
             parent_span = session._transaction.span
-        if is_run_command:
-            otel_operation = _RUN_COMMAND_OPERATION_NAME
-        else:
-            name = _normalize_operation_name(operation)
-            otel_operation = _OTEL_OPERATION_NAME_OVERRIDES.get(name, name)
-        self.operation_name = otel_operation
         self.handle = _otel.start_operation_span(
             tracing_options,
-            otel_operation,
+            _otel._build_operation_name(operation, is_run_command),
             parent_span,
             dbname=dbname,
             collection=collection,
