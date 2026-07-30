@@ -2235,14 +2235,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation_id: Stable operation id shared across retries, defaults to None
         """
         with self._tmp_session(session) as s:
-            return self._retry_with_session(
-                retryable,
-                func,
-                s,
-                bulk,
-                operation,
-                operation_id,
-            )
+            return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
 
     def _cleanup_cursor_no_lock(
         self,

@@ -49,7 +49,7 @@ except ImportError:
     _TRACER = None
 
 # The operation name of whichever operation span is currently active (entered
-# via start_operation_span), so start_command_span can backfill the operation
+# by start_operation_span), so start_command_span can backfill the operation
 # span's name/namespace attributes from the first command executed inside it
 # (dbname/collection aren't known until then -- see start_operation_span).
 _CURRENT_OPERATION_NAME: ContextVar[Optional[str]] = ContextVar(
@@ -374,7 +374,7 @@ def start_operation_span(
     With ``set_current=False`` the span is created but not made current and the
     operation-name contextvar is left alone -- for spans whose lifetime spans
     several ``_retry_internal`` calls (cursor getMores), where the caller makes
-    it current per-call via ``use_operation_span``.
+    it current per-call with ``use_operation_span``.
     """
     if not _is_tracing_enabled(tracing_options):
         return None

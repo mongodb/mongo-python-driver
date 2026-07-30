@@ -330,10 +330,9 @@ class TestOperationTelemetry(unittest.TestCase):
         self.assertEqual(self.exporter.get_finished_spans(), ())
 
     def test_operation_name_normalizes_enum_operation(self):
-        # Regression test for PYTHON-5947 Finding #1: most _retry_internal
-        # call sites pass an `_Op` enum member (a `str`-mixin enum), not a
-        # plain string, as the `operation` argument. Python 3.11 changed
-        # `Enum.__format__` for `str`-mixin enums so that
+        # Most _retry_internal call sites pass an `_Op` enum member (a
+        # `str`-mixin enum), not a plain string, as the `operation` argument.
+        # Python 3.11 changed `Enum.__format__` for `str`-mixin enums so that
         # f"{_Op.INSERT}"/str(_Op.INSERT) produce "_Op.INSERT" instead of
         # "insert" -- on 3.10 the same code happened to already produce the
         # bare value, which is why this bug wasn't caught there. This test is
@@ -349,11 +348,10 @@ class TestOperationTelemetry(unittest.TestCase):
         self.assertIs(type(span.attributes["db.operation.name"]), str)
 
     def test_run_command_operation_name_override(self):
-        # Regression test for PYTHON-5947 Finding #2: Database.command()
-        # (is_run_command=True) must produce a "runCommand" operation span,
-        # per the OTel driver spec's span-name rule and db.namespace/
-        # db.collection.name examples, not one named after the specific
-        # command sent.
+        # Database.command() (is_run_command=True) must produce a "runCommand"
+        # operation span, per the OTel driver spec's span-name rule and its
+        # db.namespace/db.collection.name examples, not one named after the
+        # specific command sent.
         opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
         telemetry = _telemetry._OperationTelemetry(opts, "ping", None, is_run_command=True)
         telemetry.succeeded()
@@ -495,7 +493,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         # The operation-span Exceptions section of the OTel spec requires the
         # same exception.type/message/stacktrace *attributes* as the command
         # span, not just the exception *event* that record_exception alone
-        # attaches (PYTHON-5947 Finding #4).
+        # attaches.
         self.assertTrue(any(event.name == "exception" for event in op_span.events))
         self.assertIn("exception.type", op_span.attributes)
         self.assertIn("exception.message", op_span.attributes)
@@ -620,9 +618,9 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(len(agg_op_spans), 1, [s.name for s in finished])
         self.assertIsNotNone(agg_op_spans[0].end_time)
 
-        # The cursor reference is kept alive through this assertion -- if the
-        # span only ended via __del__, get_finished_spans() above would not
-        # have included it yet.
+        # The cursor reference is kept alive through this assertion -- if
+        # __del__ were the only thing ending the span, get_finished_spans()
+        # above would not have included it yet.
         self.assertIsNotNone(cursor)
 
     async def test_abandoned_cursor_still_ends_operation_span(self):
@@ -726,9 +724,9 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(attrs["db.query.summary"], "usersInfo admin")
 
     async def test_database_command_produces_run_command_operation_span(self):
-        # Regression test for PYTHON-5947 Finding #2 (live): the OTel driver
-        # spec names "runCommand" as the driver-operation name for any
-        # operation reached via the generic Database.command() API, so
+        # The OTel driver spec names "runCommand" as the driver-operation name
+        # for any operation reached through the generic Database.command()
+        # API, so
         # c.admin.command("ping") must produce an operation span named
         # "runCommand admin" with db.operation.name="runCommand" -- not one
         # named "ping"/"ping admin".
@@ -1050,7 +1048,7 @@ class TestOTelSpans(AsyncIntegrationTest):
     async def test_with_transaction_while_direct_api_transaction_active_does_not_corrupt_span(
         self,
     ):
-        # Calling with_transaction() while a transaction started via the
+        # Calling with_transaction() while a transaction started with the
         # DIRECT API is already active on the same session is illegal --
         # start_transaction() inside with_transaction() raises "Transaction
         # already in progress" -- but the direct-API transaction's own
@@ -1368,7 +1366,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         # context is clean, so the span would come out parentless even with
         # the bug present. Instead we drive the *existing* kill-cursors
         # executor task -- the one whose context was frozen inside
-        # find_one() below -- via wake()/skip_sleep(), so the tick actually
+        # find_one() below -- using wake()/skip_sleep(), so the tick actually
         # runs inside that frozen context, and poll (async_wait_until) for
         # the resulting span rather than sleeping a fixed amount.
         import gc

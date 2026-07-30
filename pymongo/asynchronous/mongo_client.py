@@ -2238,14 +2238,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation_id: Stable operation id shared across retries, defaults to None
         """
         async with self._tmp_session(session) as s:
-            return await self._retry_with_session(
-                retryable,
-                func,
-                s,
-                bulk,
-                operation,
-                operation_id,
-            )
+            return await self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
 
     def _cleanup_cursor_no_lock(
         self,

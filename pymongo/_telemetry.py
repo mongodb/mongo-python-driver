@@ -254,7 +254,7 @@ _OTEL_OPERATION_NAME_OVERRIDES = {
 # Per the OTel driver spec's span-name rule ("`driver_operation_name db` if
 # there is no specific collection"), db.namespace examples, and
 # db.collection.name examples (omitted for runCommand), any operation
-# reaching the server via the generic `Database.command()` API -- signaled by
+# reaching the server through the generic `Database.command()` API -- signaled by
 # `is_run_command` -- is named "runCommand" regardless of the actual command
 # sent, rather than being named after that command.
 _RUN_COMMAND_OPERATION_NAME = "runCommand"
@@ -287,7 +287,7 @@ class _OperationTelemetry:
 
     With ``set_current=False`` the span is not made current at construction --
     for spans outliving one ``_retry_internal`` call (cursor getMores), where
-    each call makes it current via :meth:`use`.
+    each call makes it current with :meth:`use`.
     """
 
     __slots__ = ("handle", "operation_name")
