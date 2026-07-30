@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import collections
+import logging
 import os
 import socket
 import time
@@ -59,6 +60,7 @@ from pymongo.lock import (
     _create_condition,
     _create_lock,
 )
+from pymongo.logger import _CONNECTION_LOGGER
 from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
@@ -1109,7 +1111,11 @@ class Pool:
         self._pinned_sockets.discard(conn)
         with self.lock:
             self.active_contexts.discard(conn.cancel_context)
-        self._telemetry.checked_in(conn.id)
+        telemetry = self._telemetry
+        if telemetry._publish or (
+            telemetry._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
+        ):
+            telemetry.checked_in(conn.id)
         if self.pid != os.getpid():
             self.reset_without_pause()
         else:
@@ -1226,12 +1232,21 @@ class _PoolCheckout:
 
     def __enter__(self) -> Connection:
         pool = self._pool
-        checkout_started_time = pool._telemetry.checkout_started()
+        telemetry = pool._telemetry
+        # Fast path: when neither CMAP listeners nor connection logging are
+        # active, skip the checkout started/succeeded telemetry calls.
+        if not telemetry._publish and not (
+            telemetry._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
+        ):
+            conn = pool._get_conn(time.monotonic(), handler=self._handler)
+            self._conn = conn
+            return conn
+        checkout_started_time = telemetry.checkout_started()
 
         conn = pool._get_conn(checkout_started_time, handler=self._handler)
         self._conn = conn
         try:
-            pool._telemetry.checkout_succeeded(conn.id, checkout_started_time)
+            telemetry.checkout_succeeded(conn.id, checkout_started_time)
         except BaseException:
             pool.checkin(conn)
             self._conn = None

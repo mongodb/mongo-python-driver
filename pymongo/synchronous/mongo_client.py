@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import os
 import time as time  # noqa: PLC0414 # needed in sync version
 import warnings
@@ -56,7 +57,7 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
-from pymongo._telemetry import _should_generate_op_id, log_command_retry
+from pymongo._telemetry import log_command_retry
 from pymongo.client_options import ClientOptions
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
@@ -80,6 +81,8 @@ from pymongo.lock import (
 )
 from pymongo.logger import (
     _CLIENT_LOGGER,
+    _COMMAND_LOGGER,
+    _SERVER_SELECTION_LOGGER,
     _log_client_error,
     _log_or_warn,
 )
@@ -2877,7 +2880,13 @@ class _ClientConnectionRetryable(Generic[T]):
         self._deprioritized_servers: Optional[list[Server]] = None
         self._operation = operation
         # Only generate an operation id when APM/logging is enabled
-        if operation_id is None and _should_generate_op_id(self._client._event_listeners):
+        # (_should_generate_op_id inlined: this runs once per operation).
+        listeners = self._client._event_listeners
+        if operation_id is None and (
+            (listeners is not None and listeners.enabled_for_commands)
+            or _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)
+            or _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
+        ):
             operation_id = _randint()
         self._operation_id = operation_id
         self._attempt_number = 0

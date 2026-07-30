@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import queue
 import random
@@ -51,6 +52,7 @@ from pymongo.lock import (
     _create_condition,
     _create_lock,
 )
+from pymongo.logger import _SERVER_SELECTION_LOGGER
 from pymongo.pool_options import PoolOptions
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (
@@ -283,10 +285,14 @@ class Topology:
         now = time.monotonic()
         end_time = now + timeout
         logged_waiting = False
-        ss = _ServerSelectionTelemetry(
-            self._topology_id, selector, operation, operation_id, self.description
-        )
-        ss.started()
+        # Server selection defines only log entries (no APM events); skip the
+        # telemetry object entirely when the logger is not enabled.
+        ss: Optional[_ServerSelectionTelemetry] = None
+        if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+            ss = _ServerSelectionTelemetry(
+                self._topology_id, selector, operation, operation_id, self.description
+            )
+            ss.started()
 
         server_descriptions = self._description.apply_selector(
             selector,
@@ -300,12 +306,13 @@ class Topology:
         while not server_descriptions:
             # No suitable servers.
             if timeout == 0 or now > end_time:
-                ss.failed(self._error_message(selector), self.description)
+                if ss is not None:
+                    ss.failed(self._error_message(selector), self.description)
                 raise ServerSelectionTimeoutError(
                     f"{self._error_message(selector)}, Timeout: {timeout}s, Topology Description: {self.description!r}"
                 )
 
-            if not logged_waiting:
+            if ss is not None and not logged_waiting:
                 ss.waiting(int(1000 * (end_time - time.monotonic())))
                 logged_waiting = True
 
@@ -371,15 +378,16 @@ class Topology:
         )
         if _csot.get_timeout():
             _csot.set_rtt(server.description.min_round_trip_time)
-        log_server_selection_succeeded(
-            self._topology_id,
-            selector,
-            operation,
-            operation_id,
-            self.description,
-            server.description.address[0],
-            server.description.address[1],
-        )
+        if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+            log_server_selection_succeeded(
+                self._topology_id,
+                selector,
+                operation,
+                operation_id,
+                self.description,
+                server.description.address[0],
+                server.description.address[1],
+            )
         return server
 
     def select_server_by_address(

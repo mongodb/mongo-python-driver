@@ -180,8 +180,8 @@ class TestOperationIdRetry(IntegrationTest):
         )
         self.assertEqual(
             find_op_ids,
-            [None, None],
-            "expected two attempts, neither carrying a shared operation id",
+            [],
+            "expected no _CommandTelemetry construction without APM/logging enabled",
         )
 
     def test_reauth_does_not_reuse_operation_id(self):

@@ -254,13 +254,15 @@ class _CmapTelemetry:
         self._client_id = client_id
         self._address = address
         self._listeners = listeners
-        self._publish = publish
+        # The CMAP listener set is fixed once the client is constructed
+        # (_EventListeners copies the global listeners at __init__), so this
+        # gate is static for the life of the pool.
+        self._publish = publish and listeners is not None and listeners.enabled_for_cmap
         self._log = log
 
     @property
     def _should_publish(self) -> bool:
-        """Computed per-call because listener registration can change while the pool is open."""
-        return self._publish and self._listeners is not None and self._listeners.enabled_for_cmap
+        return self._publish
 
     @property
     def _should_log(self) -> bool:

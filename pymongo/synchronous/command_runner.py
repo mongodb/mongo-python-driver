@@ -36,6 +36,8 @@ command type so callers only pass what varies.
 from __future__ import annotations
 
 import datetime
+import logging
+import time
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
@@ -51,6 +53,7 @@ from pymongo import _csot, helpers_shared, message
 from pymongo._telemetry import _CommandTelemetry
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import NotPrimaryError, OperationFailure
+from pymongo.logger import _COMMAND_LOGGER
 from pymongo.message import _BulkWriteContextBase, _convert_exception, _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 
@@ -77,7 +80,6 @@ def _run_command(
     dbname: str,
     request_id: int,
     msg: bytes,
-    *,
     client: Optional[MongoClient[Any]],
     session: Optional[ClientSession],
     listeners: Optional[_EventListeners],
@@ -85,19 +87,20 @@ def _run_command(
     codec_options: CodecOptions[_DocumentType],
     user_fields: Optional[Mapping[str, Any]] = None,
     orig: Optional[MutableMapping[str, Any]] = None,
-    op_id: Optional[int] = None,
-    command_name: Optional[str] = None,
     check: bool = True,
     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
     parse_write_concern_error: bool = False,
-    pool_opts: Optional[PoolOptions] = None,
-    unacknowledged: bool = False,
     speculative_hello: bool = False,
+    unacknowledged: bool = False,
+    set_conn_more_to_come: bool = False,
+    *,
+    op_id: Optional[int] = None,
+    command_name: Optional[str] = None,
+    pool_opts: Optional[PoolOptions] = None,
     ensure_db: bool = False,
     decrypt_reply: bool = True,
     max_doc_size: int = 0,
     more_to_come: bool = False,
-    set_conn_more_to_come: bool = False,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], float]:
@@ -161,10 +164,20 @@ def _run_command(
     if orig is None:
         orig = cmd
 
-    telemetry = _CommandTelemetry(
-        topology_id, conn, listeners, cmd, dbname, request_id, op_id, name=name
-    )
-    telemetry.started(orig, ensure_db)
+    # Fast path: when neither command logging nor APM command listeners are
+    # active, skip constructing the telemetry object entirely and track the
+    # round-trip duration inline.
+    telemetry: Optional[_CommandTelemetry] = None
+    if (topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)) or (
+        listeners is not None and listeners.enabled_for_commands
+    ):
+        telemetry = _CommandTelemetry(
+            topology_id, conn, listeners, cmd, dbname, request_id, op_id, name=name
+        )
+        telemetry.started(orig, ensure_db)
+        start = 0.0
+    else:
+        start = time.monotonic()
 
     reply: Optional[_OpMsg] = None
     docs: list[dict[str, Any]] = [{"ok": 1}]
@@ -212,10 +225,15 @@ def _run_command(
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
             failure = _convert_exception(exc)
-        telemetry.failed(failure, command_name, isinstance(exc, OperationFailure))
+        if telemetry is not None:
+            telemetry.failed(failure, command_name, isinstance(exc, OperationFailure))
         raise
 
-    telemetry.succeeded(docs[0], command_name, speculative_hello)
+    if telemetry is not None:
+        telemetry.succeeded(docs[0], command_name, speculative_hello)
+        duration_s = telemetry.duration_s
+    else:
+        duration_s = max(0.0, time.monotonic() - start)
 
     if client and client._encrypter and reply and decrypt_reply:
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
@@ -223,7 +241,7 @@ def _run_command(
             "list[dict[str, Any]]", _decode_all_selective(decrypted, codec_options, user_fields)
         )
 
-    return docs, reply, telemetry.duration_s
+    return docs, reply, duration_s
 
 
 def run_bulk_write_command(
@@ -256,11 +274,11 @@ def run_bulk_write_command(
         bwc.db_name,
         request_id,
         msg,
-        client=client,
-        session=bwc.session,  # type: ignore[arg-type]
-        listeners=bwc.listeners,
-        topology_id=topology_id,
-        codec_options=bwc.codec,
+        client,
+        bwc.session,  # type: ignore[arg-type]
+        bwc.listeners,
+        topology_id,
+        bwc.codec,
         op_id=bwc.op_id,
         command_name=bwc.name,
         orig=orig,
@@ -316,11 +334,11 @@ def run_cursor_command(
         dbname,
         request_id,
         msg,
-        client=client,
-        session=session,
-        listeners=listeners,
-        topology_id=topology_id,
-        codec_options=codec_options,
+        client,
+        session,
+        listeners,
+        topology_id,
+        codec_options,
         user_fields=user_fields,
         command_name=command_name,
         pool_opts=pool_opts,
@@ -427,11 +445,11 @@ def run_command(
         dbname,
         request_id,
         msg,
-        client=client,
-        session=session,
-        listeners=listeners,
-        topology_id=topology_id,
-        codec_options=codec_options,
+        client,
+        session,
+        listeners,
+        topology_id,
+        codec_options,
         user_fields=user_fields,
         orig=orig,
         check=check,
