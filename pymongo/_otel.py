@@ -264,6 +264,12 @@ def start_command_span(
 
     Returns None when tracing is disabled/unavailable or the command is
     sensitive (mirroring the redaction applied to logs).
+
+    One span per wire-protocol message, so a retried operation produces one of
+    these per attempt. The span is returned rather than made current: it is a
+    leaf, parented by whichever operation span is current, and nothing nests
+    inside it. Callers hold the returned object for the command's duration, so
+    per-command data can be read back from it directly.
     """
     if not _is_tracing_enabled(tracing_options):
         return None

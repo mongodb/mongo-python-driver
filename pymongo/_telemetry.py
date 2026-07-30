@@ -243,6 +243,10 @@ class _OperationTelemetry:
     it as a context manager to do so automatically. A no-op throughout when
     tracing is disabled.
 
+    This span is shared by every attempt, while each attempt gets a command
+    span of its own underneath it. Retries are therefore visible as sibling
+    command spans rather than being collapsed into one.
+
     With ``set_current=False`` the span is not made current at construction.
     That suits a span outliving one ``_retry_internal`` call (cursor getMores),
     where each call makes it current with :meth:`use`.
