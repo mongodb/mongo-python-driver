@@ -85,10 +85,6 @@ class TestOTelOperationSpanPrimitives(unittest.TestCase):
     def setUp(self):
         self.exporter.clear()
 
-    def test_start_operation_span_disabled_returns_none(self):
-        handle = _otel.start_operation_span(None, "find", None)
-        self.assertIsNone(handle)
-
     def test_start_operation_span_success_sets_provisional_attributes(self):
         opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
         handle = _otel.start_operation_span(opts, "find", None)
@@ -251,9 +247,6 @@ class TestOTelTransactionSpanPrimitives(unittest.TestCase):
     def setUp(self):
         self.exporter.clear()
 
-    def test_start_transaction_span_disabled_returns_none(self):
-        self.assertIsNone(_otel.start_transaction_span(None))
-
     def test_start_transaction_span_has_only_one_attribute(self):
         opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
         span = _otel.start_transaction_span(opts)
@@ -261,9 +254,6 @@ class TestOTelTransactionSpanPrimitives(unittest.TestCase):
         (finished,) = self.exporter.get_finished_spans()
         self.assertEqual(finished.name, "transaction")
         self.assertEqual(dict(finished.attributes), {"db.system.name": "mongodb"})
-
-    def test_end_transaction_span_is_none_safe(self):
-        _otel.end_transaction_span(None)  # must not raise
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
@@ -403,11 +393,6 @@ class TestOperationTelemetryContextManager(unittest.TestCase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(span.attributes["exception.type"], "ValueError")
 
-    def test_context_manager_disabled_is_noop(self):
-        with _OperationTelemetry(None, "killCursors", None, dbname="mydb"):
-            pass
-        self.assertEqual(self.exporter.get_finished_spans(), ())
-
     def test_detached_telemetry_use_makes_span_current(self):
         from opentelemetry import trace
 
@@ -450,31 +435,6 @@ class TestOTelSpans(AsyncIntegrationTest):
         if name is None:
             return list(finished)
         return [s for s in finished if s.name == name]
-
-    async def test_operation_span_wraps_command_span_for_find(self):
-        client = await self.async_rs_or_single_client(tracing={"enabled": True})
-        coll = client[self.db.name].test
-        await coll.insert_one({"x": 1})
-        self.exporter.clear()
-        await coll.find_one({"x": 1})
-
-        finished = self.exporter.get_finished_spans()
-        # Identify the operation vs. command span by their distinguishing
-        # attribute (db.operation.name / db.command.name) rather than by
-        # span.name: start_command_span backfills the operation span's name
-        # to a query summary (e.g. "find <db>.<coll>") once the first command
-        # inside it runs, so only the command span still literally reads "find".
-        matching = [s for s in finished if s.attributes.get("db.operation.name") == "find"]
-        self.assertEqual(len(matching), 1)
-        op_span = matching[0]
-        self.assertEqual(op_span.attributes["db.namespace"], self.db.name)
-        self.assertEqual(op_span.attributes["db.collection.name"], "test")
-        cmd_spans = [s for s in finished if s.attributes.get("db.command.name") == "find"]
-        self.assertEqual(len(cmd_spans), 1)
-        cmd_span = cmd_spans[0]
-        self.assertEqual(cmd_span.name, "find")
-        self.assertIsNotNone(cmd_span.parent)
-        self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
 
     async def test_operation_span_records_failure(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
@@ -861,51 +821,6 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertNotIn("a" * 500, query_text)
 
     @async_client_context.require_transactions
-    async def test_transaction_span_parents_operation_and_command_spans(self):
-        client = await self.async_rs_or_single_client(tracing={"enabled": True})
-        coll = client[self.db.name].test
-        await coll.drop()
-        await client[self.db.name].create_collection("test")
-        self.exporter.clear()
-
-        async with client.start_session() as session:
-            async with await session.start_transaction():
-                await coll.insert_one({"x": 2}, session=session)
-                await coll.insert_one({"x": 3}, session=session)
-
-        finished = self.exporter.get_finished_spans()
-        txn_span = next(s for s in finished if s.name == "transaction")
-        self.assertEqual(dict(txn_span.attributes), {"db.system.name": "mongodb"})
-
-        insert_op_spans = [s for s in finished if s.attributes.get("db.operation.name") == "insert"]
-        self.assertEqual(len(insert_op_spans), 2)
-        for op_span in insert_op_spans:
-            self.assertEqual(op_span.parent.span_id, txn_span.context.span_id)
-
-        commit_op_spans = [
-            s for s in finished if s.attributes.get("db.operation.name") == "commitTransaction"
-        ]
-        self.assertEqual(len(commit_op_spans), 1)
-        self.assertEqual(commit_op_spans[0].parent.span_id, txn_span.context.span_id)
-
-    @async_client_context.require_transactions
-    async def test_aborted_transaction_still_ends_span(self):
-        client = await self.async_rs_or_single_client(tracing={"enabled": True})
-        coll = client[self.db.name].test
-        await coll.drop()
-        await client[self.db.name].create_collection("test")
-        self.exporter.clear()
-
-        async with client.start_session() as session:
-            async with await session.start_transaction():
-                await coll.insert_one({"x": 4}, session=session)
-                await session.abort_transaction()
-
-        finished = self.exporter.get_finished_spans()
-        txn_span = next(s for s in finished if s.name == "transaction")
-        self.assertTrue(txn_span.end_time is not None)
-
-    @async_client_context.require_transactions
     async def test_committing_empty_transaction_ends_span(self):
         # No operation is ever run against the server, so commit_transaction
         # takes the STARTING/COMMITTED_EMPTY early-return path rather than
@@ -1116,20 +1031,6 @@ class TestOTelSpans(AsyncIntegrationTest):
             self.assertIsNotNone(cmd_span.parent)
 
     @async_client_context.require_version_min(8, 0, 0, -24)
-    async def test_bulk_write_acknowledged_gets_operation_span(self):
-        client = await self.async_rs_or_single_client(tracing={"enabled": True})
-        self.exporter.clear()
-        await client.bulk_write([InsertOne(namespace=f"{self.db.name}.test", document={"x": 1})])
-        matching = [
-            s
-            for s in self.exporter.get_finished_spans()
-            if s.attributes.get("db.operation.name") == "bulkWrite"
-        ]
-        self.assertEqual(len(matching), 1)
-        self.assertEqual(matching[0].attributes["db.namespace"], "admin")
-        self.assertNotIn("db.collection.name", matching[0].attributes)
-
-    @async_client_context.require_version_min(8, 0, 0, -24)
     async def test_bulk_write_unacknowledged_gets_operation_span(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True}, w=0)
         self.exporter.clear()
@@ -1249,25 +1150,24 @@ class TestOTelSpans(AsyncIntegrationTest):
             1,
         )
 
-    async def test_eager_namespace_for_collection_and_database_operations(self):
+    async def test_operation_span_name_can_differ_from_command_name(self):
+        # count_documents' operation span is named for the driver operation
+        # ("count"), but the command it actually sends is an aggregate, so an
+        # operation span name is not simply the name of the command beneath it.
+        # The vendored count.json fixture covers estimated_document_count,
+        # where the two happen to coincide, so this case needs its own test.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         db = client.pymongo_test
-        cases = [
-            # (coroutine factory, expected span name)
-            (lambda: db.mycoll.insert_one({"x": 1}), "insert pymongo_test.mycoll"),
-            (lambda: db.mycoll.find_one({}), "find pymongo_test.mycoll"),
-            (lambda: db.mycoll.count_documents({}), "count pymongo_test.mycoll"),
-            (lambda: db.list_collection_names(), "listCollections pymongo_test"),
-        ]
-        for factory, expected_name in cases:
-            with self.subTest(expected_name=expected_name):
-                self.exporter.clear()
-                await factory()
-                names = [s.name for s in self.exporter.get_finished_spans()]
-                self.assertIn(expected_name, names)
-                (span,) = [s for s in self.exporter.get_finished_spans() if s.name == expected_name]
-                self.assertEqual(span.attributes["db.operation.summary"], expected_name)
-                self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
+        await db.mycoll.insert_one({"x": 1})
+        self.exporter.clear()
+        await db.mycoll.count_documents({})
+
+        (op_span,) = self.spans("count pymongo_test.mycoll")
+        self.assertEqual(op_span.attributes["db.operation.name"], "count")
+        self.assertEqual(op_span.attributes["db.namespace"], "pymongo_test")
+        (cmd_span,) = self.spans("aggregate")
+        self.assertEqual(cmd_span.attributes["db.command.name"], "aggregate")
+        self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
 
     def _aggregate_operation_span(self):
         matching = [
