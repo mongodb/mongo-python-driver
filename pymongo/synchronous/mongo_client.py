@@ -2070,7 +2070,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation_id: Stable operation id shared across retries, defaults to None
         :param operation_telemetry: A caller-owned operation span outliving this call
             (a cursor's, shared by its getMores). When given, this method neither
-            creates nor ends a span -- it only makes the caller's current for this
+            creates nor ends a span; it only makes the caller's current for this
             call. Defaults to None, meaning this method owns a fresh span.
         :param reuse_current_span: Create no operation span at all and leave the
             ambient span in place as the parent for this operation's command

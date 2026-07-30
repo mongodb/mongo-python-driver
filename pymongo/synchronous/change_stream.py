@@ -253,7 +253,7 @@ class ChangeStream(Generic[_DocumentType]):
         # span covering its whole lifetime (initial query + every getMore,
         # like other command cursors) would never end while it's watching.
         # Leaving it unattached means each getMore instead gets its own
-        # short-lived sibling "getMore" operation span -- less ideal nesting,
+        # short-lived sibling "getMore" operation span, less ideal nesting,
         # but not a leaked/never-exported span. Do not "fix" this without
         # addressing that tradeoff.
         return self._client._retryable_read(

@@ -626,14 +626,12 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.knobs.disable()
-        # The exporter's span processor can never be removed from the shared
-        # process-wide TracerProvider (see _shared_test_provider), so without
-        # this, every span emitted by any client anywhere in the process for
-        # the rest of the test run keeps getting appended to this (otherwise
-        # dead) class's exporter -- an unbounded memory leak across a full
-        # test run, and needless per-span export overhead for every other
-        # tracing-enabled test class that runs afterwards. shutdown() makes
-        # further export() calls into this exporter no-ops.
+        # The exporter's span processor can never be removed from the shared process-wide
+        # TracerProvider (see _shared_test_provider), so without this, every span emitted by any
+        # client anywhere in the process for the rest of the test run keeps getting appended to this
+        # (otherwise dead) class's exporter: an unbounded memory leak across a full test run, and
+        # needless per-span export overhead for every other tracing-enabled test class that runs
+        # afterwards. shutdown() makes further export() calls into this exporter no-ops.
         if cls._tracing_exporter is not None:
             cls._tracing_exporter.shutdown()
 
@@ -676,7 +674,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
         # Removed API: PyMongo no longer exposes map_reduce/inline_map_reduce at
         # all (mapReduce is deprecated server-side), so there's no code path left
-        # that could send this command -- this operation can never be exercised.
+        # that could send this command; this operation can never be exercised.
         if class_name == "testoperationmapreduce" and description == "mapreduce":
             self.skipTest(
                 "PyMongo removed the map_reduce/inline_map_reduce Collection methods "
@@ -691,7 +689,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 "PyMongo always sends explicit multi/upsert fields in the update "
                 "statement (even at their default False value), but this vendored "
                 "fixture's db.query.text $$matchAsRoot expects an update statement "
-                "with only q/u -- a real, narrow mismatch between this driver's wire "
+                "with only q/u: a real, narrow mismatch between this driver's wire "
                 "command shape and the fixture's assumption, not a tracing bug"
             )
         if any(
@@ -1605,7 +1603,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         def check_span_list(expected_list, actual_list, ignore_extra_spans):
             if ignore_extra_spans:
                 # Per the unified-test-format spec, "additional unexpected spans
-                # are allowed" -- unlike ignoreExtraEvents (which only tolerates
+                # are allowed". Unlike ignoreExtraEvents (which only tolerates
                 # a trailing tail), spans from concurrent/out-of-band activity
                 # (e.g. a testRunner-issued configureFailPoint command) can
                 # finish interleaved anywhere among the expected ones, not just

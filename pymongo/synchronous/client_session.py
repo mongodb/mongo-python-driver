@@ -782,7 +782,7 @@ class ClientSession:
             # don't silently clobber and leak the outer call's span.
             raise InvalidOperation(
                 "Cannot call with_transaction() while a previous with_transaction() "
-                "call on this session has not returned -- sessions do not support "
+                "call on this session has not returned; sessions do not support "
                 "nested or concurrent with_transaction() calls"
             )
         # One span for the whole call: start_transaction reuses it instead of
@@ -798,9 +798,9 @@ class ClientSession:
             )
         finally:
             _otel.end_transaction_span(self._with_transaction_span)
-            # Only clear the span this call owns -- if a direct-API
-            # transaction was already active, self._transaction.span belongs
-            # to that transaction and must not be nulled here.
+            # Only clear the span this call owns. If a direct-API transaction
+            # was already active, self._transaction.span belongs to that
+            # transaction and must not be nulled here.
             if self._transaction.span is self._with_transaction_span:
                 self._transaction.span = None
             self._with_transaction_span = None
@@ -908,7 +908,7 @@ class ClientSession:
         self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
         if self._with_transaction_span is not None:
-            # with_transaction() is retrying the whole transaction -- reuse its
+            # with_transaction() is retrying the whole transaction: reuse its
             # one shared span instead of starting a new one, so a retried
             # with_transaction() still produces exactly one "transaction" span.
             self._transaction.span = self._with_transaction_span
@@ -924,9 +924,9 @@ class ClientSession:
 
         with_transaction() pins one shared span across all of its retries in
         ``self._with_transaction_span`` (see its comments); while that's set,
-        the span must survive until with_transaction() itself ends it, so
-        this is a no-op here -- otherwise a retried with_transaction() would
-        end the shared span prematurely on the first failed attempt.
+        the span must survive until with_transaction() itself ends it, so this
+        is a no-op here. Otherwise a retried with_transaction() would end the
+        shared span prematurely on the first failed attempt.
         """
         if self._with_transaction_span is None:
             _otel.end_transaction_span(self._transaction.span)
@@ -955,7 +955,7 @@ class ClientSession:
             # Outside of with_transaction() (which pins its shared span across
             # this transition, see _end_own_transaction_span), the prior
             # attempt's finally block already ended and cleared the
-            # transaction span, so this direct-API retry needs a fresh one --
+            # transaction span, so this direct-API retry needs a fresh one;
             # otherwise it would run with no transaction span and its command
             # span would have no parent.
             if self._transaction.span is None:

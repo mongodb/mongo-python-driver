@@ -51,7 +51,7 @@ except ImportError:
 # The operation name of whichever operation span is currently active (entered
 # by start_operation_span), so start_command_span can backfill the operation
 # span's name/namespace attributes from the first command executed inside it
-# (dbname/collection aren't known until then -- see start_operation_span).
+# (dbname/collection aren't known until then; see start_operation_span).
 _CURRENT_OPERATION_NAME: ContextVar[Optional[str]] = ContextVar(
     "_CURRENT_OPERATION_NAME", default=None
 )
@@ -219,10 +219,10 @@ def start_command_span(
 
     collection = _extract_collection_name(command_name, dbname, cmd)
     # Backfill the ambient operation span's name/namespace/summary from the
-    # first command built inside it, before the sensitive-command early
-    # return below -- the operation span still needs its (Required, per the
-    # OTel spec) db.namespace/db.operation.summary attributes even when the
-    # command itself is sensitive and gets no command span of its own.
+    # first command built inside it, before the sensitive-command early return
+    # below: the operation span still needs its (Required, per the OTel spec)
+    # db.namespace/db.operation.summary attributes even when the command
+    # itself is sensitive and gets no command span of its own.
     current_operation = _CURRENT_OPERATION_NAME.get()
     if current_operation is not None:
         current_span = trace.get_current_span()
@@ -276,8 +276,8 @@ def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
         return
     cursor = reply.get("cursor")
     if isinstance(cursor, Mapping) and cursor.get("id"):
-        # A cursor id of 0 means the cursor is already exhausted -- i.e. there
-        # is no cursor left to track -- so per the OTel spec ("If the command
+        # A cursor id of 0 means the cursor is already exhausted, i.e. there is
+        # no cursor left to track, so per the OTel spec ("If the command
         # returns a cursor, or uses a cursor, the cursor_id attribute SHOULD
         # be added") the attribute is only meaningful, and only added, when
         # id is nonzero.
@@ -361,8 +361,8 @@ def start_operation_span(
     to the bare operation name unless ``dbname`` is given, in which case it
     (and, when ``collection`` is also given, the "if available"
     ``db.namespace``/``db.collection.name``) are built from those instead.
-    This guarantees a conformant span even for an operation that fails
-    before any command is ever built -- e.g. server selection timing out.
+    This guarantees a conformant span even for an operation that fails before
+    any command is ever built, e.g. server selection timing out.
     ``start_command_span`` still backfills these from the real command once
     one is built, overwriting these values with the authoritative ones.
 
@@ -371,10 +371,10 @@ def start_operation_span(
     avoid a concurrently-running unrelated session's operations picking up
     this transaction by accident. Pass None outside of a transaction.
 
-    With ``set_current=False`` the span is created but not made current and the
-    operation-name contextvar is left alone -- for spans whose lifetime spans
-    several ``_retry_internal`` calls (cursor getMores), where the caller makes
-    it current per-call with ``use_operation_span``.
+    With ``set_current=False`` the span is created but not made current and
+    the operation-name contextvar is left alone: for spans whose lifetime
+    spans several ``_retry_internal`` calls (cursor getMores), where the
+    caller makes it current per-call with ``use_operation_span``.
     """
     if not _is_tracing_enabled(tracing_options):
         return None
@@ -411,7 +411,7 @@ def start_operation_span(
 def use_operation_span(handle: Optional[_OperationSpanHandle]) -> Iterator[None]:
     """Make a detached operation span current for the duration of the block.
 
-    Does not end the span -- the owner (e.g. a cursor, across all of its
+    Does not end the span; the owner (e.g. a cursor, across all of its
     getMore calls) ends it explicitly. A no-op when ``handle`` is None.
     """
     if handle is None:
@@ -421,7 +421,7 @@ def use_operation_span(handle: Optional[_OperationSpanHandle]) -> Iterator[None]
     try:
         # record_exception/set_status_on_exception default to True, which would
         # auto-record any exception propagating out of the block and set ERROR
-        # status here -- duplicating what the caller's own
+        # status here, duplicating what the caller's own
         # end_operation_span_failure does explicitly once the operation's
         # final outcome is known. Disabled for the same reason the
         # attached-mode path passes hardcoded Nones to cm.__exit__.
@@ -482,7 +482,7 @@ def end_operation_span_failure(handle: Optional[_OperationSpanHandle], exc: Base
 def start_transaction_span(tracing_options: Optional[TracingOptions]) -> Optional[Span]:
     """Start (but do not make current) the ``"transaction"`` pseudo-span, or None.
 
-    Not pushed as ambient/current context -- it's stored explicitly on
+    Not pushed as ambient/current context; it's stored explicitly on
     ``session._transaction.span`` and passed as the explicit ``parent_span``
     wherever an operation span is started under this transaction (see
     :func:`start_operation_span`). Per the OTel driver spec, this span has

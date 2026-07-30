@@ -236,27 +236,24 @@ class _CommandTelemetry:
             _otel.end_command_span_failure(self._span, failure, exc)
 
 
-# A handful of internal `_Op` values (used elsewhere for retry/server-selection
-# and cluster-time-advancing logic, e.g. `_WRITES_WITH_CLUSTER_TIME` in
-# pymongo/operations.py) are literally the wire protocol command name --
-# "drop"/"create" -- rather than the OTel spec's canonical db.operation.name
-# for that logical operation ("dropCollection"/"createCollection", per the
-# open-telemetry spec's "Covered operations" table and its vendored
-# drop_collection.json/create_collection.json tests). Translate only the
-# name used for the span; leave the `operation` value used for retry
-# selection/logging untouched everywhere else.
+# A handful of internal `_Op` values (used elsewhere for retry/server-selection and
+# cluster-time-advancing logic, e.g. `_WRITES_WITH_CLUSTER_TIME` in pymongo/operations.py) are
+# literally the wire protocol command name (e.g. "drop"/"create") rather than the OTel spec's
+# canonical db.operation.name for that logical operation ("dropCollection"/"createCollection", per
+# the open-telemetry spec's "Covered operations" table and its vendored
+# drop_collection.json/create_collection.json tests). Translate only the name used for the span;
+# leave the `operation` value used for retry selection/logging untouched everywhere else.
 _OTEL_OPERATION_NAME_OVERRIDES = {
     "drop": "dropCollection",
     "create": "createCollection",
     "dropSearchIndexes": "dropSearchIndex",
 }
 
-# Per the OTel driver spec's span-name rule ("`driver_operation_name db` if
-# there is no specific collection"), db.namespace examples, and
-# db.collection.name examples (omitted for runCommand), any operation
-# reaching the server through the generic `Database.command()` API -- signaled by
-# `is_run_command` -- is named "runCommand" regardless of the actual command
-# sent, rather than being named after that command.
+# Per the OTel driver spec's span-name rule ("`driver_operation_name db` if there is no specific
+# collection"), db.namespace examples, and db.collection.name examples (omitted for runCommand),
+# any operation reaching the server through the generic `Database.command()` API (signaled by
+# `is_run_command`) is named "runCommand" regardless of the actual command sent, rather than being
+# named after that command.
 _RUN_COMMAND_OPERATION_NAME = "runCommand"
 
 
@@ -285,7 +282,7 @@ class _OperationTelemetry:
     it as a context manager to do so automatically. A no-op throughout when
     tracing is disabled.
 
-    With ``set_current=False`` the span is not made current at construction --
+    With ``set_current=False`` the span is not made current at construction:
     for spans outliving one ``_retry_internal`` call (cursor getMores), where
     each call makes it current with :meth:`use`.
     """

@@ -337,7 +337,7 @@ class _AsyncClientBulk:
                 comment=self.comment,
             )
             # This cursor's getMores run inside the enclosing bulkWrite
-            # operation span, so their command spans belong under it directly --
+            # operation span, so their command spans belong under it directly;
             # a getMore operation span of their own would be spurious. The
             # cursor is also per-batch and never surfaces to the caller, so
             # there is no cursor-lifetime span to own here.

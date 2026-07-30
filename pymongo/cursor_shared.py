@@ -123,8 +123,8 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
     def _end_operation_telemetry(self, exc: Optional[BaseException] = None) -> None:
         """End this cursor's operation span, exactly once.
 
-        The span covers the cursor's whole lifetime -- its initial query plus
-        every getMore -- so it is ended by whichever comes first: exhaustion,
+        The span covers the cursor's whole lifetime (its initial query plus
+        every getMore), so it is ended by whichever comes first: exhaustion,
         an explicit close(), or __del__ for an abandoned cursor. Idempotent, so
         all three paths can call it unconditionally.
         """
@@ -140,13 +140,13 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
     def _attach_operation_telemetry(self, telemetry: Any) -> None:
         """Attach a command cursor's already-started operation span.
 
-        Command cursors (AsyncCommandCursor/CommandCursor -- never
+        Command cursors (AsyncCommandCursor/CommandCursor, never
         AsyncCursor/Cursor, whose span is attached before the query even
         runs, and is already correct) whose first batch exhausts them are
         marked ``_killed`` in ``__init__`` without a call to ``close()``: no
         getMore is ever sent, so ``_refresh()``/``_die_lock()`` never run and
         the span would otherwise only be ended by an explicit ``close()`` or
-        by ``__del__`` -- i.e. whenever GC happens to run, or never, if the
+        by ``__del__``, i.e. whenever GC happens to run, or never, if the
         cursor is retained. Ending it here instead makes a single-batch
         command cursor's span end promptly at construction, consistent with
         a multi-batch one ending promptly at exhaustion.

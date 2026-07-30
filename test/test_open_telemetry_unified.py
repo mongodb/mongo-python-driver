@@ -55,7 +55,7 @@ def _drop_otel_fixture_databases():
     # Some vendored OTel fixtures (e.g. operation/create_collection.json)
     # are not idempotent: they create a collection and rely on the unified
     # runner's insert_initial_data step to drop it beforehand, but that step
-    # only runs when the fixture declares a non-null `initialData` -- this
+    # only runs when the fixture declares a non-null `initialData`; this
     # one declares none, so nothing ever cleans the collection up between
     # runs. That's invisible upstream, where each fixture runs once per
     # process. PyMongo, however, runs every fixture *twice* per process: once

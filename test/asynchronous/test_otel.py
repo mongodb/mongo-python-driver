@@ -199,7 +199,7 @@ class TestOTelOperationSpanPrimitives(unittest.TestCase):
         # set_status_on_exception default to True, so without explicitly
         # disabling them, an exception propagating out of a `with
         # use_operation_span(handle):` block gets auto-recorded there *and
-        # again* by the caller's own end_operation_span_failure -- producing
+        # again* by the caller's own end_operation_span_failure, producing
         # two identical "exception" events on the finished span.
         opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
         handle = _otel.start_operation_span(opts, "find", None, set_current=False)
@@ -334,7 +334,7 @@ class TestOperationTelemetry(unittest.TestCase):
         # `str`-mixin enum), not a plain string, as the `operation` argument.
         # Python 3.11 changed `Enum.__format__` for `str`-mixin enums so that
         # f"{_Op.INSERT}"/str(_Op.INSERT) produce "_Op.INSERT" instead of
-        # "insert" -- on 3.10 the same code happened to already produce the
+        # "insert": on 3.10 the same code happened to already produce the
         # bare value, which is why this bug wasn't caught there. This test is
         # meaningful (and must pass) on every supported Python version.
         from pymongo.operations import _Op
@@ -591,11 +591,11 @@ class TestOTelSpans(AsyncIntegrationTest):
 
     async def test_single_batch_aggregate_ends_span_promptly_not_at_gc(self):
         # A command cursor whose first batch exhausts it is marked _killed in
-        # __init__ without ever calling close() -- no getMore is sent, so
+        # __init__ without ever calling close(); no getMore is sent, so
         # _refresh()/_die_lock() never run. Without explicit attachment its
         # operation span would only be ended by __del__, i.e. whenever GC
-        # happens to run (or never, if the cursor is retained) -- Important
-        # #2. Assert the span is already ended while a reference to the
+        # happens to run (or never, if the cursor is retained; Important #2).
+        # Assert the span is already ended while a reference to the
         # cursor is still held, proving it ended at construction rather than
         # waiting on GC.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
@@ -618,7 +618,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(len(agg_op_spans), 1, [s.name for s in finished])
         self.assertIsNotNone(agg_op_spans[0].end_time)
 
-        # The cursor reference is kept alive through this assertion -- if
+        # The cursor reference is kept alive through this assertion: if
         # __del__ were the only thing ending the span, get_finished_spans()
         # above would not have included it yet.
         self.assertIsNotNone(cursor)
@@ -695,7 +695,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         # The sensitive command name must never leak onto the wrapping
         # *operation* span either: Database.command() always runs with
         # is_run_command=True, so the operation span is named/attributed
-        # "runCommand" regardless of the actual (sensitive) command sent --
+        # "runCommand" regardless of the actual (sensitive) command sent;
         # the bare "saslStart" name never appears anywhere. The operation
         # span must still carry its Required db.namespace/db.operation.summary
         # attributes (backfilled before start_command_span's sensitive-command
@@ -726,9 +726,8 @@ class TestOTelSpans(AsyncIntegrationTest):
     async def test_database_command_produces_run_command_operation_span(self):
         # The OTel driver spec names "runCommand" as the driver-operation name
         # for any operation reached through the generic Database.command()
-        # API, so
-        # c.admin.command("ping") must produce an operation span named
-        # "runCommand admin" with db.operation.name="runCommand" -- not one
+        # API, so c.admin.command("ping") must produce an operation span named
+        # "runCommand admin" with db.operation.name="runCommand", not one
         # named "ping"/"ping admin".
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         self.exporter.clear()
@@ -740,7 +739,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         op_span = matching[0]
         self.assertEqual(op_span.name, "runCommand admin")
         self.assertEqual(op_span.attributes["db.namespace"], "admin")
-        # The wire-level command span is unaffected -- it's still named/attributed
+        # The wire-level command span is unaffected: it's still named/attributed
         # after the actual command sent.
         cmd_spans = [s for s in finished if s.attributes.get("db.command.name") == "ping"]
         self.assertEqual(len(cmd_spans), 1)
@@ -776,7 +775,7 @@ class TestOTelSpans(AsyncIntegrationTest):
             self.exporter.clear()
             await client.admin.command("ping")
         # Disabled must suppress both the operation span and the command span
-        # it wraps -- db.command() routes through _retry_internal same as any
+        # it wraps: db.command() routes through _retry_internal same as any
         # CRUD call, so both would exist if tracing weren't fully off.
         self.assertEqual(self.spans(), [])
 
@@ -786,7 +785,7 @@ class TestOTelSpans(AsyncIntegrationTest):
             await client.admin.command("ping")
         finished = self.exporter.get_finished_spans()
         # Disambiguate the command span (db.command.name) from the operation
-        # span (db.operation.name) that wraps it -- start_command_span renames
+        # span (db.operation.name) that wraps it: start_command_span renames
         # the operation span in place once the command runs, so span.name
         # alone can't tell them apart, but these attributes can. The operation
         # span reads "runCommand" (not "ping"): Database.command() always runs
@@ -944,7 +943,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         # COMMITTED -> IN_PROGRESS -> (back through the try/finally) ->
         # COMMITTED again. The prior attempt's span was already ended and
         # cleared, so the retry gets a fresh "transaction" span of its own
-        # (this is the direct-API path, not with_transaction -- see
+        # (this is the direct-API path, not with_transaction; see
         # test_with_transaction_retry_reuses_one_transaction_span for the
         # with_transaction case, which shares a single span across retries
         # instead); each span's ending finally block must run exactly once
@@ -973,7 +972,7 @@ class TestOTelSpans(AsyncIntegrationTest):
     @async_client_context.require_transactions
     async def test_with_transaction_retry_reuses_one_transaction_span(self):
         # A retried with_transaction() call must still produce exactly one
-        # "transaction" span for the whole logical call -- not one sibling
+        # "transaction" span for the whole logical call, not one sibling
         # span per full-transaction retry, and no separately-named wrapper
         # span either (the vendored transaction/convenient.json fixture
         # pins "transaction" itself as the trace root for withTransaction).
@@ -1016,7 +1015,7 @@ class TestOTelSpans(AsyncIntegrationTest):
     async def test_reentrant_with_transaction_raises_and_does_not_leak_span(self):
         # A callback that illegally re-enters with_transaction() on the same
         # session must be rejected with a clear InvalidOperation, and the
-        # outer call's "transaction" span must still end exactly once --
+        # outer call's "transaction" span must still end exactly once,
         # never leaked (created but never ended) and never double-ended.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client.pymongo_test.reentrant_with_txn
@@ -1038,7 +1037,7 @@ class TestOTelSpans(AsyncIntegrationTest):
 
         finished = self.exporter.get_finished_spans()
         txn_spans = [s for s in finished if s.name == "transaction"]
-        # Only the outer call ever gets far enough to create a span -- the
+        # Only the outer call ever gets far enough to create a span; the
         # guard rejects the inner call before it creates one of its own.
         self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
         for txn_span in txn_spans:
@@ -1049,9 +1048,9 @@ class TestOTelSpans(AsyncIntegrationTest):
         self,
     ):
         # Calling with_transaction() while a transaction started with the
-        # DIRECT API is already active on the same session is illegal --
+        # DIRECT API is already active on the same session is illegal:
         # start_transaction() inside with_transaction() raises "Transaction
-        # already in progress" -- but the direct-API transaction's own
+        # already in progress", but the direct-API transaction's own
         # "transaction" span must survive that failure: with_transaction()'s
         # finally must not end/null it out from under the still-active
         # transaction (Important #1). Operations run on the session
@@ -1064,7 +1063,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         await client.pymongo_test.create_collection("direct_api_with_txn_conflict")
 
         async def callback(session):
-            raise AssertionError("never reached -- start_transaction() raises first")
+            raise AssertionError("never reached; start_transaction() raises first")
 
         self.exporter.clear()
         async with client.start_session() as session:
@@ -1151,7 +1150,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         # A successful InsertOne's verbose result doc is tiny (~{"ok": 1, "idx":
         # i, "n": 1}) regardless of the inserted document's size, and the driver
         # never sends more than maxWriteBatchSize (100_000 by default) ops in one
-        # bulkWrite command -- so plain successful inserts can never make the
+        # bulkWrite command, so plain successful inserts can never make the
         # results cursor's first batch exceed the 16MB per-batch limit, no
         # matter how many operations are given. Duplicate-key write errors,
         # whose result docs embed the offending key (here padded to 3000 bytes),
@@ -1197,7 +1196,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         # An operation that fails during server selection never builds a
         # command, so the lazy backfill in start_command_span never runs.
         # insert_one doesn't go through a cursor (unlike find), so nothing
-        # eagerly threads dbname/collection to the operation span either --
+        # eagerly threads dbname/collection to the operation span either:
         # db.operation.summary (Required, per the OTel spec) still falls back
         # to the bare operation name, but db.namespace/db.collection.name
         # (only "Required if available") are simply absent.
@@ -1361,20 +1360,18 @@ class TestOTelSpans(AsyncIntegrationTest):
         # tick emits for the rest of the process's life gets parented under
         # that first, long-since-ended operation and shares its trace id.
         #
-        # Calling client._process_kill_cursors() directly from this test
-        # coroutine would NOT reproduce the bug: this coroutine's own
-        # context is clean, so the span would come out parentless even with
-        # the bug present. Instead we drive the *existing* kill-cursors
-        # executor task -- the one whose context was frozen inside
-        # find_one() below -- using wake()/skip_sleep(), so the tick actually
-        # runs inside that frozen context, and poll (async_wait_until) for
-        # the resulting span rather than sleeping a fixed amount.
+        # Calling client._process_kill_cursors() directly from this test coroutine would NOT
+        # reproduce the bug: this coroutine's own context is clean, so the span would come out
+        # parentless even with the bug present. Instead we drive the *existing* kill-cursors
+        # executor task (the one whose context was frozen inside find_one() below) using
+        # wake()/skip_sleep(), so the tick actually runs inside that frozen context, and poll
+        # (async_wait_until) for the resulting span rather than sleeping a fixed amount.
         import gc
 
         # connect=False is essential here: the test helper's default
         # connect=True calls client.aconnect() -> _get_topology() right after
         # construction, *before* any traced operation runs and thus with no
-        # span current -- which would open (and freeze) the kill-cursors
+        # span current, which would open (and freeze) the kill-cursors
         # executor with a clean context and make this test pass regardless of
         # the bug. With connect=False, _get_topology() (and therefore the
         # executor's create_task) is only reached lazily, from inside the

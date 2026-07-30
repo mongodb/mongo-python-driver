@@ -639,7 +639,7 @@ class TestJsonUtil(unittest.TestCase):
         # Regression test: _truncate_documents (used by pymongo/logger.py for
         # structured command logging, and by pymongo/_otel.py for OTel's
         # db.query.text) must not drop fields whose value is falsy-but-present
-        # (0, False, "", {}, []) -- only fields that genuinely don't fit within
+        # (0, False, "", {}, []); only fields that genuinely don't fit within
         # the remaining budget should be omitted. A prior implementation used
         # `if truncated_v:` to decide whether to keep a field, which silently
         # dropped legitimate falsy values along with truly-out-of-room ones.

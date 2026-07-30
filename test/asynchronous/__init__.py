@@ -863,17 +863,15 @@ def get_loop() -> asyncio.AbstractEventLoop:
 def _tracing_enabled_for_cleanup(client_kwargs) -> bool:
     """Return True if a client created with ``client_kwargs`` is tracing-enabled.
 
-    Mirrors ``pymongo._otel._is_tracing_enabled``'s two ways a client ends up
-    tracing-enabled -- an explicit ``tracing={"enabled": True}`` kwarg, or the
-    ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable (see
-    e.g. test_otel.py's ``test_prose_1_tracing_enable_disable_via_env_var``,
-    which patches the env var around a client with no ``tracing=`` kwarg at
-    all) -- so the join-based cleanup below gets applied to every client that
-    can actually emit otel spans, without imposing its cost on the vast
-    majority of clients that can't. Reuses ``pymongo._otel``'s own
-    ``_OTEL_ENABLED_ENV``/``_env_truthy`` rather than re-parsing the env var,
-    so the test harness can't disagree with the driver about what "enabled"
-    means.
+    Mirrors ``pymongo._otel._is_tracing_enabled``'s two ways a client ends up tracing-enabled:
+    an explicit ``tracing={"enabled": True}`` kwarg, or the
+    ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable (see e.g.
+    test_otel.py's ``test_prose_1_tracing_enable_disable_via_env_var``, which patches the env
+    var around a client with no ``tracing=`` kwarg at all). So the join-based cleanup below gets
+    applied to every client that can actually emit otel spans, without imposing its cost on the
+    vast majority of clients that can't. Reuses ``pymongo._otel``'s own
+    ``_OTEL_ENABLED_ENV``/``_env_truthy`` rather than re-parsing the env var, so the test
+    harness can't disagree with the driver about what "enabled" means.
 
     Must be called at client-creation time (when this decision is captured
     into which cleanup callable gets registered), not deferred into the
