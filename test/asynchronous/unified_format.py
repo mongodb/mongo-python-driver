@@ -29,7 +29,6 @@ import re
 import sys
 import time
 import traceback
-import uuid
 from collections import defaultdict
 from collections.abc import Mapping
 from inspect import iscoroutinefunction
@@ -41,9 +40,7 @@ import pytest
 import pymongo
 import pymongo._otel as _otel
 from bson import SON, json_util
-from bson.binary import Binary
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
-from bson.int64 import Int64
 from bson.objectid import ObjectId
 from gridfs import AsyncGridFSBucket, GridOut, NoFile
 from gridfs.errors import CorruptGridFile
@@ -504,36 +501,6 @@ class EntityMapUtil:
         for entity in self._entities.values():
             if isinstance(entity, AsyncClientSession) and cluster_time:
                 entity.advance_cluster_time(cluster_time)
-
-
-def _normalize_span_attribute_for_match(key: str, value: Any) -> Any:
-    """Adapt an OTel span attribute value to what the generic unified-format
-    match evaluator expects, since span attributes are plain Python
-    primitives rather than the BSON-decoded documents/events the evaluator
-    normally matches against.
-
-    - Widen plain Python ints (excluding bools) to ``bson.Int64``: span
-      attributes carry no int32/int64 distinction, but the $$type matcher's
-      "long" alias maps to ``Int64`` specifically (see BSON_TYPE_ALIAS_MAP in
-      unified_format_shared.py), so a bare ``int`` (e.g. ``server.port``)
-      would otherwise fail a ``$$type: ["long", "string"]`` check. ``Int64``
-      is a subclass of ``int``, so this is safe for "int" checks too.
-    - Reconstruct ``db.mongodb.lsid`` (formatted by pymongo/_otel.py as a
-      plain UUID string, per the OTel spec's attribute table) back into the
-      ``{"id": Binary(...)}`` document shape the ``$$sessionLsid`` operator
-      (designed for command-monitoring-style raw command documents) compares
-      against.
-    """
-    if key == "db.mongodb.lsid" and isinstance(value, str):
-        try:
-            return {"id": Binary.from_uuid(uuid.UUID(value))}
-        except ValueError:
-            return value
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, int):
-        return Int64(value)
-    return value
 
 
 class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
@@ -1626,11 +1593,9 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             )
             for expected, actual in zip(expected_list, actual_list):
                 self.assertEqual(expected["name"], actual.name)
-                actual_attributes = {
-                    k: _normalize_span_attribute_for_match(k, v)
-                    for k, v in actual.attributes.items()
-                }
-                self.match_evaluator.match_result(expected["attributes"], actual_attributes)
+                self.match_evaluator.match_span_attributes(
+                    expected["attributes"], actual.attributes
+                )
                 expected_nested = expected.get("nested")
                 if expected_nested is not None:
                     actual_children = children_by_parent_id[actual.context.span_id]
