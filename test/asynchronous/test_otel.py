@@ -436,6 +436,24 @@ class TestOTelSpans(AsyncIntegrationTest):
             return list(finished)
         return [s for s in finished if s.name == name]
 
+    def ping_spans(self):
+        """Return the spans belonging to a ``ping`` run through ``db.command()``.
+
+        For the tests that assert tracing produced *nothing*. Asserting the
+        exporter is empty would also catch spans no test asked for: a cursor
+        abandoned earlier in the class ends its operation span from a
+        finalizer, and on an interpreter that does not reference count, that
+        finalizer runs at an unpredictable point and lands in whichever test
+        happens to be running. Naming the ping's own spans keeps the assertion
+        about this client while staying immune to that.
+        """
+        return [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.command.name") == "ping"
+            or s.attributes.get("db.operation.name") == "runCommand"
+        ]
+
     async def test_operation_span_records_failure(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
@@ -726,7 +744,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client()
         self.exporter.clear()
         await client.admin.command("ping")
-        self.assertEqual(self.spans(), [])
+        self.assertEqual(self.ping_spans(), [])
 
     async def test_prose_1_tracing_enable_disable_via_env_var(self):
         """Prose Test 1: Tracing Enable/Disable via Environment Variable."""
@@ -737,7 +755,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         # Disabled must suppress both the operation span and the command span
         # it wraps: db.command() routes through _retry_internal same as any
         # CRUD call, so both would exist if tracing weren't fully off.
-        self.assertEqual(self.spans(), [])
+        self.assertEqual(self.ping_spans(), [])
 
         with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
             client = await self.async_rs_or_single_client()
