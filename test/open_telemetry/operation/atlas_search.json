@@ -26,6 +26,13 @@
       }
     }
   ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-atlas-search",
+      "documents": []
+    }
+  ],
   "runOnRequirements": [
     {
       "minServerVersion": "7.0.5",

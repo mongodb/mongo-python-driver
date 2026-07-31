@@ -31,6 +31,13 @@
       }
     }
   ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-drop-collection",
+      "documents": []
+    }
+  ],
   "tests": [
     {
       "description": "drop collection",

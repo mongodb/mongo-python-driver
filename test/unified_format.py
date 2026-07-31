@@ -646,18 +646,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 "PyMongo removed the map_reduce/inline_map_reduce Collection methods "
                 "(mapReduce is deprecated server-side); this operation cannot be exercised"
             )
-        # Not a removed-API gap like the above: this is a genuine fixture-vs-driver
-        # divergence. PyMongo *can* run this update, it just always sends explicit
-        # multi/upsert fields (even at their default False value), which the
-        # vendored fixture's db.query.text $$matchAsRoot assertion doesn't allow for.
-        if class_name == "testoperationupdate" and description == "update one element":
-            self.skipTest(
-                "PyMongo always sends explicit multi/upsert fields in the update "
-                "statement (even at their default False value), but this vendored "
-                "fixture's db.query.text $$matchAsRoot expects an update statement "
-                "with only q/u: a real, narrow mismatch between this driver's wire "
-                "command shape and the fixture's assumption, not a tracing bug"
-            )
         if any(
             x in description
             for x in [

@@ -26,6 +26,13 @@
       }
     }
   ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-aggregate",
+      "documents": []
+    }
+  ],
   "tests": [
     {
       "description": "aggregation",

@@ -26,6 +26,13 @@
       }
     }
   ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-create-indexes",
+      "documents": []
+    }
+  ],
   "tests": [
     {
       "description": "create indexes",

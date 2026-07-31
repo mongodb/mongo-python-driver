@@ -46,6 +46,13 @@
       }
     }
   ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-drop-indexes",
+      "documents": []
+    }
+  ],
   "tests": [
     {
       "description": "drop indexes",

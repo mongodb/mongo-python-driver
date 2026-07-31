@@ -26,6 +26,13 @@
       }
     }
   ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-update",
+      "documents": []
+    }
+  ],
   "tests": [
     {
       "description": "update one element",
@@ -122,6 +129,12 @@
                                 "$inc": {
                                   "x": 1
                                 }
+                              },
+                              "multi": {
+                                "$$unsetOrMatches": false
+                              },
+                              "upsert": {
+                                "$$unsetOrMatches": false
                               }
                             }
                           ]

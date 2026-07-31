@@ -26,6 +26,13 @@
       }
     }
   ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-delete",
+      "documents": []
+    }
+  ],
   "tests": [
     {
       "description": "delete elements",
