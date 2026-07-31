@@ -91,7 +91,7 @@ from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor, CursorType
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
-from pymongo.synchronous.mongo_client import MongoClient
+from pymongo.synchronous.mongo_client import MongoClient, _ClientCheckout
 from pymongo.synchronous.pool import (
     Connection,
 )
@@ -833,6 +833,52 @@ class TestClient(IntegrationTest):
             with server._pool.checkout() as new_con:
                 self.assertEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
+
+    def test_client_checkout_setup_failure_returns_connection(self):
+        # Verify that the connection is returned to the pool when an exception
+        # is raised during _ClientCheckout.__enter__ post-checkout setup
+        # (e.g. session pinning or the auto-encryption wire-version check).
+        # Use a subclass to override contribute_socket because __slots__ prevents
+        # instance-level patching of methods.
+        class _BrokenSetupCheckout(_ClientCheckout):
+            def contribute_socket(self, conn, completed_handshake=True):
+                raise RuntimeError("simulated failure in post-checkout setup")
+
+        client = self.rs_or_single_client()
+        server = (client._get_topology()).select_server(writable_server_selector, _Op.TEST)
+        pool = server.pool
+
+        with self.assertRaises(RuntimeError):
+            with _BrokenSetupCheckout(client, server, None):
+                pass
+
+        # Connection was returned to pool, not leaked.
+        self.assertEqual(0, pool.active_sockets)
+
+    def test_client_checkout_setup_failure_unpins_session(self):
+        # Verify that session._unpin() is called when an exception is raised
+        # during _ClientCheckout.__enter__ after session._pin() has run (e.g.
+        # the auto-encryption wire-version check).
+        class _PinThenFailCheckout(_ClientCheckout):
+            def contribute_socket(self, conn, completed_handshake=True):
+                # Simulate session._pin() having already been called, then fail.
+                if self.session:
+                    self.session._pin(self._server, conn)
+                raise RuntimeError("simulated post-pin failure")
+
+        client = self.rs_or_single_client()
+        server = (client._get_topology()).select_server(writable_server_selector, _Op.TEST)
+
+        with client.start_session() as session:
+            session.start_transaction()
+            with self.assertRaises(RuntimeError):
+                with _PinThenFailCheckout(client, server, session):
+                    pass
+
+        # Session must be unpinned so future operations don't route to a stale
+        # server address or attempt a double-checkin through conn_mgr.
+        self.assertIsNone(session._transaction.pinned_address)
+        self.assertIsNone(session._transaction.conn_mgr)
 
     def test_constants(self):
         """This test uses MongoClient explicitly to make sure that host and

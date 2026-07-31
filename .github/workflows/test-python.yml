@@ -17,9 +17,6 @@ defaults:
 permissions:
   contents: read
 
-env:
-  UV_NO_LOCK: "1"
-
 jobs:
 
   static:
