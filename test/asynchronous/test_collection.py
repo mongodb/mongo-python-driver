@@ -1568,6 +1568,19 @@ class AsyncTestCollection(AsyncIntegrationTest):
         with self.write_concern_collection() as coll:
             await coll.aggregate([{"$out": "output-collection"}])
 
+    async def test_aggregate_reserved_options(self):
+        db = self.db
+        with self.assertRaises(ConfigurationError):
+            await db.test.aggregate([], aggregate="other")
+        with self.assertRaises(ConfigurationError):
+            await db.test.aggregate_raw_batches([], aggregate="other")
+        with self.assertRaises(ConfigurationError):
+            await db.aggregate([], aggregate="other")
+        with self.assertRaises(ConfigurationError):
+            await db.test.list_search_indexes(aggregate="other")
+        with self.assertRaises(ConfigurationError):
+            await db.test.list_search_indexes(pipeline=[{"$out": "other"}])
+
     async def test_aggregate_raw_bson(self):
         db = self.db
         await db.drop_collection("test")

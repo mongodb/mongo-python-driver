@@ -60,6 +60,11 @@ class _AggregationCommand:
             raise ConfigurationError(
                 "The explain option is not supported. Use Database.command instead."
             )
+        for name in ("aggregate", "pipeline"):
+            if name in options:
+                raise ConfigurationError(
+                    f"The {name} option cannot be specified as a keyword argument"
+                )
 
         self._target = target
 
