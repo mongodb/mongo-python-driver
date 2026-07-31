@@ -56,7 +56,7 @@ exclude-newer = "7 days"
 [dependency-groups]
 dev = []
 lint = [
-    "ruff==0.15.20",
+    "ruff==0.16.0",
 ]
 unasync = [
     {include-group = "lint"},
