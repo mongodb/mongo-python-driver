@@ -155,7 +155,7 @@ from typing import (
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.timestamp import Timestamp
-from pymongo import _csot
+from pymongo import _csot, _otel
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
@@ -426,6 +426,7 @@ class _Transaction:
         self.attempt = 0
         self.client = client
         self.has_completed_command = False
+        self.span: Optional[Any] = None
 
     def active(self) -> bool:
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
@@ -466,6 +467,7 @@ class _Transaction:
         self.recovery_token = None
         self.attempt = 0
         self.has_completed_command = False
+        self.span = None
 
     def __del__(self) -> None:
         if self.conn_mgr:
@@ -561,6 +563,12 @@ class ClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
+        # The one "transaction" span shared across every retry of a single
+        # with_transaction() call, or None outside of with_transaction (in
+        # which case start_transaction/commit_transaction/abort_transaction
+        # each manage their own span exactly as they did before with_transaction
+        # existed). See with_transaction's docstring/comments for details.
+        self._with_transaction_span: Optional[Any] = None
         # Is this session attached to a cursor?
         self._attached_to_cursor = False
         # Should we leave the session alive when the cursor is closed?
@@ -768,6 +776,44 @@ class ClientSession:
         .. _transactions specification:
             https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback
         """
+        if self._with_transaction_span is not None:
+            # Nested/concurrent with_transaction() calls on one session are
+            # unsupported. Raise here, before any span bookkeeping, so we
+            # don't silently clobber and leak the outer call's span.
+            raise InvalidOperation(
+                "Cannot call with_transaction() while a previous with_transaction() "
+                "call on this session has not returned; sessions do not support "
+                "nested or concurrent with_transaction() calls"
+            )
+        # One span for the whole call: start_transaction reuses it instead of
+        # creating one per retry, and commit/abort leave it open, so a
+        # retried with_transaction() yields a single span. Skipped when a
+        # direct-API transaction is already active, because start_transaction()
+        # will raise immediately below and the span would record nothing.
+        if not self.in_transaction:
+            self._with_transaction_span = _otel.start_transaction_span(self._client.options.tracing)
+        try:
+            return self._with_transaction_retry_loop(
+                callback, read_concern, write_concern, read_preference, max_commit_time_ms
+            )
+        finally:
+            _otel.end_transaction_span(self._with_transaction_span)
+            # Only clear the span this call owns. If a direct-API transaction
+            # was already active, self._transaction.span belongs to that
+            # transaction and must not be nulled here.
+            if self._transaction.span is self._with_transaction_span:
+                self._transaction.span = None
+            self._with_transaction_span = None
+
+    def _with_transaction_retry_loop(
+        self,
+        callback: Callable[[ClientSession], _T],
+        read_concern: Optional[ReadConcern],
+        write_concern: Optional[WriteConcern],
+        read_preference: Optional[_ServerMode],
+        max_commit_time_ms: Optional[int],
+    ) -> _T:
+        """Run with_transaction's retry loop; see with_transaction."""
         start_time = time.monotonic()
         retry = 0
         last_error: Optional[BaseException] = None
@@ -861,8 +907,30 @@ class ClientSession:
         )
         self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
+        if self._with_transaction_span is not None:
+            # with_transaction() is retrying the whole transaction: reuse its
+            # one shared span instead of starting a new one, so a retried
+            # with_transaction() still produces exactly one "transaction" span.
+            self._transaction.span = self._with_transaction_span
+        else:
+            self._transaction.span = _otel.start_transaction_span(
+                self._transaction.client.options.tracing
+            )
         self._start_retryable_write()
         return _TransactionContext(self)
+
+    def _end_own_transaction_span(self) -> None:
+        """End and clear the transaction span, unless with_transaction() owns it.
+
+        with_transaction() pins one shared span across all of its retries in
+        ``self._with_transaction_span`` (see its comments); while that's set,
+        the span must survive until with_transaction() itself ends it, so this
+        is a no-op here. Otherwise a retried with_transaction() would end the
+        shared span prematurely on the first failed attempt.
+        """
+        if self._with_transaction_span is None:
+            _otel.end_transaction_span(self._transaction.span)
+            self._transaction.span = None
 
     def commit_transaction(self) -> None:
         """Commit a multi-statement transaction.
@@ -876,6 +944,7 @@ class ClientSession:
         elif state in (_TxnState.STARTING, _TxnState.COMMITTED_EMPTY):
             # Server transaction was never started, no need to send a command.
             self._transaction.state = _TxnState.COMMITTED_EMPTY
+            self._end_own_transaction_span()
             return
         elif state is _TxnState.ABORTED:
             raise InvalidOperation("Cannot call commitTransaction after calling abortTransaction")
@@ -883,6 +952,16 @@ class ClientSession:
             # We're explicitly retrying the commit, move the state back to
             # "in progress" so that in_transaction returns true.
             self._transaction.state = _TxnState.IN_PROGRESS
+            # Outside of with_transaction() (which pins its shared span across
+            # this transition, see _end_own_transaction_span), the prior
+            # attempt's finally block already ended and cleared the
+            # transaction span, so this direct-API retry needs a fresh one;
+            # otherwise it would run with no transaction span and its command
+            # span would have no parent.
+            if self._transaction.span is None:
+                self._transaction.span = _otel.start_transaction_span(
+                    self._transaction.client.options.tracing
+                )
 
         try:
             self._finish_transaction_with_retry("commitTransaction")
@@ -906,6 +985,7 @@ class ClientSession:
             _reraise_with_unknown_commit(exc)
         finally:
             self._transaction.state = _TxnState.COMMITTED
+            self._end_own_transaction_span()
 
     def abort_transaction(self) -> None:
         """Abort a multi-statement transaction.
@@ -920,6 +1000,7 @@ class ClientSession:
         elif state is _TxnState.STARTING:
             # Server transaction was never started, no need to send a command.
             self._transaction.state = _TxnState.ABORTED
+            self._end_own_transaction_span()
             return
         elif state is _TxnState.ABORTED:
             raise InvalidOperation("Cannot call abortTransaction twice")
@@ -933,6 +1014,7 @@ class ClientSession:
             pass
         finally:
             self._transaction.state = _TxnState.ABORTED
+            self._end_own_transaction_span()
             self._unpin()
 
     def _finish_transaction_with_retry(self, command_name: str) -> dict[str, Any]:

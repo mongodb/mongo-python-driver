@@ -49,3 +49,6 @@ server.log
 
 # uv lockfiles
 uv.lock
+
+# Local git worktrees
+.worktrees/

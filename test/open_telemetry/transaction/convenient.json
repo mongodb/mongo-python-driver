@@ -1,0 +1,326 @@
+{
+  "description": "convenient transactions",
+  "schemaVersion": "1.27",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4",
+      "topologies": [
+        "replicaset",
+        "sharded"
+      ]
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "client",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database",
+        "client": "client",
+        "databaseName": "convenient-transaction-tests"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection",
+        "database": "database",
+        "collectionName": "test"
+      }
+    },
+    {
+      "session": {
+        "id": "session",
+        "client": "client"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "convenient-transaction-tests",
+      "documents": []
+    }
+  ],
+  "tests": [
+    {
+      "description": "withTransaction",
+      "operations": [
+        {
+          "name": "withTransaction",
+          "object": "session",
+          "arguments": {
+            "callback": [
+              {
+                "name": "insertOne",
+                "object": "collection",
+                "arguments": {
+                  "document": {
+                    "_id": 1
+                  },
+                  "session": "session"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "find",
+          "object": "collection",
+          "arguments": {
+            "filter": {
+              "x": 1
+            }
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "transaction",
+              "attributes": {
+                "db.system.name": "mongodb"
+              },
+              "nested": [
+                {
+                  "name": "insert convenient-transaction-tests.test",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "convenient-transaction-tests",
+                    "db.collection.name": "test",
+                    "db.operation.name": "insert",
+                    "db.operation.summary": "insert convenient-transaction-tests.test"
+                  },
+                  "nested": [
+                    {
+                      "name": "insert",
+                      "attributes": {
+                        "db.system.name": "mongodb",
+                        "db.namespace": "convenient-transaction-tests",
+                        "db.collection.name": "test",
+                        "db.command.name": "insert",
+                        "server.address": {
+                          "$$type": "string"
+                        },
+                        "server.port": {
+                          "$$type": [
+                            "long",
+                            "string"
+                          ]
+                        },
+                        "db.query.summary": "insert convenient-transaction-tests.test",
+                        "db.mongodb.lsid": {
+                          "$$sessionLsid": "session"
+                        },
+                        "db.mongodb.txn_number": 1,
+                        "network.transport": "tcp",
+                        "db.mongodb.cursor_id": {
+                          "$$exists": false
+                        },
+                        "db.response.status_code": {
+                          "$$exists": false
+                        },
+                        "exception.message": {
+                          "$$exists": false
+                        },
+                        "exception.type": {
+                          "$$exists": false
+                        },
+                        "exception.stacktrace": {
+                          "$$exists": false
+                        },
+                        "db.mongodb.server_connection_id": {
+                          "$$type": [
+                            "int",
+                            "long"
+                          ]
+                        },
+                        "db.mongodb.driver_connection_id": {
+                          "$$type": [
+                            "int",
+                            "long"
+                          ]
+                        },
+                        "db.query.text": {
+                          "$$matchAsDocument": {
+                            "$$matchAsRoot": {
+                              "insert": "test",
+                              "ordered": true,
+                              "txnNumber": 1,
+                              "startTransaction": true,
+                              "autocommit": false,
+                              "documents": [
+                                {
+                                  "_id": 1
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "commitTransaction admin",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "admin",
+                    "db.collection.name": {
+                      "$$exists": false
+                    },
+                    "db.operation.name": "commitTransaction",
+                    "db.operation.summary": "commitTransaction admin"
+                  },
+                  "nested": [
+                    {
+                      "name": "commitTransaction",
+                      "attributes": {
+                        "db.system.name": "mongodb",
+                        "db.namespace": "admin",
+                        "db.collection.name": {
+                          "$$exists": false
+                        },
+                        "db.query.summary": "commitTransaction admin",
+                        "db.command.name": "commitTransaction",
+                        "db.mongodb.lsid": {
+                          "$$sessionLsid": "session"
+                        },
+                        "db.mongodb.txn_number": 1,
+                        "db.mongodb.cursor_id": {
+                          "$$exists": false
+                        },
+                        "db.response.status_code": {
+                          "$$exists": false
+                        },
+                        "exception.message": {
+                          "$$exists": false
+                        },
+                        "exception.type": {
+                          "$$exists": false
+                        },
+                        "exception.stacktrace": {
+                          "$$exists": false
+                        },
+                        "network.transport": "tcp",
+                        "server.address": {
+                          "$$type": "string"
+                        },
+                        "server.port": {
+                          "$$type": [
+                            "int",
+                            "long"
+                          ]
+                        },
+                        "db.mongodb.server_connection_id": {
+                          "$$type": [
+                            "int",
+                            "long"
+                          ]
+                        },
+                        "db.mongodb.driver_connection_id": {
+                          "$$type": [
+                            "int",
+                            "long"
+                          ]
+                        },
+                        "db.query.text": {
+                          "$$matchAsDocument": {
+                            "$$matchAsRoot": {
+                              "commitTransaction": 1,
+                              "txnNumber": 1,
+                              "autocommit": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "find convenient-transaction-tests.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "convenient-transaction-tests",
+                "db.collection.name": "test",
+                "db.operation.summary": "find convenient-transaction-tests.test",
+                "db.operation.name": "find"
+              },
+              "nested": [
+                {
+                  "name": "find",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "convenient-transaction-tests",
+                    "db.collection.name": "test",
+                    "db.command.name": "find",
+                    "network.transport": "tcp",
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "long",
+                        "string"
+                      ]
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "find convenient-transaction-tests.test",
+                    "db.query.text": {
+                      "$$exists": true
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "outcome": [
+        {
+          "collectionName": "test",
+          "databaseName": "convenient-transaction-tests",
+          "documents": [
+            {
+              "_id": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

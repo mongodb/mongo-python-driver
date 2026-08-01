@@ -55,6 +55,11 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
     _sock_mgr: Any
     _session: Optional[Any]
     _killed: bool
+    _operation_telemetry: Optional[Any] = None
+    # Set by callers whose getMores belong under an operation span that is
+    # already current (the client bulk-write results cursor), rather than under
+    # a getMore operation span of their own.
+    _reuse_current_span_for_getmore: bool = False
 
     @abstractmethod
     def _get_namespace(self) -> str:
@@ -115,6 +120,42 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
             address = None
         return cursor_id, address
 
+    def _end_operation_telemetry(self, exc: Optional[BaseException] = None) -> None:
+        """End this cursor's operation span, exactly once.
+
+        The span covers the cursor's whole lifetime (its initial query plus
+        every getMore), so it is ended by whichever comes first: exhaustion,
+        an explicit close(), or __del__ for an abandoned cursor. Idempotent, so
+        all three paths can call it unconditionally.
+        """
+        telemetry = self._operation_telemetry
+        if telemetry is None:
+            return
+        self._operation_telemetry = None
+        if exc is None:
+            telemetry.succeeded()
+        else:
+            telemetry.failed(exc)
+
+    def _attach_operation_telemetry(self, telemetry: Any) -> None:
+        """Attach a command cursor's already-started operation span.
+
+        For AsyncCommandCursor/CommandCursor only. AsyncCursor/Cursor attach
+        their span before the query even runs, which is already correct.
+
+        A command cursor whose first batch exhausts it is marked ``_killed``
+        in ``__init__`` without any call to ``close()``. No getMore is ever
+        sent, so ``_refresh()``/``_die_lock()`` never run, leaving an explicit
+        ``close()`` or ``__del__`` as the only thing that would end the span.
+        That means whenever GC happens to run, or never at all if the cursor
+        is retained. Ending the span here instead makes a single-batch cursor
+        end it promptly at construction, matching how a multi-batch cursor
+        ends it promptly at exhaustion.
+        """
+        self._operation_telemetry = telemetry
+        if self._killed:
+            self._end_operation_telemetry()
+
     def _die_no_lock(self) -> None:
         """Closes this cursor without acquiring a lock."""
         try:
@@ -123,6 +164,7 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
             # ___init__ did not run to completion (or at all).
             return
 
+        self._end_operation_telemetry()
         cursor_id, address = self._prepare_to_die(already_killed)
         self._collection.database.client._cleanup_cursor_no_lock(
             cursor_id, address, self._sock_mgr, self._session

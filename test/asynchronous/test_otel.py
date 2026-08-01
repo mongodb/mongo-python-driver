@@ -26,18 +26,29 @@ sys.path[0:0] = [""]
 import pytest
 
 import pymongo._otel as _otel
-from pymongo import common
-from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo import _telemetry, common
+from pymongo._telemetry import _OperationTelemetry
+from pymongo.errors import (
+    ClientBulkWriteException,
+    ConfigurationError,
+    InvalidOperation,
+    OperationFailure,
+    ServerSelectionTimeoutError,
+)
+from pymongo.operations import InsertOne
+from pymongo.read_preferences import ReadPreference
 from pymongo.typings import _Address
-from test.asynchronous import AsyncIntegrationTest, unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous.utils import async_wait_until
+from test.unified_format_shared import _shared_test_provider
 
 _HAS_OTEL_TEST_DEPS = False
 if _otel._HAS_OPENTELEMETRY:
     try:
         from opentelemetry import trace
-        from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import SimpleSpanProcessor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+        from opentelemetry.trace import StatusCode
 
         _HAS_OTEL_TEST_DEPS = True
     except ImportError:
@@ -48,19 +59,353 @@ _IS_SYNC = False
 pytestmark = pytest.mark.otel
 
 
-def _shared_test_provider() -> TracerProvider:
-    """Return a process-wide SDK TracerProvider for tests to attach exporters to.
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
+class TestOTelOperationSpanPrimitives(unittest.TestCase):
+    """Unit tests for the pymongo._otel operation-span primitives (no live server needed)."""
 
-    ``trace.set_tracer_provider`` only takes effect once per process (later calls
-    are silently ignored), so tests must share one provider and each register
-    their own span processor rather than trying to install a fresh provider.
-    """
-    current = trace.get_tracer_provider()
-    if isinstance(current, TracerProvider):
-        return current
-    provider = TracerProvider()
-    trace.set_tracer_provider(provider)
-    return provider
+    @classmethod
+    def setUpClass(cls):
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        cls.exporter = InMemorySpanExporter()
+        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    @classmethod
+    def tearDownClass(cls):
+        # See the matching comment in test/asynchronous/unified_format.py's
+        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
+        # be removed from the shared process-wide TracerProvider, so without
+        # this shutdown() the exporter keeps accumulating every span from
+        # every client for the rest of the test run.
+        cls.exporter.shutdown()
+
+    def setUp(self):
+        self.exporter.clear()
+
+    def test_start_operation_span_success_sets_provisional_attributes(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None)
+        self.assertIsNotNone(handle)
+        _otel.end_operation_span_success(handle)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "find")
+        self.assertEqual(span.attributes["db.system.name"], "mongodb")
+        self.assertEqual(span.attributes["db.operation.name"], "find")
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+
+    def test_start_operation_span_failure_records_exception(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "insert", None)
+        _otel.end_operation_span_failure(handle, ValueError("boom"))
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(len(span.events), 1)
+        self.assertEqual(span.events[0].name, "exception")
+
+    def test_start_operation_span_with_parent(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        parent_handle = _otel.start_operation_span(opts, "transaction", None)
+        handle = _otel.start_operation_span(opts, "insert", parent_handle.span)
+        _otel.end_operation_span_success(handle)
+        _otel.end_operation_span_success(parent_handle)
+        child, parent = self.exporter.get_finished_spans()
+        self.assertEqual(child.parent.span_id, parent.context.span_id)
+
+    def test_current_operation_name_contextvar_scoped_correctly(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        self.assertIsNone(_otel._CURRENT_OPERATION_NAME.get())
+        handle = _otel.start_operation_span(opts, "find", None)
+        self.assertEqual(_otel._CURRENT_OPERATION_NAME.get(), "find")
+        _otel.end_operation_span_success(handle)
+        self.assertIsNone(_otel._CURRENT_OPERATION_NAME.get())
+
+    def test_eager_dbname_and_collection_set_at_creation(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None, dbname="mydb", collection="mycoll")
+        self.assertIsNotNone(handle)
+        _otel.end_operation_span_success(handle)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "find mydb.mycoll")
+        self.assertEqual(span.attributes["db.namespace"], "mydb")
+        self.assertEqual(span.attributes["db.collection.name"], "mycoll")
+        self.assertEqual(span.attributes["db.operation.summary"], "find mydb.mycoll")
+        self.assertEqual(span.attributes["db.operation.name"], "find")
+
+    def test_eager_dbname_without_collection_omits_collection_attribute(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "listCollections", None, dbname="mydb")
+        _otel.end_operation_span_success(handle)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "listCollections mydb")
+        self.assertEqual(span.attributes["db.operation.summary"], "listCollections mydb")
+        self.assertNotIn("db.collection.name", span.attributes)
+
+    def test_no_eager_attributes_leaves_provisional_name(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None)
+        _otel.end_operation_span_success(handle)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "find")
+        self.assertNotIn("db.namespace", span.attributes)
+        # db.operation.summary is Required (unlike db.namespace, which is only
+        # "Required if available"), so it always falls back to the bare
+        # operation name when no dbname is given.
+        self.assertEqual(span.attributes["db.operation.summary"], "find")
+
+    def test_detached_span_is_not_current_until_used(self):
+        from opentelemetry import trace
+
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None, set_current=False)
+        self.assertIsNotNone(handle)
+        # Not current, and the operation-name contextvar is untouched.
+        self.assertIsNot(trace.get_current_span(), handle.span)
+        self.assertIsNone(_otel._CURRENT_OPERATION_NAME.get())
+        with _otel.use_operation_span(handle):
+            self.assertIs(trace.get_current_span(), handle.span)
+            self.assertEqual(_otel._CURRENT_OPERATION_NAME.get(), "find")
+        # Restored afterwards, and the span is still open (not ended).
+        self.assertIsNot(trace.get_current_span(), handle.span)
+        self.assertIsNone(_otel._CURRENT_OPERATION_NAME.get())
+        self.assertEqual(self.exporter.get_finished_spans(), ())
+        _otel.end_operation_span_success(handle)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "find")
+
+    def test_detached_span_reused_across_multiple_use_blocks(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None, set_current=False)
+        for _ in range(3):
+            with _otel.use_operation_span(handle):
+                pass
+        self.assertEqual(self.exporter.get_finished_spans(), ())
+        _otel.end_operation_span_success(handle)
+        self.assertEqual(len(self.exporter.get_finished_spans()), 1)
+
+    def test_use_operation_span_with_none_handle_is_noop(self):
+        with _otel.use_operation_span(None):
+            pass
+        self.assertEqual(self.exporter.get_finished_spans(), ())
+
+    def test_detached_span_failure_inside_use_block_records_exception_once(self):
+        # Regression test: trace.use_span's record_exception/
+        # set_status_on_exception default to True, so without explicitly
+        # disabling them, an exception propagating out of a `with
+        # use_operation_span(handle):` block gets auto-recorded there *and
+        # again* by the caller's own end_operation_span_failure, producing
+        # two identical "exception" events on the finished span.
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None, set_current=False)
+        exc = ValueError("boom")
+        try:
+            with _otel.use_operation_span(handle):
+                raise exc
+        except ValueError:
+            pass
+        _otel.end_operation_span_failure(handle, exc)
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        exception_events = [e for e in span.events if e.name == "exception"]
+        self.assertEqual(len(exception_events), 1)
+
+    def test_detached_span_failure_without_use_block(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        handle = _otel.start_operation_span(opts, "find", None, set_current=False)
+        _otel.end_operation_span_failure(handle, ValueError("boom"))
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        exception_events = [e for e in span.events if e.name == "exception"]
+        self.assertEqual(len(exception_events), 1)
+
+
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
+class TestOTelTransactionSpanPrimitives(unittest.TestCase):
+    """Unit tests for the pymongo._otel transaction-span primitives (no live server needed)."""
+
+    @classmethod
+    def setUpClass(cls):
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        cls.exporter = InMemorySpanExporter()
+        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    @classmethod
+    def tearDownClass(cls):
+        # See the matching comment in test/asynchronous/unified_format.py's
+        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
+        # be removed from the shared process-wide TracerProvider, so without
+        # this shutdown() the exporter keeps accumulating every span from
+        # every client for the rest of the test run.
+        cls.exporter.shutdown()
+
+    def setUp(self):
+        self.exporter.clear()
+
+    def test_start_transaction_span_has_only_one_attribute(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        span = _otel.start_transaction_span(opts)
+        _otel.end_transaction_span(span)
+        (finished,) = self.exporter.get_finished_spans()
+        self.assertEqual(finished.name, "transaction")
+        self.assertEqual(dict(finished.attributes), {"db.system.name": "mongodb"})
+
+
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
+class TestOperationTelemetry(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        cls.exporter = InMemorySpanExporter()
+        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    @classmethod
+    def tearDownClass(cls):
+        # See the matching comment in test/asynchronous/unified_format.py's
+        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
+        # be removed from the shared process-wide TracerProvider, so without
+        # this shutdown() the exporter keeps accumulating every span from
+        # every client for the rest of the test run.
+        cls.exporter.shutdown()
+
+    def setUp(self):
+        self.exporter.clear()
+
+    def test_succeeded_with_no_session(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        telemetry = _telemetry._OperationTelemetry(opts, "find", None)
+        telemetry.succeeded()
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "find")
+        self.assertIsNone(span.parent)
+
+    def test_failed_records_exception(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        telemetry = _telemetry._OperationTelemetry(opts, "insert", None)
+        telemetry.failed(RuntimeError("nope"))
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+    def test_nests_under_active_transaction_span(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        txn_span = _otel.start_transaction_span(opts)
+
+        class _FakeTransaction:
+            span = txn_span
+
+        class _FakeSession:
+            in_transaction = True
+            _transaction = _FakeTransaction()
+
+        telemetry = _telemetry._OperationTelemetry(opts, "insert", _FakeSession())
+        telemetry.succeeded()
+        _otel.end_transaction_span(txn_span)
+        child, parent = self.exporter.get_finished_spans()
+        self.assertEqual(child.parent.span_id, parent.context.span_id)
+
+    def test_disabled_is_a_no_op(self):
+        telemetry = _telemetry._OperationTelemetry(None, "find", None)
+        telemetry.succeeded()  # must not raise
+        telemetry2 = _telemetry._OperationTelemetry(None, "find", None)
+        telemetry2.failed(RuntimeError("x"))  # must not raise
+        self.assertEqual(self.exporter.get_finished_spans(), ())
+
+    def test_operation_name_normalizes_enum_operation(self):
+        # Most _retry_internal call sites pass an `_Op` enum member (a
+        # `str`-mixin enum), not a plain string, as the `operation` argument.
+        # Python 3.11 changed `Enum.__format__` for `str`-mixin enums so that
+        # f"{_Op.INSERT}"/str(_Op.INSERT) produce "_Op.INSERT" instead of
+        # "insert": on 3.10 the same code happened to already produce the
+        # bare value, which is why this bug wasn't caught there. This test is
+        # meaningful (and must pass) on every supported Python version.
+        from pymongo.operations import _Op
+
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        telemetry = _telemetry._OperationTelemetry(opts, _Op.INSERT, None)
+        telemetry.succeeded()
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "insert")
+        self.assertEqual(span.attributes["db.operation.name"], "insert")
+        self.assertIs(type(span.attributes["db.operation.name"]), str)
+
+    def test_run_command_operation_name_override(self):
+        # Database.command() (is_run_command=True) must produce a "runCommand"
+        # operation span, per the OTel driver spec's span-name rule and its
+        # db.namespace/db.collection.name examples, not one named after the
+        # specific command sent.
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        telemetry = _telemetry._OperationTelemetry(opts, "ping", None, is_run_command=True)
+        telemetry.succeeded()
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "runCommand")
+        self.assertEqual(span.attributes["db.operation.name"], "runCommand")
+
+
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
+class TestOperationTelemetryContextManager(unittest.TestCase):
+    """Unit tests for _OperationTelemetry's context-manager and detached modes."""
+
+    @classmethod
+    def setUpClass(cls):
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+
+        cls.exporter = InMemorySpanExporter()
+        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    @classmethod
+    def tearDownClass(cls):
+        # See the matching comment in test/asynchronous/unified_format.py's
+        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
+        # be removed from the shared process-wide TracerProvider, so without
+        # this shutdown() the exporter keeps accumulating every span from
+        # every client for the rest of the test run.
+        cls.exporter.shutdown()
+
+    def setUp(self):
+        self.exporter.clear()
+
+    def test_context_manager_success_ends_span(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        with _OperationTelemetry(opts, "killCursors", None, dbname="mydb", collection="c"):
+            pass
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.name, "killCursors mydb.c")
+        self.assertEqual(span.status.status_code, StatusCode.UNSET)
+
+    def test_context_manager_failure_records_exception(self):
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        with self.assertRaises(ValueError):
+            with _OperationTelemetry(opts, "killCursors", None, dbname="mydb"):
+                raise ValueError("boom")
+        (span,) = self.exporter.get_finished_spans()
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(span.attributes["exception.type"], "ValueError")
+
+    def test_detached_telemetry_use_makes_span_current(self):
+        from opentelemetry import trace
+
+        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        telemetry = _OperationTelemetry(
+            opts, "find", None, dbname="mydb", collection="c", set_current=False
+        )
+        self.assertIsNot(trace.get_current_span(), telemetry.handle.span)
+        with telemetry.use():
+            self.assertIs(trace.get_current_span(), telemetry.handle.span)
+        self.assertEqual(self.exporter.get_finished_spans(), ())
+        telemetry.succeeded()
+        self.assertEqual(len(self.exporter.get_finished_spans()), 1)
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
@@ -70,6 +415,16 @@ class TestOTelSpans(AsyncIntegrationTest):
         super().setUpClass()
         cls.exporter = InMemorySpanExporter()
         _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    @classmethod
+    def tearDownClass(cls):
+        # See the matching comment in test/asynchronous/unified_format.py's
+        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
+        # be removed from the shared process-wide TracerProvider, so without
+        # this shutdown() the exporter keeps accumulating every span from
+        # every client for the rest of the test run.
+        cls.exporter.shutdown()
+        super().tearDownClass()
 
     async def asyncSetUp(self):
         await super().asyncSetUp()
@@ -81,36 +436,46 @@ class TestOTelSpans(AsyncIntegrationTest):
             return list(finished)
         return [s for s in finished if s.name == name]
 
-    # TODO(PYTHON-5947): once the unified test format runner supports
-    # expectTracingMessages/operation spans, this is superseded by the spec's
-    # find_without_query_text.yml and insert.yml.
-    async def test_span_created_for_insert_and_find(self):
+    def ping_spans(self):
+        """Return the spans belonging to a ``ping`` run through ``db.command()``.
+
+        For the tests that assert tracing produced *nothing*. Asserting the
+        exporter is empty would also catch spans no test asked for: a cursor
+        abandoned earlier in the class ends its operation span from a
+        finalizer, and on an interpreter that does not reference count, that
+        finalizer runs at an unpredictable point and lands in whichever test
+        happens to be running. Naming the ping's own spans keeps the assertion
+        about this client while staying immune to that.
+        """
+        return [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.command.name") == "ping"
+            or s.attributes.get("db.operation.name") == "runCommand"
+        ]
+
+    async def test_operation_span_records_failure(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
-        coll = client[self.db.name].test_otel
-        await coll.drop()
+        coll = client[self.db.name].test
         self.exporter.clear()
-        await coll.insert_one({"x": 1})
-
-        insert_spans = self.spans("insert")
-        self.assertEqual(len(insert_spans), 1)
-        attrs = insert_spans[0].attributes
-        self.assertEqual(attrs["db.system.name"], "mongodb")
-        self.assertEqual(attrs["db.namespace"], self.db.name)
-        self.assertEqual(attrs["db.collection.name"], "test_otel")
-        self.assertEqual(attrs["db.command.name"], "insert")
-        self.assertEqual(attrs["db.query.summary"], f"insert {self.db.name}.test_otel")
-        self.assertIn("server.address", attrs)
-        self.assertIn("server.port", attrs)
-        self.assertIn(attrs["network.transport"], ("tcp", "unix"))
-        self.assertIn("db.mongodb.driver_connection_id", attrs)
-        self.assertNotIn("db.query.text", attrs)
-
-        self.exporter.clear()
-        docs = await coll.find({}).to_list()
-        self.assertEqual(len(docs), 1)
-        find_spans = self.spans("find")
-        self.assertEqual(len(find_spans), 1)
-        self.assertEqual(find_spans[0].attributes["db.command.name"], "find")
+        with self.assertRaises(OperationFailure):
+            await coll.find_one({"$invalidOperator": 1})
+        matching = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "find"
+        ]
+        self.assertEqual(len(matching), 1)
+        op_span = matching[0]
+        self.assertEqual(op_span.status.status_code, StatusCode.ERROR)
+        # The operation-span Exceptions section of the OTel spec requires the
+        # same exception.type/message/stacktrace *attributes* as the command
+        # span, not just the exception *event* that record_exception alone
+        # attaches.
+        self.assertTrue(any(event.name == "exception" for event in op_span.events))
+        self.assertIn("exception.type", op_span.attributes)
+        self.assertIn("exception.message", op_span.attributes)
+        self.assertIn("exception.stacktrace", op_span.attributes)
 
     async def test_span_created_for_get_more(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
@@ -127,6 +492,136 @@ class TestOTelSpans(AsyncIntegrationTest):
         for span in get_more_spans:
             self.assertEqual(span.attributes["db.collection.name"], "test_otel_getmore")
             self.assertEqual(span.attributes["db.command.name"], "getMore")
+
+    async def test_find_getmores_nest_under_one_operation_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.getmore_nesting
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(10)])
+        self.exporter.clear()
+
+        docs = await coll.find({}, batch_size=2).to_list()
+        self.assertEqual(len(docs), 10)
+
+        finished = self.exporter.get_finished_spans()
+        # Exactly one operation span for the whole cursor.
+        find_op_spans = [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == "find"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(find_op_spans), 1, [s.name for s in finished])
+        op_span = find_op_spans[0]
+        self.assertEqual(op_span.name, "find pymongo_test.getmore_nesting")
+
+        # No getMore *operation* spans at all.
+        getmore_op_spans = [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == "getMore"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(getmore_op_spans, [])
+
+        # Every getMore *command* span is a child of that one operation span.
+        getmore_cmd_spans = [
+            s for s in finished if s.attributes.get("db.command.name") == "getMore"
+        ]
+        self.assertGreater(len(getmore_cmd_spans), 1)
+        for cmd_span in getmore_cmd_spans:
+            self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
+
+    async def test_aggregate_getmores_nest_under_one_operation_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.agg_nesting
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(10)])
+        self.exporter.clear()
+
+        docs = await (await coll.aggregate([{"$match": {}}], batchSize=2)).to_list()
+        self.assertEqual(len(docs), 10)
+
+        finished = self.exporter.get_finished_spans()
+        agg_op_spans = [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == "aggregate"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(agg_op_spans), 1, [s.name for s in finished])
+        op_span = agg_op_spans[0]
+
+        getmore_op_spans = [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == "getMore"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(getmore_op_spans, [])
+
+        getmore_cmd_spans = [
+            s for s in finished if s.attributes.get("db.command.name") == "getMore"
+        ]
+        self.assertGreater(len(getmore_cmd_spans), 1)
+        for cmd_span in getmore_cmd_spans:
+            self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
+
+    async def test_single_batch_aggregate_ends_span_promptly_not_at_gc(self):
+        # A command cursor whose first batch exhausts it is marked _killed in
+        # __init__ without ever calling close(); no getMore is sent, so
+        # _refresh()/_die_lock() never run. Without explicit attachment its
+        # operation span would only be ended by __del__, i.e. whenever GC
+        # happens to run (or never, if the cursor is retained; Important #2).
+        # Assert the span is already ended while a reference to the
+        # cursor is still held, proving it ended at construction rather than
+        # waiting on GC.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.agg_single_batch
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(3)])
+        self.exporter.clear()
+
+        cursor = await coll.aggregate([{"$match": {}}])
+        # Confirm this test actually exercises the single-batch path.
+        self.assertTrue(cursor._killed)
+
+        finished = self.exporter.get_finished_spans()
+        agg_op_spans = [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == "aggregate"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(agg_op_spans), 1, [s.name for s in finished])
+        self.assertIsNotNone(agg_op_spans[0].end_time)
+
+        # The cursor reference is kept alive through this assertion: if
+        # __del__ were the only thing ending the span, get_finished_spans()
+        # above would not have included it yet.
+        self.assertIsNotNone(cursor)
+
+    async def test_abandoned_cursor_still_ends_operation_span(self):
+        import gc
+
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.getmore_abandoned
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(10)])
+        self.exporter.clear()
+
+        cursor = coll.find({}, batch_size=2)
+        await cursor.next()  # Leaves the cursor open with batches pending.
+        del cursor
+        gc.collect()
+
+        find_op_spans = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "find"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(find_op_spans), 1)
 
     async def test_explain_retains_collection_name(self):
         # explain wraps the real command ({"explain": {"find": "coll", ...}}), the
@@ -171,8 +666,26 @@ class TestOTelSpans(AsyncIntegrationTest):
         with self.assertRaises(OperationFailure):
             await client.admin.command("saslStart", mechanism="SCRAM-SHA-256", payload=b"")
 
-        names = [s.name for s in self.spans()]
-        self.assertNotIn("saslStart", names)
+        # The inner command span must stay fully suppressed for sensitive commands.
+        command_span_names = [s.name for s in self.spans() if "db.command.name" in s.attributes]
+        self.assertNotIn("saslStart", command_span_names)
+
+        # The sensitive command name must never leak onto the wrapping
+        # *operation* span either: Database.command() always runs with
+        # is_run_command=True, so the operation span is named/attributed
+        # "runCommand" regardless of the actual (sensitive) command sent;
+        # the bare "saslStart" name never appears anywhere. The operation
+        # span must still carry its Required db.namespace/db.operation.summary
+        # attributes (backfilled before start_command_span's sensitive-command
+        # early return), even though the command itself produced no span.
+        finished = self.exporter.get_finished_spans()
+        operation_names = [s.attributes.get("db.operation.name") for s in finished]
+        self.assertNotIn("saslStart", operation_names)
+        self.assertIn("runCommand", operation_names)
+        op_span = next(s for s in finished if s.attributes.get("db.operation.name") == "runCommand")
+        self.assertEqual(op_span.name, "runCommand admin")
+        self.assertEqual(op_span.attributes["db.namespace"], "admin")
+        self.assertEqual(op_span.attributes["db.operation.summary"], "runCommand admin")
 
     async def test_admin_command_omits_collection_name(self):
         # usersInfo's command value is a username string, not a collection, and
@@ -188,13 +701,39 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertNotIn("db.collection.name", attrs)
         self.assertEqual(attrs["db.query.summary"], "usersInfo admin")
 
+    async def test_database_command_produces_run_command_operation_span(self):
+        # The OTel driver spec names "runCommand" as the driver-operation name
+        # for any operation reached through the generic Database.command()
+        # API, so c.admin.command("ping") must produce an operation span named
+        # "runCommand admin" with db.operation.name="runCommand", not one
+        # named "ping"/"ping admin".
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        await client.admin.command("ping")
+
+        finished = self.exporter.get_finished_spans()
+        matching = [s for s in finished if s.attributes.get("db.operation.name") == "runCommand"]
+        self.assertEqual(len(matching), 1)
+        op_span = matching[0]
+        self.assertEqual(op_span.name, "runCommand admin")
+        self.assertEqual(op_span.attributes["db.namespace"], "admin")
+        # The wire-level command span is unaffected: it's still named/attributed
+        # after the actual command sent.
+        cmd_spans = [s for s in finished if s.attributes.get("db.command.name") == "ping"]
+        self.assertEqual(len(cmd_spans), 1)
+        self.assertEqual(cmd_spans[0].name, "ping")
+
     async def test_failure_records_exception_and_status_code(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         self.exporter.clear()
         with self.assertRaises(OperationFailure):
             await client[self.db.name].command("thisCommandDoesNotExist")
 
-        spans = self.spans()
+        # Operation spans wrap command spans, so this also produces an
+        # ERROR-status operation span alongside the command span; narrow to
+        # the command span specifically (it alone carries
+        # db.response.status_code) rather than asserting there's only one span.
+        spans = [s for s in self.spans() if "db.response.status_code" in s.attributes]
         self.assertEqual(len(spans), 1)
         span = spans[0]
         self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
@@ -205,31 +744,47 @@ class TestOTelSpans(AsyncIntegrationTest):
         client = await self.async_rs_or_single_client()
         self.exporter.clear()
         await client.admin.command("ping")
-        self.assertEqual(self.spans(), [])
+        self.assertEqual(self.ping_spans(), [])
 
-    # TODO(PYTHON-5947): once operation spans exist, also assert that the
-    # "ping" *operation* span (not just the command span) is absent/present
-    # here, and that self.spans() counts both.
     async def test_prose_1_tracing_enable_disable_via_env_var(self):
         """Prose Test 1: Tracing Enable/Disable via Environment Variable."""
         with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "false"}):
             client = await self.async_rs_or_single_client()
             self.exporter.clear()
             await client.admin.command("ping")
-        self.assertEqual(self.spans(), [])
+        # Disabled must suppress both the operation span and the command span
+        # it wraps: db.command() routes through _retry_internal same as any
+        # CRUD call, so both would exist if tracing weren't fully off.
+        self.assertEqual(self.ping_spans(), [])
 
         with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
             client = await self.async_rs_or_single_client()
             self.exporter.clear()
             await client.admin.command("ping")
-        self.assertIn("ping", [s.name for s in self.spans()])
+        finished = self.exporter.get_finished_spans()
+        # Disambiguate the command span (db.command.name) from the operation
+        # span (db.operation.name) that wraps it: start_command_span renames
+        # the operation span in place once the command runs, so span.name
+        # alone can't tell them apart, but these attributes can. The operation
+        # span reads "runCommand" (not "ping"): Database.command() always runs
+        # with is_run_command=True, per the OTel spec's runCommand naming rule.
+        self.assertIn("ping", [s.attributes.get("db.command.name") for s in finished])
+        self.assertIn("runCommand", [s.attributes.get("db.operation.name") for s in finished])
 
-    # TODO(PYTHON-5947): once operation spans exist, self.spans("find") will
-    # also match the outer find *operation* span; disambiguate (e.g. by
-    # db.command.name vs db.operation.name) so this only asserts on the
-    # command span's db.query.text attribute.
     async def test_prose_2_command_payload_emission_via_env_var(self):
         """Prose Test 2: Command Payload Emission via Environment Variable."""
+
+        def command_spans():
+            # self.spans("find") would also match the outer find *operation*
+            # span (renamed to a "find <db>.<coll>" summary once the command
+            # runs, not literally "find"); filter on db.command.name instead
+            # to isolate the inner command span that carries db.query.text.
+            return [
+                s
+                for s in self.exporter.get_finished_spans()
+                if s.attributes.get("db.command.name") == "find"
+            ]
+
         env = {
             "OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true",
             "OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH": "1024",
@@ -238,7 +793,7 @@ class TestOTelSpans(AsyncIntegrationTest):
             client = await self.async_rs_or_single_client()
             self.exporter.clear()
             await client[self.db.name].test_otel.find({}).to_list()
-        spans = self.spans("find")
+        spans = command_spans()
         self.assertEqual(len(spans), 1)
         self.assertIn("db.query.text", spans[0].attributes)
 
@@ -246,26 +801,9 @@ class TestOTelSpans(AsyncIntegrationTest):
             client = await self.async_rs_or_single_client()
             self.exporter.clear()
             await client[self.db.name].test_otel.find({}).to_list()
-        spans = self.spans("find")
+        spans = command_spans()
         self.assertEqual(len(spans), 1)
         self.assertNotIn("db.query.text", spans[0].attributes)
-
-    # TODO(PYTHON-5947): once the unified test format runner supports
-    # expectTracingMessages/operation spans, this is superseded by the spec's
-    # find.yml (db.query.text assertion).
-    async def test_query_text_included_when_configured(self):
-        client = await self.async_rs_or_single_client(
-            tracing={"enabled": True, "query_text_max_length": 1000}
-        )
-        coll = client[self.db.name].test_otel
-        await coll.drop()
-        self.exporter.clear()
-        await coll.insert_one({"x": 1})
-
-        spans = self.spans("insert")
-        self.assertEqual(len(spans), 1)
-        self.assertIn("db.query.text", spans[0].attributes)
-        self.assertNotIn("lsid", spans[0].attributes["db.query.text"])
 
     async def test_explicit_query_text_max_length_zero_overrides_env_var(self):
         # An explicit client-side 0 must win over the environment variable, unlike
@@ -300,10 +838,530 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertLessEqual(len(query_text), 200)
         self.assertNotIn("a" * 500, query_text)
 
+    @async_client_context.require_transactions
+    async def test_committing_empty_transaction_ends_span(self):
+        # No operation is ever run against the server, so commit_transaction
+        # takes the STARTING/COMMITTED_EMPTY early-return path rather than
+        # actually sending a commitTransaction command.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
 
-# TODO(PYTHON-5947): superseded once the unified test format's
-# expectTracingMessages/observeTracingMessages tests exercise this validator
-# indirectly through real client construction; remove this class then.
+        async with client.start_session() as session:
+            await session.start_transaction()
+            await session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_span = next(s for s in finished if s.name == "transaction")
+        self.assertTrue(txn_span.end_time is not None)
+
+    @async_client_context.require_transactions
+    async def test_aborting_empty_transaction_ends_span(self):
+        # No operation is ever run against the server, so abort_transaction
+        # takes the STARTING early-return path rather than actually sending
+        # an abortTransaction command.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+
+        async with client.start_session() as session:
+            await session.start_transaction()
+            await session.abort_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_span = next(s for s in finished if s.name == "transaction")
+        self.assertTrue(txn_span.end_time is not None)
+
+    @async_client_context.require_transactions
+    async def test_direct_commit_retry_gives_each_span_its_own_end(self):
+        # Explicitly retrying a successful commit moves the transaction state
+        # COMMITTED -> IN_PROGRESS -> (back through the try/finally) ->
+        # COMMITTED again. The prior attempt's span was already ended and
+        # cleared, so the retry gets a fresh "transaction" span of its own
+        # (this is the direct-API path, not with_transaction; see
+        # test_with_transaction_retry_reuses_one_transaction_span for the
+        # with_transaction case, which shares a single span across retries
+        # instead); each span's ending finally block must run exactly once
+        # for its own span, never double-ending the same span and never
+        # leaving one unended.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name].test
+        await coll.drop()
+        await client[self.db.name].create_collection("test")
+        self.exporter.clear()
+
+        async with client.start_session() as session:
+            async with await session.start_transaction():
+                await coll.insert_one({"x": 5}, session=session)
+            # The transaction context manager already committed on clean
+            # exit; retry the commit explicitly.
+            await session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 2)
+        self.assertNotEqual(txn_spans[0].context.span_id, txn_spans[1].context.span_id)
+        for txn_span in txn_spans:
+            self.assertTrue(txn_span.end_time is not None)
+
+    @async_client_context.require_transactions
+    async def test_with_transaction_retry_reuses_one_transaction_span(self):
+        # A retried with_transaction() call must still produce exactly one
+        # "transaction" span for the whole logical call, not one sibling
+        # span per full-transaction retry, and no separately-named wrapper
+        # span either (the vendored transaction/convenient.json fixture
+        # pins "transaction" itself as the trace root for withTransaction).
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.with_txn_spans
+        await coll.drop()
+        await client.pymongo_test.create_collection("with_txn_spans")
+
+        attempts = []
+
+        async def callback(session):
+            attempts.append(1)
+            await coll.insert_one({"n": len(attempts)}, session=session)
+            if len(attempts) == 1:
+                exc = OperationFailure("transient", 251)
+                exc._add_error_label("TransientTransactionError")
+                raise exc
+
+        self.exporter.clear()
+        async with client.start_session() as session:
+            await session.with_transaction(callback)
+
+        self.assertEqual(len(attempts), 2)
+        finished = self.exporter.get_finished_spans()
+        self.assertFalse(
+            [s.name for s in finished if s.name.startswith("withTransaction")],
+            [s.name for s in finished],
+        )
+
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        self.assertTrue(txn_spans[0].end_time is not None)
+
+        insert_op_spans = [s for s in finished if s.attributes.get("db.operation.name") == "insert"]
+        self.assertEqual(len(insert_op_spans), 2)
+        for op_span in insert_op_spans:
+            self.assertEqual(op_span.parent.span_id, txn_spans[0].context.span_id)
+
+    @async_client_context.require_transactions
+    async def test_reentrant_with_transaction_raises_and_does_not_leak_span(self):
+        # A callback that illegally re-enters with_transaction() on the same
+        # session must be rejected with a clear InvalidOperation, and the
+        # outer call's "transaction" span must still end exactly once,
+        # never leaked (created but never ended) and never double-ended.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.reentrant_with_txn
+        await coll.drop()
+        await client.pymongo_test.create_collection("reentrant_with_txn")
+
+        async def inner_callback(session):
+            await coll.insert_one({"x": 1}, session=session)
+
+        async def outer_callback(session):
+            await coll.insert_one({"x": 2}, session=session)
+            # Illegal: with_transaction() is not reentrant on one session.
+            await session.with_transaction(inner_callback)
+
+        self.exporter.clear()
+        async with client.start_session() as session:
+            with self.assertRaises(InvalidOperation):
+                await session.with_transaction(outer_callback)
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        # Only the outer call ever gets far enough to create a span; the
+        # guard rejects the inner call before it creates one of its own.
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        for txn_span in txn_spans:
+            self.assertIsNotNone(txn_span.end_time)
+
+    @async_client_context.require_transactions
+    async def test_with_transaction_while_direct_api_transaction_active_does_not_corrupt_span(
+        self,
+    ):
+        # Calling with_transaction() while a transaction started with the
+        # DIRECT API is already active on the same session is illegal:
+        # start_transaction() inside with_transaction() raises "Transaction
+        # already in progress", but the direct-API transaction's own
+        # "transaction" span must survive that failure: with_transaction()'s
+        # finally must not end/null it out from under the still-active
+        # transaction (Important #1). Operations run on the session
+        # afterwards must still parent to that span rather than becoming
+        # trace roots, and the failed call must not leave behind a second,
+        # spurious "transaction" span of its own.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.direct_api_with_txn_conflict
+        await coll.drop()
+        await client.pymongo_test.create_collection("direct_api_with_txn_conflict")
+
+        async def callback(session):
+            raise AssertionError("never reached; start_transaction() raises first")
+
+        self.exporter.clear()
+        async with client.start_session() as session:
+            await session.start_transaction()
+            await coll.insert_one({"x": 1}, session=session)
+
+            with self.assertRaises(InvalidOperation):
+                await session.with_transaction(callback)
+
+            # The original transaction is still active; this must still
+            # nest under its span, not become a trace root.
+            await coll.insert_one({"x": 2}, session=session)
+            await session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        txn_span = txn_spans[0]
+        self.assertIsNotNone(txn_span.end_time)
+
+        insert_op_spans = [s for s in finished if s.attributes.get("db.operation.name") == "insert"]
+        self.assertEqual(len(insert_op_spans), 2)
+        for op_span in insert_op_spans:
+            self.assertEqual(op_span.parent.span_id, txn_span.context.span_id)
+
+    @async_client_context.require_transactions
+    async def test_retried_commit_has_a_transaction_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.retried_commit_spans
+        await coll.drop()
+        await client.pymongo_test.create_collection("retried_commit_spans")
+
+        async with client.start_session() as session:
+            await session.start_transaction()
+            await coll.insert_one({"x": 1}, session=session)
+            await session.commit_transaction()
+            self.exporter.clear()
+            # An explicit second commit re-enters the COMMITTED -> IN_PROGRESS
+            # branch, which previously ran with no transaction span at all.
+            await session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        commit_cmd_spans = [
+            s for s in finished if s.attributes.get("db.command.name") == "commitTransaction"
+        ]
+        self.assertGreaterEqual(len(commit_cmd_spans), 1)
+        for cmd_span in commit_cmd_spans:
+            self.assertIsNotNone(cmd_span.parent)
+
+    @async_client_context.require_version_min(8, 0, 0, -24)
+    async def test_bulk_write_unacknowledged_gets_operation_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True}, w=0)
+        self.exporter.clear()
+        await client.bulk_write(
+            [InsertOne(namespace=f"{self.db.name}.test", document={"x": 1})],
+            ordered=False,
+        )
+        matching = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "bulkWrite"
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0].attributes["db.namespace"], "admin")
+
+    @async_client_context.require_version_min(8, 0)
+    async def test_client_bulk_write_results_cursor_getmores_nest_under_bulk_write(self):
+        # A successful InsertOne's verbose result doc is tiny (~{"ok": 1, "idx":
+        # i, "n": 1}) regardless of the inserted document's size, and the driver
+        # never sends more than maxWriteBatchSize (100_000 by default) ops in one
+        # bulkWrite command, so plain successful inserts can never make the
+        # results cursor's first batch exceed the 16MB per-batch limit, no
+        # matter how many operations are given. Duplicate-key write errors,
+        # whose result docs embed the offending key (here padded to 3000 bytes),
+        # blow past that limit at a much smaller, fast-running operation count
+        # while still exercising the exact same code path (a real
+        # AsyncCommandCursor built and iterated by _process_results_cursor).
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.bulk_results_cursor
+        await coll.drop()
+        await coll.create_index("dup", unique=True)
+        dup_value = "d" * 3000
+        models = [
+            InsertOne(namespace=coll.full_name, document={"dup": dup_value}) for _ in range(10000)
+        ]
+        self.exporter.clear()
+        with self.assertRaises(ClientBulkWriteException):
+            await client.bulk_write(models, verbose_results=True, ordered=False)
+
+        finished = self.exporter.get_finished_spans()
+        # Exactly one operation span, for the bulkWrite itself.
+        op_spans = [
+            s
+            for s in finished
+            if "db.command.name" not in s.attributes
+            and s.attributes.get("db.operation.name") is not None
+        ]
+        self.assertEqual(
+            [s.attributes["db.operation.name"] for s in op_spans],
+            ["bulkWrite"],
+            [s.name for s in finished],
+        )
+        (op_span,) = op_spans
+
+        # Any getMore command spans parent directly to the bulkWrite span.
+        getmore_cmd_spans = [
+            s for s in finished if s.attributes.get("db.command.name") == "getMore"
+        ]
+        self.assertGreater(len(getmore_cmd_spans), 0, "expected a multi-batch results cursor")
+        for cmd_span in getmore_cmd_spans:
+            self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
+
+    async def test_operation_span_falls_back_to_bare_name_when_no_command_is_sent(self):
+        # An operation that fails during server selection never builds a
+        # command, so the lazy backfill in start_command_span never runs.
+        # insert_one doesn't go through a cursor (unlike find), so nothing
+        # eagerly threads dbname/collection to the operation span either:
+        # db.operation.summary (Required, per the OTel spec) still falls back
+        # to the bare operation name, but db.namespace/db.collection.name
+        # (only "Required if available") are simply absent.
+        client = await self.async_rs_or_single_client(
+            "mongodb://localhost:1/",
+            tracing={"enabled": True},
+            serverSelectionTimeoutMS=10,
+            connect=False,
+        )
+        self.exporter.clear()
+        with self.assertRaises(ServerSelectionTimeoutError):
+            await client.mydb.mycoll.insert_one({})
+        (span,) = [s for s in self.exporter.get_finished_spans() if s.name == "insert"]
+        self.assertEqual(span.attributes["db.operation.name"], "insert")
+        self.assertEqual(span.attributes["db.operation.summary"], "insert")
+        self.assertNotIn("db.namespace", span.attributes)
+        self.assertNotIn("db.collection.name", span.attributes)
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+    async def test_caller_owned_operation_telemetry_is_not_ended_by_retry_internal(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        telemetry = _OperationTelemetry(
+            client.options.tracing,
+            "find",
+            None,
+            dbname="mydb",
+            collection="c",
+            set_current=False,
+        )
+        self.exporter.clear()
+
+        async def _noop_read(_session, _server, _conn, _read_pref):
+            return "ok"
+
+        result = await client._retryable_read(
+            _noop_read,
+            ReadPreference.PRIMARY,
+            None,
+            operation="find",
+            operation_telemetry=telemetry,
+        )
+        self.assertEqual(result, "ok")
+        # _retry_internal must not have ended the caller's span.
+        self.assertEqual(
+            [s for s in self.exporter.get_finished_spans() if s.name.startswith("find")], []
+        )
+        telemetry.succeeded()
+        self.assertEqual(
+            len([s for s in self.exporter.get_finished_spans() if s.name.startswith("find")]),
+            1,
+        )
+
+    async def test_operation_span_name_can_differ_from_command_name(self):
+        # count_documents' operation span is named for the driver operation
+        # ("count"), but the command it actually sends is an aggregate, so an
+        # operation span name is not simply the name of the command beneath it.
+        # The vendored count.json fixture covers estimated_document_count,
+        # where the two happen to coincide, so this case needs its own test.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test
+        await db.mycoll.insert_one({"x": 1})
+        self.exporter.clear()
+        await db.mycoll.count_documents({})
+
+        (op_span,) = self.spans("count pymongo_test.mycoll")
+        self.assertEqual(op_span.attributes["db.operation.name"], "count")
+        self.assertEqual(op_span.attributes["db.namespace"], "pymongo_test")
+        (cmd_span,) = self.spans("aggregate")
+        self.assertEqual(cmd_span.attributes["db.command.name"], "aggregate")
+        self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
+
+    def _aggregate_operation_span(self):
+        matching = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "aggregate"
+        ]
+        self.assertEqual(len(matching), 1)
+        return matching[0]
+
+    @async_client_context.require_version_min(4, 2, 0)
+    @async_client_context.require_change_streams
+    async def test_change_stream_collection_level_operation_span_has_full_namespace(self):
+        # A collection-level change stream's operation span carries both the
+        # database and the collection, derived from the aggregate command by
+        # _otel's lazy backfill. The database- and cluster-level cases below
+        # must omit db.collection.name, since neither targets one collection.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test
+        coll = db.test_otel_change_stream_coll
+        await coll.drop()
+        self.exporter.clear()
+        async with await coll.watch():
+            pass
+        span = self._aggregate_operation_span()
+        self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
+        self.assertEqual(span.attributes["db.collection.name"], "test_otel_change_stream_coll")
+
+    @async_client_context.require_version_min(4, 2, 0)
+    @async_client_context.require_change_streams
+    async def test_change_stream_database_level_operation_span_omits_collection_name(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test
+        self.exporter.clear()
+        async with await db.watch():
+            pass
+        span = self._aggregate_operation_span()
+        self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
+        self.assertNotIn("db.collection.name", span.attributes)
+
+    @async_client_context.require_version_min(4, 2, 0)
+    @async_client_context.require_change_streams
+    async def test_change_stream_cluster_level_operation_span_targets_admin(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        async with await client.watch():
+            pass
+        span = self._aggregate_operation_span()
+        self.assertEqual(span.attributes["db.namespace"], "admin")
+        self.assertNotIn("db.collection.name", span.attributes)
+
+    async def test_kill_cursors_gets_operation_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.kill_cursors_span
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(10)])
+        cursor = coll.find({}, batch_size=2)
+        await cursor.next()
+        self.exporter.clear()
+        await cursor.close()  # Sends killCursors, since batches remain.
+
+        op_spans = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "killCursors"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(op_spans), 1, [s.name for s in self.exporter.get_finished_spans()])
+        (op_span,) = op_spans
+        self.assertEqual(op_span.name, "killCursors pymongo_test.kill_cursors_span")
+        self.assertEqual(op_span.attributes["db.namespace"], "pymongo_test")
+        self.assertEqual(op_span.attributes["db.collection.name"], "kill_cursors_span")
+
+        cmd_spans = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.command.name") == "killCursors"
+        ]
+        self.assertEqual(len(cmd_spans), 1)
+        self.assertEqual(cmd_spans[0].parent.span_id, op_span.context.span_id)
+
+    async def test_background_kill_cursors_span_is_a_trace_root(self):
+        # Regression test for PYTHON-5947: asyncio.create_task freezes the
+        # calling coroutine's contextvars.Context, and the kill-cursors
+        # executor is opened lazily from inside the client's first traced
+        # operation (_get_topology -> executor.open() -> create_task, reached
+        # while that operation's _OperationTelemetry has already made its
+        # span ambient-current). Without resetting the OTel context inside
+        # AsyncPeriodicExecutor._run, every killCursors span the background
+        # tick emits for the rest of the process's life gets parented under
+        # that first, long-since-ended operation and shares its trace id.
+        #
+        # Calling client._process_kill_cursors() directly from this test coroutine would NOT
+        # reproduce the bug: this coroutine's own context is clean, so the span would come out
+        # parentless even with the bug present. Instead we drive the *existing* kill-cursors
+        # executor task (the one whose context was frozen inside find_one() below) using
+        # wake()/skip_sleep(), so the tick actually runs inside that frozen context, and poll
+        # (async_wait_until) for the resulting span rather than sleeping a fixed amount.
+        import gc
+
+        # connect=False is essential here: the test helper's default
+        # connect=True calls client.aconnect() -> _get_topology() right after
+        # construction, *before* any traced operation runs and thus with no
+        # span current, which would open (and freeze) the kill-cursors
+        # executor with a clean context and make this test pass regardless of
+        # the bug. With connect=False, _get_topology() (and therefore the
+        # executor's create_task) is only reached lazily, from inside the
+        # find_one() call below, while that operation's span is current.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True}, connect=False)
+        coll = client.pymongo_test.bg_kill_cursors
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(10)])
+
+        # This first traced operation is what opens the kill-cursors executor,
+        # freezing its context while this operation's span is current.
+        await coll.find_one({})
+
+        cursor = coll.find({}, batch_size=2)
+        await cursor.next()
+        del cursor
+        gc.collect()  # Queues a deferred killCursors.
+
+        self.exporter.clear()
+
+        def _kill_op_spans():
+            return [
+                s
+                for s in self.exporter.get_finished_spans()
+                if s.attributes.get("db.operation.name") == "killCursors"
+                and "db.command.name" not in s.attributes
+            ]
+
+        executor = client._kill_cursors_executor
+        executor.skip_sleep()
+        executor.wake()
+        await async_wait_until(_kill_op_spans, "background killCursors span emitted")
+
+        kill_spans = _kill_op_spans()
+        self.assertEqual(len(kill_spans), 1, [s.name for s in self.exporter.get_finished_spans()])
+        # The background tick must not inherit a parent from whatever span
+        # happened to be current when the executor task was created.
+        self.assertIsNone(kill_spans[0].parent)
+
+    async def test_end_sessions_gets_operation_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        await client.pymongo_test.end_sessions_span.find_one({})  # Uses an implicit session.
+        self.exporter.clear()
+        await client.close()  # Sends endSessions.
+
+        op_spans = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "endSessions"
+            and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(len(op_spans), 1, [s.name for s in self.exporter.get_finished_spans()])
+        (op_span,) = op_spans
+        self.assertEqual(op_span.name, "endSessions admin")
+        self.assertEqual(op_span.attributes["db.namespace"], "admin")
+        self.assertNotIn("db.collection.name", op_span.attributes)
+
+        cmd_spans = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.command.name") == "endSessions"
+        ]
+        self.assertEqual(len(cmd_spans), 1)
+        self.assertEqual(cmd_spans[0].parent.span_id, op_span.context.span_id)
+
+
+# The unified test format's expectTracingMessages/observeTracingMessages
+# tests (test_open_telemetry_unified.py) now exercise this validator
+# indirectly through real client construction, but these direct unit tests
+# are kept for the validator's edge cases (rejection paths, the explicit-zero
+# vs. unset distinction for query_text_max_length) that aren't necessarily
+# covered by the vendored fixtures.
 class TestValidateTracingOrNone(unittest.TestCase):
     def test_none(self):
         self.assertIsNone(common.validate_tracing_or_none("tracing", None))

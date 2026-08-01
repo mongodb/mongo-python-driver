@@ -175,6 +175,7 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
             # ___init__ did not run to completion (or at all).
             return
 
+        self._end_operation_telemetry()
         cursor_id, address = self._prepare_to_die(already_killed)
         await self._collection.database.client._cleanup_cursor_lock(
             cursor_id,

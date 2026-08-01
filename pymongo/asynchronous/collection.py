@@ -2584,8 +2584,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             return cmd_cursor
 
         async with self._database.client._tmp_session(session) as s:
-            return await self._database.client._retryable_read(
-                _cmd, read_pref, s, operation=_Op.LIST_INDEXES
+            return await self._database.client._retryable_read_cursor(
+                _cmd,
+                read_pref,
+                s,
+                operation=_Op.LIST_INDEXES,
+                dbname=self._database.name,
+                collection=self._name,
             )
 
     async def index_information(
@@ -2683,12 +2688,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return await self._database.client._retryable_read(
+        return await self._database.client._retryable_read_cursor(
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
             retryable=not cmd._performs_write,
             operation=_Op.LIST_SEARCH_INDEX,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     async def create_search_index(
@@ -2932,13 +2939,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return await self._database.client._retryable_read(
+        return await self._database.client._retryable_read_cursor(
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
             retryable=not cmd._performs_write,
             operation=_Op.AGGREGATE,
             is_aggregate_write=cmd._performs_write,
+            dbname=self._database.name,
+            collection=self._name,
         )
 
     async def aggregate(

@@ -457,7 +457,16 @@ def create_otel_variants():
     expansions = dict(TEST_NAME="otel", COVERAGE="1")
     return [
         create_variant(
-            [".test-non-standard .standalone-noauth-nossl"],
+            [
+                ".test-non-standard .standalone-noauth-nossl",
+                # Transaction spans (test/open_telemetry/transaction/*.json,
+                # test_otel.py's @require_transactions tests) need a replica set
+                # (they're skipped entirely on a standalone topology), so also
+                # run against one, mirroring how other variants in this file
+                # (e.g. PyOpenSSL's ".replica_set-noauth-ssl") pair a
+                # standalone/standard selector with a replica-set one.
+                ".test-non-standard .replica_set-noauth-ssl",
+            ],
             get_variant_name("OTel", host),
             host=host,
             tags=["pr"],
