@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+import struct
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -87,6 +88,24 @@ class TestProcessHeader(AsyncUnitTest):
         )
         with self.assertRaisesRegex(ProtocolError, "larger than server max"):
             self.protocol.process_header()
+
+    def test_compression_uncompressed_size_exceeds_max_closes(self):
+        self.protocol._max_message_size = 1024
+        self.protocol._header = memoryview(
+            bytearray(
+                pack_msg_header(
+                    length=35, request_id=1, response_to=0, op_code=2012
+                )
+            )
+        )
+        self.protocol.process_header()
+        # Now feed compression sub-header with uncompressed_size > max
+        self.protocol._compression_header[:] = struct.pack(
+            "<iiB", 2013, 9999, 2
+        )
+        self.protocol._compression_index = 9
+        self.protocol.buffer_updated(0)
+        self.protocol.transport.abort.assert_called()
 
 
 class TestClose(AsyncUnitTest):
