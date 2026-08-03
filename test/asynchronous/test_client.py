@@ -1955,13 +1955,14 @@ class TestClient(AsyncIntegrationTest):
                         _recorded.append(compressor_id)
                         return _original(data, compressor_id)
 
-                    # Round-trip a command large enough to compress.
+                    # Round-trip a command. Every non-sensitive command is
+                    # compressed.
                     coll = client.pymongo_test.test_compression
                     await coll.drop()
                     with patch.object(network_layer, "decompress", decompress_spy):
-                        await coll.insert_one({"x": "y" * 1024})
+                        await coll.insert_one({"x": "y"})
                         doc = await coll.find_one({}, {"_id": 0})
-                    self.assertEqual(doc, {"x": "y" * 1024})
+                    self.assertEqual(doc, {"x": "y"})
                     self.assertTrue(compressed, "compress() was never called")
                     self.assertTrue(decompressed, "decompress() was never called")
                     self.assertEqual(set(decompressed), {ctx_type.compressor_id})
