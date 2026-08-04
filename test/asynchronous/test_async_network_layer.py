@@ -89,23 +89,19 @@ class TestProcessHeader(AsyncUnitTest):
         with self.assertRaisesRegex(ProtocolError, "larger than server max"):
             self.protocol.process_header()
 
-    def test_compression_uncompressed_size_exceeds_max_closes(self):
-        self.protocol._max_message_size = 1024
-        self.protocol._header = memoryview(
-            bytearray(
-                pack_msg_header(
-                    length=35, request_id=1, response_to=0, op_code=2012
-                )
-            )
-        )
-        self.protocol.process_header()
-        # Now feed compression sub-header with uncompressed_size > max
-        self.protocol._compression_header[:] = struct.pack(
-            "<iiB", 2013, 9999, 2
-        )
-        self.protocol._compression_index = 9
-        self.protocol.buffer_updated(0)
-        self.protocol.transport.abort.assert_called()
+class TestDecompress(unittest.TestCase):
+    def test_decompressed_size_exceeds_max_raises(self):
+        from pymongo.compression_support import _decompress
+
+        import zlib
+
+        # Compress a small payload that decompresses larger than max
+        payload = zlib.compress(b"x" * 100)
+        with self.assertRaisesRegex(ProtocolError, "Decompressed message size"):
+            _decompress(payload, 2, max_message_size=5)
+        # Normal decompression still works
+        result = _decompress(payload, 2, max_message_size=1024)
+        self.assertEqual(result, b"x" * 100)
 
 
 class TestClose(AsyncUnitTest):
