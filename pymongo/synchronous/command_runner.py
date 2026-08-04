@@ -165,6 +165,7 @@ def _run_command(
         orig = cmd
 
     # Fast path: skip telemetry construction when logging and APM are disabled
+    # Inline enabled check here for performance
     telemetry: Optional[_CommandTelemetry] = None
     if (topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)) or (
         listeners is not None and listeners.enabled_for_commands

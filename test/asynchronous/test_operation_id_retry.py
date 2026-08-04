@@ -26,14 +26,16 @@ import pymongo
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from pymongo import _op_id
 from pymongo._telemetry import _CommandTelemetry
-from pymongo.asynchronous import mongo_client
+from pymongo.asynchronous import bulk, client_bulk, mongo_client
 from pymongo.asynchronous.encryption import _Encrypter
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.asynchronous.pool import AsyncConnection
 from pymongo.errors import OperationFailure
 from pymongo.helpers_shared import _REAUTHENTICATION_REQUIRED_CODE
 from pymongo.logger import _COMMAND_LOGGER, _SERVER_SELECTION_LOGGER
+from pymongo.message import _randint
 from pymongo.operations import InsertOne
+from pymongo.write_concern import WriteConcern
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.utils_shared import AllowListEventListener
 
@@ -139,7 +141,7 @@ class TestOperationIdRetry(AsyncIntegrationTest):
             with self.subTest(command=name, index=i):
                 await self._check_stable_operation_id(name, f, self.RETRIES)
 
-    async def test_retry_without_listeners_or_logging_creates_no_operation_id(self):
+    async def test_retry_without_telemetry_creates_no_operation_id(self):
         appname = _APP_NAME + "noapm"
         client = await self.async_rs_or_single_client(appname=appname)
 
@@ -185,6 +187,71 @@ class TestOperationIdRetry(AsyncIntegrationTest):
             [],
             "expected no _CommandTelemetry construction without APM/logging enabled",
         )
+
+    async def test_bulk_write_without_telemetry_creates_no_operation_id(self):
+        client = await self.async_rs_or_single_client()
+
+        # Make sure APM and logging are disabled
+        for logger in (_COMMAND_LOGGER, _SERVER_SELECTION_LOGGER):
+            self.assertFalse(logger.isEnabledFor(logging.DEBUG))
+        self.assertFalse(client._event_listeners.enabled_for_commands)
+
+        coll = client.pymongo_test.test_operation_id_retry
+        coll_w0 = coll.with_options(write_concern=WriteConcern(w=0))
+        with (
+            patch.object(bulk, "_randint") as bulk_randint,
+            patch.object(mongo_client, "_randint") as client_randint,
+        ):
+            # Acknowledged
+            result = await coll.bulk_write([InsertOne({})])
+            self.assertEqual(result.inserted_count, 1)
+            # Unacknowledged ordered
+            self.assertFalse((await coll_w0.bulk_write([InsertOne({})])).acknowledged)
+            # Unacknowledged unordered
+            self.assertFalse(
+                (await coll_w0.bulk_write([InsertOne({})], ordered=False)).acknowledged
+            )
+        self.assertEqual(
+            bulk_randint.call_count, 0, "generated an operation id without APM/logging enabled"
+        )
+        self.assertEqual(
+            client_randint.call_count, 0, "generated an operation id without APM/logging enabled"
+        )
+
+        # Ensure we see randint() calls with APM enabled
+        with patch.object(bulk, "_randint", wraps=_randint) as bulk_randint:
+            await self.coll.bulk_write([InsertOne({})])
+        self.assertEqual(bulk_randint.call_count, 1)
+
+    @async_client_context.require_version_min(8, 0, 0, -24)
+    async def test_client_bulk_write_without_telemetry_creates_no_operation_id(self):
+        client = await self.async_rs_or_single_client()
+
+        # Make sure APM and logging are disabled
+        for logger in (_COMMAND_LOGGER, _SERVER_SELECTION_LOGGER):
+            self.assertFalse(logger.isEnabledFor(logging.DEBUG))
+        self.assertFalse(client._event_listeners.enabled_for_commands)
+
+        ns = "pymongo_test.test_operation_id_retry"
+        with patch.object(client_bulk, "_randint") as bulk_randint:
+            # Acknowledged
+            result = await client.bulk_write([InsertOne(namespace=ns, document={})])
+            self.assertEqual(result.inserted_count, 1)
+            # Unacknowledged
+            result = await client.bulk_write(
+                [InsertOne(namespace=ns, document={})],
+                write_concern=WriteConcern(w=0),
+                ordered=False,
+            )
+            self.assertFalse(result.acknowledged)
+        self.assertEqual(
+            bulk_randint.call_count, 0, "generated an operation id without APM/logging enabled"
+        )
+
+        # Ensure we see randint() calls with APM enabled
+        with patch.object(client_bulk, "_randint", wraps=_randint) as bulk_randint:
+            await self.client.bulk_write([InsertOne(namespace=ns, document={})])
+        self.assertEqual(bulk_randint.call_count, 1)
 
     async def test_reauth_does_not_reuse_operation_id(self):
         class FakeConnection(AsyncConnection):
