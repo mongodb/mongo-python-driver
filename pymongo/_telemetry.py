@@ -57,9 +57,7 @@ def _monotonic_duration(start: float) -> float:
 
 
 def _should_generate_op_id(listeners: Optional[_EventListeners]) -> bool:
-    """Return True if an operation id would be consumed by APM command events
-    or command/server-selection log entries; generating one is otherwise wasted work.
-    """
+    """Return True if an operation id would be consumed by APM events or logging."""
     return (
         (listeners is not None and listeners.enabled_for_commands)
         or _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)
@@ -70,14 +68,13 @@ def _should_generate_op_id(listeners: Optional[_EventListeners]) -> bool:
 class _CommandTelemetry:
     """Combines structured logging and APM event publishing for a single command.
 
-    Construct once per command, call :meth:`started` before the network send,
+    Construct up to once per command, call :meth:`started` before the network send,
     then call :meth:`succeeded` or :meth:`failed` when the outcome is known.
     Duration is measured from the :meth:`started` call.
 
-    This sits on the hot path of every command: when neither APM nor command
-    logging is enabled, only the gate flags and the monotonic duration clock
-    are maintained — the identifying fields are not stored and the ``OP_ID``
-    contextvar is not read.
+    This sits on the hot path of every command: when both APM events and command
+    logging are disabled, only the gate flags and the monotonic duration clock
+    are maintained.
     """
 
     __slots__ = (
@@ -529,7 +526,7 @@ class _SdamTelemetry:
     Topology events are queued for asynchronous delivery; log entries are emitted inline.
     """
 
-    __slots__ = ("_events", "_listeners", "_topology_id")
+    __slots__ = ("_events", "_listeners", "_publish_server", "_publish_tp", "_topology_id")
 
     def __init__(
         self,
@@ -540,16 +537,11 @@ class _SdamTelemetry:
         self._topology_id = topology_id
         self._listeners = listeners
         self._events = events
-
-    @property
-    def _publish_server(self) -> bool:
-        """Computed per-call because listener registration can change while the topology is open."""
-        return self._listeners is not None and self._listeners.enabled_for_server
-
-    @property
-    def _publish_tp(self) -> bool:
-        """Computed per-call because listener registration can change while the topology is open."""
-        return self._listeners is not None and self._listeners.enabled_for_topology
+        # The SDAM listener set is fixed once the client is constructed
+        # (_EventListeners copies the global listeners at __init__), so these
+        # gates are static for the life of the client.
+        self._publish_server = self._listeners is not None and self._listeners.enabled_for_server
+        self._publish_tp = self._listeners is not None and self._listeners.enabled_for_topology
 
     @property
     def _should_log(self) -> bool:

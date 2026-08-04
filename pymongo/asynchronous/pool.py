@@ -1237,8 +1237,7 @@ class _PoolCheckout:
     async def __aenter__(self) -> AsyncConnection:
         pool = self._pool
         telemetry = pool._telemetry
-        # Fast path: when neither CMAP listeners nor connection logging are
-        # active, skip the checkout started/succeeded telemetry calls.
+        # Fast path: skip telemetry calls when CMAP events/logging are disabled
         if not telemetry._publish and not (
             telemetry._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
         ):

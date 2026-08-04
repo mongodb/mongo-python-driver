@@ -164,9 +164,7 @@ async def _run_command(
     if orig is None:
         orig = cmd
 
-    # Fast path: when neither command logging nor APM command listeners are
-    # active, skip constructing the telemetry object entirely and track the
-    # round-trip duration inline.
+    # Fast path: skip telemetry construction when logging and APM are disabled
     telemetry: Optional[_CommandTelemetry] = None
     if (topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)) or (
         listeners is not None and listeners.enabled_for_commands

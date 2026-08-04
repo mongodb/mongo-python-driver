@@ -285,8 +285,7 @@ class Topology:
         now = time.monotonic()
         end_time = now + timeout
         logged_waiting = False
-        # Server selection defines only log entries (no APM events); skip the
-        # telemetry object entirely when the logger is not enabled.
+        # Server selection does not have APM events, gate only on logging
         ss: Optional[_ServerSelectionTelemetry] = None
         if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
             ss = _ServerSelectionTelemetry(
