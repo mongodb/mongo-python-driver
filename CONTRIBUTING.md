@@ -563,7 +563,36 @@ From the spawn host or Ubuntu image, do the following:
 5. Then, from the host computer, use either scp or docker cp to copy the flamegraph, e.g. `scp ubuntu@ec2-3-82-52-49.compute-1.amazonaws.com:/home/ubuntu/test.html .`.
 6. You can then view the flamegraph html in a browser.
 
-## Dependabot updates
+## Dependency updates
 
-Dependabot will raise PRs at most once per week, grouped by GitHub Actions updates and Python requirement
-file updates. If a typing dependency has changed, run `just typing` and handle any new findings.
+Dependabot raises PRs at most once per week for GitHub Actions updates. For Python
+dependencies it is limited to security updates, because routine upgrades are handled by
+a scheduled workflow that runs weekly, running `uv lock --upgrade` and keeping a single
+open pull request on the `uv-lock-update` branch.
+
+If a typing dependency has changed, run `just typing` and handle any new findings.
+
+### The uv.lock file
+
+`uv.lock` is committed to the repository so builds resolve identically on every machine
+and in CI. Continuous integration runs `uv lock --check`, which fails when the lock file
+no longer matches `pyproject.toml`.
+
+If that check fails on your pull request, regenerate the lock file and commit the result:
+
+```bash
+uv lock
+```
+
+Note that `pyproject.toml` sets `exclude-newer = "7 days"`, so uv ignores any package
+version published in the last week. A brand new release will not appear in the lock file
+until it is seven days old.
+
+To resolve a `uv.lock` conflict when rebasing, take either side and regenerate rather
+than editing the file by hand:
+
+```bash
+git checkout --ours uv.lock
+uv lock
+git add uv.lock
+```
