@@ -1116,7 +1116,7 @@ class Pool:
         async with self.lock:
             self.active_contexts.discard(conn.cancel_context)
         telemetry = self._telemetry
-        if telemetry._publish or (
+        if telemetry._should_publish or (
             telemetry._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
         ):
             telemetry.checked_in(conn.id)
@@ -1238,7 +1238,7 @@ class _PoolCheckout:
         pool = self._pool
         telemetry = pool._telemetry
         # Fast path: skip telemetry calls when CMAP events/logging are disabled
-        if not telemetry._publish and not (
+        if not telemetry._should_publish and not (
             telemetry._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
         ):
             conn = await pool._get_conn(time.monotonic(), handler=self._handler)

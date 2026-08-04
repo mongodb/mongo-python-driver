@@ -239,7 +239,7 @@ class _CmapTelemetry:
         "_client_id",
         "_listeners",
         "_log",
-        "_publish",
+        "_should_publish",
     )
 
     def __init__(
@@ -258,12 +258,8 @@ class _CmapTelemetry:
         # gate is static for the life of the pool.
         # NOTE: the checkout/checkin fast paths in pool.py inline this gate for performance
         # They must be kept in sync with any gating changes
-        self._publish = publish and listeners is not None and listeners.enabled_for_cmap
+        self._should_publish = publish and listeners is not None and listeners.enabled_for_cmap
         self._log = log
-
-    @property
-    def _should_publish(self) -> bool:
-        return self._publish
 
     @property
     def _should_log(self) -> bool:
