@@ -32,7 +32,7 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo._telemetry import _should_generate_op_id
+from pymongo._telemetry import _generate_op_id_or_none
 from pymongo.bulk_shared import (
     _COMMANDS,
     _DELETE_ALL,
@@ -57,7 +57,6 @@ from pymongo.message import (
     _UPDATE,
     _BulkWriteContext,
     _EncryptedBulkWriteContext,
-    _randint,
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
@@ -457,7 +456,7 @@ class _Bulk:
             "upserted": [],
         }
         client = self.collection.database.client
-        op_id = _randint() if _should_generate_op_id(client._event_listeners) else None
+        op_id = _generate_op_id_or_none(client._event_listeners)
 
         def retryable_bulk(
             session: Optional[ClientSession], conn: Connection, retryable: bool
@@ -490,7 +489,7 @@ class _Bulk:
         db_name = self.collection.database.name
         client = self.collection.database.client
         listeners = client._event_listeners
-        op_id = _randint() if _should_generate_op_id(listeners) else None
+        op_id = _generate_op_id_or_none(listeners)
 
         if not self.current_run:
             self.current_run = next(generator)
@@ -543,11 +542,7 @@ class _Bulk:
         # processing at the first error, even when the application
         # specified unacknowledged writeConcern.
         initial_write_concern = WriteConcern()
-        op_id = (
-            _randint()
-            if _should_generate_op_id(self.collection.database.client._event_listeners)
-            else None
-        )
+        op_id = _generate_op_id_or_none(self.collection.database.client._event_listeners)
         try:
             self._execute_command(
                 generator,

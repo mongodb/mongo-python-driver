@@ -36,6 +36,7 @@ from pymongo.logger import (
     _ServerSelectionStatusMessage,
     _verbose_connection_error_reason,
 )
+from pymongo.message import _randint
 from pymongo.pool_shared import _ConnectionTelemetryInfo
 
 if TYPE_CHECKING:
@@ -56,12 +57,16 @@ def _monotonic_duration(start: float) -> float:
     return max(0.0, time.monotonic() - start)
 
 
-def _should_generate_op_id(listeners: Optional[_EventListeners]) -> bool:
-    """Return True if an operation id would be consumed by APM events or logging."""
+def _generate_op_id_or_none(listeners: Optional[_EventListeners]) -> Optional[int]:
+    """Return a random operation id if it would be consumed by APM events or logging, else None."""
     return (
-        (listeners is not None and listeners.enabled_for_commands)
-        or _is_debug_enabled(_COMMAND_LOGGER)
-        or _is_debug_enabled(_SERVER_SELECTION_LOGGER)
+        _randint()
+        if (
+            (listeners is not None and listeners.enabled_for_commands)
+            or _is_debug_enabled(_COMMAND_LOGGER)
+            or _is_debug_enabled(_SERVER_SELECTION_LOGGER)
+        )
+        else None
     )
 
 

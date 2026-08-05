@@ -32,7 +32,7 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo._telemetry import _should_generate_op_id
+from pymongo._telemetry import _generate_op_id_or_none
 from pymongo.asynchronous.client_session import (
     AsyncClientSession,
     _validate_session_write_concern,
@@ -70,7 +70,6 @@ from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
 from pymongo.message import (
     _ClientBulkWriteContext,
     _convert_client_bulk_exception,
-    _randint,
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (
@@ -525,7 +524,7 @@ class _AsyncClientBulk:
             "updateResults": {},
             "deleteResults": {},
         }
-        op_id = _randint() if _should_generate_op_id(self.client._event_listeners) else None
+        op_id = _generate_op_id_or_none(self.client._event_listeners)
 
         async def retryable_bulk(
             session: Optional[AsyncClientSession],
@@ -566,7 +565,7 @@ class _AsyncClientBulk:
         db_name = "admin"
         cmd_name = "bulkWrite"
         listeners = self.client._event_listeners
-        op_id = _randint() if _should_generate_op_id(listeners) else None
+        op_id = _generate_op_id_or_none(listeners)
 
         bwc = self.bulk_ctx_class(
             db_name,
