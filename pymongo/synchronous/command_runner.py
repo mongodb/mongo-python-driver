@@ -36,6 +36,7 @@ command type so callers only pass what varies.
 from __future__ import annotations
 
 import datetime
+import time
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
@@ -47,10 +48,11 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo import _csot, _op_id, helpers_shared, message
+from pymongo import _csot, helpers_shared, message
 from pymongo._telemetry import _CommandTelemetry
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import NotPrimaryError, OperationFailure
+from pymongo.logger import _COMMAND_LOGGER, _is_debug_enabled
 from pymongo.message import _BulkWriteContextBase, _convert_exception, _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 
@@ -100,8 +102,9 @@ def _run_command(
     set_conn_more_to_come: bool = False,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
+) -> tuple[list[dict[str, Any]], Optional[_OpMsg], float]:
+    """Send ``msg`` over ``conn`` and return ``(docs, reply, duration_s)``,
+    where ``duration_s`` is the round-trip duration in seconds.
 
     Private shared implementation. Should not be called directly outside this module. Use :func:`run_command`, :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
 
@@ -128,8 +131,8 @@ def _run_command(
     :param orig: The command document published in the ``STARTED`` APM event;
         defaults to ``cmd`` (differs only when the wire command was mutated,
         e.g. with a read preference or after encryption).
-    :param op_id: The APM operation id; defaults to the ``OP_ID`` contextvar,
-        then ``request_id``.
+    :param op_id: The APM operation id; when ``None`` it is resolved from the
+        ``OP_ID`` contextvar (then ``request_id``) only if APM/logging is enabled.
     :param command_name: The command name for the ``SUCCEEDED``/``FAILED`` APM
         events; defaults to the first key of ``cmd``.
     :param check: Raise OperationFailure on a command error.
@@ -159,11 +162,20 @@ def _run_command(
         command_name = name
     if orig is None:
         orig = cmd
-    if op_id is None:
-        op_id = _op_id.OP_ID.get()
 
-    telemetry = _CommandTelemetry(topology_id, conn, listeners, cmd, dbname, request_id, op_id)
-    telemetry.started(orig, ensure_db)
+    # Fast path: skip telemetry construction when logging and APM are disabled
+    # Inline enabled check here for performance
+    telemetry: Optional[_CommandTelemetry] = None
+    if (topology_id is not None and _is_debug_enabled(_COMMAND_LOGGER)) or (
+        listeners is not None and listeners.enabled_for_commands
+    ):
+        telemetry = _CommandTelemetry(
+            topology_id, conn, listeners, cmd, dbname, request_id, op_id, name=name
+        )
+        telemetry.started(orig, ensure_db)
+        start = 0.0
+    else:
+        start = time.monotonic()
 
     reply: Optional[_OpMsg] = None
     docs: list[dict[str, Any]] = [{"ok": 1}]
@@ -211,10 +223,15 @@ def _run_command(
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
             failure = _convert_exception(exc)
-        telemetry.failed(failure, command_name, isinstance(exc, OperationFailure))
+        if telemetry is not None:
+            telemetry.failed(failure, command_name, isinstance(exc, OperationFailure))
         raise
 
-    telemetry.succeeded(docs[0], command_name, speculative_hello)
+    if telemetry is not None:
+        telemetry.succeeded(docs[0], command_name, speculative_hello)
+        duration_s = telemetry.duration_s
+    else:
+        duration_s = max(0.0, time.monotonic() - start)
 
     if client and client._encrypter and reply and decrypt_reply:
         decrypted = client._encrypter.decrypt(reply.raw_command_response())
@@ -222,7 +239,7 @@ def _run_command(
             "list[dict[str, Any]]", _decode_all_selective(decrypted, codec_options, user_fields)
         )
 
-    return docs, reply, telemetry.duration
+    return docs, reply, duration_s
 
 
 def run_bulk_write_command(
@@ -235,8 +252,8 @@ def run_bulk_write_command(
     orig: Optional[MutableMapping[str, Any]] = None,
     max_doc_size: int = 0,
     unacknowledged: bool = False,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send a bulk write batch and return ``(docs, reply, duration)``.
+) -> tuple[list[dict[str, Any]], Optional[_OpMsg], float]:
+    """Send a bulk write batch and return ``(docs, reply, duration_s)``.
 
     :param bwc: Bulk write context supplying the connection, session, listeners, etc.
     :param cmd: The encoded command document.
@@ -309,7 +326,7 @@ def run_cursor_command(
     :param cursor_id: The cursor id passed to ``unpack_res``.
     """
     topology_id = client._topology_id if client is not None else None
-    return _run_command(
+    docs, reply, duration_s = _run_command(
         conn,
         cmd,
         dbname,
@@ -329,6 +346,8 @@ def run_cursor_command(
         unpack_res=unpack_res,
         cursor_id=cursor_id,
     )
+    # The cursor path stores the duration on Response, which expects a timedelta.
+    return docs, reply, datetime.timedelta(seconds=duration_s)
 
 
 def run_command(
