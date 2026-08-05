@@ -30,6 +30,11 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.10"
+      # Runs before the install so a stale lock fails in seconds rather than
+      # after the build and typecheck.
+      - name: Check lockfile is up to date
+        run: |
+          uv lock --check
       - name: Install just
         run: uv tool install rust-just
       - name: Install Python dependencies
@@ -49,9 +54,6 @@ jobs:
       - name: Run synchro smoke test
         run: |
           uv run --extra test --with unasync pytest tools/test_synchro.py -v --override-ini="addopts="
-      - name: Check lockfile is up to date
-        run: |
-          uv lock --check
       - name: Validate pyproject.toml
         run: |
           uvx --from 'validate-pyproject[all]' validate-pyproject pyproject.toml

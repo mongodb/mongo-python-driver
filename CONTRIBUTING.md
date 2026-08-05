@@ -588,8 +588,10 @@ Note that `pyproject.toml` sets `exclude-newer = "7 days"`, so uv ignores any pa
 version published in the last week. A brand new release will not appear in the lock file
 until it is seven days old.
 
-To resolve a `uv.lock` conflict when rebasing, take either side and regenerate rather
-than editing the file by hand:
+To resolve a `uv.lock` conflict when rebasing, check out either side and regenerate
+rather than editing the file by hand. Which side you pick does not matter, because
+`uv lock` rewrites the file from `pyproject.toml`. Use `--theirs` in place of
+`--ours` if you prefer:
 
 ```bash
 git checkout --ours uv.lock
