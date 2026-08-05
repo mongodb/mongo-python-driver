@@ -89,6 +89,16 @@ class TestProcessHeader(AsyncUnitTest):
         with self.assertRaisesRegex(ProtocolError, "larger than server max"):
             self.protocol.process_header()
 
+    def test_process_compression_header_returns_uncompressed_size(self):
+        self.protocol._compression_header[:] = struct.pack("<iiB", 2013, 9999, 2)
+        op_code, uncompressed_size, compressor_id = (
+            self.protocol.process_compression_header()
+        )
+        self.assertEqual(op_code, 2013)
+        self.assertEqual(uncompressed_size, 9999)
+        self.assertEqual(compressor_id, 2)
+
+
 class TestDecompress(unittest.TestCase):
     def test_decompressed_size_exceeds_max_raises(self):
         from pymongo.compression_support import _decompress

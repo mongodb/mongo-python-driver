@@ -604,7 +604,20 @@ class PyMongoProtocol(BufferedProtocol):
             self._compression_index += nbytes
             if self._compression_index >= 9:
                 self._expecting_compression = False
-                self._op_code, self._compressor_id = self.process_compression_header()
+                (
+                    self._op_code,
+                    uncompressed_size,
+                    self._compressor_id,
+                ) = self.process_compression_header()
+                if uncompressed_size > self._max_message_size:
+                    self.close(
+                        ProtocolError(
+                            f"Uncompressed message size ({uncompressed_size!r}) "
+                            f"is larger than server max message size "
+                            f"({self._max_message_size!r})"
+                        )
+                    )
+                    return
             return
 
         self._message_index += nbytes
@@ -658,10 +671,12 @@ class PyMongoProtocol(BufferedProtocol):
 
         return length - 16, op_code, response_to, expecting_compression
 
-    def process_compression_header(self) -> tuple[int, int]:
+    def process_compression_header(self) -> tuple[int, int, int]:
         """Unpack a MongoDB Wire Protocol compression header."""
-        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(self._compression_header)
-        return op_code, compressor_id
+        op_code, uncompressed_size, compressor_id = _UNPACK_COMPRESSION_HEADER(
+            self._compression_header
+        )
+        return op_code, uncompressed_size, compressor_id
 
     def _resolve_pending_messages(self, exc: Optional[Exception] = None) -> None:
         pending = list(self._pending_messages)
@@ -779,7 +794,14 @@ def receive_message(
             raise ProtocolError(
                 f"Message length ({length!r}) not longer than standard OP_COMPRESSED message header size (25)"
             )
-        op_code, _, compressor_id = _UNPACK_COMPRESSION_HEADER(receive_data(conn, 9, deadline))
+        op_code, uncompressed_size, compressor_id = _UNPACK_COMPRESSION_HEADER(
+            receive_data(conn, 9, deadline)
+        )
+        if uncompressed_size > max_message_size:
+            raise ProtocolError(
+                f"Uncompressed message size ({uncompressed_size!r}) is larger "
+                f"than server max message size ({max_message_size!r})"
+            )
         data = _decompress(receive_data(conn, length - 25, deadline), compressor_id, max_message_size)
     else:
         data = receive_data(conn, length - 16, deadline)
