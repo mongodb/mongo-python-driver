@@ -165,7 +165,27 @@ class ZstdContext:
 
 
 def decompress(data: bytes | memoryview, compressor_id: int) -> bytes:
-    return _decompress(data, compressor_id, max_message_size=2**31 - 1)
+    if compressor_id == SnappyContext.compressor_id:
+        # python-snappy doesn't support the buffer interface.
+        # https://github.com/andrix/python-snappy/issues/65
+        # This only matters when data is a memoryview since
+        # id(bytes(data)) == id(data) when data is a bytes.
+        import snappy
+
+        return snappy.uncompress(bytes(data))
+    elif compressor_id == ZlibContext.compressor_id:
+        import zlib
+
+        return zlib.decompress(data)
+    elif compressor_id == ZstdContext.compressor_id:
+        if sys.version_info >= (3, 14):
+            from compression import zstd
+        else:
+            from backports import zstd
+
+        return zstd.decompress(data)
+    else:
+        raise ValueError(f"Unknown compressorId {compressor_id}")
 
 
 def _decompress(data: bytes | memoryview, compressor_id: int, max_message_size: int) -> bytes:

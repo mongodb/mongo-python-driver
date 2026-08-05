@@ -18,6 +18,9 @@ PyMongo 4.18 brings a number of changes including:
 - Command monitoring events and command log messages for a single logical
   operation now share one stable ``operation_id`` across all of its retry
   attempts, so consumers can correlate a retried operation's events. As a
+- Added validation of OP_COMPRESSED decompressed message size against
+  ``max_message_size`` to prevent memory exhaustion from maliciously crafted
+  compressed server responses.
   result, ``operation_id`` is no longer equal to the per-attempt ``request_id``
   for these operations.
 - Fixed a potential out-of-bounds read in the C extension when decoding an

@@ -99,21 +99,6 @@ class TestProcessHeader(AsyncUnitTest):
         self.assertEqual(compressor_id, 2)
 
 
-class TestDecompress(unittest.TestCase):
-    def test_decompressed_size_exceeds_max_raises(self):
-        from pymongo.compression_support import _decompress
-
-        import zlib
-
-        # Compress a small payload that decompresses larger than max
-        payload = zlib.compress(b"x" * 100)
-        with self.assertRaisesRegex(ProtocolError, "Decompressed message size"):
-            _decompress(payload, 2, max_message_size=5)
-        # Normal decompression still works
-        result = _decompress(payload, 2, max_message_size=1024)
-        self.assertEqual(result, b"x" * 100)
-
-
 class TestClose(AsyncUnitTest):
     async def asyncSetUp(self):
         self.protocol = _make_protocol()

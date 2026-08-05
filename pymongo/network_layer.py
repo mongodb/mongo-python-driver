@@ -34,7 +34,7 @@ from typing import (
 from pymongo import _csot, ssl_support
 from pymongo._asyncio_task import create_task
 from pymongo.common import MAX_MESSAGE_SIZE
-from pymongo.compression_support import _decompress, decompress
+from pymongo.compression_support import _decompress
 from pymongo.errors import ProtocolError, _OperationCancelled
 from pymongo.message import _UNPACK_REPLY, _OpMsg
 from pymongo.socket_checker import _errno_from_exception
