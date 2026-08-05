@@ -56,7 +56,7 @@ from pymongo.lock import (
     _async_create_condition,
     _async_create_lock,
 )
-from pymongo.logger import _SERVER_SELECTION_LOGGER
+from pymongo.logger import _SERVER_SELECTION_LOGGER, _is_debug_enabled
 from pymongo.pool_options import PoolOptions
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (
@@ -287,7 +287,7 @@ class Topology:
         logged_waiting = False
         # Server selection does not have APM events, gate only on logging
         ss: Optional[_ServerSelectionTelemetry] = None
-        if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+        if _is_debug_enabled(_SERVER_SELECTION_LOGGER):
             ss = _ServerSelectionTelemetry(
                 self._topology_id, selector, operation, operation_id, self.description
             )

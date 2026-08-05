@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import asyncio
 import collections
-import logging
 import os
 import socket
 import time
@@ -60,7 +59,7 @@ from pymongo.lock import (
     _create_condition,
     _create_lock,
 )
-from pymongo.logger import _CONNECTION_LOGGER
+from pymongo.logger import _CONNECTION_LOGGER, _is_debug_enabled
 from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
@@ -1112,9 +1111,7 @@ class Pool:
         with self.lock:
             self.active_contexts.discard(conn.cancel_context)
         telemetry = self._telemetry
-        if telemetry._should_publish or (
-            telemetry._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
-        ):
+        if telemetry._should_publish or (telemetry._log and _is_debug_enabled(_CONNECTION_LOGGER)):
             telemetry.checked_in(conn.id)
         if self.pid != os.getpid():
             self.reset_without_pause()
@@ -1235,7 +1232,7 @@ class _PoolCheckout:
         telemetry = pool._telemetry
         # Fast path: skip telemetry calls when CMAP events/logging are disabled
         if not telemetry._should_publish and not (
-            telemetry._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
+            telemetry._log and _is_debug_enabled(_CONNECTION_LOGGER)
         ):
             conn = pool._get_conn(time.monotonic(), handler=self._handler)
             self._conn = conn

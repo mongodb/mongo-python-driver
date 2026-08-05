@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import datetime
-import logging
 import queue
 import time
 from collections.abc import MutableMapping
@@ -32,6 +31,7 @@ from pymongo.logger import (
     _CommandStatusMessage,
     _ConnectionStatusMessage,
     _debug_log,
+    _is_debug_enabled,
     _SDAMStatusMessage,
     _ServerSelectionStatusMessage,
     _verbose_connection_error_reason,
@@ -60,8 +60,8 @@ def _should_generate_op_id(listeners: Optional[_EventListeners]) -> bool:
     """Return True if an operation id would be consumed by APM events or logging."""
     return (
         (listeners is not None and listeners.enabled_for_commands)
-        or _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)
-        or _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
+        or _is_debug_enabled(_COMMAND_LOGGER)
+        or _is_debug_enabled(_SERVER_SELECTION_LOGGER)
     )
 
 
@@ -106,7 +106,7 @@ class _CommandTelemetry:
     ) -> None:
         # NOTE: the _run_command fast path in command_runner.py inline this gate for performance
         # They must be kept in sync with any gating changes
-        self._should_log = topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)
+        self._should_log = topology_id is not None and _is_debug_enabled(_COMMAND_LOGGER)
         self._publish = listeners is not None and listeners.enabled_for_commands
         self._active = self._should_log or self._publish
         self._start = 0.0
@@ -264,7 +264,7 @@ class _CmapTelemetry:
     @property
     def _should_log(self) -> bool:
         """Computed per-call because logging level can be reconfigured at runtime."""
-        return self._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
+        return self._log and _is_debug_enabled(_CONNECTION_LOGGER)
 
     def _emit_log(self, message: _ConnectionStatusMessage, **extra: Any) -> None:
         _debug_log(
@@ -442,7 +442,7 @@ class _HeartbeatTelemetry:
         # Cached at construction: this object is short-lived (one heartbeat check) so
         # listener registration and logging level are stable for its lifetime.
         self._should_publish = listeners is not None and listeners.enabled_for_server_heartbeat
-        self._should_log = _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
+        self._should_log = _is_debug_enabled(_SDAM_LOGGER)
         self._start: float = 0.0
 
     def _emit_log(self, message: _SDAMStatusMessage, awaited: bool, **extra: Any) -> None:
@@ -543,7 +543,7 @@ class _SdamTelemetry:
     @property
     def _should_log(self) -> bool:
         """Computed per-call because logging level can be reconfigured at runtime."""
-        return _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
+        return _is_debug_enabled(_SDAM_LOGGER)
 
     def _enqueue(self, fn: Any, args: tuple[Any, ...]) -> None:
         if self._events is not None:
@@ -668,7 +668,7 @@ class _ServerSelectionTelemetry:
         self._topology_description = topology_description
         # Cached at construction: this object is short-lived (one select_server call) so
         # logging level is stable for its lifetime.
-        self._should_log = _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
+        self._should_log = _is_debug_enabled(_SERVER_SELECTION_LOGGER)
 
     def _emit_log(
         self,
@@ -721,7 +721,7 @@ def log_server_selection_succeeded(
     server_port: Optional[int],
 ) -> None:
     """Emit the server selection SUCCEEDED log entry."""
-    if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+    if _is_debug_enabled(_SERVER_SELECTION_LOGGER):
         _debug_log(
             _SERVER_SELECTION_LOGGER,
             message=_ServerSelectionStatusMessage.SUCCEEDED,
@@ -737,7 +737,7 @@ def log_server_selection_succeeded(
 
 def log_srv_monitor_failure(failure: Exception) -> None:
     """Emit a log entry when the SRV monitor fails to poll DNS records."""
-    if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+    if _is_debug_enabled(_SDAM_LOGGER):
         _debug_log(_SDAM_LOGGER, message="SRV monitor check failed", failure=repr(failure))
 
 
@@ -749,7 +749,7 @@ def log_command_retry(
     is_write: bool,
 ) -> None:
     """Emit a command-retry log entry."""
-    if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+    if _is_debug_enabled(_COMMAND_LOGGER):
         op = "write" if is_write else "read"
         _debug_log(
             _COMMAND_LOGGER,
