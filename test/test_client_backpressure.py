@@ -354,7 +354,7 @@ class TestClientBackpressure(IntegrationTest):
         # and the baseBackoffMS=50 backoffs are 0.1 + 0.2 = 0.3s.
 
         # Allow for slight timing slack on Windows + <= Python 3.12 due to asyncio timing resolution
-        if sys.platform == "win32" and not _IS_SYNC and sys.version_info <= (3, 12):
+        if sys.platform == "win32" and not _IS_SYNC and sys.version_info < (3, 13):
             exponential_expected = 0.55
             base_backoff_expected = 0.25
         else:
