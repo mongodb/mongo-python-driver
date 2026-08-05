@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 import queue
 import random
@@ -377,7 +376,7 @@ class Topology:
         )
         if _csot.get_timeout():
             _csot.set_rtt(server.description.min_round_trip_time)
-        if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+        if _is_debug_enabled(_SERVER_SELECTION_LOGGER):
             log_server_selection_succeeded(
                 self._topology_id,
                 selector,

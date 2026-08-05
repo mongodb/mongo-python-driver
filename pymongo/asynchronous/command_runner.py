@@ -36,7 +36,6 @@ command type so callers only pass what varies.
 from __future__ import annotations
 
 import datetime
-import logging
 import time
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
@@ -53,7 +52,7 @@ from pymongo import _csot, helpers_shared, message
 from pymongo._telemetry import _CommandTelemetry
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import NotPrimaryError, OperationFailure
-from pymongo.logger import _COMMAND_LOGGER
+from pymongo.logger import _COMMAND_LOGGER, _is_debug_enabled
 from pymongo.message import _BulkWriteContextBase, _convert_exception, _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 
@@ -167,7 +166,7 @@ async def _run_command(
     # Fast path: skip telemetry construction when logging and APM are disabled
     # Inline enabled check here for performance
     telemetry: Optional[_CommandTelemetry] = None
-    if (topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)) or (
+    if (topology_id is not None and _is_debug_enabled(_COMMAND_LOGGER)) or (
         listeners is not None and listeners.enabled_for_commands
     ):
         telemetry = _CommandTelemetry(
