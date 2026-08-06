@@ -34,7 +34,7 @@ from typing import (
 from pymongo import _csot, ssl_support
 from pymongo._asyncio_task import create_task
 from pymongo.common import MAX_MESSAGE_SIZE
-from pymongo.compression_support import _decompress
+from pymongo.compression_support import decompress
 from pymongo.errors import ProtocolError, _OperationCancelled
 from pymongo.message import _UNPACK_REPLY, _OpMsg
 from pymongo.socket_checker import _errno_from_exception
@@ -551,7 +551,7 @@ class PyMongoProtocol(BufferedProtocol):
                         f"Got response id {response_to!r} but expected {request_id!r}"
                     )
             if compressor_id is not None:
-                data = _decompress(data, compressor_id, self._max_message_size)
+                data = decompress(data, compressor_id, self._max_message_size)
             return data, op_code
         raise OSError("connection closed")
 
@@ -802,7 +802,9 @@ def receive_message(
                 f"Uncompressed message size ({uncompressed_size!r}) is larger "
                 f"than server max message size ({max_message_size!r})"
             )
-        data = _decompress(receive_data(conn, length - 25, deadline), compressor_id, max_message_size)
+        data = decompress(
+            receive_data(conn, length - 25, deadline), compressor_id, max_message_size
+        )
     else:
         data = receive_data(conn, length - 16, deadline)
 
