@@ -13,6 +13,9 @@ on:
 
 permissions:
   contents: read
+  # A live run uses the app token, but a dry run looks up the existing pull
+  # request with github.token, so that read has to be granted here.
+  pull-requests: read
 
 concurrency:
   group: uv-lock-update
