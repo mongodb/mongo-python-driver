@@ -205,5 +205,23 @@ class TestDecompress(unittest.TestCase):
         self.assertEqual(result, data)
 
 
+class TestDecompressSizeLimit(unittest.TestCase):
+    def test_decompressed_size_exceeds_max_raises(self):
+        import zlib
+
+        # High expansion ratio payload (repeated zeros, ~100000:1 ratio)
+        payload = zlib.compress(b"\x00" * 10_000_000)
+        original_len = len(zlib.decompress(payload))
+        self.assertGreater(original_len, 1000)  # high expansion ratio
+        # Raise when decompressed size exceeds small limit
+        from pymongo.errors import ProtocolError
+
+        with self.assertRaisesRegex(ProtocolError, "Decompressed message size"):
+            decompress(payload, ZlibContext.compressor_id, max_message_size=1000)
+        # Normal decompression with adequate limit
+        result = decompress(payload, ZlibContext.compressor_id, max_message_size=20_000_000)
+        self.assertEqual(result, b"\x00" * original_len)
+
+
 if __name__ == "__main__":
     unittest.main()
