@@ -62,7 +62,7 @@ unasync = [
 pip = ["pip>=20.2"]
 gevent = ["gevent>=21.12"]
 coverage = [
-    "coverage[toml]>=5,<=7.15.0"
+    "coverage[toml]>=5,<=7.15.2"
 ]
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
