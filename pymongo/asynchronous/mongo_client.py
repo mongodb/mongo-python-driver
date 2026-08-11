@@ -35,7 +35,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import logging
 import os
 import time as time  # noqa: PLC0414 # needed in sync version
 import warnings
@@ -57,7 +56,7 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
-from pymongo._telemetry import _OperationTelemetry, log_command_retry
+from pymongo._telemetry import _generate_op_id_or_none, _OperationTelemetry, log_command_retry
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
@@ -91,12 +90,10 @@ from pymongo.lock import (
 )
 from pymongo.logger import (
     _CLIENT_LOGGER,
-    _COMMAND_LOGGER,
-    _SERVER_SELECTION_LOGGER,
     _log_client_error,
     _log_or_warn,
 )
-from pymongo.message import _CursorAddress, _GetMore, _Query, _randint
+from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.monitoring import ConnectionClosedReason, _EventListeners
 from pymongo.operations import (
     DeleteMany,
@@ -3025,16 +3022,9 @@ class _ClientConnectionRetryable(Generic[T]):
         self._server: Server = None  # type: ignore
         self._deprioritized_servers: Optional[list[Server]] = None
         self._operation = operation
-        # Only generate an operation id when APM/logging is enabled
-        if operation_id is None and (
-            (
-                self._client._event_listeners is not None
-                and self._client._event_listeners.enabled_for_commands
-            )
-            or _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)
-            or _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
-        ):
-            operation_id = _randint()
+        # Only generate an operation id when APM/logging is enabled.
+        if operation_id is None:
+            operation_id = _generate_op_id_or_none(self._client._event_listeners)
         self._operation_id = operation_id
         if reuse_current_span and operation_telemetry is not None:
             raise ValueError("reuse_current_span and operation_telemetry are mutually exclusive")
