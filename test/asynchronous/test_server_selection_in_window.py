@@ -29,6 +29,7 @@ from pymongo.operations import _Op
 from pymongo.read_preferences import ReadPreference
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.helpers import ConcurrentRunner
+from test.asynchronous.utils import flaky
 from test.asynchronous.utils_selection_tests import create_topology
 from test.asynchronous.utils_spec_runner import AsyncSpecTestCreator
 from test.utils_shared import (
@@ -144,6 +145,7 @@ class TestProse(AsyncIntegrationTest):
         sys.platform == "darwin" and platform.machine() == "arm64" and "CI" in os.environ,
         "PYTHON-5861: Load balancing frequency assertion is timing-sensitive on macOS ARM64 CI",
     )
+    @flaky(reason="PYTHON-5911", affects_cpython_linux=True)
     async def test_load_balancing(self):
         listener = OvertCommandListener()
         cmap_listener = CMAPListener()

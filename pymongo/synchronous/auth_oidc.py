@@ -51,9 +51,6 @@ _IS_SYNC = True
 def _get_authenticator(
     credentials: MongoCredential, address: tuple[str, int]
 ) -> _OIDCAuthenticator:
-    if credentials.cache.data:
-        return credentials.cache.data
-
     # Extract values.
     principal_name = credentials.username
     properties = credentials.mechanism_properties
@@ -71,6 +68,9 @@ def _get_authenticator(
             raise ConfigurationError(
                 f"Refusing to connect to {address[0]}, which is not in authOIDCAllowedHosts: {allowed_hosts}"
             )
+
+    if credentials.cache.data:
+        return credentials.cache.data
 
     # Get or create the cache data.
     credentials.cache.data = _OIDCAuthenticator(username=principal_name, properties=properties)

@@ -22,7 +22,6 @@ MongoDB.
 
 from __future__ import annotations
 
-import datetime
 import random
 import struct
 from collections.abc import Iterable, Mapping, MutableMapping
@@ -451,7 +450,6 @@ class _BulkWriteContextBase:
         "op_id",
         "op_type",
         "session",
-        "start_time",
     )
 
     def __init__(
@@ -459,7 +457,7 @@ class _BulkWriteContextBase:
         database_name: str,
         cmd_name: str,
         conn: _AgnosticConnection,
-        operation_id: int,
+        operation_id: Optional[int],
         listeners: _EventListeners,
         session: Optional[_AgnosticClientSession],
         op_type: int,
@@ -471,7 +469,6 @@ class _BulkWriteContextBase:
         self.listeners = listeners
         self.name = cmd_name
         self.field = _FIELD_MAP[self.name]
-        self.start_time = datetime.datetime.now()
         self.session = session
         self.compress = bool(conn.compression_context)
         self.op_type = op_type
@@ -511,7 +508,7 @@ class _BulkWriteContext(_BulkWriteContextBase):
         database_name: str,
         cmd_name: str,
         conn: _AgnosticConnection,
-        operation_id: int,
+        operation_id: Optional[int],
         listeners: _EventListeners,
         session: Optional[_AgnosticClientSession],
         op_type: int,
@@ -754,7 +751,7 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
         database_name: str,
         cmd_name: str,
         conn: _AgnosticConnection,
-        operation_id: int,
+        operation_id: Optional[int],
         listeners: _EventListeners,
         session: Optional[_AgnosticClientSession],
         codec: CodecOptions[Any],

@@ -42,7 +42,18 @@ _IS_SYNC = True
 
 
 class CommandCursor(_CursorBase[_DocumentType]):
-    """A cursor / iterator over command cursors."""
+    """A cursor / iterator over command cursors.
+    Used by :meth:`~pymongo.collection.Collection.aggregate`,
+    :meth:`~pymongo.database.Database.aggregate`,
+    :meth:`~pymongo.collection.Collection.list_indexes`,
+    :meth:`~pymongo.collection.Collection.list_search_indexes`
+    :meth:`~pymongo.database.Database.list_collections`,
+    :meth:`~pymongo.database.Database.cursor_command`,
+    and :meth:`~pymongo.mongo_client.MongoClient.list_databases`
+    to iterate MongoDB command results.
+
+    Should not be called directly by application developers.
+    """
 
     _getmore_class = _GetMore
 
@@ -161,9 +172,7 @@ class CommandCursor(_CursorBase[_DocumentType]):
         """Send a getmore message and handle the response."""
         client = self._collection.database.client
         try:
-            response = client._run_operation(
-                operation, self._unpack_response, address=self._address
-            )
+            response = client._run_operation(operation, self._run_with_conn, address=self._address)
         except OperationFailure as exc:
             if exc.code in _CURSOR_CLOSED_ERRORS:
                 # Don't send killCursors because the cursor is already closed.

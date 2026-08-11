@@ -158,7 +158,7 @@
           },
           "keyMaterial": {
             "$binary": {
-              "base64": "n+HWZ0ZSVOYA3cvQgP7inN4JSXfOH85IngmeQxRpQHjCCcqT3IFqEWNlrsVHiz3AELimHhX4HKqOLWMUeSIT6emUDDoQX9BAv8DR1+E1w4nGs/NyEneac78EYFkK3JysrFDOgl2ypCCTKAypkn9CkAx1if4cfgQE93LW4kczcyHdGiH36CIxrCDGv1UzAvERN5Qa47DVwsM6a+hWsF2AAAJVnF0wYLLJU07TuRHdMrrphPWXZsFgyV+lRqJ7DDpReKNO8nMPLV/mHqHBHGPGQiRdb9NoJo8CvokGz4+KE8oLwzKf6V24dtwZmRkrsDV4iOhvROAzz+Euo1ypSkL3mw==",
+              "base64": "Vlza0NjSsxbiJbHUM++3EWyhd5/m4QHv0ZaH87LsljVDltHNZyR9YBFOTDFE1RKeY/uGSW35IdOLVxpHvo1/qBz7E6Iv14obBmniRetWZq0wxerm72LlF+VPTHHmNn1sIv3TY/HsHSx7S1U/ILaKukD7hBKZ5/4A2tPOXtdnTzC4Rpc8bRjaM8heQSNEWbTBPqcQ9xD4YLi+uQlzbLZjQA+Ljr540QJEwa7RGw8J22eo1sb3vSeDAhR24GH6RPJ5v72yElGcOZrKCjxnbd4mrCtSHssfOzCnK2Dw3mHikSLeBFGjnlXydBWiTn2AlhOs+YpXdAJ6Zm3xjkdJOXKytg==",
               "subType": "00"
             }
           },
@@ -177,8 +177,8 @@
           },
           "masterKey": {
             "provider": "azure",
-            "keyVaultEndpoint": "key-vault-csfle.vault.azure.net",
-            "keyName": "key-name-csfle"
+            "keyVaultEndpoint": "drivers-3392-key-vault.vault.azure.net",
+            "keyName": "drivers-3392-keyname"
           },
           "keyAltNames": [
             "altname",

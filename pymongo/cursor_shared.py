@@ -24,6 +24,22 @@ from typing import Any, Generic, Optional, Union
 from pymongo.message import _CursorAddress
 from pymongo.typings import _Address, _DocumentType
 
+_CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
+
+
+def _split_message(
+    message: Union[tuple[int, bytes], tuple[int, bytes, int]],
+) -> tuple[int, bytes, int]:
+    """Return request_id, data, max_doc_size.
+
+    :param message: (request_id, data, max_doc_size) or (request_id, data)
+    """
+    if len(message) == 3:
+        return message
+    # get_more and kill_cursors messages don't include BSON documents.
+    request_id, data = message
+    return request_id, data, 0
+
 
 class _AgnosticCursorBase(Generic[_DocumentType], ABC):
     """

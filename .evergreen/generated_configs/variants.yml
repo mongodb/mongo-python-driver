@@ -467,7 +467,7 @@ buildvariants:
       - name: .test-standard !.pypy .async .replica_set-noauth-ssl
     display_name: PyOpenSSL macOS
     run_on:
-      - rhel87-small
+      - macos-14
     batchtime: 1440
     expansions:
       SUB_TEST_NAME: pyopenssl
@@ -563,6 +563,17 @@ buildvariants:
     expansions:
       VERSION: latest
     tags: [coverage_tag]
+
+  # Sfp tests
+  - name: sfp-rhel8
+    tasks:
+      - name: .test-no-orchestration
+    display_name: SFP RHEL8
+    run_on:
+      - rhel87-small
+    expansions:
+      TEST_NAME: sfp
+    tags: [pr]
 
   # Stable api tests
   - name: stable-api-require-v1-rhel8-auth

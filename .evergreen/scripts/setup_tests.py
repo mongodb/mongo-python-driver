@@ -382,6 +382,8 @@ def handle_test_env() -> None:
         if not DRIVERS_TOOLS:
             raise RuntimeError("Missing DRIVERS_TOOLS")
         csfle_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/csfle")
+        # Opt in to corporate Azure credentials (DRIVERS-3392)
+        os.environ["FLE_AZURE_USE_CORPORATE"] = "YES"
         run_command(f"bash {csfle_dir.as_posix()}/setup-secrets.sh", cwd=csfle_dir)
         load_config_from_file(csfle_dir / "secrets-export.sh")
         run_command(f"bash {csfle_dir.as_posix()}/start-servers.sh")
@@ -432,6 +434,19 @@ def handle_test_env() -> None:
             "ATLAS_X509_DEV_WITH_CERT",
             secrets["ATLAS_X509_DEV"] + "&tlsCertificateKeyFile=" + str(cert_file),
         )
+
+        # We do not want the default client_context to be initialized.
+        write_env("DISABLE_CONTEXT")
+
+    if test_name == "sfp":
+        secrets = get_secrets("drivers/sfp")
+
+        # Write file with SFP Atlas X509 client certificate:
+        decoded = base64.b64decode(secrets["SFP_ATLAS_X509_BASE64"]).decode("utf8")
+        cert_file = ROOT / ".evergreen/atlas_x509_sfp_client_certificate.pem"
+        with cert_file.open("w") as file:
+            file.write(decoded)
+        write_env("SFP_ATLAS_X509_CERT", str(cert_file))
 
         # We do not want the default client_context to be initialized.
         write_env("DISABLE_CONTEXT")

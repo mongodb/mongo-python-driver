@@ -46,10 +46,14 @@ Documentation = "https://www.mongodb.com/docs/languages/python/pymongo-driver/cu
 Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
+[tool.uv]
+# Wait 7 days before resolving newly published package versions.
+exclude-newer = "7 days"
+
 [dependency-groups]
 dev = []
 lint = [
-    "ruff==0.15.16",
+    "ruff==0.15.20",
 ]
 unasync = [
     {include-group = "lint"},
@@ -58,7 +62,7 @@ unasync = [
 pip = ["pip>=20.2"]
 gevent = ["gevent>=21.12"]
 coverage = [
-    "coverage[toml]>=5,<=7.10.7"
+    "coverage[toml]>=5,<=7.15.0"
 ]
 mockupdb = [
     "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
@@ -66,7 +70,7 @@ mockupdb = [
 perf = ["simplejson>=3.17.0"]
 typing = [
     "mypy==1.19.1",
-    "pyright==1.1.410",
+    "pyright==1.1.411",
     "typing_extensions>=3.7.4.2",
     "pip>=20.2"
 ]
@@ -131,6 +135,7 @@ markers = [
     "auth: tests that rely on authentication",
     "ocsp: tests that rely on ocsp",
     "atlas_connect: tests that rely on an atlas connection",
+    "sfp: tests that rely on an Atlas Secure Frontend Processor connection",
     "perf: benchmark tests",
     "search_index: search index helper tests",
     "kms: client-side field-level encryption tests using kms",
