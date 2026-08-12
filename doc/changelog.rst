@@ -31,6 +31,22 @@ PyMongo 4.18 brings a number of changes including:
 - Fixed a bug on Windows, and on macOS when using PyOpenSSL, where
   ``SSL_CERT_FILE``/``SSL_CERT_DIR`` were merged with, rather than replacing,
   the OS/certifi certificate store.
+- Added general availability support for Queryable Encryption prefix, suffix,
+  and substring queries against MongoDB 9.0+, which requires libmongocrypt
+  1.20.0 or later:
+
+  - Added :attr:`~pymongo.encryption.Algorithm.STRING` and
+    :class:`~pymongo.encryption_options.StringOpts`, replacing
+    ``Algorithm.TEXTPREVIEW`` and ``TextOpts``, which are now deprecated.
+  - Added :attr:`~pymongo.encryption.QueryType.PREFIX`,
+    :attr:`~pymongo.encryption.QueryType.SUFFIX`, and
+    :attr:`~pymongo.encryption.QueryType.SUBSTRING`. The corresponding
+    ``PREFIXPREVIEW``, ``SUFFIXPREVIEW``, and ``SUBSTRINGPREVIEW`` query types
+    remain for experimental use with MongoDB versions before 9.0.
+  - Added the ``string_opts`` parameter to
+    :meth:`~pymongo.encryption.ClientEncryption.encrypt` and
+    :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.encrypt`,
+    deprecating ``text_opts``.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------

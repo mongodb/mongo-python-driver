@@ -19,6 +19,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Optional, TypedDict
 
@@ -312,10 +313,8 @@ class RangeOpts:
         return doc
 
 
-class TextOpts:
-    """**BETA** Options to configure encrypted queries using the text algorithm.
-
-    TextOpts is currently unstable API and subject to backwards breaking changes."""
+class StringOpts:
+    """Options to configure encrypted queries using the string algorithm."""
 
     def __init__(
         self,
@@ -325,15 +324,16 @@ class TextOpts:
         case_sensitive: Optional[bool] = None,
         diacritic_sensitive: Optional[bool] = None,
     ) -> None:
-        """Options to configure encrypted queries using the text algorithm.
+        """Options to configure encrypted queries using the string algorithm.
 
         :param substring: Further options to support substring queries.
         :param prefix: Further options to support prefix queries.
         :param suffix: Further options to support suffix queries.
-        :param case_sensitive: Whether text indexes for this field are case sensitive.
-        :param diacritic_sensitive: Whether text indexes for this field are diacritic sensitive.
+        :param case_sensitive: Whether string indexes for this field are case sensitive.
+        :param diacritic_sensitive: Whether string indexes for this field are diacritic sensitive.
 
-        .. versionadded:: 4.15
+        .. versionadded:: 4.18
+           ``StringOpts`` replaces ``TextOpts``, which is deprecated.
         """
         self.substring = substring
         self.prefix = prefix
@@ -357,9 +357,9 @@ class TextOpts:
 
 
 class SubstringOpts(TypedDict):
-    """**BETA** Options for substring text queries.
+    """Options for substring string queries.
 
-    SubstringOpts is currently unstable API and subject to backwards breaking changes.
+    .. versionadded:: 4.15
     """
 
     # strMaxLength is the maximum allowed length to insert. Inserting longer strings will error.
@@ -371,9 +371,9 @@ class SubstringOpts(TypedDict):
 
 
 class PrefixOpts(TypedDict):
-    """**BETA** Options for prefix text queries.
+    """Options for prefix string queries.
 
-    PrefixOpts is currently unstable API and subject to backwards breaking changes.
+    .. versionadded:: 4.15
     """
 
     # strMinQueryLength is the minimum allowed query length. Querying with a shorter string will error.
@@ -383,12 +383,32 @@ class PrefixOpts(TypedDict):
 
 
 class SuffixOpts(TypedDict):
-    """**BETA** Options for suffix text queries.
+    """Options for suffix string queries.
 
-    SuffixOpts is currently unstable API and subject to backwards breaking changes.
+    .. versionadded:: 4.15
     """
 
     # strMinQueryLength is the minimum allowed query length. Querying with a shorter string will error.
     strMinQueryLength: int
     # strMaxQueryLength is the maximum allowed query length. Querying with a longer string will error.
     strMaxQueryLength: int
+
+
+class TextOpts(StringOpts):
+    """**DEPRECATED** Options to configure encrypted queries using the text algorithm.
+
+    .. note:: ``TextOpts`` is deprecated. Use :class:`StringOpts` instead.
+
+    .. versionadded:: 4.15
+
+    .. versionchanged:: 4.18
+       Deprecated in favor of :class:`StringOpts`.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        warnings.warn(
+            "TextOpts is deprecated. Use StringOpts instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)

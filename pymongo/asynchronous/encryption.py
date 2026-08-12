@@ -22,6 +22,7 @@ import enum
 import socket
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
+import warnings
 import weakref
 from collections.abc import AsyncGenerator, Iterator, Mapping, MutableMapping, Sequence
 from copy import deepcopy
@@ -65,7 +66,7 @@ from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import (
     AutoEncryptionOpts,
     RangeOpts,
-    TextOpts,
+    StringOpts,
     check_min_pymongocrypt,
 )
 from pymongo.errors import (
@@ -529,8 +530,15 @@ class Algorithm(str, enum.Enum):
 
     .. versionadded:: 4.4
     """
+    STRING = "String"
+    """String.
+
+    .. versionadded:: 4.18
+    """
     TEXTPREVIEW = "TextPreview"
-    """**BETA** - TextPreview.
+    """**DEPRECATED** - TextPreview.
+
+    .. note:: Support for TextPreview is deprecated. Use :attr:`Algorithm.STRING` instead.
 
     .. versionadded:: 4.15
     """
@@ -559,8 +567,36 @@ class QueryType(str, enum.Enum):
     .. versionadded:: 4.4
     """
 
+    PREFIX = "prefix"
+    """Used to encrypt a value for a prefix query.
+
+    Used for the ``$encStrStartsWith`` operator. Requires MongoDB 9.0+.
+
+    .. versionadded:: 4.18
+    """
+
+    SUFFIX = "suffix"
+    """Used to encrypt a value for a suffix query.
+
+    Used for the ``$encStrEndsWith`` operator. Requires MongoDB 9.0+.
+
+    .. versionadded:: 4.18
+    """
+
+    SUBSTRING = "substring"
+    """Used to encrypt a value for a substring query.
+
+    Used for the ``$encStrContains`` operator. Requires MongoDB 9.0+.
+
+    .. versionadded:: 4.18
+    """
+
     PREFIXPREVIEW = "prefixPreview"
     """**BETA** - Used to encrypt a value for a prefixPreview query.
+
+    .. note:: The preview query types are for experimental workloads only and
+       are only supported by MongoDB versions before 9.0. Use
+       :attr:`QueryType.PREFIX` instead.
 
     .. versionadded:: 4.15
     """
@@ -568,14 +604,38 @@ class QueryType(str, enum.Enum):
     SUFFIXPREVIEW = "suffixPreview"
     """**BETA** - Used to encrypt a value for a suffixPreview query.
 
+    .. note:: The preview query types are for experimental workloads only and
+       are only supported by MongoDB versions before 9.0. Use
+       :attr:`QueryType.SUFFIX` instead.
+
     .. versionadded:: 4.15
     """
 
     SUBSTRINGPREVIEW = "substringPreview"
     """**BETA** - Used to encrypt a value for a substringPreview query.
 
+    .. note:: The preview query types are for experimental workloads only and
+       are only supported by MongoDB versions before 9.0. Use
+       :attr:`QueryType.SUBSTRING` instead.
+
     .. versionadded:: 4.15
     """
+
+
+def _resolve_string_opts(
+    string_opts: Optional[StringOpts], text_opts: Optional[StringOpts]
+) -> Optional[StringOpts]:
+    """Resolve the deprecated text_opts alias for string_opts."""
+    if text_opts is None:
+        return string_opts
+    if string_opts is not None:
+        raise ConfigurationError("Cannot set both string_opts and text_opts")
+    warnings.warn(
+        "The text_opts parameter is deprecated. Use string_opts instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+    return text_opts
 
 
 def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
@@ -917,7 +977,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         contention_factor: Optional[int] = None,
         range_opts: Optional[RangeOpts] = None,
         is_expression: bool = False,
-        text_opts: Optional[TextOpts] = None,
+        string_opts: Optional[StringOpts] = None,
     ) -> Any:
         self._check_closed()
         if isinstance(key_id, uuid.UUID):
@@ -937,10 +997,10 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 range_opts.document,
                 codec_options=self._codec_options,
             )
-        text_opts_bytes = None
-        if text_opts:
-            text_opts_bytes = encode(
-                text_opts.document,
+        string_opts_bytes = None
+        if string_opts:
+            string_opts_bytes = encode(
+                string_opts.document,
                 codec_options=self._codec_options,
             )
         with _wrap_encryption_errors():
@@ -953,8 +1013,9 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts_bytes,
                 is_expression=is_expression,
+                # pymongocrypt still names this parameter text_opts.
                 # For compatibility with pymongocrypt < 1.16:
-                **{"text_opts": text_opts_bytes} if text_opts_bytes else {},
+                **{"text_opts": string_opts_bytes} if string_opts_bytes else {},
             )
             return decode(encrypted_doc)["v"]
 
@@ -967,7 +1028,8 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
         range_opts: Optional[RangeOpts] = None,
-        text_opts: Optional[TextOpts] = None,
+        string_opts: Optional[StringOpts] = None,
+        text_opts: Optional[StringOpts] = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -988,10 +1050,14 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             used.
         :param range_opts: Index options for `range` queries. See
             :class:`RangeOpts` for some valid options.
-        :param text_opts: Index options for `textPreview` queries. See
-            :class:`TextOpts` for some valid options.
+        :param string_opts: Index options for `prefix`, `suffix`, and
+            `substring` queries. See :class:`StringOpts` for some valid options.
+        :param text_opts: **DEPRECATED** - Alias for `string_opts`.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+
+        .. versionchanged:: 4.18
+           Added the `string_opts` parameter and deprecated `text_opts`.
 
         .. versionchanged:: 4.9
            Added the `text_opts` parameter.
@@ -1016,7 +1082,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts,
                 is_expression=False,
-                text_opts=text_opts,
+                string_opts=_resolve_string_opts(string_opts, text_opts),
             ),
         )
 
