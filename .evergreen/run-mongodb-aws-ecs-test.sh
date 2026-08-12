@@ -28,8 +28,6 @@ export SET_XTRACE_ON=1
 export CI=true
 cd src
 rm -rf .venv
-# Discard any lockfile written by the host so we resolve from scratch
-rm -f uv.lock
 rm -f .evergreen/scripts/test-env.sh || true
 rm -f .evergreen/scripts/env.sh || true
 bash ./.evergreen/just.sh setup-tests auth_aws ecs-remote
