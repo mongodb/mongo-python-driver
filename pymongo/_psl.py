@@ -54,4 +54,4 @@ def is_public_suffix(domain: str) -> bool:
     if domain in suffixes:
         return True
     parts = domain.split(".")
-    return len(parts) > 1 and ".".join(parts[1:]) in wildcards
+    return len(parts) == 1 or (len(parts) > 1 and ".".join(parts[1:]) in wildcards)
