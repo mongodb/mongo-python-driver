@@ -94,11 +94,9 @@ class AsyncPeriodicExecutor:
         self._skip_sleep = True
 
     async def _run(self) -> None:
-        # The CSOT, op id, and OpenTelemetry contextvars must be cleared inside
-        # the executor task before execution begins: create_task froze a copy of
-        # whatever context was current when this executor was opened, which for
-        # the kill-cursors executor is the middle of the client's first
-        # operation.
+        # create_task froze a copy of the context this executor was opened in,
+        # which for the kill-cursors executor is the middle of the client's first
+        # operation. Clear it so every tick starts clean.
         _csot.reset_all()
         _op_id.reset()
         _otel.reset_context()
@@ -237,14 +235,10 @@ class PeriodicExecutor:
             return False
 
     def _run(self) -> None:
-        # Clear the CSOT, op id, and OpenTelemetry contextvars for the same
-        # reason AsyncPeriodicExecutor._run does. Python 3.14 made
-        # threading.Thread run its target in a copy of the creating thread's
-        # context (before that a thread started with an empty one), so this
-        # thread would otherwise inherit whatever was current when the executor
-        # was opened. For the kill-cursors executor that is the middle of the
-        # client's first operation, whose deadline and span would then apply to
-        # every tick for the rest of the process's life.
+        # Same reason as AsyncPeriodicExecutor._run: Python 3.14 runs a thread's
+        # target in a copy of the creating thread's context, so this thread would
+        # otherwise inherit the context the executor was opened in for the rest
+        # of the process's life.
         _csot.reset_all()
         _op_id.reset()
         _otel.reset_context()

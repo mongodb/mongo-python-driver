@@ -35,7 +35,7 @@ from bson.code import Code
 from bson.son import SON
 from pymongo import helpers_shared
 from pymongo._otel import is_internal_cursor_iteration
-from pymongo._telemetry import _OperationTelemetry
+from pymongo._telemetry import _operation_telemetry_or_none
 from pymongo.asynchronous.cursor_base import _AsyncCursorBase, _ConnectionManager
 from pymongo.asynchronous.helpers import anext
 from pymongo.collation import validate_collation_or_none
@@ -1087,7 +1087,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
                 self._exhaust,
             )
             client = self._collection.database.client
-            self._operation_telemetry = _OperationTelemetry(
+            self._operation_telemetry = _operation_telemetry_or_none(
                 client.options.tracing,
                 q.name,
                 self._session,

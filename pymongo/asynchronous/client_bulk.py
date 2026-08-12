@@ -32,7 +32,7 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo._telemetry import _generate_op_id_or_none, _OperationTelemetry
+from pymongo._telemetry import _generate_op_id_or_none, _operation_telemetry_or_none
 from pymongo.asynchronous.client_session import (
     AsyncClientSession,
     _validate_session_write_concern,
@@ -636,11 +636,11 @@ class _AsyncClientBulk:
         session = _validate_session_write_concern(session, self.write_concern)
 
         if not self.write_concern.acknowledged:
-            # This path never reaches the command-span code that would
-            # otherwise fill in the span's namespace, so pass it here. A client
-            # bulk write always runs against admin and spans multiple
-            # namespaces, so there is no single collection to report.
-            operation_telemetry = _OperationTelemetry(
+            # This path never reaches the command-span code that would otherwise
+            # fill in the namespace, so pass it here. A client bulk write always
+            # runs against admin and spans multiple namespaces, so it reports no
+            # collection.
+            operation_telemetry = _operation_telemetry_or_none(
                 self.client.options.tracing, operation, session, dbname="admin"
             )
             try:
@@ -651,10 +651,12 @@ class _AsyncClientBulk:
                         )
                     await self.execute_no_results(connection)
             except BaseException as exc:
-                operation_telemetry.failed(exc)
+                if operation_telemetry is not None:
+                    operation_telemetry.failed(exc)
                 raise
             else:
-                operation_telemetry.succeeded()
+                if operation_telemetry is not None:
+                    operation_telemetry.succeeded()
             return ClientBulkWriteResult(None, False, False)  # type: ignore[arg-type]
 
         result = await self.execute_command(session, operation)

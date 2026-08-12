@@ -179,12 +179,9 @@ def _get_query_text_max_length(tracing_options: Optional[TracingOptions]) -> int
 def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
     """Serialize ``cmd`` to extended JSON, redacted and truncated to ``max_length``.
 
-    Mirrors the truncation approach used for log messages: truncate field
-    values first, which usually keeps the result well-formed JSON (unlike a
-    blind cut of the fully-serialized string), then fall back to a hard
-    string cut as a safety net for whatever the field truncation's size
-    estimate still leaves over ``max_length``. The "..." marker is carved out
-    of the budget (not appended on top of it) so the result never exceeds
+    Mirrors log-message truncation: shorten field values first, which usually
+    keeps the result valid JSON, then hard-cut the string as a safety net. The
+    "..." marker comes out of the budget, so the result never exceeds
     ``max_length``.
     """
     filtered = {k: v for k, v in cmd.items() if k not in _QUERY_TEXT_EXCLUDED_FIELDS}
@@ -242,23 +239,17 @@ def _build_query_summary(command_name: str, dbname: str, collection: Optional[st
     return f"{command_name} {dbname}"
 
 
-# A handful of internal `_Op` values (used elsewhere for retry/server-selection and
-# cluster-time-advancing logic, e.g. `_WRITES_WITH_CLUSTER_TIME` in pymongo/operations.py) are
-# literally the wire protocol command name (e.g. "drop"/"create") rather than the OTel spec's
-# canonical db.operation.name for that logical operation ("dropCollection"/"createCollection", per
-# the spec's "Covered operations" table and its vendored
-# drop_collection.json/create_collection.json tests). Translate only the name used for the span;
-# leave the `operation` value used for retry selection and logging untouched everywhere else.
+# Some `_Op` values are the wire command name ("drop"/"create") rather than the spec's
+# db.operation.name for that operation ("dropCollection"/"createCollection"). Translate
+# only the span name; `_Op` is also keyed on elsewhere for retry and cluster-time logic.
 _OPERATION_NAME_OVERRIDES = {
     "drop": "dropCollection",
     "create": "createCollection",
     "dropSearchIndexes": "dropSearchIndex",
 }
 
-# Per the spec's span-name rule ("`driver_operation_name db` if there is no specific collection"),
-# its db.namespace examples, and its db.collection.name examples (omitted for runCommand), any
-# operation reaching the server through the generic `Database.command()` API is named "runCommand"
-# regardless of the actual command sent, rather than being named after that command.
+# The spec names anything sent through the generic `Database.command()` API "runCommand",
+# not after the command it carries.
 _RUN_COMMAND_OPERATION_NAME = "runCommand"
 
 

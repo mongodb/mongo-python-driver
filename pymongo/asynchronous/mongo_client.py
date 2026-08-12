@@ -57,7 +57,12 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
 from pymongo._otel import is_internal_cursor_iteration
-from pymongo._telemetry import _generate_op_id_or_none, _OperationTelemetry, log_command_retry
+from pymongo._telemetry import (
+    _generate_op_id_or_none,
+    _operation_telemetry_or_none,
+    _OperationTelemetry,
+    log_command_retry,
+)
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
@@ -1741,12 +1746,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
                 for i in range(0, len(session_ids), common._MAX_END_SESSIONS):
                     spec = {"endSessions": session_ids[i : i + common._MAX_END_SESSIONS]}
-                    # endSessions deliberately bypasses _retry_internal (errors are
-                    # ignored per spec, and it must not be retried), so its
-                    # operation span is created here instead.
-                    with _OperationTelemetry(
+                    # endSessions bypasses _retry_internal (errors are ignored per
+                    # spec, and it must not be retried), so start its span here.
+                    telemetry = _operation_telemetry_or_none(
                         self.options.tracing, _Op.END_SESSIONS, None, dbname="admin"
-                    ):
+                    )
+                    with telemetry or contextlib.nullcontext():
                         await conn.command("admin", spec, read_preference=read_pref, client=self)
         except PyMongoError:
             # Drivers MUST ignore any errors returned by the endSessions
@@ -1928,11 +1933,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     operation.session,  # type: ignore[arg-type]
                     operation.conn_mgr.conn,
                 ):
-                    # Exhaust/pinned cursors bypass _retryable_read (and thus
-                    # _retry_internal) entirely, so make the caller's operation
-                    # span current here instead, so its getMore command spans
-                    # still nest under it. contextlib.nullcontext when there's
-                    # no caller-owned span (or tracing is disabled).
+                    # Exhaust/pinned cursors bypass _retry_internal, so make the
+                    # caller's span current here to keep their getMore command
+                    # spans nested under it.
                     with (
                         operation_telemetry.use()
                         if operation_telemetry
@@ -2142,7 +2145,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         cursor itself (see ``_otel.internal_cursor_iteration``) keeps this one
         open, by handing it to the cursor.
         """
-        operation_telemetry = _OperationTelemetry(
+        operation_telemetry = _operation_telemetry_or_none(
             self.options.tracing,
             operation,
             session,
@@ -2164,11 +2167,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 operation_telemetry=operation_telemetry,
             )
         except BaseException as exc:
-            operation_telemetry.failed(exc)
+            if operation_telemetry is not None:
+                operation_telemetry.failed(exc)
             raise
         if is_internal_cursor_iteration():
             cmd_cursor._attach_operation_telemetry(operation_telemetry)
-        else:
+        elif operation_telemetry is not None:
             operation_telemetry.succeeded()
         return cmd_cursor
 
@@ -2310,11 +2314,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         namespace = address.namespace
         db, coll = helpers_shared._split_namespace(namespace)
         spec = {"killCursors": coll, "cursors": cursor_ids}
-        # killCursors deliberately bypasses _retry_internal (it must never be
-        # retried), so its operation span is created here instead.
-        with _OperationTelemetry(
+        # killCursors bypasses _retry_internal (it must never be retried), so
+        # start its span here.
+        telemetry = _operation_telemetry_or_none(
             self.options.tracing, _Op.KILL_CURSORS, session, dbname=db, collection=coll
-        ):
+        )
+        with telemetry or contextlib.nullcontext():
             await conn.command(db, spec, session=session, client=self)
 
     async def _process_kill_cursors(self) -> None:
@@ -3036,15 +3041,12 @@ class _ClientConnectionRetryable(Generic[T]):
         self._operation_id = operation_id
         if reuse_current_span and operation_telemetry is not None:
             raise ValueError("reuse_current_span and operation_telemetry are mutually exclusive")
-        # An operation span covering every attempt of this operation. A caller
-        # that needs the span to outlive this object (a cursor, whose getMores
-        # belong under the operation that created it) passes its own and keeps
-        # ownership; reuse_current_span means an enclosing span is already
-        # current and a second one would be spurious. Otherwise this object
-        # owns the span for its own lifetime.
+        # One span covering every attempt. A caller needing it to outlive this
+        # object (a cursor) passes its own and keeps ownership;
+        # reuse_current_span means an enclosing span is already current.
         self._owns_telemetry = operation_telemetry is None and not reuse_current_span
         if self._owns_telemetry:
-            operation_telemetry = _OperationTelemetry(
+            operation_telemetry = _operation_telemetry_or_none(
                 mongo_client.options.tracing, operation, session, is_run_command=is_run_command
             )
         self._operation_telemetry = operation_telemetry

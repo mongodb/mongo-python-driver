@@ -444,8 +444,10 @@ buildvariants:
   # Otel tests
   - name: otel-rhel8
     tasks:
-      - name: .test-non-standard .standalone-noauth-nossl
       - name: .test-non-standard .replica_set-noauth-ssl
+      - name: .test-non-standard .sharded_cluster-auth-ssl .python-3.14
+      - name: .test-non-standard .sharded_cluster-auth-ssl .python-pypy3.11
+      - name: .test-non-standard .standalone-noauth-nossl .python-3.10
     display_name: OTel RHEL8
     run_on:
       - rhel87-small

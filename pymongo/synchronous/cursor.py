@@ -35,7 +35,7 @@ from bson.code import Code
 from bson.son import SON
 from pymongo import helpers_shared
 from pymongo._otel import is_internal_cursor_iteration
-from pymongo._telemetry import _OperationTelemetry
+from pymongo._telemetry import _operation_telemetry_or_none
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import (
     validate_is_document_type,
@@ -1085,7 +1085,7 @@ class Cursor(_CursorBase[_DocumentType]):
                 self._exhaust,
             )
             client = self._collection.database.client
-            self._operation_telemetry = _OperationTelemetry(
+            self._operation_telemetry = _operation_telemetry_or_none(
                 client.options.tracing,
                 q.name,
                 self._session,

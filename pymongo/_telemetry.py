@@ -327,6 +327,35 @@ class _OperationTelemetry:
             self.failed(exc_val)
 
 
+def _operation_telemetry_or_none(
+    tracing_options: Optional[_otel.TracingOptions],
+    operation: str,
+    session: Optional[Any],
+    is_run_command: bool = False,
+    dbname: Optional[str] = None,
+    collection: Optional[str] = None,
+    set_current: bool = True,
+    cursor_id: Optional[int] = None,
+) -> Optional[_OperationTelemetry]:
+    """Return an :class:`_OperationTelemetry`, or None if tracing is disabled.
+
+    Every operation goes through here, so follow _CommandTelemetry's fast path
+    and skip the object rather than build one whose methods all do nothing.
+    """
+    if not _otel._is_tracing_enabled(tracing_options):
+        return None
+    return _OperationTelemetry(
+        tracing_options,
+        operation,
+        session,
+        is_run_command=is_run_command,
+        dbname=dbname,
+        collection=collection,
+        set_current=set_current,
+        cursor_id=cursor_id,
+    )
+
+
 class _CmapTelemetry:
     """Combines CMAP structured logging and APM event publishing for pool and connection events."""
 
