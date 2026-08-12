@@ -1122,6 +1122,59 @@ class TestOTelSpans(IntegrationTest):
             self.assertIsNotNone(txn_span.end_time)
 
     @client_context.require_transactions
+    def test_nested_with_transaction_on_another_session_keeps_spans_separate(self):
+        # Nesting with_transaction() is legal on a *different* session, unlike
+        # the same-session case above. Each session's operations must parent to
+        # its own transaction span, which holds because an operation span takes
+        # its parent explicitly from session._transaction.span instead of from
+        # ambient context.
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test
+        outer_coll = db.two_session_outer
+        inner_coll = db.two_session_inner
+        # Create both up front: creating a collection inside a transaction is
+        # illegal before server 4.4.
+        outer_coll.drop()
+        inner_coll.drop()
+        db.create_collection("two_session_outer")
+        db.create_collection("two_session_inner")
+
+        def inner_callback(inner_session):
+            inner_coll.insert_one({"x": 1}, session=inner_session)
+
+        def outer_callback(outer_session):
+            outer_coll.insert_one({"x": 1}, session=outer_session)
+            with client.start_session() as inner_session:
+                inner_session.with_transaction(inner_callback)
+
+        self.exporter.clear()
+        with client.start_session() as outer_session:
+            outer_session.with_transaction(outer_callback)
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 2, [s.name for s in finished])
+        for txn_span in txn_spans:
+            self.assertIsNotNone(txn_span.end_time)
+            # Transaction spans are never made current, so neither ends up
+            # nested under the other.
+            self.assertIsNone(txn_span.parent)
+
+        def insert_parent_id(collname: str) -> int:
+            (span,) = [
+                s
+                for s in finished
+                if s.attributes.get("db.operation.name") == "insert"
+                and s.attributes.get("db.collection.name") == collname
+            ]
+            return span.parent.span_id
+
+        outer_parent = insert_parent_id("two_session_outer")
+        inner_parent = insert_parent_id("two_session_inner")
+        self.assertNotEqual(outer_parent, inner_parent)
+        self.assertEqual({outer_parent, inner_parent}, {s.context.span_id for s in txn_spans})
+
+    @client_context.require_transactions
     def test_with_transaction_while_direct_api_transaction_active_does_not_corrupt_span(
         self,
     ):
