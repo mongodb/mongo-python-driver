@@ -148,17 +148,17 @@ def is_internal_cursor_iteration() -> bool:
 
 
 def _is_tracing_enabled(tracing_options: Optional[TracingOptions]) -> bool:
-    """Return True if OTel command spans should be created for this client.
+    """Return True if spans should be created for this client.
 
-    The ``MongoClient`` ``tracing.enabled`` option and the
-    ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable both
-    gate enablement; either one being truthy is sufficient.
+    ``tracing.enabled`` already accounts for the
+    ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable, which
+    ClientOptions folds in once when the client is built, so this is a lookup
+    rather than an os.environ read on every command.
+
+    None means there is no client to read the option from, which is the case
+    for monitor and handshake connections. Those are never traced.
     """
-    if not _HAS_OPENTELEMETRY:
-        return False
-    if tracing_options and tracing_options.get("enabled"):
-        return True
-    return _env_truthy(_OTEL_ENABLED_ENV)
+    return _HAS_OPENTELEMETRY and tracing_options is not None and tracing_options["enabled"]
 
 
 def _get_query_text_max_length(tracing_options: Optional[TracingOptions]) -> int:

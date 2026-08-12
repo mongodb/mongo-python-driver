@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 
 from bson.codec_options import _parse_codec_options
 from pymongo import common
+from pymongo._otel import _OTEL_ENABLED_ENV, _env_truthy
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListener, _EventListeners
@@ -248,10 +249,14 @@ class ClientOptions:
             if "enable_overload_retargeting" in options
             else options.get("enableoverloadretargeting", common.ENABLE_OVERLOAD_RETARGETING)
         )
-        self.__tracing = cast(
-            "_otel.TracingOptions",
-            options.get("tracing") or {"enabled": False, "query_text_max_length": None},
-        )
+        tracing = options.get("tracing") or {"enabled": False, "query_text_max_length": None}
+        # Resolve enablement once, here. The client option and the environment
+        # variable each enable tracing and neither can change for this client,
+        # so _otel._is_tracing_enabled becomes a lookup rather than an
+        # os.environ read on every command.
+        if not tracing["enabled"] and _env_truthy(_OTEL_ENABLED_ENV):
+            tracing = dict(tracing, enabled=True)
+        self.__tracing = cast("_otel.TracingOptions", tracing)
 
     @property
     def _options(self) -> Mapping[str, Any]:

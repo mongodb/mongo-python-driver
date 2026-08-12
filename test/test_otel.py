@@ -35,6 +35,7 @@ from pymongo.errors import (
     OperationFailure,
     ServerSelectionTimeoutError,
 )
+from pymongo.logger import _HELLO_COMMANDS
 from pymongo.operations import InsertOne
 from pymongo.read_preferences import ReadPreference
 from pymongo.typings import _Address
@@ -803,6 +804,29 @@ class TestOTelSpans(IntegrationTest):
         # with is_run_command=True, per the OTel spec's runCommand naming rule.
         self.assertIn("ping", [s.attributes.get("db.command.name") for s in finished])
         self.assertIn("runCommand", [s.attributes.get("db.operation.name") for s in finished])
+
+    def test_env_var_tracing_does_not_trace_monitor_commands(self):
+        # Monitor and handshake connections have no client to read the option
+        # from, so their tracing options are None. Enablement must not fall back
+        # to the environment variable there, or every hello would get a command
+        # span, which the spec excludes from tracing.
+        self.assertFalse(_otel._is_tracing_enabled(None))
+        with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
+            self.assertFalse(_otel._is_tracing_enabled(None))
+            client = self.rs_or_single_client()
+            self.exporter.clear()
+            client.admin.command("ping")
+
+        finished = self.exporter.get_finished_spans()
+        # The env var still enables tracing for the client's own commands...
+        self.assertIn("ping", [s.attributes.get("db.command.name") for s in finished])
+        # ...but nothing traces the monitors' hellos.
+        hello_spans = [
+            s
+            for s in finished
+            if s.attributes.get("db.command.name") in _HELLO_COMMANDS or s.name in _HELLO_COMMANDS
+        ]
+        self.assertEqual(hello_spans, [], [s.name for s in finished])
 
     def test_prose_2_command_payload_emission_via_env_var(self):
         """Prose Test 2: Command Payload Emission via Environment Variable."""
