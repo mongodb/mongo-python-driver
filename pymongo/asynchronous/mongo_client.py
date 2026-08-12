@@ -2170,9 +2170,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             if operation_telemetry is not None:
                 operation_telemetry.failed(exc)
             raise
-        if is_internal_cursor_iteration():
+        if operation_telemetry is None:
+            pass
+        elif is_internal_cursor_iteration():
             cmd_cursor._attach_operation_telemetry(operation_telemetry)
-        elif operation_telemetry is not None:
+        else:
             operation_telemetry.succeeded()
         return cmd_cursor
 

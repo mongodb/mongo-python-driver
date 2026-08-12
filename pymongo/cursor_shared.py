@@ -155,13 +155,16 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
         """
         if self._operation_telemetry is not None or self._reuse_current_span_for_getmore:
             return False
+        tracing_options = self._collection.database.client.options.tracing
+        if not _otel._is_tracing_enabled(tracing_options):
+            return False
         # A cursor opened by a command (listCollections, listIndexes, a
         # database-level aggregate) reports a namespace like
         # "$cmd.listCollections", which names no user collection.
         if _otel.is_command_namespace(collname):
             collname = None
         self._operation_telemetry = _operation_telemetry_or_none(
-            self._collection.database.client.options.tracing,
+            tracing_options,
             "getMore",
             self._session,
             dbname=dbname,
