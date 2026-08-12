@@ -81,9 +81,10 @@ if TYPE_CHECKING:
 class TracingOptions(TypedDict):
     """The shape of the ``MongoClient`` ``tracing`` option.
 
-    ``query_text_max_length`` is None when the client didn't configure it, so
-    the environment variable can be consulted; any explicit value (including
-    0, to force ``db.query.text`` off) overrides the environment variable.
+    As validated from user input, ``query_text_max_length`` is None when the
+    client didn't configure it. ClientOptions then runs the whole thing through
+    :func:`_resolve_tracing_options`, which folds in the environment variables
+    once, so the options a client actually holds have both fields resolved.
     """
 
     enabled: bool
@@ -161,19 +162,29 @@ def _is_tracing_enabled(tracing_options: Optional[TracingOptions]) -> bool:
     return _HAS_OPENTELEMETRY and tracing_options is not None and tracing_options["enabled"]
 
 
-def _get_query_text_max_length(tracing_options: Optional[TracingOptions]) -> int:
-    """Return the configured db.query.text truncation length, or 0 to omit the attribute.
+def _resolve_tracing_options(tracing_options: TracingOptions) -> TracingOptions:
+    """Fold both environment variables into a client's validated tracing options.
 
-    An explicit client value (including 0) always wins; the environment
-    variable is only consulted when the client didn't configure it at all.
+    Called once, when the client is built. Both variables are process-startup
+    input, so nothing re-reads them per command. An explicit client value wins
+    over the environment, including a ``query_text_max_length`` of 0, which
+    turns ``db.query.text`` off.
     """
-    client_value = tracing_options.get("query_text_max_length") if tracing_options else None
-    if client_value is not None:
-        return max(0, client_value)
-    try:
-        return max(0, int(os.getenv(_OTEL_QUERY_TEXT_MAX_LENGTH_ENV, "0")))
-    except ValueError:
-        return 0
+    max_length = tracing_options["query_text_max_length"]
+    if max_length is None:
+        try:
+            max_length = int(os.getenv(_OTEL_QUERY_TEXT_MAX_LENGTH_ENV, "0"))
+        except ValueError:
+            max_length = 0
+    return {
+        "enabled": tracing_options["enabled"] or _env_truthy(_OTEL_ENABLED_ENV),
+        "query_text_max_length": max(0, max_length),
+    }
+
+
+def _get_query_text_max_length(tracing_options: Optional[TracingOptions]) -> int:
+    """Return the db.query.text truncation length, or 0 to omit the attribute."""
+    return (tracing_options["query_text_max_length"] or 0) if tracing_options else 0
 
 
 def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
