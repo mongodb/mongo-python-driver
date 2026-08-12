@@ -56,6 +56,7 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
+from pymongo._otel import is_internal_cursor_iteration
 from pymongo._telemetry import _generate_op_id_or_none, _OperationTelemetry, log_command_retry
 from pymongo.client_options import ClientOptions
 from pymongo.driver_info import DriverInfo
@@ -2123,14 +2124,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         dbname: str,
         collection: Optional[str] = None,
     ) -> _CommandCursor:
-        """Run a command-cursor read, nesting its getMores under one operation span.
+        """Run a command-cursor read within its own operation span.
 
         Takes the same arguments as :meth:`_retryable_read`, plus the namespace
         for the span. A command cursor's first batch is fetched inside that
         call, before the cursor exists, so the span cannot be owned by the
-        cursor the way a find cursor's is. Create it here, keep it open across
-        the call, and hand it to the cursor that comes back so every later
-        getMore nests under the operation that produced the cursor.
+        cursor the way a find cursor's is; create it here instead.
+
+        The span ends with the command that created the cursor. Later getMores
+        belong to whoever drives iteration: each one the caller drives gets an
+        operation span of its own, so only a public API call that drains the
+        cursor itself (see ``_otel.internal_cursor_iteration``) keeps this one
+        open, by handing it to the cursor.
         """
         operation_telemetry = _OperationTelemetry(
             self.options.tracing,
@@ -2156,7 +2161,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         except BaseException as exc:
             operation_telemetry.failed(exc)
             raise
-        cmd_cursor._attach_operation_telemetry(operation_telemetry)
+        if is_internal_cursor_iteration():
+            cmd_cursor._attach_operation_telemetry(operation_telemetry)
+        else:
+            operation_telemetry.succeeded()
         return cmd_cursor
 
     def _retryable_write(

@@ -436,6 +436,25 @@ class TestOTelSpans(AsyncIntegrationTest):
             return list(finished)
         return [s for s in finished if s.name == name]
 
+    @staticmethod
+    def operation_spans(finished, operation: str):
+        """Return the operation spans for ``operation``, excluding command spans.
+
+        Only command spans carry db.command.name, so its absence is what tells
+        the two kinds apart when both name the same operation.
+        """
+        return [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == operation
+            and "db.command.name" not in s.attributes
+        ]
+
+    @staticmethod
+    def command_spans(finished, command: str):
+        """Return the command spans for ``command``."""
+        return [s for s in finished if s.attributes.get("db.command.name") == command]
+
     def ping_spans(self):
         """Return the spans belonging to a ``ping`` run through ``db.command()``.
 
@@ -493,7 +512,7 @@ class TestOTelSpans(AsyncIntegrationTest):
             self.assertEqual(span.attributes["db.collection.name"], "test_otel_getmore")
             self.assertEqual(span.attributes["db.command.name"], "getMore")
 
-    async def test_find_getmores_nest_under_one_operation_span(self):
+    async def test_caller_driven_find_getmores_get_their_own_operation_spans(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client.pymongo_test.getmore_nesting
         await coll.drop()
@@ -504,35 +523,32 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(len(docs), 10)
 
         finished = self.exporter.get_finished_spans()
-        # Exactly one operation span for the whole cursor.
-        find_op_spans = [
-            s
-            for s in finished
-            if s.attributes.get("db.operation.name") == "find"
-            and "db.command.name" not in s.attributes
-        ]
+        # One operation span for the query that created the cursor.
+        find_op_spans = self.operation_spans(finished, "find")
         self.assertEqual(len(find_op_spans), 1, [s.name for s in finished])
-        op_span = find_op_spans[0]
-        self.assertEqual(op_span.name, "find pymongo_test.getmore_nesting")
+        find_op_span = find_op_spans[0]
+        self.assertEqual(find_op_span.name, "find pymongo_test.getmore_nesting")
+        self.assertTrue(find_op_span.attributes["db.mongodb.cursor_id"])
 
-        # No getMore *operation* spans at all.
-        getmore_op_spans = [
-            s
-            for s in finished
-            if s.attributes.get("db.operation.name") == "getMore"
-            and "db.command.name" not in s.attributes
-        ]
-        self.assertEqual(getmore_op_spans, [])
+        # One more, a sibling rather than a child, per getMore the caller drove.
+        getmore_op_spans = self.operation_spans(finished, "getMore")
+        self.assertGreater(len(getmore_op_spans), 1)
+        for op_span in getmore_op_spans:
+            self.assertEqual(op_span.name, "getMore pymongo_test.getmore_nesting")
+            self.assertNotEqual(op_span.parent, find_op_span.context)
+            self.assertEqual(
+                op_span.attributes["db.mongodb.cursor_id"],
+                find_op_span.attributes["db.mongodb.cursor_id"],
+            )
 
-        # Every getMore *command* span is a child of that one operation span.
-        getmore_cmd_spans = [
-            s for s in finished if s.attributes.get("db.command.name") == "getMore"
-        ]
-        self.assertGreater(len(getmore_cmd_spans), 1)
+        # Each getMore command span nests under its own operation span.
+        getmore_cmd_spans = self.command_spans(finished, "getMore")
+        self.assertEqual(len(getmore_cmd_spans), len(getmore_op_spans))
+        parent_ids = {s.context.span_id for s in getmore_op_spans}
         for cmd_span in getmore_cmd_spans:
-            self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
+            self.assertIn(cmd_span.parent.span_id, parent_ids)
 
-    async def test_aggregate_getmores_nest_under_one_operation_span(self):
+    async def test_caller_driven_aggregate_getmores_get_their_own_operation_spans(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client.pymongo_test.agg_nesting
         await coll.drop()
@@ -543,27 +559,44 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(len(docs), 10)
 
         finished = self.exporter.get_finished_spans()
-        agg_op_spans = [
-            s
-            for s in finished
-            if s.attributes.get("db.operation.name") == "aggregate"
-            and "db.command.name" not in s.attributes
-        ]
+        agg_op_spans = self.operation_spans(finished, "aggregate")
         self.assertEqual(len(agg_op_spans), 1, [s.name for s in finished])
-        op_span = agg_op_spans[0]
+        agg_op_span = agg_op_spans[0]
 
-        getmore_op_spans = [
-            s
-            for s in finished
-            if s.attributes.get("db.operation.name") == "getMore"
-            and "db.command.name" not in s.attributes
-        ]
-        self.assertEqual(getmore_op_spans, [])
+        getmore_op_spans = self.operation_spans(finished, "getMore")
+        self.assertGreater(len(getmore_op_spans), 1)
+        for op_span in getmore_op_spans:
+            self.assertEqual(op_span.name, "getMore pymongo_test.agg_nesting")
+            self.assertNotEqual(op_span.parent, agg_op_span.context)
 
-        getmore_cmd_spans = [
-            s for s in finished if s.attributes.get("db.command.name") == "getMore"
-        ]
-        self.assertGreater(len(getmore_cmd_spans), 1)
+        getmore_cmd_spans = self.command_spans(finished, "getMore")
+        self.assertEqual(len(getmore_cmd_spans), len(getmore_op_spans))
+        parent_ids = {s.context.span_id for s in getmore_op_spans}
+        for cmd_span in getmore_cmd_spans:
+            self.assertIn(cmd_span.parent.span_id, parent_ids)
+
+    async def test_internal_iteration_keeps_getmores_in_one_operation_span(self):
+        # list_collection_names drains its own listCollections cursor to build
+        # its return value, so the whole call is one operation and its getMores
+        # get no operation spans of their own.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test_internal_iteration
+        for i in range(6):
+            await db[f"coll{i}"].insert_one({})
+        self.addAsyncCleanup(client.drop_database, db.name)
+        self.exporter.clear()
+
+        names = await db.list_collection_names(cursor={"batchSize": 2})
+        self.assertEqual(len(names), 6)
+
+        finished = self.exporter.get_finished_spans()
+        op_spans = self.operation_spans(finished, "listCollections")
+        self.assertEqual(len(op_spans), 1, [s.name for s in finished])
+        op_span = op_spans[0]
+        self.assertEqual(self.operation_spans(finished, "getMore"), [])
+
+        getmore_cmd_spans = self.command_spans(finished, "getMore")
+        self.assertGreater(len(getmore_cmd_spans), 0)
         for cmd_span in getmore_cmd_spans:
             self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
 
@@ -805,6 +838,83 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(len(spans), 1)
         self.assertNotIn("db.query.text", spans[0].attributes)
 
+    async def test_prose_3_get_more_records_sent_cursor_id_not_returned_cursor_id(self):
+        """Prose Test 3: getMore records the cursor id it sent, not the cursor id returned."""
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.prose3_getmore_cursor_id
+        await coll.drop()
+        await coll.insert_many([{"i": i} for i in range(3)])
+        self.exporter.clear()
+
+        cursor = coll.find({}, batch_size=2)
+        # Drain exactly the first batch (2 docs) without triggering a getMore
+        # yet, so the cursor id read here is the one `find` returned - the id
+        # about to be sent in the upcoming getMore - and not whatever that
+        # getMore's reply comes back with.
+        await cursor.next()
+        await cursor.next()
+        sent_cursor_id = cursor.cursor_id
+        self.assertIsNotNone(sent_cursor_id)
+        self.assertNotEqual(sent_cursor_id, 0)
+
+        # Draining the last document sends exactly one getMore, which
+        # exhausts the cursor: the server's reply to that getMore returns a
+        # cursor id of 0.
+        remaining = await cursor.to_list()
+        self.assertEqual(len(remaining), 1)
+        self.assertEqual(cursor.cursor_id, 0)
+
+        finished = self.exporter.get_finished_spans()
+        getmore_op_spans = self.operation_spans(finished, "getMore")
+        self.assertEqual(len(getmore_op_spans), 1, [s.name for s in finished])
+        getmore_cmd_spans = self.command_spans(finished, "getMore")
+        self.assertEqual(len(getmore_cmd_spans), 1, [s.name for s in finished])
+
+        # Both the getMore operation span and the getMore command span must
+        # carry the id the driver sent, never the 0 the server's reply
+        # returned.
+        for span in (getmore_op_spans[0], getmore_cmd_spans[0]):
+            self.assertIn("db.mongodb.cursor_id", span.attributes)
+            self.assertNotEqual(span.attributes["db.mongodb.cursor_id"], 0)
+            self.assertEqual(span.attributes["db.mongodb.cursor_id"], sent_cursor_id)
+
+    @async_client_context.require_transactions
+    async def test_prose_4_get_more_in_transaction_nests_under_transaction_span(self):
+        """Prose Test 4: getMore inside a transaction nests under the transaction span."""
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.prose4_getmore_in_txn
+        await coll.drop()
+        # Inserted outside the transaction, so the transaction below contains
+        # only the find and getMore.
+        await coll.insert_many([{"i": i} for i in range(3)])
+
+        async def callback(session):
+            docs = await coll.find({}, batch_size=2, session=session).to_list()
+            self.assertEqual(len(docs), 3)
+
+        self.exporter.clear()
+        async with client.start_session() as session:
+            await session.with_transaction(callback)
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        txn_span = txn_spans[0]
+
+        find_op_spans = self.operation_spans(finished, "find")
+        self.assertEqual(len(find_op_spans), 1, [s.name for s in finished])
+        find_op_span = find_op_spans[0]
+
+        getmore_op_spans = self.operation_spans(finished, "getMore")
+        self.assertEqual(len(getmore_op_spans), 1, [s.name for s in finished])
+        getmore_op_span = getmore_op_spans[0]
+
+        # Both operation spans must nest directly under the transaction span...
+        self.assertEqual(find_op_span.parent.span_id, txn_span.context.span_id)
+        self.assertEqual(getmore_op_span.parent.span_id, txn_span.context.span_id)
+        # ...as siblings of each other, not one nested under the other.
+        self.assertNotEqual(getmore_op_span.parent.span_id, find_op_span.context.span_id)
+
     async def test_explicit_query_text_max_length_zero_overrides_env_var(self):
         # An explicit client-side 0 must win over the environment variable, unlike
         # unset (which defers to it) - otherwise an app can't reliably opt out.
@@ -819,6 +929,45 @@ class TestOTelSpans(AsyncIntegrationTest):
         spans = self.spans("ping")
         self.assertEqual(len(spans), 1)
         self.assertNotIn("db.query.text", spans[0].attributes)
+
+    async def test_getmore_over_a_command_namespace_omits_the_collection(self):
+        """A cursor opened by a command targets no user collection.
+
+        listCollections runs against the "<db>.$cmd.listCollections" namespace,
+        and its getMore carries that in the command's "collection" field. That
+        is not a user collection, so per the spec db.collection.name is omitted
+        and the span is named "getMore <db>" rather than
+        "getMore <db>.$cmd.listCollections".
+        """
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test_cmd_ns
+        await client.drop_database(db.name)
+        # Two collections with a batch size of one guarantees exactly one getMore.
+        await db.coll_one.insert_one({"x": 1})
+        await db.coll_two.insert_one({"x": 1})
+        self.exporter.clear()
+
+        await (await db.list_collections(cursor={"batchSize": 1})).to_list()
+
+        finished = self.exporter.get_finished_spans()
+        getmore_op_spans = self.operation_spans(finished, "getMore")
+        self.assertGreaterEqual(len(getmore_op_spans), 1, [s.name for s in finished])
+        getmore_cmd_spans = self.command_spans(finished, "getMore")
+        self.assertGreaterEqual(len(getmore_cmd_spans), 1, [s.name for s in finished])
+
+        for span in getmore_op_spans + getmore_cmd_spans:
+            self.assertNotIn("db.collection.name", span.attributes)
+        # The operation span is named "<operation> <db>" when no collection is
+        # targeted; the command span is named after the command alone, and
+        # carries the same "<command> <db>" form in db.query.summary.
+        for span in getmore_op_spans:
+            self.assertEqual(span.name, f"getMore {db.name}")
+            self.assertEqual(span.attributes["db.operation.summary"], f"getMore {db.name}")
+        for span in getmore_cmd_spans:
+            self.assertEqual(span.name, "getMore")
+            self.assertEqual(span.attributes["db.query.summary"], f"getMore {db.name}")
+
+        await client.drop_database(db.name)
 
     async def test_query_text_truncation_shrinks_oversized_field_values(self):
         client = await self.async_rs_or_single_client(

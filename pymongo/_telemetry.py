@@ -273,8 +273,12 @@ class _OperationTelemetry:
     command spans rather than being collapsed into one.
 
     With ``set_current=False`` the span is not made current at construction.
-    That suits a span outliving one ``_retry_internal`` call (cursor getMores),
-    where each call makes it current with :meth:`use`.
+    That suits a span started outside the ``_retry_internal`` call it covers,
+    such as a cursor-creating command's, whose span has to exist before the
+    cursor does; that call makes it current with :meth:`use`.
+
+    ``cursor_id`` presets ``db.mongodb.cursor_id`` for an operation reading a
+    cursor that already exists, whose id is known before the command is built.
     """
 
     __slots__ = ("handle",)
@@ -288,6 +292,7 @@ class _OperationTelemetry:
         dbname: Optional[str] = None,
         collection: Optional[str] = None,
         set_current: bool = True,
+        cursor_id: Optional[int] = None,
     ) -> None:
         parent_span = None
         if session is not None and session.in_transaction:
@@ -299,6 +304,7 @@ class _OperationTelemetry:
             dbname=dbname,
             collection=collection,
             set_current=set_current,
+            cursor_id=cursor_id,
         )
 
     def use(self) -> Any:

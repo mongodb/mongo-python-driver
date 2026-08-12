@@ -228,22 +228,34 @@ class CommandCursor(_CursorBase[_DocumentType]):
         if self._id:  # Get More
             dbname, collname = _split_namespace(self._ns)
             read_pref = self._collection._read_preference_for(self.session)
-            self._send_message(
-                self._getmore_class(
-                    dbname,
-                    collname,
-                    self._batch_size,
-                    self._id,
-                    self._collection.codec_options,
-                    read_pref,
-                    self._session,
-                    self._collection.database.client,
-                    self._max_await_time_ms,
-                    self._sock_mgr,
-                    False,
-                    self._comment,
-                )
+            getmore = self._getmore_class(
+                dbname,
+                collname,
+                self._batch_size,
+                self._id,
+                self._collection.codec_options,
+                read_pref,
+                self._session,
+                self._collection.database.client,
+                self._max_await_time_ms,
+                self._sock_mgr,
+                False,
+                self._comment,
             )
+            own_span = self._start_getmore_operation_telemetry(dbname, collname)
+            if not own_span:
+                self._send_message(getmore)
+            else:
+                # _send_message ends the span itself on every failure path, and
+                # an exhausted cursor's close() ends it on the way out; both are
+                # idempotent, so only a successful send leaving the cursor open
+                # is left to handle here.
+                try:
+                    self._send_message(getmore)
+                except BaseException as exc:
+                    self._end_operation_telemetry(exc)
+                    raise
+                self._end_operation_telemetry()
         else:  # Cursor id is zero nothing else to return
             self._die_lock()
 
