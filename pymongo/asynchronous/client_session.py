@@ -787,19 +787,21 @@ class AsyncClientSession:
         # commit/abort leave it open, so a retried with_transaction() yields a
         # single span. Skipped when a direct-API transaction is already active,
         # since start_transaction() raises below and the span would be empty.
-        if not self.in_transaction:
-            self._with_transaction_span = _otel.start_transaction_span(self._client.options.tracing)
+        tracing_options = self._client.options.tracing
+        if _otel._is_tracing_enabled(tracing_options) and not self.in_transaction:
+            self._with_transaction_span = _otel.start_transaction_span(tracing_options)
         try:
             return await self._with_transaction_retry_loop(
                 callback, read_concern, write_concern, read_preference, max_commit_time_ms
             )
         finally:
-            _otel.end_transaction_span(self._with_transaction_span)
-            # Only clear the span this call owns; a concurrent direct-API
-            # transaction's span belongs to that transaction.
-            if self._transaction.span is self._with_transaction_span:
-                self._transaction.span = None
-            self._with_transaction_span = None
+            if self._with_transaction_span is not None:
+                _otel.end_transaction_span(self._with_transaction_span)
+                # Only clear the span this call owns; a concurrent direct-API
+                # transaction's span belongs to that transaction.
+                if self._transaction.span is self._with_transaction_span:
+                    self._transaction.span = None
+                self._with_transaction_span = None
 
     async def _with_transaction_retry_loop(
         self,
@@ -909,7 +911,7 @@ class AsyncClientSession:
             # Reuse with_transaction's shared span so a retried call still
             # produces exactly one "transaction" span.
             self._transaction.span = self._with_transaction_span
-        else:
+        elif _otel._is_tracing_enabled(self._transaction.client.options.tracing):
             self._transaction.span = _otel.start_transaction_span(
                 self._transaction.client.options.tracing
             )
@@ -925,7 +927,7 @@ class AsyncClientSession:
         is a no-op here. Otherwise a retried with_transaction() would end the
         shared span prematurely on the first failed attempt.
         """
-        if self._with_transaction_span is None:
+        if self._transaction.span is not None and self._with_transaction_span is None:
             _otel.end_transaction_span(self._transaction.span)
             self._transaction.span = None
 
@@ -952,7 +954,9 @@ class AsyncClientSession:
             # A direct-API retry needs a fresh span: the prior attempt's
             # finally block already ended and cleared it. with_transaction
             # pins its shared span instead, see _end_own_transaction_span.
-            if self._transaction.span is None:
+            if self._transaction.span is None and _otel._is_tracing_enabled(
+                self._transaction.client.options.tracing
+            ):
                 self._transaction.span = _otel.start_transaction_span(
                     self._transaction.client.options.tracing
                 )
