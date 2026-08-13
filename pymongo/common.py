@@ -69,6 +69,9 @@ MIN_SUPPORTED_WIRE_VERSION = 8
 # MongoDB 9.0
 MAX_SUPPORTED_WIRE_VERSION = 29
 
+# MongoDB 7.1, the first release whose mongos continues an exhaust getMore stream.
+MONGOS_EXHAUST_WIRE_VERSION = 22
+
 # Frequency to call hello on servers, in seconds.
 HEARTBEAT_FREQUENCY = 10
 

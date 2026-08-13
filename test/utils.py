@@ -82,11 +82,6 @@ def wait_until(predicate, success_description, timeout=10):
         time.sleep(interval)
 
 
-def is_mongos(client):
-    res = client.admin.command(HelloCompat.LEGACY_CMD)
-    return res.get("msg", "") == "isdbgrid"
-
-
 def ensure_all_connected(client: MongoClient) -> None:
     """Ensure that the client's connection pool has socket connections to all
     members of a replica set. Raises ConfigurationError when called with a

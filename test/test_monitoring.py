@@ -420,7 +420,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertIsInstance(failed.duration_micros, int)
         self.assertEqual(error, failed.failure)
 
-    @client_context.require_no_mongos
+    @client_context.require_exhaust_cursors
     def test_exhaust(self):
         self.client.pymongo_test.test.drop()
         self.client.pymongo_test.test.insert_many([{} for _ in range(11)])

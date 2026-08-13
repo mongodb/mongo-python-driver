@@ -213,19 +213,15 @@ class Cursor(_CursorBase[_DocumentType]):
         self._dbname = collection.database.name
         self._collname = collection.name
 
-        # Checking exhaust cursor support requires network IO
-        if _IS_SYNC:
-            self._exhaust_checked = True
-            self._supports_exhaust()  # type: ignore[unused-coroutine]
-        else:
-            self._exhaust = cursor_type == CursorType.EXHAUST
-            self._exhaust_checked = False
+        self._validate_exhaust_handling()
 
-    def _supports_exhaust(self) -> None:
-        # Exhaust cursor support
+    def _validate_exhaust_handling(self) -> None:
+        """Reject option combinations an exhaust cursor cannot serve.
+
+        Server support is checked against the connection in use, in
+        _check_exhaust_supported.
+        """
         if self._cursor_type == CursorType.EXHAUST:
-            if self._collection.database.client.is_mongos:
-                raise InvalidOperation("Exhaust cursors are not supported by mongos")
             if self._limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
             self._exhaust = True
@@ -369,8 +365,6 @@ class Cursor(_CursorBase[_DocumentType]):
         if mask & _QUERY_OPTIONS["exhaust"]:
             if self._limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
-            if self._collection.database.client.is_mongos:
-                raise InvalidOperation("Exhaust cursors are not supported by mongos")
             self._exhaust = True
 
         self._query_flags |= mask
@@ -1121,9 +1115,6 @@ class Cursor(_CursorBase[_DocumentType]):
 
     def next(self) -> _DocumentType:
         """Advance the cursor."""
-        if not self._exhaust_checked:
-            self._exhaust_checked = True
-            self._supports_exhaust()
         if self._empty:
             raise StopIteration
         if len(self._data) or self._refresh():
@@ -1133,9 +1124,6 @@ class Cursor(_CursorBase[_DocumentType]):
 
     def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]
         """Get all or some documents from the cursor."""
-        if not self._exhaust_checked:
-            self._exhaust_checked = True
-            self._supports_exhaust()
         if self._empty:
             return False
         if len(self._data) or self._refresh():
