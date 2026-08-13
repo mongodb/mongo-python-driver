@@ -26,7 +26,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
+        uses: blink1073/drivers-github-tools/python/setup@f513d3cb3a1e6acf40e94ca82ddc336c13d49dbb
         with:
           python-version: "3.10"
           # The lock check has to run before the install, so this job installs
@@ -83,12 +83,11 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
+        uses: blink1073/drivers-github-tools/python/setup@f513d3cb3a1e6acf40e94ca82ddc336c13d49dbb
         with:
+          # The action allows prereleases by default, which the beta Python in
+          # this matrix needs.
           python-version: ${{ matrix.python-version }}
-          # The matrix covers a Python still in beta, which setup-python will
-          # not select without this.
-          allow-prereleases: "true"
           # This job runs pytest through `uv run`, and never uses just.
           run-install: "false"
       - id: setup-mongodb
@@ -109,7 +108,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
+        uses: blink1073/drivers-github-tools/python/setup@f513d3cb3a1e6acf40e94ca82ddc336c13d49dbb
         with:
           python-version: "3.10"
           # `just setup-tests` handles its own dependencies here.
@@ -136,7 +135,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
+        uses: blink1073/drivers-github-tools/python/setup@f513d3cb3a1e6acf40e94ca82ddc336c13d49dbb
         with:
           python-version: "3.10"
       - id: setup-mongodb
@@ -156,7 +155,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
+        uses: blink1073/drivers-github-tools/python/setup@f513d3cb3a1e6acf40e94ca82ddc336c13d49dbb
         with:
           python-version: "3.10"
       - name: Build docs
@@ -173,7 +172,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
+        uses: blink1073/drivers-github-tools/python/setup@f513d3cb3a1e6acf40e94ca82ddc336c13d49dbb
         with:
           python-version: "${{matrix.python}}"
       - name: Run typecheck
@@ -188,7 +187,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
+        uses: blink1073/drivers-github-tools/python/setup@f513d3cb3a1e6acf40e94ca82ddc336c13d49dbb
         with:
           python-version: "3.10"
       - id: setup-mongodb
@@ -272,7 +271,7 @@ jobs:
           with:
             persist-credentials: false
         - name: Install Python tooling
-          uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
+          uses: blink1073/drivers-github-tools/python/setup@f513d3cb3a1e6acf40e94ca82ddc336c13d49dbb
           with:
             python-version: "3.9"
             # This job builds its own venv with `uv pip install`, and never
