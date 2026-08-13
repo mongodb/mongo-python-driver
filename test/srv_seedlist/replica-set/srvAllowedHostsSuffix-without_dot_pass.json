@@ -1,0 +1,11 @@
+{
+  "uri": "mongodb+srv://test12.test.build.10gen.cc/?srvAllowedHostsSuffix=build.10gen.cc",
+  "seeds": [
+    "localhost.build.10gen.cc:27017"
+  ],
+  "options": {
+    "srvAllowedHostsSuffix": "build.10gen.cc",
+    "ssl": true
+  },
+  "ping": false
+}
