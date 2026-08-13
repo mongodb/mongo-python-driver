@@ -25,18 +25,18 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Install Python tooling
+        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
         with:
-          enable-cache: true
           python-version: "3.10"
+          # The lock check has to run before the install, so this job installs
+          # separately rather than letting the action do it.
+          run-install: "false"
       # Runs before the install so a stale lock fails in seconds rather than
       # after the build and typecheck.
       - name: Check lockfile is up to date
         run: |
           uv lock --check
-      - name: Install just
-        run: uv tool install rust-just
       - name: Install Python dependencies
         run: |
           just install
@@ -82,11 +82,15 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Install Python tooling
+        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
         with:
-          enable-cache: true
           python-version: ${{ matrix.python-version }}
+          # The matrix covers a Python still in beta, which setup-python will
+          # not select without this.
+          allow-prereleases: "true"
+          # This job runs pytest through `uv run`, and never uses just.
+          run-install: "false"
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
@@ -104,17 +108,16 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Install Python tooling
+        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
         with:
-          enable-cache: true
           python-version: "3.10"
+          # `just setup-tests` handles its own dependencies here.
+          run-install: "false"
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
           version: "8.0"
-      - name: Install just
-        run: uv tool install rust-just
       - name: Setup tests
         run: COVERAGE=1 just setup-tests
       - name: Run tests
@@ -132,19 +135,14 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Install Python tooling
+        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
         with:
-          enable-cache: true
           python-version: "3.10"
-      - name: Install just
-        run: uv tool install rust-just
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
           version: "8.0"
-      - name: Install dependencies
-        run: just install
       - name: Run tests
         run:  |
           just setup-tests doctest
@@ -157,15 +155,10 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Install Python tooling
+        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
         with:
-          enable-cache: true
           python-version: "3.10"
-      - name: Install just
-        run: uv tool install rust-just
-      - name: Install dependencies
-        run: just install
       - name: Build docs
         run: just docs
 
@@ -179,16 +172,10 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Install Python tooling
+        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
         with:
-          enable-cache: true
           python-version: "${{matrix.python}}"
-      - name: Install just
-        run: uv tool install rust-just
-      - name: Install dependencies
-        run: |
-          just install
       - name: Run typecheck
         run: |
           just typing
@@ -200,16 +187,10 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Install Python tooling
+        uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
         with:
-          enable-cache: true
           python-version: "3.10"
-      - name: Install just
-        run: uv tool install rust-just
-      - name: Install dependencies
-        run: |
-          just install
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
       - name: Run tests
@@ -290,10 +271,13 @@ jobs:
         - uses: actions/checkout@v7.0.1
           with:
             persist-credentials: false
-        - name: Install uv
-          uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        - name: Install Python tooling
+          uses: blink1073/drivers-github-tools/python/setup@b4f2bf29dec7a1ff0ea1b0b4b7837feb1d966309
           with:
             python-version: "3.9"
+            # This job builds its own venv with `uv pip install`, and never
+            # uses just.
+            run-install: "false"
         - id: setup-mongodb
           uses: mongodb-labs/drivers-evergreen-tools@master
           with:
