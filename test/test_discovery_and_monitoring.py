@@ -361,8 +361,8 @@ class TestPoolManagement(IntegrationTest):
         # This test implements the prose test "Connection Pool Management"
         listener = CMAPHeartbeatListener()
         # Force polling: streaming's RTT monitor sends its own hello calls with the same
-        # appName, which can consume the failCommand's mode.times budget below the SDAM
-        # heartbeat monitor, so ServerHeartbeatFailedEvent never fires (PYTHON-6003).
+        # appName, which can consume the failCommand's mode.times budget before the SDAM
+        # heartbeat monitor's hello does, so ServerHeartbeatFailedEvent never fires (PYTHON-6003).
         _ = self.single_client(
             appName="SDAMPoolManagementTest",
             heartbeatFrequencyMS=500,
