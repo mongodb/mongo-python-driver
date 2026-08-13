@@ -15,8 +15,17 @@ if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
   PYMONGO_BIN_DIR="$HOME/.local/bin"
 fi
 
-# Ensure uv is installed.
-if ! command -v uv &>/dev/null; then
+# Ensure uv >= 0.10 is installed (older versions don't support pyproject.toml
+# settings we rely on, e.g. relative `exclude-newer` values).
+MIN_UV_VERSION="0.10.0"
+
+uv_version_ok() {
+  command -v uv &>/dev/null || return 1
+  _current="$(uv --version | cut -d' ' -f2)"
+  [ "$(printf '%s\n%s\n' "$MIN_UV_VERSION" "$_current" | sort -V | head -n1)" = "$MIN_UV_VERSION" ]
+}
+
+if ! uv_version_ok; then
   _BIN_DIR=$PYMONGO_BIN_DIR
   mkdir -p ${_BIN_DIR}
   echo "Installing uv..."
@@ -26,6 +35,10 @@ if ! command -v uv &>/dev/null; then
   fi
   export PATH="$PYMONGO_BIN_DIR:$PATH"
   echo "Installing uv... done."
+  if ! uv_version_ok; then
+    echo "Installed uv $(uv --version) but >= $MIN_UV_VERSION is required." >&2
+    exit 1
+  fi
 fi
 
 # Ensure just is installed.
