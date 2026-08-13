@@ -174,13 +174,15 @@ class TestZlibContext(unittest.TestCase):
 class TestDecompress(unittest.TestCase):
     def test_unknown_compressor_id_raises(self):
         with self.assertRaises(ValueError) as ctx:
-            decompress(b"data", 99)
+            decompress(b"data", 99, max_message_size=2**20)
         self.assertIn("Unknown compressorId 99", str(ctx.exception))
 
     def _assert_roundtrip(self, compressed, compressor_id, data):
         for payload in (compressed, memoryview(compressed)):
             with self.subTest(type=type(payload).__name__):
-                self.assertEqual(decompress(payload, compressor_id), data)
+                self.assertEqual(
+                    decompress(payload, compressor_id, max_message_size=2**20), data
+                )
 
     def test_zlib_roundtrip(self):
         if not _have_zlib():
@@ -201,26 +203,55 @@ class TestDecompress(unittest.TestCase):
             self.skipTest("zstd not available")
         data = b"hello world" * 50
         compressed = ZstdContext.compress(data)
-        result = decompress(compressed, ZstdContext.compressor_id)
+        result = decompress(compressed, ZstdContext.compressor_id, max_message_size=2**20)
         self.assertEqual(result, data)
 
 
 class TestDecompressSizeLimit(unittest.TestCase):
-    def test_decompressed_size_exceeds_max_raises(self):
+    def test_decompression_peak_memory_bounded(self):
+        import tracemalloc
         import zlib
 
         # High expansion ratio payload (repeated zeros, ~100000:1 ratio)
-        payload = zlib.compress(b"\x00" * 10_000_000)
-        original_len = len(zlib.decompress(payload))
-        self.assertGreater(original_len, 1000)  # high expansion ratio
-        # Raise when decompressed size exceeds small limit
+        payload = zlib.compress(b"\x00" * 100_000_000)
+        max_size = 1_000_000
         from pymongo.errors import ProtocolError
 
-        with self.assertRaisesRegex(ProtocolError, "Decompressed message size"):
-            decompress(payload, ZlibContext.compressor_id, max_message_size=1000)
-        # Normal decompression with adequate limit
-        result = decompress(payload, ZlibContext.compressor_id, max_message_size=20_000_000)
-        self.assertEqual(result, b"\x00" * original_len)
+        tracemalloc.start()
+        try:
+            with self.assertRaises(ProtocolError):
+                decompress(payload, ZlibContext.compressor_id, max_message_size=max_size)
+            _current, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        # Peak allocation should stay near the bound rather than the payload size.
+        self.assertLess(peak, 10 * max_size)
+
+    def test_zlib_exact_boundary(self):
+        import zlib
+
+        # Data that decompresses to exactly max_message_size must be accepted.
+        data = b"\x00" * 1000
+        payload = zlib.compress(data)
+        result = decompress(payload, ZlibContext.compressor_id, max_message_size=1000)
+        self.assertEqual(result, data)
+        # One byte over the limit must be rejected.
+        data_over = b"\x00" * 1001
+        payload_over = zlib.compress(data_over)
+        from pymongo.errors import ProtocolError
+
+        with self.assertRaises(ProtocolError):
+            decompress(payload_over, ZlibContext.compressor_id, max_message_size=1000)
+
+    def test_snappy_exceeds_max_rejected(self):
+        if not _have_snappy():
+            self.skipTest("python-snappy not installed")
+        from pymongo.errors import ProtocolError
+
+        data = b"\x00" * 100_000
+        payload = SnappyContext.compress(data)
+        with self.assertRaises(ProtocolError):
+            decompress(payload, SnappyContext.compressor_id, max_message_size=1000)
 
 
 if __name__ == "__main__":
