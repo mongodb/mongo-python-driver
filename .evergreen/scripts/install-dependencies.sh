@@ -22,7 +22,13 @@ MIN_UV_VERSION="0.10.0"
 uv_version_ok() {
   command -v uv &>/dev/null || return 1
   _current="$(uv --version | cut -d' ' -f2)"
-  [ "$(printf '%s\n%s\n' "$MIN_UV_VERSION" "$_current" | sort -V | head -n1)" = "$MIN_UV_VERSION" ]
+  IFS='.' read -r _min_major _min_minor _min_patch <<< "$MIN_UV_VERSION"
+  IFS='.' read -r _cur_major _cur_minor _cur_patch <<< "$_current"
+  [ "${_cur_major:-0}" -gt "${_min_major:-0}" ] && return 0
+  [ "${_cur_major:-0}" -lt "${_min_major:-0}" ] && return 1
+  [ "${_cur_minor:-0}" -gt "${_min_minor:-0}" ] && return 0
+  [ "${_cur_minor:-0}" -lt "${_min_minor:-0}" ] && return 1
+  [ "${_cur_patch:-0}" -ge "${_min_patch:-0}" ]
 }
 
 if ! uv_version_ok; then
