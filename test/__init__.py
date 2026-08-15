@@ -765,6 +765,8 @@ class ClientContext:
 
     def supports_exhaust_cursors(self):
         """Whether this deployment supports exhaust cursors."""
+        if self.load_balancer:
+            return True
         if self.is_mongos:
             return self.version.at_least(7, 1)
         return True
