@@ -499,10 +499,9 @@ class TestClientMaxWireVersion(AsyncIntegrationTest):
         with self.assertRaisesRegex(InvalidOperation, msg):
             await client.test.test.aggregate_raw_batches([])
 
-        if async_client_context.is_mongos:
-            msg = "Exhaust cursors are not supported by mongos"
-        else:
-            msg = "exhaust cursors do not support auto encryption"
+        # The auto-encryption guard runs at cursor iteration, before the wire-version
+        # check in _Query.use_command, so it is the error regardless of deployment.
+        msg = "exhaust cursors do not support auto encryption"
         with self.assertRaisesRegex(InvalidOperation, msg):
             await anext(client.test.test.find(cursor_type=CursorType.EXHAUST))
 

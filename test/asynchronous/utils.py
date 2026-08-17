@@ -82,11 +82,6 @@ async def async_wait_until(predicate, success_description, timeout=10):
         await asyncio.sleep(interval)
 
 
-async def async_is_mongos(client):
-    res = await client.admin.command(HelloCompat.LEGACY_CMD)
-    return res.get("msg", "") == "isdbgrid"
-
-
 async def async_ensure_all_connected(client: AsyncMongoClient) -> None:
     """Ensure that the client's connection pool has socket connections to all
     members of a replica set. Raises ConfigurationError when called with a

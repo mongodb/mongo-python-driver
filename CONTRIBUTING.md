@@ -578,15 +578,17 @@ If a typing dependency has changed, run `just typing` and handle any new finding
 and in CI. Continuous integration runs `uv lock --check`, which fails when the lock file
 no longer matches `pyproject.toml`.
 
-If that check fails on your pull request, regenerate the lock file and commit the result:
+If that check fails on your pull request, regenerate the lock file and commit the result.
+The scheduled workflow's `uv-lock-update` action applies a 7 day cutoff
+(`exclude_newer: 7 days`, passed to uv as `UV_EXCLUDE_NEWER`) so a package version
+yanked shortly after release is less likely to land in the lock file. That cutoff
+lives in the action, not in `pyproject.toml`, so it does not apply automatically
+when you run `uv lock` locally — set `UV_EXCLUDE_NEWER` yourself so a freshly
+published (and possibly still-to-be-yanked) release doesn't end up in the lock file:
 
 ```bash
-uv lock
+UV_EXCLUDE_NEWER="7 days" uv lock
 ```
-
-Note that `pyproject.toml` sets `exclude-newer = "7 days"`, so uv ignores any package
-version published in the last week. A brand new release will not appear in the lock file
-until it is seven days old.
 
 To resolve a `uv.lock` conflict when rebasing, check out either side and regenerate
 rather than editing the file by hand. Which side you pick does not matter, because
@@ -595,6 +597,6 @@ rather than editing the file by hand. Which side you pick does not matter, becau
 
 ```bash
 git checkout --ours uv.lock
-uv lock
+UV_EXCLUDE_NEWER="7 days" uv lock
 git add uv.lock
 ```

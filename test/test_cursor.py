@@ -130,8 +130,8 @@ class TestCursor(IntegrationTest):
         self.assertEqual(0, cursor._query_flags)
 
     def test_add_remove_option_exhaust(self):
-        # Exhaust - which mongos doesn't support
-        if client_context.is_mongos:
+        # mongos only serves exhaust cursors from 7.1 onwards (SERVER-57297).
+        if not client_context.supports_exhaust_cursors():
             with self.assertRaises(InvalidOperation):
                 next(self.db.test.find(cursor_type=CursorType.EXHAUST))
         else:
@@ -1606,7 +1606,7 @@ class TestRawBatchCursor(IntegrationTest):
         self.assertIsInstance(next(cursor.clone()), bytes)
         self.assertIsInstance(next(copy.copy(cursor)), bytes)
 
-    @client_context.require_no_mongos
+    @client_context.require_exhaust_cursors
     def test_exhaust(self):
         c = self.db.test
         c.insert_many({"_id": i} for i in range(200))
@@ -1838,7 +1838,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
             listener.reset()
 
     @client_context.require_version_min(5, 0, -1)
-    @client_context.require_no_mongos
+    @client_context.require_exhaust_cursors
     @client_context.require_sync
     def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()
