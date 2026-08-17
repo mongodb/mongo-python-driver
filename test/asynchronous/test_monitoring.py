@@ -422,7 +422,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertIsInstance(failed.duration_micros, int)
         self.assertEqual(error, failed.failure)
 
-    @async_client_context.require_no_mongos
+    @async_client_context.require_exhaust_cursors
     async def test_exhaust(self):
         await self.client.pymongo_test.test.drop()
         await self.client.pymongo_test.test.insert_many([{} for _ in range(11)])

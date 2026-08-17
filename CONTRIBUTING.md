@@ -563,7 +563,40 @@ From the spawn host or Ubuntu image, do the following:
 5. Then, from the host computer, use either scp or docker cp to copy the flamegraph, e.g. `scp ubuntu@ec2-3-82-52-49.compute-1.amazonaws.com:/home/ubuntu/test.html .`.
 6. You can then view the flamegraph html in a browser.
 
-## Dependabot updates
+## Dependency updates
 
-Dependabot will raise PRs at most once per week, grouped by GitHub Actions updates and Python requirement
-file updates. If a typing dependency has changed, run `just typing` and handle any new findings.
+Dependabot raises PRs at most once per week for GitHub Actions updates. For Python
+dependencies it is limited to security updates, because routine upgrades are handled by
+a scheduled workflow that runs weekly, running `uv lock --upgrade` and keeping a single
+open pull request on the `uv-lock-update` branch.
+
+If a typing dependency has changed, run `just typing` and handle any new findings.
+
+### The uv.lock file
+
+`uv.lock` is committed to the repository so builds resolve identically on every machine
+and in CI. Continuous integration runs `uv lock --check`, which fails when the lock file
+no longer matches `pyproject.toml`.
+
+If that check fails on your pull request, regenerate the lock file and commit the result.
+The scheduled workflow's `uv-lock-update` action applies a 7 day cutoff
+(`exclude_newer: 7 days`, passed to uv as `UV_EXCLUDE_NEWER`) so a package version
+yanked shortly after release is less likely to land in the lock file. That cutoff
+lives in the action, not in `pyproject.toml`, so it does not apply automatically
+when you run `uv lock` locally — set `UV_EXCLUDE_NEWER` yourself so a freshly
+published (and possibly still-to-be-yanked) release doesn't end up in the lock file:
+
+```bash
+UV_EXCLUDE_NEWER="7 days" uv lock
+```
+
+To resolve a `uv.lock` conflict when rebasing, check out either side and regenerate
+rather than editing the file by hand. Which side you pick does not matter, because
+`uv lock` rewrites the file from `pyproject.toml`. Use `--theirs` in place of
+`--ours` if you prefer:
+
+```bash
+git checkout --ours uv.lock
+UV_EXCLUDE_NEWER="7 days" uv lock
+git add uv.lock
+```

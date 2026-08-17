@@ -95,7 +95,6 @@ replacements = {
     "AsyncSpecRunner": "SpecRunner",
     "AsyncTransactionsBase": "TransactionsBase",
     "async_get_pool": "get_pool",
-    "async_is_mongos": "is_mongos",
     "async_rs_or_single_client": "rs_or_single_client",
     "async_rs_or_single_client_noauth": "rs_or_single_client_noauth",
     "async_rs_client": "rs_client",

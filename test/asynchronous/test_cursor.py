@@ -130,8 +130,8 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(0, cursor._query_flags)
 
     async def test_add_remove_option_exhaust(self):
-        # Exhaust - which mongos doesn't support
-        if async_client_context.is_mongos:
+        # mongos only serves exhaust cursors from 7.1 onwards (SERVER-57297).
+        if not async_client_context.supports_exhaust_cursors():
             with self.assertRaises(InvalidOperation):
                 await anext(self.db.test.find(cursor_type=CursorType.EXHAUST))
         else:
@@ -1615,7 +1615,7 @@ class TestRawBatchCursor(AsyncIntegrationTest):
         self.assertIsInstance(await anext(cursor.clone()), bytes)
         self.assertIsInstance(await anext(copy.copy(cursor)), bytes)
 
-    @async_client_context.require_no_mongos
+    @async_client_context.require_exhaust_cursors
     async def test_exhaust(self):
         c = self.db.test
         await c.insert_many({"_id": i} for i in range(200))
@@ -1849,7 +1849,7 @@ class TestRawBatchCommandCursor(AsyncIntegrationTest):
             listener.reset()
 
     @async_client_context.require_version_min(5, 0, -1)
-    @async_client_context.require_no_mongos
+    @async_client_context.require_exhaust_cursors
     @async_client_context.require_sync
     async def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()

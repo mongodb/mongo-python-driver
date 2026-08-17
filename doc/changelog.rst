@@ -6,11 +6,20 @@ Changes in Version 4.18.0 (2026/XX/XX)
 
 PyMongo 4.18 brings a number of changes including:
 
+- Added support for MongoDB 9.0.
 - Improved TLS connection performance by reusing TLS sessions across connections
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
   and on Python 3.11+ for async clients.
 - Improved performance for MongoDB 9.0's Intelligent Workload Management (IWM) by only retrying overload errors when doing so is expected to not worsen server conditions.
+- Added support for exhaust cursors (:attr:`~pymongo.cursor.CursorType.EXHAUST`)
+  against mongos 7.1+. An older mongos still raises
+  :class:`~pymongo.errors.InvalidOperation`, now on the first iteration of the
+  cursor rather than from
+  :meth:`~pymongo.synchronous.collection.Collection.find`, since the requirement
+  is checked against the connection in use. Separately, async cursors combining
+  ``limit`` with :attr:`~pymongo.cursor.CursorType.EXHAUST` now raise at ``find``
+  rather than on first iteration, matching the synchronous API.
 - Redacted potentially sensitive authentication mechanism properties, including
   AWS session tokens, from the representations of
   :class:`~pymongo.synchronous.mongo_client.MongoClient` and

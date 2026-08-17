@@ -360,8 +360,14 @@ class TestPoolManagement(AsyncIntegrationTest):
     async def test_pool_unpause(self):
         # This test implements the prose test "AsyncConnection Pool Management"
         listener = CMAPHeartbeatListener()
+        # Force polling: streaming's RTT monitor sends its own hello calls with the same
+        # appName, which can consume the failCommand's mode.times budget before the SDAM
+        # heartbeat monitor's hello does, so ServerHeartbeatFailedEvent never fires (PYTHON-6003).
         _ = await self.async_single_client(
-            appName="SDAMPoolManagementTest", heartbeatFrequencyMS=500, event_listeners=[listener]
+            appName="SDAMPoolManagementTest",
+            heartbeatFrequencyMS=500,
+            event_listeners=[listener],
+            serverMonitoringMode="poll",
         )
         # Assert that AsyncConnectionPoolReadyEvent occurs after the first
         # ServerHeartbeatSucceededEvent.
