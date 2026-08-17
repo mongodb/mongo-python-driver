@@ -38,6 +38,7 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import ASCENDING, _csot, common, helpers_shared, message
+from pymongo._otel import internal_cursor_iteration
 from pymongo.asynchronous.aggregation import (
     _CollectionAggregationCommand,
     _CollectionRawAggregationCommand,
@@ -2603,6 +2604,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 operation=_Op.LIST_INDEXES,
                 dbname=self._database.name,
                 collection=self._name,
+                attach_operation_telemetry=True,
             )
 
     async def index_information(
@@ -2639,12 +2641,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        cursor = await self._list_indexes(session=session, comment=comment)
-        info = {}
-        async for index in cursor:
-            index["key"] = list(index["key"].items())
-            index = dict(index)  # noqa: PLW2901
-            info[index.pop("name")] = index
+        with internal_cursor_iteration():
+            cursor = await self._list_indexes(session=session, comment=comment)
+            info = {}
+            async for index in cursor:
+                index["key"] = list(index["key"].items())
+                index = dict(index)  # noqa: PLW2901
+                info[index.pop("name")] = index
         return info
 
     async def list_search_indexes(
@@ -2708,6 +2711,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             operation=_Op.LIST_SEARCH_INDEX,
             dbname=self._database.name,
             collection=self.name,
+            attach_operation_telemetry=True,
         )
 
     async def create_search_index(
@@ -2910,14 +2914,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             self.write_concern,
             self.read_concern,
         )
-        cursor = await dbo.list_collections(
-            session=session, filter={"name": self._name}, comment=comment
-        )
+        with internal_cursor_iteration():
+            cursor = await dbo.list_collections(
+                session=session, filter={"name": self._name}, comment=comment
+            )
 
-        result = None
-        async for doc in cursor:
-            result = doc
-            break
+            result = None
+            async for doc in cursor:
+                result = doc
+                break
 
         if not result:
             return {}
@@ -2960,6 +2965,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             is_aggregate_write=cmd._performs_write,
             dbname=self._database.name,
             collection=self._name,
+            attach_operation_telemetry=True,
         )
 
     async def aggregate(
