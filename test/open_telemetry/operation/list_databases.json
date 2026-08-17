@@ -1,0 +1,104 @@
+{
+  "description": "operation list_databases",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "list databases",
+      "operations": [
+        {
+          "object": "client0",
+          "name": "listDatabases"
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "listDatabases admin",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "admin",
+                "db.operation.name": "listDatabases",
+                "db.operation.summary": "listDatabases admin",
+                "db.collection.name": {
+                  "$$exists": false
+                }
+              },
+              "nested": [
+                {
+                  "name": "listDatabases",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "admin",
+                    "db.collection.name": {
+                      "$$exists": false
+                    },
+                    "db.command.name": "listDatabases",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "listDatabases admin",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "listDatabases": 1
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
