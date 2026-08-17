@@ -65,6 +65,15 @@ _CURRENT_OPERATION_NAME: ContextVar[Optional[str]] = ContextVar(
     "_CURRENT_OPERATION_NAME", default=None
 )
 
+# True while the driver is iterating a cursor of its own to build the return
+# value of one public API call (list_collection_names, index_information, ...).
+# Such a call gets a single operation span covering every getMore it sends,
+# whereas a cursor handed back to the caller gets a fresh operation span per
+# caller-driven getMore. See internal_cursor_iteration.
+_INTERNAL_CURSOR_ITERATION: ContextVar[bool] = ContextVar(
+    "_INTERNAL_CURSOR_ITERATION", default=False
+)
+
 if TYPE_CHECKING:
     from opentelemetry.trace import Span, Tracer
 
@@ -127,6 +136,28 @@ _CMD_NAMESPACE_PREFIX = "$cmd"
 def _env_truthy(name: str) -> bool:
     """Return True if the environment variable ``name`` is set to "1", "true", or "yes"."""
     return os.getenv(name, "").strip().lower() in _TRUTHY
+
+
+@contextlib.contextmanager
+def internal_cursor_iteration() -> Iterator[None]:
+    """Mark the enclosing block as driver-internal cursor iteration.
+
+    Wrap the block in which a public API method creates a cursor and drains it
+    itself to build its return value. Everything the block sends, including
+    every getMore, then belongs to that method's one operation span, as the
+    OTel spec requires. Outside such a block the cursor is assumed to reach the
+    caller, whose iteration is a separate operation per getMore.
+    """
+    token = _INTERNAL_CURSOR_ITERATION.set(True)
+    try:
+        yield
+    finally:
+        _INTERNAL_CURSOR_ITERATION.reset(token)
+
+
+def is_internal_cursor_iteration() -> bool:
+    """Return True inside an :func:`internal_cursor_iteration` block."""
+    return _INTERNAL_CURSOR_ITERATION.get()
 
 
 def _is_tracing_enabled(tracing_options: Optional[TracingOptions]) -> bool:
@@ -317,6 +348,14 @@ def start_command_span(
         return None
 
     collection = _extract_collection_name(command_name, dbname, cmd)
+    # A getMore's own command value is the id of the cursor being read, which is
+    # the value db.mongodb.cursor_id takes for a command operating on an
+    # existing cursor: the id sent, not whatever the reply comes back with. It
+    # has to be read here rather than from the reply because the reply is 0 once
+    # the cursor is exhausted, and the attribute is required even then.
+    sent_cursor_id = cmd.get(_GET_MORE) if command_name == _GET_MORE else None
+    if not isinstance(sent_cursor_id, int):
+        sent_cursor_id = None
     # Backfill the operation span's name/namespace/summary from the command built
     # inside it. Before the sensitive-command return below, since the operation
     # span needs those attributes even when the command gets no span. This runs
@@ -335,6 +374,8 @@ def start_command_span(
             current_span.set_attribute("db.operation.summary", summary)
             if collection:
                 current_span.set_attribute("db.collection.name", collection)
+            if sent_cursor_id:
+                current_span.set_attribute("db.mongodb.cursor_id", sent_cursor_id)
 
     if _is_sensitive_command(command_name, speculative_hello):
         return None
@@ -356,6 +397,8 @@ def start_command_span(
         attributes["db.collection.name"] = collection
     if conn.server_connection_id is not None:
         attributes["db.mongodb.server_connection_id"] = conn.server_connection_id
+    if sent_cursor_id:
+        attributes["db.mongodb.cursor_id"] = sent_cursor_id
     lsid = cmd.get("lsid")
     if isinstance(lsid, Mapping):
         formatted_lsid = _format_lsid(lsid)
@@ -372,6 +415,20 @@ def start_command_span(
     return _TRACER.start_span(command_name, kind=SpanKind.CLIENT, attributes=attributes)
 
 
+def _set_operation_cursor_id(cursor_id: int) -> None:
+    """Set db.mongodb.cursor_id on the ambient operation span, if there is one.
+
+    Guarded on the operation-name contextvar for the same reason
+    ``start_command_span``'s backfill is: without it the "current span" could be
+    an unrelated span belonging to the host application.
+    """
+    if _CURRENT_OPERATION_NAME.get() is None:
+        return
+    current_span = trace.get_current_span()
+    if current_span.is_recording():
+        current_span.set_attribute("db.mongodb.cursor_id", cursor_id)
+
+
 def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
     """Set the cursor id (if any open cursor) and end the span."""
     if span is None:
@@ -379,8 +436,13 @@ def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
     cursor = reply.get("cursor")
     if isinstance(cursor, Mapping) and cursor.get("id"):
         # Per the spec the attribute is omitted rather than set to 0, so a
-        # cursor-creating command that leaves no cursor open reports nothing.
-        span.set_attribute("db.mongodb.cursor_id", cursor["id"])
+        # cursor-creating command that leaves no cursor open reports nothing. A
+        # getMore keeps the id it sent, which this does not overwrite with a 0.
+        cursor_id = cursor["id"]
+        span.set_attribute("db.mongodb.cursor_id", cursor_id)
+        # The operation span carries the same attribute: this reply's id for a
+        # cursor-creating command, or the already-set sent id for a getMore.
+        _set_operation_cursor_id(cursor_id)
     span.end()
 
 
@@ -448,6 +510,7 @@ def start_operation_span(
     dbname: Optional[str] = None,
     collection: Optional[str] = None,
     set_current: bool = True,
+    cursor_id: Optional[int] = None,
 ) -> Optional[_OperationSpanHandle]:
     """Start a CLIENT-kind span for one logical operation, or None.
 
@@ -459,6 +522,10 @@ def start_operation_span(
 
     ``parent_span`` becomes an *explicit* parent rather than being read from
     ambient context, so a concurrent unrelated session cannot be captured.
+
+    ``cursor_id`` sets ``db.mongodb.cursor_id`` up front, for an operation
+    reading an existing cursor: the id is known before the command is built and
+    is needed even if the operation fails before any command span exists.
 
     ``set_current=False`` leaves the span and the operation-name contextvar
     alone, for a caller that makes it current with ``use_operation_span``.
@@ -478,6 +545,8 @@ def start_operation_span(
         if collection:
             attributes["db.collection.name"] = collection
     attributes["db.operation.summary"] = name
+    if cursor_id:
+        attributes["db.mongodb.cursor_id"] = cursor_id
     if not set_current:
         span = _TRACER.start_span(
             name, kind=SpanKind.CLIENT, context=context, attributes=attributes
