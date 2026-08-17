@@ -763,6 +763,22 @@ class AsyncClientContext:
             func=func,
         )
 
+    def supports_exhaust_cursors(self):
+        """Whether this deployment supports exhaust cursors."""
+        if self.load_balancer:
+            return True
+        if self.is_mongos:
+            return self.version.at_least(7, 1)
+        return True
+
+    def require_exhaust_cursors(self, func):
+        """Run a test only if the deployment supports exhaust cursors."""
+        return self._require(
+            self.supports_exhaust_cursors,
+            "This server does not support exhaust cursors",
+            func=func,
+        )
+
     def supports_transactions(self):
         if self.version.at_least(4, 1, 8):
             return self.is_mongos or self.is_rs

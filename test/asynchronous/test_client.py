@@ -2417,8 +2417,8 @@ class TestExhaustCursor(AsyncIntegrationTest):
 
     def setUp(self):
         super().setUp()
-        if async_client_context.is_mongos:
-            raise SkipTest("mongos doesn't support exhaust, SERVER-2627")
+        if not async_client_context.supports_exhaust_cursors():
+            raise SkipTest("mongos serves exhaust cursors only from 7.1, SERVER-57297")
 
     async def test_exhaust_query_server_error(self):
         # When doing an exhaust query, the socket stays checked out on success
