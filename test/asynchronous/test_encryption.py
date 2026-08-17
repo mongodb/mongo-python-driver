@@ -313,6 +313,34 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
         with self.assertRaises(OSError):
             await _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
 
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
+    async def test_client_encryption_accepts_callback(self):
+        async def callback(context):
+            raise AssertionError("not called")
+
+        client = self.simple_client()
+        encryption = AsyncClientEncryption(
+            {"local": {"key": b"\x00" * 96}},
+            "keyvault.datakeys",
+            client,
+            OPTS,
+            kms_connect_callback=callback,
+        )
+        self.addAsyncCleanup(encryption.close)
+        self.assertIs(encryption._io_callbacks.opts._kms_connect_callback, callback)
+
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
+    async def test_client_encryption_rejects_non_callable(self):
+        client = self.simple_client()
+        with self.assertRaisesRegex(TypeError, "kms_connect_callback must be callable"):
+            AsyncClientEncryption(
+                {"local": {"key": b"\x00" * 96}},
+                "keyvault.datakeys",
+                client,
+                OPTS,
+                kms_connect_callback="not-callable",  # type: ignore[arg-type]
+            )
+
 
 class TestClientOptions(AsyncPyMongoTestCase):
     async def test_default(self):
@@ -352,9 +380,15 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
         key_vault_client: AsyncMongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        kms_connect_callback: Optional[Any] = None,
     ):
         client_encryption = AsyncClientEncryption(
-            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+            kms_providers,
+            key_vault_namespace,
+            key_vault_client,
+            codec_options,
+            kms_tls_options,
+            kms_connect_callback=kms_connect_callback,
         )
         self.addAsyncCleanup(client_encryption.close)
         return client_encryption
@@ -367,9 +401,15 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
         key_vault_client: AsyncMongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        kms_connect_callback: Optional[Any] = None,
     ):
         client_encryption = AsyncClientEncryption(
-            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+            kms_providers,
+            key_vault_namespace,
+            key_vault_client,
+            codec_options,
+            kms_tls_options,
+            kms_connect_callback=kms_connect_callback,
         )
         return client_encryption
 

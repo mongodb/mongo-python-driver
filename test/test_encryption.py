@@ -313,6 +313,34 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         with self.assertRaises(OSError):
             _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
 
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
+    def test_client_encryption_accepts_callback(self):
+        def callback(context):
+            raise AssertionError("not called")
+
+        client = self.simple_client()
+        encryption = ClientEncryption(
+            {"local": {"key": b"\x00" * 96}},
+            "keyvault.datakeys",
+            client,
+            OPTS,
+            kms_connect_callback=callback,
+        )
+        self.addCleanup(encryption.close)
+        self.assertIs(encryption._io_callbacks.opts._kms_connect_callback, callback)
+
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
+    def test_client_encryption_rejects_non_callable(self):
+        client = self.simple_client()
+        with self.assertRaisesRegex(TypeError, "kms_connect_callback must be callable"):
+            ClientEncryption(
+                {"local": {"key": b"\x00" * 96}},
+                "keyvault.datakeys",
+                client,
+                OPTS,
+                kms_connect_callback="not-callable",  # type: ignore[arg-type]
+            )
+
 
 class TestClientOptions(PyMongoTestCase):
     def test_default(self):
@@ -352,9 +380,15 @@ class EncryptionIntegrationTest(IntegrationTest):
         key_vault_client: MongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        kms_connect_callback: Optional[Any] = None,
     ):
         client_encryption = ClientEncryption(
-            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+            kms_providers,
+            key_vault_namespace,
+            key_vault_client,
+            codec_options,
+            kms_tls_options,
+            kms_connect_callback=kms_connect_callback,
         )
         self.addCleanup(client_encryption.close)
         return client_encryption
@@ -367,9 +401,15 @@ class EncryptionIntegrationTest(IntegrationTest):
         key_vault_client: MongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        kms_connect_callback: Optional[Any] = None,
     ):
         client_encryption = ClientEncryption(
-            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+            kms_providers,
+            key_vault_namespace,
+            key_vault_client,
+            codec_options,
+            kms_tls_options,
+            kms_connect_callback=kms_connect_callback,
         )
         return client_encryption
 

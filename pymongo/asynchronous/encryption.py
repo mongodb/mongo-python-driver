@@ -639,6 +639,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         codec_options: CodecOptions[_DocumentTypeArg],
         kms_tls_options: Optional[Mapping[str, Any]] = None,
         key_expiration_ms: Optional[int] = None,
+        kms_connect_callback: Optional[AsyncKMSConnectCallback] = None,
     ) -> None:
         """Explicit client-side field level encryption.
 
@@ -708,7 +709,18 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         :param key_expiration_ms: The cache expiration time for data encryption keys.
             Defaults to ``None`` which defers to libmongocrypt's default which is currently 60000.
             Set to 0 to disable key expiration.
+        :param kms_connect_callback: A callable that opens the connection to a
+            KMS host, used to route KMS requests through an HTTP proxy. It
+            receives a :class:`~pymongo.encryption_options.KMSConnectContext`
+            and returns a connected, unwrapped :class:`socket.socket`; the
+            driver then performs the KMS TLS handshake over it. Must be a
+            coroutine function. See
+            :class:`~pymongo.encryption_options.KMSConnectContext` for a worked
+            HTTP ``CONNECT`` example. Defaults to ``None``, meaning the driver
+            connects to KMS hosts directly.
 
+        .. versionchanged:: 4.18
+           Added the `kms_connect_callback` parameter.
         .. versionchanged:: 4.12
            Added the `key_expiration_ms` parameter.
         .. versionchanged:: 4.0
@@ -752,6 +764,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             key_vault_namespace,
             kms_tls_options=kms_tls_options,
             key_expiration_ms=key_expiration_ms,
+            kms_connect_callback=kms_connect_callback,
         )
         self._kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
         self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
