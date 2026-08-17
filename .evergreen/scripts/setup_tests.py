@@ -353,29 +353,42 @@ def handle_test_env() -> None:
         UV_ARGS.append("--extra zstd")
 
     if test_name in ["encryption", "kms"]:
-        # Check for libmongocrypt download.
-        if not (ROOT / "libmongocrypt").exists():
-            setup_libmongocrypt()
+        # The "String" algorithm and the GA prefix/suffix/substring query types
+        # need libmongocrypt 1.19.0+, which is only exercised against MongoDB
+        # 9.0+. Servers before 9.0 test the preview query types instead, which
+        # need the "textPreview" algorithm, so pin to the released pymongocrypt
+        # and use the libmongocrypt bundled in its wheel rather than the
+        # unreleased master build.
+        use_released_pymongocrypt = os.environ.get("MONGODB_VERSION", "").startswith("8.")
+
+        if not use_released_pymongocrypt:
+            # Check for libmongocrypt download.
+            if not (ROOT / "libmongocrypt").exists():
+                setup_libmongocrypt()
 
         if not opts.test_min_deps:
-            UV_ARGS.append(
-                "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
-            )
-
-        # Use the nocrypto build to avoid dependency issues with older windows/python versions.
-        BASE = ROOT / "libmongocrypt/nocrypto"
-        if PLATFORM == "linux":
-            if (BASE / "lib/libmongocrypt.so").exists():
-                PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.so"
+            if use_released_pymongocrypt:
+                UV_ARGS.append("--with pymongocrypt<1.19")
             else:
-                PYMONGOCRYPT_LIB = BASE / "lib64/libmongocrypt.so"
-        elif PLATFORM == "darwin":
-            PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.dylib"
-        else:
-            PYMONGOCRYPT_LIB = BASE / "bin/mongocrypt.dll"
-        if not PYMONGOCRYPT_LIB.exists():
-            raise RuntimeError("Cannot find libmongocrypt shared object file")
-        write_env("PYMONGOCRYPT_LIB", PYMONGOCRYPT_LIB.as_posix())
+                UV_ARGS.append(
+                    "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
+                )
+
+        if not use_released_pymongocrypt:
+            # Use the nocrypto build to avoid dependency issues with older windows/python versions.
+            BASE = ROOT / "libmongocrypt/nocrypto"
+            if PLATFORM == "linux":
+                if (BASE / "lib/libmongocrypt.so").exists():
+                    PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.so"
+                else:
+                    PYMONGOCRYPT_LIB = BASE / "lib64/libmongocrypt.so"
+            elif PLATFORM == "darwin":
+                PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.dylib"
+            else:
+                PYMONGOCRYPT_LIB = BASE / "bin/mongocrypt.dll"
+            if not PYMONGOCRYPT_LIB.exists():
+                raise RuntimeError("Cannot find libmongocrypt shared object file")
+            write_env("PYMONGOCRYPT_LIB", PYMONGOCRYPT_LIB.as_posix())
         # PATH is updated by configure-env.sh for access to mongocryptd.
 
     if test_name == "encryption":

@@ -3339,28 +3339,37 @@ def _libmongocrypt_at_least(*version):
     return Version.from_string(libmongocrypt_version()) >= Version(*version)
 
 
-# The minimum libmongocrypt version required by each string query type,
-# declared in one place so the test gates and the changelog agree. Support
-# landed per query type rather than all at once: prefix and suffix in 1.19.0,
-# substring in 1.20.0.
+# The minimum libmongocrypt version required by each string query type, declared
+# in one place so the test gates and the changelog agree. Support landed per
+# query type rather than all at once (see the libmongocrypt changelog):
+#   1.18.1 - fixes caseSensitive/diacriticSensitive handling for "textPreview".
+#   1.19.0 - the "string" algorithm replaces "textPreview"; prefix and suffix go
+#            stable; prefixPreview and suffixPreview are removed.
+#   1.19.1 - prefixPreview and suffixPreview are restored.
+#   1.20.0 - substring goes stable.
 _STRING_QUERY_MIN_LIBMONGOCRYPT = {
     "prefix": (1, 19, 0),
     "suffix": (1, 19, 0),
     "substring": (1, 20, 0),
-    "prefixPreview": (1, 19, 1),
-    "suffixPreview": (1, 19, 1),
-    "substringPreview": (1, 19, 1),
+    "prefixPreview": (1, 18, 1),
+    "suffixPreview": (1, 18, 1),
+    "substringPreview": (1, 18, 1),
 }
+
+# prefixPreview and suffixPreview were removed in 1.19.0 and restored in 1.19.1,
+# so that one release is a hole rather than a floor.
+_PREVIEW_REMOVED_IN = (1, 19, 0)
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#27-string-explicit-encryption
 class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
     # The GA collections require server 9.0+, the preview collections require
-    # server pre-9.0. Test Setup encrypts with the "String" algorithm, which
-    # requires libmongocrypt 1.19.0+.
+    # server pre-9.0. Setup encrypts with the "String" algorithm on 9.0+ and the
+    # deprecated "textPreview" algorithm on earlier servers, since "String" was
+    # only introduced in libmongocrypt 1.19.0.
     @client_context.require_no_standalone
     @client_context.require_version_min(8, 2, -1)
-    @client_context.require_libmongocrypt_min(1, 19, 0)
+    @client_context.require_libmongocrypt_min(1, 18, 1)
     @client_context.require_pymongocrypt_min(1, 16, 0)
     def setUp(self):
         super().setUp()
@@ -3399,6 +3408,13 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         # The GA query types ("prefix", "suffix", "substring") require server
         # 9.0+, which in turn dropped the preview query types.
         self.is_ga = client_context.version.at_least(9, 0, -1)
+        # The "String" algorithm was added in libmongocrypt 1.19.0. Servers
+        # before 9.0 are tested against libmongocrypt 1.18.x, where the preview
+        # query types are only usable via the deprecated "textPreview"
+        # algorithm, so pick whichever the running combination supports.
+        self.algorithm = (
+            Algorithm.STRING if _libmongocrypt_at_least(1, 19, 0) else Algorithm.TEXTPREVIEW
+        )
 
         # Using QE CreateCollection() and Collection.Drop(), drop and create the
         # collections with majority write concern.
@@ -3420,7 +3436,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         encrypted_value = self.client_encryption.encrypt(
             "foobarbaz",
             key_id=self.key1_id,
-            algorithm=Algorithm.STRING,
+            algorithm=self.algorithm,
             contention_factor=0,
             string_opts=StringOpts(
                 case_sensitive=True,
@@ -3441,7 +3457,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         encrypted_value = self.client_encryption.encrypt(
             "foobarbaz",
             key_id=self.key1_id,
-            algorithm=Algorithm.STRING,
+            algorithm=self.algorithm,
             contention_factor=0,
             string_opts=StringOpts(
                 case_sensitive=True,
@@ -3470,6 +3486,10 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
             raise unittest.SkipTest(
                 f"queryType={query_type} requires libmongocrypt {'.'.join(map(str, required))}+"
             )
+        if query_type in ("prefixPreview", "suffixPreview") and (
+            _libmongocrypt_at_least(*_PREVIEW_REMOVED_IN) and not _libmongocrypt_at_least(1, 19, 1)
+        ):
+            raise unittest.SkipTest(f"queryType={query_type} was removed in libmongocrypt 1.19.0")
 
     def _params(self, kind):
         """Return the (query_type, collection) pair to run a case against.
@@ -3501,7 +3521,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         return self.client_encryption.encrypt(
             value,
             key_id=self.key1_id,
-            algorithm=Algorithm.STRING,
+            algorithm=self.algorithm,
             query_type=query_type,
             contention_factor=0,
             string_opts=StringOpts(**string_opts),
