@@ -38,6 +38,7 @@ from typing import Any, Optional
 import pytest
 
 import pymongo
+import pymongo._otel as _otel
 from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
@@ -91,6 +92,7 @@ from test.unified_format_shared import (
     PLACEHOLDER_MAP,
     EventListenerUtil,
     MatchEvaluatorUtil,
+    _shared_test_provider,
     coerce_result,
     parse_bulk_write_error_result,
     parse_bulk_write_result,
@@ -111,6 +113,16 @@ from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
 
 _IS_SYNC = True
+
+_HAS_OTEL_TEST_DEPS = False
+if _otel._HAS_OPENTELEMETRY:
+    try:
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        _HAS_OTEL_TEST_DEPS = True
+    except ImportError:
+        pass
 
 IS_INTERRUPTED = False
 
@@ -229,6 +241,11 @@ class EntityMapUtil:
         self._entities: dict[str, Any] = {}
         self._listeners: dict[str, EventListenerUtil] = {}
         self._session_lsids: dict[str, Mapping[str, Any]] = {}
+        # The id of the (at most one, today) client entity created with
+        # observeTracingMessages. Spans carry no attribute identifying which
+        # client emitted them, so multi-client tracing correlation isn't
+        # supported; _create_entity fails loudly if a second one appears.
+        self._tracing_client_id: Optional[str] = None
         self.test: UnifiedSpecTestMixinV1 = test_class
 
     def __contains__(self, item):
@@ -310,6 +327,25 @@ class EntityMapUtil:
             )
             self._listeners[spec["id"]] = listener
             kwargs["event_listeners"] = [listener]
+
+            observe_tracing = spec.get("observeTracingMessages")
+            if observe_tracing is not None:
+                if self._tracing_client_id is not None:
+                    self.test.fail(
+                        "Multiple clients with observeTracingMessages are not supported "
+                        f"by the unified test format runner (already tracking "
+                        f"{self._tracing_client_id!r}, got {spec['id']!r})"
+                    )
+                self._tracing_client_id = spec["id"]
+                enable_payload = observe_tracing.get("enableCommandPayload", False)
+                kwargs["tracing"] = {
+                    "enabled": True,
+                    # Tests asserting db.query.text match the full, untruncated
+                    # command, so an effectively-unlimited length avoids
+                    # truncating and failing that assertion.
+                    "query_text_max_length": 1_000_000 if enable_payload else None,
+                }
+
             if spec.get("useMultipleMongoses"):
                 if client_context.load_balancer:
                     kwargs["h"] = client_context.MULTI_MONGOS_LB_URI
@@ -481,6 +517,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes
     mongos_clients: list[MongoClient] = []
+    # Set in setUpClass, only for test files that use observeTracingMessages.
+    _tracing_exporter: Optional[Any] = None
 
     @staticmethod
     def should_run_on(run_on_spec):
@@ -525,6 +563,23 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     @classmethod
     def setUpClass(cls) -> None:
+        # Only register a span exporter (and the shared SDK TracerProvider it
+        # depends on) for test files that actually use observeTracingMessages,
+        # to avoid needlessly accumulating span processors on the process-wide
+        # provider for the (vast majority of) unified-format suites that don't.
+        cls._tracing_exporter = None
+        uses_tracing = any(
+            "observeTracingMessages" in entity.get("client", {})
+            for entity in cls.TEST_SPEC.get("createEntities", [])
+        )
+        if uses_tracing:
+            if not _HAS_OTEL_TEST_DEPS:
+                raise unittest.SkipTest(
+                    "observeTracingMessages requires opentelemetry-sdk to be installed"
+                )
+            cls._tracing_exporter = InMemorySpanExporter()
+            _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls._tracing_exporter))
+
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(
             heartbeat_frequency=0.1,
@@ -537,6 +592,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.knobs.disable()
+        # The exporter's span processor can never be removed from the shared process-wide
+        # TracerProvider (see _shared_test_provider), so without this, every span emitted by any
+        # client anywhere in the process for the rest of the test run keeps getting appended to this
+        # (otherwise dead) class's exporter: an unbounded memory leak across a full test run, and
+        # needless per-span export overhead for every other tracing-enabled test class that runs
+        # afterwards. shutdown() makes further export() calls into this exporter no-ops.
+        if cls._tracing_exporter is not None:
+            cls._tracing_exporter.shutdown()
 
     def setUp(self):
         # super call creates internal client cls.client
@@ -575,6 +638,14 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("PyMongo does not support the symbol type")
         if "timeoutms applied to entire download" in description:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
+        # Removed API: PyMongo no longer exposes map_reduce/inline_map_reduce at
+        # all (mapReduce is deprecated server-side), so there's no code path left
+        # that could send this command; this operation can never be exercised.
+        if class_name == "testoperationmapreduce" and description == "mapreduce":
+            self.skipTest(
+                "PyMongo removed the map_reduce/inline_map_reduce Collection methods "
+                "(mapReduce is deprecated server-side); this operation cannot be exercised"
+            )
         if any(
             x in description
             for x in [
@@ -1450,6 +1521,77 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                     self.match_evaluator.match_result(expected_data, actual_data)
                     self.match_evaluator.match_result(expected_msg, actual_msg)
 
+    def check_tracing_messages(self, operations, spec):
+        # Like expectLogMessages/expectEvents, expectTracingMessages is a list of
+        # per-client blocks (even though only one client with
+        # observeTracingMessages is currently supported, see entity.py above).
+        exporter = self._tracing_exporter
+        if exporter is None:
+            self.fail(
+                "expectTracingMessages requires a client entity created with observeTracingMessages"
+            )
+
+        exporter.clear()
+        self.run_operations(operations)
+        finished_spans = exporter.get_finished_spans()
+
+        # Reconstruct the parent/child span tree from the flat, finish-ordered
+        # list the in-memory exporter records, keyed by each span's parent id.
+        children_by_parent_id = defaultdict(list)
+        for span in finished_spans:
+            parent_id = span.parent.span_id if span.parent is not None else None
+            children_by_parent_id[parent_id].append(span)
+
+        def check_span_list(expected_list, actual_list, ignore_extra_spans):
+            if ignore_extra_spans:
+                # Per the unified-test-format spec, "additional unexpected spans
+                # are allowed". Unlike ignoreExtraEvents (which only tolerates
+                # a trailing tail), spans from concurrent/out-of-band activity
+                # (e.g. a testRunner-issued configureFailPoint command) can
+                # finish interleaved anywhere among the expected ones, not just
+                # at the end. Filter down to just the spans that line up (by
+                # name, in order) with the expected list, dropping anything
+                # else, instead of naively truncating the tail.
+                filtered = []
+                expected_iter = iter(expected_list)
+                current_expected = next(expected_iter, None)
+                for actual in actual_list:
+                    if current_expected is not None and actual.name == current_expected["name"]:
+                        filtered.append(actual)
+                        current_expected = next(expected_iter, None)
+                actual_list = filtered
+            self.assertEqual(
+                len(expected_list),
+                len(actual_list),
+                f"expected spans {[e['name'] for e in expected_list]} but got "
+                f"{[a.name for a in actual_list]}",
+            )
+            for expected, actual in zip(expected_list, actual_list):
+                self.assertEqual(expected["name"], actual.name)
+                self.match_evaluator.match_span_attributes(
+                    expected["attributes"], actual.attributes
+                )
+                expected_nested = expected.get("nested")
+                if expected_nested is not None:
+                    actual_children = children_by_parent_id[actual.context.span_id]
+                    check_span_list(expected_nested, actual_children, ignore_extra_spans)
+
+        for client_spec in spec:
+            expected_client_id = client_spec["client"]
+            tracing_client_id = self.entity_map._tracing_client_id
+            self.assertEqual(
+                expected_client_id,
+                tracing_client_id,
+                f"expectTracingMessages.client {expected_client_id!r} does not match the "
+                f"client with observeTracingMessages enabled ({tracing_client_id!r})",
+            )
+
+            ignore_extra_spans = client_spec.get("ignoreExtraSpans", False)
+            expected_spans = client_spec["spans"]
+            self.assertTrue(expected_spans, "expectTracingMessages spans must be non-empty")
+
+            check_span_list(expected_spans, children_by_parent_id[None], ignore_extra_spans)
+
     def verify_outcome(self, spec):
         for collection_data in spec:
             coll_name = collection_data["collectionName"]
@@ -1536,6 +1678,10 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             expect_log_messages = spec["expectLogMessages"]
             self.assertTrue(expect_log_messages, "expectEvents must be non-empty")
             self.check_log_messages(spec["operations"], expect_log_messages)
+        elif "expectTracingMessages" in spec:
+            expect_tracing_messages = spec["expectTracingMessages"]
+            self.assertTrue(expect_tracing_messages, "expectTracingMessages must be non-empty")
+            self.check_tracing_messages(spec["operations"], expect_tracing_messages)
         else:
             # process operations
             self.run_operations(spec["operations"])
