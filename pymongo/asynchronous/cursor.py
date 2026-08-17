@@ -34,6 +34,7 @@ from bson import RE_TYPE, _convert_raw_document_lists_to_streams
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers_shared
+from pymongo._telemetry import _operation_telemetry_or_none
 from pymongo.asynchronous.cursor_base import _AsyncCursorBase, _ConnectionManager
 from pymongo.asynchronous.helpers import anext
 from pymongo.collation import validate_collation_or_none
@@ -974,9 +975,13 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
         try:
             response = await client._run_operation(
-                operation, self._run_with_conn, address=self._address
+                operation,
+                self._run_with_conn,
+                address=self._address,
+                operation_telemetry=self._operation_telemetry,
             )
         except OperationFailure as exc:
+            self._end_operation_telemetry(exc)
             if exc.code in _CURSOR_CLOSED_ERRORS or self._exhaust:
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
@@ -994,12 +999,14 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
             ):
                 return
             raise
-        except ConnectionFailure:
+        except ConnectionFailure as exc:
+            self._end_operation_telemetry(exc)
             self._killed = True
             await self.close()
             raise
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException:
+        except BaseException as exc:
+            self._end_operation_telemetry(exc)
             await self.close()
             raise
         self._address = response.address
@@ -1017,7 +1024,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
                 # Update the namespace used for future getMore commands.
                 ns = cursor.get("ns")
                 if ns:
-                    self._dbname, self._collname = ns.split(".", 1)
+                    self._dbname, self._collname = helpers_shared._split_namespace(ns)
             else:
                 documents = cursor["nextBatch"]
             self._data = deque(documents)
@@ -1072,7 +1079,16 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
                 self._allow_disk_use,
                 self._exhaust,
             )
-            await self._send_message(q)
+            client = self._collection.database.client
+            self._operation_telemetry = _operation_telemetry_or_none(
+                client.options.tracing,
+                q.name,
+                self._session,
+                dbname=self._collection.database.name,
+                collection=self._collection.name,
+                set_current=False,
+            )
+            await self._send_message_in_operation_span(q)
         elif self._id:  # Get More
             if self._limit:
                 limit = self._limit - self._retrieved
@@ -1098,6 +1114,21 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
             await self._send_message(g)
 
         return len(self._data)
+
+    async def _send_message_in_operation_span(self, operation: Union[_Query, _GetMore]) -> None:
+        """Send ``operation``, ending the operation span once it completes.
+
+        ``_send_message``'s own error handling already ends the span with the
+        error on every failure path, and an exhausted cursor's close() ends it
+        on the way out; both are idempotent, so this only has to cover the
+        remaining case of a successful send that leaves the cursor open.
+        """
+        try:
+            await self._send_message(operation)
+        except BaseException as exc:
+            self._end_operation_telemetry(exc)
+            raise
+        self._end_operation_telemetry()
 
     async def rewind(self) -> AsyncCursor[_DocumentType]:
         """Rewind this cursor to its unevaluated state.
