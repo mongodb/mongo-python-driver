@@ -32,8 +32,9 @@ PyMongo 4.18 brings a number of changes including:
   ``SSL_CERT_FILE``/``SSL_CERT_DIR`` were merged with, rather than replacing,
   the OS/certifi certificate store.
 - Added general availability support for Queryable Encryption prefix, suffix,
-  and substring queries against MongoDB 9.0+, which requires libmongocrypt
-  1.20.0 or later:
+  and substring queries against MongoDB 9.0+. Prefix and suffix queries require
+  libmongocrypt 1.19.0 or later; substring queries require libmongocrypt 1.20.0
+  or later:
 
   - Added :attr:`~pymongo.encryption.Algorithm.STRING` and
     :class:`~pymongo.encryption_options.StringOpts`, replacing

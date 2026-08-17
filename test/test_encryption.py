@@ -237,6 +237,11 @@ class TestClientOptions(PyMongoTestCase):
 
 
 class TestStringOptsDeprecation(PyMongoTestCase):
+    def test_text_opts_is_still_re_exported(self):
+        # TextOpts is deprecated, not removed, so it must stay importable from
+        # the encryption module for the deprecation period.
+        self.assertIs(encryption.TextOpts, TextOpts)
+
     def test_text_opts_is_deprecated(self):
         with self.assertWarns(DeprecationWarning):
             opts = TextOpts(prefix={"strMinQueryLength": 2, "strMaxQueryLength": 10})
@@ -3335,6 +3340,20 @@ def _libmongocrypt_at_least(*version):
     return Version.from_string(libmongocrypt_version()) >= Version(*version)
 
 
+# The minimum libmongocrypt version required by each string query type,
+# declared in one place so the test gates and the changelog agree. Support
+# landed per query type rather than all at once: prefix and suffix in 1.19.0,
+# substring in 1.20.0.
+_STRING_QUERY_MIN_LIBMONGOCRYPT = {
+    "prefix": (1, 19, 0),
+    "suffix": (1, 19, 0),
+    "substring": (1, 20, 0),
+    "prefixPreview": (1, 19, 1),
+    "suffixPreview": (1, 19, 1),
+    "substringPreview": (1, 19, 1),
+}
+
+
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#27-string-explicit-encryption
 class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
     # The GA collections require server 9.0+, the preview collections require
@@ -3445,6 +3464,14 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         coll = client.db[collection].with_options(write_concern=WriteConcern(w="majority"))
         coll.insert_one(document)
 
+    def _require_query_type(self, query_type):
+        """Skip unless the installed libmongocrypt supports `query_type`."""
+        required = _STRING_QUERY_MIN_LIBMONGOCRYPT[query_type]
+        if not _libmongocrypt_at_least(*required):
+            raise unittest.SkipTest(
+                f"queryType={query_type} requires libmongocrypt {'.'.join(map(str, required))}+"
+            )
+
     def _params(self, kind):
         """Return the (query_type, collection) pair to run a case against.
 
@@ -3452,28 +3479,24 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         preview query type on earlier servers, skipping when the installed
         libmongocrypt is too old for the applicable variant.
         """
-        if kind == "substring":
-            base, ga_req, preview_req = "substring", (1, 20, 0), (1, 18, 1)
-        else:
-            base, ga_req, preview_req = "prefix-suffix", (1, 19, 0), (1, 19, 1)
+        base = "substring" if kind == "substring" else "prefix-suffix"
         if self.is_ga:
-            query_type, collection, required = kind, base, ga_req
+            query_type, collection = kind, base
         else:
-            query_type, collection, required = f"{kind}Preview", f"{base}-preview", preview_req
-        if not _libmongocrypt_at_least(*required):
-            raise unittest.SkipTest(
-                f"queryType={query_type} requires libmongocrypt {'.'.join(map(str, required))}+"
-            )
+            query_type, collection = f"{kind}Preview", f"{base}-preview"
+        self._require_query_type(query_type)
         return query_type, collection
 
-    def _require_ga(self, *libmongocrypt_version):
-        """Skip a case that only applies to the GA query types."""
+    def _require_ga(self, *query_types):
+        """Skip a case that only applies to the GA query types.
+
+        Gates on each query type the case exercises, since substring support
+        landed in a later libmongocrypt than prefix and suffix.
+        """
         if not self.is_ga:
             raise unittest.SkipTest("requires server 9.0+")
-        if not _libmongocrypt_at_least(*libmongocrypt_version):
-            raise unittest.SkipTest(
-                f"requires libmongocrypt {'.'.join(map(str, libmongocrypt_version))}+"
-            )
+        for query_type in query_types:
+            self._require_query_type(query_type)
 
     def _encrypt(self, value, query_type=None, **string_opts):
         return self.client_encryption.encrypt(
@@ -3618,7 +3641,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
     def test_07_contentionFactor_is_required(self):
         from pymongocrypt.errors import MongoCryptError
 
-        self._require_ga(1, 19, 0)
+        self._require_ga("prefix")
         # Use clientEncryption.encrypt() to encrypt the string "foo" without contentionFactor.
         with self.assertRaises(EncryptionError) as ctx:
             self.client_encryption.encrypt(
@@ -3639,7 +3662,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
 
     def test_08_case_insensitive_prefix_and_suffix(self):
         # This is a regression test for DRIVERS-3470.
-        self._require_ga(1, 19, 0)
+        self._require_ga("prefix", "suffix")
         # Use autoEncryptedClient to insert the following document.
         self._insert(
             "prefix-suffix-ci-di", {"encryptedText": "BingQiLin"}, self.client_auto_encrypted
@@ -3682,7 +3705,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
 
     def test_09_diacritic_insensitive_prefix_and_suffix(self):
         # This is a regression test for DRIVERS-3470.
-        self._require_ga(1, 19, 0)
+        self._require_ga("prefix", "suffix")
         # Use autoEncryptedClient to insert the following document.
         self._insert(
             "prefix-suffix-ci-di", {"encryptedText": "cafébarbäz"}, self.client_auto_encrypted
@@ -3725,7 +3748,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
 
     def test_10_case_insensitive_substring(self):
         # This is a regression test for DRIVERS-3470.
-        self._require_ga(1, 20, 0)
+        self._require_ga("substring")
         # Use autoEncryptedClient to insert the following document.
         self._insert("substring-ci-di", {"encryptedText": "FooBarBaz"}, self.client_auto_encrypted)
         # Use clientEncryption.encrypt() to encrypt the string "bar".
@@ -3750,7 +3773,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
 
     def test_11_diacritic_insensitive_substring(self):
         # This is a regression test for DRIVERS-3470.
-        self._require_ga(1, 20, 0)
+        self._require_ga("substring")
         # Use autoEncryptedClient to insert the following document.
         self._insert("substring-ci-di", {"encryptedText": "foocafébaz"}, self.client_auto_encrypted)
         # Use clientEncryption.encrypt() to encrypt the string "cafe".
