@@ -25,8 +25,9 @@ import datetime
 import os
 import time
 import types
+import uuid
 from collections import abc
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from typing import Any, Union
 
 import pymongo._otel as _otel
@@ -584,6 +585,42 @@ class MatchEvaluatorUtil:
             else:
                 return isinstance(actual, type(expectation)) and expectation == actual
         return True
+
+    @staticmethod
+    def _normalize_span_attribute(key: str, value: Any) -> Any:
+        """Adapt one OTel span attribute value to what the generic match
+        evaluator expects, since span attributes are plain Python primitives
+        rather than the BSON-decoded documents/events it normally matches
+        against.
+
+        - Widen plain Python ints (excluding bools) to ``bson.Int64``: span
+          attributes carry no int32/int64 distinction, but the $$type matcher's
+          "long" alias maps to ``Int64`` specifically (see
+          BSON_TYPE_ALIAS_MAP), so a bare ``int`` (e.g. ``server.port``) would
+          otherwise fail a ``$$type: ["long", "string"]`` check. ``Int64`` is a
+          subclass of ``int``, so this is safe for "int" checks too.
+        - Reconstruct ``db.mongodb.lsid`` (formatted by pymongo/_otel.py as a
+          plain UUID string, per the OTel spec's attribute table) back into the
+          ``{"id": Binary(...)}`` document shape :meth:`_operation_sessionLsid`
+          compares against, that operator being designed for
+          command-monitoring-style raw command documents.
+        """
+        if key == "db.mongodb.lsid" and isinstance(value, str):
+            try:
+                return {"id": Binary.from_uuid(uuid.UUID(value))}
+            except ValueError:
+                return value
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, int):
+            return Int64(value)
+        return value
+
+    def match_span_attributes(self, expected: Mapping[str, Any], actual: Mapping[str, Any]) -> None:
+        """Match one span's attributes against an ``expectTracingMessages`` entry."""
+        self.match_result(
+            expected, {k: self._normalize_span_attribute(k, v) for k, v in actual.items()}
+        )
 
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
         for field, expected in spec.items():

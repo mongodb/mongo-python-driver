@@ -1,0 +1,146 @@
+{
+  "description": "operation insert",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-insert"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-insert",
+      "documents": []
+    }
+  ],
+  "tests": [
+    {
+      "description": "insert one element",
+      "operations": [
+        {
+          "object": "collection0",
+          "name": "insertOne",
+          "arguments": {
+            "document": {
+              "_id": 1
+            }
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "insert operation-insert.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-insert",
+                "db.collection.name": "test",
+                "db.operation.name": "insert",
+                "db.operation.summary": "insert operation-insert.test"
+              },
+              "nested": [
+                {
+                  "name": "insert",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.command.name": "insert",
+                    "db.namespace": "operation-insert",
+                    "db.collection.name": "test",
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "long",
+                        "string"
+                      ]
+                    },
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "network.transport": "tcp",
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "insert operation-insert.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "insert": "test",
+                          "ordered": true,
+                          "txnNumber": {
+                            "$$unsetOrMatches": 1
+                          },
+                          "documents": [
+                            {
+                              "_id": 1
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "outcome": [
+        {
+          "collectionName": "test",
+          "databaseName": "operation-insert",
+          "documents": [
+            {
+              "_id": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
