@@ -56,6 +56,7 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
+from pymongo._otel import is_internal_cursor_iteration
 from pymongo._telemetry import (
     _generate_op_id_or_none,
     _operation_telemetry_or_none,
@@ -1901,6 +1902,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         run_with_conn: Callable,  # type: ignore[type-arg]
         address: Optional[_Address] = None,
         operation_telemetry: Optional[_OperationTelemetry] = None,
+        reuse_current_span: bool = False,
     ) -> Response:
         """Run a _Query/_GetMore operation and return a Response.
 
@@ -1911,6 +1913,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             to a specific server, used for getMore.
         :param operation_telemetry: The calling cursor's operation span, or None,
             so this send's command spans nest under it.
+        :param reuse_current_span: Create no operation span at all and leave the
+            ambient span in place as the parent for this operation's command
+            spans. Mutually exclusive with ``operation_telemetry``. Defaults to
+            False.
         """
         if operation.conn_mgr:
             server = await self._select_server(
@@ -1928,8 +1934,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     operation.conn_mgr.conn,
                 ):
                     # Exhaust/pinned cursors bypass _retry_internal, so make the
-                    # caller's span current here to keep their command spans
-                    # nested under it.
+                    # caller's span current here to keep their getMore command
+                    # spans nested under it.
                     with (
                         operation_telemetry.use()
                         if operation_telemetry
@@ -1956,6 +1962,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             retryable=isinstance(operation, _Query),
             operation=operation.name,
             operation_telemetry=operation_telemetry,
+            reuse_current_span=reuse_current_span,
         )
 
     async def _retry_with_session(
@@ -2003,6 +2010,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
         operation_telemetry: Optional[_OperationTelemetry] = None,
+        reuse_current_span: bool = False,
     ) -> T:
         """Internal retryable helper for all client transactions.
 
@@ -2019,6 +2027,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation_id: Stable operation id shared across retries, defaults to None
         :param operation_telemetry: A cursor's operation span, which this call
             makes current but neither creates nor ends, defaults to None.
+        :param reuse_current_span: Create no operation span at all and leave the
+            ambient span in place as the parent for this operation's command
+            spans. For callers that know a suitable operation span is already
+            current, where a second one would be spurious (the client
+            bulk-write results cursor's getMores, which belong under the
+            enclosing bulkWrite span). Mutually exclusive with
+            ``operation_telemetry``. Defaults to False.
 
         :return: Output of the calling func()
         """
@@ -2036,6 +2051,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             is_run_command=is_run_command,
             is_aggregate_write=is_aggregate_write,
             operation_telemetry=operation_telemetry,
+            reuse_current_span=reuse_current_span,
         ).run()
 
     async def _retryable_read(
@@ -2050,6 +2066,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
         operation_telemetry: Optional[_OperationTelemetry] = None,
+        reuse_current_span: bool = False,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -2069,6 +2086,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
         :param operation_telemetry: As for ``_retry_internal``, defaults to None.
+        :param reuse_current_span: Create no operation span at all and leave the
+            ambient span in place as the parent for this operation's command
+            spans. Mutually exclusive with ``operation_telemetry``. Defaults to
+            False.
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2089,6 +2110,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 operation_id=operation_id,
                 is_run_command=is_run_command,
                 is_aggregate_write=is_aggregate_write,
+                reuse_current_span=reuse_current_span,
                 operation_telemetry=operation_telemetry,
             )
 
@@ -2114,7 +2136,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         call, before the cursor exists, so the span cannot be owned by the
         cursor the way a find cursor's is; create it here instead.
 
-        The span ends with the command that created the cursor.
+        The span ends with the command that created the cursor. Later getMores
+        belong to whoever drives iteration: each one the caller drives gets an
+        operation span of its own, so only a public API call that drains the
+        cursor itself (see ``_otel.internal_cursor_iteration``) keeps this one
+        open, by handing it to the cursor.
         """
         operation_telemetry = _operation_telemetry_or_none(
             self.options.tracing,
@@ -2124,8 +2150,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             collection=collection,
             set_current=False,
         )
-        with operation_telemetry or contextlib.nullcontext():
-            return await self._retryable_read(
+        try:
+            cmd_cursor = await self._retryable_read(
                 func,
                 read_pref,
                 session,
@@ -2137,6 +2163,17 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 is_aggregate_write,
                 operation_telemetry=operation_telemetry,
             )
+        except BaseException as exc:
+            if operation_telemetry is not None:
+                operation_telemetry.failed(exc)
+            raise
+        if operation_telemetry is None:
+            pass
+        elif is_internal_cursor_iteration():
+            cmd_cursor._attach_operation_telemetry(operation_telemetry)
+        else:
+            operation_telemetry.succeeded()
+        return cmd_cursor
 
     async def _retryable_write(
         self,
@@ -2976,6 +3013,7 @@ class _ClientConnectionRetryable(Generic[T]):
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
         operation_telemetry: Optional[_OperationTelemetry] = None,
+        reuse_current_span: bool = False,
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
@@ -3000,9 +3038,12 @@ class _ClientConnectionRetryable(Generic[T]):
         if operation_id is None:
             operation_id = _generate_op_id_or_none(self._client._event_listeners)
         self._operation_id = operation_id
-        # With nothing passed in, create the span here and end it in run(); with
-        # a span passed in, the caller owns it and run() only makes it current.
-        self._owns_telemetry = operation_telemetry is None
+        if reuse_current_span and operation_telemetry is not None:
+            raise ValueError("reuse_current_span and operation_telemetry are mutually exclusive")
+        # With nothing passed in, create the span here and end it in run(); with a
+        # span passed in, the caller owns it. reuse_current_span means an enclosing
+        # span is already current, so this object creates none.
+        self._owns_telemetry = operation_telemetry is None and not reuse_current_span
         if self._owns_telemetry:
             operation_telemetry = _operation_telemetry_or_none(
                 mongo_client.options.tracing, operation, session, is_run_command=is_run_command

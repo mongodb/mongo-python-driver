@@ -21,6 +21,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from typing import Any, Generic, Optional, Union
 
+from pymongo import _otel
+from pymongo._telemetry import _operation_telemetry_or_none
 from pymongo.message import _CursorAddress
 from pymongo.typings import _Address, _DocumentType
 
@@ -56,6 +58,10 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
     _session: Optional[Any]
     _killed: bool
     _operation_telemetry: Optional[Any] = None
+    # Set by callers whose getMores belong under an operation span that is
+    # already current (the client bulk-write results cursor), rather than under
+    # a getMore operation span of their own.
+    _reuse_current_span_for_getmore: bool = False
 
     @abstractmethod
     def _get_namespace(self) -> str:
@@ -119,11 +125,13 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
     def _end_operation_telemetry(self, exc: Optional[BaseException] = None) -> None:
         """End the operation span currently attached to this cursor, exactly once.
 
-        No span is scoped to the cursor's lifetime: the span of the operation
-        that created the cursor ends as soon as that creating command
-        completes, whether it succeeded, failed, or the cursor was abandoned
-        part-way and is being closed by close()/__del__. Idempotent, so every
-        one of those paths can call it unconditionally.
+        No span is ever scoped to the cursor's lifetime: a caller-driven getMore
+        attaches a span of its own and ends it as soon as that getMore
+        completes. What can outlive a single command is the span of a public API
+        call that drains the cursor itself (see
+        ``_otel.internal_cursor_iteration``), which ends when the cursor is
+        exhausted or, for a cursor abandoned part-way, at close()/__del__.
+        Idempotent, so every one of those paths can call it unconditionally.
         """
         telemetry = self._operation_telemetry
         if telemetry is None:
@@ -133,6 +141,55 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
             telemetry.succeeded()
         else:
             telemetry.failed(exc)
+
+    def _start_getmore_operation_telemetry(self, dbname: str, collname: Optional[str]) -> bool:
+        """Give the getMore about to be sent an operation span of its own.
+
+        The spec requires an operation span per caller-driven getMore, and
+        forbids nesting it under the operation that created the cursor, since
+        the application may do unrelated work between batches.
+
+        Returns True when the caller now owns a span and must end it once the
+        getMore completes. Returns False when this getMore already belongs to
+        another operation, or when tracing is off.
+        """
+        if self._operation_telemetry is not None or self._reuse_current_span_for_getmore:
+            return False
+        tracing_options = self._collection.database.client.options.tracing
+        if not _otel._is_tracing_enabled(tracing_options):
+            return False
+        # A cursor opened by a command (listCollections, listIndexes, a
+        # database-level aggregate) reports a namespace like
+        # "$cmd.listCollections", which names no user collection.
+        if _otel.is_command_namespace(collname):
+            collname = None
+        self._operation_telemetry = _operation_telemetry_or_none(
+            tracing_options,
+            "getMore",
+            self._session,
+            dbname=dbname,
+            collection=collname,
+            set_current=False,
+            cursor_id=self._id,
+        )
+        return self._operation_telemetry is not None
+
+    def _attach_operation_telemetry(self, telemetry: Any) -> None:
+        """Adopt the still-open operation span of the call that created this cursor.
+
+        For command cursors only, and only when that call goes on to drain the
+        cursor itself, so its getMores belong to the same operation (see
+        ``_otel.internal_cursor_iteration``). A cursor returned to the caller
+        has its creating span ended right away and never gets here.
+
+        A command cursor exhausted by its first batch is marked ``_killed`` in
+        ``__init__`` without calling ``close()``, so no getMore is sent and
+        neither ``_refresh()`` nor ``_die_lock()`` runs. Ending the span here
+        keeps that case prompt instead of leaving it to ``__del__``.
+        """
+        self._operation_telemetry = telemetry
+        if self._killed:
+            self._end_operation_telemetry()
 
     def _die_no_lock(self) -> None:
         """Closes this cursor without acquiring a lock."""

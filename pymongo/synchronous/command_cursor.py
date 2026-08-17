@@ -28,6 +28,7 @@ from typing import (
 from bson import CodecOptions, _convert_raw_document_lists_to_streams
 from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS
 from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.helpers_shared import _split_namespace
 from pymongo.message import _GetMore, _OpMsg, _RawBatchGetMore
 from pymongo.response import PinnedResponse
 from pymongo.synchronous.cursor_base import _ConnectionManager, _CursorBase
@@ -172,8 +173,15 @@ class CommandCursor(_CursorBase[_DocumentType]):
         """Send a getmore message and handle the response."""
         client = self._collection.database.client
         try:
-            response = client._run_operation(operation, self._run_with_conn, address=self._address)
+            response = client._run_operation(
+                operation,
+                self._run_with_conn,
+                address=self._address,
+                operation_telemetry=self._operation_telemetry,
+                reuse_current_span=self._reuse_current_span_for_getmore,
+            )
         except OperationFailure as exc:
+            self._end_operation_telemetry(exc)
             if exc.code in _CURSOR_CLOSED_ERRORS:
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
@@ -183,13 +191,15 @@ class CommandCursor(_CursorBase[_DocumentType]):
                 # Return the session and pinned connection, if necessary.
                 self.close()
             raise
-        except ConnectionFailure:
+        except ConnectionFailure as exc:
+            self._end_operation_telemetry(exc)
             # Don't send killCursors because the cursor is already closed.
             self._killed = True
             # Return the session and pinned connection, if necessary.
             self.close()
             raise
-        except Exception:
+        except Exception as exc:
+            self._end_operation_telemetry(exc)
             self.close()
             raise
 
@@ -216,24 +226,36 @@ class CommandCursor(_CursorBase[_DocumentType]):
             return len(self._data)
 
         if self._id:  # Get More
-            dbname, collname = self._ns.split(".", 1)
+            dbname, collname = _split_namespace(self._ns)
             read_pref = self._collection._read_preference_for(self.session)
-            self._send_message(
-                self._getmore_class(
-                    dbname,
-                    collname,
-                    self._batch_size,
-                    self._id,
-                    self._collection.codec_options,
-                    read_pref,
-                    self._session,
-                    self._collection.database.client,
-                    self._max_await_time_ms,
-                    self._sock_mgr,
-                    False,
-                    self._comment,
-                )
+            getmore = self._getmore_class(
+                dbname,
+                collname,
+                self._batch_size,
+                self._id,
+                self._collection.codec_options,
+                read_pref,
+                self._session,
+                self._collection.database.client,
+                self._max_await_time_ms,
+                self._sock_mgr,
+                False,
+                self._comment,
             )
+            own_span = self._start_getmore_operation_telemetry(dbname, collname)
+            if not own_span:
+                self._send_message(getmore)
+            else:
+                # _send_message ends the span itself on every failure path, and
+                # an exhausted cursor's close() ends it on the way out; both are
+                # idempotent, so only a successful send leaving the cursor open
+                # is left to handle here.
+                try:
+                    self._send_message(getmore)
+                except BaseException as exc:
+                    self._end_operation_telemetry(exc)
+                    raise
+                self._end_operation_telemetry()
         else:  # Cursor id is zero nothing else to return
             self._die_lock()
 
