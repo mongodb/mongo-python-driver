@@ -34,13 +34,19 @@ from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _create_lock
 from pymongo.monitoring import _EventListeners
+from pymongo.pool_shared import _wrap_socket_tls
 from test.utils import flaky, get_pool, joinall
 
 sys.path[0:0] = [""]
 
 from pymongo.socket_checker import SocketChecker
 from pymongo.synchronous.pool import Pool, PoolOptions
-from test import IntegrationTest, client_context, unittest
+from test import (
+    IntegrationTest,
+    PyMongoTestCase,
+    client_context,
+    unittest,
+)
 from test.helpers import ConcurrentRunner
 from test.utils_shared import CMAPListener, delay
 
@@ -755,6 +761,19 @@ class TestPoolHandleConnectionError(unittest.TestCase):
         err.__cause__ = ssl.SSLCertVerificationError("certificate verify failed")
         pool._handle_connection_error(err)
         self.assertFalse(err.has_error_label("SystemOverloadedError"))
+
+
+class TestWrapSocketTLS(PyMongoTestCase):
+    def test_wrap_socket_tls_without_ssl_context_returns_same_socket(self):
+        options = PoolOptions(socket_timeout=7.5)
+        left, right = socket.socketpair()
+        self.addCleanup(left.close)
+        self.addCleanup(right.close)
+
+        result = _wrap_socket_tls(left, ("kms.example.com", 443), options)
+
+        self.assertIs(result, left)
+        self.assertEqual(result.gettimeout(), 7.5)
 
 
 if __name__ == "__main__":

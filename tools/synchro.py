@@ -127,6 +127,7 @@ replacements = {
     "AsyncNetworkingInterface": "NetworkingInterface",
     "_configured_protocol_interface": "_configured_socket_interface",
     "_async_configured_socket": "_configured_socket",
+    "_async_wrap_socket_tls": "_wrap_socket_tls",
     "SpecRunnerTask": "SpecRunnerThread",
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",
