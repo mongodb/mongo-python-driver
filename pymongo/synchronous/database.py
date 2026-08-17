@@ -33,6 +33,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
+from pymongo._otel import internal_cursor_iteration
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.database_shared import _check_name, _CodecDocumentType
 from pymongo.errors import CollectionInvalid, InvalidOperation
@@ -708,12 +709,13 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 kwargs,
                 user_fields={"cursor": {"firstBatch": 1}},
             )
-            return self.client._retryable_read(
+            return self.client._retryable_read_cursor(
                 cmd.get_cursor,
                 cmd.get_read_preference(s),  # type: ignore[arg-type]
                 s,
                 retryable=not cmd._performs_write,
                 operation=_Op.AGGREGATE,
+                dbname=self.name,
             )
 
     @overload
@@ -1051,8 +1053,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
 
-            return self.client._retryable_read(
-                inner, read_preference, tmp_session, command_name, None, False
+            return self.client._retryable_read_cursor(
+                inner, read_preference, tmp_session, command_name, None, False, dbname=self.name
             )
 
     def _retryable_read_command(
@@ -1147,8 +1149,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ) -> CommandCursor[MutableMapping[str, Any]]:
             return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
-        return self._client._retryable_read(
-            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
+        return self._client._retryable_read_cursor(
+            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS, dbname=self.name
         )
 
     def list_collections(
@@ -1208,9 +1210,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        return [
-            result["name"] for result in self._list_collections_helper(session=session, **kwargs)
-        ]
+        with internal_cursor_iteration():
+            return [
+                result["name"]
+                for result in self._list_collections_helper(session=session, **kwargs)
+            ]
 
     def list_collection_names(
         self,

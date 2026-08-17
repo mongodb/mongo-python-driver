@@ -33,6 +33,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
+from pymongo._otel import internal_cursor_iteration
 from pymongo.asynchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.asynchronous.change_stream import AsyncDatabaseChangeStream
 from pymongo.asynchronous.collection import AsyncCollection
@@ -708,12 +709,13 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 kwargs,
                 user_fields={"cursor": {"firstBatch": 1}},
             )
-            return await self.client._retryable_read(
+            return await self.client._retryable_read_cursor(
                 cmd.get_cursor,
                 cmd.get_read_preference(s),  # type: ignore[arg-type]
                 s,
                 retryable=not cmd._performs_write,
                 operation=_Op.AGGREGATE,
+                dbname=self.name,
             )
 
     @overload
@@ -1051,8 +1053,8 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
 
-            return await self.client._retryable_read(
-                inner, read_preference, tmp_session, command_name, None, False
+            return await self.client._retryable_read_cursor(
+                inner, read_preference, tmp_session, command_name, None, False, dbname=self.name
             )
 
     async def _retryable_read_command(
@@ -1149,8 +1151,8 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 conn, session, read_preference=read_preference, **kwargs
             )
 
-        return await self._client._retryable_read(
-            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
+        return await self._client._retryable_read_cursor(
+            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS, dbname=self.name
         )
 
     async def list_collections(
@@ -1210,10 +1212,11 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        return [
-            result["name"]
-            async for result in await self._list_collections_helper(session=session, **kwargs)
-        ]
+        with internal_cursor_iteration():
+            return [
+                result["name"]
+                async for result in await self._list_collections_helper(session=session, **kwargs)
+            ]
 
     async def list_collection_names(
         self,

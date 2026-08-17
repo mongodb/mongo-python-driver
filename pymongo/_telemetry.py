@@ -260,6 +260,102 @@ class _CommandTelemetry:
             _otel.end_command_span_failure(self._span, failure, exc)
 
 
+class _OperationTelemetry:
+    """One span-scoped context per logical operation (spanning all retry attempts).
+
+    Construct once per call to ``_retry_internal``; call :meth:`succeeded` or
+    :meth:`failed` exactly once when the operation's outcome is known, or use
+    it as a context manager to do so automatically. A no-op throughout when
+    tracing is disabled.
+
+    This span is shared by every attempt, while each attempt gets a command
+    span of its own underneath it. Retries are therefore visible as sibling
+    command spans rather than being collapsed into one.
+
+    With ``set_current=False`` the span is not made current at construction.
+    That suits a span started outside the ``_retry_internal`` call it covers,
+    such as a cursor-creating command's, whose span has to exist before the
+    cursor does; that call makes it current with :meth:`use`.
+
+    ``cursor_id`` presets ``db.mongodb.cursor_id`` for an operation reading a
+    cursor that already exists, whose id is known before the command is built.
+    """
+
+    __slots__ = ("handle",)
+
+    def __init__(
+        self,
+        tracing_options: Optional[_otel.TracingOptions],
+        operation: str,
+        session: Optional[Any],
+        is_run_command: bool = False,
+        dbname: Optional[str] = None,
+        collection: Optional[str] = None,
+        set_current: bool = True,
+        cursor_id: Optional[int] = None,
+    ) -> None:
+        parent_span = None
+        if session is not None and session.in_transaction:
+            parent_span = session._transaction.span
+        self.handle = _otel.start_operation_span(
+            tracing_options,
+            _otel._build_operation_name(operation, is_run_command),
+            parent_span,
+            dbname=dbname,
+            collection=collection,
+            set_current=set_current,
+            cursor_id=cursor_id,
+        )
+
+    def use(self) -> Any:
+        """Make this operation's span current for the duration of a block."""
+        return _otel.use_operation_span(self.handle)
+
+    def succeeded(self) -> None:
+        _otel.end_operation_span_success(self.handle)
+
+    def failed(self, exc: BaseException) -> None:
+        _otel.end_operation_span_failure(self.handle, exc)
+
+    def __enter__(self) -> _OperationTelemetry:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if exc_val is None:
+            self.succeeded()
+        else:
+            self.failed(exc_val)
+
+
+def _operation_telemetry_or_none(
+    tracing_options: Optional[_otel.TracingOptions],
+    operation: str,
+    session: Optional[Any],
+    is_run_command: bool = False,
+    dbname: Optional[str] = None,
+    collection: Optional[str] = None,
+    set_current: bool = True,
+    cursor_id: Optional[int] = None,
+) -> Optional[_OperationTelemetry]:
+    """Return an :class:`_OperationTelemetry`, or None if tracing is disabled.
+
+    Every operation goes through here, so follow _CommandTelemetry's fast path
+    and skip the object rather than build one whose methods all do nothing.
+    """
+    if not _otel._is_tracing_enabled(tracing_options):
+        return None
+    return _OperationTelemetry(
+        tracing_options,
+        operation,
+        session,
+        is_run_command=is_run_command,
+        dbname=dbname,
+        collection=collection,
+        set_current=set_current,
+        cursor_id=cursor_id,
+    )
+
+
 class _CmapTelemetry:
     """Combines CMAP structured logging and APM event publishing for pool and connection events."""
 

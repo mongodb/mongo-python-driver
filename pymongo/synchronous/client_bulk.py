@@ -32,7 +32,7 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo._telemetry import _generate_op_id_or_none
+from pymongo._telemetry import _generate_op_id_or_none, _operation_telemetry_or_none
 from pymongo.synchronous.client_session import (
     ClientSession,
     _validate_session_write_concern,
@@ -333,6 +333,12 @@ class _ClientBulk:
                 session=session,
                 comment=self.comment,
             )
+            # This cursor's getMores run inside the enclosing bulkWrite
+            # operation span, so their command spans belong under it directly;
+            # a getMore operation span of their own would be spurious. The
+            # cursor is also per-batch and never surfaces to the caller, so
+            # there is no cursor-lifetime span to own here.
+            cmd_cursor._reuse_current_span_for_getmore = True
             cmd_cursor._maybe_pin_connection(conn)
 
             # Iterate the cursor to get individual write results.
@@ -628,13 +634,28 @@ class _ClientBulk:
         session = _validate_session_write_concern(session, self.write_concern)
 
         if not self.write_concern.acknowledged:
-            with self.client._conn_for_writes(session, operation) as connection:
-                if connection.max_wire_version < 25:
-                    raise InvalidOperation(
-                        "MongoClient.bulk_write requires MongoDB server version 8.0+."
-                    )
-                self.execute_no_results(connection)
-                return ClientBulkWriteResult(None, False, False)  # type: ignore[arg-type]
+            # This path never reaches the command-span code that would otherwise
+            # fill in the namespace, so pass it here. A client bulk write always
+            # runs against admin and spans multiple namespaces, so it reports no
+            # collection.
+            operation_telemetry = _operation_telemetry_or_none(
+                self.client.options.tracing, operation, session, dbname="admin"
+            )
+            try:
+                with self.client._conn_for_writes(session, operation) as connection:
+                    if connection.max_wire_version < 25:
+                        raise InvalidOperation(
+                            "MongoClient.bulk_write requires MongoDB server version 8.0+."
+                        )
+                    self.execute_no_results(connection)
+            except BaseException as exc:
+                if operation_telemetry is not None:
+                    operation_telemetry.failed(exc)
+                raise
+            else:
+                if operation_telemetry is not None:
+                    operation_telemetry.succeeded()
+            return ClientBulkWriteResult(None, False, False)  # type: ignore[arg-type]
 
         result = self.execute_command(session, operation)
         return ClientBulkWriteResult(

@@ -38,6 +38,7 @@ from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from bson.timestamp import Timestamp
 from pymongo import ASCENDING, _csot, common, helpers_shared, message
+from pymongo._otel import internal_cursor_iteration
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.errors import (
@@ -2580,8 +2581,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             return cmd_cursor
 
         with self._database.client._tmp_session(session) as s:
-            return self._database.client._retryable_read(
-                _cmd, read_pref, s, operation=_Op.LIST_INDEXES
+            return self._database.client._retryable_read_cursor(
+                _cmd,
+                read_pref,
+                s,
+                operation=_Op.LIST_INDEXES,
+                dbname=self._database.name,
+                collection=self._name,
             )
 
     def index_information(
@@ -2618,12 +2624,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 3.6
            Added ``session`` parameter.
         """
-        cursor = self._list_indexes(session=session, comment=comment)
-        info = {}
-        for index in cursor:
-            index["key"] = list(index["key"].items())
-            index = dict(index)  # noqa: PLW2901
-            info[index.pop("name")] = index
+        with internal_cursor_iteration():
+            cursor = self._list_indexes(session=session, comment=comment)
+            info = {}
+            for index in cursor:
+                index["key"] = list(index["key"].items())
+                index = dict(index)  # noqa: PLW2901
+                info[index.pop("name")] = index
         return info
 
     def list_search_indexes(
@@ -2679,12 +2686,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return self._database.client._retryable_read(
+        return self._database.client._retryable_read_cursor(
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
             retryable=not cmd._performs_write,
             operation=_Op.LIST_SEARCH_INDEX,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     def create_search_index(
@@ -2887,12 +2896,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             self.write_concern,
             self.read_concern,
         )
-        cursor = dbo.list_collections(session=session, filter={"name": self._name}, comment=comment)
+        with internal_cursor_iteration():
+            cursor = dbo.list_collections(
+                session=session, filter={"name": self._name}, comment=comment
+            )
 
-        result = None
-        for doc in cursor:
-            result = doc
-            break
+            result = None
+            for doc in cursor:
+                result = doc
+                break
 
         if not result:
             return {}
@@ -2926,13 +2938,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return self._database.client._retryable_read(
+        return self._database.client._retryable_read_cursor(
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
             retryable=not cmd._performs_write,
             operation=_Op.AGGREGATE,
             is_aggregate_write=cmd._performs_write,
+            dbname=self._database.name,
+            collection=self._name,
         )
 
     def aggregate(

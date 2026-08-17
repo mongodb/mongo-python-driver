@@ -1,0 +1,177 @@
+{
+  "description": "operation map_reduce",
+  "schemaVersion": "1.27",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.0",
+      "topologies": [
+        "single",
+        "replicaset"
+      ]
+    },
+    {
+      "minServerVersion": "4.1.7",
+      "serverless": "forbid",
+      "topologies": [
+        "sharded",
+        "load-balanced"
+      ]
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-map-reduce"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-map-reduce",
+      "documents": [
+        {
+          "_id": 1,
+          "x": 0
+        },
+        {
+          "_id": 2,
+          "x": 1
+        },
+        {
+          "_id": 3,
+          "x": 2
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "mapReduce",
+      "operations": [
+        {
+          "object": "collection0",
+          "name": "mapReduce",
+          "arguments": {
+            "map": {
+              "$code": "function inc() { return emit(0, this.x + 1) }"
+            },
+            "reduce": {
+              "$code": "function sum(key, values) { return values.reduce((acc, x) => acc + x); }"
+            },
+            "out": {
+              "inline": 1
+            }
+          },
+          "expectResult": [
+            {
+              "_id": 0,
+              "value": 6
+            }
+          ]
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "mapReduce operation-map-reduce.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-map-reduce",
+                "db.collection.name": "test",
+                "db.operation.name": "mapReduce",
+                "db.operation.summary": "mapReduce operation-map-reduce.test"
+              },
+              "nested": [
+                {
+                  "name": "mapReduce",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-map-reduce",
+                    "db.collection.name": "test",
+                    "db.command.name": "mapReduce",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "mapReduce operation-map-reduce.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "mapReduce": "test",
+                          "map": {
+                            "$code": "function inc() { return emit(0, this.x + 1) }"
+                          },
+                          "reduce": {
+                            "$code": "function sum(key, values) { return values.reduce((acc, x) => acc + x); }"
+                          },
+                          "out": {
+                            "inline": 1
+                          }
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

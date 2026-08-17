@@ -1,0 +1,318 @@
+{
+  "description": "operation getMore",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {}
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-get-more"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-get-more",
+      "documents": [
+        {
+          "_id": 1
+        },
+        {
+          "_id": 2
+        },
+        {
+          "_id": 3
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "getMore is nested under its own operation span",
+      "operations": [
+        {
+          "name": "createFindCursor",
+          "object": "collection0",
+          "arguments": {
+            "filter": {},
+            "batchSize": 2
+          },
+          "saveResultAsEntity": "cursor0"
+        },
+        {
+          "name": "iterateUntilDocumentOrError",
+          "object": "cursor0",
+          "expectResult": {
+            "_id": 1
+          }
+        },
+        {
+          "name": "iterateUntilDocumentOrError",
+          "object": "cursor0",
+          "expectResult": {
+            "_id": 2
+          }
+        },
+        {
+          "name": "iterateUntilDocumentOrError",
+          "object": "cursor0",
+          "expectResult": {
+            "_id": 3
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "find operation-get-more.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-get-more",
+                "db.collection.name": "test",
+                "db.operation.name": "find",
+                "db.operation.summary": "find operation-get-more.test",
+                "db.mongodb.cursor_id": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              },
+              "nested": [
+                {
+                  "name": "find",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-get-more",
+                    "db.collection.name": "test",
+                    "db.command.name": "find",
+                    "network.transport": "tcp",
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "find operation-get-more.test",
+                    "db.mongodb.cursor_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "getMore operation-get-more.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-get-more",
+                "db.collection.name": "test",
+                "db.operation.name": "getMore",
+                "db.operation.summary": "getMore operation-get-more.test",
+                "db.mongodb.cursor_id": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              },
+              "nested": [
+                {
+                  "name": "getMore",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-get-more",
+                    "db.collection.name": "test",
+                    "db.command.name": "getMore",
+                    "network.transport": "tcp",
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "getMore operation-get-more.test",
+                    "db.mongodb.cursor_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "cursor_id is omitted when the server returns cursor id 0",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {}
+          },
+          "expectResult": [
+            {
+              "_id": 1
+            },
+            {
+              "_id": 2
+            },
+            {
+              "_id": 3
+            }
+          ]
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "find operation-get-more.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-get-more",
+                "db.collection.name": "test",
+                "db.operation.name": "find",
+                "db.operation.summary": "find operation-get-more.test",
+                "db.mongodb.cursor_id": {
+                  "$$exists": false
+                }
+              },
+              "nested": [
+                {
+                  "name": "find",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-get-more",
+                    "db.collection.name": "test",
+                    "db.command.name": "find",
+                    "network.transport": "tcp",
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "find operation-get-more.test",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
