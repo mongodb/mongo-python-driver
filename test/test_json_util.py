@@ -657,6 +657,27 @@ class TestJsonUtil(unittest.TestCase):
         expected_json = json_util.dumps(Binary(b"bin", USER_DEFINED_SUBTYPE))
         self.assertEqual(json_util.dumps(MyBinary(b"bin", USER_DEFINED_SUBTYPE)), expected_json)
 
+    def test_truncate_documents_retains_falsy_values(self):
+        # Regression test: _truncate_documents (used by pymongo/logger.py for
+        # structured command logging, and by pymongo/_otel.py for OTel's
+        # db.query.text) must not drop fields whose value is falsy-but-present
+        # (0, False, "", {}, []); only fields that genuinely don't fit within
+        # the remaining budget should be omitted. A prior implementation used
+        # `if truncated_v:` to decide whether to keep a field, which silently
+        # dropped legitimate falsy values along with truly-out-of-room ones.
+        doc = {
+            "a": 0,
+            "b": False,
+            "c": "",
+            "d": {},
+            "e": [],
+            "f": None,
+            "g": [0, False, "", {}, [], None],
+        }
+        truncated, remaining = json_util._truncate_documents(doc, 1000)
+        self.assertEqual(truncated, doc)
+        self.assertGreater(remaining, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

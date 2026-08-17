@@ -135,6 +135,17 @@ def format_timeout_details(details: Optional[dict[str, float]]) -> str:
     return result
 
 
+def _split_namespace(namespace: str) -> tuple[str, str]:
+    """Split a ``"dbname.collname"`` namespace into its two parts.
+
+    Collection names may contain dots, so only the first separator is
+    significant. If no dot is present, the entire string is treated as the
+    database name and the collection name is empty.
+    """
+    dbname, _, collname = namespace.partition(".")
+    return dbname, collname
+
+
 def _gen_index_name(keys: _IndexList) -> str:
     """Generate an index name from the set of fields it is over."""
     return "_".join(["{}_{}".format(*item) for item in keys])
