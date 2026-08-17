@@ -1569,9 +1569,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
             await coll.aggregate([{"$out": "output-collection"}])
 
     async def test_aggregate_reserved_options(self):
-        # The reserved command fields must not be settable as options: an
-        # application that forwards a caller-supplied options mapping would
-        # otherwise let the caller retarget the command at any collection.
+        # Reserved command fields must not be settable as options.
         db = self.db
         with self.assertRaises(ConfigurationError):
             await db.test.aggregate([], aggregate="other")
@@ -1587,9 +1585,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_aggregate_reserved_options_do_not_reach_server(self):
         # Assert the security property rather than the error type: the injected
         # namespace must never reach the wire, and the secret must never reach
-        # the caller. Checking the command as sent keeps this independent of
-        # whether the server would have accepted the injected pipeline, so it
-        # fails on a vulnerable driver for the right reason on any topology.
+        # the caller.
         listener = OvertCommandListener()
         client = await self.async_single_client(event_listeners=[listener])
         db = client[self.db.name]
