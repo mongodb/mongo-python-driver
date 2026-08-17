@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test OpenTelemetry command-span support."""
+"""Test OpenTelemetry operation spans, excluding cursor getMores."""
 
 from __future__ import annotations
 
@@ -62,25 +62,18 @@ pytestmark = pytest.mark.otel
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
 class TestOTelOperationSpanPrimitives(unittest.TestCase):
-    """Unit tests for the pymongo._otel operation-span primitives (no live server needed)."""
+    """Unit tests for the pymongo._otel operation-span primitives."""
 
     @classmethod
     def setUpClass(cls):
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-            InMemorySpanExporter,
-        )
-
         cls.exporter = InMemorySpanExporter()
         _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
 
     @classmethod
     def tearDownClass(cls):
-        # See the matching comment in test/synchronous/unified_format.py's
-        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
-        # be removed from the shared process-wide TracerProvider, so without
-        # this shutdown() the exporter keeps accumulating every span from
-        # every client for the rest of the test run.
+        # The span processor can never be removed from the shared process-wide
+        # TracerProvider, so without this the exporter keeps accumulating every
+        # span from every client for the rest of the test run.
         cls.exporter.shutdown()
 
     def setUp(self):
@@ -223,59 +216,17 @@ class TestOTelOperationSpanPrimitives(unittest.TestCase):
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
-class TestOTelTransactionSpanPrimitives(unittest.TestCase):
-    """Unit tests for the pymongo._otel transaction-span primitives (no live server needed)."""
-
-    @classmethod
-    def setUpClass(cls):
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-            InMemorySpanExporter,
-        )
-
-        cls.exporter = InMemorySpanExporter()
-        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
-
-    @classmethod
-    def tearDownClass(cls):
-        # See the matching comment in test/synchronous/unified_format.py's
-        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
-        # be removed from the shared process-wide TracerProvider, so without
-        # this shutdown() the exporter keeps accumulating every span from
-        # every client for the rest of the test run.
-        cls.exporter.shutdown()
-
-    def setUp(self):
-        self.exporter.clear()
-
-    def test_start_transaction_span_has_only_one_attribute(self):
-        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
-        span = _otel.start_transaction_span(opts)
-        _otel.end_transaction_span(span)
-        (finished,) = self.exporter.get_finished_spans()
-        self.assertEqual(finished.name, "transaction")
-        self.assertEqual(dict(finished.attributes), {"db.system.name": "mongodb"})
-
-
-@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
 class TestOperationTelemetry(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-            InMemorySpanExporter,
-        )
-
         cls.exporter = InMemorySpanExporter()
         _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
 
     @classmethod
     def tearDownClass(cls):
-        # See the matching comment in test/synchronous/unified_format.py's
-        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
-        # be removed from the shared process-wide TracerProvider, so without
-        # this shutdown() the exporter keeps accumulating every span from
-        # every client for the rest of the test run.
+        # The span processor can never be removed from the shared process-wide
+        # TracerProvider, so without this the exporter keeps accumulating every
+        # span from every client for the rest of the test run.
         cls.exporter.shutdown()
 
     def setUp(self):
@@ -295,23 +246,6 @@ class TestOperationTelemetry(unittest.TestCase):
         telemetry.failed(RuntimeError("nope"))
         (span,) = self.exporter.get_finished_spans()
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
-
-    def test_nests_under_active_transaction_span(self):
-        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
-        txn_span = _otel.start_transaction_span(opts)
-
-        class _FakeTransaction:
-            span = txn_span
-
-        class _FakeSession:
-            in_transaction = True
-            _transaction = _FakeTransaction()
-
-        telemetry = _telemetry._OperationTelemetry(opts, "insert", _FakeSession())
-        telemetry.succeeded()
-        _otel.end_transaction_span(txn_span)
-        child, parent = self.exporter.get_finished_spans()
-        self.assertEqual(child.parent.span_id, parent.context.span_id)
 
     def test_disabled_is_a_no_op(self):
         telemetry = _telemetry._OperationTelemetry(None, "find", None)
@@ -353,25 +287,16 @@ class TestOperationTelemetry(unittest.TestCase):
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
 class TestOperationTelemetryContextManager(unittest.TestCase):
-    """Unit tests for _OperationTelemetry's context-manager and detached modes."""
-
     @classmethod
     def setUpClass(cls):
-        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
-            InMemorySpanExporter,
-        )
-
         cls.exporter = InMemorySpanExporter()
         _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
 
     @classmethod
     def tearDownClass(cls):
-        # See the matching comment in test/synchronous/unified_format.py's
-        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
-        # be removed from the shared process-wide TracerProvider, so without
-        # this shutdown() the exporter keeps accumulating every span from
-        # every client for the rest of the test run.
+        # The span processor can never be removed from the shared process-wide
+        # TracerProvider, so without this the exporter keeps accumulating every
+        # span from every client for the rest of the test run.
         cls.exporter.shutdown()
 
     def setUp(self):
@@ -411,6 +336,8 @@ class TestOperationTelemetryContextManager(unittest.TestCase):
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
 class TestOTelSpans(IntegrationTest):
+    """Operation and command spans for a single round trip."""
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -474,6 +401,15 @@ class TestOTelSpans(IntegrationTest):
             or s.attributes.get("db.operation.name") == "runCommand"
         ]
 
+    def _aggregate_operation_span(self):
+        matching = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "aggregate"
+        ]
+        self.assertEqual(len(matching), 1)
+        return matching[0]
+
     def test_operation_span_records_failure(self):
         client = self.rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
@@ -496,166 +432,6 @@ class TestOTelSpans(IntegrationTest):
         self.assertIn("exception.type", op_span.attributes)
         self.assertIn("exception.message", op_span.attributes)
         self.assertIn("exception.stacktrace", op_span.attributes)
-
-    def test_span_created_for_get_more(self):
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client[self.db.name].test_otel_getmore
-        coll.drop()
-        coll.insert_many([{"x": i} for i in range(5)])
-        self.exporter.clear()
-
-        docs = coll.find({}, batch_size=2).to_list()
-        self.assertEqual(len(docs), 5)
-
-        get_more_spans = self.spans("getMore")
-        self.assertGreater(len(get_more_spans), 0)
-        for span in get_more_spans:
-            self.assertEqual(span.attributes["db.collection.name"], "test_otel_getmore")
-            self.assertEqual(span.attributes["db.command.name"], "getMore")
-
-    def test_caller_driven_find_getmores_get_their_own_operation_spans(self):
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.getmore_nesting
-        coll.drop()
-        coll.insert_many([{"i": i} for i in range(10)])
-        self.exporter.clear()
-
-        docs = coll.find({}, batch_size=2).to_list()
-        self.assertEqual(len(docs), 10)
-
-        finished = self.exporter.get_finished_spans()
-        # One operation span for the query that created the cursor.
-        find_op_spans = self.operation_spans(finished, "find")
-        self.assertEqual(len(find_op_spans), 1, [s.name for s in finished])
-        find_op_span = find_op_spans[0]
-        self.assertEqual(find_op_span.name, "find pymongo_test.getmore_nesting")
-        self.assertTrue(find_op_span.attributes["db.mongodb.cursor_id"])
-
-        # One more, a sibling rather than a child, per getMore the caller drove.
-        getmore_op_spans = self.operation_spans(finished, "getMore")
-        self.assertGreater(len(getmore_op_spans), 1)
-        for op_span in getmore_op_spans:
-            self.assertEqual(op_span.name, "getMore pymongo_test.getmore_nesting")
-            self.assertNotEqual(op_span.parent, find_op_span.context)
-            self.assertEqual(
-                op_span.attributes["db.mongodb.cursor_id"],
-                find_op_span.attributes["db.mongodb.cursor_id"],
-            )
-
-        # Each getMore command span nests under its own operation span.
-        getmore_cmd_spans = self.command_spans(finished, "getMore")
-        self.assertEqual(len(getmore_cmd_spans), len(getmore_op_spans))
-        parent_ids = {s.context.span_id for s in getmore_op_spans}
-        for cmd_span in getmore_cmd_spans:
-            self.assertIn(cmd_span.parent.span_id, parent_ids)
-
-    def test_caller_driven_aggregate_getmores_get_their_own_operation_spans(self):
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.agg_nesting
-        coll.drop()
-        coll.insert_many([{"i": i} for i in range(10)])
-        self.exporter.clear()
-
-        docs = (coll.aggregate([{"$match": {}}], batchSize=2)).to_list()
-        self.assertEqual(len(docs), 10)
-
-        finished = self.exporter.get_finished_spans()
-        agg_op_spans = self.operation_spans(finished, "aggregate")
-        self.assertEqual(len(agg_op_spans), 1, [s.name for s in finished])
-        agg_op_span = agg_op_spans[0]
-
-        getmore_op_spans = self.operation_spans(finished, "getMore")
-        self.assertGreater(len(getmore_op_spans), 1)
-        for op_span in getmore_op_spans:
-            self.assertEqual(op_span.name, "getMore pymongo_test.agg_nesting")
-            self.assertNotEqual(op_span.parent, agg_op_span.context)
-
-        getmore_cmd_spans = self.command_spans(finished, "getMore")
-        self.assertEqual(len(getmore_cmd_spans), len(getmore_op_spans))
-        parent_ids = {s.context.span_id for s in getmore_op_spans}
-        for cmd_span in getmore_cmd_spans:
-            self.assertIn(cmd_span.parent.span_id, parent_ids)
-
-    def test_internal_iteration_keeps_getmores_in_one_operation_span(self):
-        # list_collection_names drains its own listCollections cursor to build
-        # its return value, so the whole call is one operation and its getMores
-        # get no operation spans of their own.
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        db = client.pymongo_test_internal_iteration
-        for i in range(6):
-            db[f"coll{i}"].insert_one({})
-        self.addCleanup(client.drop_database, db.name)
-        self.exporter.clear()
-
-        names = db.list_collection_names(cursor={"batchSize": 2})
-        self.assertEqual(len(names), 6)
-
-        finished = self.exporter.get_finished_spans()
-        op_spans = self.operation_spans(finished, "listCollections")
-        self.assertEqual(len(op_spans), 1, [s.name for s in finished])
-        op_span = op_spans[0]
-        self.assertEqual(self.operation_spans(finished, "getMore"), [])
-
-        getmore_cmd_spans = self.command_spans(finished, "getMore")
-        self.assertGreater(len(getmore_cmd_spans), 0)
-        for cmd_span in getmore_cmd_spans:
-            self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
-
-    def test_single_batch_aggregate_ends_span_promptly_not_at_gc(self):
-        # A command cursor whose first batch exhausts it is marked _killed in
-        # __init__ without ever calling close(); no getMore is sent, so
-        # _refresh()/_die_lock() never run. Without explicit attachment its
-        # operation span would only be ended by __del__, i.e. whenever GC
-        # happens to run (or never, if the cursor is retained; Important #2).
-        # Assert the span is already ended while a reference to the
-        # cursor is still held, proving it ended at construction rather than
-        # waiting on GC.
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.agg_single_batch
-        coll.drop()
-        coll.insert_many([{"i": i} for i in range(3)])
-        self.exporter.clear()
-
-        cursor = coll.aggregate([{"$match": {}}])
-        # Confirm this test actually exercises the single-batch path.
-        self.assertTrue(cursor._killed)
-
-        finished = self.exporter.get_finished_spans()
-        agg_op_spans = [
-            s
-            for s in finished
-            if s.attributes.get("db.operation.name") == "aggregate"
-            and "db.command.name" not in s.attributes
-        ]
-        self.assertEqual(len(agg_op_spans), 1, [s.name for s in finished])
-        self.assertIsNotNone(agg_op_spans[0].end_time)
-
-        # The cursor reference is kept alive through this assertion: if
-        # __del__ were the only thing ending the span, get_finished_spans()
-        # above would not have included it yet.
-        self.assertIsNotNone(cursor)
-
-    def test_abandoned_cursor_still_ends_operation_span(self):
-        import gc
-
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.getmore_abandoned
-        coll.drop()
-        coll.insert_many([{"i": i} for i in range(10)])
-        self.exporter.clear()
-
-        cursor = coll.find({}, batch_size=2)
-        cursor.next()  # Leaves the cursor open with batches pending.
-        del cursor
-        gc.collect()
-
-        find_op_spans = [
-            s
-            for s in self.exporter.get_finished_spans()
-            if s.attributes.get("db.operation.name") == "find"
-            and "db.command.name" not in s.attributes
-        ]
-        self.assertEqual(len(find_op_spans), 1)
 
     def test_explain_retains_collection_name(self):
         # explain wraps the real command ({"explain": {"find": "coll", ...}}), the
@@ -862,83 +638,6 @@ class TestOTelSpans(IntegrationTest):
         self.assertEqual(len(spans), 1)
         self.assertNotIn("db.query.text", spans[0].attributes)
 
-    def test_prose_3_get_more_records_sent_cursor_id_not_returned_cursor_id(self):
-        """Prose Test 3: getMore records the cursor id it sent, not the cursor id returned."""
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.prose3_getmore_cursor_id
-        coll.drop()
-        coll.insert_many([{"i": i} for i in range(3)])
-        self.exporter.clear()
-
-        cursor = coll.find({}, batch_size=2)
-        # Drain exactly the first batch (2 docs) without triggering a getMore
-        # yet, so the cursor id read here is the one `find` returned - the id
-        # about to be sent in the upcoming getMore - and not whatever that
-        # getMore's reply comes back with.
-        cursor.next()
-        cursor.next()
-        sent_cursor_id = cursor.cursor_id
-        self.assertIsNotNone(sent_cursor_id)
-        self.assertNotEqual(sent_cursor_id, 0)
-
-        # Draining the last document sends exactly one getMore, which
-        # exhausts the cursor: the server's reply to that getMore returns a
-        # cursor id of 0.
-        remaining = cursor.to_list()
-        self.assertEqual(len(remaining), 1)
-        self.assertEqual(cursor.cursor_id, 0)
-
-        finished = self.exporter.get_finished_spans()
-        getmore_op_spans = self.operation_spans(finished, "getMore")
-        self.assertEqual(len(getmore_op_spans), 1, [s.name for s in finished])
-        getmore_cmd_spans = self.command_spans(finished, "getMore")
-        self.assertEqual(len(getmore_cmd_spans), 1, [s.name for s in finished])
-
-        # Both the getMore operation span and the getMore command span must
-        # carry the id the driver sent, never the 0 the server's reply
-        # returned.
-        for span in (getmore_op_spans[0], getmore_cmd_spans[0]):
-            self.assertIn("db.mongodb.cursor_id", span.attributes)
-            self.assertNotEqual(span.attributes["db.mongodb.cursor_id"], 0)
-            self.assertEqual(span.attributes["db.mongodb.cursor_id"], sent_cursor_id)
-
-    @client_context.require_transactions
-    def test_prose_4_get_more_in_transaction_nests_under_transaction_span(self):
-        """Prose Test 4: getMore inside a transaction nests under the transaction span."""
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.prose4_getmore_in_txn
-        coll.drop()
-        # Inserted outside the transaction, so the transaction below contains
-        # only the find and getMore.
-        coll.insert_many([{"i": i} for i in range(3)])
-
-        def callback(session):
-            docs = coll.find({}, batch_size=2, session=session).to_list()
-            self.assertEqual(len(docs), 3)
-
-        self.exporter.clear()
-        with client.start_session() as session:
-            session.with_transaction(callback)
-
-        finished = self.exporter.get_finished_spans()
-        txn_spans = [s for s in finished if s.name == "transaction"]
-        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
-        txn_span = txn_spans[0]
-
-        find_op_spans = self.operation_spans(finished, "find")
-        self.assertEqual(len(find_op_spans), 1, [s.name for s in finished])
-        find_op_span = find_op_spans[0]
-
-        getmore_op_spans = self.operation_spans(finished, "getMore")
-        self.assertEqual(len(getmore_op_spans), 1, [s.name for s in finished])
-        getmore_op_span = getmore_op_spans[0]
-
-        # Both operation spans must nest directly under the transaction span...
-        self.assertEqual(find_op_span.parent.span_id, txn_span.context.span_id)
-        self.assertEqual(getmore_op_span.parent.span_id, txn_span.context.span_id)
-        # ...as siblings of each other, not one nested under the other.
-        self.assertNotEqual(getmore_op_span.parent.span_id, find_op_span.context.span_id)
-
     def test_explicit_query_text_max_length_zero_overrides_env_var(self):
         # An explicit client-side 0 must win over the environment variable, unlike
         # unset (which defers to it) - otherwise an app can't reliably opt out.
@@ -951,45 +650,6 @@ class TestOTelSpans(IntegrationTest):
         spans = self.spans("ping")
         self.assertEqual(len(spans), 1)
         self.assertNotIn("db.query.text", spans[0].attributes)
-
-    def test_getmore_over_a_command_namespace_omits_the_collection(self):
-        """A cursor opened by a command targets no user collection.
-
-        listCollections runs against the "<db>.$cmd.listCollections" namespace,
-        and its getMore carries that in the command's "collection" field. That
-        is not a user collection, so per the spec db.collection.name is omitted
-        and the span is named "getMore <db>" rather than
-        "getMore <db>.$cmd.listCollections".
-        """
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        db = client.pymongo_test_cmd_ns
-        client.drop_database(db.name)
-        # Two collections with a batch size of one guarantees exactly one getMore.
-        db.coll_one.insert_one({"x": 1})
-        db.coll_two.insert_one({"x": 1})
-        self.exporter.clear()
-
-        (db.list_collections(cursor={"batchSize": 1})).to_list()
-
-        finished = self.exporter.get_finished_spans()
-        getmore_op_spans = self.operation_spans(finished, "getMore")
-        self.assertGreaterEqual(len(getmore_op_spans), 1, [s.name for s in finished])
-        getmore_cmd_spans = self.command_spans(finished, "getMore")
-        self.assertGreaterEqual(len(getmore_cmd_spans), 1, [s.name for s in finished])
-
-        for span in getmore_op_spans + getmore_cmd_spans:
-            self.assertNotIn("db.collection.name", span.attributes)
-        # The operation span is named "<operation> <db>" when no collection is
-        # targeted; the command span is named after the command alone, and
-        # carries the same "<command> <db>" form in db.query.summary.
-        for span in getmore_op_spans:
-            self.assertEqual(span.name, f"getMore {db.name}")
-            self.assertEqual(span.attributes["db.operation.summary"], f"getMore {db.name}")
-        for span in getmore_cmd_spans:
-            self.assertEqual(span.name, "getMore")
-            self.assertEqual(span.attributes["db.query.summary"], f"getMore {db.name}")
-
-        client.drop_database(db.name)
 
     def test_query_text_truncation_shrinks_oversized_field_values(self):
         client = self.rs_or_single_client(tracing={"enabled": True, "query_text_max_length": 200})
@@ -1007,269 +667,6 @@ class TestOTelSpans(IntegrationTest):
         self.assertLessEqual(len(query_text), 200)
         self.assertNotIn("a" * 500, query_text)
 
-    @client_context.require_transactions
-    def test_committing_empty_transaction_ends_span(self):
-        # No operation is ever run against the server, so commit_transaction
-        # takes the STARTING/COMMITTED_EMPTY early-return path rather than
-        # actually sending a commitTransaction command.
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        self.exporter.clear()
-
-        with client.start_session() as session:
-            session.start_transaction()
-            session.commit_transaction()
-
-        finished = self.exporter.get_finished_spans()
-        txn_span = next(s for s in finished if s.name == "transaction")
-        self.assertTrue(txn_span.end_time is not None)
-
-    @client_context.require_transactions
-    def test_aborting_empty_transaction_ends_span(self):
-        # No operation is ever run against the server, so abort_transaction
-        # takes the STARTING early-return path rather than actually sending
-        # an abortTransaction command.
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        self.exporter.clear()
-
-        with client.start_session() as session:
-            session.start_transaction()
-            session.abort_transaction()
-
-        finished = self.exporter.get_finished_spans()
-        txn_span = next(s for s in finished if s.name == "transaction")
-        self.assertTrue(txn_span.end_time is not None)
-
-    @client_context.require_transactions
-    def test_direct_commit_retry_gives_each_span_its_own_end(self):
-        # Explicitly retrying a successful commit moves the transaction state
-        # COMMITTED -> IN_PROGRESS -> (back through the try/finally) ->
-        # COMMITTED again. The prior attempt's span was already ended and
-        # cleared, so the retry gets a fresh "transaction" span of its own
-        # (this is the direct-API path, not with_transaction; see
-        # test_with_transaction_retry_reuses_one_transaction_span for the
-        # with_transaction case, which shares a single span across retries
-        # instead); each span's ending finally block must run exactly once
-        # for its own span, never double-ending the same span and never
-        # leaving one unended.
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client[self.db.name].test
-        coll.drop()
-        client[self.db.name].create_collection("test")
-        self.exporter.clear()
-
-        with client.start_session() as session:
-            with session.start_transaction():
-                coll.insert_one({"x": 5}, session=session)
-            # The transaction context manager already committed on clean
-            # exit; retry the commit explicitly.
-            session.commit_transaction()
-
-        finished = self.exporter.get_finished_spans()
-        txn_spans = [s for s in finished if s.name == "transaction"]
-        self.assertEqual(len(txn_spans), 2)
-        self.assertNotEqual(txn_spans[0].context.span_id, txn_spans[1].context.span_id)
-        for txn_span in txn_spans:
-            self.assertTrue(txn_span.end_time is not None)
-
-    @client_context.require_transactions
-    def test_with_transaction_retry_reuses_one_transaction_span(self):
-        # A retried with_transaction() call must still produce exactly one
-        # "transaction" span for the whole logical call, not one sibling
-        # span per full-transaction retry, and no separately-named wrapper
-        # span either (the vendored transaction/convenient.json fixture
-        # pins "transaction" itself as the trace root for withTransaction).
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.with_txn_spans
-        coll.drop()
-        client.pymongo_test.create_collection("with_txn_spans")
-
-        attempts = []
-
-        def callback(session):
-            attempts.append(1)
-            coll.insert_one({"n": len(attempts)}, session=session)
-            if len(attempts) == 1:
-                exc = OperationFailure("transient", 251)
-                exc._add_error_label("TransientTransactionError")
-                raise exc
-
-        self.exporter.clear()
-        with client.start_session() as session:
-            session.with_transaction(callback)
-
-        self.assertEqual(len(attempts), 2)
-        finished = self.exporter.get_finished_spans()
-        self.assertFalse(
-            [s.name for s in finished if s.name.startswith("withTransaction")],
-            [s.name for s in finished],
-        )
-
-        txn_spans = [s for s in finished if s.name == "transaction"]
-        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
-        self.assertTrue(txn_spans[0].end_time is not None)
-
-        insert_op_spans = [s for s in finished if s.attributes.get("db.operation.name") == "insert"]
-        self.assertEqual(len(insert_op_spans), 2)
-        for op_span in insert_op_spans:
-            self.assertEqual(op_span.parent.span_id, txn_spans[0].context.span_id)
-
-    @client_context.require_transactions
-    def test_reentrant_with_transaction_raises_and_does_not_leak_span(self):
-        # A callback that illegally re-enters with_transaction() on the same
-        # session must be rejected with a clear InvalidOperation, and the
-        # outer call's "transaction" span must still end exactly once,
-        # never leaked (created but never ended) and never double-ended.
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.reentrant_with_txn
-        coll.drop()
-        client.pymongo_test.create_collection("reentrant_with_txn")
-
-        def inner_callback(session):
-            coll.insert_one({"x": 1}, session=session)
-
-        def outer_callback(session):
-            coll.insert_one({"x": 2}, session=session)
-            # Illegal: with_transaction() is not reentrant on one session.
-            session.with_transaction(inner_callback)
-
-        self.exporter.clear()
-        with client.start_session() as session:
-            with self.assertRaises(InvalidOperation):
-                session.with_transaction(outer_callback)
-
-        finished = self.exporter.get_finished_spans()
-        txn_spans = [s for s in finished if s.name == "transaction"]
-        # Only the outer call ever gets far enough to create a span; the
-        # guard rejects the inner call before it creates one of its own.
-        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
-        for txn_span in txn_spans:
-            self.assertIsNotNone(txn_span.end_time)
-
-    @client_context.require_transactions
-    def test_nested_with_transaction_on_another_session_keeps_spans_separate(self):
-        # Nesting with_transaction() is legal on a *different* session, unlike
-        # the same-session case above. Each session's operations must parent to
-        # its own transaction span, which holds because an operation span takes
-        # its parent explicitly from session._transaction.span instead of from
-        # ambient context.
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        db = client.pymongo_test
-        outer_coll = db.two_session_outer
-        inner_coll = db.two_session_inner
-        # Create both up front: creating a collection inside a transaction is
-        # illegal before server 4.4.
-        outer_coll.drop()
-        inner_coll.drop()
-        db.create_collection("two_session_outer")
-        db.create_collection("two_session_inner")
-
-        def inner_callback(inner_session):
-            inner_coll.insert_one({"x": 1}, session=inner_session)
-
-        def outer_callback(outer_session):
-            outer_coll.insert_one({"x": 1}, session=outer_session)
-            with client.start_session() as inner_session:
-                inner_session.with_transaction(inner_callback)
-
-        self.exporter.clear()
-        with client.start_session() as outer_session:
-            outer_session.with_transaction(outer_callback)
-
-        finished = self.exporter.get_finished_spans()
-        txn_spans = [s for s in finished if s.name == "transaction"]
-        self.assertEqual(len(txn_spans), 2, [s.name for s in finished])
-        for txn_span in txn_spans:
-            self.assertIsNotNone(txn_span.end_time)
-            # Transaction spans are never made current, so neither ends up
-            # nested under the other.
-            self.assertIsNone(txn_span.parent)
-
-        def insert_parent_id(collname: str) -> int:
-            (span,) = [
-                s
-                for s in finished
-                if s.attributes.get("db.operation.name") == "insert"
-                and s.attributes.get("db.collection.name") == collname
-            ]
-            return span.parent.span_id
-
-        outer_parent = insert_parent_id("two_session_outer")
-        inner_parent = insert_parent_id("two_session_inner")
-        self.assertNotEqual(outer_parent, inner_parent)
-        self.assertEqual({outer_parent, inner_parent}, {s.context.span_id for s in txn_spans})
-
-    @client_context.require_transactions
-    def test_with_transaction_while_direct_api_transaction_active_does_not_corrupt_span(
-        self,
-    ):
-        # Calling with_transaction() while a transaction started with the
-        # DIRECT API is already active on the same session is illegal:
-        # start_transaction() inside with_transaction() raises "Transaction
-        # already in progress", but the direct-API transaction's own
-        # "transaction" span must survive that failure: with_transaction()'s
-        # finally must not end/null it out from under the still-active
-        # transaction (Important #1). Operations run on the session
-        # afterwards must still parent to that span rather than becoming
-        # trace roots, and the failed call must not leave behind a second,
-        # spurious "transaction" span of its own.
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.direct_api_with_txn_conflict
-        coll.drop()
-        client.pymongo_test.create_collection("direct_api_with_txn_conflict")
-
-        def callback(session):
-            raise AssertionError("never reached; start_transaction() raises first")
-
-        self.exporter.clear()
-        with client.start_session() as session:
-            session.start_transaction()
-            coll.insert_one({"x": 1}, session=session)
-
-            with self.assertRaises(InvalidOperation):
-                session.with_transaction(callback)
-
-            # The original transaction is still active; this must still
-            # nest under its span, not become a trace root.
-            coll.insert_one({"x": 2}, session=session)
-            session.commit_transaction()
-
-        finished = self.exporter.get_finished_spans()
-        txn_spans = [s for s in finished if s.name == "transaction"]
-        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
-        txn_span = txn_spans[0]
-        self.assertIsNotNone(txn_span.end_time)
-
-        insert_op_spans = [s for s in finished if s.attributes.get("db.operation.name") == "insert"]
-        self.assertEqual(len(insert_op_spans), 2)
-        for op_span in insert_op_spans:
-            self.assertEqual(op_span.parent.span_id, txn_span.context.span_id)
-
-    @client_context.require_transactions
-    def test_retried_commit_has_a_transaction_span(self):
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.retried_commit_spans
-        coll.drop()
-        client.pymongo_test.create_collection("retried_commit_spans")
-
-        with client.start_session() as session:
-            session.start_transaction()
-            coll.insert_one({"x": 1}, session=session)
-            session.commit_transaction()
-            self.exporter.clear()
-            # An explicit second commit re-enters the COMMITTED -> IN_PROGRESS
-            # branch, which previously ran with no transaction span at all.
-            session.commit_transaction()
-
-        finished = self.exporter.get_finished_spans()
-        txn_spans = [s for s in finished if s.name == "transaction"]
-        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
-        commit_cmd_spans = [
-            s for s in finished if s.attributes.get("db.command.name") == "commitTransaction"
-        ]
-        self.assertGreaterEqual(len(commit_cmd_spans), 1)
-        for cmd_span in commit_cmd_spans:
-            self.assertIsNotNone(cmd_span.parent)
-
     @client_context.require_version_min(8, 0, 0, -24)
     def test_bulk_write_unacknowledged_gets_operation_span(self):
         client = self.rs_or_single_client(tracing={"enabled": True}, w=0)
@@ -1285,53 +682,6 @@ class TestOTelSpans(IntegrationTest):
         ]
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0].attributes["db.namespace"], "admin")
-
-    @client_context.require_version_min(8, 0)
-    def test_client_bulk_write_results_cursor_getmores_nest_under_bulk_write(self):
-        # A successful InsertOne's verbose result doc is tiny (~{"ok": 1, "idx":
-        # i, "n": 1}) regardless of the inserted document's size, and the driver
-        # never sends more than maxWriteBatchSize (100_000 by default) ops in one
-        # bulkWrite command, so plain successful inserts can never make the
-        # results cursor's first batch exceed the 16MB per-batch limit, no
-        # matter how many operations are given. Duplicate-key write errors,
-        # whose result docs embed the offending key (here padded to 3000 bytes),
-        # blow past that limit at a much smaller, fast-running operation count
-        # while still exercising the exact same code path (a real
-        # CommandCursor built and iterated by _process_results_cursor).
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.bulk_results_cursor
-        coll.drop()
-        coll.create_index("dup", unique=True)
-        dup_value = "d" * 3000
-        models = [
-            InsertOne(namespace=coll.full_name, document={"dup": dup_value}) for _ in range(10000)
-        ]
-        self.exporter.clear()
-        with self.assertRaises(ClientBulkWriteException):
-            client.bulk_write(models, verbose_results=True, ordered=False)
-
-        finished = self.exporter.get_finished_spans()
-        # Exactly one operation span, for the bulkWrite itself.
-        op_spans = [
-            s
-            for s in finished
-            if "db.command.name" not in s.attributes
-            and s.attributes.get("db.operation.name") is not None
-        ]
-        self.assertEqual(
-            [s.attributes["db.operation.name"] for s in op_spans],
-            ["bulkWrite"],
-            [s.name for s in finished],
-        )
-        (op_span,) = op_spans
-
-        # Any getMore command spans parent directly to the bulkWrite span.
-        getmore_cmd_spans = [
-            s for s in finished if s.attributes.get("db.command.name") == "getMore"
-        ]
-        self.assertGreater(len(getmore_cmd_spans), 0, "expected a multi-batch results cursor")
-        for cmd_span in getmore_cmd_spans:
-            self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
 
     def test_operation_span_falls_back_to_bare_name_when_no_command_is_sent(self):
         # An operation that fails during server selection never builds a
@@ -1357,39 +707,6 @@ class TestOTelSpans(IntegrationTest):
         self.assertNotIn("db.collection.name", span.attributes)
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
-    def test_caller_owned_operation_telemetry_is_not_ended_by_retry_internal(self):
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        telemetry = _OperationTelemetry(
-            client.options.tracing,
-            "find",
-            None,
-            dbname="mydb",
-            collection="c",
-            set_current=False,
-        )
-        self.exporter.clear()
-
-        def _noop_read(_session, _server, _conn, _read_pref):
-            return "ok"
-
-        result = client._retryable_read(
-            _noop_read,
-            ReadPreference.PRIMARY,
-            None,
-            operation="find",
-            operation_telemetry=telemetry,
-        )
-        self.assertEqual(result, "ok")
-        # _retry_internal must not have ended the caller's span.
-        self.assertEqual(
-            [s for s in self.exporter.get_finished_spans() if s.name.startswith("find")], []
-        )
-        telemetry.succeeded()
-        self.assertEqual(
-            len([s for s in self.exporter.get_finished_spans() if s.name.startswith("find")]),
-            1,
-        )
-
     def test_operation_span_name_can_differ_from_command_name(self):
         # count_documents' operation span is named for the driver operation
         # ("count"), but the command it actually sends is an aggregate, so an
@@ -1408,56 +725,6 @@ class TestOTelSpans(IntegrationTest):
         (cmd_span,) = self.spans("aggregate")
         self.assertEqual(cmd_span.attributes["db.command.name"], "aggregate")
         self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
-
-    def _aggregate_operation_span(self):
-        matching = [
-            s
-            for s in self.exporter.get_finished_spans()
-            if s.attributes.get("db.operation.name") == "aggregate"
-        ]
-        self.assertEqual(len(matching), 1)
-        return matching[0]
-
-    @client_context.require_version_min(4, 2, 0)
-    @client_context.require_change_streams
-    def test_change_stream_collection_level_operation_span_has_full_namespace(self):
-        # A collection-level change stream's operation span carries both the
-        # database and the collection, derived from the aggregate command by
-        # _otel's lazy backfill. The database- and cluster-level cases below
-        # must omit db.collection.name, since neither targets one collection.
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        db = client.pymongo_test
-        coll = db.test_otel_change_stream_coll
-        coll.drop()
-        self.exporter.clear()
-        with coll.watch():
-            pass
-        span = self._aggregate_operation_span()
-        self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
-        self.assertEqual(span.attributes["db.collection.name"], "test_otel_change_stream_coll")
-
-    @client_context.require_version_min(4, 2, 0)
-    @client_context.require_change_streams
-    def test_change_stream_database_level_operation_span_omits_collection_name(self):
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        db = client.pymongo_test
-        self.exporter.clear()
-        with db.watch():
-            pass
-        span = self._aggregate_operation_span()
-        self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
-        self.assertNotIn("db.collection.name", span.attributes)
-
-    @client_context.require_version_min(4, 2, 0)
-    @client_context.require_change_streams
-    def test_change_stream_cluster_level_operation_span_targets_admin(self):
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        self.exporter.clear()
-        with client.watch():
-            pass
-        span = self._aggregate_operation_span()
-        self.assertEqual(span.attributes["db.namespace"], "admin")
-        self.assertNotIn("db.collection.name", span.attributes)
 
     def test_kill_cursors_gets_operation_span(self):
         client = self.rs_or_single_client(tracing={"enabled": True})
@@ -1584,6 +851,8 @@ class TestOTelSpans(IntegrationTest):
 # are kept for the validator's edge cases (rejection paths, the explicit-zero
 # vs. unset distinction for query_text_max_length) that aren't necessarily
 # covered by the vendored fixtures.
+
+
 class TestValidateTracingOrNone(unittest.TestCase):
     def test_none(self):
         self.assertIsNone(common.validate_tracing_or_none("tracing", None))
