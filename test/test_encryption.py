@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import base64
 import copy
+import dataclasses
 import http.client
 import json
 import os
@@ -212,6 +213,34 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         ctx = _kms_ssl_contexts["kmip"]
         self.assertEqual(ctx.check_hostname, True)
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
+
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
+    def test_init_kms_connect_callback(self):
+        from pymongo.encryption_options import KMSConnectContext
+
+        # Default is None.
+        opts = AutoEncryptionOpts({}, "k.d")
+        self.assertIsNone(opts._kms_connect_callback)
+
+        # A callable is accepted and stored unchanged.
+        def callback(context):
+            raise AssertionError("not called")
+
+        opts = AutoEncryptionOpts({}, "k.d", kms_connect_callback=callback)
+        self.assertIs(opts._kms_connect_callback, callback)
+
+        # Non-callables are rejected eagerly.
+        for bad in [1, "not-callable", object()]:
+            with self.assertRaisesRegex(TypeError, "kms_connect_callback must be callable"):
+                AutoEncryptionOpts({}, "k.d", kms_connect_callback=bad)  # type: ignore[arg-type]
+
+        # The context is frozen and carries host, port, and timeout.
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=9.5)
+        self.assertEqual(context.host, "kms.example.com")
+        self.assertEqual(context.port, 443)
+        self.assertEqual(context.timeout, 9.5)
+        with self.assertRaises(dataclasses.FrozenInstanceError):
+            context.host = "evil.example.com"  # type: ignore[misc]
 
 
 class TestClientOptions(PyMongoTestCase):

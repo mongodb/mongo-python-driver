@@ -19,8 +19,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Optional, TypedDict
+import socket
+from collections.abc import Awaitable, Mapping
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict
 
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 
@@ -54,6 +56,124 @@ def check_min_pymongocrypt() -> None:
         )
 
 
+@dataclass(frozen=True)
+class KMSConnectContext:
+    """Information about a pending KMS connection.
+
+    An instance is passed to the ``kms_connect_callback`` configured on
+    :class:`AutoEncryptionOpts`, :class:`~pymongo.encryption.ClientEncryption`,
+    or :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`.
+
+    The callback opens a connection to ``host``:``port`` and returns it. The
+    driver then performs the KMS TLS handshake over that socket, so the
+    callback must return a plain, unwrapped :class:`socket.socket`. Certificate
+    and hostname verification target ``host``, not whatever peer the socket is
+    actually connected to, which is what makes proxying safe.
+
+    To reach a KMS host through an HTTP proxy, connect to the proxy and issue
+    an HTTP ``CONNECT`` request::
+
+      import socket
+
+      def connect_through_proxy(context):
+          sock = socket.create_connection(
+              ("proxy.example.com", 8080), timeout=context.timeout
+          )
+          target = f"{context.host}:{context.port}"
+          sock.sendall(
+              f"CONNECT {target} HTTP/1.1\\r\\nHost: {target}\\r\\n\\r\\n".encode()
+          )
+          response = b""
+          while b"\\r\\n\\r\\n" not in response:
+              chunk = sock.recv(4096)
+              if not chunk:
+                  sock.close()
+                  raise OSError("proxy closed the connection")
+              response += chunk
+          if not response.startswith(b"HTTP/1.1 200"):
+              sock.close()
+              raise OSError(f"proxy CONNECT failed: {response.splitlines()[0]!r}")
+          return sock
+
+      opts = AutoEncryptionOpts(
+          kms_providers={"aws": aws_creds},
+          key_vault_namespace="keyvault.datakeys",
+          kms_connect_callback=connect_through_proxy,
+      )
+
+    For :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption` and
+    :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`, the callback
+    must be a coroutine function. It must not block the event loop, so drive
+    the connection with :mod:`asyncio` or hand the blocking work to a thread
+    with :func:`asyncio.to_thread`.
+
+    Reaching the proxy itself over TLS takes one extra step. Python cannot
+    layer a second TLS session over an :class:`ssl.SSLSocket`, so the callback
+    cannot return its TLS connection to the proxy directly. Bridge it to a
+    :func:`socket.socketpair` and return the plain end instead::
+
+      import socket, ssl, threading
+
+      def connect_through_tls_proxy(context):
+          proxy_ctx = ssl.create_default_context(cafile="proxy-ca.pem")
+          raw = socket.create_connection(
+              ("proxy.example.com", 8443), timeout=context.timeout
+          )
+          proxy = proxy_ctx.wrap_socket(raw, server_hostname="proxy.example.com")
+          target = f"{context.host}:{context.port}"
+          proxy.sendall(
+              f"CONNECT {target} HTTP/1.1\\r\\nHost: {target}\\r\\n\\r\\n".encode()
+          )
+          response = b""
+          while b"\\r\\n\\r\\n" not in response:
+              chunk = proxy.recv(4096)
+              if not chunk:
+                  proxy.close()
+                  raise OSError("proxy closed the connection")
+              response += chunk
+          if not response.startswith(b"HTTP/1.1 200"):
+              proxy.close()
+              raise OSError(f"proxy CONNECT failed: {response.splitlines()[0]!r}")
+
+          driver_side, relay_side = socket.socketpair()
+
+          def relay(src, dst):
+              try:
+                  while True:
+                      buf = src.recv(16384)
+                      if not buf:
+                          break
+                      dst.sendall(buf)
+              except OSError:
+                  pass
+              finally:
+                  src.close()
+                  dst.close()
+
+          threading.Thread(target=relay, args=(relay_side, proxy), daemon=True).start()
+          threading.Thread(target=relay, args=(proxy, relay_side), daemon=True).start()
+          return driver_side
+
+    :param host: Hostname of the KMS server, and the target of TLS certificate
+        and hostname verification.
+    :param port: Port of the KMS server.
+    :param timeout: Seconds remaining before the operation's timeout expires,
+        or ``None`` when no timeout applies.
+
+    .. versionadded:: 4.18
+    """
+
+    host: str
+    port: int
+    timeout: Optional[float]
+
+
+# A callback that opens a connection to a KMS host. The async driver requires a
+# coroutine function; the synchronous driver requires a regular function.
+AsyncKMSConnectCallback = Callable[[KMSConnectContext], Awaitable[socket.socket]]
+KMSConnectCallback = Callable[[KMSConnectContext], socket.socket]
+
+
 class AutoEncryptionOpts:
     """Options to configure automatic client-side field level encryption."""
 
@@ -74,6 +194,7 @@ class AutoEncryptionOpts:
         bypass_query_analysis: bool = False,
         encrypted_fields_map: Optional[Mapping[str, Any]] = None,
         key_expiration_ms: Optional[int] = None,
+        kms_connect_callback: Optional[Callable[[KMSConnectContext], Any]] = None,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -211,7 +332,20 @@ class AutoEncryptionOpts:
         :param key_expiration_ms: The cache expiration time for data encryption keys.
             Defaults to ``None`` which defers to libmongocrypt's default which is currently 60000.
             Set to 0 to disable key expiration.
+        :param kms_connect_callback: A callable that opens the connection to a
+            KMS host, used to route KMS requests through an HTTP proxy. It
+            receives a :class:`KMSConnectContext` and returns a connected,
+            unwrapped :class:`socket.socket`; the driver then performs the KMS
+            TLS handshake over it. Must be a coroutine function for
+            :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` and a
+            regular function for
+            :class:`~pymongo.synchronous.mongo_client.MongoClient`. See
+            :class:`KMSConnectContext` for a worked HTTP ``CONNECT`` example.
+            Defaults to ``None``, meaning the driver connects to KMS hosts
+            directly.
 
+        .. versionchanged:: 4.18
+           Added the `kms_connect_callback` parameter.
         .. versionchanged:: 4.12
            Added the `key_expiration_ms` parameter.
         .. versionchanged:: 4.2
@@ -258,6 +392,11 @@ class AutoEncryptionOpts:
         self._async_kms_ssl_contexts: Optional[dict[str, SSLContext]] = None
         self._bypass_query_analysis = bypass_query_analysis
         self._key_expiration_ms = key_expiration_ms
+        if kms_connect_callback is not None and not callable(kms_connect_callback):
+            raise TypeError(
+                f"kms_connect_callback must be callable, not {type(kms_connect_callback)}"
+            )
+        self._kms_connect_callback = kms_connect_callback
 
     def _kms_ssl_contexts(self, is_sync: bool) -> dict[str, SSLContext]:
         if is_sync:
