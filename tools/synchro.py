@@ -72,6 +72,7 @@ replacements = {
     "_a_grid_out_property": "_grid_out_property",
     "AsyncClientEncryption": "ClientEncryption",
     "AsyncMongoCryptCallback": "MongoCryptCallback",
+    "AsyncKMSConnectCallback": "KMSConnectCallback",
     "AsyncExplicitEncrypter": "ExplicitEncrypter",
     "AsyncAutoEncrypter": "AutoEncrypter",
     "AsyncContextManager": "ContextManager",

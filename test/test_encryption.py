@@ -75,8 +75,15 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
+from pymongo.pool_options import PoolOptions
 from pymongo.synchronous import encryption
-from pymongo.synchronous.encryption import Algorithm, ClientEncryption, QueryType
+from pymongo.synchronous.encryption import (
+    Algorithm,
+    ClientEncryption,
+    QueryType,
+    _connect_kms,
+    _KMSCallbackContractError,
+)
 from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
@@ -241,6 +248,70 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         self.assertEqual(context.timeout, 9.5)
         with self.assertRaises(dataclasses.FrozenInstanceError):
             context.host = "evil.example.com"  # type: ignore[misc]
+
+
+class TestKmsConnectCallbackUnit(PyMongoTestCase):
+    """Contract checks for kms_connect_callback that need no KMS server."""
+
+    @staticmethod
+    def _pool_options():
+        return PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=None)
+
+    def test_non_socket_return_is_not_retried(self):
+        def callback(context):
+            return "not-a-socket"
+
+        with self.assertRaisesRegex(_KMSCallbackContractError, "must return a connected"):
+            _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+
+    def test_already_wrapped_socket_is_rejected(self):
+        # ssl.SSLSocket subclasses socket.socket, but wrap_socket cannot layer
+        # TLS over it, so it must be rejected with an actionable message rather
+        # than failing later with an opaque handshake error.
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        left, right = socket.socketpair()
+        self.addCleanup(right.close)
+        # do_handshake_on_connect=False means no peer is needed to produce a
+        # genuine ssl.SSLSocket.
+        wrapped = ctx.wrap_socket(left, do_handshake_on_connect=False, server_hostname="x")
+        self.addCleanup(wrapped.close)
+
+        def callback(context):
+            return wrapped
+
+        with self.assertRaisesRegex(_KMSCallbackContractError, "unwrapped"):
+            _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+
+    def test_context_receives_host_port_and_timeout(self):
+        received = []
+        left, right = socket.socketpair()
+        self.addCleanup(left.close)
+        self.addCleanup(right.close)
+
+        def callback(context):
+            received.append(context)
+            return left
+
+        # With ssl_context=None the socket is returned unchanged, which also
+        # confirms a plain socket is accepted.
+        conn = _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 12.5)
+        self.assertIs(conn, left)
+
+        self.assertEqual(len(received), 1)
+        self.assertEqual(received[0].host, "kms.example.com")
+        self.assertEqual(received[0].port, 443)
+        self.assertEqual(received[0].timeout, 12.5)
+
+    def test_network_error_from_callback_propagates(self):
+        def callback(context):
+            raise OSError("proxy unreachable")
+
+        # Not wrapped in _KMSCallbackContractError, so kms_request's broad
+        # handler can treat it as transient and let libmongocrypt retry.
+        with self.assertRaises(OSError):
+            _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
 
 
 class TestClientOptions(PyMongoTestCase):

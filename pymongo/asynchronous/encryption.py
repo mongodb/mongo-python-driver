@@ -20,6 +20,7 @@ import asyncio
 import contextlib
 import enum
 import socket
+import ssl
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
@@ -63,7 +64,9 @@ from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import (
+    AsyncKMSConnectCallback,
     AutoEncryptionOpts,
+    KMSConnectContext,
     RangeOpts,
     TextOpts,
     check_min_pymongocrypt,
@@ -82,6 +85,7 @@ from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
     _async_configured_socket,
+    _async_wrap_socket_tls,
     _raise_connection_failure,
 )
 from pymongo.read_concern import ReadConcern
@@ -112,9 +116,41 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
-async def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
+class _KMSCallbackContractError(Exception):
+    """Raised when a kms_connect_callback violates its contract.
+
+    Unlike a network error from the callback, this is a programming error, so
+    it is never retried.
+    """
+
+
+async def _connect_kms(
+    address: _Address,
+    opts: PoolOptions,
+    kms_connect_callback: Optional[AsyncKMSConnectCallback] = None,
+    timeout: Optional[float] = None,
+) -> Union[socket.socket, _sslConn]:
+    if kms_connect_callback is None:
+        try:
+            return await _async_configured_socket(address, opts)
+        except Exception as exc:
+            _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
+
+    # Let the caller open the connection, then apply TLS ourselves so that SNI
+    # and certificate verification still target the KMS host even when the
+    # socket actually terminates at a proxy.
+    sock = await kms_connect_callback(
+        KMSConnectContext(host=address[0], port=cast(int, address[1]), timeout=timeout)
+    )
+    if not isinstance(sock, socket.socket) or isinstance(sock, ssl.SSLSocket):
+        raise _KMSCallbackContractError(
+            "kms_connect_callback must return a connected, unwrapped "
+            f"socket.socket, not {type(sock)}. TLS cannot be layered over an "
+            "already-wrapped socket; to reach the proxy over TLS, relay through "
+            "a socket.socketpair and return the plain end."
+        )
     try:
-        return await _async_configured_socket(address, opts)
+        return await _async_wrap_socket_tls(sock, address, opts)
     except Exception as exc:
         _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
@@ -197,7 +233,12 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             sleep_sec = float(sleep_u) / 1e6
             await asyncio.sleep(sleep_sec)
         try:
-            conn = await _connect_kms(address, opts)
+            conn = await _connect_kms(
+                address,
+                opts,
+                self.opts._kms_connect_callback,
+                connect_timeout,
+            )
             try:
                 await async_socket_sendall(conn, message)
                 while kms_context.bytes_needed > 0:
@@ -233,6 +274,8 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 conn.close()
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
+        except _KMSCallbackContractError:
+            raise  # A callback contract violation is not transient.
         except Exception as exc:
             remaining = _csot.remaining()
             if isinstance(exc, NetworkTimeout) or (remaining is not None and remaining <= 0):
