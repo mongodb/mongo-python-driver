@@ -55,6 +55,7 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot, _op_id
+from pymongo._otel import internal_cursor_iteration
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import (
@@ -256,8 +257,11 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
 
         :return: All documents from the listCollections command response as BSON.
         """
-        with self.client_ref()[database].list_collections(filter=RawBSONDocument(filter)) as cursor:
-            return [_dict_to_bson(doc, False, _DATA_KEY_OPTS) for doc in cursor]
+        with internal_cursor_iteration():
+            with self.client_ref()[database].list_collections(
+                filter=RawBSONDocument(filter)
+            ) as cursor:
+                return [_dict_to_bson(doc, False, _DATA_KEY_OPTS) for doc in cursor]
 
     def spawn(self) -> None:
         """Spawn mongocryptd.

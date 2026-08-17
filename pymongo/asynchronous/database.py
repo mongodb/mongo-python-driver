@@ -33,6 +33,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
+from pymongo._otel import internal_cursor_iteration
 from pymongo.asynchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.asynchronous.change_stream import AsyncDatabaseChangeStream
 from pymongo.asynchronous.collection import AsyncCollection
@@ -1211,10 +1212,11 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        return [
-            result["name"]
-            async for result in await self._list_collections_helper(session=session, **kwargs)
-        ]
+        with internal_cursor_iteration():
+            return [
+                result["name"]
+                async for result in await self._list_collections_helper(session=session, **kwargs)
+            ]
 
     async def list_collection_names(
         self,
