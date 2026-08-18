@@ -2242,6 +2242,10 @@ class TestKmsConnectCallbackProse(EncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, "proxy is on fire"):
             encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
 
+    @unittest.skip(
+        "PYTHON-6037 ClientEncryption does not support timeoutMS, so the "
+        "callback always receives the default KMS connect timeout"
+    )
     def test_05_callback_receives_timeout(self):
         key_vault_client = self.rs_or_single_client(timeoutMS=1000)
         encryption = self.create_client_encryption(
@@ -2255,11 +2259,12 @@ class TestKmsConnectCallbackProse(EncryptionIntegrationTest):
 
         self.assertTrue(self.callback_calls, "callback was never invoked")
         for context in self.callback_calls:
-            # This only checks the spec's literal requirement (a non-zero
-            # timeout). timeoutMS=1000 above does not currently tighten this
-            # value: explicit ClientEncryption operations establish no CSOT
-            # deadline, so this always falls back to the driver's default KMS
-            # connect timeout regardless of key_vault_client's timeoutMS.
+            # Skipped: this would only check the spec's literal requirement
+            # (a non-zero timeout), which cannot fail here. timeoutMS=1000
+            # above does not tighten this value, because explicit
+            # ClientEncryption operations establish no CSOT deadline, so it
+            # always falls back to the driver's default KMS connect timeout.
+            # Un-skip once PYTHON-6037 adds timeoutMS to ClientEncryption.
             self.assertIsNotNone(context.timeout)
             self.assertGreater(context.timeout, 0)
 

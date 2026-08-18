@@ -181,6 +181,14 @@ class KMSConnectContext:
         one is active, otherwise the driver's default KMS connect timeout.
         Always a positive number; the driver never passes ``None``.
 
+    .. note:: ``timeoutMS`` configured on a
+       :class:`~pymongo.encryption.ClientEncryption` or on its key vault client
+       does not currently constrain KMS requests, so for explicit encryption
+       ``timeout`` is always the default KMS connect timeout. Automatic
+       encryption is unaffected and passes the remaining budget. This is a
+       known deviation from the Client Side Operations Timeout specification,
+       tracked in PYTHON-6037.
+
     .. versionadded:: 4.18
     """
 
