@@ -125,37 +125,6 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-  # TEMPORARY, remove before merging the PYTHON-5947 stack.
-  #
-  # Evergreen only runs on PRs whose base is a configured branch, so the upper
-  # PRs in this stack (based on each other rather than on otel) get no Evergreen
-  # coverage at all, and the otel tests only run in Evergreen's otel variant.
-  # This job runs them on every branch in the stack instead. A replica set is
-  # requested because the transaction span tests require one.
-  otel:
-    runs-on: ubuntu-latest
-    name: OTel Tests (temporary)
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-        with:
-          enable-cache: true
-          python-version: "3.11"
-      - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@master
-        with:
-          version: "8.0"
-          topology: "replica_set"
-      - name: Install just
-        run: uv tool install rust-just
-      - name: Setup tests
-        run: TEST_NAME=otel just setup-tests
-      - name: Run tests
-        run: just run-tests
-
   doctest:
     runs-on: ubuntu-latest
     name: DocTest
@@ -336,3 +305,36 @@ jobs:
             source .venv/bin/activate
             uv pip install -e ".[test]" --resolution=lowest-direct --force-reinstall
             pytest -v test/test_srv_polling.py test/test_dns.py test/asynchronous/test_srv_polling.py test/asynchronous/test_dns.py
+
+  # TEMPORARY, remove before merging the PYTHON-5947 stack.
+  #
+  # Evergreen only runs on PRs whose base is a configured branch, so the upper
+  # PRs in this stack (based on each other rather than on otel) get no Evergreen
+  # coverage at all, and the otel tests only run in Evergreen's otel variant.
+  # This job runs them on every branch in the stack instead. A replica set is
+  # requested because the transaction span tests require one. Actions are pinned
+  # to commit hashes here, unlike the rest of this file, to satisfy the
+  # mutable-action-tag scanners on newly added lines.
+  otel:
+    runs-on: ubuntu-latest
+    name: OTel Tests (temporary)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+          python-version: "3.11"
+      - id: setup-mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@c70d29e2102cd048ad800932209776499553870c # v1.0.1
+        with:
+          version: "8.0"
+          topology: "replica_set"
+      - name: Install just
+        run: uv tool install rust-just
+      - name: Setup tests
+        run: TEST_NAME=otel just setup-tests
+      - name: Run tests
+        run: just run-tests
