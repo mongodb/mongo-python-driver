@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import copy
 import dataclasses
@@ -29,6 +30,7 @@ import socketserver
 import ssl
 import sys
 import textwrap
+import threading
 import traceback
 import uuid
 import warnings
@@ -2046,6 +2048,236 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encrypted.create_data_key("aws", master_key=key)
+
+
+_KMS_PROXY_HOST = "127.0.0.1"
+_KMS_PROXY_PORT = 9004
+_KMS_TLS_PROXY_PORT = 9005
+
+_AWS_MASTER_KEY = {
+    "region": "us-east-1",
+    "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
+}
+
+
+def _http_connect(context, proxy_port, proxy_ssl_context=None):
+    """Open an HTTP CONNECT tunnel to context.host:context.port.
+
+    Returns a plain socket. When proxy_ssl_context is given, the connection to
+    the proxy is TLS and the tunnel is bridged to a socketpair, because TLS
+    cannot be layered over an ssl.SSLSocket.
+    """
+    sock: socket.socket = socket.create_connection(
+        (_KMS_PROXY_HOST, proxy_port), timeout=context.timeout
+    )
+    try:
+        if proxy_ssl_context is not None:
+            sock = proxy_ssl_context.wrap_socket(sock, server_hostname=_KMS_PROXY_HOST)
+        target = f"{context.host}:{context.port}"
+        sock.sendall(f"CONNECT {target} HTTP/1.1\r\nHost: {target}\r\n\r\n".encode())
+        response = b""
+        while b"\r\n\r\n" not in response:
+            chunk = sock.recv(4096)
+            if not chunk:
+                raise OSError("proxy closed the connection before responding")
+            response += chunk
+        status = response.split(b"\r\n", 1)[0]
+        if not status.startswith(b"HTTP/1.1 200"):
+            raise OSError(f"proxy CONNECT failed: {status!r}")
+    except Exception:
+        sock.close()
+        raise
+
+    if proxy_ssl_context is None:
+        return sock
+
+    driver_side, relay_side = socket.socketpair()
+
+    def relay(src, dst):
+        try:
+            while True:
+                buf = src.recv(16384)
+                if not buf:
+                    break
+                dst.sendall(buf)
+        except OSError:
+            pass
+        finally:
+            for s in (src, dst):
+                try:
+                    s.close()
+                except OSError:
+                    pass
+
+    threading.Thread(target=relay, args=(relay_side, sock), daemon=True).start()
+    threading.Thread(target=relay, args=(sock, relay_side), daemon=True).start()
+    return driver_side
+
+
+# https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#kms-connect-callback
+class TestKmsConnectCallbackProse(EncryptionIntegrationTest):
+    @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
+    def setUp(self):
+        super().setUp()
+        self.callback_calls: list[Any] = []
+
+    def plain_callback(self, context):
+        self.callback_calls.append(context)
+        if not _IS_SYNC:
+            return asyncio.to_thread(_http_connect, context, _KMS_PROXY_PORT)
+        return _http_connect(context, _KMS_PROXY_PORT)
+
+    def tls_callback(self, context):
+        self.callback_calls.append(context)
+        ctx = ssl.create_default_context(cafile=CA_PEM)
+        ctx.check_hostname = False
+        if not _IS_SYNC:
+            return asyncio.to_thread(_http_connect, context, _KMS_TLS_PROXY_PORT, ctx)
+        return _http_connect(context, _KMS_TLS_PROXY_PORT, ctx)
+
+    def proxy_request(self, method, path, tls=False):
+        """Call the proxy's control endpoints and return the body."""
+        if tls:
+            ctx = ssl.create_default_context(cafile=CA_PEM)
+            ctx.check_hostname = False
+            conn = http.client.HTTPSConnection(
+                f"{_KMS_PROXY_HOST}:{_KMS_TLS_PROXY_PORT}", context=ctx
+            )
+        else:
+            conn = http.client.HTTPConnection(f"{_KMS_PROXY_HOST}:{_KMS_PROXY_PORT}")
+        try:
+            conn.request(method, path)
+            return conn.getresponse().read().decode()
+        finally:
+            conn.close()
+
+    def connect_count(self, tls=False):
+        body = self.proxy_request("GET", "/metrics", tls=tls)
+        # The body is one "key value" pair per line. Only connect_count is
+        # required by the spec; the server also emits connect_target lines.
+        for line in body.splitlines():
+            key, _, value = line.partition(" ")
+            if key == "connect_count":
+                return int(value)
+        raise AssertionError(f"no connect_count in metrics body: {body!r}")
+
+    def test_01_plain_http_proxy(self):
+        self.proxy_request("POST", "/reset")
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            self.client,
+            OPTS,
+            kms_connect_callback=self.plain_callback,
+        )
+        encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+        self.assertGreaterEqual(self.connect_count(), 1)
+
+    def test_02_https_proxy(self):
+        self.proxy_request("POST", "/reset", tls=True)
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            self.client,
+            OPTS,
+            kms_connect_callback=self.tls_callback,
+        )
+        encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+        self.assertGreaterEqual(self.connect_count(tls=True), 1)
+
+    def test_03_auto_encryption_through_proxy(self):
+        self.client.keyvault.datakeys.drop()
+        self.client.db.coll.drop()
+
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            self.client,
+            OPTS,
+            kms_connect_callback=self.plain_callback,
+        )
+        data_key_id = encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+        schema = {
+            "bsonType": "object",
+            "properties": {
+                "encrypted_string": {
+                    "encrypt": {
+                        "keyId": [data_key_id],
+                        "bsonType": "string",
+                        "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
+                    }
+                }
+            },
+        }
+
+        self.proxy_request("POST", "/reset")
+        opts = AutoEncryptionOpts(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            schema_map={"db.coll": schema},
+            kms_connect_callback=self.plain_callback,
+        )
+        client_encrypted = self.rs_or_single_client(auto_encryption_opts=opts)
+
+        client_encrypted.db.coll.insert_one({"_id": 1, "encrypted_string": "hello"})
+        decrypted = client_encrypted.db.coll.find_one({"_id": 1})
+        self.assertEqual(decrypted["encrypted_string"], "hello")
+
+        raw = self.client.db.coll.find_one({"_id": 1})
+        self.assertIsInstance(raw["encrypted_string"], Binary)
+
+        self.assertGreaterEqual(self.connect_count(), 1)
+
+    def test_04_callback_error(self):
+        def failing_callback(context):
+            raise OSError("proxy is on fire")
+
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            self.client,
+            OPTS,
+            kms_connect_callback=failing_callback,
+        )
+        with self.assertRaises(EncryptionError):
+            encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+
+    def test_05_callback_receives_timeout(self):
+        key_vault_client = self.rs_or_single_client(timeoutMS=1000)
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            key_vault_client,
+            OPTS,
+            kms_connect_callback=self.plain_callback,
+        )
+        encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+
+        self.assertTrue(self.callback_calls, "callback was never invoked")
+        for context in self.callback_calls:
+            self.assertIsNotNone(context.timeout)
+            self.assertGreater(context.timeout, 0)
+
+    def test_06_retry_after_network_error(self):
+        state = {"calls": 0}
+
+        def flaky_callback(context):
+            state["calls"] += 1
+            if state["calls"] == 1:
+                raise OSError("first attempt fails")
+            if not _IS_SYNC:
+                return asyncio.to_thread(_http_connect, context, _KMS_PROXY_PORT)
+            return _http_connect(context, _KMS_PROXY_PORT)
+
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            self.client,
+            OPTS,
+            kms_connect_callback=flaky_callback,
+        )
+        encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+        self.assertGreaterEqual(state["calls"], 2)
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#kms-tls-options-tests
