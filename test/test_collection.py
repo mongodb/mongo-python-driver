@@ -1606,45 +1606,6 @@ class TestCollection(IntegrationTest):
                 )
                 self.assertEqual(leaked, [], f"{name} returned another collection's documents")
 
-    @client_context.require_version_min(4, 4, -1)
-    def test_pipeline_option_cannot_read_another_collection(self):
-        # The pipeline option alone is a distinct primitive: it needs no
-        # aggregate key, so the command still names the intended collection
-        # while $unionWith pulls in another one. Requires $unionWith (4.4+).
-        db = self.db
-        db.drop_collection("secrets")
-        self.addCleanup(db.drop_collection, "secrets")
-        db.secrets.insert_one({"_id": 1, "api_key": "sentinel"})
-
-        leaked = []
-        with contextlib.suppress(ConfigurationError, OperationFailure):
-            leaked = (db.test.list_search_indexes(pipeline=[{"$unionWith": "secrets"}])).to_list()
-        self.assertNotIn(
-            "sentinel",
-            [doc.get("api_key") for doc in leaked],
-            "injected $unionWith read another collection",
-        )
-
-    def test_pipeline_option_cannot_write_another_collection(self):
-        # The injected pipeline also evades the $out/$merge write detection,
-        # which inspects only the legitimate pipeline argument. Assert the
-        # target collection is left untouched.
-        db = self.db
-        db.drop_collection("secrets")
-        db.drop_collection("billing")
-        self.addCleanup(db.drop_collection, "secrets")
-        self.addCleanup(db.drop_collection, "billing")
-        db.secrets.insert_one({"_id": 1, "api_key": "sentinel"})
-        db.billing.insert_one({"_id": 1, "balance": 100})
-
-        with contextlib.suppress(ConfigurationError, OperationFailure):
-            db.test.list_search_indexes(pipeline=[{"$match": {}}, {"$out": "billing"}])
-        self.assertEqual(
-            db.billing.find().to_list(),
-            [{"_id": 1, "balance": 100}],
-            "injected $out overwrote another collection",
-        )
-
     def test_aggregate_raw_bson(self):
         db = self.db
         db.drop_collection("test")

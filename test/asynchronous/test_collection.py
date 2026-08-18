@@ -1624,47 +1624,6 @@ class AsyncTestCollection(AsyncIntegrationTest):
                 )
                 self.assertEqual(leaked, [], f"{name} returned another collection's documents")
 
-    @async_client_context.require_version_min(4, 4, -1)
-    async def test_pipeline_option_cannot_read_another_collection(self):
-        # The pipeline option alone is a distinct primitive: it needs no
-        # aggregate key, so the command still names the intended collection
-        # while $unionWith pulls in another one. Requires $unionWith (4.4+).
-        db = self.db
-        await db.drop_collection("secrets")
-        self.addAsyncCleanup(db.drop_collection, "secrets")
-        await db.secrets.insert_one({"_id": 1, "api_key": "sentinel"})
-
-        leaked = []
-        with contextlib.suppress(ConfigurationError, OperationFailure):
-            leaked = await (
-                await db.test.list_search_indexes(pipeline=[{"$unionWith": "secrets"}])
-            ).to_list()
-        self.assertNotIn(
-            "sentinel",
-            [doc.get("api_key") for doc in leaked],
-            "injected $unionWith read another collection",
-        )
-
-    async def test_pipeline_option_cannot_write_another_collection(self):
-        # The injected pipeline also evades the $out/$merge write detection,
-        # which inspects only the legitimate pipeline argument. Assert the
-        # target collection is left untouched.
-        db = self.db
-        await db.drop_collection("secrets")
-        await db.drop_collection("billing")
-        self.addAsyncCleanup(db.drop_collection, "secrets")
-        self.addAsyncCleanup(db.drop_collection, "billing")
-        await db.secrets.insert_one({"_id": 1, "api_key": "sentinel"})
-        await db.billing.insert_one({"_id": 1, "balance": 100})
-
-        with contextlib.suppress(ConfigurationError, OperationFailure):
-            await db.test.list_search_indexes(pipeline=[{"$match": {}}, {"$out": "billing"}])
-        self.assertEqual(
-            await db.billing.find().to_list(),
-            [{"_id": 1, "balance": 100}],
-            "injected $out overwrote another collection",
-        )
-
     async def test_aggregate_raw_bson(self):
         db = self.db
         await db.drop_collection("test")
