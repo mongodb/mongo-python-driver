@@ -143,6 +143,7 @@ replacements = {
     "dns.asyncresolver.resolve": "dns.resolver.resolve",
     "__aenter__": "__enter__",
     "__aexit__": "__exit__",
+    "Must be a coroutine function.": "Must be a regular function.",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
