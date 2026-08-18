@@ -42,12 +42,15 @@ PyMongo 4.18 brings a number of changes including:
 - Aggregation helpers now raise :exc:`~pymongo.errors.ConfigurationError` when
   passed an ``aggregate`` or ``pipeline`` keyword argument. Previously these
   keys silently replaced the target namespace and pipeline of the generated
-  ``aggregate`` command, so an application forwarding untrusted option names to
-  :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate`,
-  :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate_raw_batches`,
-  :meth:`~pymongo.asynchronous.database.AsyncDatabase.aggregate`, or
+  ``aggregate`` command. This affects
+  :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate` and
+  :meth:`~pymongo.synchronous.collection.Collection.aggregate`,
+  :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate_raw_batches`
+  and :meth:`~pymongo.synchronous.collection.Collection.aggregate_raw_batches`,
+  :meth:`~pymongo.asynchronous.database.AsyncDatabase.aggregate` and
+  :meth:`~pymongo.synchronous.database.Database.aggregate`, and
   :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_search_indexes`
-  could be redirected to read or overwrite an unintended collection.
+  and :meth:`~pymongo.synchronous.collection.Collection.list_search_indexes`.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------

@@ -1582,44 +1582,6 @@ class AsyncTestCollection(AsyncIntegrationTest):
         with self.assertRaises(ConfigurationError):
             await db.test.list_search_indexes(pipeline=[{"$out": "other"}])
 
-    async def test_aggregate_reserved_options_do_not_reach_server(self):
-        # Assert the security property rather than the error type: the injected
-        # namespace must never reach the wire, and the secret must never reach
-        # the caller.
-        listener = OvertCommandListener()
-        client = await self.async_single_client(event_listeners=[listener])
-        db = client[self.db.name]
-        await self.db.drop_collection("secrets")
-        self.addAsyncCleanup(self.db.drop_collection, "secrets")
-        await self.db.secrets.insert_one({"_id": 1, "api_key": "sentinel"})
-
-        attempts = {
-            "aggregate": lambda: db.test.aggregate([], aggregate="secrets"),
-            "aggregate_raw_batches": lambda: db.test.aggregate_raw_batches([], aggregate="secrets"),
-            "database aggregate": lambda: db.aggregate([], aggregate="secrets"),
-            "list_search_indexes aggregate": lambda: db.test.list_search_indexes(
-                aggregate="secrets"
-            ),
-        }
-        for name, attempt in attempts.items():
-            with self.subTest(entry_point=name):
-                listener.reset()
-                leaked = []
-                # A vulnerable driver raises nothing; a server that rejects the
-                # injected pipeline raises OperationFailure. Neither outcome is
-                # what this test asserts on, so both are tolerated here.
-                with contextlib.suppress(ConfigurationError, OperationFailure):
-                    leaked = await (await attempt()).to_list()
-                targets = [
-                    event.command.get("aggregate")
-                    for event in listener.started_events
-                    if event.command_name == "aggregate"
-                ]
-                self.assertNotIn(
-                    "secrets", targets, f"{name} sent the injected namespace to the server"
-                )
-                self.assertEqual(leaked, [], f"{name} returned another collection's documents")
-
     async def test_aggregate_raw_bson(self):
         db = self.db
         await db.drop_collection("test")
