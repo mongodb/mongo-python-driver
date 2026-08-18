@@ -1551,7 +1551,9 @@ class TestCollection(IntegrationTest):
             coll.aggregate([{"$out": "output-collection"}])
 
     def test_aggregate_reserved_options(self):
-        # Reserved command fields must not be settable as options.
+        # "aggregate" and "pipeline" are fields of the aggregate command itself,
+        # so they must not be settable as keyword options: doing so would
+        # replace the command's target namespace or its pipeline.
         db = self.db
         with self.assertRaises(ConfigurationError):
             db.test.aggregate([], aggregate="other")
