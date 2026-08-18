@@ -780,9 +780,8 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(cmd_spans[0].parent.span_id, op_span.context.span_id)
 
 
-# The vendored tests exercise this validator indirectly through client
-# construction. These unit tests cover its edge cases: the rejection paths and
-# the explicit-zero vs unset distinction for query_text_max_length.
+# These unit tests cover the validator's edge cases: the rejection paths and the
+# explicit-zero vs unset distinction for query_text_max_length.
 
 
 class TestValidateTracingOrNone(unittest.TestCase):
