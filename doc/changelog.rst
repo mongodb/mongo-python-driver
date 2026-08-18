@@ -39,6 +39,17 @@ PyMongo 4.18 brings a number of changes including:
 - Fixed a bug on Windows, and on macOS when using PyOpenSSL, where
   ``SSL_CERT_FILE``/``SSL_CERT_DIR`` were merged with, rather than replacing,
   the OS/certifi certificate store.
+- Added support for routing Key Management Service (KMS) requests for
+  Client-Side Field Level Encryption and Queryable Encryption through an HTTP
+  proxy, using the new ``kms_connect_callback`` option on
+  :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
+  :class:`~pymongo.encryption.ClientEncryption`, and
+  :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`. The callback
+  opens the connection to the KMS host and the driver performs the KMS TLS
+  handshake over it, so certificate and hostname verification continue to
+  target the KMS host rather than the proxy. See
+  :class:`~pymongo.encryption_options.KMSConnectContext` for an HTTP
+  ``CONNECT`` example.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
