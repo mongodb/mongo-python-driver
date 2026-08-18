@@ -1,0 +1,209 @@
+{
+  "description": "transaction getMore spans",
+  "schemaVersion": "1.27",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.0",
+      "topologies": [
+        "replicaset"
+      ]
+    },
+    {
+      "minServerVersion": "4.1.8",
+      "topologies": [
+        "sharded",
+        "load-balanced"
+      ]
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {}
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "transaction-get-more"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    },
+    {
+      "session": {
+        "id": "session0",
+        "client": "client0"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "transaction-get-more",
+      "documents": [
+        {
+          "_id": 1
+        },
+        {
+          "_id": 2
+        },
+        {
+          "_id": 3
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "getMore inside a transaction nests under the transaction span",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "object": "session0"
+        },
+        {
+          "name": "createFindCursor",
+          "object": "collection0",
+          "arguments": {
+            "filter": {},
+            "batchSize": 2,
+            "session": "session0"
+          },
+          "saveResultAsEntity": "cursor0"
+        },
+        {
+          "name": "iterateUntilDocumentOrError",
+          "object": "cursor0",
+          "expectResult": {
+            "_id": 1
+          }
+        },
+        {
+          "name": "iterateUntilDocumentOrError",
+          "object": "cursor0",
+          "expectResult": {
+            "_id": 2
+          }
+        },
+        {
+          "name": "iterateUntilDocumentOrError",
+          "object": "cursor0",
+          "expectResult": {
+            "_id": 3
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "object": "session0"
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "transaction",
+              "attributes": {
+                "db.system.name": "mongodb"
+              },
+              "nested": [
+                {
+                  "name": "find transaction-get-more.test",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "transaction-get-more",
+                    "db.collection.name": "test",
+                    "db.operation.name": "find",
+                    "db.operation.summary": "find transaction-get-more.test"
+                  },
+                  "nested": [
+                    {
+                      "name": "find",
+                      "attributes": {
+                        "db.system.name": "mongodb",
+                        "db.namespace": "transaction-get-more",
+                        "db.collection.name": "test",
+                        "db.command.name": "find",
+                        "db.query.summary": "find transaction-get-more.test",
+                        "db.mongodb.cursor_id": {
+                          "$$type": [
+                            "int",
+                            "long"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "getMore transaction-get-more.test",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "transaction-get-more",
+                    "db.collection.name": "test",
+                    "db.operation.name": "getMore",
+                    "db.operation.summary": "getMore transaction-get-more.test"
+                  },
+                  "nested": [
+                    {
+                      "name": "getMore",
+                      "attributes": {
+                        "db.system.name": "mongodb",
+                        "db.namespace": "transaction-get-more",
+                        "db.collection.name": "test",
+                        "db.command.name": "getMore",
+                        "db.query.summary": "getMore transaction-get-more.test",
+                        "db.mongodb.cursor_id": {
+                          "$$type": [
+                            "int",
+                            "long"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "commitTransaction admin",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "admin",
+                    "db.collection.name": {
+                      "$$exists": false
+                    },
+                    "db.operation.name": "commitTransaction",
+                    "db.operation.summary": "commitTransaction admin"
+                  },
+                  "nested": [
+                    {
+                      "name": "commitTransaction",
+                      "attributes": {
+                        "db.system.name": "mongodb",
+                        "db.namespace": "admin",
+                        "db.collection.name": {
+                          "$$exists": false
+                        },
+                        "db.command.name": "commitTransaction",
+                        "db.query.summary": "commitTransaction admin"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
