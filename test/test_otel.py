@@ -524,9 +524,9 @@ class TestOTelSpans(IntegrationTest):
             client = self.rs_or_single_client()
             self.exporter.clear()
             client.admin.command("ping")
-        # Disabled must suppress both the operation span and the command span
-        # it wraps: db.command() routes through _retry_internal same as any
-        # CRUD call, so both would exist if tracing weren't fully off.
+        # When tracing is disabled we must suppress both the operation span and
+        # the command span it wraps: db.command() routes through _retry_internal
+        # same as any CRUD call, so both would exist if tracing weren't fully off.
         self.assertEqual(self.ping_spans(), [])
 
         with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
