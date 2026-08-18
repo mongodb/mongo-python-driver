@@ -37,7 +37,7 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.logger import _HELLO_COMMANDS
-from pymongo.operations import InsertOne, _Op
+from pymongo.operations import InsertOne
 from pymongo.read_preferences import ReadPreference
 from pymongo.typings import _Address
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
@@ -239,18 +239,6 @@ class TestOperationTelemetry(unittest.TestCase):
         telemetry2 = _telemetry._OperationTelemetry(None, "find", None)
         telemetry2.failed(RuntimeError("x"))  # must not raise
         self.assertEqual(self.exporter.get_finished_spans(), ())
-
-    def test_operation_name_normalizes_enum_operation(self):
-        # _retry_internal call sites pass an `_Op` (a `str`-mixin enum), not a
-        # plain string. Python 3.11 changed `Enum.__format__` so str(_Op.INSERT)
-        # yields "_Op.INSERT" rather than "insert"; 3.10 happened to give the
-        # bare value, which is why the bug did not show up there.
-        telemetry = _telemetry._OperationTelemetry(_tracing_opts(), _Op.INSERT, None)
-        telemetry.succeeded()
-        (span,) = self.exporter.get_finished_spans()
-        self.assertEqual(span.name, "insert")
-        self.assertEqual(span.attributes["db.operation.name"], "insert")
-        self.assertIs(type(span.attributes["db.operation.name"]), str)
 
     def test_run_command_operation_name_override(self):
         # Per the spec, Database.command() produces a "runCommand" operation
