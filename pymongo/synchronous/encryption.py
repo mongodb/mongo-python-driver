@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import contextlib
 import enum
+import inspect
 import socket
 import ssl
 import time as time  # noqa: PLC0414 # needed in sync version
@@ -123,6 +124,19 @@ class _KMSCallbackContractError(Exception):
     """
 
 
+def _close_rejected_kms_socket(obj: Any) -> None:
+    """Close a rejected kms_connect_callback return value, if it can be closed.
+
+    The caller may have handed us a live socket, and nothing else will close it:
+    _connect_kms raises before its result reaches the caller's ``finally``. The
+    value can be anything a user returned, so closing is strictly best effort.
+    """
+    close = getattr(obj, "close", None)
+    if callable(close):
+        with contextlib.suppress(Exception):
+            close()
+
+
 def _connect_kms(
     address: _Address,
     opts: PoolOptions,
@@ -138,10 +152,25 @@ def _connect_kms(
     # Let the caller open the connection, then apply TLS ourselves so that SNI
     # and certificate verification still target the KMS host even when the
     # socket actually terminates at a proxy.
-    sock = kms_connect_callback(
+    result = kms_connect_callback(
         KMSConnectContext(host=address[0], port=cast(int, address[1]), timeout=timeout)
     )
+    # _IS_SYNC is True in the generated synchronous flavor, where a regular
+    # function is the correct thing to pass and nothing is awaited.
+    if not _IS_SYNC and not inspect.isawaitable(result):
+        _close_rejected_kms_socket(result)
+        # "async" and "def" are deliberately split across the next two source
+        # lines: tools/synchro.py deletes "async " from any line that spells
+        # those two words together, which would garble this message in the
+        # generated synchronous file even though the branch never runs there.
+        raise _KMSCallbackContractError(
+            "kms_connect_callback must be a coroutine function (an 'async"
+            " def') for the async driver, but calling it returned "
+            f"{type(result)}, which is not awaitable."
+        )
+    sock = result
     if not isinstance(sock, socket.socket) or isinstance(sock, ssl.SSLSocket):
+        _close_rejected_kms_socket(sock)
         raise _KMSCallbackContractError(
             "kms_connect_callback must return a connected, unwrapped "
             f"socket.socket, not {type(sock)}. TLS cannot be layered over an "

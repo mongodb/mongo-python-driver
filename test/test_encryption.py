@@ -2239,7 +2239,7 @@ class TestKmsConnectCallbackProse(EncryptionIntegrationTest):
             OPTS,
             kms_connect_callback=failing_callback,
         )
-        with self.assertRaises(EncryptionError):
+        with self.assertRaisesRegex(EncryptionError, "proxy is on fire"):
             encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
 
     def test_05_callback_receives_timeout(self):

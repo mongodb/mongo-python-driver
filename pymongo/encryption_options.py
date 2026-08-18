@@ -101,11 +101,26 @@ class KMSConnectContext:
           kms_connect_callback=connect_through_proxy,
       )
 
+    The socket must be in blocking or timeout mode.
+    :meth:`ssl.SSLContext.wrap_socket` rejects a non-blocking socket, which
+    rules out the transports returned by :func:`asyncio.open_connection` and
+    :meth:`asyncio.loop.create_connection`.
+
     For :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption` and
     :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`, the callback
-    must be a coroutine function. It must not block the event loop, so drive
-    the connection with :mod:`asyncio` or hand the blocking work to a thread
-    with :func:`asyncio.to_thread`.
+    must be a coroutine function. Keep the event loop free by running the
+    blocking connect in a thread::
+
+      import asyncio
+
+      async def async_connect_through_proxy(context):
+          return await asyncio.to_thread(connect_through_proxy, context)
+
+      opts = AutoEncryptionOpts(
+          kms_providers={"aws": aws_creds},
+          key_vault_namespace="keyvault.datakeys",
+          kms_connect_callback=async_connect_through_proxy,
+      )
 
     Reaching the proxy itself over TLS takes one extra step. Python cannot
     layer a second TLS session over an :class:`ssl.SSLSocket`, so the callback
@@ -147,8 +162,13 @@ class KMSConnectContext:
               except OSError:
                   pass
               finally:
+                  # Unblock the sibling thread with EOF instead of closing a
+                  # socket it may be reading, then close only this side.
+                  try:
+                      dst.shutdown(socket.SHUT_RDWR)
+                  except OSError:
+                      pass
                   src.close()
-                  dst.close()
 
           threading.Thread(target=relay, args=(relay_side, proxy), daemon=True).start()
           threading.Thread(target=relay, args=(proxy, relay_side), daemon=True).start()
