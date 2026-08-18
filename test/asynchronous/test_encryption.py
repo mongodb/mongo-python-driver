@@ -2263,6 +2263,11 @@ class TestKmsConnectCallbackProse(AsyncEncryptionIntegrationTest):
 
         self.assertTrue(self.callback_calls, "callback was never invoked")
         for context in self.callback_calls:
+            # This only checks the spec's literal requirement (a non-zero
+            # timeout). timeoutMS=1000 above does not currently tighten this
+            # value: explicit ClientEncryption operations establish no CSOT
+            # deadline, so this always falls back to the driver's default KMS
+            # connect timeout regardless of key_vault_client's timeoutMS.
             self.assertIsNotNone(context.timeout)
             self.assertGreater(context.timeout, 0)
 

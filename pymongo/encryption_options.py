@@ -157,8 +157,9 @@ class KMSConnectContext:
     :param host: Hostname of the KMS server, and the target of TLS certificate
         and hostname verification.
     :param port: Port of the KMS server.
-    :param timeout: Seconds remaining before the operation's timeout expires,
-        or ``None`` when no timeout applies.
+    :param timeout: Seconds remaining in the operation's timeout budget when
+        one is active, otherwise the driver's default KMS connect timeout.
+        Always a positive number; the driver never passes ``None``.
 
     .. versionadded:: 4.18
     """
