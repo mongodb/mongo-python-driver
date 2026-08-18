@@ -149,6 +149,34 @@ def _is_faas() -> bool:
     return _is_lambda() or _is_azure_func() or _is_gcp_func() or _is_vercel()
 
 
+# Environment variables that indicate a coding agent, checked in order. The
+# first match determines the value of the client.env.agent metadata field.
+# See DRIVERS-3529 and PYTHON-5929.
+_AGENT_ENV_VARS = [
+    ("CLAUDECODE", "CLAUDECODE"),
+    ("CURSOR_AGENT", "CURSOR"),
+    ("GEMINI_CLI", "GEMINI_CLI"),
+    ("CODEX_SANDBOX", "CODEX_SANDBOX"),
+    ("AUGMENT_AGENT", "AUGMENT"),
+    ("OPENCODE_CLIENT", "OPENCODE"),
+]
+
+
+def _metadata_agent() -> Optional[str]:
+    """Detect a coding agent from the environment for client.env.agent.
+
+    A generic AI_AGENT or AGENT environment variable takes precedence and its
+    value is used verbatim. Otherwise the first matching known agent variable
+    determines the value."""
+    agent = os.getenv("AI_AGENT") or os.getenv("AGENT")
+    if agent:
+        return agent
+    for var, name in _AGENT_ENV_VARS:
+        if os.getenv(var):
+            return name
+    return None
+
+
 def _getenv_int(key: str) -> Optional[int]:
     """Like os.getenv but returns an int, or None if the value is missing/malformed."""
     val = os.getenv(key)
@@ -165,6 +193,9 @@ def _metadata_env() -> dict[str, Any]:
     container = get_container_env_info()
     if container:
         env["container"] = container
+    agent = _metadata_agent()
+    if agent:
+        env["agent"] = agent
     # Skip if multiple (or no) envs are matched.
     if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
         return env
@@ -205,10 +236,24 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     """Perform metadata truncation."""
     if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
         return
-    # 1. Omit fields from env except env.name.
-    env_name = metadata.get("env", {}).get("name")
-    if env_name:
-        metadata["env"] = {"name": env_name}
+    # 1. Omit fields from env except env.name and env.agent.
+    env = metadata.get("env", {})
+    trimmed_env = {k: env[k] for k in ("name", "agent") if k in env}
+    if trimmed_env:
+        metadata["env"] = trimmed_env
+    else:
+        metadata.pop("env", None)
+    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
+        return
+    # 1b. Drop env.agent (which may hold an arbitrarily large AI_AGENT/AGENT
+    # value) before trimming os and before sacrificing env.name, so the more
+    # valuable os and env.name fields are preserved as long as possible.
+    if "agent" in trimmed_env:
+        del trimmed_env["agent"]
+        if trimmed_env:
+            metadata["env"] = trimmed_env
+        else:
+            metadata.pop("env", None)
     if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
         return
     # 2. Omit fields from os except os.type.
