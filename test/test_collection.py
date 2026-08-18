@@ -1551,6 +1551,9 @@ class TestCollection(IntegrationTest):
             coll.aggregate([{"$out": "output-collection"}])
 
     def test_aggregate_reserved_options(self):
+        # The reserved command fields must not be settable as options: an
+        # application that forwards a caller-supplied options mapping would
+        # otherwise let the caller retarget the command at any collection.
         db = self.db
         with self.assertRaises(ConfigurationError):
             db.test.aggregate([], aggregate="other")
@@ -1562,6 +1565,85 @@ class TestCollection(IntegrationTest):
             db.test.list_search_indexes(aggregate="other")
         with self.assertRaises(ConfigurationError):
             db.test.list_search_indexes(pipeline=[{"$out": "other"}])
+
+    def test_aggregate_reserved_options_do_not_reach_server(self):
+        # Assert the security property rather than the error type: the injected
+        # namespace must never reach the wire, and the secret must never reach
+        # the caller. Checking the command as sent keeps this independent of
+        # whether the server would have accepted the injected pipeline, so it
+        # fails on a vulnerable driver for the right reason on any topology.
+        listener = OvertCommandListener()
+        client = self.single_client(event_listeners=[listener])
+        db = client[self.db.name]
+        self.db.drop_collection("secrets")
+        self.addCleanup(self.db.drop_collection, "secrets")
+        self.db.secrets.insert_one({"_id": 1, "api_key": "sentinel"})
+
+        attempts = {
+            "aggregate": lambda: db.test.aggregate([], aggregate="secrets"),
+            "aggregate_raw_batches": lambda: db.test.aggregate_raw_batches([], aggregate="secrets"),
+            "database aggregate": lambda: db.aggregate([], aggregate="secrets"),
+            "list_search_indexes aggregate": lambda: db.test.list_search_indexes(
+                aggregate="secrets"
+            ),
+        }
+        for name, attempt in attempts.items():
+            with self.subTest(entry_point=name):
+                listener.reset()
+                leaked = []
+                # A vulnerable driver raises nothing; a server that rejects the
+                # injected pipeline raises OperationFailure. Neither outcome is
+                # what this test asserts on, so both are tolerated here.
+                with contextlib.suppress(ConfigurationError, OperationFailure):
+                    leaked = (attempt()).to_list()
+                targets = [
+                    event.command.get("aggregate")
+                    for event in listener.started_events
+                    if event.command_name == "aggregate"
+                ]
+                self.assertNotIn(
+                    "secrets", targets, f"{name} sent the injected namespace to the server"
+                )
+                self.assertEqual(leaked, [], f"{name} returned another collection's documents")
+
+    @client_context.require_version_min(4, 4, -1)
+    def test_pipeline_option_cannot_read_another_collection(self):
+        # The pipeline option alone is a distinct primitive: it needs no
+        # aggregate key, so the command still names the intended collection
+        # while $unionWith pulls in another one. Requires $unionWith (4.4+).
+        db = self.db
+        db.drop_collection("secrets")
+        self.addCleanup(db.drop_collection, "secrets")
+        db.secrets.insert_one({"_id": 1, "api_key": "sentinel"})
+
+        leaked = []
+        with contextlib.suppress(ConfigurationError, OperationFailure):
+            leaked = (db.test.list_search_indexes(pipeline=[{"$unionWith": "secrets"}])).to_list()
+        self.assertNotIn(
+            "sentinel",
+            [doc.get("api_key") for doc in leaked],
+            "injected $unionWith read another collection",
+        )
+
+    def test_pipeline_option_cannot_write_another_collection(self):
+        # The injected pipeline also evades the $out/$merge write detection,
+        # which inspects only the legitimate pipeline argument. Assert the
+        # target collection is left untouched.
+        db = self.db
+        db.drop_collection("secrets")
+        db.drop_collection("billing")
+        self.addCleanup(db.drop_collection, "secrets")
+        self.addCleanup(db.drop_collection, "billing")
+        db.secrets.insert_one({"_id": 1, "api_key": "sentinel"})
+        db.billing.insert_one({"_id": 1, "balance": 100})
+
+        with contextlib.suppress(ConfigurationError, OperationFailure):
+            db.test.list_search_indexes(pipeline=[{"$match": {}}, {"$out": "billing"}])
+        self.assertEqual(
+            db.billing.find().to_list(),
+            [{"_id": 1, "balance": 100}],
+            "injected $out overwrote another collection",
+        )
 
     def test_aggregate_raw_bson(self):
         db = self.db

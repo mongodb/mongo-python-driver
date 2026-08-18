@@ -1569,6 +1569,9 @@ class AsyncTestCollection(AsyncIntegrationTest):
             await coll.aggregate([{"$out": "output-collection"}])
 
     async def test_aggregate_reserved_options(self):
+        # The reserved command fields must not be settable as options: an
+        # application that forwards a caller-supplied options mapping would
+        # otherwise let the caller retarget the command at any collection.
         db = self.db
         with self.assertRaises(ConfigurationError):
             await db.test.aggregate([], aggregate="other")
@@ -1580,6 +1583,87 @@ class AsyncTestCollection(AsyncIntegrationTest):
             await db.test.list_search_indexes(aggregate="other")
         with self.assertRaises(ConfigurationError):
             await db.test.list_search_indexes(pipeline=[{"$out": "other"}])
+
+    async def test_aggregate_reserved_options_do_not_reach_server(self):
+        # Assert the security property rather than the error type: the injected
+        # namespace must never reach the wire, and the secret must never reach
+        # the caller. Checking the command as sent keeps this independent of
+        # whether the server would have accepted the injected pipeline, so it
+        # fails on a vulnerable driver for the right reason on any topology.
+        listener = OvertCommandListener()
+        client = await self.async_single_client(event_listeners=[listener])
+        db = client[self.db.name]
+        await self.db.drop_collection("secrets")
+        self.addAsyncCleanup(self.db.drop_collection, "secrets")
+        await self.db.secrets.insert_one({"_id": 1, "api_key": "sentinel"})
+
+        attempts = {
+            "aggregate": lambda: db.test.aggregate([], aggregate="secrets"),
+            "aggregate_raw_batches": lambda: db.test.aggregate_raw_batches([], aggregate="secrets"),
+            "database aggregate": lambda: db.aggregate([], aggregate="secrets"),
+            "list_search_indexes aggregate": lambda: db.test.list_search_indexes(
+                aggregate="secrets"
+            ),
+        }
+        for name, attempt in attempts.items():
+            with self.subTest(entry_point=name):
+                listener.reset()
+                leaked = []
+                # A vulnerable driver raises nothing; a server that rejects the
+                # injected pipeline raises OperationFailure. Neither outcome is
+                # what this test asserts on, so both are tolerated here.
+                with contextlib.suppress(ConfigurationError, OperationFailure):
+                    leaked = await (await attempt()).to_list()
+                targets = [
+                    event.command.get("aggregate")
+                    for event in listener.started_events
+                    if event.command_name == "aggregate"
+                ]
+                self.assertNotIn(
+                    "secrets", targets, f"{name} sent the injected namespace to the server"
+                )
+                self.assertEqual(leaked, [], f"{name} returned another collection's documents")
+
+    @async_client_context.require_version_min(4, 4, -1)
+    async def test_pipeline_option_cannot_read_another_collection(self):
+        # The pipeline option alone is a distinct primitive: it needs no
+        # aggregate key, so the command still names the intended collection
+        # while $unionWith pulls in another one. Requires $unionWith (4.4+).
+        db = self.db
+        await db.drop_collection("secrets")
+        self.addAsyncCleanup(db.drop_collection, "secrets")
+        await db.secrets.insert_one({"_id": 1, "api_key": "sentinel"})
+
+        leaked = []
+        with contextlib.suppress(ConfigurationError, OperationFailure):
+            leaked = await (
+                await db.test.list_search_indexes(pipeline=[{"$unionWith": "secrets"}])
+            ).to_list()
+        self.assertNotIn(
+            "sentinel",
+            [doc.get("api_key") for doc in leaked],
+            "injected $unionWith read another collection",
+        )
+
+    async def test_pipeline_option_cannot_write_another_collection(self):
+        # The injected pipeline also evades the $out/$merge write detection,
+        # which inspects only the legitimate pipeline argument. Assert the
+        # target collection is left untouched.
+        db = self.db
+        await db.drop_collection("secrets")
+        await db.drop_collection("billing")
+        self.addAsyncCleanup(db.drop_collection, "secrets")
+        self.addAsyncCleanup(db.drop_collection, "billing")
+        await db.secrets.insert_one({"_id": 1, "api_key": "sentinel"})
+        await db.billing.insert_one({"_id": 1, "balance": 100})
+
+        with contextlib.suppress(ConfigurationError, OperationFailure):
+            await db.test.list_search_indexes(pipeline=[{"$match": {}}, {"$out": "billing"}])
+        self.assertEqual(
+            await db.billing.find().to_list(),
+            [{"_id": 1, "balance": 100}],
+            "injected $out overwrote another collection",
+        )
 
     async def test_aggregate_raw_bson(self):
         db = self.db
