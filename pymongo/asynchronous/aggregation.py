@@ -63,7 +63,7 @@ class _AggregationCommand:
         for name in ("aggregate", "pipeline"):
             if name in options:
                 raise ConfigurationError(
-                    f"The {name} option cannot be specified as a keyword argument"
+                    f"The {name} option cannot be specified as a keyword argument."
                 )
 
         self._target = target
