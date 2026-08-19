@@ -1907,7 +1907,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
         :param operation_telemetry: The calling cursor's operation span, or None,
-            so this send's command spans nest under it.
+            so this send's command spans nest under it. Covers one caller-driven
+            getMore, or a whole API call that drains the cursor itself.
         :param reuse_current_span: Create no operation span at all and leave the
             ambient span in place as the parent for this operation's command
             spans. Mutually exclusive with ``operation_telemetry``. Defaults to
