@@ -143,9 +143,14 @@ def create_variant(
     expansions = (expansions and expansions.copy()) or dict()
     if version:
         expansions["VERSION"] = version
-    # 8.0+ Windows builds must run on win-latest
-    if "win64" in display_name.lower() or (
-        "win32" in display_name.lower() and version and version >= "8.0"
+    # 8.0+ Windows builds must run on win-latest, unless an explicit host overrides this
+    if (
+        "run_on" not in kwargs
+        and (
+            "win64" in display_name.lower()
+            or ("win32" in display_name.lower() and version and version >= "8.0")
+        )
+        and host in (None, "win64", HOSTS.get("win64"))
     ):
         kwargs["run_on"] = HOSTS["win-latest"].run_on
     return create_variant_generic(

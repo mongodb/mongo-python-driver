@@ -284,7 +284,7 @@ buildvariants:
       - name: .test-standard-auth !.pypy .auth !.free-threaded
     display_name: Auth Enterprise Win64
     run_on:
-      - windows-2022-latest-small
+      - windows-2022-latest-small-DEVPROD-19149
     expansions:
       TEST_NAME: enterprise_auth
       AUTH: auth
