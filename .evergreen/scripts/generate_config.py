@@ -231,8 +231,8 @@ def create_enterprise_auth_variants():
         if host == "win64":
             # https://jira.mongodb.org/browse/PYTHON-5704
             tasks = [".test-standard-auth !.pypy .auth !.free-threaded"]
-        if host == "rhel":
-            host = "windows-2022-latest-small-DEVPROD-19149"  # noqa: PLW2901
+        if host == "win64":
+            host = "DEVPROD-19149"  # noqa: PLW2901
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants
