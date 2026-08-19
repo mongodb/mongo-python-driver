@@ -116,7 +116,7 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
         if more_to_come:
             request_id, data, max_doc_size = 0, b"", 0
         else:
-            message = operation.get_message(read_preference, conn, use_cmd)
+            message = operation.get_message(read_preference, conn)
             request_id, data, max_doc_size = _split_message(message)
         user_fields = _CURSOR_DOC_FIELDS if use_cmd else None
         docs, reply, duration = run_cursor_command(
