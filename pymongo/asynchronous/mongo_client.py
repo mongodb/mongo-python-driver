@@ -1912,8 +1912,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
         :param operation_telemetry: The operation span created by the calling
-            cursor (see ``AsyncCursor._refresh``), or None. Passed down so the
-            command spans of this send nest under it.
+            cursor (see ``AsyncCursor._refresh``), or None. Covers a single
+            caller-driven getMore, or the whole of a public API call that
+            drains the cursor itself. Passed down so the command spans of this
+            send nest under it.
         :param reuse_current_span: Create no operation span at all and leave the
             ambient span in place as the parent for this operation's command
             spans. Mutually exclusive with ``operation_telemetry``. Defaults to
@@ -2027,12 +2029,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
         :param operation_telemetry: An operation span the caller created and will
-            end itself, defaults to None. Only ``AsyncCursor`` passes one (see
-            ``AsyncCursor._refresh``): its span has to survive send paths that
-            bypass this method, so the cursor ends it rather than this call.
-            Given a span, this method neither creates nor ends one and only
-            makes the caller's current for the duration of the call; given
-            None, it creates a span and ends it before returning.
+            end itself, defaults to None. Cursors pass one (see
+            ``AsyncCursor._refresh`` and ``AsyncCommandCursor._refresh``): the
+            span has to survive send paths that bypass this method, so the
+            cursor ends it rather than this call. Given a span, this method
+            neither creates nor ends one and only makes the caller's current
+            for the duration of the call; given None, it creates a span and
+            ends it before returning.
         :param reuse_current_span: Create no operation span at all and leave the
             ambient span in place as the parent for this operation's command
             spans. For callers that know a suitable operation span is already
