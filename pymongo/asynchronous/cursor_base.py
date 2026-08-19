@@ -154,7 +154,6 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
                 conn=conn,
                 duration=duration,
                 request_id=request_id,
-                from_command=use_cmd,
                 docs=docs,  # type: ignore[arg-type]
                 more_to_come=more_to_come,
             )
@@ -163,7 +162,6 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
             address=conn.address,
             duration=duration,
             request_id=request_id,
-            from_command=use_cmd,
             docs=docs,  # type: ignore[arg-type]
         )
 
