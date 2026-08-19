@@ -411,12 +411,14 @@ def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
         span.end()
 
 
-def _set_exception_attributes(span: Span, exc: BaseException) -> None:
+def _set_exception_attributes(span: Span, exc: BaseException) -> str:
     """Set exception.type/exception.message/exception.stacktrace span attributes.
 
     ``record_exception`` attaches these to an "exception" *event* only, but the
     spec requires them as span *attributes* too, for both command and operation
-    spans. Formatting mirrors ``record_exception``.
+    spans. Formatting mirrors ``record_exception``. Returns the computed
+    ``exception.type`` value so callers (e.g. ``error.type``) can reuse it
+    without recomputing.
     """
     module = type(exc).__module__
     qualname = type(exc).__qualname__
@@ -427,6 +429,7 @@ def _set_exception_attributes(span: Span, exc: BaseException) -> None:
         "exception.stacktrace",
         "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
     )
+    return exception_type
 
 
 def end_command_span_failure(
@@ -439,10 +442,16 @@ def end_command_span_failure(
         return
     try:
         span.record_exception(exc)
-        _set_exception_attributes(span, exc)
+        exception_type = _set_exception_attributes(span, exc)
         code = failure.get("code")
         if code is not None:
+            # Server error: error.type mirrors db.response.status_code, per spec.
             span.set_attribute("db.response.status_code", str(code))
+            span.set_attribute("error.type", str(code))
+        else:
+            # Non-server error (e.g. network failure): fall back to the
+            # exception's class name, since there's no server error code to report.
+            span.set_attribute("error.type", exception_type)
         span.set_status(Status(StatusCode.ERROR, description=failure.get("errmsg")))
     finally:
         # End even if recording raised, so a failure here costs the attributes
