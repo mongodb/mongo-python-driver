@@ -2259,12 +2259,9 @@ class TestKmsConnectCallbackProse(EncryptionIntegrationTest):
 
         self.assertTrue(self.callback_calls, "callback was never invoked")
         for context in self.callback_calls:
-            # Skipped: this would only check the spec's literal requirement
-            # (a non-zero timeout), which cannot fail here. timeoutMS=1000
-            # above does not tighten this value, because explicit
-            # ClientEncryption operations establish no CSOT deadline, so it
-            # always falls back to the driver's default KMS connect timeout.
-            # Un-skip once PYTHON-6037 adds timeoutMS to ClientEncryption.
+            # Only checks the spec's literal non-zero requirement, which
+            # cannot fail: timeoutMS does not tighten this value because
+            # explicit ClientEncryption operations set no CSOT deadline.
             self.assertIsNotNone(context.timeout)
             self.assertGreater(context.timeout, 0)
 

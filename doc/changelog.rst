@@ -45,11 +45,9 @@ PyMongo 4.18 brings a number of changes including:
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
   :class:`~pymongo.encryption.ClientEncryption`, and
   :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`. The callback
-  opens the connection to the KMS host and the driver performs the KMS TLS
-  handshake over it, so certificate and hostname verification continue to
-  target the KMS host rather than the proxy. See
-  :class:`~pymongo.encryption_options.KMSConnectContext` for an HTTP
-  ``CONNECT`` example.
+  opens the connection and the driver performs the KMS TLS handshake over it, so
+  verification still targets the KMS host rather than the proxy. See
+  :class:`~pymongo.encryption_options.KMSConnectContext` for an example.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------

@@ -64,21 +64,21 @@ class KMSConnectContext:
     :class:`AutoEncryptionOpts`, :class:`~pymongo.encryption.ClientEncryption`,
     or :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`.
 
-    The callback opens a connection to ``host``:``port`` and returns it. The
-    driver then performs the KMS TLS handshake over that socket, so the
-    callback must return a plain, unwrapped :class:`socket.socket`. Certificate
-    and hostname verification target ``host``, not whatever peer the socket is
-    actually connected to, which is what makes proxying safe.
+    The callback connects to ``host``:``port`` and returns a plain, unwrapped
+    :class:`socket.socket`. The driver then performs the KMS TLS handshake over
+    it, verifying the certificate and hostname against ``host`` rather than the
+    peer the socket actually reached. That is what makes proxying safe.
 
-    To reach a KMS host through an HTTP proxy, connect to the proxy and issue
-    an HTTP ``CONNECT`` request::
+    The socket must be in blocking or timeout mode.
+    :meth:`ssl.SSLContext.wrap_socket` rejects non-blocking sockets, which rules
+    out :func:`asyncio.open_connection` and
+    :meth:`asyncio.loop.create_connection`.
+
+    To reach a KMS host through an HTTP proxy, tunnel with ``CONNECT``::
 
       import socket
 
-      def connect_through_proxy(context):
-          sock = socket.create_connection(
-              ("proxy.example.com", 8080), timeout=context.timeout
-          )
+      def open_tunnel(sock, context):
           target = f"{context.host}:{context.port}"
           sock.sendall(
               f"CONNECT {target} HTTP/1.1\\r\\nHost: {target}\\r\\n\\r\\n".encode()
@@ -87,12 +87,20 @@ class KMSConnectContext:
           while b"\\r\\n\\r\\n" not in response:
               chunk = sock.recv(4096)
               if not chunk:
-                  sock.close()
                   raise OSError("proxy closed the connection")
               response += chunk
           if not response.startswith(b"HTTP/1.1 200"):
+              raise OSError(f"CONNECT failed: {response.splitlines()[0]!r}")
+
+      def connect_through_proxy(context):
+          sock = socket.create_connection(
+              ("proxy.example.com", 8080), timeout=context.timeout
+          )
+          try:
+              open_tunnel(sock, context)
+          except OSError:
               sock.close()
-              raise OSError(f"proxy CONNECT failed: {response.splitlines()[0]!r}")
+              raise
           return sock
 
       opts = AutoEncryptionOpts(
@@ -101,54 +109,29 @@ class KMSConnectContext:
           kms_connect_callback=connect_through_proxy,
       )
 
-    The socket must be in blocking or timeout mode.
-    :meth:`ssl.SSLContext.wrap_socket` rejects a non-blocking socket, which
-    rules out the transports returned by :func:`asyncio.open_connection` and
-    :meth:`asyncio.loop.create_connection`.
-
-    For :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption` and
-    :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`, the callback
-    must be a coroutine function. Keep the event loop free by running the
-    blocking connect in a thread::
-
-      import asyncio
+    The async API requires a coroutine function. Run the blocking connect in a
+    thread to keep the event loop free::
 
       async def async_connect_through_proxy(context):
           return await asyncio.to_thread(connect_through_proxy, context)
 
-      opts = AutoEncryptionOpts(
-          kms_providers={"aws": aws_creds},
-          key_vault_namespace="keyvault.datakeys",
-          kms_connect_callback=async_connect_through_proxy,
-      )
+    Reaching the proxy itself over TLS needs one extra step, because Python
+    cannot layer TLS over an :class:`ssl.SSLSocket`. Relay the proxy connection
+    through a :func:`socket.socketpair` and return the plain end::
 
-    Reaching the proxy itself over TLS takes one extra step. Python cannot
-    layer a second TLS session over an :class:`ssl.SSLSocket`, so the callback
-    cannot return its TLS connection to the proxy directly. Bridge it to a
-    :func:`socket.socketpair` and return the plain end instead::
-
-      import socket, ssl, threading
+      import ssl, threading
 
       def connect_through_tls_proxy(context):
-          proxy_ctx = ssl.create_default_context(cafile="proxy-ca.pem")
+          ctx = ssl.create_default_context(cafile="proxy-ca.pem")
           raw = socket.create_connection(
               ("proxy.example.com", 8443), timeout=context.timeout
           )
-          proxy = proxy_ctx.wrap_socket(raw, server_hostname="proxy.example.com")
-          target = f"{context.host}:{context.port}"
-          proxy.sendall(
-              f"CONNECT {target} HTTP/1.1\\r\\nHost: {target}\\r\\n\\r\\n".encode()
-          )
-          response = b""
-          while b"\\r\\n\\r\\n" not in response:
-              chunk = proxy.recv(4096)
-              if not chunk:
-                  proxy.close()
-                  raise OSError("proxy closed the connection")
-              response += chunk
-          if not response.startswith(b"HTTP/1.1 200"):
+          proxy = ctx.wrap_socket(raw, server_hostname="proxy.example.com")
+          try:
+              open_tunnel(proxy, context)
+          except OSError:
               proxy.close()
-              raise OSError(f"proxy CONNECT failed: {response.splitlines()[0]!r}")
+              raise
 
           driver_side, relay_side = socket.socketpair()
 
@@ -162,16 +145,15 @@ class KMSConnectContext:
               except OSError:
                   pass
               finally:
-                  # Unblock the sibling thread with EOF instead of closing a
-                  # socket it may be reading, then close only this side.
+                  # EOF the peer instead of closing a socket it may be reading.
                   try:
                       dst.shutdown(socket.SHUT_RDWR)
                   except OSError:
                       pass
                   src.close()
 
-          threading.Thread(target=relay, args=(relay_side, proxy), daemon=True).start()
-          threading.Thread(target=relay, args=(proxy, relay_side), daemon=True).start()
+          for pair in ((relay_side, proxy), (proxy, relay_side)):
+              threading.Thread(target=relay, args=pair, daemon=True).start()
           return driver_side
 
     :param host: Hostname of the KMS server, and the target of TLS certificate
@@ -181,13 +163,12 @@ class KMSConnectContext:
         one is active, otherwise the driver's default KMS connect timeout.
         Always a positive number; the driver never passes ``None``.
 
-    .. note:: ``timeoutMS`` configured on a
-       :class:`~pymongo.encryption.ClientEncryption` or on its key vault client
-       does not currently constrain KMS requests, so for explicit encryption
-       ``timeout`` is always the default KMS connect timeout. Automatic
-       encryption is unaffected and passes the remaining budget. This is a
-       known deviation from the Client Side Operations Timeout specification,
-       tracked in PYTHON-6037.
+    .. note:: ``timeoutMS`` on a
+       :class:`~pymongo.encryption.ClientEncryption` or its key vault client
+       does not constrain KMS requests, so for explicit encryption ``timeout``
+       is always the default. Automatic encryption passes the remaining budget.
+       This deviates from the Client Side Operations Timeout specification and
+       is tracked in PYTHON-6037.
 
     .. versionadded:: 4.18
     """
