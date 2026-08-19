@@ -1909,7 +1909,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             that executes the operation on a given connection.
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
-        :param operation_telemetry: The cursor's caller-owned operation span, or None.
+        :param operation_telemetry: The operation span created by the calling
+            cursor (see ``AsyncCursor._refresh``), or None. Passed down so the
+            command spans of this send nest under it.
         """
         if operation.conn_mgr:
             server = await self._select_server(
@@ -2016,10 +2018,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
-        :param operation_telemetry: A caller-owned operation span outliving this call
-            (a cursor's, shared by its getMores). When given, this method neither
-            creates nor ends a span; it only makes the caller's current for this
-            call. Defaults to None, meaning this method owns a fresh span.
+        :param operation_telemetry: An operation span the caller created and will
+            end itself, defaults to None. Only ``AsyncCursor`` passes one (see
+            ``AsyncCursor._refresh``): its span has to survive send paths that
+            bypass this method, so the cursor ends it rather than this call.
+            Given a span, this method neither creates nor ends one and only
+            makes the caller's current for the duration of the call; given
+            None, it creates a span and ends it before returning.
 
         :return: Output of the calling func()
         """
@@ -2069,8 +2074,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False.
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
-        :param operation_telemetry: A caller-owned operation span outliving this call,
-            defaults to None, meaning this method owns a fresh span.
+        :param operation_telemetry: An operation span the caller created and will
+            end itself, defaults to None. See ``_retry_internal``, which this
+            forwards to.
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
