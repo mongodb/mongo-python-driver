@@ -1877,8 +1877,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
           - The `limit` option can not be used with an exhaust cursor.
 
-          - Exhaust cursors are not supported by mongos and can not be
-            used with a sharded cluster.
+          - When connected to mongos, exhaust cursors require MongoDB 7.1 or
+            newer; an older one raises
+            :class:`~pymongo.errors.InvalidOperation` on the first iteration.
+            On a cluster midway through an upgrade the same call may succeed
+            or raise depending on which mongos it reaches. Behind a load
+            balancer no version check applies; a pre-7.1 mongos there ignores
+            the exhaust request and the cursor falls back to ordinary getMore
+            batches.
 
           - A :class:`~pymongo.cursor.Cursor` instance created with the
             :attr:`~pymongo.cursor.CursorType.EXHAUST` cursor_type requires an
@@ -1887,6 +1893,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             completely iterated the underlying :class:`~socket.socket`
             connection will be closed and discarded without being returned to
             the connection pool.
+
+        .. versionchanged:: 4.18
+           :attr:`~pymongo.cursor.CursorType.EXHAUST` is now permitted when
+           connected to mongos 7.1 or newer. Against an older mongos the
+           resulting :class:`~pymongo.errors.InvalidOperation` is now raised on
+           the first iteration of the cursor rather than by this method.
 
         .. versionchanged:: 4.0
            Removed the ``modifiers`` option.

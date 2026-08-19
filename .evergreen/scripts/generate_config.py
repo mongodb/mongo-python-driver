@@ -253,6 +253,7 @@ def create_pyopenssl_variants():
             create_variant(
                 tasks,
                 display_name,
+                host=host,
                 expansions=expansions,
                 batchtime=batchtime,
             )
@@ -462,6 +463,19 @@ def create_atlas_connect_variants():
             tags=["pr"],
             host=DEFAULT_HOST,
             expansions=dict(TEST_NAME="atlas_connect"),
+        )
+    ]
+
+
+def create_sfp_variants():
+    host = DEFAULT_HOST
+    return [
+        create_variant(
+            [".test-no-orchestration"],
+            get_variant_name("SFP", host),
+            tags=["pr"],
+            host=host,
+            expansions=dict(TEST_NAME="sfp"),
         )
     ]
 

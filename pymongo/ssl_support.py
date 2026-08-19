@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import os
+import sys
 import types
 import warnings
 from typing import Any, Optional, Union
@@ -50,7 +52,7 @@ if HAVE_SSL:
     # CPython ssl module constants to configure certificate verification
     # at a high level. This is legacy behavior, but requires us to
     # import the ssl module even if we're only using it for this purpose.
-    import ssl as _stdlibssl  # noqa: F401
+    import ssl as _stdlibssl
     from ssl import CERT_NONE, CERT_REQUIRED
 
     IPADDR_SAFE = True
@@ -68,11 +70,17 @@ if HAVE_SSL:
             _pyssl.BLOCKING_IO_WRITE_ERROR,
             _ssl.BLOCKING_IO_WRITE_ERROR,
         )
+        SSL_EOF_ERRORS: tuple = (  # type: ignore[type-arg]
+            _stdlibssl.SSLEOFError,
+            _stdlibssl.SSLZeroReturnError,
+            *_pyssl.EOF_ERRORS,
+        )
     else:
         PYSSLError = _ssl.SSLError
         BLOCKING_IO_ERRORS: tuple = _ssl.BLOCKING_IO_ERRORS  # type: ignore[type-arg, no-redef]
         BLOCKING_IO_READ_ERROR: tuple = (_ssl.BLOCKING_IO_READ_ERROR,)  # type: ignore[type-arg, no-redef]
         BLOCKING_IO_WRITE_ERROR: tuple = (_ssl.BLOCKING_IO_WRITE_ERROR,)  # type: ignore[type-arg, no-redef]
+        SSL_EOF_ERRORS: tuple = (_stdlibssl.SSLEOFError, _stdlibssl.SSLZeroReturnError)  # type: ignore[type-arg, no-redef]
     SSLError = _ssl.SSLError
     BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
@@ -127,7 +135,17 @@ if HAVE_SSL:
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
         elif verify_mode != CERT_NONE:
-            ctx.load_default_certs()
+            cert_file = os.environ.get("SSL_CERT_FILE") or None
+            cert_dir = os.environ.get("SSL_CERT_DIR") or None
+            # load_default_certs() wrongly merges in the OS/certifi store on
+            # Windows and on macOS with PyOpenSSL
+            merges_os_store = sys.platform == "win32" or (
+                ssl.IS_PYOPENSSL and sys.platform == "darwin"
+            )
+            if (cert_file or cert_dir) and merges_os_store:
+                ctx.load_verify_locations(cafile=cert_file, capath=cert_dir)
+            else:
+                ctx.load_default_certs()
         ctx.verify_mode = verify_mode
         return ctx
 
@@ -138,6 +156,7 @@ else:
 
     IPADDR_SAFE = False
     BLOCKING_IO_ERRORS: tuple = ()  # type: ignore[type-arg, no-redef]
+    SSL_EOF_ERRORS: tuple = ()  # type: ignore[type-arg, no-redef]
 
     def _has_sni(is_sync: bool) -> bool:  # noqa: ARG001
         return False

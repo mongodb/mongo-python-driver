@@ -97,9 +97,9 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
         let: Optional[bool] = None,
     ) -> None:
         """Create a new cursor.
+        Used by :meth:`~pymongo.asynchronous.collection.AsyncCollection.find` to iterate over MongoDB query results.
 
-        Should not be called directly by application developers - see
-        :meth:`~pymongo.asynchronous.collection.AsyncCollection.find` instead.
+        Should not be called directly by application developers.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
@@ -213,19 +213,15 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
         self._dbname = collection.database.name
         self._collname = collection.name
 
-        # Checking exhaust cursor support requires network IO
-        if _IS_SYNC:
-            self._exhaust_checked = True
-            self._supports_exhaust()  # type: ignore[unused-coroutine]
-        else:
-            self._exhaust = cursor_type == CursorType.EXHAUST
-            self._exhaust_checked = False
+        self._validate_exhaust_handling()
 
-    async def _supports_exhaust(self) -> None:
-        # Exhaust cursor support
+    def _validate_exhaust_handling(self) -> None:
+        """Reject option combinations an exhaust cursor cannot serve.
+
+        Server support is checked against the connection in use, in
+        _check_exhaust_supported.
+        """
         if self._cursor_type == CursorType.EXHAUST:
-            if await self._collection.database.client.is_mongos:
-                raise InvalidOperation("Exhaust cursors are not supported by mongos")
             if self._limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
             self._exhaust = True
@@ -369,8 +365,6 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
         if mask & _QUERY_OPTIONS["exhaust"]:
             if self._limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
-            if await self._collection.database.client.is_mongos:
-                raise InvalidOperation("Exhaust cursors are not supported by mongos")
             self._exhaust = True
 
         self._query_flags |= mask
@@ -980,7 +974,7 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
         try:
             response = await client._run_operation(
-                operation, self._unpack_response, address=self._address
+                operation, self._run_with_conn, address=self._address
             )
         except OperationFailure as exc:
             if exc.code in _CURSOR_CLOSED_ERRORS or self._exhaust:
@@ -1125,9 +1119,6 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
     async def next(self) -> _DocumentType:
         """Advance the cursor."""
-        if not self._exhaust_checked:
-            self._exhaust_checked = True
-            await self._supports_exhaust()
         if self._empty:
             raise StopAsyncIteration
         if len(self._data) or await self._refresh():
@@ -1137,9 +1128,6 @@ class AsyncCursor(_AsyncCursorBase[_DocumentType]):
 
     async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]
         """Get all or some documents from the cursor."""
-        if not self._exhaust_checked:
-            self._exhaust_checked = True
-            await self._supports_exhaust()
         if self._empty:
             return False
         if len(self._data) or await self._refresh():

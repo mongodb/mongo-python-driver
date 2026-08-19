@@ -1,14 +1,45 @@
 Changelog
 =========
 
-Changes in Version 4.18.0
--------------------------
+Changes in Version 4.18.0 (2026/XX/XX)
+--------------------------------------
+
+PyMongo 4.18 brings a number of changes including:
 
 - Dropped support for MongoDB 4.2. PyMongo now requires MongoDB 4.4 or later.
+- Added support for MongoDB 9.0.
 - Improved TLS connection performance by reusing TLS sessions across connections
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
   and on Python 3.11+ for async clients.
+- Improved performance for MongoDB 9.0's Intelligent Workload Management (IWM) by only retrying overload errors when doing so is expected to not worsen server conditions.
+- Added support for exhaust cursors (:attr:`~pymongo.cursor.CursorType.EXHAUST`)
+  against mongos 7.1+. An older mongos still raises
+  :class:`~pymongo.errors.InvalidOperation`, now on the first iteration of the
+  cursor rather than from
+  :meth:`~pymongo.synchronous.collection.Collection.find`, since the requirement
+  is checked against the connection in use. Separately, async cursors combining
+  ``limit`` with :attr:`~pymongo.cursor.CursorType.EXHAUST` now raise at ``find``
+  rather than on first iteration, matching the synchronous API.
+- Redacted potentially sensitive authentication mechanism properties, including
+  AWS session tokens, from the representations of
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`.
+- Command monitoring events and command log messages for a single logical
+  operation now share one stable ``operation_id`` across all of its retry
+  attempts, so consumers can correlate a retried operation's events. As a
+  result, ``operation_id`` is no longer equal to the per-attempt ``request_id``
+  for these operations.
+- Fixed a potential out-of-bounds read in the C extension when decoding an
+  array of BSON documents. An embedded document whose declared length exceeds
+  the bytes remaining in the array now raises
+  :class:`~bson.errors.InvalidBSON` instead of reading past the end of the
+  buffer.
+- Fixed :func:`bson.json_util.loads` to reject ``$timestamp`` values containing
+  fields other than ``t`` and ``i``.
+- Fixed a bug on Windows, and on macOS when using PyOpenSSL, where
+  ``SSL_CERT_FILE``/``SSL_CERT_DIR`` were merged with, rather than replacing,
+  the OS/certifi certificate store.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
@@ -22,9 +53,8 @@ PyMongo 4.17 brings a number of changes including:
 - Added the :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.bind` and :meth:`~pymongo.client_session.ClientSession.bind` methods
   that allow users to bind a session to all database operations within the scope of a context manager instead of having to explicitly pass the session to each individual operation.
   See the `Transactions docs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/transactions/#methods>`_ for examples and more information.
-- Added support for MongoDB's Intelligent Workload Management (IWM) and ingress connection rate limiting features.
-  The driver now gracefully handles write-blocking scenarios and optimizes connection establishment during high-load conditions to maintain application availability.
-  See the `IWM <https://www.mongodb.com/docs/atlas/production-notes>`_ or `Overload Errors <https://www.mongodb.com/docs/atlas/overload-errors/?interface=driver&language=python>`_ docs for more information.
+- Added support for MongoDB's Intelligent Workload Management (IWM) and ingress connection rate limiting features in MongoDB server version 9.0.
+  The driver will gracefully handle write-blocking scenarios and optimizes connection establishment during high-load conditions to maintain application availability.
 
 Changes in Version 4.16.0 (2026/01/07)
 --------------------------------------

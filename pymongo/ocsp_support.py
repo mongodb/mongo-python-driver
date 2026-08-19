@@ -30,6 +30,12 @@ from cryptography.hazmat.primitives.asymmetric.ec import ECDSA as _ECDSA
 from cryptography.hazmat.primitives.asymmetric.ec import (
     EllipticCurvePublicKey as _EllipticCurvePublicKey,
 )
+from cryptography.hazmat.primitives.asymmetric.mlkem import (
+    MLKEM768PublicKey as _MLKEM768PublicKey,
+)
+from cryptography.hazmat.primitives.asymmetric.mlkem import (
+    MLKEM1024PublicKey as _MLKEM1024PublicKey,
+)
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15 as _PKCS1v15
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey as _RSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import (
@@ -67,6 +73,8 @@ if TYPE_CHECKING:
         ec,
         ed448,
         ed25519,
+        mldsa,
+        mlkem,
         rsa,
         x448,
         x25519,
@@ -81,12 +89,20 @@ if TYPE_CHECKING:
     from pymongo.ocsp_cache import _OCSPCache
     from pymongo.pyopenssl_context import _CallbackData
 
+    # Must stay in step with cryptography's CertificatePublicKeyTypes, the
+    # return type of Certificate.public_key(). cryptography does not export a
+    # public alias for it, so it is spelled out here.
     CertificateIssuerPublicKeyTypes = Union[
         dsa.DSAPublicKey,
         rsa.RSAPublicKey,
         ec.EllipticCurvePublicKey,
         ed25519.Ed25519PublicKey,
         ed448.Ed448PublicKey,
+        mldsa.MLDSA44PublicKey,
+        mldsa.MLDSA65PublicKey,
+        mldsa.MLDSA87PublicKey,
+        mlkem.MLKEM768PublicKey,
+        mlkem.MLKEM1024PublicKey,
         x25519.X25519PublicKey,
         x448.X448PublicKey,
     ]
@@ -141,6 +157,13 @@ def _verify_signature(
             key, (_X25519PublicKey, _X448PublicKey)
         ):  # Curve25519 and Curve448 keys do not require verification
             return 1
+        elif isinstance(key, (_MLKEM768PublicKey, _MLKEM1024PublicKey)):
+            # ML-KEM is a key encapsulation mechanism, not a signature
+            # algorithm, so such a key cannot have produced this signature and
+            # has no verify(). Certificate.public_key() can still return one,
+            # so fail closed rather than raise AttributeError.
+            _LOGGER.debug("%s cannot verify signatures", type(key).__name__)
+            return 0
         else:
             key.verify(signature, data)
     except _InvalidSignature:

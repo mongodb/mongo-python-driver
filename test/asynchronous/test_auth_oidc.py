@@ -117,6 +117,26 @@ class OIDCTestBase(AsyncPyMongoTestCase):
             await client.close()
 
 
+class TestOIDCAllowedHostsCache(unittest.TestCase):
+    class HumanCallback(OIDCCallback):
+        def fetch(self, context):
+            return OIDCCallbackResult(access_token="token")
+
+    def test_allowed_hosts_checked_before_cached_authenticator_reuse(self):
+        props = {
+            "OIDC_HUMAN_CALLBACK": self.HumanCallback(),
+            "ALLOWED_HOSTS": ["good.example.com"],
+        }
+        extra = {"authmechanismproperties": props}
+        credentials = _build_credentials_tuple("MONGODB-OIDC", None, "user", None, extra, "test")
+
+        authenticator = _get_authenticator(credentials, ("good.example.com", 27017))
+        self.assertIs(authenticator, credentials.cache.data)
+
+        with self.assertRaisesRegex(ConfigurationError, "evil.example.com"):
+            _get_authenticator(credentials, ("evil.example.com", 27017))
+
+
 class TestAuthOIDCHuman(OIDCTestBase):
     uri: str
 

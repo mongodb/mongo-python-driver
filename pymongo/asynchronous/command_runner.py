@@ -24,7 +24,7 @@ Three public entry points each wrap the private :func:`_run_command`:
   batches. Pre-encrypted, so decryption is skipped. Callers: ``bulk.py``,
   ``client_bulk.py``.
 - :func:`run_cursor_command` — cursor ``find``/``getMore`` operations with
-  exhaust-cursor handling. Caller: ``server.py``.
+  exhaust-cursor handling. Caller: ``cursor_base.py``.
 
 :func:`_run_command` owns the entire shared skeleton: command logging, APM
 event publishing, ``send``/``receive``, ``$clusterTime`` gossip,
@@ -36,7 +36,7 @@ command type so callers only pass what varies.
 from __future__ import annotations
 
 import datetime
-import logging
+import time
 from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
@@ -49,14 +49,16 @@ from typing import (
 
 from bson import _decode_all_selective
 from pymongo import _csot, helpers_shared, message
+from pymongo._telemetry import _CommandTelemetry
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import NotPrimaryError, OperationFailure
-from pymongo.logger import _COMMAND_LOGGER, _CommandStatusMessage, _debug_log
+from pymongo.logger import _COMMAND_LOGGER, _is_debug_enabled
 from pymongo.message import _BulkWriteContextBase, _convert_exception, _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 
 if TYPE_CHECKING:
     from bson import CodecOptions
+    from bson.objectid import ObjectId
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
@@ -65,7 +67,7 @@ if TYPE_CHECKING:
     from pymongo.pool_options import PoolOptions
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.typings import _Address, _CollationIn, _DocumentOut, _DocumentType
+    from pymongo.typings import _CollationIn, _DocumentOut, _DocumentType
     from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = False
@@ -81,8 +83,7 @@ async def _run_command(
     client: Optional[AsyncMongoClient[Any]],
     session: Optional[AsyncClientSession],
     listeners: Optional[_EventListeners],
-    address: Optional[_Address],
-    start: datetime.datetime,
+    topology_id: Optional[ObjectId],
     codec_options: CodecOptions[_DocumentType],
     user_fields: Optional[Mapping[str, Any]] = None,
     orig: Optional[MutableMapping[str, Any]] = None,
@@ -101,8 +102,9 @@ async def _run_command(
     set_conn_more_to_come: bool = False,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send ``msg`` over ``conn`` and return ``(docs, reply, duration)``.
+) -> tuple[list[dict[str, Any]], Optional[_OpMsg], float]:
+    """Send ``msg`` over ``conn`` and return ``(docs, reply, duration_s)``,
+    where ``duration_s`` is the round-trip duration in seconds.
 
     Private shared implementation. Should not be called directly outside this module. Use :func:`run_command`, :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
 
@@ -118,18 +120,19 @@ async def _run_command(
     :param request_id: The request id of the encoded message (``0`` when
         ``more_to_come`` and no message is sent).
     :param msg: The encoded bytes to send (ignored when ``more_to_come``).
-    :param client: The AsyncMongoClient, for ``$clusterTime`` gossip, logging,
-        and decryption. ``None`` disables those steps (e.g. during handshake).
+    :param client: The AsyncMongoClient, for ``$clusterTime`` gossip and
+        decryption. ``None`` disables those steps (e.g. during handshake).
     :param session: The session to update from the response.
     :param listeners: The event listeners, or ``None`` to disable APM.
-    :param address: The (host, port) of ``conn`` for APM events.
-    :param start: The ``datetime`` the operation began, for duration timing.
+    :param topology_id: The client topology id for structured logging, or
+        ``None`` to disable command logging.
     :param codec_options: The CodecOptions used to decode the reply.
     :param user_fields: Response fields decoded with the codec's TypeDecoders.
     :param orig: The command document published in the ``STARTED`` APM event;
         defaults to ``cmd`` (differs only when the wire command was mutated,
         e.g. with a read preference or after encryption).
-    :param op_id: The APM operation id; defaults to ``request_id``.
+    :param op_id: The APM operation id; when ``None`` it is resolved from the
+        ``OP_ID`` contextvar (then ``request_id``) only if APM/logging is enabled.
     :param command_name: The command name for the ``SUCCEEDED``/``FAILED`` APM
         events; defaults to the first key of ``cmd``.
     :param check: Raise OperationFailure on a command error.
@@ -159,38 +162,20 @@ async def _run_command(
         command_name = name
     if orig is None:
         orig = cmd
-    publish = listeners is not None and listeners.enabled_for_commands
 
-    if client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-        _debug_log(
-            _COMMAND_LOGGER,
-            message=_CommandStatusMessage.STARTED,
-            clientId=client._topology_settings._topology_id,
-            command=cmd,
-            commandName=name,
-            databaseName=dbname,
-            requestId=request_id,
-            operationId=request_id,
-            driverConnectionId=conn.id,
-            serverConnectionId=conn.server_connection_id,
-            serverHost=conn.address[0],
-            serverPort=conn.address[1],
-            serviceId=conn.service_id,
+    # Fast path: skip telemetry construction when logging and APM are disabled
+    # Inline enabled check here for performance
+    telemetry: Optional[_CommandTelemetry] = None
+    if (topology_id is not None and _is_debug_enabled(_COMMAND_LOGGER)) or (
+        listeners is not None and listeners.enabled_for_commands
+    ):
+        telemetry = _CommandTelemetry(
+            topology_id, conn, listeners, cmd, dbname, request_id, op_id, name=name
         )
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        if ensure_db and "$db" not in orig:
-            orig["$db"] = dbname
-        listeners.publish_command_start(
-            orig,
-            dbname,
-            request_id,
-            address,
-            conn.server_connection_id,
-            op_id,
-            service_id=conn.service_id,
-        )
+        telemetry.started(orig, ensure_db)
+        start = 0.0
+    else:
+        start = time.monotonic()
 
     reply: Optional[_OpMsg] = None
     docs: list[dict[str, Any]] = [{"ok": 1}]
@@ -234,80 +219,19 @@ async def _run_command(
                     pool_opts=pool_opts,
                 )
     except Exception as exc:
-        duration = datetime.datetime.now() - start
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
             failure = _convert_exception(exc)
-        if client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _COMMAND_LOGGER,
-                message=_CommandStatusMessage.FAILED,
-                clientId=client._topology_settings._topology_id,
-                durationMS=duration,
-                failure=failure,
-                commandName=name,
-                databaseName=dbname,
-                requestId=request_id,
-                operationId=request_id,
-                driverConnectionId=conn.id,
-                serverConnectionId=conn.server_connection_id,
-                serverHost=conn.address[0],
-                serverPort=conn.address[1],
-                serviceId=conn.service_id,
-                isServerSideError=isinstance(exc, OperationFailure),
-            )
-        if publish:
-            assert listeners is not None
-            assert address is not None
-            listeners.publish_command_failure(
-                duration,
-                failure,
-                command_name,
-                request_id,
-                address,
-                conn.server_connection_id,
-                op_id,
-                service_id=conn.service_id,
-                database_name=dbname,
-            )
+        if telemetry is not None:
+            telemetry.failed(failure, command_name, isinstance(exc, OperationFailure))
         raise
 
-    duration = datetime.datetime.now() - start
-    published_reply = docs[0]
-    if client is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
-        _debug_log(
-            _COMMAND_LOGGER,
-            message=_CommandStatusMessage.SUCCEEDED,
-            clientId=client._topology_settings._topology_id,
-            durationMS=duration,
-            reply=published_reply,
-            commandName=name,
-            databaseName=dbname,
-            requestId=request_id,
-            operationId=request_id,
-            driverConnectionId=conn.id,
-            serverConnectionId=conn.server_connection_id,
-            serverHost=conn.address[0],
-            serverPort=conn.address[1],
-            serviceId=conn.service_id,
-            speculative_authenticate="speculativeAuthenticate" in orig,
-        )
-    if publish:
-        assert listeners is not None
-        assert address is not None
-        listeners.publish_command_success(
-            duration,
-            published_reply,
-            command_name,
-            request_id,
-            address,
-            conn.server_connection_id,
-            op_id,
-            service_id=conn.service_id,
-            speculative_hello=speculative_hello,
-            database_name=dbname,
-        )
+    if telemetry is not None:
+        telemetry.succeeded(docs[0], command_name, speculative_hello)
+        duration_s = telemetry.duration_s
+    else:
+        duration_s = max(0.0, time.monotonic() - start)
 
     if client and client._encrypter and reply and decrypt_reply:
         decrypted = await client._encrypter.decrypt(reply.raw_command_response())
@@ -315,7 +239,7 @@ async def _run_command(
             "list[dict[str, Any]]", _decode_all_selective(decrypted, codec_options, user_fields)
         )
 
-    return docs, reply, duration
+    return docs, reply, duration_s
 
 
 async def run_bulk_write_command(
@@ -328,8 +252,8 @@ async def run_bulk_write_command(
     orig: Optional[MutableMapping[str, Any]] = None,
     max_doc_size: int = 0,
     unacknowledged: bool = False,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
-    """Send a bulk write batch and return ``(docs, reply, duration)``.
+) -> tuple[list[dict[str, Any]], Optional[_OpMsg], float]:
+    """Send a bulk write batch and return ``(docs, reply, duration_s)``.
 
     :param bwc: Bulk write context supplying the connection, session, listeners, etc.
     :param cmd: The encoded command document.
@@ -341,6 +265,7 @@ async def run_bulk_write_command(
     :param max_doc_size: The largest document size in the batch, passed to ``conn.send_message``.
     :param unacknowledged: When ``True``, send only and fake an ``{"ok": 1}`` reply.
     """
+    topology_id = client._topology_id if client is not None else None
     return await _run_command(
         bwc.conn,  # type: ignore[arg-type]
         cmd,
@@ -350,8 +275,7 @@ async def run_bulk_write_command(
         client=client,
         session=bwc.session,  # type: ignore[arg-type]
         listeners=bwc.listeners,
-        address=bwc.conn.address,  # type: ignore[union-attr]
-        start=bwc.start_time,
+        topology_id=topology_id,
         codec_options=bwc.codec,
         op_id=bwc.op_id,
         command_name=bwc.name,
@@ -372,8 +296,6 @@ async def run_cursor_command(
     client: Optional[AsyncMongoClient[Any]],
     session: Optional[AsyncClientSession],
     listeners: Optional[_EventListeners],
-    address: Optional[_Address],
-    start: datetime.datetime,
     codec_options: CodecOptions[_DocumentType],
     command_name: str,
     user_fields: Optional[Mapping[str, Any]] = None,
@@ -393,8 +315,6 @@ async def run_cursor_command(
     :param client: The AsyncMongoClient, for ``$clusterTime`` gossip and logging.
     :param session: The session to update from the response.
     :param listeners: The event listeners, or ``None`` to disable APM.
-    :param address: The (host, port) of ``conn`` for APM events.
-    :param start: The ``datetime`` the operation began, for duration timing.
     :param codec_options: The CodecOptions used to decode the reply.
     :param command_name: The command name for APM events.
     :param user_fields: Response fields decoded with the codec's TypeDecoders.
@@ -405,7 +325,8 @@ async def run_cursor_command(
         reply's own ``unpack_response`` is used.
     :param cursor_id: The cursor id passed to ``unpack_res``.
     """
-    return await _run_command(
+    topology_id = client._topology_id if client is not None else None
+    docs, reply, duration_s = await _run_command(
         conn,
         cmd,
         dbname,
@@ -414,8 +335,7 @@ async def run_cursor_command(
         client=client,
         session=session,
         listeners=listeners,
-        address=address,
-        start=start,
+        topology_id=topology_id,
         codec_options=codec_options,
         user_fields=user_fields,
         command_name=command_name,
@@ -426,6 +346,8 @@ async def run_cursor_command(
         unpack_res=unpack_res,
         cursor_id=cursor_id,
     )
+    # The cursor path stores the duration on Response, which expects a timedelta.
+    return docs, reply, datetime.timedelta(seconds=duration_s)
 
 
 async def run_command(
@@ -438,7 +360,6 @@ async def run_command(
     client: Optional[AsyncMongoClient[Any]],
     check: bool = True,
     allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-    address: Optional[_Address] = None,
     listeners: Optional[_EventListeners] = None,
     max_bson_size: Optional[int] = None,
     read_concern: Optional[ReadConcern] = None,
@@ -465,7 +386,6 @@ async def run_command(
     :param client: The AsyncMongoClient, for ``$clusterTime`` gossip and logging.
     :param check: Raise OperationFailure if there are errors.
     :param allowable_errors: Errors to ignore when ``check`` is True.
-    :param address: The (host, port) of ``conn`` for APM events.
     :param listeners: The event listeners, or ``None`` to disable APM.
     :param max_bson_size: The maximum encoded BSON size for this server.
     :param read_concern: The read concern for this command.
@@ -480,7 +400,6 @@ async def run_command(
     :param write_concern: The write concern for this command. Applied via CSOT.
     """
     name = next(iter(spec))
-    speculative_hello = False
 
     # Publish the original command document, perhaps with lsid and $clusterTime.
     orig = spec
@@ -492,10 +411,8 @@ async def run_command(
     if collation is not None:
         spec["collation"] = collation
 
-    publish = listeners is not None and listeners.enabled_for_commands
-    start = datetime.datetime.now()
-    if publish:
-        speculative_hello = _is_speculative_authenticate(name, spec)
+    topology_id = client._topology_id if client is not None else None
+    speculative_hello = _is_speculative_authenticate(name, spec)
 
     if compression_ctx and name.lower() in _NO_COMPRESSION:
         compression_ctx = None
@@ -529,8 +446,7 @@ async def run_command(
         client=client,
         session=session,
         listeners=listeners,
-        address=address,
-        start=start,
+        topology_id=topology_id,
         codec_options=codec_options,
         user_fields=user_fields,
         orig=orig,

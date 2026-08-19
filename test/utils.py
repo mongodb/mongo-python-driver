@@ -49,10 +49,8 @@ def get_pool(client: MongoClient) -> Pool:
 
 def get_pools(client: MongoClient) -> list[Pool]:
     """Get all pools."""
-    return [
-        server.pool
-        for server in (client._get_topology()).select_servers(any_server_selector, _Op.TEST)
-    ]
+    servers = (client._get_topology()).select_servers(any_server_selector, _Op.TEST)
+    return [server.pool for server in servers]
 
 
 def wait_until(predicate, success_description, timeout=10):
@@ -82,11 +80,6 @@ def wait_until(predicate, success_description, timeout=10):
             raise AssertionError("Didn't ever %s" % success_description)
 
         time.sleep(interval)
-
-
-def is_mongos(client):
-    res = client.admin.command(HelloCompat.LEGACY_CMD)
-    return res.get("msg", "") == "isdbgrid"
 
 
 def ensure_all_connected(client: MongoClient) -> None:

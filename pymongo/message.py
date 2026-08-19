@@ -22,7 +22,6 @@ MongoDB.
 
 from __future__ import annotations
 
-import datetime
 import random
 import struct
 from collections.abc import Iterable, Mapping, MutableMapping
@@ -44,6 +43,7 @@ from bson.raw_bson import (
     RawBSONDocument,
     _inflate_bson,
 )
+from pymongo.common import MONGOS_EXHAUST_WIRE_VERSION
 from pymongo.monitoring import _EventListeners
 
 try:
@@ -402,7 +402,6 @@ class _BulkWriteContextBase:
         "op_id",
         "op_type",
         "session",
-        "start_time",
     )
 
     def __init__(
@@ -410,7 +409,7 @@ class _BulkWriteContextBase:
         database_name: str,
         cmd_name: str,
         conn: _AgnosticConnection,
-        operation_id: int,
+        operation_id: Optional[int],
         listeners: _EventListeners,
         session: Optional[_AgnosticClientSession],
         op_type: int,
@@ -422,7 +421,6 @@ class _BulkWriteContextBase:
         self.listeners = listeners
         self.name = cmd_name
         self.field = _FIELD_MAP[self.name]
-        self.start_time = datetime.datetime.now()
         self.session = session
         self.compress = bool(conn.compression_context)
         self.op_type = op_type
@@ -462,7 +460,7 @@ class _BulkWriteContext(_BulkWriteContextBase):
         database_name: str,
         cmd_name: str,
         conn: _AgnosticConnection,
-        operation_id: int,
+        operation_id: Optional[int],
         listeners: _EventListeners,
         session: Optional[_AgnosticClientSession],
         op_type: int,
@@ -705,7 +703,7 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
         database_name: str,
         cmd_name: str,
         conn: _AgnosticConnection,
-        operation_id: int,
+        operation_id: Optional[int],
         listeners: _EventListeners,
         session: Optional[_AgnosticClientSession],
         codec: CodecOptions[Any],
@@ -1174,6 +1172,17 @@ _UNPACK_REPLY: dict[int, Callable[[bytes | memoryview], _OpMsg]] = {
 }
 
 
+def _check_exhaust_supported(conn: _AgnosticConnection) -> None:
+    """Raise if this connection's server will not continue an exhaust stream.
+
+    mongos gained exhaust getMore in 7.1 (SERVER-57297). Load-balanced deployments
+    are left alone: every cursor pins its connection there anyway, so an older mongos
+    costs nothing extra, and refusing would break clients that work today.
+    """
+    if conn.is_mongos and conn.max_wire_version < MONGOS_EXHAUST_WIRE_VERSION:
+        raise InvalidOperation("Exhaust cursors require MongoDB 7.1+ when connected to mongos.")
+
+
 class _Query:
     """A query operation."""
 
@@ -1245,6 +1254,13 @@ class _Query:
 
     def namespace(self) -> str:
         return f"{self.db}.{self.coll}"
+
+    def use_command(self, conn: _AgnosticConnection) -> bool:
+        if self.exhaust:
+            _check_exhaust_supported(conn)
+
+        conn.validate_session(self.client, self.session)  # type: ignore[arg-type]
+        return True
 
     def update_command(self, cmd: dict[str, Any]) -> None:
         self._as_command = cmd, self.db
@@ -1362,6 +1378,13 @@ class _GetMore:
 
     def namespace(self) -> str:
         return f"{self.db}.{self.coll}"
+
+    def use_command(self, conn: _AgnosticConnection) -> bool:
+        if self.exhaust:
+            _check_exhaust_supported(conn)
+
+        conn.validate_session(self.client, self.session)  # type: ignore[arg-type]
+        return True
 
     def update_command(self, cmd: dict[str, Any]) -> None:
         self._as_command = cmd, self.db

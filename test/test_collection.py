@@ -27,7 +27,7 @@ from typing import Any, no_type_check
 
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
-from test.utils import get_pool, is_mongos
+from test.utils import get_pool
 
 sys.path[0:0] = [""]
 
@@ -1778,8 +1778,15 @@ class TestCollection(IntegrationTest):
         self.db.test.find(no_cursor_timeout=True).to_list()
         self.db.test.find(no_cursor_timeout=False).to_list()
 
+    def test_exhaust_limit_raises_without_iterating(self):
+        # The limit conflict is settled at find(); the mongos wire version is not.
+        with self.assertRaises(InvalidOperation):
+            self.db.test.find(cursor_type=CursorType.EXHAUST, limit=5)
+        self.db.test.find(cursor_type=CursorType.EXHAUST)
+
     def test_exhaust(self):
-        if is_mongos(self.db.client):
+        # mongos only serves exhaust cursors from 7.1 onwards (SERVER-57297).
+        if not client_context.supports_exhaust_cursors():
             with self.assertRaises(InvalidOperation):
                 next(self.db.test.find(cursor_type=CursorType.EXHAUST))
             return

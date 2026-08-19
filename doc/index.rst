@@ -53,8 +53,8 @@ About This Documentation
 This documentation is generated using the `Sphinx
 <https://www.sphinx-doc.org/en/master/>`_ documentation generator. The source files
 for the documentation are located in the *doc/* directory of the
-**PyMongo** distribution. See the PyMongo `contributing guide  <https://github.com/mongodb/mongo-python-driver/blob/master/CONTRIBUTING.md>`_
-for instructions on the building the docs from source.
+**PyMongo** distribution. See the PyMongo `contributing guide <https://github.com/mongodb/mongo-python-driver/blob/main/CONTRIBUTING.md>`_
+for instructions on building the docs from source.
 
 Indices and tables
 ------------------

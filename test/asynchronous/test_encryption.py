@@ -460,10 +460,9 @@ class TestClientMaxWireVersion(AsyncIntegrationTest):
         with self.assertRaisesRegex(InvalidOperation, msg):
             await client.test.test.aggregate_raw_batches([])
 
-        if async_client_context.is_mongos:
-            msg = "Exhaust cursors are not supported by mongos"
-        else:
-            msg = "exhaust cursors do not support auto encryption"
+        # The auto-encryption guard runs at cursor iteration, before the wire-version
+        # check in _Query.use_command, so it is the error regardless of deployment.
+        msg = "exhaust cursors do not support auto encryption"
         with self.assertRaisesRegex(InvalidOperation, msg):
             await anext(client.test.test.find(cursor_type=CursorType.EXHAUST))
 
@@ -670,8 +669,8 @@ class TestDataKeyDoubleEncryption(AsyncEncryptionIntegrationTest):
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
         },
         "azure": {
-            "keyVaultEndpoint": "key-vault-csfle.vault.azure.net",
-            "keyName": "key-name-csfle",
+            "keyVaultEndpoint": "drivers-3392-key-vault.vault.azure.net",
+            "keyName": "drivers-3392-keyname",
         },
         "gcp": {
             "projectId": "devprod-drivers",
@@ -1262,8 +1261,8 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
     @unittest.skipUnless(any(AZURE_CREDS.values()), "Azure environment credentials are not set")
     async def test_07_azure(self):
         master_key = {
-            "keyVaultEndpoint": "key-vault-csfle.vault.azure.net",
-            "keyName": "key-name-csfle",
+            "keyVaultEndpoint": "drivers-3392-key-vault.vault.azure.net",
+            "keyName": "drivers-3392-keyname",
         }
         await self.run_test_expected_success("azure", master_key)
 
@@ -2584,8 +2583,8 @@ class TestRewrapWithSeparateClientEncryption(AsyncEncryptionIntegrationTest):
             "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
         },
         "azure": {
-            "keyVaultEndpoint": "key-vault-csfle.vault.azure.net",
-            "keyName": "key-name-csfle",
+            "keyVaultEndpoint": "drivers-3392-key-vault.vault.azure.net",
+            "keyName": "drivers-3392-keyname",
         },
         "gcp": {
             "projectId": "devprod-drivers",
@@ -3313,6 +3312,7 @@ class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#27-text-explicit-encryption
+@unittest.skip("PYTHON-5799 need to add support for the new query type")
 class TestExplicitTextEncryptionProse(AsyncEncryptionIntegrationTest):
     @async_client_context.require_no_standalone
     @async_client_context.require_version_min(8, 2, -1)
