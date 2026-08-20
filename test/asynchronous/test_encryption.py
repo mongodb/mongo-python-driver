@@ -341,6 +341,22 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
         self.addCleanup(conn.close)
         self.assertIsNotNone(conn.gettimeout())
 
+    async def test_asyncio_transport_socket_is_rejected(self):
+        # transport.get_extra_info("socket") returns an asyncio TransportSocket,
+        # not a socket.socket, and the loop still owns it. Reject it with a
+        # message that names the mistake rather than failing later.
+        from asyncio.trsock import TransportSocket
+
+        left, right = socket.socketpair()
+        self.addCleanup(left.close)
+        self.addCleanup(right.close)
+
+        async def callback(context):
+            return TransportSocket(left)
+
+        with self.assertRaisesRegex(ConfigurationError, "asyncio stream or transport"):
+            await _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+
     async def test_network_error_from_callback_propagates(self):
         async def callback(context):
             raise OSError("proxy unreachable")

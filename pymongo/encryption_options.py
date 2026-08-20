@@ -71,10 +71,12 @@ class KMSConnectContext:
 
     The callback must return a real socket that the event loop is not managing.
     :func:`asyncio.open_connection` and :meth:`asyncio.loop.create_connection`
-    return a stream or transport rather than a socket, and the socket
-    underneath one stays registered with the running loop, so neither can be
-    used here. The driver sets the socket's timeout itself, so the mode the
-    callback leaves it in does not matter.
+    return a stream or transport rather than a socket, and the object from
+    ``transport.get_extra_info("socket")`` is a transport socket the loop still
+    owns, so none of them can be used here. :meth:`asyncio.loop.sock_connect`
+    is fine: it leaves an ordinary socket behind once it completes. The driver
+    sets the socket's timeout itself, so the mode the callback leaves it in
+    does not matter.
 
     To reach a KMS host through an HTTP proxy, tunnel with ``CONNECT``::
 
