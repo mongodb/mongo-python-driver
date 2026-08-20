@@ -34,6 +34,7 @@ import threading
 import traceback
 import uuid
 import warnings
+from asyncio.trsock import TransportSocket
 from collections.abc import Mapping
 from threading import Thread
 from typing import Any, Optional
@@ -232,8 +233,6 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     async def test_init_kms_connect_callback(self):
-        from pymongo.encryption_options import KMSConnectContext
-
         opts = AutoEncryptionOpts({}, "k.d")
         self.assertIsNone(opts._kms_connect_callback)
 
@@ -340,8 +339,6 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
 
     async def test_asyncio_transport_socket_is_rejected(self):
         # get_extra_info("socket") is a TransportSocket, not a socket.socket.
-        from asyncio.trsock import TransportSocket
-
         left, right = socket.socketpair()
         self.addCleanup(left.close)
         self.addCleanup(right.close)
