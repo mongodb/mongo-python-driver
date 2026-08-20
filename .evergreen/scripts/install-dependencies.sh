@@ -3,6 +3,7 @@
 set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
+HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
 
 # Source the env files to pick up common variables.
@@ -31,6 +32,32 @@ fi
 # Ensure just is installed.
 if ! command -v just &>/dev/null; then
   uv tool install rust-just
+fi
+
+# Some images (e.g. the DEVPROD-19149 Windows image) ship without a Python toolchain.
+# Install one with uv and expose it so that both pymongo and drivers-evergreen-tools
+# can find it: DRIVERS_TOOLS_PYTHON is honored by DET's ensure_python3().
+if ! command -v python3 &>/dev/null && ! command -v python &>/dev/null; then
+  echo "No system Python found, installing with uv..."
+  # UV_PYTHON may be a toolchain path; fall back to a bare version for the download.
+  _py_ver="${UV_PYTHON:-}"
+  case "$_py_ver" in
+    ""|*/*|*\\*) _py_ver="3.10" ;;
+  esac
+  uv python install "$_py_ver"
+  _py_bin="$(uv python find --no-project --managed-python "$_py_ver")"
+  if [ "Windows_NT" = "${OS:-}" ]; then
+    _py_bin=$(cygpath -u "$_py_bin")
+  fi
+  _py_dir=$(dirname "$_py_bin")
+  export PATH="$_py_dir:$PATH"
+  export DRIVERS_TOOLS_PYTHON="$_py_bin"
+  # Persist for the steps that source env.sh rather than inheriting this shell.
+  cat <<EOT >> "$HERE/env.sh"
+export PATH="$_py_dir:\$PATH"
+export DRIVERS_TOOLS_PYTHON="$_py_bin"
+EOT
+  echo "No system Python found, installing with uv... done ($_py_bin)."
 fi
 
 popd > /dev/null
