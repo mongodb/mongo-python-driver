@@ -2133,11 +2133,11 @@ class TestKmsTLSProse(AsyncEncryptionIntegrationTest):
             await self.client_encrypted.create_data_key("aws", master_key=key)
 
 
-_KMS_PROXY_HOST = "127.0.0.1"
-_KMS_PROXY_PORT = 9004
-_KMS_TLS_PROXY_PORT = 9005
+KMS_PROXY_HOST = "127.0.0.1"
+KMS_PROXY_PORT = 9004
+KMS_TLS_PROXY_PORT = 9005
 
-_AWS_MASTER_KEY = {
+AWS_MASTER_KEY = {
     "region": "us-east-1",
     "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
 }
@@ -2152,13 +2152,13 @@ class TestKmsConnectCallbackProse(AsyncEncryptionIntegrationTest):
 
     async def plain_callback(self, context):
         self.callback_calls.append(context)
-        return await AsyncHTTPProxyKMSConnect(_KMS_PROXY_HOST, _KMS_PROXY_PORT)(context)
+        return await AsyncHTTPProxyKMSConnect(KMS_PROXY_HOST, KMS_PROXY_PORT)(context)
 
     async def tls_callback(self, context):
         self.callback_calls.append(context)
         ctx = ssl.create_default_context(cafile=CA_PEM)
         ctx.check_hostname = False
-        callback = AsyncHTTPProxyKMSConnect(_KMS_PROXY_HOST, _KMS_TLS_PROXY_PORT, ctx)
+        callback = AsyncHTTPProxyKMSConnect(KMS_PROXY_HOST, KMS_TLS_PROXY_PORT, ctx)
         return await callback(context)
 
     async def proxy_request(self, method, path, tls=False):
@@ -2167,10 +2167,10 @@ class TestKmsConnectCallbackProse(AsyncEncryptionIntegrationTest):
             ctx = ssl.create_default_context(cafile=CA_PEM)
             ctx.check_hostname = False
             conn = http.client.HTTPSConnection(
-                f"{_KMS_PROXY_HOST}:{_KMS_TLS_PROXY_PORT}", context=ctx
+                f"{KMS_PROXY_HOST}:{KMS_TLS_PROXY_PORT}", context=ctx
             )
         else:
-            conn = http.client.HTTPConnection(f"{_KMS_PROXY_HOST}:{_KMS_PROXY_PORT}")
+            conn = http.client.HTTPConnection(f"{KMS_PROXY_HOST}:{KMS_PROXY_PORT}")
         try:
             conn.request(method, path)
             return conn.getresponse().read().decode()
@@ -2195,7 +2195,7 @@ class TestKmsConnectCallbackProse(AsyncEncryptionIntegrationTest):
             OPTS,
             kms_connect_callback=self.plain_callback,
         )
-        await encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+        await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
         self.assertGreaterEqual(await self.connect_count(), 1)
 
     async def test_02_https_proxy(self):
@@ -2207,7 +2207,7 @@ class TestKmsConnectCallbackProse(AsyncEncryptionIntegrationTest):
             OPTS,
             kms_connect_callback=self.tls_callback,
         )
-        await encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+        await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
         self.assertGreaterEqual(await self.connect_count(tls=True), 1)
 
     async def test_03_auto_encryption_through_proxy(self):
@@ -2221,7 +2221,7 @@ class TestKmsConnectCallbackProse(AsyncEncryptionIntegrationTest):
             OPTS,
             kms_connect_callback=self.plain_callback,
         )
-        data_key_id = await encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+        data_key_id = await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
         schema = {
             "bsonType": "object",
             "properties": {
@@ -2265,7 +2265,7 @@ class TestKmsConnectCallbackProse(AsyncEncryptionIntegrationTest):
             kms_connect_callback=failing_callback,
         )
         with self.assertRaisesRegex(EncryptionError, "proxy is on fire"):
-            await encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+            await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
 
     @unittest.skip(
         "PYTHON-6037 ClientEncryption does not support timeoutMS, so the "
@@ -2280,7 +2280,7 @@ class TestKmsConnectCallbackProse(AsyncEncryptionIntegrationTest):
             OPTS,
             kms_connect_callback=self.plain_callback,
         )
-        await encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+        await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
 
         self.assertTrue(self.callback_calls, "callback was never invoked")
         for context in self.callback_calls:
@@ -2295,7 +2295,7 @@ class TestKmsConnectCallbackProse(AsyncEncryptionIntegrationTest):
             state["calls"] += 1
             if state["calls"] == 1:
                 raise OSError("first attempt fails")
-            return await AsyncHTTPProxyKMSConnect(_KMS_PROXY_HOST, _KMS_PROXY_PORT)(context)
+            return await AsyncHTTPProxyKMSConnect(KMS_PROXY_HOST, KMS_PROXY_PORT)(context)
 
         encryption = self.create_client_encryption(
             {"aws": AWS_CREDS},
@@ -2304,7 +2304,7 @@ class TestKmsConnectCallbackProse(AsyncEncryptionIntegrationTest):
             OPTS,
             kms_connect_callback=flaky_callback,
         )
-        await encryption.create_data_key("aws", master_key=_AWS_MASTER_KEY)
+        await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
         self.assertGreaterEqual(state["calls"], 2)
 
 
