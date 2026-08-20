@@ -3415,14 +3415,29 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         self.algorithm = (
             Algorithm.STRING if _libmongocrypt_at_least(1, 19, 0) else Algorithm.TEXTPREVIEW
         )
+        # The GA query types need the "String" algorithm, so skip before setup
+        # encrypts anything rather than erroring on an unsupported combination.
+        if self.is_ga and not _libmongocrypt_at_least(1, 19, 0):
+            raise unittest.SkipTest("server 9.0+ string queries require libmongocrypt 1.19.0+")
+        # Substring went stable in a later libmongocrypt than prefix and suffix,
+        # so its fixture is only built where the query type exists. Otherwise
+        # setup would fail before the substring cases could skip, taking the
+        # prefix and suffix cases down with it.
+        self.has_substring = _libmongocrypt_at_least(
+            *_STRING_QUERY_MIN_LIBMONGOCRYPT["substring" if self.is_ga else "substringPreview"]
+        )
 
         # Using QE CreateCollection() and Collection.Drop(), drop and create the
         # collections with majority write concern.
         db = self.client_encrypted.db
         if self.is_ga:
-            collections = ["prefix-suffix", "prefix-suffix-ci-di", "substring", "substring-ci-di"]
+            collections = ["prefix-suffix", "prefix-suffix-ci-di"]
+            if self.has_substring:
+                collections += ["substring", "substring-ci-di"]
         else:
-            collections = ["prefix-suffix-preview", "substring-preview"]
+            collections = ["prefix-suffix-preview"]
+            if self.has_substring:
+                collections += ["substring-preview"]
         for name in collections:
             db.drop_collection(name)
             self.client_encryption.create_encrypted_collection(
@@ -3453,25 +3468,26 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
             {"_id": 0, "encryptedText": encrypted_value},
         )
 
-        # Use clientEncryption to encrypt the string "foobarbaz" with the following EncryptOpts.
-        encrypted_value = self.client_encryption.encrypt(
-            "foobarbaz",
-            key_id=self.key1_id,
-            algorithm=self.algorithm,
-            contention_factor=0,
-            string_opts=StringOpts(
-                case_sensitive=True,
-                diacritic_sensitive=True,
-                substring=dict(strMaxLength=10, strMaxQueryLength=6, strMinQueryLength=2),
-            ),
-        )
-        # Use explicitEncryptedClient to insert the following document into
-        # db.substring (if created) and db.substring-preview (if created) with
-        # majority write concern.
-        self._insert(
-            "substring" if self.is_ga else "substring-preview",
-            {"_id": 0, "encryptedText": encrypted_value},
-        )
+        if self.has_substring:
+            # Use clientEncryption to encrypt the string "foobarbaz" with the following EncryptOpts.
+            encrypted_value = self.client_encryption.encrypt(
+                "foobarbaz",
+                key_id=self.key1_id,
+                algorithm=self.algorithm,
+                contention_factor=0,
+                string_opts=StringOpts(
+                    case_sensitive=True,
+                    diacritic_sensitive=True,
+                    substring=dict(strMaxLength=10, strMaxQueryLength=6, strMinQueryLength=2),
+                ),
+            )
+            # Use explicitEncryptedClient to insert the following document into
+            # db.substring (if created) and db.substring-preview (if created) with
+            # majority write concern.
+            self._insert(
+                "substring" if self.is_ga else "substring-preview",
+                {"_id": 0, "encryptedText": encrypted_value},
+            )
 
     def _insert(self, collection, document, client=None):
         """Insert a document with majority write concern."""

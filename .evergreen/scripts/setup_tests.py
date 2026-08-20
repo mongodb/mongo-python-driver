@@ -52,6 +52,10 @@ GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
 # The python version used for perf tests.
 PERF_PYTHON_VERSION = "3.10.11"
 
+# The libmongocrypt release used when LIBMONGOCRYPT_URL is not set. Must be at
+# least 1.20.0 for the GA "substring" query type.
+LIBMONGOCRYPT_VERSION = "1.20.2"
+
 
 def is_set(var: str) -> bool:
     value = os.environ.get(var, "")
@@ -72,43 +76,56 @@ def get_distro() -> Distro:
     return Distro(name=name, version_id=version_id, arch=arch)
 
 
-def setup_libmongocrypt():
-    target = ""
+def get_libmongocrypt_target() -> str:
+    """Return the libmongocrypt release asset target for this platform.
+
+    These are the names used by the signed release assets on GitHub, which are
+    keyed by libc flavor rather than by distro (MONGOCRYPT-838 moved the
+    per-variant release builds to a restricted bucket).
+    """
     if PLATFORM == "windows":
+        return "windows-x86_64"
+    if PLATFORM == "darwin":
+        return "macos-universal"
+
+    distro = get_distro()
+    arch = distro.arch
+    if arch in ("aarch64", "arm64"):
+        arch = "arm64"
+    elif arch in ("x86_64", "amd64"):
+        arch = "x86_64"
+
+    # Alpine and other musl distros need the musl build.
+    if "Alpine" in distro.name:
+        if arch not in ("x86_64", "arm64"):
+            raise ValueError(f"No musl libmongocrypt build for architecture {distro.arch}!")
+        return f"linux-{arch}-musl_1_2-nocrypto"
+
+    libc = {
+        "x86_64": "glibc_2_7",
+        "arm64": "glibc_2_17",
+        "ppc64le": "glibc_2_17",
+        "s390x": "glibc_2_7",
+    }.get(arch)
+    if libc is None:
+        raise ValueError(f"No libmongocrypt build for architecture {distro.arch}!")
+    return f"linux-{arch}-{libc}-nocrypto"
+
+
+def setup_libmongocrypt():
+    if PLATFORM == "windows" and is_set("TEST_FLE_GCP_AUTO"):
         # PYTHON-2808 Ensure this machine has the CA cert for google KMS.
-        if is_set("TEST_FLE_GCP_AUTO"):
-            run_command('powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/"')
-        target = "windows-test"
+        run_command('powershell.exe "Invoke-WebRequest -URI https://oauth2.googleapis.com/"')
 
-    elif PLATFORM == "darwin":
-        target = "macos"
-
-    else:
-        distro = get_distro()
-        if distro.name.startswith("Debian"):
-            target = f"debian{distro.version_id}"
-        elif distro.name.startswith("Ubuntu"):
-            if distro.version_id == "20.04":
-                target = "debian11"
-            elif distro.version_id == "22.04":
-                target = "debian12"
-            elif distro.version_id == "24.04":
-                target = "debian13"
-        elif distro.name.startswith("Red Hat"):
-            if distro.version_id.startswith("7"):
-                target = "rhel-70-64-bit"
-            elif distro.version_id.startswith("8"):
-                if distro.arch == "aarch64":
-                    target = "rhel-82-arm64"
-                else:
-                    target = "rhel-80-64-bit"
-
-    if not is_set("LIBMONGOCRYPT_URL"):
-        if not target:
-            raise ValueError("Cannot find libmongocrypt target for current platform!")
-        url = f"https://s3.amazonaws.com/mciuploads/libmongocrypt/{target}/master/latest/libmongocrypt.tar.gz"
-    else:
+    if is_set("LIBMONGOCRYPT_URL"):
         url = os.environ["LIBMONGOCRYPT_URL"]
+    else:
+        version = os.environ.get("LIBMONGOCRYPT_VERSION", LIBMONGOCRYPT_VERSION)
+        target = get_libmongocrypt_target()
+        url = (
+            f"https://github.com/mongodb/libmongocrypt/releases/download/"
+            f"{version}/libmongocrypt-{target}-{version}.tar.gz"
+        )
 
     shutil.rmtree(HERE / "libmongocrypt", ignore_errors=True)
 
@@ -122,11 +139,22 @@ def setup_libmongocrypt():
     LOGGER.info(f"Fetching {url}... done.")
 
     run_command("ls -la libmongocrypt")
-    run_command("ls -la libmongocrypt/nocrypto")
 
     if PLATFORM == "windows":
         # libmongocrypt's windows dll is not marked executable.
-        run_command("chmod +x libmongocrypt/nocrypto/bin/mongocrypt.dll")
+        run_command(f"chmod +x {get_libmongocrypt_base()}/bin/mongocrypt.dll")
+
+
+def get_libmongocrypt_base() -> Path:
+    """Return the root of the extracted libmongocrypt archive.
+
+    The signed release archives put ``lib/`` at the archive root, while the
+    older master builds nested everything under ``nocrypto/``.
+    """
+    base = ROOT / "libmongocrypt"
+    if (base / "nocrypto").exists():
+        return base / "nocrypto"
+    return base
 
 
 def load_config_from_file(path: str | Path) -> dict[str, str]:
@@ -359,7 +387,9 @@ def handle_test_env() -> None:
         # need the "textPreview" algorithm, so pin to the released pymongocrypt
         # and use the libmongocrypt bundled in its wheel rather than the
         # unreleased master build.
-        use_released_pymongocrypt = os.environ.get("MONGODB_VERSION", "").startswith("8.")
+        # Evergreen exposes the server version as VERSION, not MONGODB_VERSION
+        # (which is only set inside the separate run_server.py process).
+        use_released_pymongocrypt = os.environ.get("VERSION", "").startswith("8.")
 
         if not use_released_pymongocrypt:
             # Check for libmongocrypt download.
@@ -376,7 +406,7 @@ def handle_test_env() -> None:
 
         if not use_released_pymongocrypt:
             # Use the nocrypto build to avoid dependency issues with older windows/python versions.
-            BASE = ROOT / "libmongocrypt/nocrypto"
+            BASE = get_libmongocrypt_base()
             if PLATFORM == "linux":
                 if (BASE / "lib/libmongocrypt.so").exists():
                     PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.so"
