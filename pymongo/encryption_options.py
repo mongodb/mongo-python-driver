@@ -65,18 +65,15 @@ class KMSConnectContext:
     or :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`.
 
     The callback connects to ``host``:``port`` and returns a plain, unwrapped
-    :class:`socket.socket`. The driver then performs the KMS TLS handshake over
-    it, verifying the certificate and hostname against ``host`` rather than the
-    peer the socket actually reached. That is what makes proxying safe.
+    :class:`socket.socket`. The driver performs the KMS TLS handshake over it,
+    verifying against ``host`` rather than the peer actually reached, which is
+    what makes proxying safe. The driver also sets the socket's timeout, so the
+    mode the callback leaves it in does not matter.
 
-    The callback must return a real socket that the event loop is not managing.
-    :func:`asyncio.open_connection` and :meth:`asyncio.loop.create_connection`
-    return a stream or transport rather than a socket, and the object from
-    ``transport.get_extra_info("socket")`` is a transport socket the loop still
-    owns, so none of them can be used here. :meth:`asyncio.loop.sock_connect`
-    is fine: it leaves an ordinary socket behind once it completes. The driver
-    sets the socket's timeout itself, so the mode the callback leaves it in
-    does not matter.
+    Streams and transports do not work: :func:`asyncio.open_connection` and
+    :meth:`asyncio.loop.create_connection` do not return sockets, and
+    ``transport.get_extra_info("socket")`` returns one the loop still owns.
+    :meth:`asyncio.loop.sock_connect` is fine.
 
     To reach a KMS host through an HTTP proxy, tunnel with ``CONNECT``::
 
@@ -119,9 +116,9 @@ class KMSConnectContext:
       async def async_connect_through_proxy(context):
           return await asyncio.to_thread(connect_through_proxy, context)
 
-    Reaching the proxy itself over TLS needs one extra step, because Python
-    cannot layer TLS over an :class:`ssl.SSLSocket`. Relay the proxy connection
-    through a :func:`socket.socketpair` and return the plain end::
+    Reaching the proxy over TLS needs one extra step, because Python cannot
+    layer TLS over an :class:`ssl.SSLSocket`. Relay through a
+    :func:`socket.socketpair` and return the plain end::
 
       import ssl, threading
 
@@ -167,12 +164,11 @@ class KMSConnectContext:
         one is active, otherwise the driver's default KMS connect timeout.
         Always a positive number; the driver never passes ``None``.
 
-    .. note:: ``timeoutMS`` on a
-       :class:`~pymongo.encryption.ClientEncryption` or its key vault client
-       does not constrain KMS requests, so for explicit encryption ``timeout``
-       is always the default. Automatic encryption passes the remaining budget.
-       This deviates from the Client Side Operations Timeout specification and
-       is tracked in PYTHON-6037.
+    .. note:: ``timeoutMS`` on a :class:`~pymongo.encryption.ClientEncryption`
+       or its key vault client does not constrain KMS requests, so ``timeout``
+       is always the default for explicit encryption. Automatic encryption
+       passes the remaining budget. A known deviation from the Client Side
+       Operations Timeout specification, tracked in PYTHON-6037.
 
     .. versionadded:: 4.18
     """

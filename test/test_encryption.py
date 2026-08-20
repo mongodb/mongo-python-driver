@@ -227,23 +227,19 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
     def test_init_kms_connect_callback(self):
         from pymongo.encryption_options import KMSConnectContext
 
-        # Default is None.
         opts = AutoEncryptionOpts({}, "k.d")
         self.assertIsNone(opts._kms_connect_callback)
 
-        # A callable is accepted and stored unchanged.
         def callback(context):
             raise AssertionError("not called")
 
         opts = AutoEncryptionOpts({}, "k.d", kms_connect_callback=callback)
         self.assertIs(opts._kms_connect_callback, callback)
 
-        # Non-callables are rejected eagerly.
         for bad in [1, "not-callable", object()]:
             with self.assertRaisesRegex(TypeError, "kms_connect_callback must be callable"):
                 AutoEncryptionOpts({}, "k.d", kms_connect_callback=bad)  # type: ignore[arg-type]
 
-        # The context is frozen and carries host, port, and timeout.
         context = KMSConnectContext(host="kms.example.com", port=443, timeout=9.5)
         self.assertEqual(context.host, "kms.example.com")
         self.assertEqual(context.port, 443)
@@ -268,8 +264,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
 
     def test_already_wrapped_socket_is_rejected(self):
         # ssl.SSLSocket subclasses socket.socket, but wrap_socket cannot layer
-        # TLS over it, so it must be rejected with an actionable message rather
-        # than failing later with an opaque handshake error.
+        # TLS over it, so it needs its own rejection.
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
@@ -307,9 +302,8 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         self.assertEqual(received[0].timeout, 12.5)
 
     def test_non_blocking_socket_from_callback_is_accepted(self):
-        # ssl.SSLContext.wrap_socket refuses a non-blocking socket. The driver
-        # normalizes the mode so a callback need not care which mode it leaves
-        # the socket in. Without that, this handshake raises ValueError.
+        # wrap_socket refuses a non-blocking socket; the driver normalizes the
+        # mode. Without that, this handshake raises ValueError.
         server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         server_ctx.load_cert_chain(CLIENT_PEM)
         listener = socket.socket()
@@ -326,9 +320,8 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
 
         threading.Thread(target=serve, daemon=True).start()
 
-        # Build the context the way the driver does, so PoolOptions gets the
-        # flavor-correct type. Verification is off because the local test
-        # server's certificate is not what the driver would expect.
+        # Built the way the driver does, so PoolOptions gets the flavor-correct
+        # type. Verification is off: the local cert is not what it expects.
         client_ctx = get_ssl_context(None, None, None, None, True, True, False, _IS_SYNC)
         options = PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=client_ctx)
 
@@ -342,9 +335,8 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         self.assertIsNotNone(conn.gettimeout())
 
     def test_asyncio_transport_socket_is_rejected(self):
-        # transport.get_extra_info("socket") returns an asyncio TransportSocket,
-        # not a socket.socket, and the loop still owns it. Reject it with a
-        # message that names the mistake rather than failing later.
+        # transport.get_extra_info("socket") is an asyncio TransportSocket, not
+        # a socket.socket, and the loop still owns it.
         from asyncio.trsock import TransportSocket
 
         left, right = socket.socketpair()
@@ -354,7 +346,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         def callback(context):
             return TransportSocket(left)
 
-        with self.assertRaisesRegex(ConfigurationError, "asyncio stream or transport"):
+        with self.assertRaisesRegex(ConfigurationError, "Streams, transports"):
             _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
 
     def test_network_error_from_callback_propagates(self):

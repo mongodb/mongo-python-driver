@@ -161,12 +161,9 @@ async def _connect_kms(
         _close_rejected_kms_socket(sock)
         raise ConfigurationError(
             "kms_connect_callback must return a connected, unwrapped "
-            f"socket.socket, not {type(sock)}. An asyncio stream or transport, "
-            "including the object from transport.get_extra_info('socket'), "
-            "cannot be used; connect with loop.sock_connect instead. TLS cannot "
-            "be layered over an already-wrapped socket either; to reach the "
-            "proxy over TLS, relay through a socket.socketpair and return the "
-            "plain end."
+            f"socket.socket, not {type(sock)}. Streams, transports and "
+            "transport sockets cannot be used; try loop.sock_connect. For a "
+            "TLS proxy, relay through a socket.socketpair and return the plain end."
         )
     # ssl.SSLContext.wrap_socket refuses a non-blocking socket, and a callback
     # has no reason to care which mode it left the socket in, so normalize it
