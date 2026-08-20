@@ -401,7 +401,7 @@ def handle_test_env() -> None:
 
         if not opts.test_min_deps:
             if use_pymongocrypt_text_preview:
-                UV_ARGS.append("--with pymongocrypt<1.19")
+                UV_ARGS.append("--with 'pymongocrypt<1.19'")
             else:
                 UV_ARGS.append(
                     "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
