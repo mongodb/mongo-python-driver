@@ -19,6 +19,7 @@ from __future__ import annotations
 import base64
 import copy
 import http.client
+import inspect
 import json
 import os
 import pathlib
@@ -265,6 +266,16 @@ class TestStringOptsDeprecation(AsyncPyMongoTestCase):
         string_opts = StringOpts(prefix={"strMinQueryLength": 2, "strMaxQueryLength": 10})
         with self.assertRaises(ConfigurationError):
             encryption._resolve_string_opts(string_opts, string_opts)
+
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
+    def test_string_opts_kwarg_matches_binding(self):
+        # pymongocrypt renamed text_opts to string_opts in 1.19, and both
+        # spellings are still in play: the GA query types need a master build
+        # and the preview query types run against pymongocrypt < 1.19. Assert
+        # the resolved name against the installed binding here so a mismatch
+        # fails without a server, rather than only in the prose suite.
+        params = inspect.signature(encryption.AsyncExplicitEncrypter.encrypt).parameters
+        self.assertIn(encryption._STRING_OPTS_KWARG, params)
 
 
 class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
@@ -3377,6 +3388,12 @@ _STRING_QUERY_MIN_LIBMONGOCRYPT = {
 # prefixPreview and suffixPreview were removed in 1.19.0 and restored in 1.19.1,
 # so that one release is a hole rather than a floor.
 _PREVIEW_REMOVED_IN = (1, 19, 0)
+
+# No pymongocrypt release ships libmongocrypt 1.19.0+, so the GA query types can
+# only run against a master build; setup_tests.py pins the released binding for
+# the 8.x preview tasks alone. Do not collapse that gate: the released binding
+# still spells the parameter text_opts, and dropping back to it would silently
+# stop exercising the GA path.
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#27-string-explicit-encryption

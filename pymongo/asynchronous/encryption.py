@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import enum
+import inspect
 import socket
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
@@ -47,9 +48,20 @@ try:
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
 
     _HAVE_PYMONGOCRYPT = True
+    # pymongocrypt renamed the text_opts parameter to string_opts in 1.19. The
+    # preview query types still run against pymongocrypt < 1.19, so resolve the
+    # name from the installed signature rather than from a version comparison:
+    # the rename landed on master before any release carried it, so a version
+    # check would misclassify the master builds the GA query types require.
+    _STRING_OPTS_KWARG = (
+        "string_opts"
+        if "string_opts" in inspect.signature(AsyncExplicitEncrypter.encrypt).parameters
+        else "text_opts"
+    )
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
     AsyncMongoCryptCallback = object
+    _STRING_OPTS_KWARG = "string_opts"
 
 from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
@@ -1016,9 +1028,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts_bytes,
                 is_expression=is_expression,
-                # pymongocrypt still names this parameter text_opts.
-                # For compatibility with pymongocrypt < 1.16:
-                **{"text_opts": string_opts_bytes} if string_opts_bytes else {},
+                **({_STRING_OPTS_KWARG: string_opts_bytes} if string_opts_bytes else {}),
             )
             return decode(encrypted_doc)["v"]
 

@@ -141,8 +141,11 @@ def setup_libmongocrypt():
     run_command("ls -la libmongocrypt")
 
     if PLATFORM == "windows":
-        # libmongocrypt's windows dll is not marked executable.
-        run_command(f"chmod +x {get_libmongocrypt_base()}/bin/mongocrypt.dll")
+        # libmongocrypt's windows dll is not marked executable. Use Path.chmod
+        # rather than shelling out: the bundled POSIX chmod cannot resolve the
+        # drive-lettered absolute path that get_libmongocrypt_base() returns.
+        dll = get_libmongocrypt_base() / "bin/mongocrypt.dll"
+        dll.chmod(dll.stat().st_mode | stat.S_IEXEC)
 
 
 def get_libmongocrypt_base() -> Path:
