@@ -184,6 +184,7 @@ buildvariants:
   - name: encryption-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-string-query-preview
     display_name: Encryption RHEL8
     run_on:
       - rhel87-small
@@ -195,6 +196,7 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.pypy !.cov
       - name: .test-non-standard-no-cov !.pypy
+      - name: .test-string-query-preview
     display_name: Encryption macOS
     run_on:
       - macos-14
@@ -206,6 +208,7 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.pypy !.cov
       - name: .test-non-standard-no-cov !.pypy
+      - name: .test-string-query-preview
     display_name: Encryption Win64
     run_on:
       - windows-2022-latest-small
@@ -216,6 +219,7 @@ buildvariants:
   - name: encryption-crypt_shared-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-string-query-preview
     display_name: Encryption crypt_shared RHEL8
     run_on:
       - rhel87-small
@@ -228,6 +232,7 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.pypy !.cov
       - name: .test-non-standard-no-cov !.pypy
+      - name: .test-string-query-preview
     display_name: Encryption crypt_shared macOS
     run_on:
       - macos-14
@@ -240,6 +245,7 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.pypy !.cov
       - name: .test-non-standard-no-cov !.pypy
+      - name: .test-string-query-preview
     display_name: Encryption crypt_shared Win64
     run_on:
       - windows-2022-latest-small
