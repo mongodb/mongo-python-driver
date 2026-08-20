@@ -60,6 +60,11 @@ _IS_SYNC = False
 pytestmark = pytest.mark.otel
 
 
+def _tracing_opts() -> _otel.TracingOptions:
+    """Return resolved tracing options with tracing on and ``db.query.text`` disabled."""
+    return {"enabled": True, "query_text_max_length": 0}
+
+
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
 class TestOTelTransactionSpanPrimitives(unittest.TestCase):
     @classmethod
@@ -78,7 +83,7 @@ class TestOTelTransactionSpanPrimitives(unittest.TestCase):
         self.exporter.clear()
 
     def test_start_transaction_span_has_only_one_attribute(self):
-        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        opts = _tracing_opts()
         span = _otel.start_transaction_span(opts)
         _otel.end_transaction_span(span)
         (finished,) = self.exporter.get_finished_spans()
@@ -104,7 +109,7 @@ class TestOperationTelemetryInTransaction(unittest.TestCase):
         self.exporter.clear()
 
     def test_nests_under_active_transaction_span(self):
-        opts: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
+        opts = _tracing_opts()
         txn_span = _otel.start_transaction_span(opts)
 
         class _FakeTransaction:
