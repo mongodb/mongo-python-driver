@@ -62,7 +62,14 @@ from bson.json_util import JSONOptions
 from bson.son import SON
 from pymongo import ReadPreference
 from pymongo.cursor_shared import CursorType
-from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts, RangeOpts, TextOpts
+from pymongo.encryption_options import (
+    _HAVE_PYMONGOCRYPT,
+    AutoEncryptionOpts,
+    HTTPProxyKMSConnect,
+    KMSConnectContext,
+    RangeOpts,
+    TextOpts,
+)
 from pymongo.errors import (
     AutoReconnect,
     BulkWriteError,
@@ -348,6 +355,40 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
 
         with self.assertRaisesRegex(ConfigurationError, "Streams, transports"):
             _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+
+    def test_http_proxy_helper_tunnels_and_reports_refusal(self):
+        # Exercise the shipped helper against a stub proxy, so the CONNECT
+        # handshake is covered without KMS credentials.
+        accepted = []
+
+        def stub(listener, reply):
+            try:
+                conn, _ = listener.accept()
+            except OSError:
+                return
+            accepted.append(conn.recv(4096))
+            conn.sendall(reply)
+            conn.close()
+
+        def run_stub(reply):
+            listener = socket.socket()
+            listener.bind(("127.0.0.1", 0))
+            listener.listen(1)
+            self.addCleanup(listener.close)
+            threading.Thread(target=stub, args=(listener, reply), daemon=True).start()
+            return listener.getsockname()
+
+        host, port = run_stub(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+        callback = HTTPProxyKMSConnect(host, port)
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+        sock = callback(context)
+        self.addCleanup(sock.close)
+        self.assertIsInstance(sock, socket.socket)
+        self.assertEqual(accepted[0].split(b"\r\n")[0], b"CONNECT kms.example.com:443 HTTP/1.1")
+
+        host, port = run_stub(b"HTTP/1.1 407 Proxy Authentication Required\r\n\r\n")
+        with self.assertRaisesRegex(OSError, "refused CONNECT"):
+            HTTPProxyKMSConnect(host, port)(context)
 
     def test_network_error_from_callback_propagates(self):
         def callback(context):
@@ -2103,60 +2144,6 @@ _AWS_MASTER_KEY = {
 }
 
 
-def _http_connect(context, proxy_port, proxy_ssl_context=None):
-    """Open an HTTP CONNECT tunnel to context.host:context.port.
-
-    Returns a plain socket. When proxy_ssl_context is given, the connection to
-    the proxy is TLS and the tunnel is bridged to a socketpair, because TLS
-    cannot be layered over an ssl.SSLSocket.
-    """
-    sock: socket.socket = socket.create_connection(
-        (_KMS_PROXY_HOST, proxy_port), timeout=context.timeout
-    )
-    try:
-        if proxy_ssl_context is not None:
-            sock = proxy_ssl_context.wrap_socket(sock, server_hostname=_KMS_PROXY_HOST)
-        target = f"{context.host}:{context.port}"
-        sock.sendall(f"CONNECT {target} HTTP/1.1\r\nHost: {target}\r\n\r\n".encode())
-        response = b""
-        while b"\r\n\r\n" not in response:
-            chunk = sock.recv(4096)
-            if not chunk:
-                raise OSError("proxy closed the connection before responding")
-            response += chunk
-        status = response.split(b"\r\n", 1)[0]
-        if not status.startswith(b"HTTP/1.1 200"):
-            raise OSError(f"proxy CONNECT failed: {status!r}")
-    except Exception:
-        sock.close()
-        raise
-
-    if proxy_ssl_context is None:
-        return sock
-
-    driver_side, relay_side = socket.socketpair()
-
-    def relay(src, dst):
-        try:
-            while True:
-                buf = src.recv(16384)
-                if not buf:
-                    break
-                dst.sendall(buf)
-        except OSError:
-            pass
-        finally:
-            for s in (src, dst):
-                try:
-                    s.close()
-                except OSError:
-                    pass
-
-    threading.Thread(target=relay, args=(relay_side, sock), daemon=True).start()
-    threading.Thread(target=relay, args=(sock, relay_side), daemon=True).start()
-    return driver_side
-
-
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#kms-connect-callback
 class TestKmsConnectCallbackProse(EncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
@@ -2166,17 +2153,14 @@ class TestKmsConnectCallbackProse(EncryptionIntegrationTest):
 
     def plain_callback(self, context):
         self.callback_calls.append(context)
-        if not _IS_SYNC:
-            return asyncio.to_thread(_http_connect, context, _KMS_PROXY_PORT)
-        return _http_connect(context, _KMS_PROXY_PORT)
+        return HTTPProxyKMSConnect(_KMS_PROXY_HOST, _KMS_PROXY_PORT)(context)
 
     def tls_callback(self, context):
         self.callback_calls.append(context)
         ctx = ssl.create_default_context(cafile=CA_PEM)
         ctx.check_hostname = False
-        if not _IS_SYNC:
-            return asyncio.to_thread(_http_connect, context, _KMS_TLS_PROXY_PORT, ctx)
-        return _http_connect(context, _KMS_TLS_PROXY_PORT, ctx)
+        callback = HTTPProxyKMSConnect(_KMS_PROXY_HOST, _KMS_TLS_PROXY_PORT, ctx)
+        return callback(context)
 
     def proxy_request(self, method, path, tls=False):
         """Call the proxy's control endpoints and return the body."""
@@ -2315,9 +2299,7 @@ class TestKmsConnectCallbackProse(EncryptionIntegrationTest):
             state["calls"] += 1
             if state["calls"] == 1:
                 raise OSError("first attempt fails")
-            if not _IS_SYNC:
-                return asyncio.to_thread(_http_connect, context, _KMS_PROXY_PORT)
-            return _http_connect(context, _KMS_PROXY_PORT)
+            return HTTPProxyKMSConnect(_KMS_PROXY_HOST, _KMS_PROXY_PORT)(context)
 
         encryption = self.create_client_encryption(
             {"aws": AWS_CREDS},

@@ -19,7 +19,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import socket
+import ssl
+import threading
 from collections.abc import Awaitable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict
@@ -75,87 +78,14 @@ class KMSConnectContext:
     ``transport.get_extra_info("socket")`` returns one the loop still owns.
     :meth:`asyncio.loop.sock_connect` is fine.
 
-    To reach a KMS host through an HTTP proxy, tunnel with ``CONNECT``::
+    For an ordinary HTTP proxy, use :class:`HTTPProxyKMSConnect` or
+    :class:`AsyncHTTPProxyKMSConnect` rather than writing this yourself. Supply
+    a callback directly only when you need something they do not cover, such as
+    proxy authentication.
 
-      import socket
-
-      def open_tunnel(sock, context):
-          target = f"{context.host}:{context.port}"
-          sock.sendall(
-              f"CONNECT {target} HTTP/1.1\\r\\nHost: {target}\\r\\n\\r\\n".encode()
-          )
-          response = b""
-          while b"\\r\\n\\r\\n" not in response:
-              chunk = sock.recv(4096)
-              if not chunk:
-                  raise OSError("proxy closed the connection")
-              response += chunk
-          if not response.startswith(b"HTTP/1.1 200"):
-              raise OSError(f"CONNECT failed: {response.splitlines()[0]!r}")
-
-      def connect_through_proxy(context):
-          sock = socket.create_connection(
-              ("proxy.example.com", 8080), timeout=context.timeout
-          )
-          try:
-              open_tunnel(sock, context)
-          except OSError:
-              sock.close()
-              raise
-          return sock
-
-      opts = AutoEncryptionOpts(
-          kms_providers={"aws": aws_creds},
-          key_vault_namespace="keyvault.datakeys",
-          kms_connect_callback=connect_through_proxy,
-      )
-
-    The async API requires a coroutine function. Run the blocking connect in a
-    thread to keep the event loop free::
-
-      async def async_connect_through_proxy(context):
-          return await asyncio.to_thread(connect_through_proxy, context)
-
-    Reaching the proxy over TLS needs one extra step, because Python cannot
-    layer TLS over an :class:`ssl.SSLSocket`. Relay through a
-    :func:`socket.socketpair` and return the plain end::
-
-      import ssl, threading
-
-      def connect_through_tls_proxy(context):
-          ctx = ssl.create_default_context(cafile="proxy-ca.pem")
-          raw = socket.create_connection(
-              ("proxy.example.com", 8443), timeout=context.timeout
-          )
-          proxy = ctx.wrap_socket(raw, server_hostname="proxy.example.com")
-          try:
-              open_tunnel(proxy, context)
-          except OSError:
-              proxy.close()
-              raise
-
-          driver_side, relay_side = socket.socketpair()
-
-          def relay(src, dst):
-              try:
-                  while True:
-                      buf = src.recv(16384)
-                      if not buf:
-                          break
-                      dst.sendall(buf)
-              except OSError:
-                  pass
-              finally:
-                  # EOF the peer instead of closing a socket it may be reading.
-                  try:
-                      dst.shutdown(socket.SHUT_RDWR)
-                  except OSError:
-                      pass
-                  src.close()
-
-          for pair in ((relay_side, proxy), (proxy, relay_side)):
-              threading.Thread(target=relay, args=pair, daemon=True).start()
-          return driver_side
+    The asynchronous API requires a coroutine function. Run any blocking
+    connect in a thread with :func:`asyncio.to_thread` so the event loop stays
+    free.
 
     :param host: Hostname of the KMS server, and the target of TLS certificate
         and hostname verification.
@@ -182,6 +112,115 @@ class KMSConnectContext:
 # coroutine function; the synchronous driver requires a regular function.
 AsyncKMSConnectCallback = Callable[[KMSConnectContext], Awaitable[socket.socket]]
 KMSConnectCallback = Callable[[KMSConnectContext], socket.socket]
+
+
+class HTTPProxyKMSConnect:
+    """Route KMS connections through an HTTP proxy, for the synchronous API.
+
+    Pass an instance as ``kms_connect_callback`` to reach KMS hosts through a
+    forward proxy that speaks HTTP ``CONNECT``::
+
+      from pymongo.encryption_options import HTTPProxyKMSConnect
+
+      opts = AutoEncryptionOpts(
+          kms_providers={"aws": aws_creds},
+          key_vault_namespace="keyvault.datakeys",
+          kms_connect_callback=HTTPProxyKMSConnect("proxy.example.com", 8080),
+      )
+
+    To reach the proxy itself over TLS, pass an :class:`ssl.SSLContext`. It is
+    used only for the connection to the proxy; the driver still negotiates KMS
+    TLS end to end through the tunnel::
+
+      import ssl
+
+      proxy_tls = ssl.create_default_context(cafile="proxy-ca.pem")
+      callback = HTTPProxyKMSConnect("proxy.example.com", 8443, proxy_tls)
+
+    Use :class:`AsyncHTTPProxyKMSConnect` with the asynchronous API.
+
+    :param host: Hostname of the proxy.
+    :param port: Port of the proxy.
+    :param ssl_context: Optional :class:`ssl.SSLContext` for connecting to the
+        proxy over TLS. Defaults to ``None``, meaning a plain connection.
+
+    .. versionadded:: 4.18
+    """
+
+    def __init__(self, host: str, port: int, ssl_context: Optional[ssl.SSLContext] = None):
+        self.host = host
+        self.port = port
+        self.ssl_context = ssl_context
+
+    def _tunnel(self, sock: socket.socket, context: KMSConnectContext) -> None:
+        target = f"{context.host}:{context.port}"
+        sock.sendall(f"CONNECT {target} HTTP/1.1\r\nHost: {target}\r\n\r\n".encode())
+        response = b""
+        while b"\r\n\r\n" not in response:
+            chunk = sock.recv(4096)
+            if not chunk:
+                raise OSError(f"proxy closed the connection while tunneling to {target}")
+            response += chunk
+        status = response.split(b"\r\n", 1)[0]
+        if not status.startswith(b"HTTP/1.1 200"):
+            raise OSError(f"proxy refused CONNECT to {target}: {status!r}")
+
+    def _bridge(self, proxy: socket.socket) -> socket.socket:
+        """Relay a TLS proxy connection through a socketpair.
+
+        The driver wraps what we return in KMS TLS, and Python cannot layer TLS
+        over an :class:`ssl.SSLSocket`, so hand back the plain end of a pair and
+        pump bytes between it and the proxy connection.
+        """
+        driver_side, relay_side = socket.socketpair()
+
+        def relay(src: socket.socket, dst: socket.socket) -> None:
+            try:
+                while True:
+                    buf = src.recv(16384)
+                    if not buf:
+                        break
+                    dst.sendall(buf)
+            except OSError:
+                pass
+            finally:
+                # EOF the peer instead of closing a socket it may be reading.
+                try:
+                    dst.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                src.close()
+
+        for pair in ((relay_side, proxy), (proxy, relay_side)):
+            threading.Thread(target=relay, args=pair, daemon=True).start()
+        return driver_side
+
+    def __call__(self, context: KMSConnectContext) -> socket.socket:
+        sock = socket.create_connection((self.host, self.port), timeout=context.timeout)
+        try:
+            if self.ssl_context is not None:
+                sock = self.ssl_context.wrap_socket(sock, server_hostname=self.host)
+            self._tunnel(sock, context)
+        except BaseException:
+            sock.close()
+            raise
+        if self.ssl_context is None:
+            return sock
+        return self._bridge(sock)
+
+
+class AsyncHTTPProxyKMSConnect(HTTPProxyKMSConnect):
+    """Route KMS connections through an HTTP proxy, for the asynchronous API.
+
+    Behaves exactly like :class:`HTTPProxyKMSConnect`, but is a coroutine
+    callable and runs the blocking connect in a thread so the event loop stays
+    free.
+
+    .. versionadded:: 4.18
+    """
+
+    async def __call__(self, context: KMSConnectContext) -> socket.socket:  # type: ignore[override]
+        return await asyncio.to_thread(super().__call__, context)
 
 
 class AutoEncryptionOpts:
