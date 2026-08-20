@@ -138,6 +138,12 @@ if TYPE_CHECKING:
     from bson.raw_bson import RawBSONDocument
     from bson.typings import _DocumentType, _ReadableBuffer
 
+# Raw BSON documents at least this many bytes are exposed as read-only memoryview
+# slices of the decode buffer instead of bytes copies.
+# The C extension reads this value at module init, so it must be defined
+# before _cbson is imported below.
+_RAW_BSON_VIEW_THRESHOLD = 4096
+
 try:
     from bson import _cbson  # type: ignore[attr-defined]
 
@@ -238,17 +244,34 @@ _UNPACK_LENGTH_SUBTYPE_FROM = struct.Struct("<iB").unpack_from
 _UNPACK_LONG_FROM = struct.Struct("<q").unpack_from
 _UNPACK_TIMESTAMP_FROM = struct.Struct("<II").unpack_from
 
-# Raw BSON documents at least this many bytes are exposed as read-only memoryview
-# slices of the decode buffer instead of bytes copies.
-# Must match RAW_BSON_VIEW_THRESHOLD in _cbsonmodule.c.
-_RAW_BSON_VIEW_THRESHOLD = 4096
-
 
 def get_data_and_view(data: Any) -> tuple[Any, memoryview]:
     if isinstance(data, (bytes, bytearray)):
         return data, memoryview(data)
-    view = memoryview(data)
-    return view.tobytes(), view
+    # Copy buffer-protocol inputs so the decode (and any raw document views
+    # taken of it) can't observe later mutations of the caller's buffer.
+    data = memoryview(data).tobytes()
+    return data, memoryview(data)
+
+
+def _raw_as_bytes(raw: Union[bytes, bytearray, memoryview]) -> bytes:
+    """Coerce a raw BSON buffer (bytes, bytearray, or memoryview) to bytes."""
+    return raw if isinstance(raw, bytes) else bytes(raw)
+
+
+def _raw_slice(data: Any, view: memoryview, position: int, end: int, obj_size: int) -> Any:
+    """Return the raw BSON document spanning data[position:end + 1] for use
+    as a RawBSONDocument's buffer.
+
+    Documents at least _RAW_BSON_VIEW_THRESHOLD bytes are exposed as
+    read-only memoryview slices of the parent buffer instead of bytes copies.
+    Views are only taken of immutable buffers: slices of a mutable buffer
+    (e.g. a bytearray) are copied so the caller can't mutate the document
+    out from under us.
+    """
+    if obj_size >= _RAW_BSON_VIEW_THRESHOLD and view.readonly:
+        return view[position : end + 1]
+    return _raw_as_bytes(data[position : end + 1])
 
 
 def _raise_unknown_type(element_type: int, element_name: str) -> NoReturn:
@@ -316,14 +339,7 @@ def _get_object(
     """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
     obj_size, end = _get_object_size(data, position, obj_end)
     if _raw_document_class(opts.document_class):
-        if obj_size >= _RAW_BSON_VIEW_THRESHOLD:
-            # Zero-copy: expose large subdocuments as read-only views of the
-            # parent buffer instead of bytes copies.
-            buf: Any = view[position : end + 1]
-            if not buf.readonly:
-                buf = buf.toreadonly()
-        else:
-            buf = data[position : end + 1]
+        buf = _raw_slice(data, view, position, end, obj_size)
         return (opts.document_class(buf, opts), position + obj_size)
 
     obj = _elements_to_dict(data, view, position + 4, end, opts)
@@ -631,7 +647,9 @@ def _bson_to_dict(data: Any, opts: CodecOptions[_DocumentType]) -> _DocumentType
     data, view = get_data_and_view(data)
     try:
         if _raw_document_class(opts.document_class):
-            return opts.document_class(data, opts)  # type:ignore[call-arg]
+            # Mutable buffers (e.g. bytearray) must not be passed through:
+            # the caller could mutate the document out from under us.
+            return opts.document_class(_raw_as_bytes(data), opts)  # type:ignore[call-arg]
         _, end = _get_object_size(data, 0, len(data))
         return cast("_DocumentType", _elements_to_dict(data, view, 4, end, opts))
     except InvalidBSON:
@@ -721,10 +739,8 @@ def _encode_bytes(name: bytes, value: bytes, dummy0: Any, dummy1: Any) -> bytes:
 def _encode_mapping(name: bytes, value: Any, check_keys: bool, opts: CodecOptions[Any]) -> bytes:
     """Encode a mapping type."""
     if _raw_document_class(value):
-        raw = value.raw
-        if not isinstance(raw, bytes):
-            raw = bytes(raw)
-        return b"\x03" + name + raw
+        # join consumes a memoryview raw directly, avoiding a bytes copy.
+        return b"".join((b"\x03", name, value.raw))
     data = b"".join([_element_to_bson(key, val, check_keys, opts) for key, val in value.items()])
     return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
 
@@ -1010,8 +1026,7 @@ def _dict_to_bson(
 ) -> bytes:
     """Encode a document to BSON."""
     if _raw_document_class(doc):
-        raw = doc.raw
-        return raw if isinstance(raw, bytes) else bytes(raw)
+        return _raw_as_bytes(doc.raw)
     try:
         elements = []
         if top_level and "_id" in doc:
@@ -1126,16 +1141,13 @@ def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> lis
             if data[obj_end] != 0:
                 raise InvalidBSON("bad eoo")
             if use_raw:
-                if position == 0 and obj_size == data_len:
-                    # Only one document, no copy needed
+                if position == 0 and obj_size == data_len and isinstance(data, bytes):
+                    # Only one immutable document, no copy needed. Mutable
+                    # buffers (e.g. bytearray) must not be passed through:
+                    # the caller could mutate the document out from under us.
                     raw_buf = data
-                elif obj_size >= _RAW_BSON_VIEW_THRESHOLD:
-                    # Zero-copy by exposing large documents as read-only views of the buffer
-                    raw_buf = view[position : obj_end + 1]
-                    if not raw_buf.readonly:
-                        raw_buf = raw_buf.toreadonly()
                 else:
-                    raw_buf = data[position : obj_end + 1]
+                    raw_buf = _raw_slice(data, view, position, obj_end, obj_size)
                 docs.append(opts.document_class(raw_buf, opts))  # type: ignore
             else:
                 docs.append(_elements_to_dict(data, view, position + 4, obj_end, opts))

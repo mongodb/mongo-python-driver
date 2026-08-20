@@ -53,10 +53,11 @@ overhead of decoding or encoding BSON.
 
 from __future__ import annotations
 
+import copyreg
 from collections.abc import ItemsView, Iterator, Mapping
 from typing import Any, Optional
 
-from bson import _get_object_size, _raw_to_dict
+from bson import _get_object_size, _raw_as_bytes, _raw_to_dict
 from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER, CodecOptions
 from bson.codec_options import DEFAULT_CODEC_OPTIONS as DEFAULT
 
@@ -145,8 +146,13 @@ class RawBSONDocument(Mapping[str, Any]):
         """The raw BSON bytes composing this document.
 
         .. versionchanged:: 4.18
-           Documents and subdocuments 4KB and larger are returned as :class:`memoryview` slices
-           instead of :class:`bytes` copies.
+           Documents and subdocuments 4KB and larger decoded from an
+           immutable buffer are returned as read-only :class:`memoryview`
+           slices of that buffer instead of :class:`bytes` copies; documents
+           decoded from mutable buffers (e.g. a :class:`bytearray`) are
+           always :class:`bytes` copies. Such a view keeps the entire parent
+           buffer alive until the view is released. Call ``bytes(doc.raw)``
+           to get an independent copy.
         """
         return self.__raw
 
@@ -184,12 +190,26 @@ class RawBSONDocument(Mapping[str, Any]):
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __reduce__(self) -> tuple[Any, ...]:
-        # memoryview objects can't be pickled, return bytes instead
-        return self.__class__, (bytes(self.__raw), self.__codec_options)
+    def __getstate__(self) -> tuple[Optional[dict[str, Any]], dict[str, Any]]:
+        # Same (dict state, slots state) pair the default pickle protocol 2+
+        # reduction uses, so subclasses with extra state and/or different
+        # __init__ signatures round-trip through pickle and deepcopy, except:
+        # the raw slot is coerced to bytes (memoryview objects can't be
+        # pickled) and the lazily-inflated cache is dropped.
+        slots_state: dict[str, Any] = {
+            name: getattr(self, name)
+            for name in copyreg._slotnames(type(self))  # type: ignore[attr-defined]
+            if hasattr(self, name)
+        }
+        slots_state["_RawBSONDocument__raw"] = _raw_as_bytes(self.__raw)
+        slots_state["_RawBSONDocument__inflated_doc"] = None
+        return getattr(self, "__dict__", None), slots_state
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.raw!r}, codec_options={self.__codec_options!r})"
+        return (
+            f"{self.__class__.__name__}({_raw_as_bytes(self.__raw)!r}, "
+            f"codec_options={self.__codec_options!r})"
+        )
 
 
 class _RawArrayBSONDocument(RawBSONDocument):

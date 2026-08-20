@@ -84,17 +84,13 @@ struct module_state {
     PyObject* _from_bid_str;
     int64_t min_millis;
     int64_t max_millis;
+    Py_ssize_t raw_bson_view_threshold;
 };
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 
 /* Maximum number of regex flags */
 #define FLAGS_SIZE 7
-
-/* Raw BSON documents at least this many bytes are exposed as read-only memoryview
- * slices of the decode buffer instead of bytes copies.
- * Must match _RAW_BSON_VIEW_THRESHOLD in bson/__init__.py. */
-#define RAW_BSON_VIEW_THRESHOLD 4096
 
 /* Default UUID representation type code. */
 #define PYTHON_LEGACY 3
@@ -701,6 +697,7 @@ static int _load_python_objects(PyObject* module) {
     PyObject* compiled = NULL;
     PyObject* min_datetime_ms = NULL;
     PyObject* max_datetime_ms = NULL;
+    PyObject* raw_bson_view_threshold = NULL;
     struct module_state *state = GETSTATE(module);
     if (!state) {
         return 1;
@@ -752,15 +749,19 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&min_datetime_ms, "bson.datetime_ms", "_MIN_UTC_MS") ||
         _load_object(&max_datetime_ms, "bson.datetime_ms", "_MAX_UTC_MS") ||
         _load_object(&state->min_datetime, "bson.datetime_ms", "_MIN_UTC") ||
-        _load_object(&state->max_datetime, "bson.datetime_ms", "_MAX_UTC")) {
+        _load_object(&state->max_datetime, "bson.datetime_ms", "_MAX_UTC") ||
+        _load_object(&raw_bson_view_threshold, "bson", "_RAW_BSON_VIEW_THRESHOLD")) {
         return 1;
     }
 
     state->min_millis = PyLong_AsLongLong(min_datetime_ms);
     state->max_millis = PyLong_AsLongLong(max_datetime_ms);
+    state->raw_bson_view_threshold = PyLong_AsSsize_t(raw_bson_view_threshold);
     Py_DECREF(min_datetime_ms);
     Py_DECREF(max_datetime_ms);
-    if ((state->min_millis == -1 || state->max_millis == -1) && PyErr_Occurred()) {
+    Py_DECREF(raw_bson_view_threshold);
+    if ((state->min_millis == -1 || state->max_millis == -1 ||
+         state->raw_bson_view_threshold == -1) && PyErr_Occurred()) {
         return 1;
     }
 
@@ -1750,6 +1751,8 @@ int decode_and_write_pair(PyObject* self, buffer_t buffer,
  * Returns the number of bytes written or 0 on failure.
  */
 static int write_raw_doc(buffer_t buffer, PyObject* raw, PyObject* _raw_str) {
+    char* data;
+    Py_ssize_t len;
     int len_int;
     int bytes_written = 0;
     PyObject* bytes_obj = NULL;
@@ -1760,15 +1763,23 @@ static int write_raw_doc(buffer_t buffer, PyObject* raw, PyObject* _raw_str) {
         goto fail;
     }
 
-    /* raw may be bytes or a memoryview of the decode buffer */
-    if (!_get_buffer(bytes_obj, &view)) {
-        goto fail;
+    if (PyBytes_Check(bytes_obj)) {
+        /* The common case: raw is bytes. */
+        data = PyBytes_AS_STRING(bytes_obj);
+        len = PyBytes_GET_SIZE(bytes_obj);
+    } else {
+        /* raw may also be a memoryview of the decode buffer. */
+        if (!_get_buffer(bytes_obj, &view)) {
+            goto fail;
+        }
+        data = (char*)view.buf;
+        len = view.len;
     }
-    len_int = _downcast_and_check(view.len, 0);
+    len_int = _downcast_and_check(len, 0);
     if (-1 == len_int) {
         goto fail;
     }
-    if (!buffer_write_bytes(buffer, (char*)view.buf, len_int)) {
+    if (!buffer_write_bytes(buffer, data, len_int)) {
         goto fail;
     }
     bytes_written = len_int;
@@ -2878,6 +2889,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
 
     if (!PyBytes_Check(bson)) {
         PyErr_SetString(PyExc_TypeError, "argument to _element_to_dict must be a bytes object");
+        destroy_codec_options(&options);
         return NULL;
     }
     string = PyBytes_AS_STRING(bson);
@@ -2887,6 +2899,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
 
     new_position = _element_to_dict(self, string, position, max, &options, raw_array, &name, &value);
     if (new_position < 0) {
+        destroy_codec_options(&options);
         return NULL;
     }
 
@@ -2894,6 +2907,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     if (!result_tuple) {
         Py_DECREF(name);
         Py_DECREF(value);
+        destroy_codec_options(&options);
         return NULL;
     }
 
@@ -2970,26 +2984,22 @@ static PyObject* elements_to_dict(PyObject* self, const char* string,
              * itself through. */
             bson_bytes = options->buffer_owner;
             Py_INCREF(bson_bytes);
-        } else if (max >= RAW_BSON_VIEW_THRESHOLD && options->buffer_owner) {
-            /* Zero-copy: pass a read-only slice of the buffer
-             * instead of a bytes copy.  */
+        } else if ((Py_ssize_t)max >= GETSTATE(self)->raw_bson_view_threshold &&
+                   options->buffer_owner && PyBytes_Check(options->buffer_owner)) {
+            /* Zero-copy: pass a read-only slice of the buffer instead of a
+             * bytes copy. Only immutable (bytes) buffers may be sliced this
+             * way; mutable buffers fall through to the copying branch so
+             * the caller can't mutate the document out from under us,
+             * matching _raw_slice in bson/__init__.py. */
+            /* The const cast is deliberate: top_view is this decode's
+             * lazily-created view cache (see codec_options_t). */
             codec_options_t* mutable_options = (codec_options_t*)options;
             Py_ssize_t offset;
             if (!mutable_options->top_view) {
-                PyObject* full_view = PyMemoryView_FromObject(mutable_options->buffer_owner);
-                if (!full_view) {
+                /* Views of bytes are already read-only. */
+                mutable_options->top_view = PyMemoryView_FromObject(mutable_options->buffer_owner);
+                if (!mutable_options->top_view) {
                     return NULL;
-                }
-                if (PyBytes_Check(mutable_options->buffer_owner)) {
-                    /* Views of bytes are already read-only. */
-                    mutable_options->top_view = full_view;
-                } else {
-                    /* Slices inherit read-only from the parent view. */
-                    mutable_options->top_view = PyObject_CallMethod(full_view, "toreadonly", NULL);
-                    Py_DECREF(full_view);
-                    if (!mutable_options->top_view) {
-                        return NULL;
-                    }
                 }
             }
             offset = string - options->view_base;
@@ -3037,6 +3047,26 @@ fail:
     return 0;
 }
 
+/* Prepare a decode input buffer object, mirroring pure-Python
+ * get_data_and_view: bytes and bytearray are returned as-is; any other
+ * buffer-protocol input is copied to bytes so zero-copy document views
+ * can't observe later mutations of the caller's buffer.
+ * Returns a new reference or NULL on failure with an exception set. */
+static PyObject* _prepare_input_buffer(PyObject* bson) {
+    PyObject* copied;
+    Py_buffer tmp = {0};
+    if (PyBytes_Check(bson) || PyByteArray_Check(bson)) {
+        Py_INCREF(bson);
+        return bson;
+    }
+    if (!_get_buffer(bson, &tmp)) {
+        return NULL;
+    }
+    copied = PyBytes_FromStringAndSize((char*)tmp.buf, tmp.len);
+    PyBuffer_Release(&tmp);
+    return copied;
+}
+
 static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     int32_t size;
     Py_ssize_t total_size;
@@ -3052,7 +3082,14 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
         return result;
     }
 
+    bson = _prepare_input_buffer(bson);
+    if (!bson) {
+        destroy_codec_options(&options);
+        return result;
+    }
+
     if (!_get_buffer(bson, &view)) {
+        Py_DECREF(bson);
         destroy_codec_options(&options);
         return result;
     }
@@ -3105,6 +3142,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     result = elements_to_dict(self, string, (unsigned)size, &options);
 done:
     PyBuffer_Release(&view);
+    Py_DECREF(bson);
     destroy_codec_options(&options);
     return result;
 }
@@ -3125,7 +3163,14 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
         return NULL;
     }
 
+    bson = _prepare_input_buffer(bson);
+    if (!bson) {
+        destroy_codec_options(&options);
+        return NULL;
+    }
+
     if (!_get_buffer(bson, &view)) {
+        Py_DECREF(bson);
         destroy_codec_options(&options);
         return NULL;
     }
@@ -3202,6 +3247,7 @@ fail:
     result = NULL;
 done:
     PyBuffer_Release(&view);
+    Py_DECREF(bson);
     destroy_codec_options(&options);
     return result;
 }

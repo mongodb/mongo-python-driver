@@ -73,7 +73,13 @@ typedef struct codec_options_t {
     PyObject* options_obj;
     unsigned char is_raw_bson;
     unsigned char is_dict_class;
-    /* Decode-buffer state for zero-copy RawBSONDocument slices */
+    /* Decode-buffer state for zero-copy RawBSONDocument slices. Armed by
+     * the decode entry points; buffer_owner is a borrowed reference kept
+     * alive by the caller for the duration of the decode. top_view is an
+     * owned reference created lazily during the decode and released by
+     * destroy_codec_options. A struct whose top_view is set must not be
+     * copied by value: the copy would alias the owned reference, leading
+     * to a double-free on destroy or a stale view of the wrong buffer. */
     PyObject* buffer_owner; /* borrowed */
     const char* view_base;
     Py_ssize_t view_len;

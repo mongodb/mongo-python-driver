@@ -31,7 +31,11 @@ PyMongo 4.18 brings a number of changes including:
   for these operations.
 - Improved the performance and memory usage of decoding large documents to
   :class:`~bson.raw_bson.RawBSONDocument`. Documents and subdocuments that are 4KB or greater
-  are now exposed as :class:`memoryview` slices instead of :class:`bytes` copies.
+  and decoded from an immutable buffer are now exposed as read-only :class:`memoryview`
+  slices instead of :class:`bytes` copies; documents decoded from mutable buffers (e.g. a
+  :class:`bytearray`) are always :class:`bytes` copies. Note that such a view keeps the
+  entire buffer it was decoded from alive until the view is released; call
+  ``bytes(doc.raw)`` to get an independent copy.
 - Fixed a potential out-of-bounds read in the C extension when decoding an
   array of BSON documents. An embedded document whose declared length exceeds
   the bytes remaining in the array now raises
