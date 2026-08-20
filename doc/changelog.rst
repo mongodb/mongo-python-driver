@@ -46,8 +46,10 @@ PyMongo 4.18 brings a number of changes including:
   :class:`~pymongo.encryption.ClientEncryption`, and
   :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`. The callback
   opens the connection and the driver performs the KMS TLS handshake over it, so
-  verification still targets the KMS host rather than the proxy. See
-  :class:`~pymongo.encryption_options.KMSConnectContext` for an example.
+  verification still targets the KMS host rather than the proxy. For an ordinary
+  HTTP proxy, pass :class:`~pymongo.encryption_options.HTTPProxyKMSConnect` or
+  :class:`~pymongo.encryption_options.AsyncHTTPProxyKMSConnect` instead of
+  writing a callback.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
