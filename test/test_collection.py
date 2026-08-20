@@ -1555,16 +1555,24 @@ class TestCollection(IntegrationTest):
         # so they must not be settable as keyword options: doing so would
         # replace the command's target namespace or its pipeline.
         db = self.db
-        with self.assertRaises(ConfigurationError):
-            db.test.aggregate([], aggregate="other")
-        with self.assertRaises(ConfigurationError):
-            db.test.aggregate_raw_batches([], aggregate="other")
-        with self.assertRaises(ConfigurationError):
-            db.aggregate([], aggregate="other")
-        with self.assertRaises(ConfigurationError):
-            db.test.list_search_indexes(aggregate="other")
-        with self.assertRaises(ConfigurationError):
-            db.test.list_search_indexes(pipeline=[{"$out": "other"}])
+        reserved_options: list[dict[str, Any]] = [
+            {"aggregate": "other"},
+            {"pipeline": [{"$out": "other"}]},
+            {"aggregate": "other", "pipeline": [{"$out": "other"}]},
+        ]
+        for options in reserved_options:
+            with self.subTest(options=options):
+                # These helpers take the pipeline positionally, so only pass
+                # the options that do not collide with it.
+                if "pipeline" not in options:
+                    with self.assertRaises(ConfigurationError):
+                        db.test.aggregate([], **options)
+                    with self.assertRaises(ConfigurationError):
+                        db.test.aggregate_raw_batches([], **options)
+                    with self.assertRaises(ConfigurationError):
+                        db.aggregate([], **options)
+                with self.assertRaises(ConfigurationError):
+                    db.test.list_search_indexes(**options)
 
     def test_aggregate_raw_bson(self):
         db = self.db
