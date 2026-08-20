@@ -155,8 +155,7 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
     def operation_spans(finished, operation: str):
         """Return the operation spans for ``operation``, excluding command spans.
 
-        Only command spans carry db.command.name, so its absence is what tells
-        the two kinds apart when both name the same operation.
+        Only command spans carry db.command.name, so its absence separates them.
         """
         return [
             s
@@ -173,13 +172,10 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
     def ping_spans(self):
         """Return the spans belonging to a ``ping`` run through ``db.command()``.
 
-        For the tests that assert tracing produced *nothing*. Asserting the
-        exporter is empty would also catch spans no test asked for: a cursor
-        abandoned earlier in the class ends its operation span from a
-        finalizer, and on an interpreter that does not reference count, that
-        finalizer runs at an unpredictable point and lands in whichever test
-        happens to be running. Naming the ping's own spans keeps the assertion
-        about this client while staying immune to that.
+        For tests asserting tracing produced *nothing*. An empty-exporter
+        assertion would also catch unrelated spans, since a cursor abandoned
+        earlier ends its span from a finalizer that runs at an unpredictable
+        point on interpreters without reference counting.
         """
         return [
             s
