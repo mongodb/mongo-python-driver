@@ -55,7 +55,11 @@ PyMongo 4.18 brings a number of changes including:
   - Added the ``string_opts`` parameter to
     :meth:`~pymongo.encryption.ClientEncryption.encrypt` and
     :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.encrypt`,
-    deprecating ``text_opts``.
+    deprecating ``text_opts``. pymongocrypt renamed this parameter in 1.19 and
+    accepts only one of the two names per release, so passing ``text_opts``
+    with pymongocrypt 1.19 or later, ``string_opts`` with pymongocrypt 1.18 or
+    earlier, or both names at once, raises
+    :exc:`~pymongo.errors.ConfigurationError`.
 - Aggregation helpers now raise :exc:`~pymongo.errors.ConfigurationError` when
   passed an ``aggregate`` or ``pipeline`` keyword argument. Previously these
   keys silently replaced the target namespace and pipeline of the generated

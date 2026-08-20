@@ -398,6 +398,12 @@ class TextOpts(StringOpts):
     """**DEPRECATED** Options to configure encrypted queries using the text algorithm.
 
     .. note:: ``TextOpts`` is deprecated. Use :class:`StringOpts` instead.
+       ``TextOpts`` corresponds to the ``text_opts`` parameter of
+       :meth:`~pymongo.encryption.ClientEncryption.encrypt`, which pymongocrypt
+       accepted through 1.18 and renamed to ``string_opts`` in 1.19. Passing
+       ``TextOpts`` as ``text_opts`` therefore only works with pymongocrypt
+       1.18 or older; with pymongocrypt 1.19 or later, pass
+       :class:`StringOpts` as ``string_opts``.
 
     .. versionadded:: 4.15
 

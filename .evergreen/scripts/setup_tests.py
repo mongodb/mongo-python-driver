@@ -392,22 +392,22 @@ def handle_test_env() -> None:
         # unreleased master build.
         # Evergreen exposes the server version as VERSION, not MONGODB_VERSION
         # (which is only set inside the separate run_server.py process).
-        use_released_pymongocrypt = os.environ.get("VERSION", "").startswith("8.")
+        use_pymongocrypt_text_preview = os.environ.get("VERSION", "").startswith("8.")
 
-        if not use_released_pymongocrypt:
+        if not use_pymongocrypt_text_preview:
             # Check for libmongocrypt download.
             if not (ROOT / "libmongocrypt").exists():
                 setup_libmongocrypt()
 
         if not opts.test_min_deps:
-            if use_released_pymongocrypt:
+            if use_pymongocrypt_text_preview:
                 UV_ARGS.append("--with pymongocrypt<1.19")
             else:
                 UV_ARGS.append(
                     "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
                 )
 
-        if not use_released_pymongocrypt:
+        if not use_pymongocrypt_text_preview:
             # Use the nocrypto build to avoid dependency issues with older windows/python versions.
             BASE = get_libmongocrypt_base()
             if PLATFORM == "linux":

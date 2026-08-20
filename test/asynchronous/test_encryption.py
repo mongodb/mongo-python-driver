@@ -237,6 +237,16 @@ class TestClientOptions(AsyncPyMongoTestCase):
         self.assertEqual(get_client_opts(client).auto_encryption_opts, opts)
 
 
+def _string_opts_kwargs(**kwargs: Any) -> dict[str, StringOpts]:
+    """Pass StringOpts under the name the installed pymongocrypt accepts.
+
+    pymongocrypt renamed ``text_opts`` to ``string_opts`` in 1.19 and takes only
+    one of the two, and the preview query types still run against pymongocrypt
+    before 1.19, so both spellings are in play across the matrix.
+    """
+    return {encryption._string_opts_kwarg(): StringOpts(**kwargs)}
+
+
 class TestStringOptsDeprecation(AsyncPyMongoTestCase):
     def test_text_opts_is_still_re_exported(self):
         # TextOpts is deprecated, not removed, so it must stay importable from
@@ -252,15 +262,8 @@ class TestStringOptsDeprecation(AsyncPyMongoTestCase):
             opts.document,
         )
 
-    def test_resolve_string_opts(self):
-        string_opts = StringOpts(prefix={"strMinQueryLength": 2, "strMaxQueryLength": 10})
+    def test_resolve_string_opts_no_opts(self):
         self.assertIsNone(encryption._resolve_string_opts(None, None))
-        self.assertIs(encryption._resolve_string_opts(string_opts, None), string_opts)
-
-    def test_resolve_string_opts_text_opts_is_deprecated(self):
-        string_opts = StringOpts(prefix={"strMinQueryLength": 2, "strMaxQueryLength": 10})
-        with self.assertWarns(DeprecationWarning):
-            self.assertIs(encryption._resolve_string_opts(None, string_opts), string_opts)
 
     def test_resolve_string_opts_rejects_both(self):
         string_opts = StringOpts(prefix={"strMinQueryLength": 2, "strMaxQueryLength": 10})
@@ -268,14 +271,27 @@ class TestStringOptsDeprecation(AsyncPyMongoTestCase):
             encryption._resolve_string_opts(string_opts, string_opts)
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
+    def test_resolve_string_opts_follows_pymongocrypt(self):
+        # pymongocrypt accepts only one of the two names per release: text_opts
+        # through 1.18 and string_opts from 1.19. Passing the name the
+        # installed binding does not support is an error rather than a silent
+        # alias, so assert against the resolved name.
+        string_opts = StringOpts(prefix={"strMinQueryLength": 2, "strMaxQueryLength": 10})
+        if encryption._string_opts_kwarg() == "string_opts":
+            supported, unsupported = (string_opts, None), (None, string_opts)
+        else:
+            supported, unsupported = (None, string_opts), (string_opts, None)
+        self.assertIs(encryption._resolve_string_opts(*supported), string_opts)
+        with self.assertRaises(ConfigurationError):
+            encryption._resolve_string_opts(*unsupported)
+
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
     def test_string_opts_kwarg_matches_binding(self):
-        # pymongocrypt renamed text_opts to string_opts in 1.19, and both
-        # spellings are still in play: the GA query types need a master build
-        # and the preview query types run against pymongocrypt < 1.19. Assert
-        # the resolved name against the installed binding here so a mismatch
-        # fails without a server, rather than only in the prose suite.
+        # The resolved name is passed straight through to pymongocrypt, so
+        # assert it against the installed binding here: a mismatch then fails
+        # without a server, rather than only in the prose suite.
         params = inspect.signature(encryption.AsyncExplicitEncrypter.encrypt).parameters
-        self.assertIn(encryption._STRING_OPTS_KWARG, params)
+        self.assertIn(encryption._string_opts_kwarg(), params)
 
 
 class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
@@ -3488,7 +3504,7 @@ class TestStringExplicitEncryptionProse(AsyncEncryptionIntegrationTest):
             key_id=self.key1_id,
             algorithm=self.algorithm,
             contention_factor=0,
-            string_opts=StringOpts(
+            **_string_opts_kwargs(
                 case_sensitive=True,
                 diacritic_sensitive=True,
                 prefix=dict(strMaxQueryLength=10, strMinQueryLength=2),
@@ -3510,7 +3526,7 @@ class TestStringExplicitEncryptionProse(AsyncEncryptionIntegrationTest):
                 key_id=self.key1_id,
                 algorithm=self.algorithm,
                 contention_factor=0,
-                string_opts=StringOpts(
+                **_string_opts_kwargs(
                     case_sensitive=True,
                     diacritic_sensitive=True,
                     substring=dict(strMaxLength=10, strMaxQueryLength=6, strMinQueryLength=2),
@@ -3575,7 +3591,7 @@ class TestStringExplicitEncryptionProse(AsyncEncryptionIntegrationTest):
             algorithm=self.algorithm,
             query_type=query_type,
             contention_factor=0,
-            string_opts=StringOpts(**string_opts),
+            **_string_opts_kwargs(**string_opts),
         )
 
     async def _find(self, collection, filter):
@@ -3719,7 +3735,7 @@ class TestStringExplicitEncryptionProse(AsyncEncryptionIntegrationTest):
                 key_id=self.key1_id,
                 algorithm=Algorithm.STRING,
                 query_type=QueryType.PREFIX,
-                string_opts=StringOpts(
+                **_string_opts_kwargs(
                     case_sensitive=True,
                     diacritic_sensitive=True,
                     prefix=dict(strMaxQueryLength=10, strMinQueryLength=2),

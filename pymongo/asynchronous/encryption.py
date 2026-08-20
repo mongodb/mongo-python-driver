@@ -19,11 +19,10 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import enum
-import inspect
+import functools
 import socket
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
-import warnings
 import weakref
 from collections.abc import AsyncGenerator, Iterator, Mapping, MutableMapping, Sequence
 from copy import deepcopy
@@ -48,20 +47,9 @@ try:
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
 
     _HAVE_PYMONGOCRYPT = True
-    # pymongocrypt renamed the text_opts parameter to string_opts in 1.19. The
-    # preview query types still run against pymongocrypt < 1.19, so resolve the
-    # name from the installed signature rather than from a version comparison:
-    # the rename landed on master before any release carried it, so a version
-    # check would misclassify the master builds the GA query types require.
-    _STRING_OPTS_KWARG = (
-        "string_opts"
-        if "string_opts" in inspect.signature(AsyncExplicitEncrypter.encrypt).parameters
-        else "text_opts"
-    )
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
     AsyncMongoCryptCallback = object
-    _STRING_OPTS_KWARG = "string_opts"
 
 from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
@@ -637,20 +625,45 @@ class QueryType(str, enum.Enum):
     """
 
 
+@functools.lru_cache(maxsize=1)
+def _string_opts_kwarg() -> str:
+    """The name the installed pymongocrypt gives the string index options.
+
+    pymongocrypt renamed ``text_opts`` to ``string_opts`` in 1.19 and accepts
+    only one name per release. The rename landed on master before any release
+    carried it, so resolve the name from the installed signature rather than
+    from a version comparison. Resolved lazily and cached because importing
+    :mod:`inspect` is too expensive to do on the import path.
+    """
+    import inspect
+
+    params = inspect.signature(AsyncExplicitEncrypter.encrypt).parameters
+    return "string_opts" if "string_opts" in params else "text_opts"
+
+
 def _resolve_string_opts(
     string_opts: Optional[StringOpts], text_opts: Optional[StringOpts]
 ) -> Optional[StringOpts]:
-    """Resolve the deprecated text_opts alias for string_opts."""
-    if text_opts is None:
-        return string_opts
-    if string_opts is not None:
+    """Resolve string_opts and its former name, text_opts.
+
+    pymongocrypt accepts only one of the two names per release, so passing the
+    name the installed pymongocrypt does not support is an error.
+    """
+    if string_opts is not None and text_opts is not None:
         raise ConfigurationError("Cannot set both string_opts and text_opts")
-    warnings.warn(
-        "The text_opts parameter is deprecated. Use string_opts instead.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
-    return text_opts
+    if string_opts is None and text_opts is None:
+        return None
+    if text_opts is not None and _string_opts_kwarg() == "string_opts":
+        raise ConfigurationError(
+            "text_opts is not supported by the installed pymongocrypt "
+            "(1.19 or later). Use string_opts instead."
+        )
+    if string_opts is not None and _string_opts_kwarg() == "text_opts":
+        raise ConfigurationError(
+            "string_opts requires pymongocrypt 1.19 or later. Use text_opts "
+            "with the installed pymongocrypt, or upgrade pymongocrypt."
+        )
+    return string_opts if string_opts is not None else text_opts
 
 
 def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
@@ -1028,7 +1041,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts_bytes,
                 is_expression=is_expression,
-                **({_STRING_OPTS_KWARG: string_opts_bytes} if string_opts_bytes else {}),
+                **({_string_opts_kwarg(): string_opts_bytes} if string_opts_bytes else {}),
             )
             return decode(encrypted_doc)["v"]
 
@@ -1065,12 +1078,16 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             :class:`RangeOpts` for some valid options.
         :param string_opts: Index options for `prefix`, `suffix`, and
             `substring` queries. See :class:`StringOpts` for some valid options.
-        :param text_opts: **DEPRECATED** - Alias for `string_opts`.
+        :param text_opts: **DEPRECATED** - The former name of `string_opts`,
+            accepted only when pymongocrypt is older than 1.19. Passing it to a
+            newer pymongocrypt, or passing both names, raises
+            :exc:`~pymongo.errors.ConfigurationError`.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
         .. versionchanged:: 4.18
-           Added the `string_opts` parameter and deprecated `text_opts`.
+           Added the `string_opts` parameter, replacing the deprecated
+           `text_opts`.
 
         .. versionchanged:: 4.9
            Added the `text_opts` parameter.
