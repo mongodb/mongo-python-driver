@@ -29,6 +29,9 @@ PyMongo 4.18 brings a number of changes including:
   attempts, so consumers can correlate a retried operation's events. As a
   result, ``operation_id`` is no longer equal to the per-attempt ``request_id``
   for these operations.
+- Improved the performance and memory usage of decoding large documents to
+  :class:`~bson.raw_bson.RawBSONDocument`. Documents and subdocuments that are 4KB or greater
+  are now exposed as :class:`memoryview` slices instead of :class:`bytes` copies.
 - Fixed a potential out-of-bounds read in the C extension when decoding an
   array of BSON documents. An embedded document whose declared length exceeds
   the bytes remaining in the array now raises

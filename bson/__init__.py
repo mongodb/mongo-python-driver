@@ -238,6 +238,11 @@ _UNPACK_LENGTH_SUBTYPE_FROM = struct.Struct("<iB").unpack_from
 _UNPACK_LONG_FROM = struct.Struct("<q").unpack_from
 _UNPACK_TIMESTAMP_FROM = struct.Struct("<II").unpack_from
 
+# Raw BSON documents at least this many bytes are exposed as read-only memoryview
+# slices of the decode buffer instead of bytes copies.
+# Must match RAW_BSON_VIEW_THRESHOLD in _cbsonmodule.c.
+_RAW_BSON_VIEW_THRESHOLD = 4096
+
 
 def get_data_and_view(data: Any) -> tuple[Any, memoryview]:
     if isinstance(data, (bytes, bytearray)):
@@ -311,7 +316,15 @@ def _get_object(
     """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
     obj_size, end = _get_object_size(data, position, obj_end)
     if _raw_document_class(opts.document_class):
-        return (opts.document_class(data[position : end + 1], opts), position + obj_size)
+        if obj_size >= _RAW_BSON_VIEW_THRESHOLD:
+            # Zero-copy: expose large subdocuments as read-only views of the
+            # parent buffer instead of bytes copies.
+            buf: Any = view[position : end + 1]
+            if not buf.readonly:
+                buf = buf.toreadonly()
+        else:
+            buf = data[position : end + 1]
+        return (opts.document_class(buf, opts), position + obj_size)
 
     obj = _elements_to_dict(data, view, position + 4, end, opts)
 
@@ -708,7 +721,10 @@ def _encode_bytes(name: bytes, value: bytes, dummy0: Any, dummy1: Any) -> bytes:
 def _encode_mapping(name: bytes, value: Any, check_keys: bool, opts: CodecOptions[Any]) -> bytes:
     """Encode a mapping type."""
     if _raw_document_class(value):
-        return b"\x03" + name + cast(bytes, value.raw)
+        raw = value.raw
+        if not isinstance(raw, bytes):
+            raw = bytes(raw)
+        return b"\x03" + name + raw
     data = b"".join([_element_to_bson(key, val, check_keys, opts) for key, val in value.items()])
     return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
 
@@ -994,7 +1010,8 @@ def _dict_to_bson(
 ) -> bytes:
     """Encode a document to BSON."""
     if _raw_document_class(doc):
-        return cast(bytes, doc.raw)
+        raw = doc.raw
+        return raw if isinstance(raw, bytes) else bytes(raw)
     try:
         elements = []
         if top_level and "_id" in doc:
@@ -1109,7 +1126,17 @@ def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> lis
             if data[obj_end] != 0:
                 raise InvalidBSON("bad eoo")
             if use_raw:
-                docs.append(opts.document_class(data[position : obj_end + 1], opts))  # type: ignore
+                if position == 0 and obj_size == data_len:
+                    # Only one document, no copy needed
+                    raw_buf = data
+                elif obj_size >= _RAW_BSON_VIEW_THRESHOLD:
+                    # Zero-copy by exposing large documents as read-only views of the buffer
+                    raw_buf = view[position : obj_end + 1]
+                    if not raw_buf.readonly:
+                        raw_buf = raw_buf.toreadonly()
+                else:
+                    raw_buf = data[position : obj_end + 1]
+                docs.append(opts.document_class(raw_buf, opts))  # type: ignore
             else:
                 docs.append(_elements_to_dict(data, view, position + 4, obj_end, opts))
             position += obj_size

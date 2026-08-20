@@ -142,7 +142,12 @@ class RawBSONDocument(Mapping[str, Any]):
 
     @property
     def raw(self) -> bytes | memoryview:
-        """The raw BSON bytes composing this document."""
+        """The raw BSON bytes composing this document.
+
+        .. versionchanged:: 4.18
+           Documents and subdocuments 4KB and larger are returned as :class:`memoryview` slices
+           instead of :class:`bytes` copies.
+        """
         return self.__raw
 
     def items(self) -> ItemsView[str, Any]:
@@ -178,6 +183,10 @@ class RawBSONDocument(Mapping[str, Any]):
         return NotImplemented
 
     __hash__ = None  # type: ignore[assignment]
+
+    def __reduce__(self) -> tuple[Any, ...]:
+        # memoryview objects can't be pickled, return bytes instead
+        return self.__class__, (bytes(self.__raw), self.__codec_options)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.raw!r}, codec_options={self.__codec_options!r})"
