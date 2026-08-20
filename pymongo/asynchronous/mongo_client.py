@@ -2115,7 +2115,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         dbname: str,
         collection: Optional[str] = None,
     ) -> _CommandCursor:
-        """Run a command-cursor read within its own operation span.
+        """Run a command cursor read within its own operation span.
 
         Takes the same arguments as :meth:`_retryable_read`, plus the namespace
         for the span. A command cursor's first batch is fetched inside that
@@ -2132,8 +2132,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             collection=collection,
             set_current=False,
         )
-        try:
-            cmd_cursor = await self._retryable_read(
+        with operation_telemetry or contextlib.nullcontext():
+            return await self._retryable_read(
                 func,
                 read_pref,
                 session,
@@ -2145,13 +2145,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 is_aggregate_write,
                 operation_telemetry=operation_telemetry,
             )
-        except BaseException as exc:
-            if operation_telemetry is not None:
-                operation_telemetry.failed(exc)
-            raise
-        if operation_telemetry is not None:
-            operation_telemetry.succeeded()
-        return cmd_cursor
 
     async def _retryable_write(
         self,
@@ -3015,8 +3008,10 @@ class _ClientConnectionRetryable(Generic[T]):
         if operation_id is None:
             operation_id = _generate_op_id_or_none(self._client._event_listeners)
         self._operation_id = operation_id
-        # One span covering every attempt. A caller needing it to outlive this
-        # object (a cursor) passes its own and keeps ownership.
+        # One span covers every attempt. With nothing passed in, create the
+        # span here and end it in run(). With a span passed in (a cursor's,
+        # which has to outlive this object), the caller keeps ownership and
+        # run() only makes it current.
         self._owns_telemetry = operation_telemetry is None
         if self._owns_telemetry:
             operation_telemetry = _operation_telemetry_or_none(
@@ -3035,14 +3030,8 @@ class _ClientConnectionRetryable(Generic[T]):
         if not self._owns_telemetry:
             with self._operation_telemetry.use():
                 return await self._run()
-        try:
-            result = await self._run()
-        except BaseException as exc:
-            self._operation_telemetry.failed(exc)
-            raise
-        else:
-            self._operation_telemetry.succeeded()
-            return result
+        with self._operation_telemetry:
+            return await self._run()
 
     async def _run(self) -> T:
         """Runs the supplied func() and attempts a retry
