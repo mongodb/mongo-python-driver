@@ -35,10 +35,33 @@ if ! command -v just &>/dev/null; then
 fi
 
 # Some images (e.g. the DEVPROD-19149 Windows image) ship without a Python toolchain.
-# Install one with uv and expose it so that both pymongo and drivers-evergreen-tools
-# can find it: DRIVERS_TOOLS_PYTHON is honored by DET's ensure_python3().
-if ! command -v python3 &>/dev/null && ! command -v python &>/dev/null; then
-  echo "No system Python found, installing with uv..."
+# A python may still be on PATH there (the mingw python3 that comes with chocolatey)
+# that cannot bootstrap pip, so probe for one that can actually create a virtual
+# environment - that is what drivers-evergreen-tools needs it for.
+_have_python=""
+for _cand in python3 python; do
+  if ! command -v "$_cand" &>/dev/null; then
+    continue
+  fi
+  _probe=$(mktemp -d)
+  _probe_arg="$_probe"
+  if [ "Windows_NT" = "${OS:-}" ]; then
+    _probe_arg=$(cygpath -aw "$_probe")
+  fi
+  if "$_cand" -m venv "$_probe_arg" &>/dev/null; then
+    _have_python="$_cand"
+  fi
+  rm -rf "$_probe"
+  if [ -n "$_have_python" ]; then
+    break
+  fi
+done
+
+# Install a Python with uv and expose it so that both pymongo and
+# drivers-evergreen-tools can find it: DRIVERS_TOOLS_PYTHON is honored by
+# DET's ensure_python3(), which is what builds its virtual environments.
+if [ -z "$_have_python" ]; then
+  echo "No usable Python found, installing with uv..."
   # UV_PYTHON may be a toolchain path; fall back to a bare version for the download.
   _py_ver="${UV_PYTHON:-}"
   case "$_py_ver" in
@@ -57,7 +80,7 @@ if ! command -v python3 &>/dev/null && ! command -v python &>/dev/null; then
 export PATH="$_py_dir:\$PATH"
 export DRIVERS_TOOLS_PYTHON="$_py_bin"
 EOT
-  echo "No system Python found, installing with uv... done ($_py_bin)."
+  echo "No usable Python found, installing with uv... done ($_py_bin)."
 fi
 
 popd > /dev/null
