@@ -67,7 +67,6 @@ from pymongo.asynchronous.encryption import (
     AsyncClientEncryption,
     QueryType,
     _connect_kms,
-    _KMSCallbackContractError,
 )
 from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
@@ -263,7 +262,7 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
         async def callback(context):
             return "not-a-socket"
 
-        with self.assertRaisesRegex(_KMSCallbackContractError, "must return a connected"):
+        with self.assertRaisesRegex(ConfigurationError, "must return a connected"):
             await _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
 
     async def test_already_wrapped_socket_is_rejected(self):
@@ -283,7 +282,7 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
         async def callback(context):
             return wrapped
 
-        with self.assertRaisesRegex(_KMSCallbackContractError, "unwrapped"):
+        with self.assertRaisesRegex(ConfigurationError, "unwrapped"):
             await _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
 
     async def test_context_receives_host_port_and_timeout(self):
@@ -310,7 +309,7 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
         async def callback(context):
             raise OSError("proxy unreachable")
 
-        # Not wrapped in _KMSCallbackContractError, so kms_request's broad
+        # Not a ConfigurationError, so kms_request's broad
         # handler can treat it as transient and let libmongocrypt retry.
         with self.assertRaises(OSError):
             await _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)

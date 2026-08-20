@@ -143,11 +143,6 @@ replacements = {
     "dns.asyncresolver.resolve": "dns.resolver.resolve",
     "__aenter__": "__enter__",
     "__aexit__": "__exit__",
-    # Prose substitution, not an identifier/token like the rest of this dict. Matching is
-    # line-based (see translate_docstrings), so this sentence must stay on a single line in
-    # pymongo/asynchronous/encryption.py or the replacement silently stops firing. Guarded by
-    # check_kms_connect_callback_docstring(), called from main() below.
-    "Must be a coroutine function.": "Must be a regular function.",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -340,37 +335,6 @@ def process_ignores(lines: list[str]) -> list[str]:
     return lines
 
 
-def check_kms_connect_callback_docstring() -> None:
-    """Guard the "Must be a coroutine function." -> "Must be a regular function." mapping.
-
-    That replacement in `replacements` above only fires if the sentence sits on a single
-    line in the async source (see translate_docstrings). A future edit or re-wrap could
-    silently break the match, leaving the generated synchronous docs telling users to write
-    an `async def` callback. Fail loudly instead of leaving that undetected.
-    """
-    sync_encryption = Path(_pymongo_dest_base) / "encryption.py"
-    if not sync_encryption.is_file():
-        # Nothing to check yet, e.g. a partial/filtered run that didn't touch this file.
-        return
-    content = sync_encryption.read_text()
-    if "Must be a coroutine function." in content:
-        raise RuntimeError(
-            f"{sync_encryption} still says 'Must be a coroutine function.' after synchro. "
-            "The 'Must be a coroutine function.' -> 'Must be a regular function.' entry in "
-            "tools/synchro.py's `replacements` dict didn't fire, most likely because the "
-            "sentence in pymongo/asynchronous/encryption.py got wrapped across multiple "
-            "lines. Keep it on one line, or fix the replacement mapping."
-        )
-    if "kms_connect_callback" in content and "Must be a regular function." not in content:
-        raise RuntimeError(
-            f"{sync_encryption} defines kms_connect_callback but its docstring no longer "
-            "says 'Must be a regular function.'. Check that the "
-            "'Must be a coroutine function.' -> 'Must be a regular function.' entry is still "
-            "present in tools/synchro.py's `replacements` dict and that the docstring wording "
-            "in pymongo/asynchronous/encryption.py hasn't changed out from under it."
-        )
-
-
 def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[str, str]) -> None:
     unasync_files(
         files,
@@ -438,8 +402,6 @@ def main() -> None:
         docstring_translate_files,
         generated_tests,
     )
-
-    check_kms_connect_callback_docstring()
 
     generated_files = generated_pymongo + generated_gridfs + generated_tests
 

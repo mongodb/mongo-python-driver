@@ -117,14 +117,6 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
-class _KMSCallbackContractError(Exception):
-    """Raised when a kms_connect_callback violates its contract.
-
-    Unlike a network error from the callback, this is a programming error, so
-    it is never retried.
-    """
-
-
 def _close_rejected_kms_socket(obj: Any) -> None:
     """Close a rejected kms_connect_callback return value, if it can be closed.
 
@@ -160,19 +152,14 @@ async def _connect_kms(
     # function is the correct thing to pass and nothing is awaited.
     if not _IS_SYNC and not inspect.isawaitable(result):
         _close_rejected_kms_socket(result)
-        # "async" and "def" are deliberately split across the next two source
-        # lines: tools/synchro.py deletes "async " from any line that spells
-        # those two words together, which would garble this message in the
-        # generated synchronous file even though the branch never runs there.
-        raise _KMSCallbackContractError(
-            "kms_connect_callback must be a coroutine function (an 'async"
-            " def') for the async driver, but calling it returned "
-            f"{type(result)}, which is not awaitable."
+        raise ConfigurationError(
+            "kms_connect_callback must be a coroutine function for the async "
+            f"API, but calling it returned {type(result)}, which is not awaitable."
         )
     sock = await result
     if not isinstance(sock, socket.socket) or isinstance(sock, ssl.SSLSocket):
         _close_rejected_kms_socket(sock)
-        raise _KMSCallbackContractError(
+        raise ConfigurationError(
             "kms_connect_callback must return a connected, unwrapped "
             f"socket.socket, not {type(sock)}. TLS cannot be layered over an "
             "already-wrapped socket; to reach the proxy over TLS, relay through "
@@ -303,7 +290,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 conn.close()
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
-        except _KMSCallbackContractError:
+        except ConfigurationError:
             raise  # A callback contract violation is not transient.
         except Exception as exc:
             remaining = _csot.remaining()
@@ -742,7 +729,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             KMS host, used to route KMS requests through an HTTP proxy. It
             receives a :class:`~pymongo.encryption_options.KMSConnectContext`
             and returns a connected, unwrapped :class:`socket.socket`; the
-            driver then performs the KMS TLS handshake over it. Must be a coroutine function.
+            driver then performs the KMS TLS handshake over it.
             See :class:`~pymongo.encryption_options.KMSConnectContext` for a worked
             HTTP ``CONNECT`` example. Defaults to ``None``, meaning the driver
             connects to KMS hosts directly.
