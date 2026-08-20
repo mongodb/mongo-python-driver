@@ -147,7 +147,7 @@ def _connect_kms(
     result = kms_connect_callback(
         KMSConnectContext(host=address[0], port=cast(int, address[1]), timeout=timeout)
     )
-    # _IS_SYNC is True in the generated synchronous flavor, where a regular
+    # _IS_SYNC is True in the generated synchronous module, where a regular
     # function is the correct thing to pass and nothing is awaited.
     if not _IS_SYNC and not inspect.isawaitable(result):
         _close_rejected_kms_socket(result)
