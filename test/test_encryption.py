@@ -270,15 +270,13 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
             _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
 
     def test_already_wrapped_socket_is_rejected(self):
-        # ssl.SSLSocket subclasses socket.socket, but wrap_socket cannot layer
-        # TLS over it, so it needs its own rejection.
+        # ssl.SSLSocket passes isinstance but cannot be TLS-wrapped again.
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
         left, right = socket.socketpair()
         self.addCleanup(right.close)
-        # do_handshake_on_connect=False means no peer is needed to produce a
-        # genuine ssl.SSLSocket.
+        # No peer needed to produce a genuine ssl.SSLSocket.
         wrapped = ctx.wrap_socket(left, do_handshake_on_connect=False, server_hostname="x")
         self.addCleanup(wrapped.close)
 
@@ -298,7 +296,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
             received.append(context)
             return left
 
-        # With ssl_context=None the socket is returned unchanged, which also
+        # ssl_context=None returns the socket unchanged, so this also
         # confirms a plain socket is accepted.
         conn = _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 12.5)
         self.assertIs(conn, left)
@@ -309,8 +307,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         self.assertEqual(received[0].timeout, 12.5)
 
     def test_non_blocking_socket_from_callback_is_accepted(self):
-        # wrap_socket refuses a non-blocking socket; the driver normalizes the
-        # mode. Without that, this handshake raises ValueError.
+        # Without the driver normalizing the mode, this raises ValueError.
         server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         server_ctx.load_cert_chain(CLIENT_PEM)
         listener = socket.socket()
@@ -327,8 +324,8 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
 
         threading.Thread(target=serve, daemon=True).start()
 
-        # Built the way the driver does, so PoolOptions gets the flavor-correct
-        # type. Verification is off: the local cert is not what it expects.
+        # Built as the driver does, for the flavor-correct type; the local
+        # cert would not verify.
         client_ctx = get_ssl_context(None, None, None, None, True, True, False, _IS_SYNC)
         options = PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=client_ctx)
 
@@ -342,8 +339,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         self.assertIsNotNone(conn.gettimeout())
 
     def test_asyncio_transport_socket_is_rejected(self):
-        # transport.get_extra_info("socket") is an asyncio TransportSocket, not
-        # a socket.socket, and the loop still owns it.
+        # get_extra_info("socket") is a TransportSocket, not a socket.socket.
         from asyncio.trsock import TransportSocket
 
         left, right = socket.socketpair()
@@ -353,12 +349,11 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         def callback(context):
             return TransportSocket(left)
 
-        with self.assertRaisesRegex(ConfigurationError, "Streams, transports"):
+        with self.assertRaisesRegex(ConfigurationError, "TransportSocket"):
             _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
 
     def test_http_proxy_helper_tunnels_and_reports_refusal(self):
-        # Exercise the shipped helper against a stub proxy, so the CONNECT
-        # handshake is covered without KMS credentials.
+        # Covers the CONNECT handshake without KMS credentials.
         accepted = []
 
         def stub(listener, reply):
@@ -394,8 +389,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         def callback(context):
             raise OSError("proxy unreachable")
 
-        # Not a ConfigurationError, so kms_request's broad
-        # handler can treat it as transient and let libmongocrypt retry.
+        # Not a ConfigurationError, so kms_request retries it.
         with self.assertRaises(OSError):
             _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
 
@@ -2180,8 +2174,7 @@ class TestKmsConnectCallbackProse(EncryptionIntegrationTest):
 
     def connect_count(self, tls=False):
         body = self.proxy_request("GET", "/metrics", tls=tls)
-        # The body is one "key value" pair per line. Only connect_count is
-        # required by the spec; the server also emits connect_target lines.
+        # One "key value" per line; the server also emits connect_target.
         for line in body.splitlines():
             key, _, value = line.partition(" ")
             if key == "connect_count":
@@ -2286,9 +2279,7 @@ class TestKmsConnectCallbackProse(EncryptionIntegrationTest):
 
         self.assertTrue(self.callback_calls, "callback was never invoked")
         for context in self.callback_calls:
-            # Only checks the spec's literal non-zero requirement, which
-            # cannot fail: timeoutMS does not tighten this value because
-            # explicit ClientEncryption operations set no CSOT deadline.
+            # Checks only the spec's non-zero requirement, which cannot fail.
             self.assertIsNotNone(context.timeout)
             self.assertGreater(context.timeout, 0)
 

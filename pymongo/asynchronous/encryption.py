@@ -142,32 +142,26 @@ async def _connect_kms(
         except Exception as exc:
             _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
-    # Let the caller open the connection, then apply TLS ourselves so that SNI
-    # and certificate verification still target the KMS host even when the
-    # socket actually terminates at a proxy.
+    # TLS is applied here, against address, so verification targets the KMS
+    # host even when the socket terminates at a proxy.
     result = kms_connect_callback(
         KMSConnectContext(host=address[0], port=cast(int, address[1]), timeout=timeout)
     )
-    # _IS_SYNC is True in the generated synchronous module, where a regular
-    # function is the correct thing to pass and nothing is awaited.
+    # The synchronous module takes a regular function and awaits nothing.
     if not _IS_SYNC and not inspect.isawaitable(result):
         _close_rejected_kms_socket(result)
         raise ConfigurationError(
             "kms_connect_callback must be a coroutine function for the async "
-            f"API, but calling it returned {type(result)}, which is not awaitable."
+            f"API, but returned {type(result)}."
         )
     sock = await result
     if not isinstance(sock, socket.socket) or isinstance(sock, ssl.SSLSocket):
         _close_rejected_kms_socket(sock)
         raise ConfigurationError(
             "kms_connect_callback must return a connected, unwrapped "
-            f"socket.socket, not {type(sock)}. Streams, transports and "
-            "transport sockets cannot be used; try loop.sock_connect. For a "
-            "TLS proxy, relay through a socket.socketpair and return the plain end."
+            f"socket.socket, not {type(sock)}; consider HTTPProxyKMSConnect."
         )
-    # ssl.SSLContext.wrap_socket refuses a non-blocking socket, and a callback
-    # has no reason to care which mode it left the socket in, so normalize it
-    # here rather than pushing the requirement onto the caller.
+    # wrap_socket refuses a non-blocking socket, so normalize the mode here.
     sock.settimeout(opts.socket_timeout)
     try:
         return await _async_wrap_socket_tls(sock, address, opts)

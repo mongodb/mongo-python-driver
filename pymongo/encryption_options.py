@@ -64,42 +64,23 @@ def check_min_pymongocrypt() -> None:
 class KMSConnectContext:
     """Information about a pending KMS connection.
 
-    An instance is passed to the ``kms_connect_callback`` configured on
-    :class:`AutoEncryptionOpts`, :class:`~pymongo.encryption.ClientEncryption`,
-    or :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`.
+    Passed to ``kms_connect_callback``, which must return a plain, unwrapped
+    :class:`socket.socket`. The driver performs the KMS TLS handshake over it
+    against ``host``, not the peer actually reached, which is what makes
+    proxying safe.
 
-    The callback connects to ``host``:``port`` and returns a plain, unwrapped
-    :class:`socket.socket`. The driver performs the KMS TLS handshake over it,
-    verifying against ``host`` rather than the peer actually reached, which is
-    what makes proxying safe. The driver also sets the socket's timeout, so the
-    mode the callback leaves it in does not matter.
+    Prefer :class:`HTTPProxyKMSConnect` or :class:`AsyncHTTPProxyKMSConnect`
+    over writing a callback.
 
-    Streams and transports do not work: :func:`asyncio.open_connection` and
-    :meth:`asyncio.loop.create_connection` do not return sockets, and
-    ``transport.get_extra_info("socket")`` returns one the loop still owns.
-    :meth:`asyncio.loop.sock_connect` is fine.
-
-    For an ordinary HTTP proxy, use :class:`HTTPProxyKMSConnect` or
-    :class:`AsyncHTTPProxyKMSConnect` rather than writing this yourself. Supply
-    a callback directly only when you need something they do not cover, such as
-    proxy authentication.
-
-    The asynchronous API requires a coroutine function. Run any blocking
-    connect in a thread, with :meth:`asyncio.loop.run_in_executor` or
-    :func:`asyncio.to_thread`, so the event loop stays free.
-
-    :param host: Hostname of the KMS server, and the target of TLS certificate
-        and hostname verification.
+    :param host: Hostname of the KMS server, and the TLS verification target.
     :param port: Port of the KMS server.
-    :param timeout: Seconds remaining in the operation's timeout budget when
-        one is active, otherwise the driver's default KMS connect timeout.
-        Always a positive number; the driver never passes ``None``.
+    :param timeout: Seconds left in the timeout budget, else the default KMS
+        connect timeout. Never ``None``.
 
-    .. note:: ``timeoutMS`` on a :class:`~pymongo.encryption.ClientEncryption`
-       or its key vault client does not constrain KMS requests, so ``timeout``
-       is always the default for explicit encryption. Automatic encryption
-       passes the remaining budget. This is a known deviation from the Client
-       Side Operations Timeout specification, tracked in PYTHON-6037.
+    .. note:: ``timeoutMS`` does not constrain KMS requests for explicit
+       encryption, so ``timeout`` is always the default there. Automatic
+       encryption passes the remaining budget. This deviates from the Client
+       Side Operations Timeout specification; see PYTHON-6037.
 
     .. versionadded:: 4.18
     """
@@ -129,9 +110,8 @@ class HTTPProxyKMSConnect:
           kms_connect_callback=HTTPProxyKMSConnect("proxy.example.com", 8080),
       )
 
-    To reach the proxy itself over TLS, pass an :class:`ssl.SSLContext`. It is
-    used only for the connection to the proxy; the driver still negotiates KMS
-    TLS end to end through the tunnel::
+    To reach the proxy over TLS, pass an :class:`ssl.SSLContext`. It applies
+    only to the proxy connection; KMS TLS is still negotiated end to end::
 
       import ssl
 
@@ -169,16 +149,10 @@ class HTTPProxyKMSConnect:
     def _bridge(self, proxy: socket.socket) -> socket.socket:
         """Relay a TLS proxy connection through a socketpair.
 
-        The driver wraps what we return in KMS TLS, and Python cannot layer TLS
-        over an :class:`ssl.SSLSocket`, so hand back the plain end of a pair and
-        pump bytes between it and the proxy connection.
-
-        Threads rather than asyncio tasks in :class:`AsyncHTTPProxyKMSConnect`:
-        ``proxy`` may be an :class:`ssl.SSLSocket`, which the event loop refuses
-        to read, so tasks would mean reimplementing the connect and CONNECT
-        handshake on streams.
-        A KMS connection happens once per data key and is then cached, so the
-        threads are short-lived and rare.
+        Python cannot layer TLS over an :class:`ssl.SSLSocket`, so return the
+        plain end of a pair. Threads rather than tasks, even in
+        :class:`AsyncHTTPProxyKMSConnect`, because the event loop cannot read
+        an :class:`ssl.SSLSocket`.
         """
         driver_side, relay_side = socket.socketpair()
 
@@ -228,8 +202,7 @@ class AsyncHTTPProxyKMSConnect(HTTPProxyKMSConnect):
     """
 
     async def __call__(self, context: KMSConnectContext) -> socket.socket:  # type: ignore[override]
-        # run_in_executor rather than asyncio.to_thread, matching how
-        # auth_oidc.py runs a user-supplied callback off the event loop.
+        # run_in_executor, as auth_oidc.py does for user callbacks.
         connect = functools.partial(super().__call__, context)
         return await asyncio.get_running_loop().run_in_executor(None, connect)
 
