@@ -550,11 +550,9 @@ def end_operation_span_failure(handle: Optional[_OperationSpanHandle], exc: Base
 def start_transaction_span(tracing_options: Optional[TracingOptions]) -> Optional[Span]:
     """Start (but do not make current) the ``"transaction"`` pseudo-span, or None.
 
-    Not pushed as ambient/current context; it's stored explicitly on
-    ``session._transaction.span`` and passed as the explicit ``parent_span``
-    wherever an operation span is started under this transaction (see
-    :func:`start_operation_span`). Per the OTel driver spec, this span has
-    exactly one attribute.
+    Stored on ``session._transaction.span`` and passed as the explicit
+    ``parent_span`` for operation spans under this transaction, never pushed as
+    ambient context. Per the spec it carries exactly one attribute.
     """
     if not _is_tracing_enabled(tracing_options):
         return None

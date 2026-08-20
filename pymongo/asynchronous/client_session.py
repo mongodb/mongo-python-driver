@@ -921,11 +921,9 @@ class AsyncClientSession:
     def _end_own_transaction_span(self) -> None:
         """End and clear the transaction span, unless with_transaction() owns it.
 
-        with_transaction() pins one shared span across all of its retries in
-        ``self._with_transaction_span`` (see its comments); while that's set,
-        the span must survive until with_transaction() itself ends it, so this
-        is a no-op here. Otherwise a retried with_transaction() would end the
-        shared span prematurely on the first failed attempt.
+        A no-op while ``_with_transaction_span`` is set: that span is shared
+        across every retry, so ending it here would kill it on the first failed
+        attempt.
         """
         if self._transaction.span is not None and self._with_transaction_span is None:
             _otel.end_transaction_span(self._transaction.span)
