@@ -35,33 +35,28 @@ if ! command -v just &>/dev/null; then
 fi
 
 # Some images (e.g. the DEVPROD-19149 Windows image) ship without a Python toolchain.
-# A python may still be on PATH there (the mingw python3 that comes with chocolatey)
-# that cannot bootstrap pip, so probe for one that can actually create a virtual
-# environment - that is what drivers-evergreen-tools needs it for.
-_have_python=""
-for _cand in python3 python; do
-  if ! command -v "$_cand" &>/dev/null; then
-    continue
-  fi
+# A python3 may still be on PATH there (the mingw one that comes with chocolatey) that
+# runs but cannot bootstrap pip, so probe for one that can actually create a virtual
+# environment. We probe python3 specifically because that is the name
+# drivers-evergreen-tools' find_python3 falls back to, and it only checks that the
+# interpreter runs - not that it can build the venv it then goes on to need.
+_have_python3=""
+if command -v python3 &>/dev/null; then
   _probe=$(mktemp -d)
   _probe_arg="$_probe"
   if [ "Windows_NT" = "${OS:-}" ]; then
     _probe_arg=$(cygpath -aw "$_probe")
   fi
-  if "$_cand" -m venv "$_probe_arg" &>/dev/null; then
-    _have_python="$_cand"
+  if python3 -m venv "$_probe_arg" &>/dev/null; then
+    _have_python3="1"
   fi
   rm -rf "$_probe"
-  if [ -n "$_have_python" ]; then
-    break
-  fi
-done
+fi
 
 # Install a Python with uv and expose it so that both pymongo and
-# drivers-evergreen-tools can find it: DRIVERS_TOOLS_PYTHON is honored by
-# DET's ensure_python3(), which is what builds its virtual environments.
-if [ -z "$_have_python" ]; then
-  echo "No usable Python found, installing with uv..."
+# drivers-evergreen-tools can find it.
+if [ -z "$_have_python3" ]; then
+  echo "No venv-capable python3 found, installing with uv..."
   # UV_PYTHON may be a toolchain path; fall back to a bare version for the download.
   _py_ver="${UV_PYTHON:-}"
   case "$_py_ver" in
@@ -73,6 +68,11 @@ if [ -z "$_have_python" ]; then
     _py_bin=$(cygpath -u "$_py_bin")
   fi
   _py_dir=$(dirname "$_py_bin")
+  # uv's Windows builds ship python.exe only. Without a python3.exe alongside it the
+  # mingw python3 further down PATH still wins every bare `python3` lookup.
+  if [ "Windows_NT" = "${OS:-}" ] && [ ! -e "$_py_dir/python3.exe" ]; then
+    cp "$_py_bin" "$_py_dir/python3.exe"
+  fi
   export PATH="$_py_dir:$PATH"
   export DRIVERS_TOOLS_PYTHON="$_py_bin"
   # Persist for the steps that source env.sh rather than inheriting this shell.
@@ -80,7 +80,8 @@ if [ -z "$_have_python" ]; then
 export PATH="$_py_dir:\$PATH"
 export DRIVERS_TOOLS_PYTHON="$_py_bin"
 EOT
-  echo "No usable Python found, installing with uv... done ($_py_bin)."
+  echo "Installed Python at $_py_bin"
+  echo "python3 now resolves to: $(command -v python3 || echo NONE)"
 fi
 
 popd > /dev/null
