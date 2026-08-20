@@ -372,10 +372,10 @@ class AutoEncryptionOpts:
             TLS handshake over it. Must be a coroutine function for
             :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` and a
             regular function for
-            :class:`~pymongo.synchronous.mongo_client.MongoClient`. See
-            :class:`KMSConnectContext` for a worked HTTP ``CONNECT`` example.
-            Defaults to ``None``, meaning the driver connects to KMS hosts
-            directly.
+            :class:`~pymongo.synchronous.mongo_client.MongoClient`. For an
+            ordinary HTTP proxy, pass :class:`HTTPProxyKMSConnect` or
+            :class:`AsyncHTTPProxyKMSConnect`. Defaults to ``None``, meaning
+            the driver connects to KMS hosts directly.
 
         .. versionchanged:: 4.18
            Added the `kms_connect_callback` parameter.
