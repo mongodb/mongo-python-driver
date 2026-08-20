@@ -165,6 +165,10 @@ async def _connect_kms(
             "already-wrapped socket; to reach the proxy over TLS, relay through "
             "a socket.socketpair and return the plain end."
         )
+    # ssl.SSLContext.wrap_socket refuses a non-blocking socket, and a callback
+    # has no reason to care which mode it left the socket in, so normalize it
+    # here rather than pushing the requirement onto the caller.
+    sock.settimeout(opts.socket_timeout)
     try:
         return await _async_wrap_socket_tls(sock, address, opts)
     except Exception as exc:

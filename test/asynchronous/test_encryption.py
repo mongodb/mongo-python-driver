@@ -87,6 +87,7 @@ from pymongo.errors import (
 )
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
 from pymongo.pool_options import PoolOptions
+from pymongo.ssl_support import get_ssl_context
 from pymongo.write_concern import WriteConcern
 from test import (
     unittest,
@@ -304,6 +305,41 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
         self.assertEqual(received[0].host, "kms.example.com")
         self.assertEqual(received[0].port, 443)
         self.assertEqual(received[0].timeout, 12.5)
+
+    async def test_non_blocking_socket_from_callback_is_accepted(self):
+        # ssl.SSLContext.wrap_socket refuses a non-blocking socket. The driver
+        # normalizes the mode so a callback need not care which mode it leaves
+        # the socket in. Without that, this handshake raises ValueError.
+        server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        server_ctx.load_cert_chain(CLIENT_PEM)
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def serve():
+            try:
+                conn, _ = listener.accept()
+                server_ctx.wrap_socket(conn, server_side=True).close()
+            except OSError:
+                pass
+
+        threading.Thread(target=serve, daemon=True).start()
+
+        # Build the context the way the driver does, so PoolOptions gets the
+        # flavor-correct type. Verification is off because the local test
+        # server's certificate is not what the driver would expect.
+        client_ctx = get_ssl_context(None, None, None, None, True, True, False, _IS_SYNC)
+        options = PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=client_ctx)
+
+        async def callback(context):
+            sock = socket.create_connection(listener.getsockname(), timeout=10)
+            sock.setblocking(False)
+            return sock
+
+        conn = await _connect_kms(listener.getsockname(), options, callback, 10.0)
+        self.addCleanup(conn.close)
+        self.assertIsNotNone(conn.gettimeout())
 
     async def test_network_error_from_callback_propagates(self):
         async def callback(context):

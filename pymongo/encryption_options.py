@@ -69,10 +69,12 @@ class KMSConnectContext:
     it, verifying the certificate and hostname against ``host`` rather than the
     peer the socket actually reached. That is what makes proxying safe.
 
-    The socket must be in blocking or timeout mode.
-    :meth:`ssl.SSLContext.wrap_socket` rejects non-blocking sockets, which rules
-    out :func:`asyncio.open_connection` and
-    :meth:`asyncio.loop.create_connection`.
+    The callback must return a real socket that the event loop is not managing.
+    :func:`asyncio.open_connection` and :meth:`asyncio.loop.create_connection`
+    return a stream or transport rather than a socket, and the socket
+    underneath one stays registered with the running loop, so neither can be
+    used here. The driver sets the socket's timeout itself, so the mode the
+    callback leaves it in does not matter.
 
     To reach a KMS host through an HTTP proxy, tunnel with ``CONNECT``::
 
