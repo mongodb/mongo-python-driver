@@ -173,9 +173,10 @@ class HTTPProxyKMSConnect:
         over an :class:`ssl.SSLSocket`, so hand back the plain end of a pair and
         pump bytes between it and the proxy connection.
 
-        Threads rather than asyncio tasks: ``proxy`` may be an
-        :class:`ssl.SSLSocket`, which the event loop refuses to read, so tasks
-        would mean reimplementing the connect and CONNECT handshake on streams.
+        Threads rather than asyncio tasks in :class:`AsyncHTTPProxyKMSConnect`:
+        ``proxy`` may be an :class:`ssl.SSLSocket`, which the event loop refuses
+        to read, so tasks would mean reimplementing the connect and CONNECT
+        handshake on streams.
         A KMS connection happens once per data key and is then cached, so the
         threads are short-lived and rare.
         """
