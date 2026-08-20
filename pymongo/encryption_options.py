@@ -98,8 +98,8 @@ class KMSConnectContext:
     .. note:: ``timeoutMS`` on a :class:`~pymongo.encryption.ClientEncryption`
        or its key vault client does not constrain KMS requests, so ``timeout``
        is always the default for explicit encryption. Automatic encryption
-       passes the remaining budget. A known deviation from the Client Side
-       Operations Timeout specification, tracked in PYTHON-6037.
+       passes the remaining budget. This is a known deviation from the Client
+       Side Operations Timeout specification, tracked in PYTHON-6037.
 
     .. versionadded:: 4.18
     """
