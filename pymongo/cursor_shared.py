@@ -142,6 +142,7 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
             # ___init__ did not run to completion (or at all).
             return
 
+        # Before the cleanup below, for the reason given in _die_lock.
         self._end_operation_telemetry()
         cursor_id, address = self._prepare_to_die(already_killed)
         self._collection.database.client._cleanup_cursor_no_lock(

@@ -19,6 +19,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import copy
 from collections.abc import Mapping, MutableMapping
 from itertools import islice
@@ -637,20 +638,13 @@ class _AsyncClientBulk:
             operation_telemetry = _operation_telemetry_or_none(
                 self.client.options.tracing, operation, session, dbname="admin"
             )
-            try:
+            with operation_telemetry or contextlib.nullcontext():
                 async with await self.client._conn_for_writes(session, operation) as connection:
                     if connection.max_wire_version < 25:
                         raise InvalidOperation(
                             "MongoClient.bulk_write requires MongoDB server version 8.0+."
                         )
                     await self.execute_no_results(connection)
-            except BaseException as exc:
-                if operation_telemetry is not None:
-                    operation_telemetry.failed(exc)
-                raise
-            else:
-                if operation_telemetry is not None:
-                    operation_telemetry.succeeded()
             return ClientBulkWriteResult(None, False, False)  # type: ignore[arg-type]
 
         result = await self.execute_command(session, operation)

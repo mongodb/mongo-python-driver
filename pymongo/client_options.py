@@ -253,7 +253,7 @@ class ClientOptions:
         # process-startup input, so nothing re-reads them per command.
         self.__tracing = _resolve_tracing_options(
             cast(
-                "_otel.TracingOptions",
+                "_otel._UnresolvedTracingOptions",
                 options.get("tracing") or {"enabled": False, "query_text_max_length": None},
             )
         )

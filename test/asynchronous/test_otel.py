@@ -62,8 +62,8 @@ pytestmark = pytest.mark.otel
 
 
 def _tracing_opts() -> _otel.TracingOptions:
-    """Return tracing options with tracing on and ``db.query.text`` disabled."""
-    return {"enabled": True, "query_text_max_length": None}
+    """Return resolved tracing options with tracing on and ``db.query.text`` disabled."""
+    return {"enabled": True, "query_text_max_length": 0}
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
@@ -412,7 +412,7 @@ class TestOTelSpans(AsyncIntegrationTest):
 
         self.exporter.clear()
         span = _otel.start_command_span(
-            {"enabled": True, "query_text_max_length": None},
+            {"enabled": True, "query_text_max_length": 0},
             _FakeUnixConn(),
             {"ping": 1},
             "admin",
@@ -632,6 +632,22 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0].attributes["db.namespace"], "admin")
 
+    async def test_collection_bulk_write_unacknowledged_gets_operation_span(self):
+        # The unacknowledged path skips _retryable_write, which is what creates
+        # the operation span on the acknowledged path.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True}, w=0)
+        coll = client[self.db.name]["test"]
+        self.exporter.clear()
+        await coll.bulk_write([InsertOne({"x": 1})], ordered=False)
+        matching = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "insert"
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0].attributes["db.namespace"], self.db.name)
+        self.assertEqual(matching[0].attributes["db.collection.name"], "test")
+
     async def test_operation_span_falls_back_to_bare_name_when_no_command_is_sent(self):
         # Failing during server selection builds no command, so the backfill in
         # start_command_span never runs, and insert_one threads no namespace
@@ -838,7 +854,7 @@ class TestOTelTracerCaching(unittest.TestCase):
         with patch.object(_otel, "trace") as mock_trace:
             for _ in range(3):
                 span = _otel.start_command_span(
-                    {"enabled": True, "query_text_max_length": None},
+                    {"enabled": True, "query_text_max_length": 0},
                     _FakeConn(),
                     {"ping": 1},
                     "admin",
