@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import socket
 import ssl
 import threading
@@ -84,8 +85,8 @@ class KMSConnectContext:
     proxy authentication.
 
     The asynchronous API requires a coroutine function. Run any blocking
-    connect in a thread with :func:`asyncio.to_thread` so the event loop stays
-    free.
+    connect in a thread, with :meth:`asyncio.loop.run_in_executor` or
+    :func:`asyncio.to_thread`, so the event loop stays free.
 
     :param host: Hostname of the KMS server, and the target of TLS certificate
         and hostname verification.
@@ -220,7 +221,10 @@ class AsyncHTTPProxyKMSConnect(HTTPProxyKMSConnect):
     """
 
     async def __call__(self, context: KMSConnectContext) -> socket.socket:  # type: ignore[override]
-        return await asyncio.to_thread(super().__call__, context)
+        # run_in_executor rather than asyncio.to_thread, matching how
+        # auth_oidc.py runs a user-supplied callback off the event loop.
+        connect = functools.partial(super().__call__, context)
+        return await asyncio.get_running_loop().run_in_executor(None, connect)
 
 
 class AutoEncryptionOpts:
