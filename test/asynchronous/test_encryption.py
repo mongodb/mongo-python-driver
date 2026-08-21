@@ -380,6 +380,84 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
         with self.assertRaisesRegex(OSError, "refused CONNECT"):
             await AsyncHTTPProxyKMSConnect(host, port)(context)
 
+    async def test_tls_proxy_helper_bridges_the_tunnel(self):
+        # Covers the TLS-proxy path and the socketpair relay without KMS creds.
+        server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        server_ctx.load_cert_chain(CLIENT_PEM)
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def stub_proxy():
+            try:
+                conn, _ = listener.accept()
+                tls = server_ctx.wrap_socket(conn, server_side=True)
+                request = b""
+                while b"\r\n\r\n" not in request:
+                    chunk = tls.recv(4096)
+                    if not chunk:
+                        return
+                    request += chunk
+                tls.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                # The tunnelled peer speaks only after the client does, as a
+                # TLS server would.
+                tls.sendall(b"echo:" + tls.recv(64))
+                tls.close()
+            except OSError:
+                pass
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        client_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        client_ctx.check_hostname = False
+        client_ctx.verify_mode = ssl.CERT_NONE
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+
+        sock = await AsyncHTTPProxyKMSConnect(host, port, client_ctx)(context)
+        self.addCleanup(sock.close)
+        sock.settimeout(10)
+        sock.sendall(b"ping")
+        self.assertEqual(sock.recv(64), b"echo:ping")
+
+    async def test_non_coroutine_callback_is_rejected(self):
+        # The async API needs a coroutine function; a plain def must not be
+        # awaited and retried.
+        if _IS_SYNC:
+            raise unittest.SkipTest("a regular function is correct for the sync API")
+
+        left, right = socket.socketpair()
+        self.addCleanup(right.close)
+
+        def callback(context):
+            return left
+
+        with self.assertRaisesRegex(ConfigurationError, "coroutine function"):
+            await _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+
+    async def test_proxy_closing_before_connect_reply_raises(self):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def stub_proxy():
+            try:
+                conn, _ = listener.accept()
+                # Read the CONNECT request, then hang up without replying.
+                conn.recv(4096)
+                conn.close()
+            except OSError:
+                pass
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+        with self.assertRaisesRegex(OSError, "proxy closed the connection"):
+            await AsyncHTTPProxyKMSConnect(host, port)(context)
+
     async def test_network_error_from_callback_propagates(self):
         async def callback(context):
             raise OSError("proxy unreachable")
