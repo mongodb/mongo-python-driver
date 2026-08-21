@@ -326,6 +326,7 @@ buildvariants:
       - name: .test-non-standard .server-6.0 .sharded_cluster-auth-ssl
       - name: .test-non-standard .server-7.0 .sharded_cluster-auth-ssl
       - name: .test-non-standard .server-8.0 .sharded_cluster-auth-ssl
+      - name: .test-non-standard .server-9.0 .sharded_cluster-auth-ssl
       - name: .test-non-standard .server-rapid .sharded_cluster-auth-ssl
       - name: .test-non-standard .server-latest .sharded_cluster-auth-ssl
     display_name: Load Balancer
@@ -467,7 +468,7 @@ buildvariants:
       - name: .test-standard !.pypy .async .replica_set-noauth-ssl
     display_name: PyOpenSSL macOS
     run_on:
-      - rhel87-small
+      - macos-14
     batchtime: 1440
     expansions:
       SUB_TEST_NAME: pyopenssl
@@ -545,6 +546,15 @@ buildvariants:
     expansions:
       VERSION: "8.0"
     tags: [coverage_tag]
+  - name: mongodb-v9.0
+    tasks:
+      - name: .server-version
+    display_name: "* MongoDB v9.0"
+    run_on:
+      - rhel87-small
+    expansions:
+      VERSION: "9.0"
+    tags: [coverage_tag]
   - name: mongodb-rapid
     tasks:
       - name: .server-version
@@ -582,6 +592,7 @@ buildvariants:
       - name: .test-standard !.replica_set-noauth-ssl .server-6.0
       - name: .test-standard !.replica_set-noauth-ssl .server-7.0
       - name: .test-standard !.replica_set-noauth-ssl .server-8.0
+      - name: .test-standard !.replica_set-noauth-ssl .server-9.0
       - name: .test-standard !.replica_set-noauth-ssl .server-rapid
       - name: .test-standard !.replica_set-noauth-ssl .server-latest
     display_name: Stable API require v1 RHEL8 Auth
@@ -598,6 +609,7 @@ buildvariants:
       - name: .test-standard .server-6.0 .standalone-noauth-nossl
       - name: .test-standard .server-7.0 .standalone-noauth-nossl
       - name: .test-standard .server-8.0 .standalone-noauth-nossl
+      - name: .test-standard .server-9.0 .standalone-noauth-nossl
       - name: .test-standard .server-rapid .standalone-noauth-nossl
       - name: .test-standard .server-latest .standalone-noauth-nossl
     display_name: Stable API accept v2 RHEL8 Auth
@@ -621,6 +633,7 @@ buildvariants:
       - name: .test-standard !.pypy .server-6.0
       - name: .test-standard !.pypy .server-7.0
       - name: .test-standard !.pypy .server-8.0
+      - name: .test-standard !.pypy .server-9.0
       - name: .test-standard !.pypy .server-rapid
       - name: .test-standard !.pypy .server-latest
     display_name: "* Test macOS Arm64"

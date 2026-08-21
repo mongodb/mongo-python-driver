@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import os
+import sys
 import types
 import warnings
 from typing import Any, Optional, Union
@@ -133,7 +135,17 @@ if HAVE_SSL:
         if ca_certs is not None:
             ctx.load_verify_locations(ca_certs)
         elif verify_mode != CERT_NONE:
-            ctx.load_default_certs()
+            cert_file = os.environ.get("SSL_CERT_FILE") or None
+            cert_dir = os.environ.get("SSL_CERT_DIR") or None
+            # load_default_certs() wrongly merges in the OS/certifi store on
+            # Windows and on macOS with PyOpenSSL
+            merges_os_store = sys.platform == "win32" or (
+                ssl.IS_PYOPENSSL and sys.platform == "darwin"
+            )
+            if (cert_file or cert_dir) and merges_os_store:
+                ctx.load_verify_locations(cafile=cert_file, capath=cert_dir)
+            else:
+                ctx.load_default_certs()
         ctx.verify_mode = verify_mode
         return ctx
 

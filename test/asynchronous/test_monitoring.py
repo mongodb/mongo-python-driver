@@ -22,8 +22,10 @@ from typing import Any
 
 sys.path[0:0] = [""]
 
+from bson import encode
 from bson.int64 import Int64
 from bson.objectid import ObjectId
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import CursorType, DeleteOne, InsertOne, UpdateOne, monitoring
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
@@ -420,7 +422,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertIsInstance(failed.duration_micros, int)
         self.assertEqual(error, failed.failure)
 
-    @async_client_context.require_no_mongos
+    @async_client_context.require_exhaust_cursors
     async def test_exhaust(self):
         await self.client.pymongo_test.test.drop()
         await self.client.pymongo_test.test.insert_many([{} for _ in range(11)])
@@ -1194,6 +1196,23 @@ class AsyncTestEventClasses(unittest.IsolatedAsyncioTestCase):
             "command: 'ping', operation_id: 2, duration_micros: 100000, "
             "failure: {'ok': 0}, service_id: None, server_connection_id: None>",
         )
+
+    def test_succeeded_event_does_not_inflate_raw_reply(self):
+        # The speculativeAuthenticate redaction check must not decode a lazy
+        # reply document for non-hello commands.
+        delta = datetime.timedelta(milliseconds=100)
+        reply = RawBSONDocument(encode({"ok": 1, "cursor": {"id": Int64(0), "firstBatch": []}}))
+        event = monitoring.CommandSucceededEvent(
+            delta, reply, "find", 1, ("localhost", 27017), 2, database_name="test"
+        )
+        self.assertIsNone(reply._RawBSONDocument__inflated_doc)
+        self.assertIs(event.reply, reply)
+        # Speculative authentication replies are still redacted.
+        speculative = RawBSONDocument(encode({"ok": 1, "speculativeAuthenticate": {}}))
+        event = monitoring.CommandSucceededEvent(
+            delta, speculative, "hello", 1, ("localhost", 27017), 2, database_name="admin"
+        )
+        self.assertEqual(event.reply, {})
 
     def test_server_heartbeat_event_repr(self):
         connection_id = ("localhost", 27017)
