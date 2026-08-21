@@ -1091,9 +1091,8 @@ class Cursor(_CursorBase[_DocumentType]):
                 collection=self._collection.name,
                 set_current=False,
             )
-            # The query's span covers the query alone unless this cursor is
-            # being drained by the public API call that created it, in which
-            # case the span stays open to cover that call's getMores too.
+            # The query's span stays open only when the call that created this
+            # cursor drains it itself, to cover that call's getMores too.
             own_span = not is_internal_cursor_iteration()
             self._send_message_in_operation_span(q, own_span)
         elif self._id:  # Get More

@@ -1906,13 +1906,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
         :param operation_telemetry: The calling cursor's operation span (see
-            ``Cursor._refresh``), or None, so this send's command spans nest
-            under it. Covers one caller-driven getMore, or a whole API call that
-            drains the cursor itself.
-        :param reuse_current_span: Create no operation span at all and leave the
-            ambient span in place as the parent for this operation's command
-            spans. Mutually exclusive with ``operation_telemetry``. Defaults to
-            False.
+            ``Cursor._refresh``), or None, so this send's command spans
+            nest under it.
+        :param reuse_current_span: Leave the ambient span as the parent for this
+            operation's command spans, creating none, defaults to False.
         """
         if operation.conn_mgr:
             server = self._select_server(
@@ -2024,13 +2021,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation_telemetry: A cursor's operation span (see
             ``Cursor._refresh`` and ``CommandCursor._refresh``), which
             this call makes current but neither creates nor ends, defaults to None.
-        :param reuse_current_span: Create no operation span at all and leave the
-            ambient span in place as the parent for this operation's command
-            spans. For callers that know a suitable operation span is already
-            current, where a second one would be spurious (the client
-            bulk-write results cursor's getMores, which belong under the
-            enclosing bulkWrite span). Mutually exclusive with
-            ``operation_telemetry``. Defaults to False.
+        :param reuse_current_span: Leave the ambient span as the parent for this
+            operation's command spans, creating none. Mutually exclusive with
+            ``operation_telemetry``, defaults to False.
 
         :return: Output of the calling func()
         """
@@ -2083,10 +2076,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
         :param operation_telemetry: Same as ``_retry_internal``'s, defaults to None.
-        :param reuse_current_span: Create no operation span at all and leave the
-            ambient span in place as the parent for this operation's command
-            spans. Mutually exclusive with ``operation_telemetry``. Defaults to
-            False.
+        :param reuse_current_span: Same as ``_retry_internal``'s, defaults to False.
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2129,15 +2119,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Run a command cursor read within its own operation span.
 
         Takes the same arguments as :meth:`_retryable_read`, plus the namespace
-        for the span. A command cursor's first batch is fetched inside that
-        call, before the cursor exists, so the span cannot be owned by the
-        cursor the way a find cursor's is; create it here instead.
+        for the span. A command cursor's first batch is fetched before the cursor
+        exists, so the span cannot be owned by the cursor and is created here.
 
-        The span ends with the command that created the cursor. Later getMores
-        belong to whoever drives iteration: each one the caller drives gets an
-        operation span of its own, so only a public API call that drains the
-        cursor itself (see ``_otel.internal_cursor_iteration``) keeps this one
-        open, by handing it to the cursor.
+        The span ends with the creating command, unless a public API call
+        draining the cursor itself (see ``_otel.internal_cursor_iteration``)
+        keeps it open by handing it to the cursor.
         """
         operation_telemetry = _operation_telemetry_or_none(
             self.options.tracing,
@@ -3032,9 +3019,8 @@ class _ClientConnectionRetryable(Generic[T]):
         self._operation_id = operation_id
         if reuse_current_span and operation_telemetry is not None:
             raise ValueError("reuse_current_span and operation_telemetry are mutually exclusive")
-        # With nothing passed in, create the span here and end it in run(); with a
-        # span passed in, the caller owns it. reuse_current_span means an enclosing
-        # span is already current, so this object creates none.
+        # With nothing passed in, create the span here and end it in run(); with
+        # a span passed in, or reuse_current_span, an outer caller owns it.
         self._owns_telemetry = operation_telemetry is None and not reuse_current_span
         if self._owns_telemetry:
             operation_telemetry = _operation_telemetry_or_none(
