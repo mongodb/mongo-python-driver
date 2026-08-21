@@ -254,7 +254,7 @@ def _raw_as_bytes(raw: Union[bytes, bytearray, memoryview]) -> bytes:
 
 
 def _raw_slice(data: Any, view: memoryview, position: int, end: int, obj_size: int) -> Any:
-    """Return the raw BSON document spanning ``position` to ``end`` for use as a buffer."""
+    """Return the raw BSON document spanning ``position`` to ``end`` for use as a buffer."""
     whole_span = position == 0 and obj_size == len(data)
     if view.readonly:  # data is immutable (bytes).
         if whole_span:
