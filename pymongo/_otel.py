@@ -75,10 +75,9 @@ if TYPE_CHECKING:
 class _UnresolvedTracingOptions(TypedDict):
     """The ``MongoClient`` ``tracing`` option as validated from user input.
 
-    ``query_text_max_length`` is None when the user set no value, which is
-    distinct from an explicit 0: None leaves the environment variable free to
-    supply a length, 0 turns ``db.query.text`` off outright. Short-lived, since
-    :func:`_resolve_tracing_options` runs while the client is being built.
+    ``query_text_max_length`` is None when unset, which is distinct from an
+    explicit 0: None lets the environment variable supply a length, 0 turns
+    ``db.query.text`` off.
     """
 
     enabled: bool
@@ -88,9 +87,8 @@ class _UnresolvedTracingOptions(TypedDict):
 class TracingOptions(TypedDict):
     """The ``MongoClient`` ``tracing`` option as a client holds it.
 
-    Both fields have been through :func:`_resolve_tracing_options`, so they
-    account for the two environment variables and need no further
-    interpretation: ``query_text_max_length`` is an int of 0 or more.
+    :func:`_resolve_tracing_options` has folded in the environment variables,
+    so ``query_text_max_length`` is an int of 0 or more.
     """
 
     enabled: bool
@@ -226,22 +224,8 @@ def _build_query_summary(command_name: str, dbname: str, collection: Optional[st
     return f"{command_name} {dbname}"
 
 
-# db.operation.name is the command name for nearly every operation, so `_Op`
-# values (which are the wire names) carry straight through. These are the
-# exceptions the spec's covered operations table names differently.
-#
-# "dropCollection" and "createCollection" are known deviations: their commands
-# are "drop" and "create", and the table departs from its own command-name rule
-# for no stated reason. The spec is expected to correct them, at which point
-# both entries here go away, but the change alters an exported attribute value
-# and so has to land on a major version boundary, in step with the other
-# drivers and the spec's own fixtures.
-#
-# "dropSearchIndexes" is ours, not the spec's: the command really is the
-# singular "dropSearchIndex" and only our `_Op` member is plural.
-#
-# Operations absent from the table (rename, whose command is "renameCollection")
-# have no agreed cross-driver name to match and keep their `_Op` value.
+# Spec operation names that differ from our `_Op` values. "dropCollection" and
+# "createCollection" contradict the spec's own command-name rule, unresolved.
 _OPERATION_NAME_OVERRIDES = {
     "drop": "dropCollection",
     "create": "createCollection",
@@ -302,29 +286,18 @@ def start_command_span(
 ) -> Optional[Span]:
     """Start and return a CLIENT-kind span for a server command, or None.
 
-    Returns None in two cases. With tracing off the call is a no-op. With a
-    sensitive command it is not: the span is suppressed, mirroring the
-    redaction applied to logs, but the current operation span is still
-    backfilled from it, since that span needs the namespace and summary even
-    when the command itself gets no span.
-
-    One span per wire-protocol message, so a retried operation produces one per
-    attempt. The span takes whichever operation span is current as its parent,
-    but is returned rather than made current itself, so nothing else nests
-    inside it. The caller holds it for the command's duration.
+    Returns None when tracing is off, and for a sensitive command, which still
+    backfills the current operation span before being suppressed. One span per
+    wire-protocol message, returned rather than made current, so nothing nests
+    inside it.
     """
     if not _is_tracing_enabled(tracing_options):
         return None
 
     collection = _extract_collection_name(command_name, dbname, cmd)
-    # Backfill the operation span's name/namespace/summary from the command built
-    # inside it. Before the sensitive-command return below, since the operation
-    # span needs those attributes even when the command gets no span. This runs
-    # once per attempt rather than once per operation: an attempt that fails
-    # before building a command never reaches here, so a retry can be where the
-    # operation span first learns its namespace. Repeating it costs a few
-    # attribute writes and is otherwise a no-op, since every attempt of one
-    # operation carries the same namespace.
+    # Runs per attempt, not per operation: an attempt that fails before building
+    # a command never reaches here, so a retry may be where the span learns its
+    # namespace.
     current_operation = _CURRENT_OPERATION_NAME.get()
     if current_operation is not None:
         current_span = trace.get_current_span()

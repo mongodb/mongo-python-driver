@@ -175,11 +175,8 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
             # ___init__ did not run to completion (or at all).
             return
 
-        # Before the cleanup below rather than after: this ends the span of the
-        # operation that created the cursor, which has already completed, while
-        # the cleanup sends killCursors under a separate operation span of its
-        # own. A failure cleaning up belongs to that span, not to a find that
-        # succeeded.
+        # Before the cleanup, which sends killCursors under its own operation
+        # span: a failure there belongs to that span, not to a find that succeeded.
         self._end_operation_telemetry()
         cursor_id, address = self._prepare_to_die(already_killed)
         self._collection.database.client._cleanup_cursor_lock(

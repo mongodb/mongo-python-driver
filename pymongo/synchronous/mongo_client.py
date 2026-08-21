@@ -1904,9 +1904,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             that executes the operation on a given connection.
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
-        :param operation_telemetry: The operation span created by the calling
-            cursor (see ``Cursor._refresh``), or None. Passed down so the
-            command spans of this send nest under it.
+        :param operation_telemetry: The calling cursor's operation span, or None,
+            so this send's command spans nest under it.
         """
         if operation.conn_mgr:
             server = self._select_server(
@@ -2013,13 +2012,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
-        :param operation_telemetry: An operation span the caller created and will
-            end itself, defaults to None. Only ``Cursor`` passes one (see
-            ``Cursor._refresh``): its span has to survive send paths that
-            bypass this method, so the cursor ends it rather than this call.
-            Given a span, this method neither creates nor ends one and only
-            makes the caller's current for the duration of the call; given
-            None, it creates a span and ends it before returning.
+        :param operation_telemetry: A cursor's operation span, which this call
+            makes current but neither creates nor ends, defaults to None.
 
         :return: Output of the calling func()
         """
@@ -2069,9 +2063,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False.
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
-        :param operation_telemetry: An operation span the caller created and will
-            end itself, defaults to None. See ``_retry_internal``, which this
-            forwards to.
+        :param operation_telemetry: As for ``_retry_internal``, defaults to None.
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2997,10 +2989,8 @@ class _ClientConnectionRetryable(Generic[T]):
         if operation_id is None:
             operation_id = _generate_op_id_or_none(self._client._event_listeners)
         self._operation_id = operation_id
-        # One span covers every attempt. With nothing passed in, create the
-        # span here and end it in run(). With a span passed in (a cursor's,
-        # which has to outlive this object), the caller keeps ownership and
-        # run() only makes it current.
+        # With nothing passed in, create the span here and end it in run(); with
+        # a span passed in, the caller owns it and run() only makes it current.
         self._owns_telemetry = operation_telemetry is None
         if self._owns_telemetry:
             operation_telemetry = _operation_telemetry_or_none(
