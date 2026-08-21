@@ -100,6 +100,12 @@ KMSConnectCallback = Callable[[KMSConnectContext], socket.socket]
 _MAX_CONNECT_HEADER = 8192
 
 
+def _close_completed_socket(future: asyncio.Future[socket.socket]) -> None:
+    """Close a socket produced after its awaiting task was cancelled."""
+    if not future.cancelled() and future.exception() is None:
+        future.result().close()
+
+
 def _remaining(deadline: float) -> float:
     """Seconds left before ``deadline``."""
     left = deadline - time.monotonic()
@@ -225,7 +231,11 @@ class HTTPProxyKMSConnect:
             raise
         if self.ssl_context is None:
             return sock
-        return self._bridge(sock)
+        try:
+            return self._bridge(sock)
+        except BaseException:
+            sock.close()
+            raise
 
 
 class AsyncHTTPProxyKMSConnect(HTTPProxyKMSConnect):
@@ -241,7 +251,13 @@ class AsyncHTTPProxyKMSConnect(HTTPProxyKMSConnect):
     async def __call__(self, context: KMSConnectContext) -> socket.socket:  # type: ignore[override]
         # run_in_executor, as auth_oidc.py does for user callbacks.
         connect = functools.partial(super().__call__, context)
-        return await asyncio.get_running_loop().run_in_executor(None, connect)
+        future = asyncio.get_running_loop().run_in_executor(None, connect)
+        try:
+            return await asyncio.shield(future)
+        except asyncio.CancelledError:
+            # The thread runs on regardless, so close the socket it returns.
+            future.add_done_callback(_close_completed_socket)
+            raise
 
 
 class AutoEncryptionOpts:

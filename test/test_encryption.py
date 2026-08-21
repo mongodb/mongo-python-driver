@@ -96,6 +96,7 @@ from pymongo.synchronous.encryption import (
     QueryType,
     _connect_kms,
     _EncryptionIO,
+    _wrap_encryption_errors,
 )
 from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
@@ -610,6 +611,58 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         with self.assertRaises(ConfigurationError):
             io.kms_request(StubKmsContext())
         self.assertEqual(len(calls), 1)
+
+    def test_contract_violation_surfaces_as_encryption_error(self):
+        # Public operations run under _wrap_encryption_errors, so callers see
+        # EncryptionError with ConfigurationError as its cause.
+        with self.assertRaises(EncryptionError) as caught:
+            with _wrap_encryption_errors():
+                raise ConfigurationError("kms_connect_callback must return ...")
+        self.assertIsInstance(caught.exception.__cause__, ConfigurationError)
+
+    def test_bridge_failure_closes_the_proxy_socket(self):
+        # A failure inside _bridge must not strand the connected proxy socket.
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        server_ctx.load_cert_chain(CLIENT_PEM)
+
+        def stub_proxy():
+            conn = None
+            try:
+                conn, _ = listener.accept()
+                tls = server_ctx.wrap_socket(conn, server_side=True)
+                tls.recv(4096)
+                tls.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                tls.close()
+            except OSError:
+                pass
+            finally:
+                if conn is not None:
+                    conn.close()
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        captured = []
+
+        def failing_bridge(self, proxy):
+            captured.append(proxy)
+            raise OSError("no file descriptors")
+
+        host, port = listener.getsockname()
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+
+        with mock.patch.object(HTTPProxyKMSConnect, "_bridge", failing_bridge):
+            with self.assertRaisesRegex(OSError, "no file descriptors"):
+                HTTPProxyKMSConnect(host, port, ctx)(context)
+
+        self.assertEqual(captured[0].fileno(), -1, "proxy socket was left open")
 
     def test_network_error_from_callback_propagates(self):
         def callback(context):
