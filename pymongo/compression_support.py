@@ -164,7 +164,7 @@ class ZstdContext:
         return zstd.compress(data)
 
 
-def decompress(data: bytes | memoryview, compressor_id: int) -> bytes:
+def decompress(data: bytes | memoryview, compressor_id: int, max_message_size: int) -> bytes:
     if compressor_id == SnappyContext.compressor_id:
         # python-snappy doesn't support the buffer interface.
         # https://github.com/andrix/python-snappy/issues/65
@@ -172,17 +172,27 @@ def decompress(data: bytes | memoryview, compressor_id: int) -> bytes:
         # id(bytes(data)) == id(data) when data is a bytes.
         import snappy
 
-        return snappy.uncompress(bytes(data))
+        result = snappy.uncompress(bytes(data))
     elif compressor_id == ZlibContext.compressor_id:
         import zlib
 
-        return zlib.decompress(data)
+        # Bound the decompressed output during decompression to avoid
+        # allocating a huge buffer before the size check runs.
+        result = zlib.decompressobj().decompress(data, max_message_size + 1)
     elif compressor_id == ZstdContext.compressor_id:
         if sys.version_info >= (3, 14):
             from compression import zstd
         else:
             from backports import zstd
 
-        return zstd.decompress(data)
+        result = zstd.ZstdDecompressor().decompress(data, max_message_size + 1)
     else:
         raise ValueError(f"Unknown compressorId {compressor_id}")
+    if len(result) > max_message_size:
+        from pymongo.errors import ProtocolError
+
+        raise ProtocolError(
+            f"Decompressed message size ({len(result)!r}) is larger than "
+            f"server max message size ({max_message_size!r})"
+        )
+    return result

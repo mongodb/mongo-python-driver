@@ -1950,10 +1950,14 @@ class TestClient(AsyncIntegrationTest):
                     original_decompress = network_layer.decompress
 
                     def decompress_spy(
-                        data, compressor_id, _original=original_decompress, _recorded=decompressed
+                        data,
+                        compressor_id,
+                        max_message_size=None,
+                        _original=original_decompress,
+                        _recorded=decompressed,
                     ):
                         _recorded.append(compressor_id)
-                        return _original(data, compressor_id)
+                        return _original(data, compressor_id, max_message_size)
 
                     # Round-trip a command. Every non-sensitive command is
                     # compressed.
