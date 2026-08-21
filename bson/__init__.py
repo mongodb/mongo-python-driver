@@ -243,28 +243,18 @@ _UNPACK_TIMESTAMP_FROM = struct.Struct("<II").unpack_from
 def get_data_and_view(data: Any) -> tuple[Any, memoryview]:
     if isinstance(data, (bytes, bytearray)):
         return data, memoryview(data)
-    # Copy buffer-protocol inputs so the decode (and any raw document views
-    # taken of it) can't observe later mutations of the caller's buffer.
+    # Copy other inputs so decoding is immutable
     data = memoryview(data).tobytes()
     return data, memoryview(data)
 
 
 def _raw_as_bytes(raw: Union[bytes, bytearray, memoryview]) -> bytes:
-    """Coerce a raw BSON buffer (bytes, bytearray, or memoryview) to bytes."""
+    """Convert a raw BSON buffer (bytes, bytearray, or memoryview) to bytes."""
     return raw if isinstance(raw, bytes) else bytes(raw)
 
 
 def _raw_slice(data: Any, view: memoryview, position: int, end: int, obj_size: int) -> Any:
-    """Return the raw BSON document spanning data[position:end + 1] for use
-    as a RawBSONDocument's buffer.
-
-    A document spanning an entire immutable buffer is passed through as-is.
-    Other documents at least _RAW_BSON_VIEW_THRESHOLD bytes are exposed as
-    read-only memoryview slices of the parent buffer instead of bytes copies.
-    Views are only taken of immutable buffers: documents in a mutable buffer
-    (e.g. a bytearray) are copied so the caller can't mutate the document
-    out from under us.
-    """
+    """Return the raw BSON document spanning ``position` to ``end`` for use as a buffer."""
     whole_span = position == 0 and obj_size == len(data)
     if view.readonly:  # data is immutable (bytes).
         if whole_span:
@@ -272,7 +262,7 @@ def _raw_slice(data: Any, view: memoryview, position: int, end: int, obj_size: i
         if obj_size >= _RAW_BSON_VIEW_THRESHOLD:
             return view[position : end + 1]
         return data[position : end + 1]
-    # Mutable buffer: always copy.
+    # Mutable buffer, must copy.
     return bytes(data) if whole_span else _raw_as_bytes(data[position : end + 1])
 
 
@@ -740,7 +730,7 @@ def _encode_bytes(name: bytes, value: bytes, dummy0: Any, dummy1: Any) -> bytes:
 def _encode_mapping(name: bytes, value: Any, check_keys: bool, opts: CodecOptions[Any]) -> bytes:
     """Encode a mapping type."""
     if _raw_document_class(value):
-        # join consumes a memoryview raw directly, avoiding a bytes copy.
+        # join avoids a copy by consuming a memoryview raw directly.
         return b"".join((b"\x03", name, value.raw))
     data = b"".join([_element_to_bson(key, val, check_keys, opts) for key, val in value.items()])
     return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"

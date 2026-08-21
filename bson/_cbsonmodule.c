@@ -2985,11 +2985,8 @@ static PyObject* elements_to_dict(PyObject* self, const char* string,
                    (Py_ssize_t)max >= GETSTATE(self)->raw_bson_view_threshold) {
             /* Zero-copy: pass a read-only slice of the buffer instead of a
              * bytes copy. Only immutable (bytes) buffers may be sliced this
-             * way; mutable buffers fall through to the copying branch so
-             * the caller can't mutate the document out from under us,
-             * matching _raw_slice in bson/__init__.py. Views of bytes are
-             * already read-only, and the slice shares the parent view's
-             * buffer, keeping buffer_owner alive. */
+             * way, mutable buffers must be copied so
+             * the caller can't mutate the document after decoding. */
             Py_ssize_t offset = string - PyBytes_AS_STRING(buffer_owner);
             PyObject* top_view = PyMemoryView_FromObject(buffer_owner);
             if (!top_view) {
@@ -3041,9 +3038,7 @@ fail:
 }
 
 /* Return 1 if any document in a stream of BSON documents is at least
- * `threshold` bytes, i.e. decoding it as a RawBSONDocument would take a
- * zero-copy view of the buffer. Malformed lengths return 0: the decode
- * loop is responsible for reporting the error. */
+ * `threshold` bytes. Malformed lengths return 0. */
 static int _contains_view_eligible_doc(const char* data, Py_ssize_t len,
                                        Py_ssize_t threshold) {
     Py_ssize_t position = 0;
@@ -3062,14 +3057,10 @@ static int _contains_view_eligible_doc(const char* data, Py_ssize_t len,
     return 0;
 }
 
-/* Prepare a decode input buffer object for raw-document decoding: bytes and
- * bytearray are returned as-is; any other buffer-protocol input is copied to
+/* Prepare an input buffer for raw-document decoding: bytes and
+ * bytearray are returned as-is, with other inputs copied to
  * bytes only if the stream contains a document large enough for a zero-copy
- * view, so views can't observe later mutations of the caller's buffer.
- * Streams of exclusively sub-threshold documents are decoded in place: every
- * document is copied individually, so the buffer is never aliased. Non-raw
- * decodes never take views of the buffer, so their input is always returned
- * as-is. Returns a new reference or NULL on failure with an exception set. */
+ * view. Returns a new reference or NULL on failure with an exception set. */
 static PyObject* _prepare_input_buffer(PyObject* self, PyObject* bson,
                                        const codec_options_t* options) {
     Py_buffer tmp = {0};

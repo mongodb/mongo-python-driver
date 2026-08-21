@@ -43,8 +43,6 @@ _RAW_BSON_DOCUMENT_MARKER = 101
 
 # Raw BSON documents at least this many bytes are exposed as read-only
 # memoryview slices of the decode buffer instead of bytes copies.
-# Internal: the C extension snapshots this value at module init, so
-# rebinding it at runtime only affects the pure-Python implementation.
 _RAW_BSON_VIEW_THRESHOLD = 4096
 
 
