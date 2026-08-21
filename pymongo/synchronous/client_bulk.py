@@ -19,6 +19,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import copy
 from collections.abc import Mapping, MutableMapping
 from itertools import islice
@@ -32,7 +33,7 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo._telemetry import _generate_op_id_or_none
+from pymongo._telemetry import _generate_op_id_or_none, _operation_telemetry_or_none
 from pymongo.synchronous.client_session import (
     ClientSession,
     _validate_session_write_concern,
@@ -628,13 +629,21 @@ class _ClientBulk:
         session = _validate_session_write_concern(session, self.write_concern)
 
         if not self.write_concern.acknowledged:
-            with self.client._conn_for_writes(session, operation) as connection:
-                if connection.max_wire_version < 25:
-                    raise InvalidOperation(
-                        "MongoClient.bulk_write requires MongoDB server version 8.0+."
-                    )
-                self.execute_no_results(connection)
-                return ClientBulkWriteResult(None, False, False)  # type: ignore[arg-type]
+            # This path never reaches the command-span code that would otherwise
+            # fill in the namespace, so pass it here. A client bulk write always
+            # runs against admin and spans multiple namespaces, so it reports no
+            # collection.
+            operation_telemetry = _operation_telemetry_or_none(
+                self.client.options.tracing, operation, session, dbname="admin"
+            )
+            with operation_telemetry or contextlib.nullcontext():
+                with self.client._conn_for_writes(session, operation) as connection:
+                    if connection.max_wire_version < 25:
+                        raise InvalidOperation(
+                            "MongoClient.bulk_write requires MongoDB server version 8.0+."
+                        )
+                    self.execute_no_results(connection)
+            return ClientBulkWriteResult(None, False, False)  # type: ignore[arg-type]
 
         result = self.execute_command(session, operation)
         return ClientBulkWriteResult(

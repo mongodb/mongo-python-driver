@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 
 from bson.codec_options import _parse_codec_options
 from pymongo import common
+from pymongo._otel import _resolve_tracing_options
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListener, _EventListeners
@@ -248,9 +249,13 @@ class ClientOptions:
             if "enable_overload_retargeting" in options
             else options.get("enableoverloadretargeting", common.ENABLE_OVERLOAD_RETARGETING)
         )
-        self.__tracing = cast(
-            "_otel.TracingOptions",
-            options.get("tracing") or {"enabled": False, "query_text_max_length": None},
+        # Fold the OTEL_* environment variables in once, here. They are
+        # process-startup input, so nothing re-reads them per command.
+        self.__tracing = _resolve_tracing_options(
+            cast(
+                "_otel._UnresolvedTracingOptions",
+                options.get("tracing") or {"enabled": False, "query_text_max_length": None},
+            )
         )
 
     @property

@@ -23,7 +23,7 @@ import time
 import weakref
 from typing import Any, Optional
 
-from pymongo import _csot, _op_id
+from pymongo import _csot, _op_id, _otel
 from pymongo._asyncio_task import create_task
 from pymongo.lock import _create_lock
 
@@ -94,9 +94,12 @@ class AsyncPeriodicExecutor:
         self._skip_sleep = True
 
     async def _run(self) -> None:
-        # The CSOT and op id contextvars must be cleared inside the executor task before execution begins
+        # create_task froze a copy of the context this executor was opened in,
+        # which for the kill-cursors executor is the middle of the client's first
+        # operation. Clear it so every tick starts clean.
         _csot.reset_all()
         _op_id.reset()
+        _otel.reset_context()
         while not self._stopped:
             if self._task and self._task.cancelling():  # type: ignore[unused-ignore, attr-defined]
                 raise asyncio.CancelledError
@@ -232,6 +235,14 @@ class PeriodicExecutor:
             return False
 
     def _run(self) -> None:
+        # Same reason as AsyncPeriodicExecutor._run. Where
+        # sys.flags.thread_inherit_context is set, which is the default on
+        # free-threaded builds, a thread runs its target in a copy of the
+        # creating thread's context, so this thread would otherwise inherit the
+        # context the executor was opened in for the rest of the process's life.
+        _csot.reset_all()
+        _op_id.reset()
+        _otel.reset_context()
         while not self._should_stop():
             try:
                 if not self._target():

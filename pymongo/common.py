@@ -611,7 +611,7 @@ def validate_server_api_or_none(option: Any, value: Any) -> Optional[ServerApi]:
     return value
 
 
-def validate_tracing_or_none(option: str, value: Any) -> Optional[_otel.TracingOptions]:
+def validate_tracing_or_none(option: str, value: Any) -> Optional[_otel._UnresolvedTracingOptions]:
     """Validate the tracing keyword arg."""
     if value is None:
         return value

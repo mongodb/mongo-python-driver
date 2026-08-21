@@ -19,6 +19,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import copy
 from collections.abc import Iterator, Mapping, MutableMapping
 from itertools import islice
@@ -32,7 +33,7 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo._telemetry import _generate_op_id_or_none
+from pymongo._telemetry import _generate_op_id_or_none, _operation_telemetry_or_none
 from pymongo.asynchronous.client_session import AsyncClientSession, _validate_session_write_concern
 from pymongo.asynchronous.command_runner import (
     run_bulk_write_command,
@@ -616,8 +617,18 @@ class _AsyncBulk:
 
         client = self.collection.database.client
         if not write_concern.acknowledged:
-            async with await client._conn_for_writes(session, operation) as connection:
-                await self.execute_no_results(connection, generator, write_concern)
-                return None
+            # This path skips _retryable_write, which is what opens the
+            # operation span on the acknowledged path, so open one here.
+            operation_telemetry = _operation_telemetry_or_none(
+                client.options.tracing,
+                operation,
+                session,
+                dbname=self.collection.database.name,
+                collection=self.collection.name,
+            )
+            with operation_telemetry or contextlib.nullcontext():
+                async with await client._conn_for_writes(session, operation) as connection:
+                    await self.execute_no_results(connection, generator, write_concern)
+            return None
         else:
             return await self.execute_command(generator, write_concern, session, operation)

@@ -55,6 +55,7 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
     _sock_mgr: Any
     _session: Optional[Any]
     _killed: bool
+    _operation_telemetry: Optional[Any] = None
 
     @abstractmethod
     def _get_namespace(self) -> str:
@@ -115,6 +116,24 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
             address = None
         return cursor_id, address
 
+    def _end_operation_telemetry(self, exc: Optional[BaseException] = None) -> None:
+        """End the operation span currently attached to this cursor, exactly once.
+
+        No span is scoped to the cursor's lifetime: the span of the operation
+        that created the cursor ends as soon as that creating command
+        completes, whether it succeeded, failed, or the cursor was abandoned
+        part-way and is being closed by close()/__del__. Idempotent, so every
+        one of those paths can call it unconditionally.
+        """
+        telemetry = self._operation_telemetry
+        if telemetry is None:
+            return
+        self._operation_telemetry = None
+        if exc is None:
+            telemetry.succeeded()
+        else:
+            telemetry.failed(exc)
+
     def _die_no_lock(self) -> None:
         """Closes this cursor without acquiring a lock."""
         try:
@@ -123,6 +142,8 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
             # ___init__ did not run to completion (or at all).
             return
 
+        # Before the cleanup below, for the reason given in _die_lock.
+        self._end_operation_telemetry()
         cursor_id, address = self._prepare_to_die(already_killed)
         self._collection.database.client._cleanup_cursor_no_lock(
             cursor_id, address, self._sock_mgr, self._session
