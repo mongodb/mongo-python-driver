@@ -416,9 +416,9 @@ def _set_exception_attributes(span: Span, exc: BaseException) -> str:
 
     ``record_exception`` attaches these to an "exception" *event* only, but the
     spec requires them as span *attributes* too, for both command and operation
-    spans. Formatting mirrors ``record_exception``. Returns the computed
-    ``exception.type`` value so callers (e.g. ``error.type``) can reuse it
-    without recomputing.
+    spans. Formatting mirrors ``record_exception``.
+
+    :return: The ``exception.type`` value.
     """
     module = type(exc).__module__
     qualname = type(exc).__qualname__
@@ -445,12 +445,10 @@ def end_command_span_failure(
         exception_type = _set_exception_attributes(span, exc)
         code = failure.get("code")
         if code is not None:
-            # Server error: error.type mirrors db.response.status_code, per spec.
             span.set_attribute("db.response.status_code", str(code))
             span.set_attribute("error.type", str(code))
         else:
-            # Non-server error (e.g. network failure): fall back to the
-            # exception's class name, since there's no server error code to report.
+            # A network failure gets no server reply, so there is no code to report.
             span.set_attribute("error.type", exception_type)
         span.set_status(Status(StatusCode.ERROR, description=failure.get("errmsg")))
     finally:
