@@ -588,22 +588,12 @@ class MatchEvaluatorUtil:
 
     @staticmethod
     def _normalize_span_attribute(key: str, value: Any) -> Any:
-        """Adapt one OTel span attribute value to what the generic match
-        evaluator expects, since span attributes are plain Python primitives
-        rather than the BSON-decoded documents/events it normally matches
-        against.
+        """Adapt one span attribute value to what the generic match evaluator expects.
 
-        - Widen plain Python ints (excluding bools) to ``bson.Int64``: span
-          attributes carry no int32/int64 distinction, but the $$type matcher's
-          "long" alias maps to ``Int64`` specifically (see
-          BSON_TYPE_ALIAS_MAP), so a bare ``int`` (e.g. ``server.port``) would
-          otherwise fail a ``$$type: ["long", "string"]`` check. ``Int64`` is a
-          subclass of ``int``, so this is safe for "int" checks too.
-        - Reconstruct ``db.mongodb.lsid`` (formatted by pymongo/_otel.py as a
-          plain UUID string, per the OTel spec's attribute table) back into the
-          ``{"id": Binary(...)}`` document shape :meth:`_operation_sessionLsid`
-          compares against, that operator being designed for
-          command-monitoring-style raw command documents.
+        Span attributes are plain Python primitives, not the BSON-decoded documents
+        the evaluator matches against. Ints widen to ``Int64`` for the ``$$type``
+        "long" alias, and ``db.mongodb.lsid`` is rebuilt from its UUID string into
+        the document shape :meth:`_operation_sessionLsid` expects.
         """
         if key == "db.mongodb.lsid" and isinstance(value, str):
             try:
