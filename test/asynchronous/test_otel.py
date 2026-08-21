@@ -511,8 +511,8 @@ class TestOTelSpans(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_fail_point
     async def test_error_type_is_exception_class_name_for_connection_failure(self):
-        # A closed connection produces no server reply, so there is no error
-        # code to report: the spec falls back to the exception's class name.
+        # A closed connection produces no server reply, so error.type falls back
+        # to the exception's class name.
         client = await self.async_rs_or_single_client(tracing={"enabled": True}, retryReads=False)
         fail_command = {
             "configureFailPoint": "failCommand",
@@ -529,14 +529,12 @@ class TestOTelSpans(AsyncIntegrationTest):
         attrs = spans[0].attributes
         self.assertNotIn("db.response.status_code", attrs)
         self.assertEqual(attrs["error.type"], _qualified_name(type(ctx.exception)))
-        # error.type and exception.type carry the same value here, by design:
-        # one is the span attribute, the other the exception event's.
+        # error.type and exception.type carry the same value on this path.
         self.assertEqual(attrs["error.type"], attrs["exception.type"])
 
     @async_client_context.require_failCommand_blockConnection
     async def test_error_type_is_exception_class_name_for_network_timeout(self):
-        # socketTimeoutMS trips before the blocked command replies, so again
-        # there is no server error code and error.type is the class name.
+        # socketTimeoutMS trips before any reply, so again no server error code.
         client = await self.async_rs_or_single_client(
             tracing={"enabled": True}, socketTimeoutMS=200, retryReads=False
         )
