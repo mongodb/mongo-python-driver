@@ -248,14 +248,9 @@ class ChangeStream(Generic[_DocumentType]):
             result_processor=self._process_result,
             comment=self._comment,
         )
-        # Deliberately no operation_telemetry is attached to the resulting
-        # cursor here: a change stream can tail indefinitely, so an operation
-        # span covering its whole lifetime (initial query + every getMore,
-        # like other command cursors) would never end while it's watching.
-        # Leaving it unattached means each getMore instead gets its own
-        # short-lived sibling "getMore" operation span, less ideal nesting,
-        # but not a leaked/never-exported span. Do not "fix" this without
-        # addressing that tradeoff.
+        # No operation span is attached to the resulting cursor: a change stream
+        # can tail indefinitely, so a span covering its whole lifetime would
+        # never end. Each getMore gets its own sibling span instead.
         return self._client._retryable_read(
             cmd.get_cursor,
             self._target._read_preference_for(session),

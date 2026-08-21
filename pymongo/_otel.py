@@ -63,11 +63,8 @@ _CURRENT_OPERATION_NAME: ContextVar[Optional[str]] = ContextVar(
     "_CURRENT_OPERATION_NAME", default=None
 )
 
-# True while the driver is iterating a cursor of its own to build the return
-# value of one public API call (list_collection_names, index_information, ...).
-# Such a call gets a single operation span covering every getMore it sends,
-# whereas a cursor handed back to the caller gets a fresh operation span per
-# caller-driven getMore. See internal_cursor_iteration.
+# True while the driver is draining a cursor of its own to build one public API
+# call's return value. See internal_cursor_iteration.
 _INTERNAL_CURSOR_ITERATION: ContextVar[bool] = ContextVar(
     "_INTERNAL_CURSOR_ITERATION", default=False
 )
@@ -138,11 +135,9 @@ def _env_truthy(name: str) -> bool:
 def internal_cursor_iteration() -> Iterator[None]:
     """Mark the enclosing block as driver-internal cursor iteration.
 
-    Wrap the block in which a public API method creates a cursor and drains it
-    itself to build its return value. Everything the block sends, including
-    every getMore, then belongs to that method's one operation span, as the
-    OTel spec requires. Outside such a block the cursor is assumed to reach the
-    caller, whose iteration is a separate operation per getMore.
+    Everything the block sends, every getMore included, belongs to the enclosing
+    method's one operation span. Outside such a block a getMore is assumed to be
+    caller-driven and gets an operation span of its own.
     """
     token = _INTERNAL_CURSOR_ITERATION.set(True)
     try:
@@ -327,11 +322,8 @@ def start_command_span(
         return None
 
     collection = _extract_collection_name(command_name, dbname, cmd)
-    # A getMore's own command value is the id of the cursor being read, which is
-    # the value db.mongodb.cursor_id takes for a command operating on an
-    # existing cursor: the id sent, not whatever the reply comes back with. It
-    # has to be read here rather than from the reply because the reply is 0 once
-    # the cursor is exhausted, and the attribute is required even then.
+    # The id sent, not the reply's, which is 0 once the cursor is exhausted
+    # while the attribute is still required.
     sent_cursor_id = cmd.get(_GET_MORE) if command_name == _GET_MORE else None
     if not isinstance(sent_cursor_id, int):
         sent_cursor_id = None
@@ -394,9 +386,8 @@ def start_command_span(
 def _set_operation_cursor_id(cursor_id: int) -> None:
     """Set db.mongodb.cursor_id on the ambient operation span, if there is one.
 
-    Guarded on the operation-name contextvar for the same reason
-    ``start_command_span``'s backfill is: without it the "current span" could be
-    an unrelated span belonging to the host application.
+    Guarded on the operation-name contextvar, since the current span could
+    otherwise be an unrelated one belonging to the host application.
     """
     if _CURRENT_OPERATION_NAME.get() is None:
         return
@@ -412,13 +403,9 @@ def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
     try:
         cursor = reply.get("cursor")
         if isinstance(cursor, Mapping) and cursor.get("id"):
-            # Per the spec the attribute is omitted rather than set to 0, so a
-            # cursor-creating command that leaves no cursor open reports nothing. A
-            # getMore keeps the id it sent, which this does not overwrite with a 0.
+            # Omitted rather than set to 0, so a getMore keeps the id it sent.
             cursor_id = cursor["id"]
             span.set_attribute("db.mongodb.cursor_id", cursor_id)
-            # The operation span carries the same attribute: this reply's id for a
-            # cursor-creating command, or the already-set sent id for a getMore.
             _set_operation_cursor_id(cursor_id)
     finally:
         span.end()
@@ -506,9 +493,8 @@ def start_operation_span(
     whichever span is current, so a concurrent unrelated session cannot be
     captured.
 
-    ``cursor_id`` sets ``db.mongodb.cursor_id`` up front, for an operation
-    reading an existing cursor: the id is known before the command is built and
-    is needed even if the operation fails before any command span exists.
+    ``cursor_id`` sets ``db.mongodb.cursor_id`` up front, since a getMore knows
+    it before the command is built and needs it even if the operation fails.
 
     ``set_current=False`` leaves the span and the operation-name contextvar
     alone, for a caller that makes it current with ``use_operation_span``.

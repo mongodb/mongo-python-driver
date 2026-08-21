@@ -73,11 +73,8 @@ class TestOTelGetMoreSpans(IntegrationTest):
 
     @classmethod
     def tearDownClass(cls):
-        # See the matching comment in test/synchronous/unified_format.py's
-        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
-        # be removed from the shared process-wide TracerProvider, so without
-        # this shutdown() the exporter keeps accumulating every span from
-        # every client for the rest of the test run.
+        # The span processor can never be removed from the shared process-wide
+        # TracerProvider, so without this the exporter accumulates every span.
         cls.exporter.shutdown()
         super().tearDownClass()
 
@@ -113,13 +110,9 @@ class TestOTelGetMoreSpans(IntegrationTest):
     def ping_spans(self):
         """Return the spans belonging to a ``ping`` run through ``db.command()``.
 
-        For the tests that assert tracing produced *nothing*. Asserting the
-        exporter is empty would also catch spans no test asked for: a cursor
-        abandoned earlier in the class ends its operation span from a
-        finalizer, and on an interpreter that does not reference count, that
-        finalizer runs at an unpredictable point and lands in whichever test
-        happens to be running. Naming the ping's own spans keeps the assertion
-        about this client while staying immune to that.
+        For tests asserting tracing produced nothing. An empty-exporter assertion
+        would also catch spans a finalizer flushes at an unpredictable point on
+        interpreters without reference counting.
         """
         return [
             s
@@ -217,9 +210,8 @@ class TestOTelGetMoreSpans(IntegrationTest):
             self.assertIn(cmd_span.parent.span_id, parent_ids)
 
     def test_internal_iteration_keeps_getmores_in_one_operation_span(self):
-        # list_collection_names drains its own listCollections cursor to build
-        # its return value, so the whole call is one operation and its getMores
-        # get no operation spans of their own.
+        # list_collection_names drains its own cursor, so the whole call is one
+        # operation and its getMores get no operation spans of their own.
         client = self.rs_or_single_client(tracing={"enabled": True})
         db = client.pymongo_test_internal_iteration
         for i in range(6):
@@ -242,14 +234,9 @@ class TestOTelGetMoreSpans(IntegrationTest):
             self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
 
     def test_single_batch_aggregate_ends_span_promptly_not_at_gc(self):
-        # A command cursor whose first batch exhausts it is marked _killed in
-        # __init__ without ever calling close(); no getMore is sent, so
-        # _refresh()/_die_lock() never run. Without explicit attachment its
-        # operation span would only be ended by __del__, i.e. whenever GC
-        # happens to run (or never, if the cursor is retained; Important #2).
-        # Assert the span is already ended while a reference to the
-        # cursor is still held, proving it ended at construction rather than
-        # waiting on GC.
+        # A cursor exhausted by its first batch never calls close(), so without
+        # explicit attachment only __del__ would end its span. Assert the span is
+        # already ended while a reference to the cursor is still held.
         client = self.rs_or_single_client(tracing={"enabled": True})
         coll = client.pymongo_test.agg_single_batch
         coll.drop()
@@ -270,9 +257,8 @@ class TestOTelGetMoreSpans(IntegrationTest):
         self.assertEqual(len(agg_op_spans), 1, [s.name for s in finished])
         self.assertIsNotNone(agg_op_spans[0].end_time)
 
-        # The cursor reference is kept alive through this assertion: if
-        # __del__ were the only thing ending the span, get_finished_spans()
-        # above would not have included it yet.
+        # Keeps the cursor alive: were __del__ ending the span, the assertion
+        # above would not have seen it yet.
         self.assertIsNotNone(cursor)
 
     def test_abandoned_cursor_still_ends_operation_span(self):
@@ -304,19 +290,15 @@ class TestOTelGetMoreSpans(IntegrationTest):
         self.exporter.clear()
 
         cursor = coll.find({}, batch_size=2)
-        # Drain exactly the first batch (2 docs) without triggering a getMore
-        # yet, so the cursor id read here is the one `find` returned - the id
-        # about to be sent in the upcoming getMore - and not whatever that
-        # getMore's reply comes back with.
+        # Drain the first batch without triggering a getMore, so the id read here
+        # is the one about to be sent rather than the one its reply returns.
         cursor.next()
         cursor.next()
         sent_cursor_id = cursor.cursor_id
         self.assertIsNotNone(sent_cursor_id)
         self.assertNotEqual(sent_cursor_id, 0)
 
-        # Draining the last document sends exactly one getMore, which
-        # exhausts the cursor: the server's reply to that getMore returns a
-        # cursor id of 0.
+        # The last document sends one getMore, whose reply returns a cursor id of 0.
         remaining = cursor.to_list()
         self.assertEqual(len(remaining), 1)
         self.assertEqual(cursor.cursor_id, 0)
@@ -327,9 +309,7 @@ class TestOTelGetMoreSpans(IntegrationTest):
         getmore_cmd_spans = self.command_spans(finished, "getMore")
         self.assertEqual(len(getmore_cmd_spans), 1, [s.name for s in finished])
 
-        # Both the getMore operation span and the getMore command span must
-        # carry the id the driver sent, never the 0 the server's reply
-        # returned.
+        # Both spans must carry the id sent, never the 0 the reply returned.
         for span in (getmore_op_spans[0], getmore_cmd_spans[0]):
             self.assertIn("db.mongodb.cursor_id", span.attributes)
             self.assertNotEqual(span.attributes["db.mongodb.cursor_id"], 0)
@@ -375,11 +355,9 @@ class TestOTelGetMoreSpans(IntegrationTest):
     def test_getmore_over_a_command_namespace_omits_the_collection(self):
         """A cursor opened by a command targets no user collection.
 
-        listCollections runs against the "<db>.$cmd.listCollections" namespace,
-        and its getMore carries that in the command's "collection" field. That
-        is not a user collection, so per the spec db.collection.name is omitted
-        and the span is named "getMore <db>" rather than
-        "getMore <db>.$cmd.listCollections".
+        listCollections runs against "<db>.$cmd.listCollections", which its
+        getMore carries as the command's collection. That names no user
+        collection, so db.collection.name is omitted from the span.
         """
         client = self.rs_or_single_client(tracing={"enabled": True})
         db = client.pymongo_test_cmd_ns
@@ -399,9 +377,8 @@ class TestOTelGetMoreSpans(IntegrationTest):
 
         for span in getmore_op_spans + getmore_cmd_spans:
             self.assertNotIn("db.collection.name", span.attributes)
-        # The operation span is named "<operation> <db>" when no collection is
-        # targeted; the command span is named after the command alone, and
-        # carries the same "<command> <db>" form in db.query.summary.
+        # With no collection targeted the operation span is named "<operation>
+        # <db>", while the command span is named after the command alone.
         for span in getmore_op_spans:
             self.assertEqual(span.name, f"getMore {db.name}")
             self.assertEqual(span.attributes["db.operation.summary"], f"getMore {db.name}")
@@ -413,16 +390,10 @@ class TestOTelGetMoreSpans(IntegrationTest):
 
     @client_context.require_version_min(8, 0)
     def test_client_bulk_write_results_cursor_getmores_nest_under_bulk_write(self):
-        # A successful InsertOne's verbose result doc is tiny (~{"ok": 1, "idx":
-        # i, "n": 1}) regardless of the inserted document's size, and the driver
-        # never sends more than maxWriteBatchSize (100_000 by default) ops in one
-        # bulkWrite command, so plain successful inserts can never make the
-        # results cursor's first batch exceed the 16MB per-batch limit, no
-        # matter how many operations are given. Duplicate-key write errors,
-        # whose result docs embed the offending key (here padded to 3000 bytes),
-        # blow past that limit at a much smaller, fast-running operation count
-        # while still exercising the exact same code path (a real
-        # CommandCursor built and iterated by _process_results_cursor).
+        # Successful inserts have tiny result docs, so no operation count within
+        # maxWriteBatchSize overflows the first batch and forces a getMore.
+        # Duplicate-key errors embed the offending key, so a padded one overflows
+        # at a small, fast operation count on the same code path.
         client = self.rs_or_single_client(tracing={"enabled": True})
         coll = client.pymongo_test.bulk_results_cursor
         coll.drop()
@@ -494,10 +465,8 @@ class TestOTelGetMoreSpans(IntegrationTest):
     @client_context.require_version_min(4, 2, 0)
     @client_context.require_change_streams
     def test_change_stream_collection_level_operation_span_has_full_namespace(self):
-        # A collection-level change stream's operation span carries both the
-        # database and the collection, derived from the aggregate command by
-        # _otel's lazy backfill. The database- and cluster-level cases below
-        # must omit db.collection.name, since neither targets one collection.
+        # A collection-level change stream's span carries both the database and
+        # the collection; the broader cases below must omit db.collection.name.
         client = self.rs_or_single_client(tracing={"enabled": True})
         db = client.pymongo_test
         coll = db.test_otel_change_stream_coll
