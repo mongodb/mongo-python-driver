@@ -564,8 +564,7 @@ class ClientSession:
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
         # The one "transaction" span shared across every retry of a single
-        # with_transaction() call, or None outside of it, where
-        # start/commit/abort_transaction each manage their own span.
+        # with_transaction() call; the direct API manages its own span instead.
         self._with_transaction_span: Optional[Any] = None
         # Is this session attached to a cursor?
         self._attached_to_cursor = False
@@ -775,17 +774,14 @@ class ClientSession:
             https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback
         """
         if self._with_transaction_span is not None:
-            # Raise before any span bookkeeping, so a nested call cannot
-            # clobber and leak the outer call's span.
+            # Before any span bookkeeping, so a nested call cannot leak the outer span.
             raise InvalidOperation(
                 "Cannot call with_transaction() while a previous with_transaction() "
                 "call on this session has not returned; sessions do not support "
                 "nested or concurrent with_transaction() calls"
             )
-        # One span for the whole call: start_transaction reuses it and
-        # commit/abort leave it open, so a retried with_transaction() yields a
-        # single span. Skipped when a direct-API transaction is already active,
-        # since start_transaction() raises below and the span would be empty.
+        # Skipped when a direct-API transaction is already active, since
+        # start_transaction() raises below and the span would be empty.
         tracing_options = self._client.options.tracing
         if _otel._is_tracing_enabled(tracing_options) and not self.in_transaction:
             self._with_transaction_span = _otel.start_transaction_span(tracing_options)
@@ -796,8 +792,7 @@ class ClientSession:
         finally:
             if self._with_transaction_span is not None:
                 _otel.end_transaction_span(self._with_transaction_span)
-                # Only clear the span this call owns; a concurrent direct-API
-                # transaction's span belongs to that transaction.
+                # A direct-API transaction's span belongs to that transaction.
                 if self._transaction.span is self._with_transaction_span:
                     self._transaction.span = None
                 self._with_transaction_span = None
@@ -905,8 +900,7 @@ class ClientSession:
         self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
         if self._with_transaction_span is not None:
-            # Reuse with_transaction's shared span so a retried call still
-            # produces exactly one "transaction" span.
+            # Reuse it so a retried with_transaction() still produces one span.
             self._transaction.span = self._with_transaction_span
         elif _otel._is_tracing_enabled(self._transaction.client.options.tracing):
             self._transaction.span = _otel.start_transaction_span(
@@ -918,9 +912,8 @@ class ClientSession:
     def _end_own_transaction_span(self) -> None:
         """End and clear the transaction span, unless with_transaction() owns it.
 
-        A no-op while ``_with_transaction_span`` is set: that span is shared
-        across every retry, so ending it here would kill it on the first failed
-        attempt.
+        That span is shared across retries, so ending it here would kill it on
+        the first failed attempt.
         """
         if self._transaction.span is not None and self._with_transaction_span is None:
             _otel.end_transaction_span(self._transaction.span)
@@ -946,9 +939,8 @@ class ClientSession:
             # We're explicitly retrying the commit, move the state back to
             # "in progress" so that in_transaction returns true.
             self._transaction.state = _TxnState.IN_PROGRESS
-            # A direct-API retry needs a fresh span: the prior attempt's
-            # finally block already ended and cleared it. with_transaction
-            # pins its shared span instead, see _end_own_transaction_span.
+            # The prior attempt's finally block already ended and cleared the
+            # span, so an explicit commit retry needs a fresh one.
             if self._transaction.span is None and _otel._is_tracing_enabled(
                 self._transaction.client.options.tracing
             ):
