@@ -161,6 +161,13 @@ async def _connect_kms(
             f"socket.socket, not {type(sock)}; consider HTTPProxyKMSConnect."
         )
     # wrap_socket refuses a non-blocking socket, so normalize the mode here.
+    try:
+        sock.getpeername()
+    except OSError:
+        _close_rejected_kms_socket(sock)
+        raise ConfigurationError(
+            "kms_connect_callback must return an already connected socket."
+        ) from None
     sock.settimeout(opts.socket_timeout)
     try:
         return await _async_wrap_socket_tls(sock, address, opts)
@@ -233,18 +240,19 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 False,  # disable_ocsp_endpoint_check
                 _IS_SYNC,
             )
-        # CSOT: set timeout for socket creation.
+        address = parse_host(endpoint, _HTTPS_PORT)
+        sleep_u = kms_context.usleep
+        if sleep_u:
+            sleep_sec = float(sleep_u) / 1e6
+            await asyncio.sleep(sleep_sec)
+        # CSOT: set timeout for socket creation. After the retry backoff above,
+        # so the budget reflects what the sleep consumed.
         connect_timeout = max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
         opts = PoolOptions(
             connect_timeout=connect_timeout,
             socket_timeout=connect_timeout,
             ssl_context=ctx,
         )
-        address = parse_host(endpoint, _HTTPS_PORT)
-        sleep_u = kms_context.usleep
-        if sleep_u:
-            sleep_sec = float(sleep_u) / 1e6
-            await asyncio.sleep(sleep_sec)
         try:
             conn = await _connect_kms(
                 address,

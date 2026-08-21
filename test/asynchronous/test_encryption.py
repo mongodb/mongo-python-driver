@@ -31,6 +31,7 @@ import ssl
 import sys
 import textwrap
 import threading
+import time
 import traceback
 import uuid
 import warnings
@@ -390,6 +391,7 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
         self.addCleanup(listener.close)
 
         def stub_proxy():
+            conn = None
             try:
                 conn, _ = listener.accept()
                 tls = server_ctx.wrap_socket(conn, server_side=True)
@@ -404,9 +406,11 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
                 # TLS server would.
                 tls.sendall(b"echo:" + tls.recv(64))
                 tls.close()
-                conn.close()
             except OSError:
                 pass
+            finally:
+                if conn is not None:
+                    conn.close()
 
         threading.Thread(target=stub_proxy, daemon=True).start()
 
@@ -484,6 +488,79 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
         self.addCleanup(sock.close)
         sock.settimeout(10)
         self.assertEqual(sock.recv(64), b"early-bytes")
+
+    async def test_unconnected_socket_from_callback_is_rejected(self):
+        # The contract says connected; an unconnected socket would otherwise
+        # fail later as a transient error and be retried.
+        bare = socket.socket()
+        self.addCleanup(bare.close)
+
+        async def callback(context):
+            return bare
+
+        with self.assertRaisesRegex(ConfigurationError, "already connected"):
+            await _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+
+    async def test_ipv6_host_is_bracketed_in_connect(self):
+        accepted = []
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def stub_proxy():
+            try:
+                conn, _ = listener.accept()
+                accepted.append(conn.recv(4096))
+                conn.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                conn.close()
+            except OSError:
+                pass
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="::1", port=443, timeout=10)
+        sock = await AsyncHTTPProxyKMSConnect(host, port)(context)
+        self.addCleanup(sock.close)
+        self.assertEqual(accepted[0].split(b"\r\n")[0], b"CONNECT [::1]:443 HTTP/1.1")
+
+    async def test_oversized_connect_response_is_rejected(self):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def stub_proxy():
+            conn = None
+            try:
+                conn, _ = listener.accept()
+                conn.recv(4096)
+                # Never sends the terminator.
+                while True:
+                    conn.sendall(b"x" * 1024)
+            except OSError:
+                pass
+            finally:
+                if conn is not None:
+                    conn.close()
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+        with self.assertRaisesRegex(OSError, "oversized CONNECT response"):
+            await AsyncHTTPProxyKMSConnect(host, port)(context)
+
+    async def test_remaining_raises_once_the_deadline_passes(self):
+        from pymongo.encryption_options import _remaining
+
+        self.assertIsNone(_remaining(None))
+        left = _remaining(time.monotonic() + 5)
+        assert left is not None
+        self.assertGreater(left, 0)
+        with self.assertRaises(socket.timeout):
+            _remaining(time.monotonic() - 1)
 
     async def test_network_error_from_callback_propagates(self):
         async def callback(context):

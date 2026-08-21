@@ -24,6 +24,7 @@ import functools
 import socket
 import ssl
 import threading
+import time
 from collections.abc import Awaitable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict
@@ -94,6 +95,20 @@ class KMSConnectContext:
 AsyncKMSConnectCallback = Callable[[KMSConnectContext], Awaitable[socket.socket]]
 KMSConnectCallback = Callable[[KMSConnectContext], socket.socket]
 
+# Largest CONNECT response header accepted, so a proxy that never sends the
+# terminator cannot grow the buffer without bound.
+_MAX_CONNECT_HEADER = 8192
+
+
+def _remaining(deadline: Optional[float]) -> Optional[float]:
+    """Seconds left before ``deadline``, or None when there is no deadline."""
+    if deadline is None:
+        return None
+    left = deadline - time.monotonic()
+    if left <= 0:
+        raise socket.timeout("timed out connecting through the proxy")
+    return left
+
 
 class HTTPProxyKMSConnect:
     """Route KMS connections through an HTTP proxy, for the synchronous API.
@@ -133,18 +148,22 @@ class HTTPProxyKMSConnect:
         self.ssl_context = ssl_context
 
     def _tunnel(self, sock: socket.socket, context: KMSConnectContext) -> None:
-        target = f"{context.host}:{context.port}"
+        # An IPv6 literal needs brackets to be a valid HTTP authority.
+        host = f"[{context.host}]" if ":" in context.host else context.host
+        target = f"{host}:{context.port}"
         sock.sendall(f"CONNECT {target} HTTP/1.1\r\nHost: {target}\r\n\r\n".encode())
         # A byte at a time: a bulk read could consume tunnelled bytes sent in
         # the same segment as the response, and the driver reads those from
         # this same socket.
-        response = b""
+        response = bytearray()
         while not response.endswith(b"\r\n\r\n"):
             chunk = sock.recv(1)
             if not chunk:
                 raise OSError(f"proxy closed the connection while tunneling to {target}")
             response += chunk
-        status = response.split(b"\r\n", 1)[0]
+            if len(response) > _MAX_CONNECT_HEADER:
+                raise OSError(f"proxy sent an oversized CONNECT response for {target}")
+        status = bytes(response).split(b"\r\n", 1)[0]
         if not status.startswith(b"HTTP/1.1 200"):
             raise OSError(f"proxy refused CONNECT to {target}: {status!r}")
 
@@ -180,10 +199,15 @@ class HTTPProxyKMSConnect:
         return driver_side
 
     def __call__(self, context: KMSConnectContext) -> socket.socket:
-        sock = socket.create_connection((self.host, self.port), timeout=context.timeout)
+        # One deadline for all three phases; a timeout per phase would let the
+        # total run to several times the caller's budget.
+        deadline = None if context.timeout is None else time.monotonic() + context.timeout
+        sock = socket.create_connection((self.host, self.port), timeout=_remaining(deadline))
         try:
             if self.ssl_context is not None:
+                sock.settimeout(_remaining(deadline))
                 sock = self.ssl_context.wrap_socket(sock, server_hostname=self.host)
+            sock.settimeout(_remaining(deadline))
             self._tunnel(sock, context)
         except BaseException:
             sock.close()
