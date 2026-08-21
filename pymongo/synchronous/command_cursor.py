@@ -246,10 +246,8 @@ class CommandCursor(_CursorBase[_DocumentType]):
             if not own_span:
                 self._send_message(getmore)
             else:
-                # _send_message ends the span itself on every failure path, and
-                # an exhausted cursor's close() ends it on the way out; both are
-                # idempotent, so only a successful send leaving the cursor open
-                # is left to handle here.
+                # _send_message ends the span on every failure path and close()
+                # ends it once exhausted, leaving only this case.
                 try:
                     self._send_message(getmore)
                 except BaseException as exc:
