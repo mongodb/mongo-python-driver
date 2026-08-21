@@ -290,10 +290,13 @@ class _OperationTelemetry:
         collection: Optional[str] = None,
         set_current: bool = True,
     ) -> None:
+        parent_span = None
+        if session is not None and session.in_transaction:
+            parent_span = session._transaction.span
         self.handle = _otel.start_operation_span(
             tracing_options,
             _otel._build_operation_name(operation, is_run_command),
-            None,
+            parent_span,
             dbname=dbname,
             collection=collection,
             set_current=set_current,

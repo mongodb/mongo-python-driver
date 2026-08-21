@@ -156,7 +156,7 @@ from typing import (
 from bson.binary import Binary
 from bson.int64 import Int64
 from bson.timestamp import Timestamp
-from pymongo import _csot
+from pymongo import _csot, _otel
 from pymongo.asynchronous.cursor_base import _ConnectionManager
 from pymongo.errors import (
     ConfigurationError,
@@ -427,6 +427,7 @@ class _Transaction:
         self.attempt = 0
         self.client = client
         self.has_completed_command = False
+        self.span: Optional[Any] = None
 
     def active(self) -> bool:
         return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
@@ -467,6 +468,7 @@ class _Transaction:
         self.recovery_token = None
         self.attempt = 0
         self.has_completed_command = False
+        self.span = None
 
     def __del__(self) -> None:
         if self.conn_mgr:
@@ -562,6 +564,9 @@ class AsyncClientSession:
         # Is this an implicitly created session?
         self._implicit = implicit
         self._transaction = _Transaction(None, client)
+        # The one "transaction" span shared across every retry of a single
+        # with_transaction() call; the direct API manages its own span instead.
+        self._with_transaction_span: Optional[Any] = None
         # Is this session attached to a cursor?
         self._attached_to_cursor = False
         # Should we leave the session alive when the cursor is closed?
@@ -769,6 +774,39 @@ class AsyncClientSession:
         .. _transactions specification:
             https://github.com/mongodb/specifications/blob/master/source/transactions-convenient-api/transactions-convenient-api.md#handling-errors-inside-the-callback
         """
+        if self._with_transaction_span is not None:
+            # Before any span bookkeeping, so a nested call cannot leak the outer span.
+            raise InvalidOperation(
+                "Cannot call with_transaction() while a previous with_transaction() "
+                "call on this session has not returned; sessions do not support "
+                "nested or concurrent with_transaction() calls"
+            )
+        # Skipped when a direct-API transaction is already active, since
+        # start_transaction() raises below and the span would be empty.
+        tracing_options = self._client.options.tracing
+        if _otel._is_tracing_enabled(tracing_options) and not self.in_transaction:
+            self._with_transaction_span = _otel.start_transaction_span(tracing_options)
+        try:
+            return await self._with_transaction_retry_loop(
+                callback, read_concern, write_concern, read_preference, max_commit_time_ms
+            )
+        finally:
+            if self._with_transaction_span is not None:
+                _otel.end_transaction_span(self._with_transaction_span)
+                # A direct-API transaction's span belongs to that transaction.
+                if self._transaction.span is self._with_transaction_span:
+                    self._transaction.span = None
+                self._with_transaction_span = None
+
+    async def _with_transaction_retry_loop(
+        self,
+        callback: Callable[[AsyncClientSession], Awaitable[_T]],
+        read_concern: Optional[ReadConcern],
+        write_concern: Optional[WriteConcern],
+        read_preference: Optional[_ServerMode],
+        max_commit_time_ms: Optional[int],
+    ) -> _T:
+        """Run with_transaction's retry loop; see with_transaction."""
         start_time = time.monotonic()
         retry = 0
         last_error: Optional[BaseException] = None
@@ -864,8 +902,25 @@ class AsyncClientSession:
         )
         await self._transaction.reset()
         self._transaction.state = _TxnState.STARTING
+        if self._with_transaction_span is not None:
+            # Reuse it so a retried with_transaction() still produces one span.
+            self._transaction.span = self._with_transaction_span
+        elif _otel._is_tracing_enabled(self._transaction.client.options.tracing):
+            self._transaction.span = _otel.start_transaction_span(
+                self._transaction.client.options.tracing
+            )
         self._start_retryable_write()
         return _TransactionContext(self)
+
+    def _end_own_transaction_span(self) -> None:
+        """End and clear the transaction span, unless with_transaction() owns it.
+
+        That span is shared across retries, so ending it here would kill it on
+        the first failed attempt.
+        """
+        if self._transaction.span is not None and self._with_transaction_span is None:
+            _otel.end_transaction_span(self._transaction.span)
+            self._transaction.span = None
 
     async def commit_transaction(self) -> None:
         """Commit a multi-statement transaction.
@@ -879,6 +934,7 @@ class AsyncClientSession:
         elif state in (_TxnState.STARTING, _TxnState.COMMITTED_EMPTY):
             # Server transaction was never started, no need to send a command.
             self._transaction.state = _TxnState.COMMITTED_EMPTY
+            self._end_own_transaction_span()
             return
         elif state is _TxnState.ABORTED:
             raise InvalidOperation("Cannot call commitTransaction after calling abortTransaction")
@@ -886,6 +942,14 @@ class AsyncClientSession:
             # We're explicitly retrying the commit, move the state back to
             # "in progress" so that in_transaction returns true.
             self._transaction.state = _TxnState.IN_PROGRESS
+            # The prior attempt's finally block already ended and cleared the
+            # span, so an explicit commit retry needs a fresh one.
+            if self._transaction.span is None and _otel._is_tracing_enabled(
+                self._transaction.client.options.tracing
+            ):
+                self._transaction.span = _otel.start_transaction_span(
+                    self._transaction.client.options.tracing
+                )
 
         try:
             await self._finish_transaction_with_retry("commitTransaction")
@@ -909,6 +973,7 @@ class AsyncClientSession:
             _reraise_with_unknown_commit(exc)
         finally:
             self._transaction.state = _TxnState.COMMITTED
+            self._end_own_transaction_span()
 
     async def abort_transaction(self) -> None:
         """Abort a multi-statement transaction.
@@ -923,6 +988,7 @@ class AsyncClientSession:
         elif state is _TxnState.STARTING:
             # Server transaction was never started, no need to send a command.
             self._transaction.state = _TxnState.ABORTED
+            self._end_own_transaction_span()
             return
         elif state is _TxnState.ABORTED:
             raise InvalidOperation("Cannot call abortTransaction twice")
@@ -936,6 +1002,7 @@ class AsyncClientSession:
             pass
         finally:
             self._transaction.state = _TxnState.ABORTED
+            self._end_own_transaction_span()
             await self._unpin()
 
     async def _finish_transaction_with_retry(self, command_name: str) -> dict[str, Any]:
