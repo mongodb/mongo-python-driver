@@ -404,6 +404,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
                 # TLS server would.
                 tls.sendall(b"echo:" + tls.recv(64))
                 tls.close()
+                conn.close()
             except OSError:
                 pass
 
@@ -457,6 +458,32 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
         with self.assertRaisesRegex(OSError, "proxy closed the connection"):
             HTTPProxyKMSConnect(host, port)(context)
+
+    def test_tunnel_keeps_bytes_sent_with_the_connect_reply(self):
+        # A proxy may coalesce its 200 with tunnelled bytes; reading past the
+        # header would silently drop them.
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def stub_proxy():
+            try:
+                conn, _ = listener.accept()
+                conn.recv(4096)
+                conn.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\nearly-bytes")
+                conn.close()
+            except OSError:
+                pass
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+        sock = HTTPProxyKMSConnect(host, port)(context)
+        self.addCleanup(sock.close)
+        sock.settimeout(10)
+        self.assertEqual(sock.recv(64), b"early-bytes")
 
     def test_network_error_from_callback_propagates(self):
         def callback(context):

@@ -135,9 +135,12 @@ class HTTPProxyKMSConnect:
     def _tunnel(self, sock: socket.socket, context: KMSConnectContext) -> None:
         target = f"{context.host}:{context.port}"
         sock.sendall(f"CONNECT {target} HTTP/1.1\r\nHost: {target}\r\n\r\n".encode())
+        # A byte at a time: a bulk read could consume tunnelled bytes sent in
+        # the same segment as the response, and the driver reads those from
+        # this same socket.
         response = b""
-        while b"\r\n\r\n" not in response:
-            chunk = sock.recv(4096)
+        while not response.endswith(b"\r\n\r\n"):
+            chunk = sock.recv(1)
             if not chunk:
                 raise OSError(f"proxy closed the connection while tunneling to {target}")
             response += chunk
