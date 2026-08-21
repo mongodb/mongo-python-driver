@@ -24,16 +24,16 @@ from bson.binary import JAVA_LEGACY, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.test_raw_bson_shared import SHERLOCK_BSON
+from test.test_raw_bson_shared import TEST_RAW_BSON
 
 _IS_SYNC = False
 
 
 class TestRawBSONDocument(AsyncIntegrationTest):
     # {'_id': ObjectId('556df68b6e32ab21a95e0785'),
-    #  'name': 'Sherlock',
-    #  'addresses': [{'street': 'Baker Street'}]}
-    bson_string = SHERLOCK_BSON
+    #  'name': 'Bill',
+    #  'addresses': [{'street': 'Elm Street'}]}
+    bson_string = TEST_RAW_BSON
     document = RawBSONDocument(bson_string)
 
     async def asyncTearDown(self):

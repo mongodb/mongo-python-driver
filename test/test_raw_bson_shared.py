@@ -32,12 +32,12 @@ from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from bson.son import SON
 
 # {'_id': ObjectId('556df68b6e32ab21a95e0785'),
-#  'name': 'Sherlock',
-#  'addresses': [{'street': 'Baker Street'}]}
-SHERLOCK_BSON = (
-    b"Z\x00\x00\x00\x07_id\x00Um\xf6\x8bn2\xab!\xa9^\x07\x85\x02name\x00\t"
-    b"\x00\x00\x00Sherlock\x00\x04addresses\x00&\x00\x00\x00\x030\x00\x1e"
-    b"\x00\x00\x00\x02street\x00\r\x00\x00\x00Baker Street\x00\x00\x00\x00"
+#  'name': 'Bill',
+#  'addresses': [{'street': 'Elm Street'}]}
+TEST_RAW_BSON = (
+    b"T\x00\x00\x00\x07_id\x00Um\xf6\x8bn2\xab!\xa9^\x07\x85\x02name\x00\x05"
+    b"\x00\x00\x00Bill\x00\x04addresses\x00$\x00\x00\x00\x030\x00\x1c"
+    b"\x00\x00\x00\x02street\x00\x0b\x00\x00\x00Elm Street\x00\x00\x00\x00"
 )
 
 
@@ -61,22 +61,19 @@ class _SlottedRawBSONDocument(RawBSONDocument):
 
 
 class TestRawBSONDocument(UnitTest):
-    bson_string = SHERLOCK_BSON
+    bson_string = TEST_RAW_BSON
     document = RawBSONDocument(bson_string)
 
     def test_decode(self):
-        self.assertEqual("Sherlock", self.document["name"])
+        self.assertEqual("Bill", self.document["name"])
         first_address = self.document["addresses"][0]
         self.assertIsInstance(first_address, RawBSONDocument)
-        self.assertEqual("Baker Street", first_address["street"])
+        self.assertEqual("Elm Street", first_address["street"])
 
     def test_raw(self):
         self.assertEqual(self.bson_string, self.document.raw)
 
     def test_large_subdocument_zero_copy_view(self):
-        # Subdocuments at least 4KiB large are exposed as read-only
-        # memoryview slices of the parent buffer instead of bytes copies
-        # (PYTHON-3419).
         doc = RawBSONDocument(encode({"small": {"n": 1}, "big": {"payload": "x" * 8000}}))
         self.assertIsInstance(doc["small"].raw, bytes)
         big = doc["big"]
@@ -86,9 +83,6 @@ class TestRawBSONDocument(UnitTest):
         self.assertEqual("x" * 8000, big["payload"])
 
     def test_large_subdocument_view_keeps_buffer_alive(self):
-        # The view must hold its own reference to the backing buffer: with
-        # every other reference dropped and the heap churned, the
-        # subdocument must still read valid memory.
         expected = encode({"payload": "z" * 8000, "n": 42})
         subdoc = RawBSONDocument(encode({"big": {"payload": "z" * 8000, "n": 42}}))["big"]
         gc.collect()
@@ -98,16 +92,11 @@ class TestRawBSONDocument(UnitTest):
         del churn
 
     def test_decode_whole_buffer_passthrough(self):
-        # A document spanning the entire buffer is passed through as-is
-        # regardless of size: no copy and no view.
         data = encode({"payload": "x" * 8000})
         doc = decode(data, DEFAULT_RAW_BSON_OPTIONS)
         self.assertIs(data, doc.raw)
 
     def test_decode_all_zero_copy_views(self):
-        # Large documents in a multi-document stream are views of the
-        # stream buffer; a lone document spanning the whole buffer is
-        # passed through as-is.
         one = encode({"payload": "w" * 8000})
         docs = decode_all(one * 3, DEFAULT_RAW_BSON_OPTIONS)
         self.assertEqual(3, len(docs))
@@ -119,9 +108,6 @@ class TestRawBSONDocument(UnitTest):
         self.assertIsInstance(single.raw, bytes)
 
     def test_mutable_buffer_input_copied(self):
-        # Zero-copy views are only taken of immutable buffers: documents
-        # decoded from a bytearray are bytes copies regardless of size, so
-        # later mutations of the buffer can't change the documents.
         one = encode({"payload": "v" * 8000})
         buf = bytearray(one * 2)
         docs = decode_all(buf, DEFAULT_RAW_BSON_OPTIONS)
@@ -154,9 +140,6 @@ class TestRawBSONDocument(UnitTest):
             encode({"sub": doc})
 
     def test_pickle_view_backed_document(self):
-        # Pickling serializes the raw BSON as bytes and drops the inflation
-        # cache, so documents holding memoryview slices stay picklable
-        # (PYTHON-3419).
         doc = RawBSONDocument(encode({"big": {"payload": "x" * 8000}}))
         subdoc = doc["big"]
         self.assertIsInstance(subdoc.raw, memoryview)
@@ -166,9 +149,7 @@ class TestRawBSONDocument(UnitTest):
             self.assertEqual(original, unpickled)
             self.assertEqual(dict(original.items()), dict(unpickled.items()))
 
-    def test_decode_mutable_buffer_not_aliased(self):
-        # Decoding a mutable buffer must not hand the caller's live buffer
-        # to small documents: later mutations must not change the document.
+    def test_decode_mutable_buffer_copied(self):
         for decode_one in (
             lambda buf: decode(buf, DEFAULT_RAW_BSON_OPTIONS),
             lambda buf: decode_all(buf, DEFAULT_RAW_BSON_OPTIONS)[0],
@@ -179,10 +160,7 @@ class TestRawBSONDocument(UnitTest):
             buf[-5] = 99
             self.assertEqual(1, doc["a"])
 
-    def test_buffer_input_not_aliased(self):
-        # Buffer-protocol inputs other than bytes/bytearray are copied up
-        # front, so large document views are slices of the private copy and
-        # cannot observe later mutations of the caller's buffer.
+    def test_buffer_input_copied(self):
         big = encode({"payload": "x" * 8000})
         buf = bytearray(big + encode({"a": 1}))
         docs = decode_all(memoryview(buf), DEFAULT_RAW_BSON_OPTIONS)
@@ -192,8 +170,6 @@ class TestRawBSONDocument(UnitTest):
         self.assertEqual(big, bytes(big_raw))
 
     def test_pickle_deepcopy_subclass(self):
-        # Subclasses with different __init__ signatures and extra state
-        # (slots or instance dict) must round-trip through pickle/deepcopy.
         raw_bytes = encode({"payload": "x" * 8000})
         for cls in (_TaggedRawBSONDocument, _SlottedRawBSONDocument):
             original = cls(raw_bytes, "tag-value")
@@ -205,16 +181,12 @@ class TestRawBSONDocument(UnitTest):
                 self.assertIsInstance(duplicate.raw, bytes)
 
     def test_repr_view_backed_document(self):
-        # repr must show the document's bytes, not an opaque
-        # "<memory at 0x...>" placeholder.
         subdoc = RawBSONDocument(encode({"big": {"payload": "x" * 8000}}))["big"]
         self.assertIsInstance(subdoc.raw, memoryview)
         self.assertIn(repr(bytes(subdoc.raw)), repr(subdoc))
 
     @unittest.skipUnless(has_c(), "tests the C extension")
     def test_element_to_dict_error_does_not_pin_buffer(self):
-        # A decode error after a zero-copy view has been created must not
-        # leak the view (which pins the entire source buffer).
         from bson import _cbson  # type:ignore[attr-defined]
 
         # An array whose first element is a large subdocument (creates a
