@@ -32,12 +32,12 @@ from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from bson.son import SON
 
 # {'_id': ObjectId('556df68b6e32ab21a95e0785'),
-#  'name': 'Bill',
-#  'addresses': [{'street': 'Elm Street'}]}
+#  'name': 'Sherlock',
+#  'addresses': [{'street': 'Baker Street'}]}
 TEST_RAW_BSON = (
-    b"T\x00\x00\x00\x07_id\x00Um\xf6\x8bn2\xab!\xa9^\x07\x85\x02name\x00\x05"
-    b"\x00\x00\x00Bill\x00\x04addresses\x00$\x00\x00\x00\x030\x00\x1c"
-    b"\x00\x00\x00\x02street\x00\x0b\x00\x00\x00Elm Street\x00\x00\x00\x00"
+    b"Z\x00\x00\x00\x07_id\x00Um\xf6\x8bn2\xab!\xa9^\x07\x85\x02name\x00\t"
+    b"\x00\x00\x00Sherlock\x00\x04addresses\x00&\x00\x00\x00\x030\x00\x1e"
+    b"\x00\x00\x00\x02street\x00\r\x00\x00\x00Baker Street\x00\x00\x00\x00"
 )
 
 
@@ -65,10 +65,10 @@ class TestRawBSONDocument(UnitTest):
     document = RawBSONDocument(bson_string)
 
     def test_decode(self):
-        self.assertEqual("Bill", self.document["name"])
+        self.assertEqual("Sherlock", self.document["name"])
         first_address = self.document["addresses"][0]
         self.assertIsInstance(first_address, RawBSONDocument)
-        self.assertEqual("Elm Street", first_address["street"])
+        self.assertEqual("Baker Street", first_address["street"])
 
     def test_raw(self):
         self.assertEqual(self.bson_string, self.document.raw)

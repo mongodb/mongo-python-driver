@@ -31,8 +31,8 @@ _IS_SYNC = True
 
 class TestRawBSONDocument(IntegrationTest):
     # {'_id': ObjectId('556df68b6e32ab21a95e0785'),
-    #  'name': 'Bill',
-    #  'addresses': [{'street': 'Elm Street'}]}
+    #  'name': 'Sherlock',
+    #  'addresses': [{'street': 'Baker Street'}]}
     bson_string = TEST_RAW_BSON
     document = RawBSONDocument(bson_string)
 
