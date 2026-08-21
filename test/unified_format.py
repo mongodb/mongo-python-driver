@@ -241,10 +241,8 @@ class EntityMapUtil:
         self._entities: dict[str, Any] = {}
         self._listeners: dict[str, EventListenerUtil] = {}
         self._session_lsids: dict[str, Mapping[str, Any]] = {}
-        # The id of the (at most one, today) client entity created with
-        # observeTracingMessages. Spans carry no attribute identifying which
-        # client emitted them, so multi-client tracing correlation isn't
-        # supported; _create_entity fails loudly if a second one appears.
+        # The one client entity created with observeTracingMessages. Spans carry
+        # no attribute identifying their client, so a second one is rejected.
         self._tracing_client_id: Optional[str] = None
         self.test: UnifiedSpecTestMixinV1 = test_class
 
@@ -340,9 +338,7 @@ class EntityMapUtil:
                 enable_payload = observe_tracing.get("enableCommandPayload", False)
                 kwargs["tracing"] = {
                     "enabled": True,
-                    # Tests asserting db.query.text match the full, untruncated
-                    # command, so an effectively-unlimited length avoids
-                    # truncating and failing that assertion.
+                    # Tests match the full command, so never truncate.
                     "query_text_max_length": 1_000_000 if enable_payload else None,
                 }
 
@@ -563,10 +559,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     @classmethod
     def setUpClass(cls) -> None:
-        # Only register a span exporter (and the shared SDK TracerProvider it
-        # depends on) for test files that actually use observeTracingMessages,
-        # to avoid needlessly accumulating span processors on the process-wide
-        # provider for the (vast majority of) unified-format suites that don't.
+        # Only for test files that use observeTracingMessages: span processors
+        # accumulate on the process-wide provider and can never be removed.
         cls._tracing_exporter = None
         uses_tracing = any(
             "observeTracingMessages" in entity.get("client", {})
@@ -592,12 +586,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.knobs.disable()
-        # The exporter's span processor can never be removed from the shared process-wide
-        # TracerProvider (see _shared_test_provider), so without this, every span emitted by any
-        # client anywhere in the process for the rest of the test run keeps getting appended to this
-        # (otherwise dead) class's exporter: an unbounded memory leak across a full test run, and
-        # needless per-span export overhead for every other tracing-enabled test class that runs
-        # afterwards. shutdown() makes further export() calls into this exporter no-ops.
+        # The span processor can never be removed from the shared process-wide
+        # TracerProvider, so without this the exporter accumulates every span.
         if cls._tracing_exporter is not None:
             cls._tracing_exporter.shutdown()
 
@@ -638,9 +628,6 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             self.skipTest("PyMongo does not support the symbol type")
         if "timeoutms applied to entire download" in description:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
-        # Removed API: PyMongo no longer exposes map_reduce/inline_map_reduce at
-        # all (mapReduce is deprecated server-side), so there's no code path left
-        # that could send this command; this operation can never be exercised.
         if class_name == "testoperationmapreduce" and description == "mapreduce":
             self.skipTest(
                 "PyMongo removed the map_reduce/inline_map_reduce Collection methods "
@@ -1522,9 +1509,8 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                     self.match_evaluator.match_result(expected_msg, actual_msg)
 
     def check_tracing_messages(self, operations, spec):
-        # Like expectLogMessages/expectEvents, expectTracingMessages is a list of
-        # per-client blocks (even though only one client with
-        # observeTracingMessages is currently supported, see entity.py above).
+        # A list of per-client blocks, like expectLogMessages, though only one
+        # client with observeTracingMessages is supported.
         exporter = self._tracing_exporter
         if exporter is None:
             self.fail(
@@ -1535,8 +1521,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.run_operations(operations)
         finished_spans = exporter.get_finished_spans()
 
-        # Reconstruct the parent/child span tree from the flat, finish-ordered
-        # list the in-memory exporter records, keyed by each span's parent id.
+        # Rebuild the parent/child tree from the exporter's flat, finish-ordered list.
         children_by_parent_id = defaultdict(list)
         for span in finished_spans:
             parent_id = span.parent.span_id if span.parent is not None else None
@@ -1544,14 +1529,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
         def check_span_list(expected_list, actual_list, ignore_extra_spans):
             if ignore_extra_spans:
-                # Per the unified-test-format spec, "additional unexpected spans
-                # are allowed". Unlike ignoreExtraEvents (which only tolerates
-                # a trailing tail), spans from concurrent/out-of-band activity
-                # (e.g. a testRunner-issued configureFailPoint command) can
-                # finish interleaved anywhere among the expected ones, not just
-                # at the end. Filter down to just the spans that line up (by
-                # name, in order) with the expected list, dropping anything
-                # else, instead of naively truncating the tail.
+                # Unlike ignoreExtraEvents, extra spans can finish interleaved
+                # anywhere rather than only at the end, so match by name in
+                # order instead of truncating the tail.
                 filtered = []
                 expected_iter = iter(expected_list)
                 current_expected = next(expected_iter, None)
