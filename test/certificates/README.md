@@ -19,11 +19,11 @@ conflicting requirements from Python's ssl module and macOS's SecTrust framework
 AKI (Authority Key Identifier) and SKI (Subject Key Identifier) are X.509 extensions that
 identify the key used to sign a certificate and the certificate's own key, respectively.
 
-**MongoDB certs** — presented to MongoDB Enterprise, verified by Apple SecTrust on macOS.
+**MongoDB certs**: presented to MongoDB Enterprise, verified by Apple SecTrust on macOS.
 No AKI or SKI. Adding AKI triggers SecTrust OCSP checks; our CA has no OCSP responder, so those
 fail with `CSSMERR_TP_CERT_SUSPENDED`. See Background below.
 
-**KMS certs** — presented by KMS mock servers, verified by Python's ssl module (OpenSSL).
+**KMS certs**: presented by KMS mock servers, verified by Python's ssl module (OpenSSL).
 Carry both AKI (keyid form) and SKI. Python 3.13 enables `X509_V_FLAG_X509_STRICT` in
 `ssl.create_default_context()`, which requires AKI on non-root certs; by Python 3.14 (which bundles
 a newer OpenSSL) the same strict mode additionally requires SKI on non-root certs and critical
@@ -35,7 +35,7 @@ a newer OpenSSL) the same strict mode additionally requires SKI on non-root cert
 | `server.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN only | MongoDB server cert (key + cert) |
 | `client.pem` | `CN=client, O=MDB, ...` | Drivers Testing CA | keyUsage, extKeyUsage | Client auth cert (key + cert) |
 | `password_protected.pem` | Same as client | Drivers Testing CA | keyUsage, extKeyUsage | Client cert with AES-256 encrypted key |
-| `crl.pem` | — | Drivers Testing CA | — | CRL revoking serial 1 (server.pem) |
+| `crl.pem` | N/A | Drivers Testing CA | N/A | CRL revoking serial 1 (server.pem) |
 | `kms-server.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN, AKI, SKI | KMS mock server cert (key + cert) |
 | `kms-wrong-host.pem` | `CN=wronghost.example.com` | Drivers Testing CA | SAN, AKI, SKI | KMS wrong-host test cert |
 | `kms-expired.pem` | `CN=localhost, ...` + SAN | Drivers Testing CA | SAN, AKI, SKI | KMS expired cert (validity 2000–2001) |

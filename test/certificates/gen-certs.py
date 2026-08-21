@@ -71,7 +71,7 @@ SERVER_NAME = x509.Name(
     ]
 )
 
-# Attribute order must be CN→OU→O→L→ST→C so that MongoDB's reversed-order
+# Attribute order must be CN, OU, O, L, ST, C so that MongoDB's reversed-order
 # x509 username string is "C=US,ST=New York,L=New York City,O=MDB,OU=Drivers,CN=client"
 CLIENT_NAME = x509.Name(
     [
@@ -346,26 +346,26 @@ def verify() -> int:
     prev_errors = errors
     if "Basic Constraints: critical" not in ca_text:
         print(
-            "    ca.pem: ERROR — basicConstraints not critical (required by Python 3.14 strict mode)",
+            "    ca.pem: ERROR: basicConstraints not critical (required by Python 3.14 strict mode)",
             file=sys.stderr,
         )
         errors += 1
     if "Key Usage: critical" not in ca_text:
         print(
-            "    ca.pem: ERROR — missing critical keyUsage (required by Python 3.14 strict mode)",
+            "    ca.pem: ERROR: missing critical keyUsage (required by Python 3.14 strict mode)",
             file=sys.stderr,
         )
         errors += 1
     if "Subject Key Identifier" not in ca_text:
         print(
-            "    ca.pem: ERROR — missing SKI (required for keyid-form AKI on KMS leaf certs)",
+            "    ca.pem: ERROR: missing SKI (required for keyid-form AKI on KMS leaf certs)",
             file=sys.stderr,
         )
         errors += 1
     for ext in ("Authority Key Identifier", "Subject Alternative Name"):
         if ext in ca_text:
             print(
-                f"    ca.pem: ERROR — has {ext} (would cause issues on Windows or macOS)",
+                f"    ca.pem: ERROR: has {ext} (would cause issues on Windows or macOS)",
                 file=sys.stderr,
             )
             errors += 1
@@ -377,15 +377,15 @@ def verify() -> int:
     trusted_ca_text = cert_text(SCRIPT_DIR / "trusted-ca.pem")
     prev_errors = errors
     if "Basic Constraints: critical" not in trusted_ca_text:
-        print("    trusted-ca.pem: ERROR — basicConstraints not critical", file=sys.stderr)
+        print("    trusted-ca.pem: ERROR: basicConstraints not critical", file=sys.stderr)
         errors += 1
     if "Key Usage: critical" not in trusted_ca_text:
-        print("    trusted-ca.pem: ERROR — missing critical keyUsage", file=sys.stderr)
+        print("    trusted-ca.pem: ERROR: missing critical keyUsage", file=sys.stderr)
         errors += 1
     for ext in ("Authority Key Identifier", "Subject Alternative Name"):
         if ext in trusted_ca_text:
             print(
-                f"    trusted-ca.pem: ERROR — has {ext} (unexpected on a bare CA-bundle cert)",
+                f"    trusted-ca.pem: ERROR: has {ext} (unexpected on a bare CA-bundle cert)",
                 file=sys.stderr,
             )
             errors += 1
@@ -399,7 +399,7 @@ def verify() -> int:
         text = cert_text(SCRIPT_DIR / name)
         if "Authority Key Identifier" in text:
             print(
-                f"    {name}: ERROR — has AKI (would cause CSSMERR_TP_CERT_SUSPENDED on macOS)",
+                f"    {name}: ERROR: has AKI (would cause CSSMERR_TP_CERT_SUSPENDED on macOS)",
                 file=sys.stderr,
             )
             errors += 1
@@ -411,16 +411,16 @@ def verify() -> int:
         text = cert_text(SCRIPT_DIR / name)
         prev_errors = errors
         if "Authority Key Identifier" not in text:
-            print(f"    {name}: ERROR — missing AKI (required for Python 3.13+)", file=sys.stderr)
+            print(f"    {name}: ERROR: missing AKI (required for Python 3.13+)", file=sys.stderr)
             errors += 1
         elif "keyid:" not in text.lower() and "Key Identifier" not in text:
             print(
-                f"    {name}: ERROR — AKI missing keyIdentifier (OpenSSL 3.3+ strict mode requires keyid form)",
+                f"    {name}: ERROR: AKI missing keyIdentifier (OpenSSL 3.3+ strict mode requires keyid form)",
                 file=sys.stderr,
             )
             errors += 1
         if "Subject Key Identifier" not in text:
-            print(f"    {name}: ERROR — missing SKI (required for Python 3.14+)", file=sys.stderr)
+            print(f"    {name}: ERROR: missing SKI (required for Python 3.14+)", file=sys.stderr)
             errors += 1
         if errors == prev_errors:
             print(f"    {name}: OK (has keyid-form AKI + SKI)")
