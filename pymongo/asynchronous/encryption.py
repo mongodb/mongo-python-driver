@@ -142,8 +142,7 @@ async def _connect_kms(
         except Exception as exc:
             _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
-    # TLS is applied here, against address, so verification targets the KMS
-    # host even when the socket terminates at a proxy.
+    # TLS targets address, not the peer, so verification follows the KMS host.
     result = kms_connect_callback(
         KMSConnectContext(host=address[0], port=cast(int, address[1]), timeout=timeout)
     )

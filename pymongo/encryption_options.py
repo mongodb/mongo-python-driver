@@ -90,8 +90,7 @@ class KMSConnectContext:
     timeout: Optional[float]
 
 
-# A callback that opens a connection to a KMS host. The async driver requires a
-# coroutine function; the synchronous driver requires a regular function.
+# A callback that opens a connection to a KMS host.
 AsyncKMSConnectCallback = Callable[[KMSConnectContext], Awaitable[socket.socket]]
 KMSConnectCallback = Callable[[KMSConnectContext], socket.socket]
 

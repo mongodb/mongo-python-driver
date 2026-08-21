@@ -295,8 +295,7 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
             received.append(context)
             return left
 
-        # ssl_context=None returns the socket unchanged, so this also
-        # confirms a plain socket is accepted.
+        # ssl_context=None returns the socket unchanged, so a plain socket is accepted.
         conn = await _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 12.5)
         self.assertIs(conn, left)
 
@@ -323,8 +322,7 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
 
         threading.Thread(target=serve, daemon=True).start()
 
-        # Built as the driver does, for the flavor-correct type; the local
-        # cert would not verify.
+        # Built as the driver does, for the flavor-correct type; the local cert won't verify.
         client_ctx = get_ssl_context(None, None, None, None, True, True, False, _IS_SYNC)
         options = PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=client_ctx)
 
