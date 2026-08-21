@@ -51,6 +51,17 @@ PyMongo 4.18 brings a number of changes including:
   :meth:`~pymongo.synchronous.database.Database.aggregate`, and
   :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_search_indexes`
   and :meth:`~pymongo.synchronous.collection.Collection.list_search_indexes`.
+- Added support for routing Key Management Service (KMS) requests for
+  Client-Side Field Level Encryption and Queryable Encryption through an HTTP
+  proxy, using the new ``kms_connect_callback`` option on
+  :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
+  :class:`~pymongo.encryption.ClientEncryption`, and
+  :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`. The callback
+  opens the connection and the driver performs the KMS TLS handshake over it, so
+  verification still targets the KMS host rather than the proxy. For an ordinary
+  HTTP proxy, pass :class:`~pymongo.encryption_options.HTTPProxyKMSConnect` or
+  :class:`~pymongo.encryption_options.AsyncHTTPProxyKMSConnect` instead of
+  writing a callback.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------

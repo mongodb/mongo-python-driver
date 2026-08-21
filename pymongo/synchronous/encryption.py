@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import contextlib
 import enum
+import inspect
 import socket
+import ssl
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
@@ -59,6 +61,8 @@ from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import (
     AutoEncryptionOpts,
+    KMSConnectCallback,
+    KMSConnectContext,
     RangeOpts,
     TextOpts,
     check_min_pymongocrypt,
@@ -78,6 +82,7 @@ from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
     _configured_socket,
     _raise_connection_failure,
+    _wrap_socket_tls,
 )
 from pymongo.read_concern import ReadConcern
 from pymongo.results import BulkWriteResult, DeleteResult
@@ -111,9 +116,65 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
-def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
+def _close_rejected_kms_socket(obj: Any) -> None:
+    """Close a rejected kms_connect_callback return value, if it can be closed.
+
+    The caller may have handed us a live socket, and nothing else will close it:
+    _connect_kms raises before its result reaches the caller's ``finally``. The
+    value can be anything a user returned, so closing is strictly best effort.
+    """
+    close = getattr(obj, "close", None)
+    if callable(close):
+        with contextlib.suppress(Exception):
+            close()
+
+
+def _connect_kms(
+    address: _Address,
+    opts: PoolOptions,
+    kms_connect_callback: Optional[KMSConnectCallback],
+    timeout: float,
+) -> Union[socket.socket, _sslConn]:
+    if kms_connect_callback is None:
+        try:
+            return _configured_socket(address, opts)
+        except Exception as exc:
+            _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
+
+    # TLS targets address, not the peer, so verification follows the KMS host.
+    result = kms_connect_callback(
+        KMSConnectContext(host=address[0], port=cast(int, address[1]), timeout=timeout)
+    )
+    # The synchronous module takes a regular function and awaits nothing.
+    if not _IS_SYNC and not inspect.isawaitable(result):
+        _close_rejected_kms_socket(result)
+        raise ConfigurationError(
+            "kms_connect_callback must be a coroutine function for the async "
+            f"API, but returned {type(result)}."
+        )
+    sock = result
+    if not isinstance(sock, socket.socket) or isinstance(sock, ssl.SSLSocket):
+        _close_rejected_kms_socket(sock)
+        raise ConfigurationError(
+            "kms_connect_callback must return a connected, unwrapped "
+            f"socket.socket, not {type(sock)}; consider HTTPProxyKMSConnect."
+        )
+    # wrap_socket refuses a non-blocking socket, so normalize the mode here.
     try:
-        return _configured_socket(address, opts)
+        sock.getpeername()
+    except OSError:
+        _close_rejected_kms_socket(sock)
+        raise ConfigurationError(
+            "kms_connect_callback must return an already connected socket."
+        ) from None
+    if sock.getsockopt(socket.SOL_SOCKET, socket.SO_TYPE) != socket.SOCK_STREAM:
+        _close_rejected_kms_socket(sock)
+        raise ConfigurationError(
+            "kms_connect_callback must return a stream socket, not a datagram one."
+        )
+    sock.settimeout(opts.socket_timeout)
+    try:
+        return _wrap_socket_tls(sock, address, opts)
     except Exception as exc:
         _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
@@ -183,20 +244,26 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                 False,  # disable_ocsp_endpoint_check
                 _IS_SYNC,
             )
-        # CSOT: set timeout for socket creation.
+        address = parse_host(endpoint, _HTTPS_PORT)
+        sleep_u = kms_context.usleep
+        if sleep_u:
+            sleep_sec = float(sleep_u) / 1e6
+            time.sleep(sleep_sec)
+        # CSOT: set timeout for socket creation. After the retry backoff above,
+        # so the budget reflects what the sleep consumed.
         connect_timeout = max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
         opts = PoolOptions(
             connect_timeout=connect_timeout,
             socket_timeout=connect_timeout,
             ssl_context=ctx,
         )
-        address = parse_host(endpoint, _HTTPS_PORT)
-        sleep_u = kms_context.usleep
-        if sleep_u:
-            sleep_sec = float(sleep_u) / 1e6
-            time.sleep(sleep_sec)
         try:
-            conn = _connect_kms(address, opts)
+            conn = _connect_kms(
+                address,
+                opts,
+                self.opts._kms_connect_callback,
+                connect_timeout,
+            )
             try:
                 sendall(conn, message)
                 while kms_context.bytes_needed > 0:
@@ -232,6 +299,8 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                 conn.close()
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
+        except ConfigurationError:
+            raise  # A callback contract violation is not transient.
         except Exception as exc:
             remaining = _csot.remaining()
             if isinstance(exc, NetworkTimeout) or (remaining is not None and remaining <= 0):
@@ -593,6 +662,7 @@ class ClientEncryption(Generic[_DocumentType]):
         codec_options: CodecOptions[_DocumentTypeArg],
         kms_tls_options: Optional[Mapping[str, Any]] = None,
         key_expiration_ms: Optional[int] = None,
+        kms_connect_callback: Optional[KMSConnectCallback] = None,
     ) -> None:
         """Explicit client-side field level encryption.
 
@@ -662,7 +732,18 @@ class ClientEncryption(Generic[_DocumentType]):
         :param key_expiration_ms: The cache expiration time for data encryption keys.
             Defaults to ``None`` which defers to libmongocrypt's default which is currently 60000.
             Set to 0 to disable key expiration.
+        :param kms_connect_callback: A callable that opens the connection to a
+            KMS host, used to route KMS requests through an HTTP proxy. It
+            receives a :class:`~pymongo.encryption_options.KMSConnectContext`
+            and returns a connected, unwrapped :class:`socket.socket`; the
+            driver then performs the KMS TLS handshake over it. For an ordinary
+            HTTP proxy, pass
+            :class:`~pymongo.encryption_options.HTTPProxyKMSConnect`.
+            Defaults to ``None``, meaning the driver connects to KMS hosts
+            directly.
 
+        .. versionchanged:: 4.18
+           Added the `kms_connect_callback` parameter.
         .. versionchanged:: 4.12
            Added the `key_expiration_ms` parameter.
         .. versionchanged:: 4.0
@@ -702,6 +783,7 @@ class ClientEncryption(Generic[_DocumentType]):
             key_vault_namespace,
             kms_tls_options=kms_tls_options,
             key_expiration_ms=key_expiration_ms,
+            kms_connect_callback=kms_connect_callback,
         )
         self._kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
         self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(

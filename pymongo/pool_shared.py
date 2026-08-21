@@ -259,16 +259,19 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
         raise OSError("getaddrinfo failed")
 
 
-async def _async_configured_socket(
-    address: _Address, options: PoolOptions
+async def _async_wrap_socket_tls(
+    sock: socket.socket, address: _Address, options: PoolOptions
 ) -> Union[socket.socket, _sslConn]:
-    """Given (host, port) and PoolOptions, return a raw configured socket.
+    """Given a connected socket, (host, port), and PoolOptions, apply TLS.
+
+    The handshake, SNI, and certificate/hostname verification all target
+    ``address``, which may differ from the peer ``sock`` is connected to, for
+    example when ``sock`` tunnels through an HTTP proxy.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
 
-    Sets socket's SSL and timeout options.
+    Sets the socket's SSL and timeout options.
     """
-    sock = await _async_create_connection(address, options)
     ssl_context = options._ssl_context
 
     if ssl_context is None:
@@ -313,6 +316,19 @@ async def _async_configured_socket(
 
     ssl_sock.settimeout(options.socket_timeout)
     return ssl_sock
+
+
+async def _async_configured_socket(
+    address: _Address, options: PoolOptions
+) -> Union[socket.socket, _sslConn]:
+    """Given (host, port) and PoolOptions, return a raw configured socket.
+
+    Can raise socket.error, ConnectionFailure, or _CertificateError.
+
+    Sets socket's SSL and timeout options.
+    """
+    sock = await _async_create_connection(address, options)
+    return await _async_wrap_socket_tls(sock, address, options)
 
 
 async def _configured_protocol_interface(
@@ -465,14 +481,19 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         raise OSError("getaddrinfo failed")
 
 
-def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
-    """Given (host, port) and PoolOptions, return a raw configured socket.
+def _wrap_socket_tls(
+    sock: socket.socket, address: _Address, options: PoolOptions
+) -> Union[socket.socket, _sslConn]:
+    """Given a connected socket, (host, port), and PoolOptions, apply TLS.
+
+    The handshake, SNI, and certificate/hostname verification all target
+    ``address``, which may differ from the peer ``sock`` is connected to, for
+    example when ``sock`` tunnels through an HTTP proxy.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
 
-    Sets socket's SSL and timeout options.
+    Sets the socket's SSL and timeout options.
     """
-    sock = _create_connection(address, options)
     ssl_context = options._ssl_context
 
     if ssl_context is None:
@@ -512,6 +533,17 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
 
     ssl_sock.settimeout(options.socket_timeout)
     return ssl_sock
+
+
+def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
+    """Given (host, port) and PoolOptions, return a raw configured socket.
+
+    Can raise socket.error, ConnectionFailure, or _CertificateError.
+
+    Sets socket's SSL and timeout options.
+    """
+    sock = _create_connection(address, options)
+    return _wrap_socket_tls(sock, address, options)
 
 
 def _configured_socket_interface(
