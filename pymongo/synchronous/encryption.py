@@ -132,8 +132,8 @@ def _close_rejected_kms_socket(obj: Any) -> None:
 def _connect_kms(
     address: _Address,
     opts: PoolOptions,
-    kms_connect_callback: Optional[KMSConnectCallback] = None,
-    timeout: Optional[float] = None,
+    kms_connect_callback: Optional[KMSConnectCallback],
+    timeout: float,
 ) -> Union[socket.socket, _sslConn]:
     if kms_connect_callback is None:
         try:
@@ -167,6 +167,11 @@ def _connect_kms(
         raise ConfigurationError(
             "kms_connect_callback must return an already connected socket."
         ) from None
+    if sock.getsockopt(socket.SOL_SOCKET, socket.SO_TYPE) != socket.SOCK_STREAM:
+        _close_rejected_kms_socket(sock)
+        raise ConfigurationError(
+            "kms_connect_callback must return a stream socket, not a datagram one."
+        )
     sock.settimeout(opts.socket_timeout)
     try:
         return _wrap_socket_tls(sock, address, opts)

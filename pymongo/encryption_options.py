@@ -76,7 +76,7 @@ class KMSConnectContext:
     :param host: Hostname of the KMS server, and the TLS verification target.
     :param port: Port of the KMS server.
     :param timeout: Seconds left in the timeout budget, else the default KMS
-        connect timeout. Never ``None``.
+        connect timeout.
 
     .. note:: ``timeoutMS`` does not constrain KMS requests for explicit
        encryption, so ``timeout`` is always the default there. Automatic
@@ -88,7 +88,7 @@ class KMSConnectContext:
 
     host: str
     port: int
-    timeout: Optional[float]
+    timeout: float
 
 
 # A callback that opens a connection to a KMS host.
@@ -100,10 +100,8 @@ KMSConnectCallback = Callable[[KMSConnectContext], socket.socket]
 _MAX_CONNECT_HEADER = 8192
 
 
-def _remaining(deadline: Optional[float]) -> Optional[float]:
-    """Seconds left before ``deadline``, or None when there is no deadline."""
-    if deadline is None:
-        return None
+def _remaining(deadline: float) -> float:
+    """Seconds left before ``deadline``."""
     left = deadline - time.monotonic()
     if left <= 0:
         raise socket.timeout("timed out connecting through the proxy")
@@ -194,14 +192,27 @@ class HTTPProxyKMSConnect:
                     pass
                 src.close()
 
-        for pair in ((relay_side, proxy), (proxy, relay_side)):
-            threading.Thread(target=relay, args=pair, daemon=True).start()
+        started = []
+        try:
+            for pair in ((relay_side, proxy), (proxy, relay_side)):
+                thread = threading.Thread(target=relay, args=pair, daemon=True)
+                thread.start()
+                started.append(thread)
+        except BaseException:
+            # Unblock any thread that did start, then drop every socket.
+            for sock in (proxy, relay_side, driver_side):
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                sock.close()
+            raise
         return driver_side
 
     def __call__(self, context: KMSConnectContext) -> socket.socket:
         # One deadline for all three phases; a timeout per phase would let the
         # total run to several times the caller's budget.
-        deadline = None if context.timeout is None else time.monotonic() + context.timeout
+        deadline = time.monotonic() + context.timeout
         sock = socket.create_connection((self.host, self.port), timeout=_remaining(deadline))
         try:
             if self.ssl_context is not None:

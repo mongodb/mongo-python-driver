@@ -39,6 +39,7 @@ from asyncio.trsock import TransportSocket
 from collections.abc import Mapping
 from threading import Thread
 from typing import Any, Optional
+from unittest import mock
 
 import pytest
 
@@ -94,6 +95,7 @@ from pymongo.synchronous.encryption import (
     ClientEncryption,
     QueryType,
     _connect_kms,
+    _EncryptionIO,
 )
 from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
@@ -262,7 +264,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
     def _pool_options():
         return PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=None)
 
-    def test_non_socket_return_is_not_retried(self):
+    def test_non_socket_return_raises_configuration_error(self):
         def callback(context):
             return "not-a-socket"
 
@@ -327,10 +329,15 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         client_ctx = get_ssl_context(None, None, None, None, True, True, False, _IS_SYNC)
         options = PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=client_ctx)
 
-        def callback(context):
+        def connect():
             sock = socket.create_connection(listener.getsockname(), timeout=10)
             sock.setblocking(False)
             return sock
+
+        def callback(context):
+            if _IS_SYNC:
+                return connect()
+            return asyncio.get_running_loop().run_in_executor(None, connect)
 
         conn = _connect_kms(listener.getsockname(), options, callback, 10.0)
         self.addCleanup(conn.close)
@@ -555,12 +562,54 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
     def test_remaining_raises_once_the_deadline_passes(self):
         from pymongo.encryption_options import _remaining
 
-        self.assertIsNone(_remaining(None))
-        left = _remaining(time.monotonic() + 5)
-        assert left is not None
-        self.assertGreater(left, 0)
+        self.assertGreater(_remaining(time.monotonic() + 5), 0)
         with self.assertRaises(socket.timeout):
             _remaining(time.monotonic() - 1)
+
+    def test_datagram_socket_from_callback_is_rejected(self):
+        # A connected UDP socket passes isinstance and getpeername, but TLS
+        # then raises NotImplementedError, which would be retried.
+        left = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        right = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.addCleanup(left.close)
+        self.addCleanup(right.close)
+        right.bind(("127.0.0.1", 0))
+        left.connect(right.getsockname())
+
+        def callback(context):
+            return left
+
+        with self.assertRaisesRegex(ConfigurationError, "stream socket"):
+            _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+
+    def test_kms_request_does_not_retry_a_contract_violation(self):
+        # _connect_kms has no retry loop; the no-retry guarantee is in
+        # kms_request, so exercise that instead.
+        calls = []
+
+        def callback(context):
+            calls.append(context)
+            return "not-a-socket"
+
+        opts = AutoEncryptionOpts({}, "k.d", kms_connect_callback=callback)
+        io = _EncryptionIO(None, mock.MagicMock(), None, opts)
+
+        class StubKmsContext:
+            endpoint = "kms.example.com:443"
+            message = b"request"
+            kms_provider = "aws"
+            usleep = 0
+            bytes_needed = 1
+
+            def feed(self, data):
+                raise AssertionError("should not reach the socket")
+
+            def fail(self):
+                raise AssertionError("a contract violation must not be retried")
+
+        with self.assertRaises(ConfigurationError):
+            io.kms_request(StubKmsContext())
+        self.assertEqual(len(calls), 1)
 
     def test_network_error_from_callback_propagates(self):
         def callback(context):
@@ -2335,6 +2384,13 @@ class TestKmsConnectCallbackProse(EncryptionIntegrationTest):
 
     def proxy_request(self, method, path, tls=False):
         """Call the proxy's control endpoints and return the body."""
+        if _IS_SYNC:
+            return self._proxy_request(method, path, tls)
+        return asyncio.get_running_loop().run_in_executor(
+            None, self._proxy_request, method, path, tls
+        )
+
+    def _proxy_request(self, method, path, tls=False):
         if tls:
             ctx = ssl.create_default_context(cafile=CA_PEM)
             ctx.check_hostname = False
