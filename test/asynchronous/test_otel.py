@@ -32,7 +32,9 @@ from pymongo._telemetry import _OperationTelemetry
 from pymongo.errors import (
     ClientBulkWriteException,
     ConfigurationError,
+    ConnectionFailure,
     InvalidOperation,
+    NetworkTimeout,
     OperationFailure,
     ServerSelectionTimeoutError,
 )
@@ -64,6 +66,11 @@ pytestmark = pytest.mark.otel
 def _tracing_opts() -> _otel.TracingOptions:
     """Return resolved tracing options with tracing on and ``db.query.text`` disabled."""
     return {"enabled": True, "query_text_max_length": 0}
+
+
+def _qualified_name(exc_type: type) -> str:
+    """Format an exception class the way the spans do: ``module.QualName``."""
+    return f"{exc_type.__module__}.{exc_type.__qualname__}"
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
@@ -498,7 +505,59 @@ class TestOTelSpans(AsyncIntegrationTest):
         span = spans[0]
         self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
         self.assertIn("db.response.status_code", span.attributes)
+        # For a server error the spec has error.type mirror the status code.
+        self.assertEqual(span.attributes["error.type"], span.attributes["db.response.status_code"])
         self.assertTrue(any(event.name == "exception" for event in span.events))
+
+    @async_client_context.require_failCommand_fail_point
+    async def test_error_type_is_exception_class_name_for_connection_failure(self):
+        # A closed connection produces no server reply, so error.type falls back
+        # to the exception's class name.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True}, retryReads=False)
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {"failCommands": ["find"], "closeConnection": True},
+        }
+        async with self.fail_point(fail_command):
+            self.exporter.clear()
+            with self.assertRaises(ConnectionFailure) as ctx:
+                await client[self.db.name].test.find_one({})
+
+        spans = [s for s in self.spans() if s.attributes.get("db.command.name") == "find"]
+        self.assertEqual(len(spans), 1)
+        attrs = spans[0].attributes
+        self.assertNotIn("db.response.status_code", attrs)
+        self.assertEqual(attrs["error.type"], _qualified_name(type(ctx.exception)))
+        # error.type and exception.type carry the same value on this path.
+        self.assertEqual(attrs["error.type"], attrs["exception.type"])
+
+    @async_client_context.require_failCommand_blockConnection
+    async def test_error_type_is_exception_class_name_for_network_timeout(self):
+        # socketTimeoutMS trips before any reply, so again no server error code.
+        client = await self.async_rs_or_single_client(
+            tracing={"enabled": True}, socketTimeoutMS=200, retryReads=False
+        )
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "blockConnection": True,
+                "blockTimeMS": 1000,
+            },
+        }
+        async with self.fail_point(fail_command):
+            self.exporter.clear()
+            with self.assertRaises(NetworkTimeout) as ctx:
+                await client[self.db.name].test.find_one({})
+
+        spans = [s for s in self.spans() if s.attributes.get("db.command.name") == "find"]
+        self.assertEqual(len(spans), 1)
+        attrs = spans[0].attributes
+        self.assertNotIn("db.response.status_code", attrs)
+        self.assertEqual(attrs["error.type"], _qualified_name(NetworkTimeout))
+        self.assertIsInstance(ctx.exception, NetworkTimeout)
 
     async def test_tracing_disabled_by_default(self):
         client = await self.async_rs_or_single_client()
