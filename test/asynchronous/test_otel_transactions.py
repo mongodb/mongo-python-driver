@@ -75,8 +75,7 @@ class TestOTelTransactionSpanPrimitives(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # The span processor can never be removed from the shared process-wide
-        # TracerProvider, so without this the exporter keeps accumulating every
-        # span from every client for the rest of the test run.
+        # TracerProvider, so without this the exporter accumulates every span.
         cls.exporter.shutdown()
 
     def setUp(self):
@@ -101,8 +100,7 @@ class TestOperationTelemetryInTransaction(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # The span processor can never be removed from the shared process-wide
-        # TracerProvider, so without this the exporter keeps accumulating every
-        # span from every client for the rest of the test run.
+        # TracerProvider, so without this the exporter accumulates every span.
         cls.exporter.shutdown()
 
     def setUp(self):
@@ -138,11 +136,8 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
 
     @classmethod
     def tearDownClass(cls):
-        # See the matching comment in test/asynchronous/unified_format.py's
-        # UnifiedSpecTestMixinV1.tearDownClass: the span processor can never
-        # be removed from the shared process-wide TracerProvider, so without
-        # this shutdown() the exporter keeps accumulating every span from
-        # every client for the rest of the test run.
+        # The span processor can never be removed from the shared process-wide
+        # TracerProvider, so without this the exporter accumulates every span.
         cls.exporter.shutdown()
         super().tearDownClass()
 
@@ -177,10 +172,9 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
     def ping_spans(self):
         """Return the spans belonging to a ``ping`` run through ``db.command()``.
 
-        For tests asserting tracing produced *nothing*. An empty-exporter
-        assertion would also catch unrelated spans, since a cursor abandoned
-        earlier ends its span from a finalizer that runs at an unpredictable
-        point on interpreters without reference counting.
+        For tests asserting tracing produced nothing. An empty-exporter assertion
+        would also catch spans a finalizer flushes at an unpredictable point on
+        interpreters without reference counting.
         """
         return [
             s
@@ -232,16 +226,9 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
 
     @async_client_context.require_transactions
     async def test_direct_commit_retry_gives_each_span_its_own_end(self):
-        # Explicitly retrying a successful commit moves the transaction state
-        # COMMITTED -> IN_PROGRESS -> (back through the try/finally) ->
-        # COMMITTED again. The prior attempt's span was already ended and
-        # cleared, so the retry gets a fresh "transaction" span of its own
-        # (this is the direct-API path, not with_transaction; see
-        # test_with_transaction_retry_reuses_one_transaction_span for the
-        # with_transaction case, which shares a single span across retries
-        # instead); each span's ending finally block must run exactly once
-        # for its own span, never double-ending the same span and never
-        # leaving one unended.
+        # An explicit commit retry moves the state from COMMITTED back to
+        # IN_PROGRESS, and the prior attempt's span was already ended and
+        # cleared, so the retry must get a fresh span and end it exactly once.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name].test
         await coll.drop()
@@ -251,8 +238,7 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
         async with client.start_session() as session:
             async with await session.start_transaction():
                 await coll.insert_one({"x": 5}, session=session)
-            # The transaction context manager already committed on clean
-            # exit; retry the commit explicitly.
+            # The context manager already committed on clean exit.
             await session.commit_transaction()
 
         finished = self.exporter.get_finished_spans()
@@ -264,11 +250,8 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
 
     @async_client_context.require_transactions
     async def test_with_transaction_retry_reuses_one_transaction_span(self):
-        # A retried with_transaction() call must still produce exactly one
-        # "transaction" span for the whole logical call, not one sibling
-        # span per full-transaction retry, and no separately-named wrapper
-        # span either (the vendored transaction/convenient.json fixture
-        # pins "transaction" itself as the trace root for withTransaction).
+        # A retried with_transaction() must produce exactly one "transaction"
+        # span for the whole call, not one per retry and no wrapper span.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client.pymongo_test.with_txn_spans
         await coll.drop()
@@ -306,10 +289,8 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
 
     @async_client_context.require_transactions
     async def test_reentrant_with_transaction_raises_and_does_not_leak_span(self):
-        # A callback that illegally re-enters with_transaction() on the same
-        # session must be rejected with a clear InvalidOperation, and the
-        # outer call's "transaction" span must still end exactly once,
-        # never leaked (created but never ended) and never double-ended.
+        # Re-entering with_transaction() on the same session must raise, and the
+        # outer call's span must still end exactly once.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client.pymongo_test.reentrant_with_txn
         await coll.drop()
@@ -330,25 +311,20 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
 
         finished = self.exporter.get_finished_spans()
         txn_spans = [s for s in finished if s.name == "transaction"]
-        # Only the outer call ever gets far enough to create a span; the
-        # guard rejects the inner call before it creates one of its own.
+        # The guard rejects the inner call before it creates a span of its own.
         self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
         for txn_span in txn_spans:
             self.assertIsNotNone(txn_span.end_time)
 
     @async_client_context.require_transactions
     async def test_nested_with_transaction_on_another_session_keeps_spans_separate(self):
-        # Nesting with_transaction() is legal on a *different* session, unlike
-        # the same-session case above. Each session's operations must parent to
-        # its own transaction span, which holds because an operation span takes
-        # its parent explicitly from session._transaction.span instead of from
-        # ambient context.
+        # Nesting on a different session is legal, and each session's operations
+        # must parent to its own transaction span.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         db = client.pymongo_test
         outer_coll = db.two_session_outer
         inner_coll = db.two_session_inner
-        # Create both up front: creating a collection inside a transaction is
-        # illegal before server 4.4.
+        # Creating a collection inside a transaction is illegal before server 4.4.
         await outer_coll.drop()
         await inner_coll.drop()
         await db.create_collection("two_session_outer")
@@ -371,8 +347,7 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
         self.assertEqual(len(txn_spans), 2, [s.name for s in finished])
         for txn_span in txn_spans:
             self.assertIsNotNone(txn_span.end_time)
-            # Transaction spans are never made current, so neither ends up
-            # nested under the other.
+            # Transaction spans are never made current, so neither nests under the other.
             self.assertIsNone(txn_span.parent)
 
         def insert_parent_id(collname: str) -> int:
@@ -393,16 +368,9 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
     async def test_with_transaction_while_direct_api_transaction_active_does_not_corrupt_span(
         self,
     ):
-        # Calling with_transaction() while a transaction started with the
-        # DIRECT API is already active on the same session is illegal:
-        # start_transaction() inside with_transaction() raises "Transaction
-        # already in progress", but the direct-API transaction's own
-        # "transaction" span must survive that failure: with_transaction()'s
-        # finally must not end/null it out from under the still-active
-        # transaction (Important #1). Operations run on the session
-        # afterwards must still parent to that span rather than becoming
-        # trace roots, and the failed call must not leave behind a second,
-        # spurious "transaction" span of its own.
+        # with_transaction() while a direct-API transaction is active on the same
+        # session raises, and must leave that transaction's span open for later
+        # operations to parent to, with no second span created.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
         coll = client.pymongo_test.direct_api_with_txn_conflict
         await coll.drop()
@@ -419,8 +387,7 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
             with self.assertRaises(InvalidOperation):
                 await session.with_transaction(callback)
 
-            # The original transaction is still active; this must still
-            # nest under its span, not become a trace root.
+            # The original transaction is still active, so this must nest under it.
             await coll.insert_one({"x": 2}, session=session)
             await session.commit_transaction()
 
@@ -447,8 +414,8 @@ class TestOTelTransactionSpans(AsyncIntegrationTest):
             await coll.insert_one({"x": 1}, session=session)
             await session.commit_transaction()
             self.exporter.clear()
-            # An explicit second commit re-enters the COMMITTED -> IN_PROGRESS
-            # branch, which previously ran with no transaction span at all.
+            # An explicit second commit re-enters the branch that previously ran
+            # with no transaction span at all.
             await session.commit_transaction()
 
         finished = self.exporter.get_finished_spans()
