@@ -750,7 +750,7 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&max_datetime_ms, "bson.datetime_ms", "_MAX_UTC_MS") ||
         _load_object(&state->min_datetime, "bson.datetime_ms", "_MIN_UTC") ||
         _load_object(&state->max_datetime, "bson.datetime_ms", "_MAX_UTC") ||
-        _load_object(&raw_bson_view_threshold, "bson", "_RAW_BSON_VIEW_THRESHOLD")) {
+        _load_object(&raw_bson_view_threshold, "bson.codec_options", "_RAW_BSON_VIEW_THRESHOLD")) {
         return 1;
     }
 
@@ -1763,13 +1763,18 @@ static int write_raw_doc(buffer_t buffer, PyObject* raw, PyObject* _raw_str) {
         /* The common case: raw is bytes. */
         data = PyBytes_AS_STRING(bytes_obj);
         len = PyBytes_GET_SIZE(bytes_obj);
-    } else {
+    } else if (PyMemoryView_Check(bytes_obj)) {
         /* raw may also be a memoryview of the decode buffer. */
         if (!_get_buffer(bytes_obj, &view)) {
             goto fail;
         }
         data = (char*)view.buf;
         len = view.len;
+    } else {
+        PyErr_Format(PyExc_TypeError,
+                     "RawBSONDocument.raw must be bytes or memoryview, not %.200s",
+                     Py_TYPE(bytes_obj)->tp_name);
+        goto fail;
     }
     len_int = _downcast_and_check(len, 0);
     if (-1 == len_int) {
@@ -2875,7 +2880,7 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
     int raw_array = 0;
     PyObject* name;
     PyObject* value;
-    PyObject* result_tuple;
+    PyObject* result_tuple = NULL;
 
     if (!(PyArg_ParseTuple(args, "OIIOp", &bson, &position, &max,
                           &options_obj, &raw_array) &&
@@ -2885,26 +2890,23 @@ static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
 
     if (!PyBytes_Check(bson)) {
         PyErr_SetString(PyExc_TypeError, "argument to _element_to_dict must be a bytes object");
-        destroy_codec_options(&options);
-        return NULL;
+        goto done;
     }
     string = PyBytes_AS_STRING(bson);
     options.buffer_owner = bson;
 
     new_position = _element_to_dict(self, string, position, max, &options, raw_array, &name, &value);
     if (new_position < 0) {
-        destroy_codec_options(&options);
-        return NULL;
+        goto done;
     }
 
     result_tuple = Py_BuildValue("NNi", name, value, new_position);
     if (!result_tuple) {
         Py_DECREF(name);
         Py_DECREF(value);
-        destroy_codec_options(&options);
-        return NULL;
     }
 
+done:
     destroy_codec_options(&options);
     return result_tuple;
 }
@@ -3038,15 +3040,40 @@ fail:
     return 0;
 }
 
-/* Prepare a decode input buffer object for raw-document decoding, mirroring
- * pure-Python get_data_and_view: bytes and bytearray are returned as-is; any
- * other buffer-protocol input is copied to bytes so zero-copy document views
- * can't observe later mutations of the caller's buffer. Non-raw decodes
- * never take views of the buffer, so their input is always returned as-is.
- * Returns a new reference or NULL on failure with an exception set. */
-static PyObject* _prepare_input_buffer(PyObject* bson, const codec_options_t* options) {
-    PyObject* copied;
+/* Return 1 if any document in a stream of BSON documents is at least
+ * `threshold` bytes, i.e. decoding it as a RawBSONDocument would take a
+ * zero-copy view of the buffer. Malformed lengths return 0: the decode
+ * loop is responsible for reporting the error. */
+static int _contains_view_eligible_doc(const char* data, Py_ssize_t len,
+                                       Py_ssize_t threshold) {
+    Py_ssize_t position = 0;
+    while (len - position >= 4) {
+        int32_t size;
+        memcpy(&size, data + position, 4);
+        size = (int32_t)BSON_UINT32_FROM_LE(size);
+        if (size < BSON_MIN_SIZE || (Py_ssize_t)size > len - position) {
+            return 0;
+        }
+        if ((Py_ssize_t)size >= threshold) {
+            return 1;
+        }
+        position += size;
+    }
+    return 0;
+}
+
+/* Prepare a decode input buffer object for raw-document decoding: bytes and
+ * bytearray are returned as-is; any other buffer-protocol input is copied to
+ * bytes only if the stream contains a document large enough for a zero-copy
+ * view, so views can't observe later mutations of the caller's buffer.
+ * Streams of exclusively sub-threshold documents are decoded in place: every
+ * document is copied individually, so the buffer is never aliased. Non-raw
+ * decodes never take views of the buffer, so their input is always returned
+ * as-is. Returns a new reference or NULL on failure with an exception set. */
+static PyObject* _prepare_input_buffer(PyObject* self, PyObject* bson,
+                                       const codec_options_t* options) {
     Py_buffer tmp = {0};
+    int needs_copy;
     if (!options->is_raw_bson || PyBytes_Check(bson) || PyByteArray_Check(bson)) {
         Py_INCREF(bson);
         return bson;
@@ -3054,9 +3081,14 @@ static PyObject* _prepare_input_buffer(PyObject* bson, const codec_options_t* op
     if (!_get_buffer(bson, &tmp)) {
         return NULL;
     }
-    copied = PyBytes_FromStringAndSize((char*)tmp.buf, tmp.len);
+    needs_copy = _contains_view_eligible_doc(
+        (const char*)tmp.buf, tmp.len, GETSTATE(self)->raw_bson_view_threshold);
     PyBuffer_Release(&tmp);
-    return copied;
+    if (!needs_copy) {
+        Py_INCREF(bson);
+        return bson;
+    }
+    return PyBytes_FromObject(bson);
 }
 
 static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
@@ -3074,7 +3106,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
         return result;
     }
 
-    bson = _prepare_input_buffer(bson, &options);
+    bson = _prepare_input_buffer(self, bson, &options);
     if (!bson) {
         destroy_codec_options(&options);
         return result;
@@ -3153,7 +3185,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    bson = _prepare_input_buffer(bson, &options);
+    bson = _prepare_input_buffer(self, bson, &options);
     if (!bson) {
         destroy_codec_options(&options);
         return NULL;

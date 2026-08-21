@@ -109,6 +109,7 @@ from bson.binary import (
 )
 from bson.code import Code
 from bson.codec_options import (
+    _RAW_BSON_VIEW_THRESHOLD,
     DEFAULT_CODEC_OPTIONS,
     CodecOptions,
     DatetimeConversion,
@@ -137,12 +138,6 @@ from bson.tz_util import utc
 if TYPE_CHECKING:
     from bson.raw_bson import RawBSONDocument
     from bson.typings import _DocumentType, _ReadableBuffer
-
-# Raw BSON documents at least this many bytes are exposed as read-only memoryview
-# slices of the decode buffer instead of bytes copies.
-# The C extension reads this value at module init, so it must be defined
-# before _cbson is imported below.
-_RAW_BSON_VIEW_THRESHOLD = 4096
 
 try:
     from bson import _cbson  # type: ignore[attr-defined]
@@ -263,15 +258,22 @@ def _raw_slice(data: Any, view: memoryview, position: int, end: int, obj_size: i
     """Return the raw BSON document spanning data[position:end + 1] for use
     as a RawBSONDocument's buffer.
 
-    Documents at least _RAW_BSON_VIEW_THRESHOLD bytes are exposed as
+    A document spanning an entire immutable buffer is passed through as-is.
+    Other documents at least _RAW_BSON_VIEW_THRESHOLD bytes are exposed as
     read-only memoryview slices of the parent buffer instead of bytes copies.
-    Views are only taken of immutable buffers: slices of a mutable buffer
+    Views are only taken of immutable buffers: documents in a mutable buffer
     (e.g. a bytearray) are copied so the caller can't mutate the document
     out from under us.
     """
-    if obj_size >= _RAW_BSON_VIEW_THRESHOLD and view.readonly:
-        return view[position : end + 1]
-    return _raw_as_bytes(data[position : end + 1])
+    whole_span = position == 0 and obj_size == len(data)
+    if view.readonly:  # data is immutable (bytes).
+        if whole_span:
+            return data
+        if obj_size >= _RAW_BSON_VIEW_THRESHOLD:
+            return view[position : end + 1]
+        return data[position : end + 1]
+    # Mutable buffer: always copy.
+    return bytes(data) if whole_span else _raw_as_bytes(data[position : end + 1])
 
 
 def _raise_unknown_type(element_type: int, element_name: str) -> NoReturn:
@@ -647,9 +649,8 @@ def _bson_to_dict(data: Any, opts: CodecOptions[_DocumentType]) -> _DocumentType
     data, view = get_data_and_view(data)
     try:
         if _raw_document_class(opts.document_class):
-            # Mutable buffers (e.g. bytearray) must not be passed through:
-            # the caller could mutate the document out from under us.
-            return opts.document_class(_raw_as_bytes(data), opts)  # type:ignore[call-arg]
+            buf = _raw_slice(data, view, 0, len(data) - 1, len(data))
+            return opts.document_class(buf, opts)  # type:ignore[call-arg]
         _, end = _get_object_size(data, 0, len(data))
         return cast("_DocumentType", _elements_to_dict(data, view, 4, end, opts))
     except InvalidBSON:
@@ -1141,13 +1142,7 @@ def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> lis
             if data[obj_end] != 0:
                 raise InvalidBSON("bad eoo")
             if use_raw:
-                if position == 0 and obj_size == data_len and isinstance(data, bytes):
-                    # Only one immutable document, no copy needed. Mutable
-                    # buffers (e.g. bytearray) must not be passed through:
-                    # the caller could mutate the document out from under us.
-                    raw_buf = data
-                else:
-                    raw_buf = _raw_slice(data, view, position, obj_end, obj_size)
+                raw_buf = _raw_slice(data, view, position, obj_end, obj_size)
                 docs.append(opts.document_class(raw_buf, opts))  # type: ignore
             else:
                 docs.append(_elements_to_dict(data, view, position + 4, obj_end, opts))

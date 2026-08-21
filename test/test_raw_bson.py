@@ -24,6 +24,7 @@ from bson.binary import JAVA_LEGACY, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from test import IntegrationTest, client_context, unittest
+from test.test_raw_bson_shared import SHERLOCK_BSON
 
 _IS_SYNC = True
 
@@ -32,11 +33,7 @@ class TestRawBSONDocument(IntegrationTest):
     # {'_id': ObjectId('556df68b6e32ab21a95e0785'),
     #  'name': 'Sherlock',
     #  'addresses': [{'street': 'Baker Street'}]}
-    bson_string = (
-        b"Z\x00\x00\x00\x07_id\x00Um\xf6\x8bn2\xab!\xa9^\x07\x85\x02name\x00\t"
-        b"\x00\x00\x00Sherlock\x00\x04addresses\x00&\x00\x00\x00\x030\x00\x1e"
-        b"\x00\x00\x00\x02street\x00\r\x00\x00\x00Baker Street\x00\x00\x00\x00"
-    )
+    bson_string = SHERLOCK_BSON
     document = RawBSONDocument(bson_string)
 
     def tearDown(self):

@@ -36,6 +36,9 @@ PyMongo 4.18 brings a number of changes including:
   :class:`bytearray`) are always :class:`bytes` copies. Note that such a view keeps the
   entire buffer it was decoded from alive until the view is released; call
   ``bytes(doc.raw)`` to get an independent copy.
+- ``bson.get_data_and_view`` now returns a view of a private :class:`bytes` copy
+  for buffer-protocol inputs other than :class:`bytes` or :class:`bytearray`,
+  rather than a view aliasing the caller's buffer.
 - Fixed a potential out-of-bounds read in the C extension when decoding an
   array of BSON documents. An embedded document whose declared length exceeds
   the bytes remaining in the array now raises

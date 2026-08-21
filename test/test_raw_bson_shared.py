@@ -31,6 +31,15 @@ from bson.errors import InvalidBSON
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument
 from bson.son import SON
 
+# {'_id': ObjectId('556df68b6e32ab21a95e0785'),
+#  'name': 'Sherlock',
+#  'addresses': [{'street': 'Baker Street'}]}
+SHERLOCK_BSON = (
+    b"Z\x00\x00\x00\x07_id\x00Um\xf6\x8bn2\xab!\xa9^\x07\x85\x02name\x00\t"
+    b"\x00\x00\x00Sherlock\x00\x04addresses\x00&\x00\x00\x00\x030\x00\x1e"
+    b"\x00\x00\x00\x02street\x00\r\x00\x00\x00Baker Street\x00\x00\x00\x00"
+)
+
 
 class _TaggedRawBSONDocument(RawBSONDocument):
     """RawBSONDocument subclass with a different __init__ signature and
@@ -52,14 +61,7 @@ class _SlottedRawBSONDocument(RawBSONDocument):
 
 
 class TestRawBSONDocument(UnitTest):
-    # {'_id': ObjectId('556df68b6e32ab21a95e0785'),
-    #  'name': 'Sherlock',
-    #  'addresses': [{'street': 'Baker Street'}]}
-    bson_string = (
-        b"Z\x00\x00\x00\x07_id\x00Um\xf6\x8bn2\xab!\xa9^\x07\x85\x02name\x00\t"
-        b"\x00\x00\x00Sherlock\x00\x04addresses\x00&\x00\x00\x00\x030\x00\x1e"
-        b"\x00\x00\x00\x02street\x00\r\x00\x00\x00Baker Street\x00\x00\x00\x00"
-    )
+    bson_string = SHERLOCK_BSON
     document = RawBSONDocument(bson_string)
 
     def test_decode(self):
@@ -138,6 +140,19 @@ class TestRawBSONDocument(UnitTest):
         self.assertIsInstance(top, bytes)
         self.assertEqual(encode(inner), top)
 
+    @unittest.skipUnless(has_c(), "tests the C extension")
+    def test_c_encode_rejects_non_bytes_raw(self):
+        # The C encoder accepts only bytes and memoryview .raw values:
+        # other buffer types (e.g. a mutable bytearray) raise TypeError.
+        class _ByteArrayRaw(RawBSONDocument):
+            @property
+            def raw(self):
+                return bytearray(super().raw)
+
+        doc = _ByteArrayRaw(encode({"a": 1}))
+        with self.assertRaisesRegex(TypeError, "must be bytes or memoryview"):
+            encode({"sub": doc})
+
     def test_pickle_view_backed_document(self):
         # Pickling serializes the raw BSON as bytes and drops the inflation
         # cache, so documents holding memoryview slices stay picklable
@@ -202,8 +217,8 @@ class TestRawBSONDocument(UnitTest):
         # leak the view (which pins the entire source buffer).
         from bson import _cbson  # type:ignore[attr-defined]
 
-        # An array whose first element is a large subdocument (creates the
-        # cached view) and whose second element has an invalid type byte.
+        # An array whose first element is a large subdocument (creates a
+        # zero-copy view) and whose second element has an invalid type byte.
         data = encode({"arr": [{"payload": "x" * 8000}, 1]})
         marker = b"\x101\x00"  # type 0x10, key "1"
         data = data.replace(marker, b"\xee1\x00")
