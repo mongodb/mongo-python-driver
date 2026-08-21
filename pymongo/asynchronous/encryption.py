@@ -56,6 +56,7 @@ from bson.codec_options import CodecOptions
 from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot, _op_id
+from pymongo._otel import internal_cursor_iteration
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
@@ -257,10 +258,11 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
 
         :return: All documents from the listCollections command response as BSON.
         """
-        async with await self.client_ref()[database].list_collections(
-            filter=RawBSONDocument(filter)
-        ) as cursor:
-            return [_dict_to_bson(doc, False, _DATA_KEY_OPTS) async for doc in cursor]
+        with internal_cursor_iteration():
+            async with await self.client_ref()[database].list_collections(
+                filter=RawBSONDocument(filter)
+            ) as cursor:
+                return [_dict_to_bson(doc, False, _DATA_KEY_OPTS) async for doc in cursor]
 
     def spawn(self) -> None:
         """Spawn mongocryptd.

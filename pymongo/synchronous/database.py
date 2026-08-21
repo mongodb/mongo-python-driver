@@ -33,6 +33,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
+from pymongo._otel import internal_cursor_iteration
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.database_shared import _check_name, _CodecDocumentType
 from pymongo.errors import CollectionInvalid, InvalidOperation
@@ -1209,9 +1210,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        return [
-            result["name"] for result in self._list_collections_helper(session=session, **kwargs)
-        ]
+        with internal_cursor_iteration():
+            return [
+                result["name"]
+                for result in self._list_collections_helper(session=session, **kwargs)
+            ]
 
     def list_collection_names(
         self,
