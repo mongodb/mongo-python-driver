@@ -551,7 +551,7 @@ def start_transaction_span(tracing_options: Optional[TracingOptions]) -> Optiona
     """Start (but do not make current) the ``"transaction"`` pseudo-span, or None.
 
     Passed as the explicit ``parent_span`` for operation spans in this
-    transaction, never pushed as ambient context.
+    transaction, never made current.
     """
     if not _is_tracing_enabled(tracing_options):
         return None
