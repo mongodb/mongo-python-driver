@@ -433,7 +433,8 @@ def start_operation_span(
     backfills the authoritative values once a command exists.
 
     ``parent_span`` becomes an *explicit* parent rather than being read from
-    ambient context, so a concurrent unrelated session cannot be captured.
+    whichever span is current, so a concurrent unrelated session cannot be
+    captured.
 
     ``set_current=False`` leaves the span and the operation-name contextvar
     alone, for a caller that makes it current with ``use_operation_span``.
@@ -496,7 +497,7 @@ def use_operation_span(handle: Optional[_OperationSpanHandle]) -> Iterator[None]
 
 
 def reset_context() -> None:
-    """Clear the OTel ambient span and operation-name contextvar.
+    """Clear the current OTel span and the operation-name contextvar.
 
     ``asyncio.create_task`` freezes the caller's context, so without this a
     long-lived background task parents every span it emits under an unrelated,
