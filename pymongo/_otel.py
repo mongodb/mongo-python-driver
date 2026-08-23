@@ -384,7 +384,7 @@ def start_command_span(
 
 
 def _set_operation_cursor_id(cursor_id: int) -> None:
-    """Set db.mongodb.cursor_id on the ambient operation span, if there is one.
+    """Set db.mongodb.cursor_id on the current operation span, if there is one.
 
     Guarded on the operation-name contextvar, since the current span could
     otherwise be an unrelated one belonging to the host application.

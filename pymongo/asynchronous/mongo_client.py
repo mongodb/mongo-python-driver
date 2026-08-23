@@ -1914,9 +1914,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             ``AsyncCursor._refresh``), or None, so this send's command spans nest
             under it. Covers one caller-driven getMore, or a whole API call that
             drains the cursor itself.
-        :param reuse_current_span: Create no operation span at all and leave the
-            ambient span in place as the parent for this operation's command
-            spans. Mutually exclusive with ``operation_telemetry``. Defaults to
+        :param reuse_current_span: Leave the span that is already current as the
+            parent for this operation's command spans, creating none, defaults to
             False.
         """
         if operation.conn_mgr:
@@ -2032,13 +2031,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation_telemetry: A cursor's operation span (see
             ``AsyncCursor._refresh`` and ``AsyncCommandCursor._refresh``), which
             this call makes current but neither creates nor ends, defaults to None.
-        :param reuse_current_span: Create no operation span at all and leave the
-            ambient span in place as the parent for this operation's command
-            spans. For callers that know a suitable operation span is already
-            current, where a second one would be spurious (the client
-            bulk-write results cursor's getMores, which belong under the
-            enclosing bulkWrite span). Mutually exclusive with
-            ``operation_telemetry``. Defaults to False.
+        :param reuse_current_span: Leave the span that is already current as the
+            parent for this operation's command spans, creating none. Mutually
+            exclusive with ``operation_telemetry``, defaults to False.
         :param dbname: Namespace for the operation span when this call creates
             it, defaults to None.
         :param collection: Collection for the operation span, defaults to None.
