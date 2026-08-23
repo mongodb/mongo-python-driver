@@ -1908,8 +1908,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation_telemetry: The calling cursor's operation span (see
             ``Cursor._refresh``), or None, so this send's command spans
             nest under it.
-        :param reuse_current_span: Leave the ambient span as the parent for this
-            operation's command spans, creating none, defaults to False.
+        :param reuse_current_span: Leave the span that is already current as the
+            parent for this operation's command spans, creating none, defaults to
+            False.
         """
         if operation.conn_mgr:
             server = self._select_server(
@@ -2021,9 +2022,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation_telemetry: A cursor's operation span (see
             ``Cursor._refresh`` and ``CommandCursor._refresh``), which
             this call makes current but neither creates nor ends, defaults to None.
-        :param reuse_current_span: Leave the ambient span as the parent for this
-            operation's command spans, creating none. Mutually exclusive with
-            ``operation_telemetry``, defaults to False.
+        :param reuse_current_span: Leave the span that is already current as the
+            parent for this operation's command spans, creating none. Mutually
+            exclusive with ``operation_telemetry``, defaults to False.
 
         :return: Output of the calling func()
         """
