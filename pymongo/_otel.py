@@ -224,8 +224,9 @@ def _build_query_summary(command_name: str, dbname: str, collection: Optional[st
     return f"{command_name} {dbname}"
 
 
-# Spec operation names that differ from our `_Op` values. "dropCollection" and
-# "createCollection" contradict the spec's own command-name rule, unresolved.
+# db.operation.name for operations the spec names differently from our `_Op`
+# values. The nested command span keeps the wire name in db.command.name, so
+# dropping a collection reports "dropCollection" over a "drop" command span.
 _OPERATION_NAME_OVERRIDES = {
     "drop": "dropCollection",
     "create": "createCollection",
@@ -286,18 +287,19 @@ def start_command_span(
 ) -> Optional[Span]:
     """Start and return a CLIENT-kind span for a server command, or None.
 
-    Returns None when tracing is off, and for a sensitive command, which still
-    backfills the current operation span before being suppressed. One span per
-    wire-protocol message, returned rather than made current, so nothing nests
-    inside it.
+    A no-op returning None when tracing is off; a sensitive command also
+    returns None but still backfills the current operation span first. One span
+    per wire-protocol message, parented to the current operation span but never
+    made current itself.
     """
     if not _is_tracing_enabled(tracing_options):
         return None
 
     collection = _extract_collection_name(command_name, dbname, cmd)
-    # Runs per attempt, not per operation: an attempt that fails before building
-    # a command never reaches here, so a retry may be where the span learns its
-    # namespace.
+    # Must stay above the sensitive-command return: the operation span needs
+    # these attributes even when the command itself gets no span. Runs per
+    # attempt, since an attempt that dies before building a command never
+    # reaches here, so a retry may be where the span learns its namespace.
     current_operation = _CURRENT_OPERATION_NAME.get()
     if current_operation is not None:
         current_span = trace.get_current_span()

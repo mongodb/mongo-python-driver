@@ -1904,8 +1904,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             that executes the operation on a given connection.
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
-        :param operation_telemetry: The calling cursor's operation span, or None,
-            so this send's command spans nest under it.
+        :param operation_telemetry: The calling cursor's operation span (see
+            ``Cursor._refresh``), or None, so this send's command spans
+            nest under it.
         """
         if operation.conn_mgr:
             server = self._select_server(
@@ -2012,8 +2013,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
-        :param operation_telemetry: A cursor's operation span, which this call
-            makes current but neither creates nor ends, defaults to None.
+        :param operation_telemetry: A cursor's operation span (see
+            ``Cursor._refresh``), which this call makes current but
+            neither creates nor ends, defaults to None.
 
         :return: Output of the calling func()
         """
