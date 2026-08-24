@@ -132,15 +132,15 @@ def _is_tracing_enabled(tracing_options: Optional[TracingOptions]) -> bool:
 
     ClientOptions folds ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` into
     ``tracing.enabled`` once at construction, so this is a lookup rather than
-    an os.environ read per command. None means there is no client to read the
-    option from, as for monitor and handshake connections, which are never
+    an os.environ read per command. ``None`` means there is no client to read the
+    option from, such as for monitor and handshake connections, which are never
     traced.
     """
     return _HAS_OPENTELEMETRY and tracing_options is not None and tracing_options["enabled"]
 
 
 def _resolve_tracing_options(tracing_options: _UnresolvedTracingOptions) -> TracingOptions:
-    """Fold both environment variables into a client's validated tracing options.
+    """Fold Otel environment variables into a client's validated tracing options.
 
     Called once when the client is built, so nothing re-reads the environment
     per command. An explicit client value wins, including a
@@ -186,7 +186,7 @@ def _extract_collection_name(
 ) -> Optional[str]:
     """Return the collection name targeted by ``cmd``, or None if it doesn't target one.
 
-    Always None for commands against the admin database: several (e.g. dropUser,
+    Always ``None`` for commands against the admin database: several (e.g. dropUser,
     renameCollection) carry a string command value that names a user, role, or
     namespace rather than a collection.
     """
@@ -224,7 +224,7 @@ def _build_query_summary(command_name: str, dbname: str, collection: Optional[st
     return f"{command_name} {dbname}"
 
 
-# db.operation.name for operations the spec names differently from our `_Op`
+# LUT of db.operation.name for operations the spec names differently from our `_Op`
 # values. The nested command span keeps the wire name in db.command.name, so
 # dropping a collection reports "dropCollection" over a "drop" command span.
 _OPERATION_NAME_OVERRIDES = {
@@ -285,11 +285,11 @@ def start_command_span(
     command_name: str,
     speculative_hello: bool,
 ) -> Optional[Span]:
-    """Start and return a CLIENT-kind span for a server command, or None.
+    """Start and return a CLIENT-kind span for a server command, or ``None``.
 
-    A no-op returning None when tracing is off; a sensitive command also
-    returns None but still backfills the current operation span first. One span
-    per wire-protocol message, parented to the current operation span but never
+    A no-op returning ``None`` when tracing is off; a sensitive command also
+    returns ``None`` but still backfills the current operation span first. There is one
+    span per wire-protocol message, parented to the current operation span but never
     made current itself.
     """
     if not _is_tracing_enabled(tracing_options):
@@ -395,9 +395,9 @@ def end_command_span_failure(
 
 
 class _OperationSpanHandle:
-    """Bundles an operation span with what's needed to end it later.
+    """Bundles an operation span with what is needed to end it later.
 
-    ``_cm`` is the ``start_as_current_span`` context manager, or None in
+    ``_cm`` is the ``start_as_current_span`` context manager, or ``None`` in
     detached mode, where ``use_operation_span`` makes the span current per use.
     """
 
@@ -424,9 +424,9 @@ def start_operation_span(
     collection: Optional[str] = None,
     set_current: bool = True,
 ) -> Optional[_OperationSpanHandle]:
-    """Start a CLIENT-kind span for one logical operation, or None.
+    """Start a CLIENT-kind span for one logical operation, or ``None``.
 
-    Spans all retry attempts of one ``_retry_internal`` call. Namespace
+    Carries across all retry attempts of one ``_retry_internal`` call. Namespace
     attributes are set eagerly from ``dbname``/``collection`` so an operation
     that fails before building any command, such as a server selection
     timeout, still produces a conformant span; ``start_command_span``
@@ -475,7 +475,7 @@ def use_operation_span(handle: Optional[_OperationSpanHandle]) -> Iterator[None]
     """Make a detached operation span current for the duration of the block.
 
     Does not end the span; its owner ends it explicitly. A no-op when
-    ``handle`` is None.
+    ``handle`` is ``None``.
     """
     if handle is None:
         yield
@@ -502,7 +502,7 @@ def reset_context() -> None:
     ``asyncio.create_task`` freezes the caller's context, so without this a
     long-lived background task parents every span it emits under an unrelated,
     long-ended operation. Attaching an empty context makes spans started
-    afterwards trace roots. Deliberately never detached: the task's context is
+    afterwards into trace roots. Deliberately never detached: the task's context is
     wrong for its whole life and dies with it.
     """
     if not _HAS_OPENTELEMETRY:

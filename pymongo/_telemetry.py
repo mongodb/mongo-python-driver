@@ -265,7 +265,7 @@ class _OperationTelemetry:
 
     Construct once per call to ``_retry_internal``; call :meth:`succeeded` or
     :meth:`failed` exactly once when the operation's outcome is known, or use
-    it as a context manager to do so automatically. A no-op throughout when
+    it as a context manager to do so automatically. It is a no-op throughout when
     tracing is disabled.
 
     This span is shared by every attempt, while each attempt gets a command
@@ -275,7 +275,7 @@ class _OperationTelemetry:
     With ``set_current=False`` the span is not made current at construction.
     That suits a span started outside the ``_retry_internal`` call it covers,
     such as a cursor-creating command's, whose span has to exist before the
-    cursor does; that call makes it current with :meth:`use`.
+    cursor does; that caller makes it current with :meth:`use`.
     """
 
     __slots__ = ("handle",)
