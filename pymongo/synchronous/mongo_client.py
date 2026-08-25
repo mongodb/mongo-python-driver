@@ -452,9 +452,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           - `srvAllowedHostsSuffix`: (string) Overrides the default requirement that
             hosts returned by SRV DNS records share the same parent domain as the seed
             hostname. When set, the driver accepts any returned host whose name ends
-            with this suffix (e.g. ``".atlas.mongodb.com"``). The value must contain
-            at least two labels and must not be a public suffix (per the Public Suffix
-            List). Only valid with ``mongodb+srv://`` URIs.
+            with this suffix (e.g. ``".atlas.mongodb.com"``). The value must not be a
+            public suffix (per the Public Suffix List). Only valid with
+            ``mongodb+srv://`` URIs.
 
             .. warning::
 

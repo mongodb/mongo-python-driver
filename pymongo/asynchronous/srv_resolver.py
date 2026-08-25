@@ -81,14 +81,6 @@ class _SrvResolver:
         self.__srv_allowed_hosts_suffix = (
             "." + srv_allowed_hosts_suffix.lower().strip(".") if srv_allowed_hosts_suffix else None
         )  # ensure there's a . at the beginning of the domain
-        if (
-            self.__srv_allowed_hosts_suffix is not None
-            and "." not in self.__srv_allowed_hosts_suffix[1:]
-        ):
-            raise ConfigurationError(
-                "srvAllowedHostsSuffix must contain at least two labels (e.g. '.mydomain.net'), "
-                f"got: {srv_allowed_hosts_suffix}"
-            )
         if self.__srv_allowed_hosts_suffix is not None and is_public_suffix(
             self.__srv_allowed_hosts_suffix
         ):
