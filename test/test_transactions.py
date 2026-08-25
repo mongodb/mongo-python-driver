@@ -41,10 +41,10 @@ from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,
     ConnectionFailure,
-    ExecutionTimeout,
     InvalidOperation,
     NetworkTimeout,
     OperationFailure,
+    PyMongoError,
 )
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
@@ -585,8 +585,13 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         listener.reset()
         with client.start_session() as s:
             with pymongo.timeout(1.0):
-                with self.assertRaises(ExecutionTimeout):
+                # The server may report MaxTimeMSExpired as an
+                # ExecutionTimeout or a WriteError.
+                # The driver can also time out with a NetworkTimeout while waiting for a response,
+                # so only assert that the error is a CSOT timeout.
+                with self.assertRaises(PyMongoError) as ctx:
                     s.with_transaction(callback)
+                self.assertTrue(ctx.exception.timeout)
 
         # At least two attempts: the original and one or more retries.
         inserts = len([x for x in listener.started_command_names() if x == "insert"])

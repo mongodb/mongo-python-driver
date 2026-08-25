@@ -204,14 +204,11 @@ def run() -> None:
         TEST_ARGS.extend(f"-o log_cli_level={logging.DEBUG}".split())
 
     if os.environ.get("COVERAGE"):
-        binary = sys.executable
-        result = subprocess.run(  # noqa: S603
-            [binary, "-m", "coverage", "run", "-m", "pytest", *TEST_ARGS, *sys.argv[1:]],
-            check=False,
-        )
-        subprocess.run([binary, "-m", "coverage", "report"], check=False)  # noqa: S603
-        if result.returncode != 0:
-            print(result.stderr)
+        # Pass the args as a list to preserve multi-word entries like the
+        # marker expression added by handle_green_framework().
+        cmd = [sys.executable, "-m", "coverage", "run", "-m", "pytest", *TEST_ARGS, *sys.argv[1:]]
+        result = subprocess.run(cmd, check=False)  # noqa: S603
+        subprocess.run([sys.executable, "-m", "coverage", "report"], check=False)
         sys.exit(result.returncode)
 
     # Run local tests.
