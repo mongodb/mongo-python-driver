@@ -24,19 +24,26 @@ from unittest.mock import MagicMock
 sys.path[0:0] = [""]
 
 from bson import CodecOptions, encode
+from bson.objectid import ObjectId
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION, MONGOS_EXHAUST_WIRE_VERSION
 from pymongo.compression_support import ZlibContext, _have_zlib
-from pymongo.errors import DocumentTooLarge, OperationFailure
+from pymongo.errors import DocumentTooLarge, InvalidOperation, OperationFailure
+from pymongo.hello import _get_server_type
 from pymongo.message import (
+    _check_exhaust_supported,
     _convert_client_bulk_exception,
     _convert_exception,
     _gen_find_command,
     _gen_get_more_command,
+    _GetMore,
     _maybe_add_read_preference,
     _op_msg,
+    _Query,
     _raise_document_too_large,
 )
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, SecondaryPreferred
+from pymongo.server_type import SERVER_TYPE
 from test import unittest
 
 _OPTS = CodecOptions()
@@ -44,10 +51,89 @@ _OPTS = CodecOptions()
 
 class TestMessage(unittest.TestCase):
     # _gen_get_more_command helper
-    def _make_conn(self, max_wire_version=9):
+    def _make_conn(self, max_wire_version=9, is_mongos=False):
         conn = MagicMock()
         conn.max_wire_version = max_wire_version
+        conn.is_mongos = is_mongos
         return conn
+
+    # _check_exhaust_supported
+
+    def test_exhaust_allowed_on_mongos_71(self):
+        _check_exhaust_supported(self._make_conn(MONGOS_EXHAUST_WIRE_VERSION, is_mongos=True))
+
+    def test_exhaust_refused_on_older_mongos(self):
+        with self.assertRaisesRegex(InvalidOperation, "MongoDB 7.1"):
+            _check_exhaust_supported(
+                self._make_conn(MONGOS_EXHAUST_WIRE_VERSION - 1, is_mongos=True)
+            )
+
+    def test_exhaust_not_gated_behind_a_load_balancer(self):
+        # A load-balanced hello carries serviceId and is typed LoadBalancer,
+        # not Mongos, so these connections take the non-mongos path.
+        doc = {"ok": 1, "msg": "isdbgrid", "serviceId": ObjectId(), "maxWireVersion": 21}
+        self.assertEqual(_get_server_type(doc), SERVER_TYPE.LoadBalancer)
+        _check_exhaust_supported(self._make_conn(MONGOS_EXHAUST_WIRE_VERSION - 1))
+
+    def test_exhaust_allowed_on_any_supported_non_mongos(self):
+        # Every other server type has served exhaust since 4.2.
+        _check_exhaust_supported(self._make_conn(MIN_SUPPORTED_WIRE_VERSION))
+
+    def _exhaust_query(self):
+        return _Query(
+            0,
+            "db",
+            "coll",
+            0,
+            {},
+            None,
+            CodecOptions(),
+            ReadPreference.PRIMARY,
+            0,
+            0,
+            ReadConcern(),
+            None,
+            None,
+            MagicMock(),
+            None,
+            True,
+        )
+
+    def _exhaust_get_more(self):
+        return _GetMore(
+            "db",
+            "coll",
+            0,
+            12345,
+            CodecOptions(),
+            ReadPreference.PRIMARY,
+            None,
+            MagicMock(),
+            None,
+            MagicMock(),
+            True,
+            None,
+        )
+
+    # use_command is where the check is consulted.
+
+    def test_find_on_older_mongos_refuses_exhaust(self):
+        conn = self._make_conn(MONGOS_EXHAUST_WIRE_VERSION - 1, is_mongos=True)
+        with self.assertRaisesRegex(InvalidOperation, "MongoDB 7.1"):
+            self._exhaust_query().use_command(conn)
+
+    def test_get_more_on_older_mongos_refuses_exhaust(self):
+        conn = self._make_conn(MONGOS_EXHAUST_WIRE_VERSION - 1, is_mongos=True)
+        with self.assertRaisesRegex(InvalidOperation, "MongoDB 7.1"):
+            self._exhaust_get_more().use_command(conn)
+
+    def test_find_on_71_mongos_allows_exhaust(self):
+        conn = self._make_conn(MONGOS_EXHAUST_WIRE_VERSION, is_mongos=True)
+        self.assertTrue(self._exhaust_query().use_command(conn))
+
+    def test_get_more_on_71_mongos_allows_exhaust(self):
+        conn = self._make_conn(MONGOS_EXHAUST_WIRE_VERSION, is_mongos=True)
+        self.assertTrue(self._exhaust_get_more().use_command(conn))
 
     # _maybe_add_read_preference
 

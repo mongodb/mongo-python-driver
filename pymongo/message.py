@@ -43,6 +43,7 @@ from bson.raw_bson import (
     RawBSONDocument,
     _inflate_bson,
 )
+from pymongo.common import MONGOS_EXHAUST_WIRE_VERSION
 from pymongo.monitoring import _EventListeners
 
 try:
@@ -52,7 +53,6 @@ try:
 except ImportError:
     _use_c = False
 from pymongo.errors import (
-    ConfigurationError,
     DocumentTooLarge,
     InvalidOperation,
     ProtocolError,
@@ -1220,6 +1220,17 @@ _UNPACK_REPLY: dict[int, Callable[[bytes | memoryview], _OpMsg]] = {
 }
 
 
+def _check_exhaust_supported(conn: _AgnosticConnection) -> None:
+    """Raise if this connection's server will not continue an exhaust stream.
+
+    mongos gained exhaust getMore in 7.1 (SERVER-57297). Load-balanced deployments
+    are left alone: every cursor pins its connection there anyway, so an older mongos
+    costs nothing extra, and refusing would break clients that work today.
+    """
+    if conn.is_mongos and conn.max_wire_version < MONGOS_EXHAUST_WIRE_VERSION:
+        raise InvalidOperation("Exhaust cursors require MongoDB 7.1+ when connected to mongos.")
+
+
 class _Query:
     """A query operation."""
 
@@ -1293,20 +1304,11 @@ class _Query:
         return f"{self.db}.{self.coll}"
 
     def use_command(self, conn: _AgnosticConnection) -> bool:
-        use_find_cmd = False
-        if not self.exhaust:
-            use_find_cmd = True
-        elif conn.max_wire_version >= 8:
-            # OP_MSG supports exhaust on MongoDB 4.2+
-            use_find_cmd = True
-        elif not self.read_concern.ok_for_legacy:
-            raise ConfigurationError(
-                f"read concern level of {self.read_concern.level} is not valid "
-                f"with a max wire version of {conn.max_wire_version}."
-            )
+        if self.exhaust:
+            _check_exhaust_supported(conn)
 
         conn.validate_session(self.client, self.session)  # type: ignore[arg-type]
-        return use_find_cmd
+        return True
 
     def update_command(self, cmd: dict[str, Any]) -> None:
         self._as_command = cmd, self.db
@@ -1426,15 +1428,11 @@ class _GetMore:
         return f"{self.db}.{self.coll}"
 
     def use_command(self, conn: _AgnosticConnection) -> bool:
-        use_cmd = False
-        if not self.exhaust:
-            use_cmd = True
-        elif conn.max_wire_version >= 8:
-            # OP_MSG supports exhaust on MongoDB 4.2+
-            use_cmd = True
+        if self.exhaust:
+            _check_exhaust_supported(conn)
 
         conn.validate_session(self.client, self.session)  # type: ignore[arg-type]
-        return use_cmd
+        return True
 
     def update_command(self, cmd: dict[str, Any]) -> None:
         self._as_command = cmd, self.db
