@@ -67,9 +67,6 @@ HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22", dict())
 HOSTS["ubuntu24"] = Host("ubuntu24", "ubuntu2404-small", "Ubuntu-24", dict())
 HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
 HOSTS["debian11"] = Host("debian11", "debian11-small", "Debian11", dict())
-HOSTS["DEVPROD-19149"] = Host(
-    "DEVPROD-19149", "windows-2022-latest-small-DEVPROD-19149", "DEVPROD-19149", dict()
-)
 DEFAULT_HOST = HOSTS["rhel8"]
 
 # Other hosts
@@ -143,14 +140,9 @@ def create_variant(
     expansions = (expansions and expansions.copy()) or dict()
     if version:
         expansions["VERSION"] = version
-    # 8.0+ Windows builds must run on win-latest, unless an explicit host overrides this
-    if (
-        "run_on" not in kwargs
-        and (
-            "win64" in display_name.lower()
-            or ("win32" in display_name.lower() and version and version >= "8.0")
-        )
-        and host in (None, "win64", HOSTS.get("win64"))
+    # 8.0+ Windows builds must run on win-latest
+    if "win64" in display_name.lower() or (
+        "win32" in display_name.lower() and version and version >= "8.0"
     ):
         kwargs["run_on"] = HOSTS["win-latest"].run_on
     return create_variant_generic(
