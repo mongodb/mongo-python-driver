@@ -135,14 +135,6 @@ class TestTransactions(TransactionsBase):
             (coll.drop_indexes, [], {}),
             (coll.aggregate, [[{"$out": "aggout"}]], {}),
         ]
-        # Creating a collection in a transaction requires MongoDB 4.4+.
-        if client_context.version < (4, 3, 4):
-            unsupported_txn_writes.extend(
-                [
-                    (db.create_collection, ["collection"], {}),
-                ]
-            )
-
         for op in unsupported_txn_writes:
             op, args, kwargs = op
             with client.start_session() as s:
@@ -206,7 +198,6 @@ class TestTransactions(TransactionsBase):
             self.assertGreater(len(addresses), 1)
 
     @client_context.require_transactions
-    @client_context.require_version_min(4, 3, 4)
     def test_create_collection(self):
         client = client_context.client
         db = client.pymongo_test
@@ -307,7 +298,6 @@ class TestTransactions(TransactionsBase):
                 ):
                     op(*args, session=s)  # type: ignore
 
-    # Require 4.2+ for large (16MB+) transactions.
     @client_context.require_transactions
     @unittest.skipIf(sys.platform == "win32", "Our Windows machines are too slow to pass this test")
     def test_transaction_starts_with_batched_write(self):

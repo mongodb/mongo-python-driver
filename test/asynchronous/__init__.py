@@ -777,13 +777,7 @@ class AsyncClientContext:
         )
 
     def supports_transactions(self):
-        if self.version.at_least(4, 1, 8):
-            return self.is_mongos or self.is_rs
-
-        if self.version.at_least(4, 0):
-            return self.is_rs
-
-        return False
+        return self.is_mongos or self.is_rs
 
     def require_transactions(self, func):
         """Run a test only if the deployment might support transactions.
@@ -822,16 +816,7 @@ class AsyncClientContext:
     @property
     def supports_failCommand_fail_point(self):
         """Does the server support the failCommand fail point?"""
-        if self.is_mongos:
-            return self.version.at_least(4, 1, 5) and self.test_commands_enabled
-        else:
-            return self.version.at_least(4, 0) and self.test_commands_enabled
-
-    @property
-    def requires_hint_with_min_max_queries(self):
-        """Does the server require a hint with min/max queries."""
-        # Changed in SERVER-39567.
-        return self.version.at_least(4, 1, 10)
+        return self.test_commands_enabled
 
     @property
     async def max_bson_size(self):

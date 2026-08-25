@@ -229,7 +229,6 @@ def _gen_get_more_command(
     batch_size: Optional[int],
     max_await_time_ms: Optional[int],
     comment: Optional[Any],
-    conn: _AgnosticConnection,
 ) -> dict[str, Any]:
     """Generate a getMore command document."""
     cmd: dict[str, Any] = {"getMore": cursor_id, "collection": coll}
@@ -237,7 +236,7 @@ def _gen_get_more_command(
         cmd["batchSize"] = batch_size
     if max_await_time_ms is not None:
         cmd["maxTimeMS"] = max_await_time_ms
-    if comment is not None and conn.max_wire_version >= 9:
+    if comment is not None:
         cmd["comment"] = comment
     return cmd
 
@@ -1403,7 +1402,6 @@ class _GetMore:
             self.ntoreturn,
             self.max_await_time_ms,
             self.comment,
-            conn,
         )
         if self.session:
             self.session._apply_to(cmd, False, self.read_preference, conn)  # type: ignore[arg-type]

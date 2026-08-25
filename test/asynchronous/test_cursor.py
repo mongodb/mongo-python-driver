@@ -855,16 +855,13 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(3, len(await db.test.find().where(Code("this.x < 3")).to_list()))
 
         code_with_scope = Code("this.x < i", {"i": 3})
-        if async_client_context.version.at_least(4, 3, 3):
-            # MongoDB 4.4 removed support for Code with scope.
-            with self.assertRaises(OperationFailure):
-                await db.test.find().where(code_with_scope).to_list()
+        # MongoDB 4.4 removed support for Code with scope.
+        with self.assertRaises(OperationFailure):
+            await db.test.find().where(code_with_scope).to_list()
 
-            code_with_empty_scope = Code("this.x < 3", {})
-            with self.assertRaises(OperationFailure):
-                await db.test.find().where(code_with_empty_scope).to_list()
-        else:
-            self.assertEqual(3, len(await db.test.find().where(code_with_scope).to_list()))
+        code_with_empty_scope = Code("this.x < 3", {})
+        with self.assertRaises(OperationFailure):
+            await db.test.find().where(code_with_empty_scope).to_list()
 
         self.assertEqual(10, len(await db.test.find().to_list()))
         self.assertEqual([0, 1, 2], [a["x"] async for a in db.test.find().where("this.x < 3")])

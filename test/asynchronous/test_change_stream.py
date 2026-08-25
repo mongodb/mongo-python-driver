@@ -983,7 +983,6 @@ class TestAsyncCollectionAsyncChangeStream(
             self.assertEqual(change["ns"]["coll"], self.watched_collection().name)
             self.assertEqual(change["fullDocument"], raw_doc)
 
-    @async_client_context.require_version_min(4, 0)  # Needed for start_at_operation_time.
     async def test_uuid_representations(self):
         """Test with uuid document _ids and different uuid_representation."""
         optime = (await self.db.command("ping"))["operationTime"]

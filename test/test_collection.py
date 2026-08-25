@@ -270,17 +270,7 @@ class TestCollection(IntegrationTest):
         with self.write_concern_collection() as coll:
             coll.create_indexes([IndexModel("hello")])
 
-    @client_context.require_version_max(4, 3, -1)
-    def test_create_indexes_commitQuorum_requires_44(self):
-        db = self.db
-        with self.assertRaisesRegex(
-            ConfigurationError,
-            r"Must be connected to MongoDB 4\.4\+ to use the commitQuorum option for createIndexes",
-        ):
-            db.coll.create_indexes([IndexModel("a")], commitQuorum="majority")
-
     @client_context.require_no_standalone
-    @client_context.require_version_min(4, 4, -1)
     def test_create_indexes_commitQuorum(self):
         self.db.coll.create_indexes([IndexModel("a")], commitQuorum="majority")
 
@@ -1830,12 +1820,8 @@ class TestCollection(IntegrationTest):
         # and the socket has pending data (more_to_come=True) we have to close
         # and discard the socket.
         cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST, batch_size=2)
-        if client_context.version.at_least(4, 2):
-            # On 4.2+ we use OP_MSG which only sets more_to_come=True after the
-            # first getMore.
-            for _ in range(3):
-                next(cur)
-        else:
+        # OP_MSG only sets more_to_come=True after the first getMore.
+        for _ in range(3):
             next(cur)
         self.assertEqual(0, len(pool.conns))
         # if sys.platform.startswith("java") or "PyPy" in sys.version:

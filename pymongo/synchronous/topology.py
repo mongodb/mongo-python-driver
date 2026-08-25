@@ -762,8 +762,7 @@ class Topology:
         elif isinstance(error, (NotPrimaryError, OperationFailure)):
             # As per the SDAM spec if:
             #   - the server sees a "not primary" error, and
-            #   - the server is not shutting down, and
-            #   - the server version is >= 4.2, then
+            #   - the server is not shutting down, then
             # we keep the existing connection pool, but mark the server type
             # as Unknown and request an immediate check of the server.
             # Otherwise, we clear the connection pool, mark the server as

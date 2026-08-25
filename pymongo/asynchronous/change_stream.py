@@ -43,31 +43,6 @@ from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 
 _IS_SYNC = False
 
-# The change streams spec considers the following server errors from the
-# getMore command non-resumable. All other getMore errors are resumable.
-_RESUMABLE_GETMORE_ERRORS = frozenset(
-    [
-        6,  # HostUnreachable
-        7,  # HostNotFound
-        89,  # NetworkTimeout
-        91,  # ShutdownInProgress
-        189,  # PrimarySteppedDown
-        262,  # ExceededTimeLimit
-        9001,  # SocketException
-        10107,  # NotWritablePrimary
-        11600,  # InterruptedAtShutdown
-        11602,  # InterruptedDueToReplStateChange
-        13435,  # NotPrimaryNoSecondaryOk
-        13436,  # NotPrimaryOrSecondary
-        63,  # StaleShardVersion
-        150,  # StaleEpoch
-        13388,  # StaleConfig
-        234,  # RetryChangeStream
-        133,  # FailedToSatisfyReadPreference
-    ]
-)
-
-
 if TYPE_CHECKING:
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
@@ -81,11 +56,7 @@ def _resumable(exc: PyMongoError) -> bool:
     if isinstance(exc, (ConnectionFailure, CursorNotFound)):
         return True
     if isinstance(exc, OperationFailure):
-        if exc._max_wire_version is None:
-            return False
-        return (
-            exc._max_wire_version >= 9 and exc.has_error_label("ResumableChangeStreamError")
-        ) or (exc._max_wire_version < 9 and exc.code in _RESUMABLE_GETMORE_ERRORS)
+        return exc.has_error_label("ResumableChangeStreamError")
     return False
 
 
@@ -227,7 +198,6 @@ class AsyncChangeStream(Generic[_DocumentType]):
                 self._start_at_operation_time is None
                 and self._uses_resume_after is False
                 and self._uses_start_after is False
-                and conn.max_wire_version >= 7
             ):
                 self._start_at_operation_time = result.get("operationTime")
                 # PYTHON-2181: informative error on missing operationTime.

@@ -965,7 +965,6 @@ class TestCollectionChangeStream(TestChangeStreamBase, APITestsMixin, ProseSpecT
             self.assertEqual(change["ns"]["coll"], self.watched_collection().name)
             self.assertEqual(change["fullDocument"], raw_doc)
 
-    @client_context.require_version_min(4, 0)  # Needed for start_at_operation_time.
     def test_uuid_representations(self):
         """Test with uuid document _ids and different uuid_representation."""
         optime = (self.db.command("ping"))["operationTime"]

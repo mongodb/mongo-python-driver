@@ -413,7 +413,6 @@ class TestWriteConcernError(AsyncIntegrationTest):
             },
         }
 
-    @async_client_context.require_version_min(4, 0)
     @client_knobs(heartbeat_frequency=0.05, min_heartbeat_interval=0.05)
     async def test_RetryableWriteError_error_label(self):
         listener = OvertCommandListener()
@@ -431,7 +430,6 @@ class TestWriteConcernError(AsyncIntegrationTest):
             # In MongoDB 4.4+ we rely on the server returning the error label.
             self.assertIn("RetryableWriteError", listener.succeeded_events[-1].reply["errorLabels"])
 
-    @async_client_context.require_version_min(4, 4)
     async def test_RetryableWriteError_error_label_RawBSONDocument(self):
         # using RawBSONDocument should not cause errorLabel parsing to fail
         async with self.fail_point(self.fail_insert):

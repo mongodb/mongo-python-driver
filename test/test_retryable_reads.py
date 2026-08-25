@@ -278,7 +278,6 @@ class TestRetryableReads(IntegrationTest):
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     @client_context.require_failCommand_fail_point
-    @client_context.require_version_min(4, 4, 0)
     def test_03_01_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available_and_overload_retargeting_is_enabled(
         self,
     ):
@@ -323,7 +322,6 @@ class TestRetryableReads(IntegrationTest):
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     @client_context.require_failCommand_fail_point
-    @client_context.require_version_min(4, 4, 0)
     def test_03_02_retryable_reads_caused_by_non_overload_errors_are_retried_on_the_same_replicaset_server(
         self,
     ):
@@ -365,7 +363,6 @@ class TestRetryableReads(IntegrationTest):
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     @client_context.require_failCommand_fail_point
-    @client_context.require_version_min(4, 4, 0)
     def test_03_03_retryable_reads_caused_by_overload_errors_are_retried_on_the_same_replicaset_server_when_one_is_available_and_overload_retargeting_is_disabled(
         self,
     ):
@@ -407,7 +404,6 @@ class TestRetryableReads(IntegrationTest):
         assert listener.failed_events[0].connection_id == listener.succeeded_events[0].connection_id
 
     @client_context.require_failCommand_fail_point
-    @client_context.require_version_min(4, 4, 0)  # type:ignore[untyped-decorator]
     def test_overload_then_nonoverload_retries_increased_reads(self) -> None:
         # Create a client.
         listener = OvertCommandListener()
@@ -459,7 +455,6 @@ class TestRetryableReads(IntegrationTest):
         self.assertEqual(len(started_finds), MAX_ADAPTIVE_RETRIES + 1)
 
     @client_context.require_failCommand_fail_point
-    @client_context.require_version_min(4, 4, 0)  # type:ignore[untyped-decorator]
     def test_backoff_is_not_applied_for_non_overload_errors(self):
         if _IS_SYNC:
             mock_target = "pymongo.synchronous.helpers._RetryPolicy.backoff"

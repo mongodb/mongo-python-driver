@@ -77,13 +77,13 @@ class AutoEncryptionOpts:
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
-        Automatic client-side field level encryption requires MongoDB >=4.2
-        enterprise or a MongoDB >=4.2 Atlas cluster. Automatic encryption is not
+        Automatic client-side field level encryption requires MongoDB
+        enterprise or a MongoDB Atlas cluster. Automatic encryption is not
         supported for operations on a database or view and will result in
         error.
 
-        Although automatic encryption requires MongoDB >=4.2 enterprise or a
-        MongoDB >=4.2 Atlas cluster, automatic *decryption* is supported for all
+        Although automatic encryption requires MongoDB enterprise or a
+        MongoDB Atlas cluster, automatic *decryption* is supported for all
         users. To configure automatic *decryption* without automatic
         *encryption* set ``bypass_auto_encryption=True``. Explicit
         encryption and explicit decryption is also supported for all users
