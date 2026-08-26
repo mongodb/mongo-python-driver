@@ -145,7 +145,6 @@ class _AggregationCommand:
         cmd = {"aggregate": self._aggregation_target, "pipeline": self._pipeline}
         cmd.update(self._options)
 
-        # Apply this target's read concern if readConcern has not been specified as a kwarg.
         # $out/$merge pipelines also support readConcern on all supported server versions (4.4+).
         if "readConcern" not in cmd:
             read_concern = self._target.read_concern

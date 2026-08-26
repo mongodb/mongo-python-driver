@@ -777,7 +777,6 @@ class Topology:
                 err_code = error.details.get("code", default)  # type: ignore[union-attr]
             if err_code in helpers_shared._NOT_PRIMARY_CODES:
                 is_shutting_down = err_code in helpers_shared._SHUTDOWN_CODES
-                # Mark server Unknown and request check. Clear the pool only on shutdown.
                 if not self._settings.load_balanced:
                     await self._process_change(ServerDescription(address, error=error))
                 if is_shutting_down:

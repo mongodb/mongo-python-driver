@@ -2584,7 +2584,6 @@ def _add_retryable_write_error(exc: PyMongoError) -> None:
                 "to your connection string."
             )
             raise OperationFailure(errmsg, code, exc.details)  # type: ignore[attr-defined]
-        # The server reports the error labels.
         for label in doc.get("errorLabels", []):
             exc._add_error_label(label)
 
