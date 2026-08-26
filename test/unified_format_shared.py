@@ -474,6 +474,11 @@ class MatchEvaluatorUtil:
             self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
         self.test.assertLessEqual(actual[key_to_compare], spec)
 
+    def _operation_gte(self, spec, actual, key_to_compare):
+        if key_to_compare not in actual:
+            self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
+        self.test.assertGreaterEqual(actual[key_to_compare], spec)
+
     def _operation_matchAsDocument(self, spec, actual, key_to_compare):
         self._match_document(spec, json_util.loads(actual[key_to_compare]), False, test=True)
 
