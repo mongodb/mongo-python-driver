@@ -1,6 +1,6 @@
 {
   "description": "operation getMore",
-  "schemaVersion": "1.27",
+  "schemaVersion": "1.29",
   "createEntities": [
     {
       "client": {
@@ -90,10 +90,7 @@
                 "db.operation.name": "find",
                 "db.operation.summary": "find operation-get-more.test",
                 "db.mongodb.cursor_id": {
-                  "$$type": [
-                    "int",
-                    "long"
-                  ]
+                  "$$gte": 1
                 }
               },
               "nested": [
@@ -128,10 +125,7 @@
                     },
                     "db.query.summary": "find operation-get-more.test",
                     "db.mongodb.cursor_id": {
-                      "$$type": [
-                        "int",
-                        "long"
-                      ]
+                      "$$gte": 1
                     },
                     "db.mongodb.server_connection_id": {
                       "$$type": [
@@ -158,10 +152,7 @@
                 "db.operation.name": "getMore",
                 "db.operation.summary": "getMore operation-get-more.test",
                 "db.mongodb.cursor_id": {
-                  "$$type": [
-                    "int",
-                    "long"
-                  ]
+                  "$$gte": 1
                 }
               },
               "nested": [
@@ -196,10 +187,7 @@
                     },
                     "db.query.summary": "getMore operation-get-more.test",
                     "db.mongodb.cursor_id": {
-                      "$$type": [
-                        "int",
-                        "long"
-                      ]
+                      "$$gte": 1
                     },
                     "db.mongodb.server_connection_id": {
                       "$$type": [
