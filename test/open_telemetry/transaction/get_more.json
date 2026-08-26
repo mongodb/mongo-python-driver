@@ -1,6 +1,6 @@
 {
   "description": "transaction getMore spans",
-  "schemaVersion": "1.27",
+  "schemaVersion": "1.29",
   "runOnRequirements": [
     {
       "minServerVersion": "4.0",
@@ -124,7 +124,10 @@
                     "db.namespace": "transaction-get-more",
                     "db.collection.name": "test",
                     "db.operation.name": "find",
-                    "db.operation.summary": "find transaction-get-more.test"
+                    "db.operation.summary": "find transaction-get-more.test",
+                    "db.mongodb.cursor_id": {
+                      "$$gte": 1
+                    }
                   },
                   "nested": [
                     {
@@ -136,10 +139,7 @@
                         "db.command.name": "find",
                         "db.query.summary": "find transaction-get-more.test",
                         "db.mongodb.cursor_id": {
-                          "$$type": [
-                            "int",
-                            "long"
-                          ]
+                          "$$gte": 1
                         }
                       }
                     }
@@ -152,7 +152,10 @@
                     "db.namespace": "transaction-get-more",
                     "db.collection.name": "test",
                     "db.operation.name": "getMore",
-                    "db.operation.summary": "getMore transaction-get-more.test"
+                    "db.operation.summary": "getMore transaction-get-more.test",
+                    "db.mongodb.cursor_id": {
+                      "$$gte": 1
+                    }
                   },
                   "nested": [
                     {
@@ -164,10 +167,7 @@
                         "db.command.name": "getMore",
                         "db.query.summary": "getMore transaction-get-more.test",
                         "db.mongodb.cursor_id": {
-                          "$$type": [
-                            "int",
-                            "long"
-                          ]
+                          "$$gte": 1
                         }
                       }
                     }
