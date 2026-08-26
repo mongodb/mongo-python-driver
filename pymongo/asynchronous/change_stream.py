@@ -48,7 +48,6 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.database import AsyncDatabase
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
-    from pymongo.asynchronous.pool import AsyncConnection
 
 
 def _resumable(exc: PyMongoError) -> bool:
@@ -183,13 +182,10 @@ class AsyncChangeStream(Generic[_DocumentType]):
         full_pipeline.extend(self._pipeline)
         return full_pipeline
 
-    def _process_result(self, result: Mapping[str, Any], conn: AsyncConnection) -> None:
+    def _process_result(self, result: Mapping[str, Any]) -> None:
         """Callback that caches the postBatchResumeToken or
         startAtOperationTime from a changeStream aggregate command response
         containing an empty batch of change documents.
-
-        This is implemented as a callback because we need access to the wire
-        version in order to determine whether to cache this value.
         """
         if not result["cursor"]["firstBatch"]:
             if "postBatchResumeToken" in result["cursor"]:

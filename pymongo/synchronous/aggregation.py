@@ -53,7 +53,7 @@ class _AggregationCommand:
         options: MutableMapping[str, Any],
         let: Optional[Mapping[str, Any]] = None,
         user_fields: Optional[MutableMapping[str, Any]] = None,
-        result_processor: Optional[Callable[[Mapping[str, Any], Connection], None]] = None,
+        result_processor: Optional[Callable[[Mapping[str, Any]], None]] = None,
         comment: Any = None,
     ) -> None:
         if "explain" in options:
@@ -176,7 +176,7 @@ class _AggregationCommand:
         )
 
         if self._result_processor:
-            self._result_processor(result, conn)
+            self._result_processor(result)
 
         # Extract cursor from result or mock/fake one if necessary.
         if "cursor" in result:
