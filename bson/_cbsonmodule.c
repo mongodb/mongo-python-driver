@@ -2975,7 +2975,20 @@ static PyObject* elements_to_dict(PyObject* self, const char* string,
         PyObject* bson_bytes;
         PyObject* buffer_owner = options->buffer_owner;
         int owner_is_bytes = buffer_owner && PyBytes_Check(buffer_owner);
-        if (owner_is_bytes && string == PyBytes_AS_STRING(buffer_owner) &&
+        Py_ssize_t offset = 0;
+        if (owner_is_bytes) {
+            offset = string - PyBytes_AS_STRING(buffer_owner);
+            if (offset < 0 ||
+                offset + (Py_ssize_t)max > PyBytes_GET_SIZE(buffer_owner)) {
+                PyObject* InvalidBSON = _error("InvalidBSON");
+                if (InvalidBSON) {
+                    PyErr_SetString(InvalidBSON, "invalid buffer offset");
+                    Py_DECREF(InvalidBSON);
+                }
+                return NULL;
+            }
+        }
+        if (owner_is_bytes && offset == 0 &&
             (Py_ssize_t)max == PyBytes_GET_SIZE(buffer_owner)) {
             /* The document spans the entire buffer, pass the buffer
              * itself through. */
@@ -2987,7 +3000,6 @@ static PyObject* elements_to_dict(PyObject* self, const char* string,
              * bytes copy. Only immutable (bytes) buffers may be sliced this
              * way, mutable buffers must be copied so
              * the caller can't mutate the document after decoding. */
-            Py_ssize_t offset = string - PyBytes_AS_STRING(buffer_owner);
             PyObject* top_view = PyMemoryView_FromObject(buffer_owner);
             if (!top_view) {
                 return NULL;
