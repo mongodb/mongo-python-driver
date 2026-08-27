@@ -90,9 +90,6 @@ class TestCSOT(IntegrationTest):
                     stream.try_next()
                 self.assertTrue(ctx.exception.timeout)
                 self.assertTrue(stream.alive)
-            # Resume before the insert on 3.6 because 4.0 is required to avoid skipping documents
-            if client_context.version < (4, 0):
-                stream.try_next()
             coll.insert_one({})
             with pymongo.timeout(10):
                 self.assertTrue(stream.next())

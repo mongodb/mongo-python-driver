@@ -134,7 +134,7 @@ buildvariants:
       COMPRESSOR: zlib
   - name: compression-zstd-rhel8
     tasks:
-      - name: .test-standard !.server-4.2
+      - name: .test-standard
     display_name: Compression zstd RHEL8
     run_on:
       - rhel87-small
@@ -142,8 +142,8 @@ buildvariants:
       COMPRESSOR: zstd
   - name: compression-zstd-ubuntu-22
     tasks:
-      - name: .test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14
-      - name: .test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14t
+      - name: .test-standard !.server-4.4 !.server-5.0 .python-3.14
+      - name: .test-standard !.server-4.4 !.server-5.0 .python-3.14t
     display_name: Compression zstd Ubuntu-22
     run_on:
       - ubuntu2204-small
@@ -492,15 +492,6 @@ buildvariants:
       - rhel87-small
 
   # Server version tests
-  - name: mongodb-v4.2
-    tasks:
-      - name: .server-version
-    display_name: "* MongoDB v4.2"
-    run_on:
-      - rhel87-small
-    expansions:
-      VERSION: "4.2"
-    tags: [coverage_tag]
   - name: mongodb-v4.4
     tasks:
       - name: .server-version

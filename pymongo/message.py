@@ -229,7 +229,6 @@ def _gen_get_more_command(
     batch_size: Optional[int],
     max_await_time_ms: Optional[int],
     comment: Optional[Any],
-    conn: _AgnosticConnection,
 ) -> dict[str, Any]:
     """Generate a getMore command document."""
     cmd: dict[str, Any] = {"getMore": cursor_id, "collection": coll}
@@ -237,7 +236,7 @@ def _gen_get_more_command(
         cmd["batchSize"] = batch_size
     if max_await_time_ms is not None:
         cmd["maxTimeMS"] = max_await_time_ms
-    if comment is not None and conn.max_wire_version >= 9:
+    if comment is not None:
         cmd["comment"] = comment
     return cmd
 
@@ -376,54 +375,6 @@ def _op_msg(
         # Add the field back to the command.
         if identifier:
             command[identifier] = docs
-
-
-_pack_long_long = struct.Struct("<q").pack
-
-
-def _get_more_impl(collection_name: str, num_to_return: int, cursor_id: int) -> bytes:
-    """Get an OP_GET_MORE message."""
-    return b"".join(
-        [
-            _ZERO_32,
-            bson._make_c_string(collection_name),
-            _pack_int(num_to_return),
-            _pack_long_long(cursor_id),
-        ]
-    )
-
-
-def _get_more_compressed(
-    collection_name: str,
-    num_to_return: int,
-    cursor_id: int,
-    ctx: Union[SnappyContext, ZlibContext, ZstdContext],
-) -> tuple[int, bytes]:
-    """Internal compressed getMore message helper."""
-    return _compress(2005, _get_more_impl(collection_name, num_to_return, cursor_id), ctx)
-
-
-def _get_more_uncompressed(
-    collection_name: str, num_to_return: int, cursor_id: int
-) -> tuple[int, bytes]:
-    """Internal getMore message helper."""
-    return __pack_message(2005, _get_more_impl(collection_name, num_to_return, cursor_id))
-
-
-if _use_c:
-    _get_more_uncompressed = _cmessage._get_more_message
-
-
-def _get_more(
-    collection_name: str,
-    num_to_return: int,
-    cursor_id: int,
-    ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
-) -> tuple[int, bytes]:
-    """Get a **getMore** message."""
-    if ctx:
-        return _get_more_compressed(collection_name, num_to_return, cursor_id, ctx)
-    return _get_more_uncompressed(collection_name, num_to_return, cursor_id)
 
 
 # OP_MSG -------------------------------------------------------------
@@ -1353,7 +1304,7 @@ class _Query:
         return self._as_command
 
     def get_message(
-        self, read_preference: _ServerMode, conn: _AgnosticConnection, use_cmd: bool = False
+        self, read_preference: _ServerMode, conn: _AgnosticConnection
     ) -> tuple[int, bytes, int]:
         """Get a query message"""
         # Use the read_preference decided by _socket_from_server.
@@ -1451,7 +1402,6 @@ class _GetMore:
             self.ntoreturn,
             self.max_await_time_ms,
             self.comment,
-            conn,
         )
         if self.session:
             self.session._apply_to(cmd, False, self.read_preference, conn)  # type: ignore[arg-type]
@@ -1463,49 +1413,22 @@ class _GetMore:
         self._as_command = cmd, self.db
         return self._as_command
 
-    def get_message(
-        self, dummy0: Any, conn: _AgnosticConnection, use_cmd: bool = False
-    ) -> Union[tuple[int, bytes, int], tuple[int, bytes]]:
+    def get_message(self, dummy0: Any, conn: _AgnosticConnection) -> tuple[int, bytes, int]:
         """Get a getmore message."""
-        ns = self.namespace()
-        ctx = conn.compression_context
-
-        if use_cmd:
-            spec = self.as_command(conn)[0]
-            if self.conn_mgr and self.exhaust:
-                flags = _OpMsg.EXHAUST_ALLOWED
-            else:
-                flags = 0
-            request_id, msg, size, _ = _op_msg(
-                flags, spec, self.db, None, self.codec_options, ctx=conn.compression_context
-            )
-            return request_id, msg, size
-
-        return _get_more(ns, self.ntoreturn, self.cursor_id, ctx)
+        spec = self.as_command(conn)[0]
+        flags = _OpMsg.EXHAUST_ALLOWED if (self.conn_mgr and self.exhaust) else 0
+        request_id, msg, size, _ = _op_msg(
+            flags, spec, self.db, None, self.codec_options, ctx=conn.compression_context
+        )
+        return request_id, msg, size
 
 
 class _RawBatchQuery(_Query):
-    def use_command(self, conn: _AgnosticConnection) -> bool:
-        # Compatibility checks.
-        super().use_command(conn)
-        if conn.max_wire_version >= 8:
-            # MongoDB 4.2+ supports exhaust over OP_MSG
-            return True
-        elif not self.exhaust:
-            return True
-        return False
+    pass
 
 
 class _RawBatchGetMore(_GetMore):
-    def use_command(self, conn: _AgnosticConnection) -> bool:
-        # Compatibility checks.
-        super().use_command(conn)
-        if conn.max_wire_version >= 8:
-            # MongoDB 4.2+ supports exhaust over OP_MSG
-            return True
-        elif not self.exhaust:
-            return True
-        return False
+    pass
 
 
 class _CursorAddress(tuple[Any, ...]):

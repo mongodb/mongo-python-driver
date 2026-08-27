@@ -29,6 +29,7 @@ except ImportError:
 
 
 from pymongo import MongoClient
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.errors import OperationFailure
 
 pytestmark = pytest.mark.mockupdb
@@ -37,7 +38,7 @@ pytestmark = pytest.mark.mockupdb
 class TestStandaloneShard(unittest.TestCase):
     # See PYTHON-2048 and SERVER-44591.
     def test_bulk_txn_error_message(self):
-        server = MockupDB(auto_ismaster={"maxWireVersion": 8})
+        server = MockupDB(auto_ismaster={"maxWireVersion": MIN_SUPPORTED_WIRE_VERSION})
         server.run()
         self.addCleanup(server.stop)
         client = MongoClient(server.uri)

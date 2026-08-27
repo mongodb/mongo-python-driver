@@ -53,7 +53,7 @@ class _AggregationCommand:
         options: MutableMapping[str, Any],
         let: Optional[Mapping[str, Any]] = None,
         user_fields: Optional[MutableMapping[str, Any]] = None,
-        result_processor: Optional[Callable[[Mapping[str, Any], AsyncConnection], None]] = None,
+        result_processor: Optional[Callable[[Mapping[str, Any]], None]] = None,
         comment: Any = None,
     ) -> None:
         if "explain" in options:
@@ -145,13 +145,8 @@ class _AggregationCommand:
         cmd = {"aggregate": self._aggregation_target, "pipeline": self._pipeline}
         cmd.update(self._options)
 
-        # Apply this target's read concern if:
-        # readConcern has not been specified as a kwarg and either
-        # - server version is >= 4.2 or
-        # - server version is >= 3.2 and pipeline doesn't use $out
-        if ("readConcern" not in cmd) and (
-            not self._performs_write or (conn.max_wire_version >= 8)
-        ):
+        # $out/$merge pipelines also support readConcern on all supported server versions (4.4+).
+        if "readConcern" not in cmd:
             read_concern = self._target.read_concern
         else:
             read_concern = None
@@ -180,7 +175,7 @@ class _AggregationCommand:
         )
 
         if self._result_processor:
-            self._result_processor(result, conn)
+            self._result_processor(result)
 
         # Extract cursor from result or mock/fake one if necessary.
         if "cursor" in result:

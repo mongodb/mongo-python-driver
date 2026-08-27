@@ -633,9 +633,8 @@ class Cursor(_CursorBase[_DocumentType]):
     def max(self, spec: _Sort) -> Cursor[_DocumentType]:
         """Adds ``max`` operator that specifies upper bound for specific index.
 
-        When using ``max``, :meth:`~hint` should also be configured to ensure
-        the query uses the expected index and starting in MongoDB 4.2
-        :meth:`~hint` will be required.
+        When using ``max``, :meth:`~hint` is required to ensure the query
+        uses the expected index.
 
         :param spec: a list of field, limit pairs specifying the exclusive
             upper bound for all keys of a specific index in order.
@@ -655,9 +654,8 @@ class Cursor(_CursorBase[_DocumentType]):
     def min(self, spec: _Sort) -> Cursor[_DocumentType]:
         """Adds ``min`` operator that specifies lower bound for specific index.
 
-        When using ``min``, :meth:`~hint` should also be configured to ensure
-        the query uses the expected index and starting in MongoDB 4.2
-        :meth:`~hint` will be required.
+        When using ``min``, :meth:`~hint` is required to ensure the query
+        uses the expected index.
 
         :param spec: a list of field, limit pairs specifying the inclusive
             lower bound for all keys of a specific index in order.
