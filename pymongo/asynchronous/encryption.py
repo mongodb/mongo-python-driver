@@ -1079,9 +1079,9 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         :param string_opts: Index options for `prefix`, `suffix`, and
             `substring` queries. See :class:`StringOpts` for some valid options.
         :param text_opts: **DEPRECATED** - The former name of `string_opts`,
-            accepted only when pymongocrypt is older than 1.19. Passing it to a
-            newer pymongocrypt, or passing both names, raises
-            :exc:`~pymongo.errors.ConfigurationError`.
+            added in pymongocrypt 1.16 and accepted only through pymongocrypt
+            1.18. Passing it to pymongocrypt 1.19 or later, or passing both
+            names, raises :exc:`~pymongo.errors.ConfigurationError`.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
