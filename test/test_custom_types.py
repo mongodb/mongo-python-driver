@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import datetime
+import gc
 import sys
 import tempfile
 from collections import OrderedDict
@@ -427,9 +428,15 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
             type_registry=TypeRegistry([self.B2A()], fallback_encoder=self.fallback_encoder_A2B)
         )
 
-        # Raises max recursion depth exceeded error
-        with self.assertRaises(RuntimeError):
-            encode({"x": self.TypeA(100)}, codec_options=codecopts)
+        # GC while the stack is exhausted may trigger an unraisable RecursionError that causes a failure
+        gc.collect()
+        gc.disable()
+        try:
+            # Raises max recursion depth exceeded error
+            with self.assertRaises(RuntimeError):
+                encode({"x": self.TypeA(100)}, codec_options=codecopts)
+        finally:
+            gc.enable()
 
 
 class TestTypeRegistry(unittest.TestCase):
