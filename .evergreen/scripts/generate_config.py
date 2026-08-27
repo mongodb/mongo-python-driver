@@ -191,10 +191,7 @@ def create_compression_variants():
     variants = []
     for compressor in "snappy", "zlib", "zstd":
         expansions = dict(COMPRESSOR=compressor)
-        if compressor == "zstd":
-            tasks = [".test-standard !.server-4.2"]
-        else:
-            tasks = [".test-standard"]
+        tasks = [".test-standard"]
         display_name = get_variant_name(f"Compression {compressor}", host)
         variants.append(
             create_variant(
@@ -208,8 +205,8 @@ def create_compression_variants():
     host = HOSTS["ubuntu22"]
     expansions = dict(COMPRESSOR="ztsd")
     tasks = [
-        ".test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14",
-        ".test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14t",
+        ".test-standard !.server-4.4 !.server-5.0 .python-3.14",
+        ".test-standard !.server-4.4 !.server-5.0 .python-3.14t",
     ]
     display_name = get_variant_name(f"Compression {compressor}", host)
     variants.append(

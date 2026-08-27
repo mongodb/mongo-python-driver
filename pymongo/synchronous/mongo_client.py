@@ -71,7 +71,6 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
     WaitQueueTimeoutError,
-    WriteConcernError,
 )
 from pymongo.lock import (
     _HAS_REGISTER_AT_FORK,
@@ -422,8 +421,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             zlib support requires the Python standard library zlib module. For
             Python before 3.14 zstd requires the `backports.zstd <https://pypi.org/project/backports.zstd/>`_
             package. By default no compression is used. Compression support
-            must also be enabled on the server. MongoDB 3.6+ supports snappy
-            and zlib compression. MongoDB 4.2+ adds support for zstd.
+            must also be enabled on the server.
             See `compress network traffic <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/network-compression/#compress-network-traffic>`_ for details.
           - `zlibCompressionLevel`: (int) The zlib compression level to use
             when zlib is used as the wire protocol compressor. Supported values
@@ -2574,7 +2572,7 @@ def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
     return None
 
 
-def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mongos: bool) -> None:
+def _add_retryable_write_error(exc: PyMongoError) -> None:
     doc = _retryable_error_doc(exc)
     if doc:
         code = doc.get("code", 0)
@@ -2586,16 +2584,8 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mong
                 "to your connection string."
             )
             raise OperationFailure(errmsg, code, exc.details)  # type: ignore[attr-defined]
-        if max_wire_version >= 9:
-            # In MongoDB 4.4+, the server reports the error labels.
-            for label in doc.get("errorLabels", []):
-                exc._add_error_label(label)
-        else:
-            # Do not consult writeConcernError for pre-4.4 mongos.
-            if isinstance(exc, WriteConcernError) and is_mongos:
-                pass
-            elif code in helpers_shared._RETRYABLE_ERROR_CODES:
-                exc._add_error_label("RetryableWriteError")
+        for label in doc.get("errorLabels", []):
+            exc._add_error_label(label)
 
     # Connection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
     # handled above.
@@ -2724,14 +2714,6 @@ class _ClientCheckout:
             ):
                 session._pin(server, conn)
             self.contribute_socket(conn)
-            if (
-                self.client._encrypter
-                and not self.client._encrypter._bypass_auto_encryption
-                and conn.max_wire_version < 8
-            ):
-                raise ConfigurationError(
-                    "Auto-encryption requires a minimum MongoDB version of 4.2"
-                )
         except BaseException as exc:
             try:
                 self.handle(type(exc), exc)
@@ -3100,17 +3082,13 @@ class _ClientConnectionRetryable(Generic[T]):
         :return: Output for func()'s call
         """
         try:
-            max_wire_version = 0
-            is_mongos = False
             self._server = self._get_server()
             with self._client._checkout(self._server, self._session) as conn:
-                max_wire_version = conn.max_wire_version
                 sessions_supported = (
                     self._session
                     and self._server.description.retryable_writes_supported
                     and conn.supports_sessions
                 )
-                is_mongos = conn.is_mongos
                 if not self._always_retryable and not sessions_supported:
                     # A retry is not possible because this server does
                     # not support sessions raise the last error.
@@ -3127,7 +3105,7 @@ class _ClientConnectionRetryable(Generic[T]):
             if not self._retryable:
                 raise
             # Add the RetryableWriteError label, if applicable.
-            _add_retryable_write_error(exc, max_wire_version, is_mongos)
+            _add_retryable_write_error(exc)
             raise
 
     def _read(self) -> T:

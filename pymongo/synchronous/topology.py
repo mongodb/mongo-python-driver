@@ -762,8 +762,7 @@ class Topology:
         elif isinstance(error, (NotPrimaryError, OperationFailure)):
             # As per the SDAM spec if:
             #   - the server sees a "not primary" error, and
-            #   - the server is not shutting down, and
-            #   - the server version is >= 4.2, then
+            #   - the server is not shutting down, then
             # we keep the existing connection pool, but mark the server type
             # as Unknown and request an immediate check of the server.
             # Otherwise, we clear the connection pool, mark the server as
@@ -776,10 +775,9 @@ class Topology:
                 err_code = error.details.get("code", default)  # type: ignore[union-attr]
             if err_code in helpers_shared._NOT_PRIMARY_CODES:
                 is_shutting_down = err_code in helpers_shared._SHUTDOWN_CODES
-                # Mark server Unknown, clear the pool, and request check.
                 if not self._settings.load_balanced:
                     self._process_change(ServerDescription(address, error=error))
-                if is_shutting_down or (err_ctx.max_wire_version <= 7):
+                if is_shutting_down:
                     # Clear the pool.
                     server.reset(service_id)
                 server.request_check()

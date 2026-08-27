@@ -304,6 +304,7 @@ def handle_test_env() -> None:
         write_env("GSSAPI_HOST", config["SASL_HOST"])
         write_env("GSSAPI_PORT", config["SASL_PORT"])
         write_env("GSSAPI_PRINCIPAL", config["PRINCIPAL"])
+        write_env("SASL_HOST", config["SASL_HOST"])
 
     if test_name == "doctest":
         UV_ARGS.append("--extra docs")

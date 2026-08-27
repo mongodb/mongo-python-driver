@@ -444,44 +444,27 @@ class TestMessage(unittest.TestCase):
             batch_size=None,
             max_await_time_ms=None,
             comment=None,
-            conn=self._make_conn(),
         )
         self.assertEqual(cmd["getMore"], 12345)
         self.assertEqual(cmd["collection"], "col")
 
     def test_get_more_with_batch_size(self):
-        cmd = _gen_get_more_command(
-            1, "col", batch_size=100, max_await_time_ms=None, comment=None, conn=self._make_conn()
-        )
+        cmd = _gen_get_more_command(1, "col", batch_size=100, max_await_time_ms=None, comment=None)
         self.assertEqual(cmd["batchSize"], 100)
 
     def test_get_more_with_max_await_time_ms(self):
-        cmd = _gen_get_more_command(
-            1, "col", batch_size=None, max_await_time_ms=500, comment=None, conn=self._make_conn()
-        )
+        cmd = _gen_get_more_command(1, "col", batch_size=None, max_await_time_ms=500, comment=None)
         self.assertEqual(cmd["maxTimeMS"], 500)
 
-    def test_get_more_comment_added_on_high_wire_version(self):
+    def test_get_more_with_comment(self):
         cmd = _gen_get_more_command(
             1,
             "col",
             batch_size=None,
             max_await_time_ms=None,
             comment="my comment",
-            conn=self._make_conn(9),
         )
         self.assertEqual(cmd["comment"], "my comment")
-
-    def test_get_more_comment_not_added_on_low_wire_version(self):
-        cmd = _gen_get_more_command(
-            1,
-            "col",
-            batch_size=None,
-            max_await_time_ms=None,
-            comment="my comment",
-            conn=self._make_conn(8),
-        )
-        self.assertNotIn("comment", cmd)
 
 
 if __name__ == "__main__":

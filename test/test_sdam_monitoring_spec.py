@@ -356,15 +356,6 @@ class TestSdamMonitoring(IntegrationTest):
     def test_network_error_publishes_events(self):
         self._test_app_error({"closeConnection": True}, ConnectionFailure)
 
-    # In 4.4+, not primary errors from failCommand don't cause SDAM state
-    # changes because topologyVersion is not incremented.
-    @client_context.require_version_max(4, 3)
-    def test_not_primary_error_publishes_events(self):
-        self._test_app_error(
-            {"errorCode": 10107, "closeConnection": False, "errorLabels": ["RetryableWriteError"]},
-            NotPrimaryError,
-        )
-
     def test_shutdown_error_publishes_events(self):
         self._test_app_error(
             {"errorCode": 91, "closeConnection": False, "errorLabels": ["RetryableWriteError"]},
