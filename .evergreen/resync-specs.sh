@@ -69,6 +69,19 @@ cpjson () {
 
 }
 
+# Copy the Public Suffix List bundled with the driver from the specs repo.
+# Unlike the spec tests, this is driver source, so it lives in pymongo/ rather
+# than test/.
+cp_psl () {
+    local src="$SPECS/source/public-suffix-list/public_suffix_list.dat"
+    if ! [ -f "$src" ]
+    then
+      echo "Could not find the public suffix list at $src" >&2
+      return 1
+    fi
+    cp "$src" "$PYMONGO"/pymongo/public_suffix_list.dat
+}
+
 for spec in "$@"
 do
   # Match the spec dir name, the python test dir name, and/or common abbreviations.
@@ -147,6 +160,11 @@ do
       ;;
     srv|SRV|initial-dns-seedlist-discovery|srv_seedlist)
       cpjson initial-dns-seedlist-discovery/tests/ srv_seedlist
+      # srvAllowedHostsSuffix validation uses the bundled Public Suffix List.
+      cp_psl
+      ;;
+    psl|public-suffix-list|public_suffix_list)
+      cp_psl
       ;;
     read-write-concern|read_write_concern)
       cpjson read-write-concern/tests/operation read_write_concern/operation
