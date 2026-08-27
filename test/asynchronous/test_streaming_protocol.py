@@ -192,7 +192,7 @@ class TestStreamingProtocol(AsyncIntegrationTest):
             return isinstance(event, monitoring.ServerHeartbeatFailedEvent)
 
         fail_heartbeat = {
-            "mode": {"times": 2},
+            "mode": {"times": 4},
             "data": {
                 "failCommands": [HelloCompat.LEGACY_CMD, "hello"],
                 "closeConnection": True,
