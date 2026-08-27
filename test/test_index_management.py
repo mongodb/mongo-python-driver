@@ -27,6 +27,8 @@ from typing import Any
 
 import pytest
 
+from test.utils import flaky
+
 sys.path[0:0] = [""]
 
 from pymongo.errors import OperationFailure
@@ -136,6 +138,7 @@ class TestSearchIndexIntegration(SearchIndexIntegrationBase):
 class TestSearchIndexProse(SearchIndexIntegrationBase):
     db_name = "test_search_index_prose"
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_1(self):
         """Driver can successfully create and list search indexes."""
 
@@ -154,6 +157,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         self.assertIn("latestDefinition", index)
         self.assertEqual(index["latestDefinition"], model["definition"])
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_2(self):
         """Driver can successfully create multiple indexes in batch."""
 
@@ -186,6 +190,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
             self.assertIn("latestDefinition", index)
             self.assertEqual(index["latestDefinition"], definition)
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_3(self):
         """Driver can successfully drop search indexes."""
 
@@ -213,6 +218,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
                 raise TimeoutError("Timed out waiting for index deletion")
             time.sleep(5)
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_4(self):
         """Driver can update a search index."""
 
@@ -243,6 +249,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         self.assertIn("latestDefinition", index)
         self.assertEqual(index["latestDefinition"], model2["definition"])
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_5(self):
         """``dropSearchIndex`` suppresses namespace not found errors."""
         # Create a driver-side collection object for a randomly generated collection name.  Do not create this collection on the server.
@@ -251,6 +258,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Run a ``dropSearchIndex`` command and assert that no error is thrown.
         coll0.drop_search_index("foo")
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_6(self):
         """Driver can successfully create and list search indexes with non-default readConcern and writeConcern."""
 
@@ -275,6 +283,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         self.assertIn("latestDefinition", index)
         self.assertEqual(index["latestDefinition"], model["definition"])
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_7(self):
         """Driver handles index types."""
 
