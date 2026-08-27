@@ -226,7 +226,7 @@ class Connection(_ConnectionTelemetryInfo):
 
     def hello_cmd(self) -> dict[str, Any]:
         # As of PYTHON-5713, always use OP_MSG for the handshake since all
-        # supported servers (MongoDB 4.2+, wire version >= 8) support it.
+        # supported servers (MongoDB 4.4+, wire version >= 9) support it.
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
             return {HelloCompat.CMD: 1}
         return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}

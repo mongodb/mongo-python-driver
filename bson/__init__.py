@@ -109,6 +109,7 @@ from bson.binary import (
 )
 from bson.code import Code
 from bson.codec_options import (
+    _RAW_BSON_VIEW_THRESHOLD,
     DEFAULT_CODEC_OPTIONS,
     CodecOptions,
     DatetimeConversion,
@@ -242,8 +243,27 @@ _UNPACK_TIMESTAMP_FROM = struct.Struct("<II").unpack_from
 def get_data_and_view(data: Any) -> tuple[Any, memoryview]:
     if isinstance(data, (bytes, bytearray)):
         return data, memoryview(data)
-    view = memoryview(data)
-    return view.tobytes(), view
+    # Copy other inputs so decoding is immutable
+    data = memoryview(data).tobytes()
+    return data, memoryview(data)
+
+
+def _raw_as_bytes(raw: Union[bytes, bytearray, memoryview]) -> bytes:
+    """Convert a raw BSON buffer (bytes, bytearray, or memoryview) to bytes."""
+    return raw if isinstance(raw, bytes) else bytes(raw)
+
+
+def _raw_slice(data: Any, view: memoryview, position: int, end: int, obj_size: int) -> Any:
+    """Return the raw BSON document spanning ``position`` to ``end`` for use as a buffer."""
+    whole_span = position == 0 and obj_size == len(data)
+    if view.readonly:  # data is immutable (bytes).
+        if whole_span:
+            return data
+        if obj_size >= _RAW_BSON_VIEW_THRESHOLD:
+            return view[position : end + 1]
+        return data[position : end + 1]
+    # Mutable buffer, must copy.
+    return bytes(data) if whole_span else _raw_as_bytes(data[position : end + 1])
 
 
 def _raise_unknown_type(element_type: int, element_name: str) -> NoReturn:
@@ -311,7 +331,8 @@ def _get_object(
     """Decode a BSON subdocument to opts.document_class or bson.dbref.DBRef."""
     obj_size, end = _get_object_size(data, position, obj_end)
     if _raw_document_class(opts.document_class):
-        return (opts.document_class(data[position : end + 1], opts), position + obj_size)
+        buf = _raw_slice(data, view, position, end, obj_size)
+        return (opts.document_class(buf, opts), position + obj_size)
 
     obj = _elements_to_dict(data, view, position + 4, end, opts)
 
@@ -618,7 +639,8 @@ def _bson_to_dict(data: Any, opts: CodecOptions[_DocumentType]) -> _DocumentType
     data, view = get_data_and_view(data)
     try:
         if _raw_document_class(opts.document_class):
-            return opts.document_class(data, opts)  # type:ignore[call-arg]
+            buf = _raw_slice(data, view, 0, len(data) - 1, len(data))
+            return opts.document_class(buf, opts)  # type:ignore[call-arg]
         _, end = _get_object_size(data, 0, len(data))
         return cast("_DocumentType", _elements_to_dict(data, view, 4, end, opts))
     except InvalidBSON:
@@ -708,7 +730,8 @@ def _encode_bytes(name: bytes, value: bytes, dummy0: Any, dummy1: Any) -> bytes:
 def _encode_mapping(name: bytes, value: Any, check_keys: bool, opts: CodecOptions[Any]) -> bytes:
     """Encode a mapping type."""
     if _raw_document_class(value):
-        return b"\x03" + name + cast(bytes, value.raw)
+        # join avoids a copy by consuming a memoryview raw directly.
+        return b"".join((b"\x03", name, value.raw))
     data = b"".join([_element_to_bson(key, val, check_keys, opts) for key, val in value.items()])
     return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
 
@@ -994,7 +1017,7 @@ def _dict_to_bson(
 ) -> bytes:
     """Encode a document to BSON."""
     if _raw_document_class(doc):
-        return cast(bytes, doc.raw)
+        return _raw_as_bytes(doc.raw)
     try:
         elements = []
         if top_level and "_id" in doc:
@@ -1109,7 +1132,8 @@ def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> lis
             if data[obj_end] != 0:
                 raise InvalidBSON("bad eoo")
             if use_raw:
-                docs.append(opts.document_class(data[position : obj_end + 1], opts))  # type: ignore
+                raw_buf = _raw_slice(data, view, position, obj_end, obj_size)
+                docs.append(opts.document_class(raw_buf, opts))  # type: ignore
             else:
                 docs.append(_elements_to_dict(data, view, position + 4, obj_end, opts))
             position += obj_size

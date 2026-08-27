@@ -111,11 +111,7 @@ class TestReadConcern(AsyncIntegrationTest):
             await coll.aggregate([{"$match": {"field": "value"}}, {"$out": "output_collection"}])
         ).to_list()
 
-        # Aggregate with $out supports readConcern MongoDB 4.2 onwards.
-        if async_client_context.version >= (4, 1):
-            self.assertIn("readConcern", self.listener.started_events[0].command)
-        else:
-            self.assertNotIn("readConcern", self.listener.started_events[0].command)
+        self.assertIn("readConcern", self.listener.started_events[0].command)
 
 
 if __name__ == "__main__":
