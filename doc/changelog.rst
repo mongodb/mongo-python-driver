@@ -9,8 +9,8 @@ PyMongo 4.18 brings a number of changes including:
 - Added the ``srvAllowedHostsSuffix`` URI option and :class:`~pymongo.mongo_client.MongoClient`
   keyword argument. When connecting via ``mongodb+srv://``, this option overrides the default
   requirement that SRV-returned hosts share the same parent domain as the seed hostname,
-  allowing hosts under a different domain suffix to be accepted. The suffix must contain at
-  least two labels and must not be a public suffix. See the
+  allowing hosts under a different domain suffix to be accepted. The suffix must not be a
+  public suffix (per the Public Suffix List). See the
   :class:`~pymongo.mongo_client.MongoClient` documentation for security considerations.
 - Added support for MongoDB 9.0.
 - Improved TLS connection performance by reusing TLS sessions across connections
