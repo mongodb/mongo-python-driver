@@ -102,8 +102,6 @@ class _AsyncBulk:
         self.bypass_doc_val = bypass_document_validation
         self.uses_collation = False
         self.uses_array_filters = False
-        self.uses_hint_update = False
-        self.uses_hint_delete = False
         self.uses_sort = False
         self.is_retryable = True
         self.retrying = False
@@ -154,7 +152,6 @@ class _AsyncBulk:
             self.uses_array_filters = True
             cmd["arrayFilters"] = array_filters
         if hint is not None:
-            self.uses_hint_update = True
             cmd["hint"] = hint
         if sort is not None:
             self.uses_sort = True
@@ -182,7 +179,6 @@ class _AsyncBulk:
             self.uses_collation = True
             cmd["collation"] = collation
         if hint is not None:
-            self.uses_hint_update = True
             cmd["hint"] = hint
         if sort is not None:
             self.uses_sort = True
@@ -202,7 +198,6 @@ class _AsyncBulk:
             self.uses_collation = True
             cmd["collation"] = collation
         if hint is not None:
-            self.uses_hint_delete = True
             cmd["hint"] = hint
         if limit == _DELETE_ALL:
             # A bulk_write containing a delete_many is not retryable.
@@ -572,14 +567,6 @@ class _AsyncBulk:
             raise ConfigurationError("arrayFilters is unsupported for unacknowledged writes.")
         # Guard against unsupported unacknowledged writes.
         unack = write_concern and not write_concern.acknowledged
-        if unack and self.uses_hint_delete and conn.max_wire_version < 9:
-            raise ConfigurationError(
-                "Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands."
-            )
-        if unack and self.uses_hint_update and conn.max_wire_version < 8:
-            raise ConfigurationError(
-                "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
-            )
         if unack and self.uses_sort and conn.max_wire_version < 25:
             raise ConfigurationError(
                 "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."

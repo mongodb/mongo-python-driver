@@ -97,7 +97,10 @@ but it will be faster as there is less recursion.
    performance improvement. `python-bsonjs` is a fast BSON to MongoDB
    Extended JSON converter for Python built on top of
    `libbson <https://github.com/mongodb/libbson>`_. `python-bsonjs` works best
-   with PyMongo when using :class:`~bson.raw_bson.RawBSONDocument`.
+   with PyMongo when using :class:`~bson.raw_bson.RawBSONDocument`. Note that
+   `python-bsonjs` requires an exact :class:`bytes` instance, while
+   :attr:`~bson.raw_bson.RawBSONDocument.raw` may be a :class:`memoryview`,
+   so pass ``bytes(doc.raw)``.
 """
 
 from __future__ import annotations
