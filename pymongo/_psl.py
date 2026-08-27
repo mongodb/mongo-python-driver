@@ -54,4 +54,8 @@ def is_public_suffix(domain: str) -> bool:
     if domain in suffixes:
         return True
     parts = domain.split(".")
+    # this logic is to handle the wildcard rule, the domain could still be a public suffix if:
+    # - either `parts` is a single label, and thus it is a public suffix list (per the `*`) rule
+    # - or another wildcard rule such as *.xyz exists (stored as just xyz in `wildcards`), thus we check
+    #   if `parts[1:]` is in the list of wildcard rules.
     return len(parts) == 1 or (len(parts) > 1 and ".".join(parts[1:]) in wildcards)
