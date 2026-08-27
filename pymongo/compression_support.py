@@ -18,6 +18,7 @@ import warnings
 from collections.abc import Iterable
 from typing import Any, Optional, Union
 
+from pymongo.errors import ProtocolError
 from pymongo.hello import HelloCompat
 from pymongo.helpers_shared import _SENSITIVE_COMMANDS
 
@@ -164,12 +165,32 @@ class ZstdContext:
         return zstd.compress(data)
 
 
+def _snappy_uncompressed_length(data: bytes | memoryview) -> int:
+    """Read the varint-encoded uncompressed length from a raw snappy block."""
+    result = shift = 0
+    for i in range(5):
+        if i >= len(data):
+            raise ProtocolError("Truncated snappy payload")
+        byte = data[i]
+        result |= (byte & 0x7F) << shift
+        if not byte & 0x80:
+            return result
+        shift += 7
+    raise ProtocolError("Invalid snappy uncompressed length header")
+
+
 def decompress(data: bytes | memoryview, compressor_id: int, max_message_size: int) -> bytes:
     if compressor_id == SnappyContext.compressor_id:
         # python-snappy doesn't support the buffer interface.
         # https://github.com/andrix/python-snappy/issues/65
         # This only matters when data is a memoryview since
         # id(bytes(data)) == id(data) when data is a bytes.
+        declared = _snappy_uncompressed_length(data)
+        if declared > max_message_size:
+            raise ProtocolError(
+                f"Decompressed message size ({declared!r}) is larger than "
+                f"server max message size ({max_message_size!r})"
+            )
         import snappy
 
         result = snappy.uncompress(bytes(data))
@@ -189,8 +210,6 @@ def decompress(data: bytes | memoryview, compressor_id: int, max_message_size: i
     else:
         raise ValueError(f"Unknown compressorId {compressor_id}")
     if len(result) > max_message_size:
-        from pymongo.errors import ProtocolError
-
         raise ProtocolError(
             f"Decompressed message size ({len(result)!r}) is larger than "
             f"server max message size ({max_message_size!r})"
