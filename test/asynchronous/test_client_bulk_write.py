@@ -29,7 +29,6 @@ from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
     ClientBulkWriteException,
     DocumentTooLarge,
-    InvalidOperation,
     NetworkTimeout,
 )
 from pymongo.operations import *
@@ -39,7 +38,6 @@ from test.asynchronous import (
     async_client_context,
     unittest,
 )
-from test.asynchronous.utils import flaky
 from test.utils_shared import (
     OvertCommandListener,
 )
