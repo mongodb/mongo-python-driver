@@ -281,10 +281,15 @@ class TestOTelGetMoreSpans(IntegrationTest):
         ]
         self.assertEqual(len(find_op_spans), 1)
 
-    def test_prose_3_get_more_records_sent_cursor_id_not_returned_cursor_id(self):
-        """Prose Test 3: getMore records the cursor id it sent, not the cursor id returned."""
+    def test_get_more_records_sent_cursor_id_not_returned_cursor_id(self):
+        """getMore records the cursor id it sent, not the cursor id returned.
+
+        Was prose test 3 until DRIVERS-3598 replaced it with $$gte: 1 in the
+        unified fixtures. Kept because it asserts equality with the id sent,
+        which a lower bound cannot express.
+        """
         client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.prose3_getmore_cursor_id
+        coll = client.pymongo_test.getmore_sent_cursor_id
         coll.drop()
         coll.insert_many([{"i": i} for i in range(3)])
         self.exporter.clear()
@@ -316,10 +321,10 @@ class TestOTelGetMoreSpans(IntegrationTest):
             self.assertEqual(span.attributes["db.mongodb.cursor_id"], sent_cursor_id)
 
     @client_context.require_transactions
-    def test_prose_4_get_more_in_transaction_nests_under_transaction_span(self):
-        """Prose Test 4: getMore inside a transaction nests under the transaction span."""
+    def test_prose_3_get_more_in_transaction_nests_under_transaction_span(self):
+        """Prose Test 3: getMore inside a transaction nests under the transaction span."""
         client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.prose4_getmore_in_txn
+        coll = client.pymongo_test.prose3_getmore_in_txn
         coll.drop()
         # Inserted outside the transaction, so the transaction below contains
         # only the find and getMore.
