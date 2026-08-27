@@ -135,7 +135,7 @@ class _SrvResolver:
 
         # Construct address tuples
         nodes = [
-            (maybe_decode(res.target.to_text(omit_final_dot=True)), res.port)  # type: ignore[attr-defined]
+            (maybe_decode(res.target.to_text(omit_final_dot=True)).lower(), res.port)  # type: ignore[attr-defined]
             for res in results
         ]
 
