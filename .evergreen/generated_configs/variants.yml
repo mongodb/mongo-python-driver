@@ -647,7 +647,7 @@ buildvariants:
     tags: [standard-non-linux]
   - name: test-win32
     tasks:
-      - name: .test-standard !.pypy
+      - name: .test-standard !.pypy !.free-threaded
     display_name: "* Test Win32"
     run_on:
       - windows-64-vsMulti-small
