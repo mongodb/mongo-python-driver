@@ -24,6 +24,7 @@ import sys
 import threading  # Used in the synchronized version of this file
 import time
 import traceback
+import unittest
 from functools import wraps
 from inspect import iscoroutinefunction
 
@@ -150,6 +151,19 @@ def joinall(tasks):
         asyncio.wait([t.task for t in tasks if t is not None], timeout=300)
 
 
+def _run_attempt_cleanups(method, depth):
+    """Run the cleanups a failed flaky attempt registered, most recent first."""
+    while len(method._cleanups) > depth:
+        func, args, kwargs = method._cleanups.pop()
+        try:
+            if iscoroutinefunction(func):
+                func(*args, **kwargs)
+            else:
+                func(*args, **kwargs)
+        except Exception:
+            traceback.print_exc()
+
+
 def flaky(
     *,
     reason=None,
@@ -161,6 +175,9 @@ def flaky(
     reset_func=None,
 ):
     """Decorate a test as flaky.
+
+    Before each retry, any cleanups registered on the test case during the
+    failed attempt are run, then ``reset_func`` is called.
 
     :param reason: the reason why the test is flaky
     :param max_runs: the maximum number of runs before raising an error
@@ -185,8 +202,13 @@ def flaky(
     def decorator(target_func):
         @wraps(target_func)
         def wrapper(*args, **kwargs):
+            # flaky decorates either an unbound test method (prose test) or a bound method (unified test).
+            method = getattr(target_func, "__self__", None)
+            if method is None and args and isinstance(args[0], unittest.TestCase):
+                method = args[0]
             passes = 0
             for i in range(max_runs):
+                depth = len(method._cleanups) if method is not None else 0
                 try:
                     result = target_func(*args, **kwargs)
                     passes += 1
@@ -200,6 +222,8 @@ def flaky(
                         f"{traceback.format_exc()}",
                         file=sys.stderr,
                     )
+                    if method is not None:
+                        _run_attempt_cleanups(method, depth)
                     time.sleep(delay)
                     if reset_func:
                         reset_func()

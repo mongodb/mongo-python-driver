@@ -104,6 +104,7 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
         expansions = dict()
         if host_name == "win32":
             expansions["IS_WIN32"] = "1"
+            tasks = [".test-standard !.pypy !.free-threaded"]
         display_name = get_variant_name(base_display_name, host)
         variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
         variants.append(variant)
@@ -130,13 +131,17 @@ def create_encryption_variants() -> list[BuildVariant]:
     ):
         expansions = get_encryption_expansions(encryption)
         display_name = get_variant_name(encryption, host, **expansions)
-        tasks = [".test-non-standard"]
+        tasks = [".test-non-standard", ".test-string-query-preview"]
         if host != "rhel8":
             # Exclude PyPy (not tested with encryption on macOS/win64) and coverage tasks
             # (encryption suites exceed the 60-min timeout with coverage overhead on macOS/win64).
             # Also include the non-coverage companion tasks (test-non-standard-no-cov) which
             # carry the "latest" server tasks without COVERAGE=1.
-            tasks = [".test-non-standard !.pypy !.cov", ".test-non-standard-no-cov !.pypy"]
+            tasks = [
+                ".test-non-standard !.pypy !.cov",
+                ".test-non-standard-no-cov !.pypy",
+                ".test-string-query-preview",
+            ]
         variant = create_variant(
             tasks,
             display_name,
@@ -714,6 +719,34 @@ def create_test_non_standard_tasks():
                 EvgTask(name=nc_name, tags=nc_tags, commands=[nc_server_func, nc_test_func])
             )
     return tasks
+
+
+def create_string_query_preview_tasks():
+    """Tasks for the preview Queryable Encryption string query types.
+
+    The preview query types need a server that is at least 8.2 and older than
+    9.0, and ALL_VERSIONS jumps straight from 8.0 to 9.0, so they have nowhere
+    to run without a dedicated task. setup_tests.py pins the released
+    pymongocrypt for 8.x, which bundles a libmongocrypt still carrying the
+    preview types.
+    """
+    python = CPYTHONS[-1]
+    topology = "replica_set"
+    auth, ssl = get_standard_auth_ssl(topology)
+    expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION="8.2")
+    tags = [
+        "test-string-query-preview",
+        "server-8.2",
+        f"python-{python}",
+        f"{topology}-{auth}-{ssl}",
+        auth,
+    ]
+    name = get_task_name("test-string-query-preview", python=python, **expansions)
+    server_func = FunctionCall(func="run server", vars=expansions)
+    test_vars = expansions.copy()
+    test_vars["TOOLCHAIN_VERSION"] = python
+    test_func = FunctionCall(func="run tests", vars=test_vars)
+    return [EvgTask(name=name, tags=tags, commands=[server_func, test_func])]
 
 
 def create_test_standard_auth_tasks():
