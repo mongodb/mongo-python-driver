@@ -19,6 +19,8 @@ from __future__ import annotations
 import os
 import sys
 
+from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
+
 sys.path[0:0] = [""]
 
 from unittest.mock import patch
@@ -28,9 +30,9 @@ from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
     ClientBulkWriteException,
     DocumentTooLarge,
+    InvalidOperation,
     NetworkTimeout,
 )
-from pymongo.operations import *
 from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.write_concern import WriteConcern
 from test import (
