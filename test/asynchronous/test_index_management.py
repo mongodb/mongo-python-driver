@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import pathlib
 import sys
 import time
 import uuid
@@ -114,6 +113,18 @@ class SearchIndexIntegrationBase(AsyncPyMongoTestCase):
                 return indices[0]
             await asyncio.sleep(5)
 
+    async def drop_and_wait(self, coll, name):
+        """Drop a search index and wait for it to be dropped."""
+        await coll.drop_search_index(name)
+        start = time.time()
+        while True:
+            indices = await (await coll.list_search_indexes(name)).to_list()
+            if not indices:
+                return
+            if (time.time() - start) / 60 > 5:
+                raise TimeoutError("Timed out waiting for index deletion")
+            await asyncio.sleep(5)
+
 
 class TestSearchIndexIntegration(SearchIndexIntegrationBase):
     db_name = "test_search_index"
@@ -147,6 +158,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Create a new search index on ``self.coll0`` with the ``createSearchIndex`` helper.  Use the following definition:
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = await self.coll0.create_search_index(model)
+        self.addAsyncCleanup(self.drop_and_wait, self.coll0, _NAME)
 
         # Assert that the command returns the name of the index: ``"test-search-index"``.
         self.assertEqual(resp, _NAME)
@@ -174,6 +186,8 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         await self.coll0.create_search_indexes(
             [SearchIndexModel(i["definition"], i["name"]) for i in index_definitions]
         )
+        for index in index_definitions:
+            self.addAsyncCleanup(self.drop_and_wait, self.coll0, index["name"])
 
         # .Assert that the command returns an array containing the new indexes' names: ``["test-search-index-1", "test-search-index-2"]``.
         indices = await (await self.coll0.list_search_indexes()).to_list()
@@ -199,6 +213,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Create a new search index on ``self.coll0``.
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = await self.coll0.create_search_index(model)
+        self.addAsyncCleanup(self.drop_and_wait, self.coll0, _NAME)
 
         # Assert that the command returns the name of the index: ``"test-search-index"``.
         self.assertEqual(resp, "test-search-index")
@@ -227,6 +242,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Create a new search index on ``self.coll0``.
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = await self.coll0.create_search_index(model)
+        self.addAsyncCleanup(self.drop_and_wait, self.coll0, _NAME)
 
         # Assert that the command returns the name of the index: ``"test-search-index"``.
         self.assertEqual(resp, _NAME)
@@ -273,6 +289,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         name = "test-search-index-case6"
         model = {"name": name, "definition": {"mappings": {"dynamic": False}}}
         resp = await coll0.create_search_index(model)
+        self.addAsyncCleanup(self.drop_and_wait, self.coll0, name)
 
         # Assert that the command returns the name of the index: ``"test-search-index-case6"``.
         self.assertEqual(resp, name)
@@ -306,6 +323,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         implicit_search_resp = await self.coll0.create_search_index(
             model={"name": _NAME + "-implicit", "definition": search_definition}
         )
+        self.addAsyncCleanup(self.drop_and_wait, self.coll0, _NAME + "-implicit")
 
         # Get the index definition.
         resp = await (await self.coll0.list_search_indexes(name=implicit_search_resp)).next()
@@ -317,6 +335,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         explicit_search_resp = await self.coll0.create_search_index(
             model={"name": _NAME + "-explicit", "type": "search", "definition": search_definition}
         )
+        self.addAsyncCleanup(self.drop_and_wait, self.coll0, _NAME + "-explicit")
 
         # Get the index definition.
         resp = await (await self.coll0.list_search_indexes(name=explicit_search_resp)).next()
@@ -332,6 +351,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
                 "definition": vector_search_definition,
             }
         )
+        self.addAsyncCleanup(self.drop_and_wait, self.coll0, _NAME + "-vector")
 
         # Get the index definition.
         resp = await (await self.coll0.list_search_indexes(name=explicit_vector_resp)).next()
