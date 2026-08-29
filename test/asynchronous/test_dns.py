@@ -328,6 +328,11 @@ class TestPublicSuffixListParsing(unittest.TestCase):
         self.assertTrue(is_public_suffix("nosuchtld"))
         self.assertFalse(is_public_suffix("foo.nosuchtld"))
 
+    def test_6_internationalized_rule(self):
+        self.assertTrue(is_public_suffix("xn--p1ai"))
+        self.assertTrue(is_public_suffix("xn--55qx5d.cn"))
+        self.assertFalse(is_public_suffix("example.xn--p1ai"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,6 +22,16 @@ from typing import Optional
 _PUBLIC_SUFFIXES: Optional[tuple[set[str], set[str], set[str]]] = None
 
 
+def _to_punycode(string: str) -> str:
+    """Convert a string to Punycode."""
+    try:
+        return string.encode("idna").decode("ascii")
+    except UnicodeError:
+        # Not every input is a valid IDNA label (e.g. empty or over-long
+        # labels). Leave it as-is and let the caller reject it.
+        return string
+
+
 def _load_public_suffixes() -> tuple[set[str], set[str], set[str]]:
     path = Path(__file__).parent / "public_suffix_list.dat"
     suffixes: set[str] = set()
@@ -29,7 +39,7 @@ def _load_public_suffixes() -> tuple[set[str], set[str], set[str]]:
     exceptions: set[str] = set()
     with open(path, encoding="utf-8") as f:
         for line in f:
-            line = line.strip()  # noqa: PLW2901
+            line = _to_punycode(line.strip())  # noqa: PLW2901
             if not line or line.startswith("//"):
                 continue
             if line.startswith("!"):
@@ -48,7 +58,7 @@ def is_public_suffix(domain: str) -> bool:
         _PUBLIC_SUFFIXES = _load_public_suffixes()
     suffixes, wildcards, exceptions = _PUBLIC_SUFFIXES
 
-    domain = domain.lower().strip(".")
+    domain = _to_punycode(domain.lower().strip("."))
     if domain in exceptions:
         return False
     if domain in suffixes:
