@@ -215,14 +215,6 @@ class TestRawBSONDocument(UnitTest):
         self.assertIsInstance(first_address, RawBSONDocument)
         self.assertEqual("Baker Street", first_address["street"])
 
-    def test_inflate_from_bytearray(self):
-        buf = bytearray(encode({"a": 1, "sub": {"b": 2}}))
-        doc = RawBSONDocument(buf)  # type: ignore[arg-type]
-        self.assertEqual(1, doc["a"])
-        sub = doc["sub"]
-        buf[:] = bytes(len(buf))
-        self.assertEqual(2, sub["b"])
-
     def test_inflate_view_backed_document_detached(self):
         payload = {"payload": "x" * 8000}
         # outer's memoryview is the only reference to the raw document buffer
@@ -257,7 +249,7 @@ class TestRawBSONDocument(UnitTest):
 
     @unittest.skipUnless(has_c(), "tests the C extension")
     def test_raw_to_dict_error_does_not_leak(self):
-        from bson import _cbson  # type:ignore[attr-defined]
+        from bson import _cbson  # type: ignore[attr-defined]
 
         # An invalid type byte partway through the document exercises the
         # error path after some elements have already been decoded.

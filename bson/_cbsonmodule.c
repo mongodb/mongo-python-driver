@@ -3126,7 +3126,7 @@ static PyObject* _cbson_raw_to_dict(PyObject* self, PyObject* args) {
 
     string = (char*)view.buf;
     /* obj_end must be the index of the document's eoo byte. The eoo check
-     * also protects against field scans running past the the end of the buffer. */
+     * also protects against field scans running past the end of the buffer. */
     if (obj_end < 1 || (Py_ssize_t)obj_end >= view.len || position > obj_end ||
             string[obj_end]) {
         PyObject* InvalidBSON = _error("InvalidBSON");
