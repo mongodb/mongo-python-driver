@@ -2867,9 +2867,6 @@ static int _element_to_dict(PyObject* self, const char* string,
 }
 
 static PyObject* _cbson_element_to_dict(PyObject* self, PyObject* args) {
-    /* TODO(PYTHON-6038): buffer-protocol inputs are copied
-     * upstream in get_data_and_view. Native RawBSONDocument inflation in C
-     * should accept the buffer directly. */
     char* string;
     PyObject* bson;
     PyObject* options_obj = NULL;
@@ -3092,6 +3089,98 @@ static PyObject* _prepare_input_buffer(PyObject* self, PyObject* bson,
         return bson;
     }
     return PyBytes_FromObject(bson);
+}
+
+/* Decode all elements of a raw BSON document into `result`. */
+static PyObject* _cbson_raw_to_dict(PyObject* self, PyObject* args) {
+    PyObject* data;
+    unsigned position;
+    unsigned obj_end;
+    PyObject* options_obj;
+    PyObject* result;
+    int raw_array = 0;
+    codec_options_t options;
+    PyObject* bson = NULL;
+    Py_buffer view = {0};
+    PyObject* ret = NULL;
+    const char* string;
+    unsigned end;
+
+    if (!(PyArg_ParseTuple(args, "OIIOOp", &data, &position, &obj_end,
+                           &options_obj, &result, &raw_array) &&
+            convert_codec_options(self, options_obj, &options))) {
+        return NULL;
+    }
+
+    bson = _prepare_input_buffer(self, data, &options);
+    if (!bson) {
+        destroy_codec_options(&options);
+        return NULL;
+    }
+
+    if (!_get_buffer(bson, &view)) {
+        Py_DECREF(bson);
+        destroy_codec_options(&options);
+        return NULL;
+    }
+
+    string = (char*)view.buf;
+    /* obj_end must be the index of the document's eoo byte. The eoo check
+     * also protects against field scans running past the the end of the buffer. */
+    if (obj_end < 1 || (Py_ssize_t)obj_end >= view.len || position > obj_end ||
+            string[obj_end]) {
+        PyObject* InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            PyErr_SetString(InvalidBSON, "bad object or element length");
+            Py_DECREF(InvalidBSON);
+        }
+        goto done;
+    }
+
+    options.buffer_owner = bson;
+
+    end = obj_end - 1;
+    while (position < end) {
+        PyObject* name = NULL;
+        PyObject* value = NULL;
+        int new_position = _element_to_dict(
+            self, string, position, obj_end, &options, raw_array, &name, &value);
+        if (new_position < 0) {
+            goto done;
+        }
+        position = (unsigned)new_position;
+
+        if (PyDict_CheckExact(result)) {
+            if (PyDict_SetItem(result, name, value) < 0) {
+                Py_DECREF(name);
+                Py_DECREF(value);
+                goto done;
+            }
+        } else {
+            if (PyObject_SetItem(result, name, value) < 0) {
+                Py_DECREF(name);
+                Py_DECREF(value);
+                goto done;
+            }
+        }
+        Py_DECREF(name);
+        Py_DECREF(value);
+    }
+    if (position != obj_end) {
+        PyObject* InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            PyErr_SetString(InvalidBSON, "bad object or element length");
+            Py_DECREF(InvalidBSON);
+        }
+        goto done;
+    }
+    Py_INCREF(result);
+    ret = result;
+done:
+    PyBuffer_Release(&view);
+    Py_DECREF(bson);
+    destroy_codec_options(&options);
+    return ret;
 }
 
 static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
@@ -3423,6 +3512,8 @@ static PyMethodDef _CBSONMethods[] = {
      "convert binary data to a sequence of documents."},
     {"_element_to_dict", _cbson_element_to_dict, METH_VARARGS,
      "Decode a single key, value pair."},
+    {"_raw_to_dict", _cbson_raw_to_dict, METH_VARARGS,
+     "Decode all elements of a raw BSON document into a result mapping."},
     {"_array_of_documents_to_buffer", _cbson_array_of_documents_to_buffer, METH_VARARGS, "Convert raw array of documents to a stream of BSON documents"},
     {"_test_long_long_to_str", _test_long_long_to_str, METH_VARARGS, "Test conversion of extreme and common Py_ssize_t values to str."},
     {NULL, NULL, 0, NULL}

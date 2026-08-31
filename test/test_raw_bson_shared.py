@@ -208,6 +208,68 @@ class TestRawBSONDocument(UnitTest):
         self.assertEqual(subdoc, copied)
         self.assertEqual("y" * 8000, copied["payload"])
 
+    def test_inflate_from_memoryview(self):
+        doc = RawBSONDocument(memoryview(self.bson_string))
+        self.assertEqual("Sherlock", doc["name"])
+        first_address = doc["addresses"][0]
+        self.assertIsInstance(first_address, RawBSONDocument)
+        self.assertEqual("Baker Street", first_address["street"])
+
+    def test_inflate_from_bytearray(self):
+        buf = bytearray(encode({"a": 1, "sub": {"b": 2}}))
+        doc = RawBSONDocument(buf)  # type: ignore[arg-type]
+        self.assertEqual(1, doc["a"])
+        sub = doc["sub"]
+        buf[:] = bytes(len(buf))
+        self.assertEqual(2, sub["b"])
+
+    def test_inflate_view_backed_document_detached(self):
+        payload = {"payload": "x" * 8000}
+        # outer's memoryview is the only reference to the raw document buffer
+        outer = RawBSONDocument(encode({"outer": {"inner": payload}}))["outer"]
+        self.assertIsInstance(outer.raw, memoryview)
+        inner = outer["inner"]
+        self.assertIsInstance(inner.raw, memoryview)
+        self.assertEqual(encode(payload), bytes(inner.raw))
+        self.assertEqual("x" * 8000, inner["payload"])
+
+    def test_inflate_into_non_dict_mapping(self):
+        from bson import _raw_to_dict
+
+        data = encode(SON([("b", 2), ("a", 1)]))
+        result = _raw_to_dict(data, 4, len(data) - 1, DEFAULT_RAW_BSON_OPTIONS, SON())
+        self.assertIsInstance(result, SON)
+        self.assertEqual([("b", 2), ("a", 1)], list(result.items()))
+
+    def test_invalid_element_type_detected_on_inflation(self):
+        invalid_type = bytearray(encode({"a": 1}))
+        invalid_type[4] = 0x14  # Not a valid BSON type marker.
+        doc = RawBSONDocument(bytes(invalid_type))
+        with self.assertRaisesRegex(InvalidBSON, "Detected unknown BSON type"):
+            doc["a"]
+
+    def test_misaligned_elements_detected_on_inflation(self):
+        # {"a": 1} plus a stray byte before the end-of-object, with a matching size.
+        misaligned = b"\x0d\x00\x00\x00\x10a\x00\x01\x00\x00\x00\x05\x00"
+        doc = RawBSONDocument(misaligned)
+        with self.assertRaisesRegex(InvalidBSON, "bad object or element length"):
+            doc["a"]
+
+    @unittest.skipUnless(has_c(), "tests the C extension")
+    def test_raw_to_dict_error_does_not_leak(self):
+        from bson import _cbson  # type:ignore[attr-defined]
+
+        # An invalid type byte partway through the document exercises the
+        # error path after some elements have already been decoded.
+        data = encode({"big": {"payload": "x" * 8000}, "a": 1})
+        marker = b"\x10a\x00"  # type 0x10, key "a"
+        data = data.replace(marker, b"\xeea\x00")
+        refcount = sys.getrefcount(data)
+        for _ in range(5):
+            with self.assertRaises(InvalidBSON):
+                _cbson._raw_to_dict(data, 4, len(data) - 1, DEFAULT_RAW_BSON_OPTIONS, {}, False)
+        self.assertEqual(refcount, sys.getrefcount(data))
+
     def test_empty_doc(self):
         doc = RawBSONDocument(encode({}))
         with self.assertRaises(KeyError):
