@@ -217,7 +217,7 @@ class TestTransactions(AsyncTransactionsBase):
     @async_client_context.require_version_min(4, 3, 4)
     async def test_create_collection(self):
         client = async_client_context.client
-        db = client.pymongo_test
+        db = self.db
         coll = db.test_create_collection
         self.addAsyncCleanup(coll.drop)
 
@@ -244,7 +244,7 @@ class TestTransactions(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_gridfs_does_not_support_transactions(self):
         client = async_client_context.client
-        db = client.pymongo_test
+        db = self.db
         gfs = AsyncGridFS(db)
         bucket = AsyncGridFSBucket(db)
 

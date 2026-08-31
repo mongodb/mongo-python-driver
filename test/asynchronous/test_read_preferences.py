@@ -105,12 +105,12 @@ class TestReadPreferencesBase(AsyncIntegrationTest):
     async def asyncSetUp(self):
         await super().asyncSetUp()
         # Insert some data so we can use cursors in read_from_which_host
-        await self.client.pymongo_test.coll.drop()
+        await self.db.coll.drop()
         await self.client.get_database(
             "pymongo_test", write_concern=WriteConcern(w=async_client_context.w)
         ).coll.insert_many([{"_id": i} for i in range(10)])
 
-        self.addAsyncCleanup(self.client.pymongo_test.coll.drop)
+        self.addAsyncCleanup(self.db.coll.drop)
 
     async def read_from_which_host(self, client):
         """Do a find() on the client and return which host was used"""
@@ -680,9 +680,7 @@ class TestMongosAndReadPreference(AsyncIntegrationTest):
         num_members = shard.count(",") + 1
         if num_members == 1:
             raise SkipTest("Need a replica set shard to test.")
-        coll = async_client_context.client.pymongo_test.get_collection(
-            "test", write_concern=WriteConcern(w=num_members)
-        )
+        coll = self.db.get_collection("test", write_concern=WriteConcern(w=num_members))
         await coll.drop()
         res = await coll.insert_many([{} for _ in range(5)])
         first_id = res.inserted_ids[0]
@@ -702,15 +700,11 @@ class TestMongosAndReadPreference(AsyncIntegrationTest):
     @async_client_context.require_mongos
     async def test_mongos_max_staleness(self):
         # Sanity check that we're sending maxStalenessSeconds
-        coll = async_client_context.client.pymongo_test.get_collection(
-            "coll", read_preference=SecondaryPreferred(max_staleness=120)
-        )
+        coll = self.db.get_collection("coll", read_preference=SecondaryPreferred(max_staleness=120))
         # No error
         await coll.find_one()
 
-        coll = async_client_context.client.pymongo_test.get_collection(
-            "coll", read_preference=SecondaryPreferred(max_staleness=10)
-        )
+        coll = self.db.get_collection("coll", read_preference=SecondaryPreferred(max_staleness=10))
         try:
             await coll.find_one()
         except OperationFailure as exc:

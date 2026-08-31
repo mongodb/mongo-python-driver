@@ -146,8 +146,8 @@ class TestCursor(AsyncIntegrationTest):
 
     async def test_allow_disk_use(self):
         db = self.db
-        await db.pymongo_test.drop()
-        coll = db.pymongo_test
+        await db.coll.drop()
+        coll = db.coll
 
         with self.assertRaises(TypeError):
             coll.find().allow_disk_use("baz")  # type: ignore[arg-type]
@@ -159,8 +159,8 @@ class TestCursor(AsyncIntegrationTest):
 
     async def test_max_time_ms(self):
         db = self.db
-        await db.pymongo_test.drop()
-        coll = db.pymongo_test
+        await db.coll.drop()
+        coll = db.coll
         with self.assertRaises(TypeError):
             coll.find().max_time_ms("foo")  # type: ignore[arg-type]
         await coll.insert_one({"amalia": 1})
@@ -223,8 +223,8 @@ class TestCursor(AsyncIntegrationTest):
 
     async def test_max_await_time_ms(self):
         db = self.db
-        await db.pymongo_test.drop()
-        coll = await db.create_collection("pymongo_test", capped=True, size=4096)
+        await db.coll.drop()
+        coll = await db.create_collection("coll", capped=True, size=4096)
 
         with self.assertRaises(TypeError):
             coll.find().max_await_time_ms("foo")  # type: ignore[arg-type]
@@ -256,9 +256,7 @@ class TestCursor(AsyncIntegrationTest):
         self.assertEqual(90, cursor._max_await_time_ms)
 
         listener = AllowListEventListener("find", "getMore")
-        coll = (await self.async_rs_or_single_client(event_listeners=[listener]))[
-            self.db.name
-        ].pymongo_test
+        coll = (await self.async_rs_or_single_client(event_listeners=[listener])).pymongo_test.coll
 
         # Tailable_await defaults.
         await coll.find(cursor_type=CursorType.TAILABLE_AWAIT).to_list()
@@ -344,7 +342,7 @@ class TestCursor(AsyncIntegrationTest):
     @async_client_context.require_no_mongos
     async def test_max_time_ms_getmore(self):
         # Test that Cursor handles server timeout error in response to getmore.
-        coll = self.db.pymongo_test
+        coll = self.db.coll
         await coll.insert_many([{} for _ in range(200)])
         cursor = coll.find().max_time_ms(100)
 

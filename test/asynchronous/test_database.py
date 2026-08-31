@@ -361,7 +361,7 @@ class TestDatabase(AsyncIntegrationTest):
                 await db_wc.drop_collection("coll")
 
     async def test_validate_collection(self):
-        db = self.client.pymongo_test
+        db = self.db
 
         with self.assertRaises(TypeError):
             await db.validate_collection(5)  # type: ignore[arg-type]
@@ -385,7 +385,7 @@ class TestDatabase(AsyncIntegrationTest):
     @async_client_context.require_version_min(4, 3, 3)
     @async_client_context.require_no_standalone
     async def test_validate_collection_background(self):
-        db = self.client.pymongo_test.with_options(write_concern=WriteConcern(w="majority"))
+        db = self.db.with_options(write_concern=WriteConcern(w="majority"))
         await db.coll.insert_one({"dummy": "object"})
         coll = db.coll
         self.assertTrue(await db.validate_collection(coll, background=False))
@@ -413,7 +413,7 @@ class TestDatabase(AsyncIntegrationTest):
     # We use 'aggregate' as our example command, since it's an easy way to
     # retrieve a BSON regex from a collection using a command.
     async def test_command_with_regex(self):
-        db = self.client.pymongo_test
+        db = self.db
         await db.coll.drop()
         await db.coll.insert_one({"r": re.compile(".*")})
         await db.coll.insert_one({"r": Regex(".*")})
@@ -438,7 +438,7 @@ class TestDatabase(AsyncIntegrationTest):
         await self.db.coll.drop()
 
     async def test_cursor_command(self):
-        db = self.client.pymongo_test
+        db = self.db
         await db.coll.drop()
 
         docs = [{"_id": i, "doc": i} for i in range(3)]
@@ -479,7 +479,7 @@ class TestDatabase(AsyncIntegrationTest):
         # guarantee any particular order. This will never
         # work right in any Python or environment
         # with hash randomization enabled (e.g. tox).
-        db = self.client.pymongo_test
+        db = self.db
         await db.coll.drop()
         await db.coll.insert_one(SON([("hello", "world"), ("_id", 5)]))
 
@@ -493,7 +493,7 @@ class TestDatabase(AsyncIntegrationTest):
                 break
 
     async def test_deref(self):
-        db = self.client.pymongo_test
+        db = self.db
         await db.coll.drop()
 
         with self.assertRaises(TypeError):
@@ -517,7 +517,7 @@ class TestDatabase(AsyncIntegrationTest):
         self.assertEqual(obj, await db.dereference(DBRef("coll", 4)))
 
     async def test_deref_kwargs(self):
-        db = self.client.pymongo_test
+        db = self.db
         await db.coll.drop()
 
         await db.coll.insert_one({"_id": 4, "foo": "bar"})
@@ -530,7 +530,7 @@ class TestDatabase(AsyncIntegrationTest):
 
     # TODO some of these tests belong in the collection level testing.
     async def test_insert_find_one(self):
-        db = self.client.pymongo_test
+        db = self.db
         await db.coll.drop()
 
         a_doc = SON({"hello": "world"})
@@ -558,7 +558,7 @@ class TestDatabase(AsyncIntegrationTest):
         self.assertEqual(count, 1)
 
     async def test_long(self):
-        db = self.client.pymongo_test
+        db = self.db
         await db.coll.drop()
         await db.coll.insert_one({"x": 9223372036854775807})
         retrieved = (await db.coll.find_one())["x"]
@@ -571,7 +571,7 @@ class TestDatabase(AsyncIntegrationTest):
         self.assertIsInstance(retrieved, Int64)
 
     async def test_delete(self):
-        db = self.client.pymongo_test
+        db = self.db
         await db.coll.drop()
 
         await db.coll.insert_one({"x": 1})
@@ -625,7 +625,7 @@ class TestDatabase(AsyncIntegrationTest):
             "configureFailPoint", "maxTimeAlwaysTimeOut", mode="alwaysOn"
         )
         try:
-            db = self.client.pymongo_test
+            db = self.db
             await db.command("count", "coll")
             with self.assertRaises(ExecutionTimeout):
                 await db.command("count", "coll", maxTimeMS=1)

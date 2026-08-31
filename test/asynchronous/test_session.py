@@ -415,7 +415,7 @@ class TestSession(AsyncIntegrationTest):
         await self._test_ops(client, *ops)
 
     async def test_cursor_clone(self):
-        coll = self.client.pymongo_test.collection
+        coll = self.db.collection
         # Ensure some batches.
         await coll.insert_many({} for _ in range(10))
         self.addAsyncCleanup(coll.drop)
@@ -689,7 +689,7 @@ class TestSession(AsyncIntegrationTest):
         self.assertIn(lsid, session_ids(client))
 
     async def _test_cursor_helper(self, create_cursor, close_cursor):
-        coll = self.client.pymongo_test.collection
+        coll = self.db.collection
         await coll.insert_many([{} for _ in range(1000)])
 
         cursor = await create_cursor(coll, None)
@@ -828,7 +828,7 @@ class TestSession(AsyncIntegrationTest):
 
     async def test_unacknowledged_writes(self):
         # Ensure the collection exists.
-        await self.client.pymongo_test.create_collection("test_unacked_writes")
+        await self.db.create_collection("test_unacked_writes")
         client = await self.async_rs_or_single_client(w=0, event_listeners=[self.listener])
         db = client.pymongo_test
         coll = db.test_unacked_writes
@@ -870,7 +870,7 @@ class TestSession(AsyncIntegrationTest):
             self.assertRaises(TypeError, lambda: copy.copy(s))
 
     async def test_nested_session_binding(self):
-        coll = self.client.pymongo_test.coll
+        coll = self.db.coll
         await coll.insert_one({"x": 1})
 
         session1 = self.client.start_session()
@@ -921,7 +921,7 @@ class TestSession(AsyncIntegrationTest):
             await session2.end_session()
 
     async def test_session_binding_end_session(self):
-        coll = self.client.pymongo_test.coll
+        coll = self.db.coll
         await coll.insert_one({"x": 1})
 
         async with self.client.start_session().bind() as s1:

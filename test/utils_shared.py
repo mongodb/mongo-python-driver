@@ -548,13 +548,13 @@ def lazy_client_trial(reset, target, test, get_client):
     `test` takes the lazily-connecting collection and asserts a
     post-condition to prove `target` succeeded.
     """
-    collection = client_context.client.pymongo_test.test
+    collection = client_context.client.pymongo_test.coll
 
     with frequent_thread_switches():
         for _i in range(NTRIALS):
             reset(collection)
             lazy_client = get_client()
-            lazy_collection = lazy_client.pymongo_test.test
+            lazy_collection = lazy_client.pymongo_test.coll
             run_threads(lazy_collection, target)
             test(lazy_collection)
 

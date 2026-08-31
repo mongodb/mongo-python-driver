@@ -209,7 +209,7 @@ class TestTransactions(TransactionsBase):
     @client_context.require_version_min(4, 3, 4)
     def test_create_collection(self):
         client = client_context.client
-        db = client.pymongo_test
+        db = self.db
         coll = db.test_create_collection
         self.addCleanup(coll.drop)
 
@@ -236,7 +236,7 @@ class TestTransactions(TransactionsBase):
     @client_context.require_transactions
     def test_gridfs_does_not_support_transactions(self):
         client = client_context.client
-        db = client.pymongo_test
+        db = self.db
         gfs = GridFS(db)
         bucket = GridFSBucket(db)
 

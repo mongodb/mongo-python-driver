@@ -437,7 +437,7 @@ class TestWriteConcernError(AsyncIntegrationTest):
         async with self.fail_point(self.fail_insert):
             async with self.client.start_session() as s:
                 s._start_retryable_write()
-                result = await self.client.pymongo_test.command(
+                result = await self.db.command(
                     "insert",
                     "testcoll",
                     documents=[{"_id": 1}],

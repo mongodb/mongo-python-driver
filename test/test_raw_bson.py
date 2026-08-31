@@ -43,7 +43,7 @@ class TestRawBSONDocument(IntegrationTest):
 
     def tearDown(self):
         if client_context.connected:
-            self.client.pymongo_test.test_raw.drop()
+            self.db.test_raw.drop()
 
     def test_decode(self):
         self.assertEqual("Sherlock", self.document["name"])
@@ -125,7 +125,7 @@ class TestRawBSONDocument(IntegrationTest):
             "date": datetime.datetime(2015, 6, 3, 18, 40, 50, 826000),
             "_id": uuid.UUID("026fab8f-975f-4965-9fbf-85ad874c60ff"),
         }
-        db = self.client.pymongo_test
+        db = self.db
         coll = db.get_collection(
             "test_raw", codec_options=CodecOptions(uuid_representation=JAVA_LEGACY)
         )
@@ -141,7 +141,7 @@ class TestRawBSONDocument(IntegrationTest):
     @client_context.require_connection
     def test_raw_bson_document_embedded(self):
         doc = {"embedded": self.document}
-        db = self.client.pymongo_test
+        db = self.db
         db.test_raw.insert_one(doc)
         result = db.test_raw.find_one()
         assert result is not None

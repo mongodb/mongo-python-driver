@@ -189,7 +189,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
 
     async def test_create(self):
         # No Exception.
-        db = async_client_context.client.pymongo_test
+        db = self.db
         await db.create_test_no_wc.drop()
 
         async def lambda_test():

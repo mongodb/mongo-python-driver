@@ -105,12 +105,12 @@ class TestReadPreferencesBase(IntegrationTest):
     def setUp(self):
         super().setUp()
         # Insert some data so we can use cursors in read_from_which_host
-        self.client.pymongo_test.coll.drop()
+        self.db.coll.drop()
         self.client.get_database(
             "pymongo_test", write_concern=WriteConcern(w=client_context.w)
         ).coll.insert_many([{"_id": i} for i in range(10)])
 
-        self.addCleanup(self.client.pymongo_test.coll.drop)
+        self.addCleanup(self.db.coll.drop)
 
     def read_from_which_host(self, client):
         """Do a find() on the client and return which host was used"""
@@ -660,9 +660,7 @@ class TestMongosAndReadPreference(IntegrationTest):
         num_members = shard.count(",") + 1
         if num_members == 1:
             raise SkipTest("Need a replica set shard to test.")
-        coll = client_context.client.pymongo_test.get_collection(
-            "test", write_concern=WriteConcern(w=num_members)
-        )
+        coll = self.db.get_collection("test", write_concern=WriteConcern(w=num_members))
         coll.drop()
         res = coll.insert_many([{} for _ in range(5)])
         first_id = res.inserted_ids[0]
@@ -682,15 +680,11 @@ class TestMongosAndReadPreference(IntegrationTest):
     @client_context.require_mongos
     def test_mongos_max_staleness(self):
         # Sanity check that we're sending maxStalenessSeconds
-        coll = client_context.client.pymongo_test.get_collection(
-            "coll", read_preference=SecondaryPreferred(max_staleness=120)
-        )
+        coll = self.db.get_collection("coll", read_preference=SecondaryPreferred(max_staleness=120))
         # No error
         coll.find_one()
 
-        coll = client_context.client.pymongo_test.get_collection(
-            "coll", read_preference=SecondaryPreferred(max_staleness=10)
-        )
+        coll = self.db.get_collection("coll", read_preference=SecondaryPreferred(max_staleness=10))
         try:
             coll.find_one()
         except OperationFailure as exc:

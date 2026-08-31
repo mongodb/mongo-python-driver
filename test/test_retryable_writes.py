@@ -435,7 +435,7 @@ class TestWriteConcernError(IntegrationTest):
         with self.fail_point(self.fail_insert):
             with self.client.start_session() as s:
                 s._start_retryable_write()
-                result = self.client.pymongo_test.command(
+                result = self.db.command(
                     "insert",
                     "testcoll",
                     documents=[{"_id": 1}],

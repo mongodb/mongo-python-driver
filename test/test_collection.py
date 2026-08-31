@@ -189,7 +189,7 @@ class TestCollection(IntegrationTest):
 
     def test_create(self):
         # No Exception.
-        db = client_context.client.pymongo_test
+        db = self.db
         db.create_test_no_wc.drop()
 
         def lambda_test():

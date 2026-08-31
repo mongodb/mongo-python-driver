@@ -146,8 +146,8 @@ class TestCursor(IntegrationTest):
 
     def test_allow_disk_use(self):
         db = self.db
-        db.pymongo_test.drop()
-        coll = db.pymongo_test
+        db.coll.drop()
+        coll = db.coll
 
         with self.assertRaises(TypeError):
             coll.find().allow_disk_use("baz")  # type: ignore[arg-type]
@@ -159,8 +159,8 @@ class TestCursor(IntegrationTest):
 
     def test_max_time_ms(self):
         db = self.db
-        db.pymongo_test.drop()
-        coll = db.pymongo_test
+        db.coll.drop()
+        coll = db.coll
         with self.assertRaises(TypeError):
             coll.find().max_time_ms("foo")  # type: ignore[arg-type]
         coll.insert_one({"amalia": 1})
@@ -221,8 +221,8 @@ class TestCursor(IntegrationTest):
 
     def test_max_await_time_ms(self):
         db = self.db
-        db.pymongo_test.drop()
-        coll = db.create_collection("pymongo_test", capped=True, size=4096)
+        db.coll.drop()
+        coll = db.create_collection("coll", capped=True, size=4096)
 
         with self.assertRaises(TypeError):
             coll.find().max_await_time_ms("foo")  # type: ignore[arg-type]
@@ -254,7 +254,7 @@ class TestCursor(IntegrationTest):
         self.assertEqual(90, cursor._max_await_time_ms)
 
         listener = AllowListEventListener("find", "getMore")
-        coll = (self.rs_or_single_client(event_listeners=[listener]))[self.db.name].pymongo_test
+        coll = (self.rs_or_single_client(event_listeners=[listener])).pymongo_test.coll
 
         # Tailable_defaults.
         coll.find(cursor_type=CursorType.TAILABLE_AWAIT).to_list()
@@ -340,7 +340,7 @@ class TestCursor(IntegrationTest):
     @client_context.require_no_mongos
     def test_max_time_ms_getmore(self):
         # Test that Cursor handles server timeout error in response to getmore.
-        coll = self.db.pymongo_test
+        coll = self.db.coll
         coll.insert_many([{} for _ in range(200)])
         cursor = coll.find().max_time_ms(100)
 

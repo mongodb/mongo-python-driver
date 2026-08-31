@@ -1021,7 +1021,7 @@ class TestClient(IntegrationTest):
         for doc in client.list_databases():
             self.assertIs(type(doc), dict)
 
-        self.client.pymongo_test.coll.insert_one({})
+        self.db.coll.insert_one({})
         cursor = self.client.list_databases(filter={"name": "admin"})
         docs = cursor.to_list()
         self.assertEqual(1, len(docs))
@@ -1032,7 +1032,7 @@ class TestClient(IntegrationTest):
             self.assertEqual(["name"], list(doc))
 
     def test_list_database_names(self):
-        self.client.pymongo_test.coll.insert_one({"dummy": "object"})
+        self.db.coll.insert_one({"dummy": "object"})
         self.client.pymongo_test_mike.coll.insert_one({"dummy": "object"})
         cmd_docs = (self.client.admin.command("listDatabases"))["databases"]
         cmd_names = [doc["name"] for doc in cmd_docs]
@@ -1048,7 +1048,7 @@ class TestClient(IntegrationTest):
         with self.assertRaises(TypeError):
             self.client.drop_database(None)  # type: ignore[arg-type]
 
-        self.client.pymongo_test.coll.insert_one({"dummy": "object"})
+        self.db.coll.insert_one({"dummy": "object"})
         self.client.pymongo_test2.coll.insert_one({"dummy": "object"})
         dbs = self.client.list_database_names()
         self.assertIn("pymongo_test", dbs)
@@ -1171,7 +1171,7 @@ class TestClient(IntegrationTest):
         host, port = client_context.host, client_context.port
         client_context.create_user("admin", "admin", "pass")
         self.addCleanup(client_context.drop_user, "admin", "admin")
-        self.addCleanup(remove_all_users, self.client.pymongo_test)
+        self.addCleanup(remove_all_users, self.db)
 
         client_context.create_user("pymongo_test", "user", "pass", roles=["userAdmin", "readWrite"])
 
@@ -1451,7 +1451,7 @@ class TestClient(IntegrationTest):
 
         # Test fix for PYTHON-294 -- make sure MongoClient closes its
         # socket if it gets an interrupt while waiting to recv() from it.
-        db = self.client.pymongo_test
+        db = self.db
 
         # A $where clause which takes 1.5 sec to execute
         where = delay(1.5)
@@ -2142,8 +2142,8 @@ class TestClient(IntegrationTest):
         data = BinaryData.java_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
 
-        client_context.client.pymongo_test.drop_collection("java_uuid")
-        db = client_context.client.pymongo_test
+        self.db.drop_collection("java_uuid")
+        db = self.db
         coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=JAVA_LEGACY))
 
         coll.insert_many(docs)
@@ -2154,14 +2154,14 @@ class TestClient(IntegrationTest):
         coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         for d in coll.find():
             self.assertNotEqual(d["newguid"], d["newguidstring"])
-        client_context.client.pymongo_test.drop_collection("java_uuid")
+        self.db.drop_collection("java_uuid")
 
     def test_legacy_csharp_uuid_roundtrip(self):
         data = BinaryData.csharp_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
 
-        client_context.client.pymongo_test.drop_collection("csharp_uuid")
-        db = client_context.client.pymongo_test
+        self.db.drop_collection("csharp_uuid")
+        db = self.db
         coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=CSHARP_LEGACY))
 
         coll.insert_many(docs)
@@ -2172,7 +2172,7 @@ class TestClient(IntegrationTest):
         coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         for d in coll.find():
             self.assertNotEqual(d["newguid"], d["newguidstring"])
-        client_context.client.pymongo_test.drop_collection("csharp_uuid")
+        self.db.drop_collection("csharp_uuid")
 
     def test_uri_to_uuid(self):
         uri = "mongodb://foo/?uuidrepresentation=csharpLegacy"
@@ -2180,7 +2180,7 @@ class TestClient(IntegrationTest):
         self.assertEqual(client.pymongo_test.coll.codec_options.uuid_representation, CSHARP_LEGACY)
 
     def test_uuid_queries(self):
-        db = client_context.client.pymongo_test
+        db = self.db
         coll = db.coll
         coll.drop()
 
@@ -2247,7 +2247,7 @@ class TestExhaustCursor(IntegrationTest):
         collection.drop()
 
         collection.insert_many([{} for _ in range(200)])
-        self.addCleanup(client_context.client.pymongo_test.coll.drop)
+        self.addCleanup(self.db.coll.drop)
 
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -2339,7 +2339,7 @@ class TestExhaustCursor(IntegrationTest):
 
         def poller():
             while True:
-                client_context.client.pymongo_test.coll.insert_one({})
+                self.db.coll.insert_one({})
 
         task = spawn(poller)
         task.kill()

@@ -1048,7 +1048,7 @@ class TestClient(AsyncIntegrationTest):
         async for doc in await client.list_databases():
             self.assertIs(type(doc), dict)
 
-        await self.client.pymongo_test.coll.insert_one({})
+        await self.db.coll.insert_one({})
         cursor = await self.client.list_databases(filter={"name": "admin"})
         docs = await cursor.to_list()
         self.assertEqual(1, len(docs))
@@ -1059,7 +1059,7 @@ class TestClient(AsyncIntegrationTest):
             self.assertEqual(["name"], list(doc))
 
     async def test_list_database_names(self):
-        await self.client.pymongo_test.coll.insert_one({"dummy": "object"})
+        await self.db.coll.insert_one({"dummy": "object"})
         await self.client.pymongo_test_mike.coll.insert_one({"dummy": "object"})
         cmd_docs = (await self.client.admin.command("listDatabases"))["databases"]
         cmd_names = [doc["name"] for doc in cmd_docs]
@@ -1075,7 +1075,7 @@ class TestClient(AsyncIntegrationTest):
         with self.assertRaises(TypeError):
             await self.client.drop_database(None)  # type: ignore[arg-type]
 
-        await self.client.pymongo_test.coll.insert_one({"dummy": "object"})
+        await self.db.coll.insert_one({"dummy": "object"})
         await self.client.pymongo_test2.coll.insert_one({"dummy": "object"})
         dbs = await self.client.list_database_names()
         self.assertIn("pymongo_test", dbs)
@@ -1198,7 +1198,7 @@ class TestClient(AsyncIntegrationTest):
         host, port = await async_client_context.host, await async_client_context.port
         await async_client_context.create_user("admin", "admin", "pass")
         self.addAsyncCleanup(async_client_context.drop_user, "admin", "admin")
-        self.addAsyncCleanup(remove_all_users, self.client.pymongo_test)
+        self.addAsyncCleanup(remove_all_users, self.db)
 
         await async_client_context.create_user(
             "pymongo_test", "user", "pass", roles=["userAdmin", "readWrite"]
@@ -1492,7 +1492,7 @@ class TestClient(AsyncIntegrationTest):
 
         # Test fix for PYTHON-294 -- make sure AsyncMongoClient closes its
         # socket if it gets an interrupt while waiting to recv() from it.
-        db = self.client.pymongo_test
+        db = self.db
 
         # A $where clause which takes 1.5 sec to execute
         where = delay(1.5)
@@ -2185,8 +2185,8 @@ class TestClient(AsyncIntegrationTest):
         data = BinaryData.java_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, JAVA_LEGACY))
 
-        await async_client_context.client.pymongo_test.drop_collection("java_uuid")
-        db = async_client_context.client.pymongo_test
+        await self.db.drop_collection("java_uuid")
+        db = self.db
         coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=JAVA_LEGACY))
 
         await coll.insert_many(docs)
@@ -2197,14 +2197,14 @@ class TestClient(AsyncIntegrationTest):
         coll = db.get_collection("java_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         async for d in coll.find():
             self.assertNotEqual(d["newguid"], d["newguidstring"])
-        await async_client_context.client.pymongo_test.drop_collection("java_uuid")
+        await self.db.drop_collection("java_uuid")
 
     async def test_legacy_csharp_uuid_roundtrip(self):
         data = BinaryData.csharp_data
         docs = bson.decode_all(data, CodecOptions(SON[str, Any], False, CSHARP_LEGACY))
 
-        await async_client_context.client.pymongo_test.drop_collection("csharp_uuid")
-        db = async_client_context.client.pymongo_test
+        await self.db.drop_collection("csharp_uuid")
+        db = self.db
         coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=CSHARP_LEGACY))
 
         await coll.insert_many(docs)
@@ -2215,7 +2215,7 @@ class TestClient(AsyncIntegrationTest):
         coll = db.get_collection("csharp_uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         async for d in coll.find():
             self.assertNotEqual(d["newguid"], d["newguidstring"])
-        await async_client_context.client.pymongo_test.drop_collection("csharp_uuid")
+        await self.db.drop_collection("csharp_uuid")
 
     async def test_uri_to_uuid(self):
         uri = "mongodb://foo/?uuidrepresentation=csharpLegacy"
@@ -2223,7 +2223,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertEqual(client.pymongo_test.coll.codec_options.uuid_representation, CSHARP_LEGACY)
 
     async def test_uuid_queries(self):
-        db = async_client_context.client.pymongo_test
+        db = self.db
         coll = db.coll
         await coll.drop()
 
@@ -2290,7 +2290,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
         await collection.drop()
 
         await collection.insert_many([{} for _ in range(200)])
-        self.addAsyncCleanup(async_client_context.client.pymongo_test.coll.drop)
+        self.addAsyncCleanup(self.db.coll.drop)
 
         pool = await async_get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -2384,7 +2384,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
 
         def poller():
             while True:
-                async_client_context.client.pymongo_test.coll.insert_one({})
+                self.db.coll.insert_one({})
 
         task = spawn(poller)
         task.kill()
