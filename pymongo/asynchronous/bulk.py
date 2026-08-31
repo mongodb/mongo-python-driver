@@ -33,7 +33,7 @@ from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
 from pymongo._telemetry import _generate_op_id_or_none
-from pymongo.asynchronous.client_session import AsyncClientSession, _validate_session_write_concern
+from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.command_runner import (
     run_bulk_write_command,
 )
@@ -45,6 +45,7 @@ from pymongo.bulk_shared import (
     _raise_bulk_write_error,
     _Run,
 )
+from pymongo.client_session_shared import _validate_session_write_concern
 from pymongo.common import (
     validate_is_document_type,
     validate_ok_for_replace,
