@@ -67,7 +67,6 @@ from pymongo.asynchronous.mongo_client import AsyncMongoClient, _ClientCheckout
 from pymongo.asynchronous.pool import (
     AsyncConnection,
 )
-from pymongo.asynchronous.topology import _ErrorContext
 from pymongo.client_options import ClientOptions
 from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT, MIN_SUPPORTED_WIRE_VERSION, has_c
 from pymongo.compression_support import (
@@ -98,6 +97,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
+from pymongo.topology_shared import _ErrorContext
 from pymongo.write_concern import WriteConcern
 from test.asynchronous import (
     HAVE_IPADDRESS,

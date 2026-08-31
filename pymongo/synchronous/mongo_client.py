@@ -107,8 +107,9 @@ from pymongo.synchronous.helpers import (
     _RetryPolicy,
 )
 from pymongo.synchronous.settings import TopologySettings
-from pymongo.synchronous.topology import Topology, _ErrorContext
+from pymongo.synchronous.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
+from pymongo.topology_shared import _ErrorContext
 from pymongo.typings import (
     ClusterTime,
     _Address,

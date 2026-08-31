@@ -57,9 +57,10 @@ from pymongo.monitoring import (
 )
 from pymongo.server_description import SERVER_TYPE, ServerDescription
 from pymongo.synchronous.settings import TopologySettings
-from pymongo.synchronous.topology import Topology, _ErrorContext
+from pymongo.synchronous.topology import Topology
 from pymongo.synchronous.uri_parser import parse_uri
 from pymongo.topology_description import TOPOLOGY_TYPE
+from pymongo.topology_shared import _ErrorContext
 from test import (
     IntegrationTest,
     PyMongoTestCase,
