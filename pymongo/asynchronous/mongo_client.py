@@ -62,9 +62,6 @@ from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterCh
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
 from pymongo.asynchronous.client_session import _SESSION, _EmptyServerSession
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
-from pymongo.asynchronous.helpers import (
-    _RetryPolicy,
-)
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology
 from pymongo.client_options import ClientOptions
@@ -885,7 +882,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.read_concern,
         )
 
-        self._retry_policy = _RetryPolicy(attempts=self._options.max_adaptive_retries)
+        self._retry_policy = helpers_shared._RetryPolicy(
+            attempts=self._options.max_adaptive_retries
+        )
 
         self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
 
@@ -3026,7 +3025,7 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._attempt_number,
                         self._base_backoff_ms / 1000 if self._base_backoff_ms else None,
                     )
-                    if not await self._retry_policy.should_retry(self._attempt_number, delay):
+                    if not self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
