@@ -58,6 +58,7 @@ from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
 from pymongo._telemetry import _generate_op_id_or_none, log_command_retry
 from pymongo.client_options import ClientOptions
+from pymongo.client_session_shared import SessionOptions, TransactionOptions, _EmptyServerSession
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
@@ -101,7 +102,7 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous import client_session, database, uri_parser
 from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
-from pymongo.synchronous.client_session import _SESSION, _EmptyServerSession
+from pymongo.synchronous.client_session import _SESSION
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.helpers import (
     _RetryPolicy,
@@ -133,11 +134,12 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from bson.objectid import ObjectId
+    from pymongo.client_session_shared import _ServerSession
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
     from pymongo.server_selectors import Selection
     from pymongo.synchronous.bulk import _Bulk
-    from pymongo.synchronous.client_session import ClientSession, _ServerSession
+    from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.cursor_base import _ConnectionManager
     from pymongo.synchronous.encryption import _Encrypter
     from pymongo.synchronous.pool import Connection, _PoolCheckout
@@ -1390,13 +1392,13 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _start_session(self, implicit: bool, **kwargs: Any) -> ClientSession:
         server_session = _EmptyServerSession()
-        opts = client_session.SessionOptions(**kwargs)
+        opts = SessionOptions(**kwargs)
         return client_session.ClientSession(self, server_session, opts, implicit)
 
     def start_session(
         self,
         causal_consistency: Optional[bool] = None,
-        default_transaction_options: Optional[client_session.TransactionOptions] = None,
+        default_transaction_options: Optional[TransactionOptions] = None,
         snapshot: Optional[bool] = False,
     ) -> client_session.ClientSession:
         """Start a logical session.

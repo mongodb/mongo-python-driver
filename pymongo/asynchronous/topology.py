@@ -34,10 +34,10 @@ from pymongo._telemetry import (
     _ServerSelectionTelemetry,
     log_server_selection_succeeded,
 )
-from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import MonitorBase, SrvMonitor
 from pymongo.asynchronous.pool import Pool
 from pymongo.asynchronous.server import Server
+from pymongo.client_session_shared import _ServerSession, _ServerSessionPool
 from pymongo.errors import (
     ConnectionFailure,
     InvalidOperation,

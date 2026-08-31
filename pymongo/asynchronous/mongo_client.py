@@ -60,7 +60,7 @@ from pymongo._telemetry import _generate_op_id_or_none, log_command_retry
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
-from pymongo.asynchronous.client_session import _SESSION, _EmptyServerSession
+from pymongo.asynchronous.client_session import _SESSION
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import (
     _RetryPolicy,
@@ -68,6 +68,7 @@ from pymongo.asynchronous.helpers import (
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology
 from pymongo.client_options import ClientOptions
+from pymongo.client_session_shared import SessionOptions, TransactionOptions, _EmptyServerSession
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
@@ -134,11 +135,12 @@ if TYPE_CHECKING:
 
     from bson.objectid import ObjectId
     from pymongo.asynchronous.bulk import _AsyncBulk
-    from pymongo.asynchronous.client_session import AsyncClientSession, _ServerSession
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.cursor_base import _ConnectionManager
     from pymongo.asynchronous.encryption import _Encrypter
     from pymongo.asynchronous.pool import AsyncConnection, _PoolCheckout
     from pymongo.asynchronous.server import Server
+    from pymongo.client_session_shared import _ServerSession
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
     from pymongo.server_selectors import Selection
@@ -1389,13 +1391,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _start_session(self, implicit: bool, **kwargs: Any) -> AsyncClientSession:
         server_session = _EmptyServerSession()
-        opts = client_session.SessionOptions(**kwargs)
+        opts = SessionOptions(**kwargs)
         return client_session.AsyncClientSession(self, server_session, opts, implicit)
 
     def start_session(
         self,
         causal_consistency: Optional[bool] = None,
-        default_transaction_options: Optional[client_session.TransactionOptions] = None,
+        default_transaction_options: Optional[TransactionOptions] = None,
         snapshot: Optional[bool] = False,
     ) -> client_session.AsyncClientSession:
         """Start a logical session.

@@ -32,6 +32,7 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo._telemetry import _CmapTelemetry
+from pymongo.client_session_shared import _validate_session_write_concern
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -80,7 +81,6 @@ from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import SSL_EOF_ERRORS
-from pymongo.synchronous.client_session import _validate_session_write_concern
 from pymongo.synchronous.command_runner import run_command
 from pymongo.synchronous.helpers import _handle_reauth
 

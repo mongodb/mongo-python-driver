@@ -35,8 +35,7 @@ sys.path[0:0] = [""]
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
-from pymongo import WriteConcern, _csot
-from pymongo.asynchronous import client_session
+from pymongo import WriteConcern, _csot, client_session_shared
 from pymongo.asynchronous.client_session import TransactionOptions
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
@@ -402,18 +401,18 @@ class TestTransactions(AsyncTransactionsBase):
 
 
 class PatchSessionTimeout:
-    """Patches the client_session's with_transaction timeout for testing."""
+    """Patches the client_session_shared's with_transaction timeout for testing."""
 
     def __init__(self, mock_timeout):
-        self.real_timeout = client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT
+        self.real_timeout = client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT
         self.mock_timeout = mock_timeout
 
     def __enter__(self):
-        client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.mock_timeout
+        client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.mock_timeout
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
+        client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
 
 
 class TestTransactionsConvenientAPI(AsyncTransactionsBase):
