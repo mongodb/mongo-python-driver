@@ -69,8 +69,7 @@ from pymongo.encryption_options import (
     check_min_pymongocrypt,
 )
 from pymongo.encryption_shared import (
-    # Algorithm and QueryType are re-exported for backwards compatibility:
-    # they remain importable from this module.
+    # Algorithm and QueryType are re-exported for backwards compatibility.
     Algorithm,  # noqa: F401
     QueryType,  # noqa: F401
     RewrapManyDataKeyResult,
