@@ -2,7 +2,7 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ "master", "v*"]
+    branches: [ "main", "v*"]
     tags: ['*']
   pull_request:
   workflow_call:
@@ -37,7 +37,7 @@ jobs:
         - language: actions
           build-mode: none
     steps:
-    - uses: mongodb-labs/drivers-github-tools/codeql@95f9ce909bf0e44707fffdb92c18ed86e74aa2fd # v3
+    - uses: mongodb-labs/drivers-github-tools/codeql@89904229eb55a063655af02f5838bd7fe76505e5 # v3
       with:
         language: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}

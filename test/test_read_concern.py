@@ -110,11 +110,7 @@ class TestReadConcern(IntegrationTest):
         coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
         (coll.aggregate([{"$match": {"field": "value"}}, {"$out": "output_collection"}])).to_list()
 
-        # Aggregate with $out supports readConcern MongoDB 4.2 onwards.
-        if client_context.version >= (4, 1):
-            self.assertIn("readConcern", self.listener.started_events[0].command)
-        else:
-            self.assertNotIn("readConcern", self.listener.started_events[0].command)
+        self.assertIn("readConcern", self.listener.started_events[0].command)
 
 
 if __name__ == "__main__":

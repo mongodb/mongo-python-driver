@@ -314,7 +314,7 @@ class ReadPrefTester(MongoClient):
         return context
 
     @contextlib.contextmanager
-    def _conn_from_server(self, read_preference, server, session):
+    def _conn_from_server(self, read_preference, server, session):  # type: ignore[override]
         context = super()._conn_from_server(read_preference, server, session)
         with context as (conn, read_preference):
             self.record_a_read(conn.address)

@@ -34,10 +34,10 @@ from pymongo._telemetry import (
     _ServerSelectionTelemetry,
     log_server_selection_succeeded,
 )
-from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import MonitorBase, SrvMonitor
 from pymongo.asynchronous.pool import Pool
 from pymongo.asynchronous.server import Server
+from pymongo.client_session_shared import _ServerSession, _ServerSessionPool
 from pymongo.errors import (
     ConnectionFailure,
     InvalidOperation,
@@ -55,6 +55,7 @@ from pymongo.lock import (
     _async_create_condition,
     _async_create_lock,
 )
+from pymongo.logger import _SERVER_SELECTION_LOGGER, _is_debug_enabled
 from pymongo.pool_options import PoolOptions
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (
@@ -71,32 +72,20 @@ from pymongo.topology_description import (
     _updated_topology_description_srv_polling,
     updated_topology_description,
 )
+from pymongo.topology_shared import (
+    _ErrorContext,
+    _is_stale_error_topology_version,
+    _is_stale_server_description,
+    process_events_queue,
+)
 
 if TYPE_CHECKING:
-    from bson import ObjectId
     from pymongo.asynchronous.settings import TopologySettings
     from pymongo.typings import ClusterTime, _Address
 
 _IS_SYNC = False
 
 _pymongo_dir = str(Path(__file__).parent)
-
-
-def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:  # type: ignore[type-arg]
-    q = queue_ref()
-    if not q:
-        return False  # Cancel PeriodicExecutor.
-
-    while True:
-        try:
-            event = q.get_nowait()
-        except queue.Empty:
-            break
-        else:
-            fn, args = event
-            fn(*args)
-
-    return True  # Continue PeriodicExecutor.
 
 
 class Topology:
@@ -283,10 +272,13 @@ class Topology:
         now = time.monotonic()
         end_time = now + timeout
         logged_waiting = False
-        ss = _ServerSelectionTelemetry(
-            self._topology_id, selector, operation, operation_id, self.description
-        )
-        ss.started()
+        # Server selection does not have APM events, gate only on logging
+        ss: Optional[_ServerSelectionTelemetry] = None
+        if _is_debug_enabled(_SERVER_SELECTION_LOGGER):
+            ss = _ServerSelectionTelemetry(
+                self._topology_id, selector, operation, operation_id, self.description
+            )
+            ss.started()
 
         server_descriptions = self._description.apply_selector(
             selector,
@@ -300,12 +292,13 @@ class Topology:
         while not server_descriptions:
             # No suitable servers.
             if timeout == 0 or now > end_time:
-                ss.failed(self._error_message(selector), self.description)
+                if ss is not None:
+                    ss.failed(self._error_message(selector), self.description)
                 raise ServerSelectionTimeoutError(
                     f"{self._error_message(selector)}, Timeout: {timeout}s, Topology Description: {self.description!r}"
                 )
 
-            if not logged_waiting:
+            if ss is not None and not logged_waiting:
                 ss.waiting(int(1000 * (end_time - time.monotonic())))
                 logged_waiting = True
 
@@ -371,15 +364,16 @@ class Topology:
         )
         if _csot.get_timeout():
             _csot.set_rtt(server.description.min_round_trip_time)
-        log_server_selection_succeeded(
-            self._topology_id,
-            selector,
-            operation,
-            operation_id,
-            self.description,
-            server.description.address[0],
-            server.description.address[1],
-        )
+        if _is_debug_enabled(_SERVER_SELECTION_LOGGER):
+            log_server_selection_succeeded(
+                self._topology_id,
+                selector,
+                operation,
+                operation_id,
+                self.description,
+                server.description.address[0],
+                server.description.address[1],
+            )
         return server
 
     async def select_server_by_address(
@@ -758,8 +752,7 @@ class Topology:
         elif isinstance(error, (NotPrimaryError, OperationFailure)):
             # As per the SDAM spec if:
             #   - the server sees a "not primary" error, and
-            #   - the server is not shutting down, and
-            #   - the server version is >= 4.2, then
+            #   - the server is not shutting down, then
             # we keep the existing connection pool, but mark the server type
             # as Unknown and request an immediate check of the server.
             # Otherwise, we clear the connection pool, mark the server as
@@ -772,10 +765,9 @@ class Topology:
                 err_code = error.details.get("code", default)  # type: ignore[union-attr]
             if err_code in helpers_shared._NOT_PRIMARY_CODES:
                 is_shutting_down = err_code in helpers_shared._SHUTDOWN_CODES
-                # Mark server Unknown, clear the pool, and request check.
                 if not self._settings.load_balanced:
                     await self._process_change(ServerDescription(address, error=error))
-                if is_shutting_down or (err_ctx.max_wire_version <= 7):
+                if is_shutting_down:
                     # Clear the pool.
                     await server.reset(service_id)
                 server.request_check()
@@ -968,42 +960,3 @@ class Topology:
 
     def __hash__(self) -> int:
         return hash(self.eq_props())
-
-
-class _ErrorContext:
-    """An error with context for SDAM error handling."""
-
-    def __init__(
-        self,
-        error: BaseException,
-        max_wire_version: int,
-        sock_generation: int,
-        completed_handshake: bool,
-        service_id: Optional[ObjectId],
-    ):
-        self.error = error
-        self.max_wire_version = max_wire_version
-        self.sock_generation = sock_generation
-        self.completed_handshake = completed_handshake
-        self.service_id = service_id
-
-
-def _is_stale_error_topology_version(
-    current_tv: Optional[Mapping[str, Any]], error_tv: Optional[Mapping[str, Any]]
-) -> bool:
-    """Return True if the error's topologyVersion is <= current."""
-    if current_tv is None or error_tv is None:
-        return False
-    if current_tv["processId"] != error_tv["processId"]:
-        return False
-    return current_tv["counter"] >= error_tv["counter"]
-
-
-def _is_stale_server_description(current_sd: ServerDescription, new_sd: ServerDescription) -> bool:
-    """Return True if the new topologyVersion is < current."""
-    current_tv, new_tv = current_sd.topology_version, new_sd.topology_version
-    if current_tv is None or new_tv is None:
-        return False
-    if current_tv["processId"] != new_tv["processId"]:
-        return False
-    return current_tv["counter"] > new_tv["counter"]

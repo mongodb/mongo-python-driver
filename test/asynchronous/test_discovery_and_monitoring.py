@@ -41,7 +41,7 @@ from unittest.mock import patch
 from bson import Timestamp, json_util
 from pymongo import common, monitoring
 from pymongo.asynchronous.settings import TopologySettings
-from pymongo.asynchronous.topology import Topology, _ErrorContext
+from pymongo.asynchronous.topology import Topology
 from pymongo.asynchronous.uri_parser import parse_uri
 from pymongo.errors import (
     AutoReconnect,
@@ -60,6 +60,7 @@ from pymongo.monitoring import (
 )
 from pymongo.server_description import SERVER_TYPE, ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE
+from pymongo.topology_shared import _ErrorContext
 from test.asynchronous import (
     AsyncIntegrationTest,
     AsyncPyMongoTestCase,
@@ -269,6 +270,22 @@ def create_tests():
             test_name = f"test_{dirname}_{os.path.splitext(filename)[0]}"
 
             new_test.__name__ = test_name
+
+            # Skip scenarios where all mock server responses report a wire
+            # version below the minimum supported (server no longer reachable).
+            max_version = max(
+                (
+                    r[1].get("maxWireVersion", 0)
+                    for phase in scenario_def.get("phases", [])
+                    for r in phase.get("responses", [])
+                ),
+                default=common.MIN_SUPPORTED_WIRE_VERSION,
+            )
+            if max_version < common.MIN_SUPPORTED_WIRE_VERSION:
+                new_test = unittest.skip(
+                    f"Server wire version {max_version} is below minimum {common.MIN_SUPPORTED_WIRE_VERSION}"
+                )(new_test)
+
             setattr(TestAllScenarios, new_test.__name__, new_test)
 
 
@@ -360,8 +377,14 @@ class TestPoolManagement(AsyncIntegrationTest):
     async def test_pool_unpause(self):
         # This test implements the prose test "AsyncConnection Pool Management"
         listener = CMAPHeartbeatListener()
+        # Force polling: streaming's RTT monitor sends its own hello calls with the same
+        # appName, which can consume the failCommand's mode.times budget before the SDAM
+        # heartbeat monitor's hello does, so ServerHeartbeatFailedEvent never fires (PYTHON-6003).
         _ = await self.async_single_client(
-            appName="SDAMPoolManagementTest", heartbeatFrequencyMS=500, event_listeners=[listener]
+            appName="SDAMPoolManagementTest",
+            heartbeatFrequencyMS=500,
+            event_listeners=[listener],
+            serverMonitoringMode="poll",
         )
         # Assert that AsyncConnectionPoolReadyEvent occurs after the first
         # ServerHeartbeatSucceededEvent.
@@ -388,7 +411,7 @@ class TestPoolManagement(AsyncIntegrationTest):
     @async_client_context.require_failCommand_appName
     @async_client_context.require_test_commands
     @async_client_context.require_async
-    @flaky(reason="PYTHON-5428")
+    @flaky(reason="PyPy is slow")
     async def test_connection_close_does_not_block_other_operations(self):
         listener = CMAPHeartbeatListener()
         client = await self.async_single_client(

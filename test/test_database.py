@@ -377,7 +377,6 @@ class TestDatabase(IntegrationTest):
         self.assertTrue(db.validate_collection(db.coll, scandata=True, full=True))
         self.assertTrue(db.validate_collection(db.coll, True, True))
 
-    @client_context.require_version_min(4, 3, 3)
     @client_context.require_no_standalone
     def test_validate_collection_background(self):
         db = self.db.with_options(write_concern=WriteConcern(w="majority"))
@@ -701,15 +700,10 @@ class TestDatabaseAggregation(IntegrationTest):
     @client_context.require_no_mongos
     def test_database_aggregation_fake_cursor(self):
         coll_name = "test_output"
-        write_stage: dict
-        if client_context.version < (4, 3):
-            db_name = "admin"
-            write_stage = {"$out": coll_name}
-        else:
-            # SERVER-43287 disallows writing with $out to the admin db, use
-            # $merge instead.
-            db_name = "pymongo_test"
-            write_stage = {"$merge": {"into": {"db": db_name, "coll": coll_name}}}
+        # SERVER-43287 disallows writing with $out to the admin db, use
+        # $merge instead.
+        db_name = "pymongo_test"
+        write_stage = {"$merge": {"into": {"db": db_name, "coll": coll_name}}}
         output_coll = self.client[db_name][coll_name]
         output_coll.drop()
         self.addCleanup(output_coll.drop)

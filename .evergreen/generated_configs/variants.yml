@@ -134,7 +134,7 @@ buildvariants:
       COMPRESSOR: zlib
   - name: compression-zstd-rhel8
     tasks:
-      - name: .test-standard !.server-4.2
+      - name: .test-standard
     display_name: Compression zstd RHEL8
     run_on:
       - rhel87-small
@@ -142,8 +142,8 @@ buildvariants:
       COMPRESSOR: zstd
   - name: compression-zstd-ubuntu-22
     tasks:
-      - name: .test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14
-      - name: .test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14t
+      - name: .test-standard !.server-4.4 !.server-5.0 .python-3.14
+      - name: .test-standard !.server-4.4 !.server-5.0 .python-3.14t
     display_name: Compression zstd Ubuntu-22
     run_on:
       - ubuntu2204-small
@@ -184,6 +184,7 @@ buildvariants:
   - name: encryption-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-string-query-preview
     display_name: Encryption RHEL8
     run_on:
       - rhel87-small
@@ -195,6 +196,7 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.pypy !.cov
       - name: .test-non-standard-no-cov !.pypy
+      - name: .test-string-query-preview
     display_name: Encryption macOS
     run_on:
       - macos-14
@@ -206,6 +208,7 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.pypy !.cov
       - name: .test-non-standard-no-cov !.pypy
+      - name: .test-string-query-preview
     display_name: Encryption Win64
     run_on:
       - windows-2022-latest-small
@@ -216,6 +219,7 @@ buildvariants:
   - name: encryption-crypt_shared-rhel8
     tasks:
       - name: .test-non-standard
+      - name: .test-string-query-preview
     display_name: Encryption crypt_shared RHEL8
     run_on:
       - rhel87-small
@@ -228,6 +232,7 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.pypy !.cov
       - name: .test-non-standard-no-cov !.pypy
+      - name: .test-string-query-preview
     display_name: Encryption crypt_shared macOS
     run_on:
       - macos-14
@@ -240,6 +245,7 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.pypy !.cov
       - name: .test-non-standard-no-cov !.pypy
+      - name: .test-string-query-preview
     display_name: Encryption crypt_shared Win64
     run_on:
       - windows-2022-latest-small
@@ -326,6 +332,7 @@ buildvariants:
       - name: .test-non-standard .server-6.0 .sharded_cluster-auth-ssl
       - name: .test-non-standard .server-7.0 .sharded_cluster-auth-ssl
       - name: .test-non-standard .server-8.0 .sharded_cluster-auth-ssl
+      - name: .test-non-standard .server-9.0 .sharded_cluster-auth-ssl
       - name: .test-non-standard .server-rapid .sharded_cluster-auth-ssl
       - name: .test-non-standard .server-latest .sharded_cluster-auth-ssl
     display_name: Load Balancer
@@ -467,7 +474,7 @@ buildvariants:
       - name: .test-standard !.pypy .async .replica_set-noauth-ssl
     display_name: PyOpenSSL macOS
     run_on:
-      - rhel87-small
+      - macos-14
     batchtime: 1440
     expansions:
       SUB_TEST_NAME: pyopenssl
@@ -491,15 +498,6 @@ buildvariants:
       - rhel87-small
 
   # Server version tests
-  - name: mongodb-v4.2
-    tasks:
-      - name: .server-version
-    display_name: "* MongoDB v4.2"
-    run_on:
-      - rhel87-small
-    expansions:
-      VERSION: "4.2"
-    tags: [coverage_tag]
   - name: mongodb-v4.4
     tasks:
       - name: .server-version
@@ -545,6 +543,15 @@ buildvariants:
     expansions:
       VERSION: "8.0"
     tags: [coverage_tag]
+  - name: mongodb-v9.0
+    tasks:
+      - name: .server-version
+    display_name: "* MongoDB v9.0"
+    run_on:
+      - rhel87-small
+    expansions:
+      VERSION: "9.0"
+    tags: [coverage_tag]
   - name: mongodb-rapid
     tasks:
       - name: .server-version
@@ -564,6 +571,17 @@ buildvariants:
       VERSION: latest
     tags: [coverage_tag]
 
+  # Sfp tests
+  - name: sfp-rhel8
+    tasks:
+      - name: .test-no-orchestration
+    display_name: SFP RHEL8
+    run_on:
+      - rhel87-small
+    expansions:
+      TEST_NAME: sfp
+    tags: [pr]
+
   # Stable api tests
   - name: stable-api-require-v1-rhel8-auth
     tasks:
@@ -571,6 +589,7 @@ buildvariants:
       - name: .test-standard !.replica_set-noauth-ssl .server-6.0
       - name: .test-standard !.replica_set-noauth-ssl .server-7.0
       - name: .test-standard !.replica_set-noauth-ssl .server-8.0
+      - name: .test-standard !.replica_set-noauth-ssl .server-9.0
       - name: .test-standard !.replica_set-noauth-ssl .server-rapid
       - name: .test-standard !.replica_set-noauth-ssl .server-latest
     display_name: Stable API require v1 RHEL8 Auth
@@ -587,6 +606,7 @@ buildvariants:
       - name: .test-standard .server-6.0 .standalone-noauth-nossl
       - name: .test-standard .server-7.0 .standalone-noauth-nossl
       - name: .test-standard .server-8.0 .standalone-noauth-nossl
+      - name: .test-standard .server-9.0 .standalone-noauth-nossl
       - name: .test-standard .server-rapid .standalone-noauth-nossl
       - name: .test-standard .server-latest .standalone-noauth-nossl
     display_name: Stable API accept v2 RHEL8 Auth
@@ -610,6 +630,7 @@ buildvariants:
       - name: .test-standard !.pypy .server-6.0
       - name: .test-standard !.pypy .server-7.0
       - name: .test-standard !.pypy .server-8.0
+      - name: .test-standard !.pypy .server-9.0
       - name: .test-standard !.pypy .server-rapid
       - name: .test-standard !.pypy .server-latest
     display_name: "* Test macOS Arm64"
@@ -626,7 +647,7 @@ buildvariants:
     tags: [standard-non-linux]
   - name: test-win32
     tasks:
-      - name: .test-standard !.pypy
+      - name: .test-standard !.pypy !.free-threaded
     display_name: "* Test Win32"
     run_on:
       - windows-64-vsMulti-small

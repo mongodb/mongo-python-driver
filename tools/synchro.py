@@ -95,7 +95,6 @@ replacements = {
     "AsyncSpecRunner": "SpecRunner",
     "AsyncTransactionsBase": "TransactionsBase",
     "async_get_pool": "get_pool",
-    "async_is_mongos": "is_mongos",
     "async_rs_or_single_client": "rs_or_single_client",
     "async_rs_or_single_client_noauth": "rs_or_single_client_noauth",
     "async_rs_client": "rs_client",
@@ -140,6 +139,8 @@ replacements = {
     "_async_create_connection": "_create_connection",
     "pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts": "pymongo.synchronous.srv_resolver._SrvResolver.get_hosts",
     "dns.asyncresolver.resolve": "dns.resolver.resolve",
+    "__aenter__": "__enter__",
+    "__aexit__": "__exit__",
 }
 
 docstring_replacements: dict[tuple[str, str], str] = {
@@ -303,6 +304,8 @@ def translate_docstrings(lines: list[str]) -> list[str]:
             if "Sync" in lines[i] and "Synchronous" not in lines[i] and value in lines[i]:
                 lines[i] = lines[i].replace("Sync", "")
         if "async for" in lines[i] or "async with" in lines[i] or "async def" in lines[i]:
+            if "an async " in lines[i]:
+                lines[i] = lines[i].replace("an async ", "a ")
             lines[i] = lines[i].replace("async ", "")
         if "await " in lines[i] and "tailable" not in lines[i]:
             lines[i] = lines[i].replace("await ", "")

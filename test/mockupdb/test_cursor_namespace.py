@@ -42,7 +42,7 @@ class TestCursorNamespace(PyMongoTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.server = MockupDB(auto_ismaster={"maxWireVersion": 8})
+        cls.server = MockupDB(auto_ismaster={"maxWireVersion": MIN_SUPPORTED_WIRE_VERSION})
         cls.server.run()
         cls.client = cls.unmanaged_simple_client(cls.server.uri)
 

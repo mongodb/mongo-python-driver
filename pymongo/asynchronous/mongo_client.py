@@ -41,7 +41,6 @@ import warnings
 import weakref
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Collection, Coroutine, Mapping, MutableMapping, Sequence
-from contextlib import AbstractAsyncContextManager
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -56,19 +55,20 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
-from pymongo import _csot, common, helpers_shared, periodic_executor
-from pymongo._telemetry import log_command_retry
+from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
+from pymongo._telemetry import _generate_op_id_or_none, log_command_retry
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
-from pymongo.asynchronous.client_session import _SESSION, _EmptyServerSession
+from pymongo.asynchronous.client_session import _SESSION
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import (
     _RetryPolicy,
 )
 from pymongo.asynchronous.settings import TopologySettings
-from pymongo.asynchronous.topology import Topology, _ErrorContext
+from pymongo.asynchronous.topology import Topology
 from pymongo.client_options import ClientOptions
+from pymongo.client_session_shared import SessionOptions, TransactionOptions, _EmptyServerSession
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
@@ -82,7 +82,6 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
     WaitQueueTimeoutError,
-    WriteConcernError,
 )
 from pymongo.lock import (
     _HAS_REGISTER_AT_FORK,
@@ -111,6 +110,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
+from pymongo.topology_shared import _ErrorContext
 from pymongo.typings import (
     ClusterTime,
     _Address,
@@ -135,11 +135,12 @@ if TYPE_CHECKING:
 
     from bson.objectid import ObjectId
     from pymongo.asynchronous.bulk import _AsyncBulk
-    from pymongo.asynchronous.client_session import AsyncClientSession, _ServerSession
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.cursor_base import _ConnectionManager
     from pymongo.asynchronous.encryption import _Encrypter
-    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.asynchronous.pool import AsyncConnection, _PoolCheckout
     from pymongo.asynchronous.server import Server
+    from pymongo.client_session_shared import _ServerSession
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
     from pymongo.server_selectors import Selection
@@ -422,8 +423,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             zlib support requires the Python standard library zlib module. For
             Python before 3.14 zstd requires the `backports.zstd <https://pypi.org/project/backports.zstd/>`_
             package. By default no compression is used. Compression support
-            must also be enabled on the server. MongoDB 3.6+ supports snappy
-            and zlib compression. MongoDB 4.2+ adds support for zstd.
+            must also be enabled on the server.
             See `compress network traffic <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/network-compression/#compress-network-traffic>`_ for details.
           - `zlibCompressionLevel`: (int) The zlib compression level to use
             when zlib is used as the wire protocol compressor. Supported values
@@ -1305,6 +1305,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     return "document_class=dict"
                 else:
                     return f"document_class={value.__module__}.{value.__name__}"
+            if option == "authmechanismproperties":
+                value = common.redact_auth_mechanism_properties_for_repr(value)
             if option in common.TIMEOUT_OPTIONS and value is not None:
                 return f"{option}={int(value * 1000)}"
 
@@ -1389,13 +1391,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _start_session(self, implicit: bool, **kwargs: Any) -> AsyncClientSession:
         server_session = _EmptyServerSession()
-        opts = client_session.SessionOptions(**kwargs)
+        opts = SessionOptions(**kwargs)
         return client_session.AsyncClientSession(self, server_session, opts, implicit)
 
     def start_session(
         self,
         causal_consistency: Optional[bool] = None,
-        default_transaction_options: Optional[client_session.TransactionOptions] = None,
+        default_transaction_options: Optional[TransactionOptions] = None,
         snapshot: Optional[bool] = False,
     ) -> client_session.AsyncClientSession:
         """Start a logical session.
@@ -1784,39 +1786,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._opened = True
         return self._topology
 
-    @contextlib.asynccontextmanager
-    async def _checkout(
-        self, server: Server, session: Optional[AsyncClientSession]
-    ) -> AsyncGenerator[AsyncConnection, None]:
-        in_txn = session and session.in_transaction
-        async with _MongoClientErrorHandler(self, server, session) as err_handler:
-            # Reuse the pinned connection, if it exists.
-            if in_txn and session and session._pinned_connection:
-                err_handler.contribute_socket(session._pinned_connection)
-                yield session._pinned_connection
-                return
-            async with await server.checkout(handler=err_handler) as conn:
-                # Pin this session to the selected server or connection.
-                if (
-                    in_txn
-                    and session
-                    and server.description.server_type
-                    in (
-                        SERVER_TYPE.Mongos,
-                        SERVER_TYPE.LoadBalancer,
-                    )
-                ):
-                    session._pin(server, conn)
-                err_handler.contribute_socket(conn)
-                if (
-                    self._encrypter
-                    and not self._encrypter._bypass_auto_encryption
-                    and conn.max_wire_version < 8
-                ):
-                    raise ConfigurationError(
-                        "Auto-encryption requires a minimum MongoDB version of 4.2"
-                    )
-                yield conn
+    def _checkout(self, server: Server, session: Optional[AsyncClientSession]) -> _ClientCheckout:
+        return _ClientCheckout(self, server, session)
 
     async def _select_server(
         self,
@@ -1836,6 +1807,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             be pinned to a mongos server address.
           - `address` (optional): Address when sending a message
             to a specific server, used for getMore.
+          - `operation_id` (optional): Stable operation id shared across retries,
+            used for command monitoring.
         """
         try:
             topology = await self._get_topology()
@@ -1867,41 +1840,22 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     async def _conn_for_writes(
         self, session: Optional[AsyncClientSession], operation: str
-    ) -> AbstractAsyncContextManager[AsyncConnection]:
+    ) -> _ClientCheckout:
         server = await self._select_server(writable_server_selector, session, operation)
         return self._checkout(server, session)
 
-    @contextlib.asynccontextmanager
-    async def _conn_from_server(
+    def _conn_from_server(
         self, read_preference: _ServerMode, server: Server, session: Optional[AsyncClientSession]
-    ) -> AsyncGenerator[tuple[AsyncConnection, _ServerMode], None]:
+    ) -> _ClientReadCheckout:
         assert read_preference is not None, "read_preference must not be None"
-        # Get a connection for a server matching the read preference, and yield
-        # conn with the effective read preference. The Server Selection
-        # Spec says not to send any $readPreference to standalones and to
-        # always send primaryPreferred when directly connected to a repl set
-        # member.
-        # Thread safe: if the type is single it cannot change.
-        # NOTE: We already opened the Topology when selecting a server so there's no need
-        # to call _get_topology() again.
-        single = self._topology.description.topology_type == TOPOLOGY_TYPE.Single
-        async with self._checkout(server, session) as conn:
-            if single:
-                if conn.is_repl and not (session and session.in_transaction):
-                    # Use primary preferred to ensure any repl set member
-                    # can handle the request.
-                    read_preference = ReadPreference.PRIMARY_PREFERRED
-                elif conn.is_standalone:
-                    # Don't send read preference to standalones.
-                    read_preference = ReadPreference.PRIMARY
-            yield conn, read_preference
+        return _ClientReadCheckout(self, server, session, read_preference)
 
     async def _conn_for_reads(
         self,
         read_preference: _ServerMode,
         session: Optional[AsyncClientSession],
         operation: str,
-    ) -> AbstractAsyncContextManager[tuple[AsyncConnection, _ServerMode]]:
+    ) -> _ClientReadCheckout:
         assert read_preference is not None, "read_preference must not be None"
         server = await self._select_server(read_preference, session, operation)
         return self._conn_from_server(read_preference, server, session)
@@ -1930,8 +1884,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             )
 
             async with operation.conn_mgr._lock:
-                async with _MongoClientErrorHandler(self, server, operation.session) as err_handler:  # type: ignore[arg-type]
-                    err_handler.contribute_socket(operation.conn_mgr.conn)
+                async with _ClientCheckout.for_existing_conn(
+                    self,
+                    server,
+                    operation.session,  # type: ignore[arg-type]
+                    operation.conn_mgr.conn,
+                ):
                     return await run_with_conn(
                         operation.conn_mgr.conn, operation, operation.read_preference
                     )
@@ -2011,6 +1969,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param retryable: If the operation should be retried once, defaults to None
         :param is_run_command: If this is a runCommand operation, defaults to False
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
+        :param operation_id: Stable operation id shared across retries, defaults to None
 
         :return: Output of the calling func()
         """
@@ -2057,6 +2016,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             (may not always be supported even if supplied), defaults to False
         :param is_run_command: If this is a runCommand operation, defaults to False.
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
+        :param operation_id: Stable operation id shared across retries, defaults to None
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2100,6 +2060,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param session: Client session we will use to execute write operation
         :param operation: The name of the operation that the server is being selected for
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
+        :param operation_id: Stable operation id shared across retries, defaults to None
         """
         async with self._tmp_session(session) as s:
             return await self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
@@ -2625,7 +2586,7 @@ def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
     return None
 
 
-def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mongos: bool) -> None:
+def _add_retryable_write_error(exc: PyMongoError) -> None:
     doc = _retryable_error_doc(exc)
     if doc:
         code = doc.get("code", 0)
@@ -2637,16 +2598,8 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mong
                 "to your connection string."
             )
             raise OperationFailure(errmsg, code, exc.details)  # type: ignore[attr-defined]
-        if max_wire_version >= 9:
-            # In MongoDB 4.4+, the server reports the error labels.
-            for label in doc.get("errorLabels", []):
-                exc._add_error_label(label)
-        else:
-            # Do not consult writeConcernError for pre-4.4 mongos.
-            if isinstance(exc, WriteConcernError) and is_mongos:
-                pass
-            elif code in helpers_shared._RETRYABLE_ERROR_CODES:
-                exc._add_error_label("RetryableWriteError")
+        for label in doc.get("errorLabels", []):
+            exc._add_error_label(label)
 
     # AsyncConnection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
     # handled above.
@@ -2660,10 +2613,16 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mong
         exc_to_check._add_error_label("RetryableWriteError")
 
 
-class _MongoClientErrorHandler:
-    """Handle errors raised when executing an operation."""
+class _ClientCheckout:
+    """Context manager for checking out a connection from the pool.
+
+    Handles pool checkout, SDAM error handling, and session pinning.
+    """
 
     __slots__ = (
+        "_existing_conn",
+        "_pool_checkout",
+        "_server",
         "client",
         "completed_handshake",
         "handled",
@@ -2697,9 +2656,12 @@ class _MongoClientErrorHandler:
         self.completed_handshake = False
         self.service_id: Optional[ObjectId] = None
         self.handled = False
+        self._existing_conn: Optional[AsyncConnection] = None
+        self._pool_checkout: Optional[_PoolCheckout] = None
+        self._server = server
 
     def contribute_socket(self, conn: AsyncConnection, completed_handshake: bool = True) -> None:
-        """Provide socket information to the error handler."""
+        """Record connection metadata needed for SDAM error handling."""
         self.max_wire_version = conn.max_wire_version
         self.sock_generation = conn.generation
         self.service_id = conn.service_id
@@ -2734,20 +2696,147 @@ class _MongoClientErrorHandler:
         assert self.client._topology is not None
         await self.client._topology.handle_error(self.server_address, err_ctx)
 
-    async def __aenter__(self) -> _MongoClientErrorHandler:
-        return self
+    async def __aenter__(self) -> AsyncConnection:
+        if self._existing_conn is not None:
+            return self._existing_conn
+        server = self._server
+        session = self.session
+        in_txn = session and session.in_transaction
+        # Reuse the pinned connection, if it exists.
+        if in_txn and session and session._pinned_connection:
+            self.contribute_socket(session._pinned_connection)
+            return session._pinned_connection
+        pool_checkout = server.pool.checkout(self)
+        try:
+            conn = await pool_checkout.__aenter__()
+        except BaseException as exc:
+            # __aenter__ raised — pool already cleaned up internally.
+            # Run SDAM error handling so the topology learns about the failure.
+            await self.handle(type(exc), exc)
+            raise
+        self._pool_checkout = pool_checkout
+        try:
+            # Pin this session to the selected server or connection.
+            if (
+                in_txn
+                and session
+                and server.description.server_type
+                in (
+                    SERVER_TYPE.Mongos,
+                    SERVER_TYPE.LoadBalancer,
+                )
+            ):
+                session._pin(server, conn)
+            self.contribute_socket(conn)
+        except BaseException as exc:
+            try:
+                await self.handle(type(exc), exc)
+            finally:
+                # Reset before checkin so pool.checkin() does not decrement ntxns.
+                conn.pinned_txn = False
+                conn.pinned_cursor = False
+                # Clear stale session pin state so future ops don't reuse it.
+                if session and session.in_transaction:
+                    await session._unpin()
+                await pool_checkout.__aexit__(type(exc), exc, exc.__traceback__)
+                self._pool_checkout = None
+            raise
+        return conn
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[Exception]],
-        exc_val: Optional[Exception],
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        return await self.handle(exc_type, exc_val)
+        # Perform SDAM error handling while the connection is still checked out.
+        try:
+            await self.handle(exc_type, exc_val)
+        finally:
+            if self._pool_checkout is not None:
+                await self._pool_checkout.__aexit__(exc_type, exc_val, exc_tb)
+
+    @classmethod
+    def for_existing_conn(
+        cls,
+        client: AsyncMongoClient,  # type: ignore[type-arg]
+        server: Server,
+        session: Optional[AsyncClientSession],
+        conn: AsyncConnection,
+    ) -> _ClientCheckout:
+        """Return a _ClientCheckout for an already-checked-out connection.
+
+        Used when SDAM error handling is needed around an existing connection
+        without performing a new pool checkout (e.g. re-running a getMore).
+        """
+        checkout = cls(client, server, session)
+        checkout.contribute_socket(conn)
+        checkout._existing_conn = conn
+        return checkout
+
+
+class _ClientReadCheckout(_ClientCheckout):
+    """Context manager for read operations.
+
+    Extends _ClientCheckout to apply the single-topology read preference
+    adjustment and return the effective read preference alongside the connection.
+    """
+
+    __slots__ = ("_read_preference",)
+
+    def __init__(
+        self,
+        client: AsyncMongoClient,  # type: ignore[type-arg]
+        server: Server,
+        session: Optional[AsyncClientSession],
+        read_preference: _ServerMode,
+    ) -> None:
+        super().__init__(client, server, session)
+        self._read_preference: _ServerMode = read_preference
+
+    async def __aenter__(self) -> tuple[AsyncConnection, _ServerMode]:  # type: ignore[override]
+        conn = await super().__aenter__()
+        # The Server Selection Spec says not to send any $readPreference to
+        # standalones and to always send primaryPreferred when directly
+        # connected to a replica set member.
+        # Thread safe: topology type cannot change once set to Single.
+        read_pref = self._read_preference
+        single = self.client._topology.description.topology_type == TOPOLOGY_TYPE.Single
+        if single:
+            if conn.is_repl and not (self.session and self.session.in_transaction):
+                read_pref = ReadPreference.PRIMARY_PREFERRED
+            elif conn.is_standalone:
+                read_pref = ReadPreference.PRIMARY
+        return conn, read_pref
 
 
 class _ClientConnectionRetryable(Generic[T]):
     """Responsible for executing retryable connections on read or write operations"""
+
+    __slots__ = (
+        "_address",
+        "_always_retryable",
+        "_attempt_number",
+        "_base_backoff_ms",
+        "_bulk",
+        "_client",
+        "_deprioritized_servers",
+        "_func",
+        "_is_aggregate_write",
+        "_is_read",
+        "_is_run_command",
+        "_last_error",
+        "_max_retries",
+        "_operation",
+        "_operation_id",
+        "_read_pref",
+        "_retry_policy",
+        "_retryable",
+        "_retrying",
+        "_server",
+        "_server_selector",
+        "_session",
+    )
 
     def __init__(
         self,
@@ -2781,12 +2870,16 @@ class _ClientConnectionRetryable(Generic[T]):
         )
         self._address = address
         self._server: Server = None  # type: ignore
-        self._deprioritized_servers: list[Server] = []
+        self._deprioritized_servers: Optional[list[Server]] = None
         self._operation = operation
+        # Only generate an operation id when APM/logging is enabled.
+        if operation_id is None:
+            operation_id = _generate_op_id_or_none(self._client._event_listeners)
         self._operation_id = operation_id
         self._attempt_number = 0
         self._is_run_command = is_run_command
         self._is_aggregate_write = is_aggregate_write
+        self._base_backoff_ms: Optional[float] = None
 
     async def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -2836,26 +2929,29 @@ class _ClientConnectionRetryable(Generic[T]):
 
                 # Execute specialized catch on read
                 if self._is_read:
-                    if isinstance(exc, (ConnectionFailure, OperationFailure)):
+                    if isinstance(exc_to_check, (ConnectionFailure, OperationFailure)):
                         # ConnectionFailures do not supply a code property
-                        exc_code = getattr(exc, "code", None)
-                        overloaded = exc.has_error_label("SystemOverloadedError")
+                        exc_code = getattr(exc_to_check, "code", None)
+                        overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                         if overloaded:
                             self._max_retries = self._client.options.max_adaptive_retries
-                        always_retryable = exc.has_error_label("RetryableError") and overloaded
+                            self._base_backoff_ms = getattr(exc_to_check, "_base_backoff_ms", None)
+                        always_retryable = (
+                            exc_to_check.has_error_label("RetryableError") and overloaded
+                        )
                         if not self._client.options.retry_reads or (
                             not always_retryable
                             and (
                                 self._is_not_eligible_for_retry()
                                 or (
-                                    isinstance(exc, OperationFailure)
+                                    isinstance(exc_to_check, OperationFailure)
                                     and exc_code not in helpers_shared._RETRYABLE_ERROR_CODES
                                 )
                             )
                         ):
                             raise
                         self._retrying = True
-                        self._last_error = exc
+                        self._last_error = exc_to_check
                         self._attempt_number += 1
 
                         # Revert back to starting state only if the first
@@ -2882,6 +2978,7 @@ class _ClientConnectionRetryable(Generic[T]):
                     overloaded = exc_to_check.has_error_label("SystemOverloadedError")
                     if overloaded:
                         self._max_retries = self._client.options.max_adaptive_retries
+                        self._base_backoff_ms = getattr(exc_to_check, "_base_backoff_ms", None)
                     always_retryable = exc_to_check.has_error_label("RetryableError") and overloaded
 
                     # Always retry abortTransaction and commitTransaction up to once
@@ -2921,11 +3018,16 @@ class _ClientConnectionRetryable(Generic[T]):
                     self._client.topology_description.topology_type_name == "Sharded"
                     or (overloaded and self._client.options.enable_overload_retargeting)
                 ):
+                    if self._deprioritized_servers is None:
+                        self._deprioritized_servers = []
                     self._deprioritized_servers.append(self._server)
 
                 self._always_retryable = always_retryable
                 if overloaded:
-                    delay = self._retry_policy.backoff(self._attempt_number)
+                    delay = self._retry_policy.backoff(
+                        self._attempt_number,
+                        self._base_backoff_ms / 1000 if self._base_backoff_ms else None,
+                    )
                     if not await self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
@@ -2994,17 +3096,13 @@ class _ClientConnectionRetryable(Generic[T]):
         :return: Output for func()'s call
         """
         try:
-            max_wire_version = 0
-            is_mongos = False
             self._server = await self._get_server()
             async with self._client._checkout(self._server, self._session) as conn:
-                max_wire_version = conn.max_wire_version
                 sessions_supported = (
                     self._session
                     and self._server.description.retryable_writes_supported
                     and conn.supports_sessions
                 )
-                is_mongos = conn.is_mongos
                 if not self._always_retryable and not sessions_supported:
                     # A retry is not possible because this server does
                     # not support sessions raise the last error.
@@ -3012,12 +3110,16 @@ class _ClientConnectionRetryable(Generic[T]):
                     self._retryable = False
                 if self._retrying:
                     self._log_retry(is_write=True)
-                return await self._func(self._session, conn, self._retryable)  # type: ignore
+                # One operation id across all attempts of this operation if APM/logging is enabled
+                if self._operation_id is None:
+                    return await self._func(self._session, conn, self._retryable)  # type: ignore
+                with _op_id._OpIdContext(self._operation_id):
+                    return await self._func(self._session, conn, self._retryable)  # type: ignore
         except PyMongoError as exc:
             if not self._retryable:
                 raise
             # Add the RetryableWriteError label, if applicable.
-            _add_retryable_write_error(exc, max_wire_version, is_mongos)
+            _add_retryable_write_error(exc)
             raise
 
     async def _read(self) -> T:
@@ -3035,7 +3137,11 @@ class _ClientConnectionRetryable(Generic[T]):
                 self._check_last_error()
             if self._retrying:
                 self._log_retry(is_write=False)
-            return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
+            # One operation id across all attempts of this operation if APM/logging is enabled
+            if self._operation_id is None:
+                return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
+            with _op_id._OpIdContext(self._operation_id):
+                return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 
 def _after_fork_child() -> None:

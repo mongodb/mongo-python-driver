@@ -32,6 +32,7 @@ from test.asynchronous.utils import async_get_pool
 sys.path[0:0] = [""]
 
 from pymongo.asynchronous.helpers import anext
+from pymongo.cursor_shared import CursorType
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import (
@@ -49,6 +50,17 @@ globals().update(generate_test_classes(get_test_path("load_balancer"), module=__
 
 class TestLB(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
+
+    async def test_exhaust_cursor(self):
+        coll = self.db.test
+        await coll.drop()
+        await coll.insert_many([{} for _ in range(150)])
+        pool = await async_get_pool(self.client)
+        n_conns = len(pool.conns)
+        docs = await coll.find(cursor_type=CursorType.EXHAUST, batch_size=10).to_list()
+        self.assertEqual(len(docs), 150)
+        # The pinned connection is returned once the stream is exhausted.
+        await async_wait_until(lambda: len(pool.conns) == n_conns, "return the exhaust connection")
 
     async def test_connections_are_only_returned_once(self):
         pool = await async_get_pool(self.client)

@@ -27,7 +27,7 @@ from unittest.mock import patch
 
 import pymongo
 from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
-from pymongo.asynchronous.pool import PoolState
+from pymongo.pool_shared import PoolState
 from pymongo.server_selectors import writable_server_selector
 
 sys.path[0:0] = [""]
@@ -35,8 +35,7 @@ sys.path[0:0] = [""]
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
-from pymongo import WriteConcern, _csot
-from pymongo.asynchronous import client_session
+from pymongo import WriteConcern, _csot, client_session_shared
 from pymongo.asynchronous.client_session import TransactionOptions
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
@@ -46,10 +45,10 @@ from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,
     ConnectionFailure,
-    ExecutionTimeout,
     InvalidOperation,
     NetworkTimeout,
     OperationFailure,
+    PyMongoError,
 )
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
@@ -139,14 +138,6 @@ class TestTransactions(AsyncTransactionsBase):
             (coll.drop_indexes, [], {}),
             (coll.aggregate, [[{"$out": "aggout"}]], {}),
         ]
-        # Creating a collection in a transaction requires MongoDB 4.4+.
-        if async_client_context.version < (4, 3, 4):
-            unsupported_txn_writes.extend(
-                [
-                    (db.create_collection, ["collection"], {}),
-                ]
-            )
-
         for op in unsupported_txn_writes:
             op, args, kwargs = op
             async with client.start_session() as s:
@@ -214,7 +205,6 @@ class TestTransactions(AsyncTransactionsBase):
             self.assertGreater(len(addresses), 1)
 
     @async_client_context.require_transactions
-    @async_client_context.require_version_min(4, 3, 4)
     async def test_create_collection(self):
         client = async_client_context.client
         db = self.db
@@ -315,8 +305,6 @@ class TestTransactions(AsyncTransactionsBase):
                 ):
                     await op(*args, session=s)  # type: ignore
 
-    # Require 4.2+ for large (16MB+) transactions.
-    @async_client_context.require_version_min(4, 2)
     @async_client_context.require_transactions
     @unittest.skipIf(sys.platform == "win32", "Our Windows machines are too slow to pass this test")
     async def test_transaction_starts_with_batched_write(self):
@@ -413,18 +401,18 @@ class TestTransactions(AsyncTransactionsBase):
 
 
 class PatchSessionTimeout:
-    """Patches the client_session's with_transaction timeout for testing."""
+    """Patches the client_session_shared's with_transaction timeout for testing."""
 
     def __init__(self, mock_timeout):
-        self.real_timeout = client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT
+        self.real_timeout = client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT
         self.mock_timeout = mock_timeout
 
     def __enter__(self):
-        client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.mock_timeout
+        client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.mock_timeout
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
+        client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
 
 
 class TestTransactionsConvenientAPI(AsyncTransactionsBase):
@@ -608,8 +596,13 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
         listener.reset()
         async with client.start_session() as s:
             with pymongo.timeout(1.0):
-                with self.assertRaises(ExecutionTimeout):
+                # The server may report MaxTimeMSExpired as an
+                # ExecutionTimeout or a WriteError.
+                # The driver can also time out with a NetworkTimeout while waiting for a response,
+                # so only assert that the error is a CSOT timeout.
+                with self.assertRaises(PyMongoError) as ctx:
                     await s.with_transaction(callback)
+                self.assertTrue(ctx.exception.timeout)
 
         # At least two attempts: the original and one or more retries.
         inserts = len([x for x in listener.started_command_names() if x == "insert"])
@@ -710,7 +703,9 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             async with self.client.start_session() as s:
                 await s.with_transaction(callback)
             end = time.monotonic()
-        self.assertLess(abs(end - start - (no_backoff_time + 2.2)), 1)  # sum of 13 backoffs is 2.2
+        self.assertLess(
+            abs(end - start - (no_backoff_time + 2.3)), 0.5
+        )  # sum of 13 backoffs is ~2.3
 
 
 class TestOptionsInsideTransactionProse(AsyncTransactionsBase):

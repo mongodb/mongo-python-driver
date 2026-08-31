@@ -334,7 +334,7 @@ class ReadPrefTester(AsyncMongoClient):
         return context
 
     @contextlib.asynccontextmanager
-    async def _conn_from_server(self, read_preference, server, session):
+    async def _conn_from_server(self, read_preference, server, session):  # type: ignore[override]
         context = super()._conn_from_server(read_preference, server, session)
         async with context as (conn, read_preference):
             await self.record_a_read(conn.address)

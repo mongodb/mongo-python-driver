@@ -46,6 +46,13 @@ Documentation = "https://www.mongodb.com/docs/languages/python/pymongo-driver/cu
 Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
+[tool.uv]
+# boto3 dropped Python 3.9 support in 1.43, so the universal lock forks at
+# 3.10. Without a floor the pre-3.10 fork back-solves to boto3 1.7.84 (2018),
+# whose vendored six and invalid escape sequences break test collection. No
+# AWS task runs on 3.9; this keeps both forks on current releases.
+constraint-dependencies = ["boto3>=1.34"]
+
 [dependency-groups]
 dev = []
 lint = [
@@ -58,10 +65,10 @@ unasync = [
 pip = ["pip>=20.2"]
 gevent = ["gevent>=21.12"]
 coverage = [
-    "coverage[toml]>=5,<=7.10.7"
+    "coverage[toml]>=5,<=7.15.0"
 ]
 mockupdb = [
-    "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
+    "mockupdb>=1.8.1"
 ]
 perf = ["simplejson>=3.17.0"]
 typing = [
@@ -131,6 +138,7 @@ markers = [
     "auth: tests that rely on authentication",
     "ocsp: tests that rely on ocsp",
     "atlas_connect: tests that rely on an atlas connection",
+    "sfp: tests that rely on an Atlas Secure Frontend Processor connection",
     "perf: benchmark tests",
     "search_index: search index helper tests",
     "kms: client-side field-level encryption tests using kms",

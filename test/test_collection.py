@@ -27,7 +27,7 @@ from typing import Any, no_type_check
 
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
-from test.utils import get_pool, is_mongos
+from test.utils import get_pool
 
 sys.path[0:0] = [""]
 
@@ -270,17 +270,7 @@ class TestCollection(IntegrationTest):
         with self.write_concern_collection() as coll:
             coll.create_indexes([IndexModel("hello")])
 
-    @client_context.require_version_max(4, 3, -1)
-    def test_create_indexes_commitQuorum_requires_44(self):
-        db = self.db
-        with self.assertRaisesRegex(
-            ConfigurationError,
-            r"Must be connected to MongoDB 4\.4\+ to use the commitQuorum option for createIndexes",
-        ):
-            db.coll.create_indexes([IndexModel("a")], commitQuorum="majority")
-
     @client_context.require_no_standalone
-    @client_context.require_version_min(4, 4, -1)
     def test_create_indexes_commitQuorum(self):
         self.db.coll.create_indexes([IndexModel("a")], commitQuorum="majority")
 
@@ -1550,6 +1540,30 @@ class TestCollection(IntegrationTest):
         with self.write_concern_collection() as coll:
             coll.aggregate([{"$out": "output-collection"}])
 
+    def test_aggregate_reserved_options(self):
+        # "aggregate" and "pipeline" are fields of the aggregate command itself,
+        # so they must not be settable as keyword options: doing so would
+        # replace the command's target namespace or its pipeline.
+        db = self.db
+        reserved_options: list[dict[str, Any]] = [
+            {"aggregate": "other"},
+            {"pipeline": [{"$out": "other"}]},
+            {"aggregate": "other", "pipeline": [{"$out": "other"}]},
+        ]
+        for options in reserved_options:
+            with self.subTest(options=options):
+                # These helpers take the pipeline positionally, so only pass
+                # the options that do not collide with it.
+                if "pipeline" not in options:
+                    with self.assertRaises(ConfigurationError):
+                        db.test.aggregate([], **options)
+                    with self.assertRaises(ConfigurationError):
+                        db.test.aggregate_raw_batches([], **options)
+                    with self.assertRaises(ConfigurationError):
+                        db.aggregate([], **options)
+                with self.assertRaises(ConfigurationError):
+                    db.test.list_search_indexes(**options)
+
     def test_aggregate_raw_bson(self):
         db = self.db
         db.drop_collection("coll")
@@ -1778,8 +1792,15 @@ class TestCollection(IntegrationTest):
         self.db.coll.find(no_cursor_timeout=True).to_list()
         self.db.coll.find(no_cursor_timeout=False).to_list()
 
+    def test_exhaust_limit_raises_without_iterating(self):
+        # The limit conflict is settled at find(); the mongos wire version is not.
+        with self.assertRaises(InvalidOperation):
+            self.db.test.find(cursor_type=CursorType.EXHAUST, limit=5)
+        self.db.test.find(cursor_type=CursorType.EXHAUST)
+
     def test_exhaust(self):
-        if is_mongos(self.db.client):
+        # mongos only serves exhaust cursors from 7.1 onwards (SERVER-57297).
+        if not client_context.supports_exhaust_cursors():
             with self.assertRaises(InvalidOperation):
                 next(self.db.coll.find(cursor_type=CursorType.EXHAUST))
             return
@@ -1823,12 +1844,8 @@ class TestCollection(IntegrationTest):
         # and the socket has pending data (more_to_come=True) we have to close
         # and discard the socket.
         cur = client[self.db.name].coll.find(cursor_type=CursorType.EXHAUST, batch_size=2)
-        if client_context.version.at_least(4, 2):
-            # On 4.2+ we use OP_MSG which only sets more_to_come=True after the
-            # first getMore.
-            for _ in range(3):
-                next(cur)
-        else:
+        # OP_MSG only sets more_to_come=True after the first getMore.
+        for _ in range(3):
             next(cur)
         self.assertEqual(0, len(pool.conns))
         # if sys.platform.startswith("java") or "PyPy" in sys.version:

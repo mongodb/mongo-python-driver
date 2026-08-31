@@ -19,6 +19,8 @@ from __future__ import annotations
 import os
 import sys
 
+from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
+
 sys.path[0:0] = [""]
 
 from unittest.mock import patch
@@ -32,14 +34,12 @@ from pymongo.errors import (
     InvalidOperation,
     NetworkTimeout,
 )
-from pymongo.operations import *
 from pymongo.write_concern import WriteConcern
 from test.asynchronous import (
     AsyncIntegrationTest,
     async_client_context,
     unittest,
 )
-from test.asynchronous.utils import flaky
 from test.utils_shared import (
     OvertCommandListener,
 )
@@ -634,7 +634,7 @@ class TestClientBulkWriteCSOT(AsyncIntegrationTest):
 
     @async_client_context.require_version_min(8, 0, 0, -24)
     @async_client_context.require_failCommand_fail_point
-    @flaky(reason="PYTHON-5290", max_runs=3, affects_cpython_linux=True)
+    @async_client_context.require_standalone
     async def test_timeout_in_multi_batch_bulk_write(self):
         if sys.platform != "linux" and "CI" in os.environ:
             self.skipTest("PYTHON-3522 CSOT test runs too slow on Windows and MacOS")

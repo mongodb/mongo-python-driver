@@ -17,12 +17,12 @@
 from __future__ import annotations
 
 import datetime
-import logging
 import queue
 import time
 from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Any, Optional
 
+from pymongo import _op_id
 from pymongo.logger import (
     _COMMAND_LOGGER,
     _CONNECTION_LOGGER,
@@ -31,10 +31,12 @@ from pymongo.logger import (
     _CommandStatusMessage,
     _ConnectionStatusMessage,
     _debug_log,
+    _is_debug_enabled,
     _SDAMStatusMessage,
     _ServerSelectionStatusMessage,
     _verbose_connection_error_reason,
 )
+from pymongo.message import _randint
 from pymongo.pool_shared import _ConnectionTelemetryInfo
 
 if TYPE_CHECKING:
@@ -55,12 +57,29 @@ def _monotonic_duration(start: float) -> float:
     return max(0.0, time.monotonic() - start)
 
 
+def _generate_op_id_or_none(listeners: Optional[_EventListeners]) -> Optional[int]:
+    """Return a random operation id if it would be consumed by APM events or logging, else None."""
+    return (
+        _randint()
+        if (
+            (listeners is not None and listeners.enabled_for_commands)
+            or _is_debug_enabled(_COMMAND_LOGGER)
+            or _is_debug_enabled(_SERVER_SELECTION_LOGGER)
+        )
+        else None
+    )
+
+
 class _CommandTelemetry:
     """Combines structured logging and APM event publishing for a single command.
 
-    Construct once per command, call :meth:`started` before the network send,
+    Construct up to once per command, call :meth:`started` before the network send,
     then call :meth:`succeeded` or :meth:`failed` when the outcome is known.
     Duration is measured from the :meth:`started` call.
+
+    This sits on the hot path of every command: when both APM events and command
+    logging are disabled, only the gate flags and the monotonic duration clock
+    are maintained.
     """
 
     __slots__ = (
@@ -68,7 +87,7 @@ class _CommandTelemetry:
         "_cmd",
         "_conn",
         "_dbname",
-        "_duration",
+        "_duration_s",
         "_listeners",
         "_name",
         "_op_id",
@@ -88,20 +107,25 @@ class _CommandTelemetry:
         dbname: str,
         request_id: int,
         op_id: Optional[int],
+        name: Optional[str] = None,
     ) -> None:
-        self._topology_id = topology_id
-        self._should_log = topology_id is not None and _COMMAND_LOGGER.isEnabledFor(logging.DEBUG)
+        # NOTE: the _run_command fast path in command_runner.py inline this gate for performance
+        # They must be kept in sync with any gating changes
+        self._should_log = topology_id is not None and _is_debug_enabled(_COMMAND_LOGGER)
         self._publish = listeners is not None and listeners.enabled_for_commands
         self._active = self._should_log or self._publish
+        self._start = 0.0
+        self._duration_s = 0.0
+        if not self._active:
+            return
+        self._topology_id = topology_id
         self._listeners = listeners
         self._conn = conn
         self._cmd = cmd
-        self._name = next(iter(cmd))
+        self._name = name if name is not None else next(iter(cmd))
         self._dbname = dbname
         self._request_id = request_id
-        self._op_id = op_id
-        self._start: datetime.datetime
-        self._duration: datetime.timedelta
+        self._op_id = op_id if op_id is not None else _op_id.OP_ID.get()
 
     def _emit_log(self, message: _CommandStatusMessage, **extra: Any) -> None:
         _debug_log(
@@ -111,7 +135,7 @@ class _CommandTelemetry:
             commandName=self._name,
             databaseName=self._dbname,
             requestId=self._request_id,
-            operationId=self._request_id,
+            operationId=self._op_id if self._op_id is not None else self._request_id,
             driverConnectionId=self._conn.id,
             serverConnectionId=self._conn.server_connection_id,
             serverHost=self._conn.address[0],
@@ -122,7 +146,7 @@ class _CommandTelemetry:
 
     def started(self, orig: MutableMapping[str, Any], ensure_db: bool) -> None:
         """Emit the STARTED log entry and APM event, and start the duration clock."""
-        self._start = datetime.datetime.now()
+        self._start = time.monotonic()
         if not self._active:
             return
         if self._should_log:
@@ -142,9 +166,9 @@ class _CommandTelemetry:
             )
 
     @property
-    def duration(self) -> datetime.timedelta:
-        """Duration from :meth:`started` to :meth:`succeeded` or :meth:`failed`."""
-        return self._duration
+    def duration_s(self) -> float:
+        """Duration in seconds from :meth:`started` to :meth:`succeeded` or :meth:`failed`."""
+        return self._duration_s
 
     def succeeded(
         self,
@@ -153,20 +177,21 @@ class _CommandTelemetry:
         speculative_hello: bool,
     ) -> None:
         """Emit the SUCCEEDED log entry and APM event."""
-        self._duration = datetime.datetime.now() - self._start
+        self._duration_s = _monotonic_duration(self._start)
         if not self._active:
             return
+        duration = datetime.timedelta(seconds=self._duration_s)
         if self._should_log:
             self._emit_log(
                 _CommandStatusMessage.SUCCEEDED,
-                durationMS=self._duration,
+                durationMS=duration,
                 reply=reply,
                 speculative_authenticate=speculative_hello,
             )
         if self._publish:
             assert self._listeners is not None
             self._listeners.publish_command_success(
-                self._duration,
+                duration,
                 reply,
                 command_name,
                 self._request_id,
@@ -185,20 +210,21 @@ class _CommandTelemetry:
         is_server_side_error: bool,
     ) -> None:
         """Emit the FAILED log entry and APM event."""
-        self._duration = datetime.datetime.now() - self._start
+        self._duration_s = _monotonic_duration(self._start)
         if not self._active:
             return
+        duration = datetime.timedelta(seconds=self._duration_s)
         if self._should_log:
             self._emit_log(
                 _CommandStatusMessage.FAILED,
-                durationMS=self._duration,
+                durationMS=duration,
                 failure=failure,
                 isServerSideError=is_server_side_error,
             )
         if self._publish:
             assert self._listeners is not None
             self._listeners.publish_command_failure(
-                self._duration,
+                duration,
                 failure,
                 command_name,
                 self._request_id,
@@ -218,7 +244,7 @@ class _CmapTelemetry:
         "_client_id",
         "_listeners",
         "_log",
-        "_publish",
+        "_should_publish",
     )
 
     def __init__(
@@ -232,18 +258,18 @@ class _CmapTelemetry:
         self._client_id = client_id
         self._address = address
         self._listeners = listeners
-        self._publish = publish
+        # The CMAP listener set is fixed once the client is constructed
+        # (_EventListeners copies the global listeners at __init__), so this
+        # gate is static for the life of the pool.
+        # NOTE: the checkout/checkin fast paths in pool.py inline this gate for performance
+        # They must be kept in sync with any gating changes
+        self._should_publish = publish and listeners is not None and listeners.enabled_for_cmap
         self._log = log
-
-    @property
-    def _should_publish(self) -> bool:
-        """Computed per-call because listener registration can change while the pool is open."""
-        return self._publish and self._listeners is not None and self._listeners.enabled_for_cmap
 
     @property
     def _should_log(self) -> bool:
         """Computed per-call because logging level can be reconfigured at runtime."""
-        return self._log and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG)
+        return self._log and _is_debug_enabled(_CONNECTION_LOGGER)
 
     def _emit_log(self, message: _ConnectionStatusMessage, **extra: Any) -> None:
         _debug_log(
@@ -421,7 +447,7 @@ class _HeartbeatTelemetry:
         # Cached at construction: this object is short-lived (one heartbeat check) so
         # listener registration and logging level are stable for its lifetime.
         self._should_publish = listeners is not None and listeners.enabled_for_server_heartbeat
-        self._should_log = _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
+        self._should_log = _is_debug_enabled(_SDAM_LOGGER)
         self._start: float = 0.0
 
     def _emit_log(self, message: _SDAMStatusMessage, awaited: bool, **extra: Any) -> None:
@@ -502,7 +528,7 @@ class _SdamTelemetry:
     Topology events are queued for asynchronous delivery; log entries are emitted inline.
     """
 
-    __slots__ = ("_events", "_listeners", "_topology_id")
+    __slots__ = ("_events", "_listeners", "_publish_server", "_publish_tp", "_topology_id")
 
     def __init__(
         self,
@@ -513,21 +539,16 @@ class _SdamTelemetry:
         self._topology_id = topology_id
         self._listeners = listeners
         self._events = events
-
-    @property
-    def _publish_server(self) -> bool:
-        """Computed per-call because listener registration can change while the topology is open."""
-        return self._listeners is not None and self._listeners.enabled_for_server
-
-    @property
-    def _publish_tp(self) -> bool:
-        """Computed per-call because listener registration can change while the topology is open."""
-        return self._listeners is not None and self._listeners.enabled_for_topology
+        # The SDAM listener set is fixed once the client is constructed
+        # (_EventListeners copies the global listeners at __init__), so these
+        # gates are static for the life of the client.
+        self._publish_server = self._listeners is not None and self._listeners.enabled_for_server
+        self._publish_tp = self._listeners is not None and self._listeners.enabled_for_topology
 
     @property
     def _should_log(self) -> bool:
         """Computed per-call because logging level can be reconfigured at runtime."""
-        return _SDAM_LOGGER.isEnabledFor(logging.DEBUG)
+        return _is_debug_enabled(_SDAM_LOGGER)
 
     def _enqueue(self, fn: Any, args: tuple[Any, ...]) -> None:
         if self._events is not None:
@@ -652,7 +673,7 @@ class _ServerSelectionTelemetry:
         self._topology_description = topology_description
         # Cached at construction: this object is short-lived (one select_server call) so
         # logging level is stable for its lifetime.
-        self._should_log = _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG)
+        self._should_log = _is_debug_enabled(_SERVER_SELECTION_LOGGER)
 
     def _emit_log(
         self,
@@ -705,7 +726,7 @@ def log_server_selection_succeeded(
     server_port: Optional[int],
 ) -> None:
     """Emit the server selection SUCCEEDED log entry."""
-    if _SERVER_SELECTION_LOGGER.isEnabledFor(logging.DEBUG):
+    if _is_debug_enabled(_SERVER_SELECTION_LOGGER):
         _debug_log(
             _SERVER_SELECTION_LOGGER,
             message=_ServerSelectionStatusMessage.SUCCEEDED,
@@ -721,7 +742,7 @@ def log_server_selection_succeeded(
 
 def log_srv_monitor_failure(failure: Exception) -> None:
     """Emit a log entry when the SRV monitor fails to poll DNS records."""
-    if _SDAM_LOGGER.isEnabledFor(logging.DEBUG):
+    if _is_debug_enabled(_SDAM_LOGGER):
         _debug_log(_SDAM_LOGGER, message="SRV monitor check failed", failure=repr(failure))
 
 
@@ -733,7 +754,7 @@ def log_command_retry(
     is_write: bool,
 ) -> None:
     """Emit a command-retry log entry."""
-    if _COMMAND_LOGGER.isEnabledFor(logging.DEBUG):
+    if _is_debug_enabled(_COMMAND_LOGGER):
         op = "write" if is_write else "read"
         _debug_log(
             _COMMAND_LOGGER,
