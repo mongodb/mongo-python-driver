@@ -72,6 +72,12 @@ cpjson () {
 # Copy the Public Suffix List bundled with the driver from the specs repo.
 # Unlike the spec tests, this is driver source, so it lives in pymongo/ rather
 # than test/.
+#
+# Upstream stores internationalized rules in Unicode form (e.g. "公司.cn"), but
+# the PSL algorithm requires rules and domains to be compared as lowercase
+# Punycode. Convert the rules here, at vendoring time, so that loading the list
+# at runtime stays a plain string parse. Comment lines are passed through
+# unchanged in case a future upstream copy keeps them.
 cp_psl () {
     local src="$SPECS/source/public-suffix-list/public_suffix_list.dat"
     if ! [ -f "$src" ]
@@ -79,7 +85,29 @@ cp_psl () {
       echo "Could not find the public suffix list at $src" >&2
       return 1
     fi
-    cp "$src" "$PYMONGO"/pymongo/public_suffix_list.dat
+    python - "$src" "$PYMONGO"/pymongo/public_suffix_list.dat <<'EOF'
+import sys
+
+src, dst = sys.argv[1], sys.argv[2]
+with open(src, encoding="utf-8") as f, open(dst, "w", encoding="utf-8") as out:
+    for line in f:
+        rule = line.strip()
+        if rule and not rule.startswith("//") and not rule.isascii():
+            # "!" and "*." prefixes are not valid IDNA, so encode only the
+            # domain part and re-attach the prefix afterwards.
+            prefix = ""
+            for p in ("!", "*."):
+                if rule.startswith(p):
+                    prefix, rule = p, rule[len(p) :]
+                    break
+            try:
+                rule = rule.encode("idna").decode("ascii")
+            except UnicodeError:
+                print(f"Could not convert rule to Punycode: {prefix}{rule}", file=sys.stderr)
+                sys.exit(1)
+            line = f"{prefix}{rule.lower()}\n"
+        out.write(line)
+EOF
 }
 
 for spec in "$@"

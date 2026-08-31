@@ -33,13 +33,15 @@ def _to_punycode(string: str) -> str:
 
 
 def _load_public_suffixes() -> tuple[set[str], set[str], set[str]]:
+    # The bundled list is already lowercase Punycode; .evergreen/resync-specs.sh
+    # converts the internationalized rules when it vendors the file.
     path = Path(__file__).parent / "public_suffix_list.dat"
     suffixes: set[str] = set()
     wildcards: set[str] = set()
     exceptions: set[str] = set()
     with open(path, encoding="utf-8") as f:
         for line in f:
-            line = _to_punycode(line.strip())  # noqa: PLW2901
+            line = line.strip()  # noqa: PLW2901
             if not line or line.startswith("//"):
                 continue
             if line.startswith("!"):
