@@ -34,9 +34,10 @@ from pymongo.errors import ConfigurationError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _create_lock
 from pymongo.operations import _Op
+from pymongo.pool_shared import _CancellationContext, _PoolGeneration
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import any_server_selector, writable_server_selector
-from pymongo.synchronous.pool import Pool, _CancellationContext, _PoolGeneration
+from pymongo.synchronous.pool import Pool
 
 _IS_SYNC = True
 

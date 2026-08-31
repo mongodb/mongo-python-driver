@@ -50,8 +50,8 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
+from pymongo.pool_shared import PoolState, _PoolClosedError
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.pool import PoolState, _PoolClosedError
 from pymongo.topology_description import updated_topology_description
 from test import IntegrationTest, client_context, client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
