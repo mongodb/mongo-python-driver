@@ -53,7 +53,7 @@ class TestCursorNamespace(PyMongoTestCase):
 
     def _test_cursor_namespace(self, cursor_op, command):
         with going(cursor_op) as docs:
-            request = self.server.receives(**{command: "collection", "namespace": "test"})
+            request = self.server.receives(**{command: "coll", "namespace": "test"})
             # Respond with a different namespace.
             request.reply(
                 {
@@ -109,7 +109,7 @@ class TestKillCursorsNamespace(PyMongoTestCase):
 
     def _test_killCursors_namespace(self, cursor_op, command):
         with going(cursor_op):
-            request = self.server.receives(**{command: "collection", "namespace": "test"})
+            request = self.server.receives(**{command: "coll", "namespace": "test"})
             # Respond with a different namespace.
             request.reply(
                 {
