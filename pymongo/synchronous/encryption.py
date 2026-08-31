@@ -16,14 +16,12 @@
 
 from __future__ import annotations
 
-import contextlib
-import enum
 import functools
 import socket
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
-from collections.abc import Generator, Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
@@ -36,7 +34,6 @@ from typing import (
 
 try:
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
-    from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
     from pymongocrypt.synchronous.auto_encrypter import AutoEncrypter  # type:ignore[import]
     from pymongocrypt.synchronous.explicit_encrypter import (  # type:ignore[import]
         ExplicitEncrypter,
@@ -53,7 +50,6 @@ except ImportError:
 from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
-from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot, _op_id
 from pymongo.common import CONNECT_TIMEOUT
@@ -66,6 +62,15 @@ from pymongo.encryption_options import (
     # remain importable from this module until it is removed.
     TextOpts,  # noqa: F401
     check_min_pymongocrypt,
+)
+from pymongo.encryption_shared import (
+    # Algorithm and QueryType are re-exported for backwards compatibility:
+    # they remain importable from this module.
+    Algorithm,  # noqa: F401
+    QueryType,  # noqa: F401
+    RewrapManyDataKeyResult,
+    _create_mongocrypt_options,
+    _wrap_encryption_errors,
 )
 from pymongo.errors import (
     ConfigurationError,
@@ -84,7 +89,7 @@ from pymongo.pool_shared import (
     _raise_connection_failure,
 )
 from pymongo.read_concern import ReadConcern
-from pymongo.results import BulkWriteResult, DeleteResult
+from pymongo.results import DeleteResult
 from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
@@ -120,19 +125,6 @@ def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _
         return _configured_socket(address, opts)
     except Exception as exc:
         _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
-
-
-@contextlib.contextmanager
-def _wrap_encryption_errors() -> Iterator[None]:
-    """Context manager to wrap encryption related errors."""
-    try:
-        yield
-    except BSONError:
-        # BSON encoding/decoding errors are unrelated to encryption so
-        # we should propagate them unchanged.
-        raise
-    except Exception as exc:
-        raise EncryptionError(exc) from exc
 
 
 class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
@@ -354,29 +346,6 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             self.mongocryptd_client = None
 
 
-class RewrapManyDataKeyResult:
-    """Result object returned by a :meth:`~ClientEncryption.rewrap_many_data_key` operation.
-
-    .. versionadded:: 4.2
-    """
-
-    def __init__(self, bulk_write_result: Optional[BulkWriteResult] = None) -> None:
-        self._bulk_write_result = bulk_write_result
-
-    @property
-    def bulk_write_result(self) -> Optional[BulkWriteResult]:
-        """The result of the bulk write operation used to update the key vault
-        collection with one or more rewrapped data keys. If
-        :meth:`~ClientEncryption.rewrap_many_data_key` does not find any matching keys to rewrap,
-        no bulk write operation will be executed and this field will be
-        ``None``.
-        """
-        return self._bulk_write_result
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self._bulk_write_result!r})"
-
-
 class _Encrypter:
     """Encrypts and decrypts MongoDB commands.
 
@@ -501,127 +470,6 @@ class _Encrypter:
             self._internal_client = None
 
 
-class Algorithm(str, enum.Enum):
-    """An enum that defines the supported encryption algorithms."""
-
-    AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic = "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
-    """AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic."""
-    AEAD_AES_256_CBC_HMAC_SHA_512_Random = "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
-    """AEAD_AES_256_CBC_HMAC_SHA_512_Random."""
-    INDEXED = "Indexed"
-    """Indexed.
-
-    .. versionadded:: 4.2
-    """
-    UNINDEXED = "Unindexed"
-    """Unindexed.
-
-    .. versionadded:: 4.2
-    """
-    RANGE = "Range"
-    """Range.
-
-    .. versionadded:: 4.9
-    """
-    RANGEPREVIEW = "RangePreview"
-    """**DEPRECATED** - RangePreview.
-
-    .. note:: Support for RangePreview is deprecated. Use :attr:`Algorithm.RANGE` instead.
-
-    .. versionadded:: 4.4
-    """
-    STRING = "String"
-    """String.
-
-    .. versionadded:: 4.18
-    """
-    TEXTPREVIEW = "TextPreview"
-    """**DEPRECATED** - TextPreview.
-
-    .. note:: Support for TextPreview is deprecated. Use :attr:`Algorithm.STRING` instead.
-
-    .. versionadded:: 4.15
-    """
-
-
-class QueryType(str, enum.Enum):
-    """An enum that defines the supported values for explicit encryption query_type.
-
-    .. versionadded:: 4.2
-    """
-
-    EQUALITY = "equality"
-    """Used to encrypt a value for an equality query."""
-
-    RANGE = "range"
-    """Used to encrypt a value for a range query.
-
-    .. versionadded:: 4.9
-    """
-
-    RANGEPREVIEW = "RangePreview"
-    """**DEPRECATED** - Used to encrypt a value for a rangePreview query.
-
-    .. note:: Support for RangePreview is deprecated. Use :attr:`QueryType.RANGE` instead.
-
-    .. versionadded:: 4.4
-    """
-
-    PREFIX = "prefix"
-    """Used to encrypt a value for a prefix query.
-
-    Used for the ``$encStrStartsWith`` operator. Requires MongoDB 9.0+.
-
-    .. versionadded:: 4.18
-    """
-
-    SUFFIX = "suffix"
-    """Used to encrypt a value for a suffix query.
-
-    Used for the ``$encStrEndsWith`` operator. Requires MongoDB 9.0+.
-
-    .. versionadded:: 4.18
-    """
-
-    SUBSTRING = "substring"
-    """Used to encrypt a value for a substring query.
-
-    Used for the ``$encStrContains`` operator. Requires MongoDB 9.0+.
-
-    .. versionadded:: 4.18
-    """
-
-    PREFIXPREVIEW = "prefixPreview"
-    """**BETA** - Used to encrypt a value for a prefixPreview query.
-
-    .. note:: The preview query types are for experimental workloads only and
-       are only supported by MongoDB versions before 9.0. Use
-       :attr:`QueryType.PREFIX` instead.
-
-    .. versionadded:: 4.15
-    """
-
-    SUFFIXPREVIEW = "suffixPreview"
-    """**BETA** - Used to encrypt a value for a suffixPreview query.
-
-    .. note:: The preview query types are for experimental workloads only and
-       are only supported by MongoDB versions before 9.0. Use
-       :attr:`QueryType.SUFFIX` instead.
-
-    .. versionadded:: 4.15
-    """
-
-    SUBSTRINGPREVIEW = "substringPreview"
-    """**BETA** - Used to encrypt a value for a substringPreview query.
-
-    .. note:: The preview query types are for experimental workloads only and
-       are only supported by MongoDB versions before 9.0. Use
-       :attr:`QueryType.SUBSTRING` instead.
-
-    .. versionadded:: 4.15
-    """
-
-
 @functools.lru_cache(maxsize=1)
 def _string_opts_kwarg() -> str:
     """The name the installed pymongocrypt gives the string index options.
@@ -661,13 +509,6 @@ def _resolve_string_opts(
             "with the installed pymongocrypt, or upgrade pymongocrypt."
         )
     return string_opts if string_opts is not None else text_opts
-
-
-def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
-    # For compat with pymongocrypt <1.13, avoid setting the default key_expiration_ms.
-    if kwargs.get("key_expiration_ms") is None:
-        kwargs.pop("key_expiration_ms", None)
-    return MongoCryptOptions(**kwargs, enable_multiple_collinfo=True)
 
 
 class ClientEncryption(Generic[_DocumentType]):
