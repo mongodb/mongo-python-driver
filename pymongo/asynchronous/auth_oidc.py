@@ -35,9 +35,10 @@ from pymongo.auth_oidc_shared import (
     OIDCCallbackContext,
     OIDCCallbackResult,
     OIDCIdPInfo,
+    _get_authenticator,
     _OIDCProperties,
 )
-from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.errors import OperationFailure
 from pymongo.helpers_shared import _AUTHENTICATION_FAILURE_CODE
 from pymongo.lock import Lock, _async_create_lock
 
@@ -46,35 +47,6 @@ if TYPE_CHECKING:
     from pymongo.auth_shared import MongoCredential
 
 _IS_SYNC = False
-
-
-def _get_authenticator(
-    credentials: MongoCredential, address: tuple[str, int]
-) -> _OIDCAuthenticator:
-    # Extract values.
-    principal_name = credentials.username
-    properties = credentials.mechanism_properties
-
-    # Validate that the address is allowed.
-    if properties.human_callback is not None:
-        found = False
-        allowed_hosts = properties.allowed_hosts
-        for patt in allowed_hosts:
-            if patt == address[0]:
-                found = True
-            elif patt.startswith("*.") and address[0].endswith(patt[1:]):
-                found = True
-        if not found:
-            raise ConfigurationError(
-                f"Refusing to connect to {address[0]}, which is not in authOIDCAllowedHosts: {allowed_hosts}"
-            )
-
-    if credentials.cache.data:
-        return credentials.cache.data
-
-    # Get or create the cache data.
-    credentials.cache.data = _OIDCAuthenticator(username=principal_name, properties=properties)
-    return credentials.cache.data
 
 
 @dataclass
@@ -300,7 +272,7 @@ async def _authenticate_oidc(
     credentials: MongoCredential, conn: AsyncConnection, reauthenticate: bool
 ) -> Optional[Mapping[str, Any]]:
     """Authenticate using MONGODB-OIDC."""
-    authenticator = _get_authenticator(credentials, conn.address)
+    authenticator = _get_authenticator(credentials, conn.address, _OIDCAuthenticator)
     if reauthenticate:
         return await authenticator.reauthenticate(conn)
     else:

@@ -32,6 +32,7 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo._telemetry import _CmapTelemetry
+from pymongo.auth_shared import _AuthContext
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -95,7 +96,6 @@ if TYPE_CHECKING:
     from pymongo.message import _OpMsg
     from pymongo.read_concern import ReadConcern
     from pymongo.read_preferences import _ServerMode
-    from pymongo.synchronous.auth import _AuthContext
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient, _ClientCheckout
     from pymongo.typings import _Address, _CollationIn
@@ -265,7 +265,9 @@ class Connection(_ConnectionTelemetryInfo):
                 cmd["saslSupportedMechs"] = creds.source + "." + creds.username
             from pymongo.synchronous import auth
 
-            auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
+            auth_ctx = _AuthContext.from_credentials(
+                creds, self.address, auth._SPECULATIVE_AUTH_MAP
+            )
             if auth_ctx:
                 speculative_authenticate = auth_ctx.speculate_command()
                 if speculative_authenticate is not None:

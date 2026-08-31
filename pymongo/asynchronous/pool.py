@@ -35,6 +35,7 @@ from pymongo._telemetry import _CmapTelemetry
 from pymongo.asynchronous.client_session import _validate_session_write_concern
 from pymongo.asynchronous.command_runner import run_command
 from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.auth_shared import _AuthContext
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -87,7 +88,6 @@ if TYPE_CHECKING:
 
     from bson import CodecOptions
     from bson.objectid import ObjectId
-    from pymongo.asynchronous.auth import _AuthContext
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient, _ClientCheckout
     from pymongo.compression_support import (
@@ -265,7 +265,9 @@ class AsyncConnection(_ConnectionTelemetryInfo):
                 cmd["saslSupportedMechs"] = creds.source + "." + creds.username
             from pymongo.asynchronous import auth
 
-            auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
+            auth_ctx = _AuthContext.from_credentials(
+                creds, self.address, auth._SPECULATIVE_AUTH_MAP
+            )
             if auth_ctx:
                 speculative_authenticate = auth_ctx.speculate_command()
                 if speculative_authenticate is not None:
