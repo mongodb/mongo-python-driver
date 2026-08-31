@@ -642,6 +642,8 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 self.skipTest("CSOT not implemented for with_transaction")
             if "transaction" in class_name or "transaction" in description:
                 self.skipTest("CSOT not implemented for transactions")
+            if "COVERAGE" in os.environ:
+                self.skipTest("CSOT tests are inconsistent with coverage")
 
         # Some tests need to be skipped based on the operations they try to run.
         for op in spec["operations"]:

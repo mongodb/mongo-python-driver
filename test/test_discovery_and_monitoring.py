@@ -410,7 +410,7 @@ class TestPoolManagement(IntegrationTest):
     @client_context.require_failCommand_appName
     @client_context.require_test_commands
     @client_context.require_async
-    @flaky(reason="PYTHON-5428")
+    @flaky(reason="PyPy is slow")
     def test_connection_close_does_not_block_other_operations(self):
         listener = CMAPHeartbeatListener()
         client = self.single_client(

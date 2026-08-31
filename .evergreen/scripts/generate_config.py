@@ -104,6 +104,7 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
         expansions = dict()
         if host_name == "win32":
             expansions["IS_WIN32"] = "1"
+            tasks = [".test-standard !.pypy !.free-threaded"]
         display_name = get_variant_name(base_display_name, host)
         variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
         variants.append(variant)

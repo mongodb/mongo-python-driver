@@ -95,9 +95,8 @@ from pymongo.synchronous.mongo_client import MongoClient, _ClientCheckout
 from pymongo.synchronous.pool import (
     Connection,
 )
-from pymongo.synchronous.settings import TOPOLOGY_TYPE
 from pymongo.synchronous.topology import _ErrorContext
-from pymongo.topology_description import TopologyDescription
+from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.write_concern import WriteConcern
 from test import (
     HAVE_IPADDRESS,

@@ -35,7 +35,7 @@ jobs:
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           python-version: "3.10"
-      - uses: mongodb-labs/drivers-github-tools/python/uv-lock-update@bc33fb6aca874b4c37a4ee79bc7061a1ee68baad # v3
+      - uses: mongodb-labs/drivers-github-tools/python/uv-lock-update@89904229eb55a063655af02f5838bd7fe76505e5 # v3
         with:
           app_id: ${{ vars.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
