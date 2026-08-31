@@ -27,7 +27,7 @@ from unittest.mock import patch
 
 import pymongo
 from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
-from pymongo.asynchronous.pool import PoolState
+from pymongo.pool_shared import PoolState
 from pymongo.server_selectors import writable_server_selector
 
 sys.path[0:0] = [""]
