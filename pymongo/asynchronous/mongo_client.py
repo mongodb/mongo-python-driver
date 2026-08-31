@@ -68,7 +68,7 @@ from pymongo.asynchronous.helpers import (
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology, _ErrorContext
 from pymongo.client_options import ClientOptions
-from pymongo.client_session_shared import _EmptyServerSession
+from pymongo.client_session_shared import SessionOptions, TransactionOptions, _EmptyServerSession
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
@@ -1390,13 +1390,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _start_session(self, implicit: bool, **kwargs: Any) -> AsyncClientSession:
         server_session = _EmptyServerSession()
-        opts = client_session.SessionOptions(**kwargs)
+        opts = SessionOptions(**kwargs)
         return client_session.AsyncClientSession(self, server_session, opts, implicit)
 
     def start_session(
         self,
         causal_consistency: Optional[bool] = None,
-        default_transaction_options: Optional[client_session.TransactionOptions] = None,
+        default_transaction_options: Optional[TransactionOptions] = None,
         snapshot: Optional[bool] = False,
     ) -> client_session.AsyncClientSession:
         """Start a logical session.
