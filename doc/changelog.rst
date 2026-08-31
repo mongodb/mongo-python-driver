@@ -8,6 +8,7 @@ PyMongo 4.18 brings a number of changes including:
 
 - Dropped support for MongoDB 4.2.
 - Added support for MongoDB 9.0.
+- PyPy support is deprecated and will be removed in a future release.
 - Improved TLS connection performance by reusing TLS sessions across connections
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
