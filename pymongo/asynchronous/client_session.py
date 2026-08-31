@@ -191,9 +191,6 @@ if TYPE_CHECKING:
 
 _IS_SYNC = False
 
-# Re-export SessionOptions and TransactionOptions here so Sphinx includes them in the docs
-__all__ = ["AsyncClientSession", "SessionOptions", "TransactionOptions"]
-
 _SESSION: ContextVar[Optional[AsyncClientSession]] = ContextVar("SESSION", default=None)
 
 

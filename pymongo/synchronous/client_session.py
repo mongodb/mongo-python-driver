@@ -190,9 +190,6 @@ if TYPE_CHECKING:
 
 _IS_SYNC = True
 
-# Re-export SessionOptions and TransactionOptions here so Sphinx includes them in the docs
-__all__ = ["ClientSession", "SessionOptions", "TransactionOptions"]
-
 _SESSION: ContextVar[Optional[ClientSession]] = ContextVar("SESSION", default=None)
 
 
