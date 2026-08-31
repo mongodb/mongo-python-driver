@@ -41,10 +41,10 @@ from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,
     ConnectionFailure,
-    ExecutionTimeout,
     InvalidOperation,
     NetworkTimeout,
     OperationFailure,
+    PyMongoError,
 )
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
@@ -135,14 +135,6 @@ class TestTransactions(TransactionsBase):
             (coll.drop_indexes, [], {}),
             (coll.aggregate, [[{"$out": "aggout"}]], {}),
         ]
-        # Creating a collection in a transaction requires MongoDB 4.4+.
-        if client_context.version < (4, 3, 4):
-            unsupported_txn_writes.extend(
-                [
-                    (db.create_collection, ["collection"], {}),
-                ]
-            )
-
         for op in unsupported_txn_writes:
             op, args, kwargs = op
             with client.start_session() as s:
@@ -206,7 +198,6 @@ class TestTransactions(TransactionsBase):
             self.assertGreater(len(addresses), 1)
 
     @client_context.require_transactions
-    @client_context.require_version_min(4, 3, 4)
     def test_create_collection(self):
         client = client_context.client
         db = client.pymongo_test
@@ -307,8 +298,6 @@ class TestTransactions(TransactionsBase):
                 ):
                     op(*args, session=s)  # type: ignore
 
-    # Require 4.2+ for large (16MB+) transactions.
-    @client_context.require_version_min(4, 2)
     @client_context.require_transactions
     @unittest.skipIf(sys.platform == "win32", "Our Windows machines are too slow to pass this test")
     def test_transaction_starts_with_batched_write(self):
@@ -596,8 +585,13 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         listener.reset()
         with client.start_session() as s:
             with pymongo.timeout(1.0):
-                with self.assertRaises(ExecutionTimeout):
+                # The server may report MaxTimeMSExpired as an
+                # ExecutionTimeout or a WriteError.
+                # The driver can also time out with a NetworkTimeout while waiting for a response,
+                # so only assert that the error is a CSOT timeout.
+                with self.assertRaises(PyMongoError) as ctx:
                     s.with_transaction(callback)
+                self.assertTrue(ctx.exception.timeout)
 
         # At least two attempts: the original and one or more retries.
         inserts = len([x for x in listener.started_command_names() if x == "insert"])
@@ -698,7 +692,9 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             with self.client.start_session() as s:
                 s.with_transaction(callback)
             end = time.monotonic()
-        self.assertLess(abs(end - start - (no_backoff_time + 2.2)), 1)  # sum of 13 backoffs is 2.2
+        self.assertLess(
+            abs(end - start - (no_backoff_time + 2.3)), 0.5
+        )  # sum of 13 backoffs is ~2.3
 
 
 class TestOptionsInsideTransactionProse(TransactionsBase):

@@ -58,20 +58,25 @@ from bson.codec_options import (
 )
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import event_loggers, message, monitoring
+from pymongo import event_loggers, message, monitoring, network_layer
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor, CursorType
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import anext
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from pymongo.asynchronous.mongo_client import AsyncMongoClient, _ClientCheckout
 from pymongo.asynchronous.pool import (
     AsyncConnection,
 )
-from pymongo.asynchronous.settings import TOPOLOGY_TYPE
 from pymongo.asynchronous.topology import _ErrorContext
 from pymongo.client_options import ClientOptions
 from pymongo.common import _UUID_REPRESENTATIONS, CONNECT_TIMEOUT, MIN_SUPPORTED_WIRE_VERSION, has_c
-from pymongo.compression_support import _have_snappy, _have_zstd
+from pymongo.compression_support import (
+    SnappyContext,
+    ZlibContext,
+    ZstdContext,
+    _have_snappy,
+    _have_zstd,
+)
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
@@ -92,7 +97,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
-from pymongo.topology_description import TopologyDescription
+from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.write_concern import WriteConcern
 from test.asynchronous import (
     HAVE_IPADDRESS,
@@ -195,6 +200,41 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertRaises(TypeError, AsyncMongoClient, "localhost", [])
 
         self.assertRaises(ConfigurationError, AsyncMongoClient, [])
+
+    async def test_repr_redacts_aws_session_token(self):
+        token = "SECRET_AWS_SESSION_TOKEN"
+        client = AsyncMongoClient(
+            "mongodb://AKIA:SECRET@localhost:27017/"
+            f"?authMechanism=MONGODB-AWS&authMechanismProperties=AWS_SESSION_TOKEN:{token}",
+            connect=False,
+        )
+
+        the_repr = repr(client)
+
+        self.assertNotIn(token, the_repr)
+        self.assertIn("'AWS_SESSION_TOKEN': '<redacted>'", the_repr)
+
+    async def test_repr_redacts_secret_auth_mechanism_properties(self):
+        token = "SECRET_AWS_SESSION_TOKEN"
+        api_key = "SECRET_API_KEY"
+        client = AsyncMongoClient(
+            "mongodb://AKIA:SECRET@localhost:27017/",
+            authMechanism="MONGODB-AWS",
+            authMechanismProperties={
+                "aws_session_token": token,
+                "CUSTOM_API_KEY": api_key,
+                "TOKEN_RESOURCE": "mongodb://cluster.example",
+            },
+            connect=False,
+        )
+
+        the_repr = repr(client)
+
+        self.assertNotIn(token, the_repr)
+        self.assertNotIn(api_key, the_repr)
+        self.assertIn("'aws_session_token': '<redacted>'", the_repr)
+        self.assertIn("'CUSTOM_API_KEY': '<redacted>'", the_repr)
+        self.assertIn("'TOKEN_RESOURCE': 'mongodb://cluster.example'", the_repr)
 
     async def test_max_pool_size_zero(self):
         self.simple_client(maxPoolSize=0)
@@ -817,6 +857,56 @@ class TestClient(AsyncIntegrationTest):
             async with server._pool.checkout() as new_con:
                 self.assertEqual(conn, new_con)
             self.assertEqual(1, len(server._pool.conns))
+
+    async def test_client_checkout_setup_failure_returns_connection(self):
+        # Verify that the connection is returned to the pool when an exception
+        # is raised during _ClientCheckout.__aenter__ post-checkout setup
+        # (e.g. session pinning or the auto-encryption wire-version check).
+        # Use a subclass to override contribute_socket because __slots__ prevents
+        # instance-level patching of methods.
+        class _BrokenSetupCheckout(_ClientCheckout):
+            def contribute_socket(self, conn, completed_handshake=True):
+                raise RuntimeError("simulated failure in post-checkout setup")
+
+        client = await self.async_rs_or_single_client()
+        server = await (await client._get_topology()).select_server(
+            writable_server_selector, _Op.TEST
+        )
+        pool = server.pool
+
+        with self.assertRaises(RuntimeError):
+            async with _BrokenSetupCheckout(client, server, None):
+                pass
+
+        # Connection was returned to pool, not leaked.
+        self.assertEqual(0, pool.active_sockets)
+
+    async def test_client_checkout_setup_failure_unpins_session(self):
+        # Verify that session._unpin() is called when an exception is raised
+        # during _ClientCheckout.__aenter__ after session._pin() has run (e.g.
+        # the auto-encryption wire-version check).
+        class _PinThenFailCheckout(_ClientCheckout):
+            def contribute_socket(self, conn, completed_handshake=True):
+                # Simulate session._pin() having already been called, then fail.
+                if self.session:
+                    self.session._pin(self._server, conn)
+                raise RuntimeError("simulated post-pin failure")
+
+        client = await self.async_rs_or_single_client()
+        server = await (await client._get_topology()).select_server(
+            writable_server_selector, _Op.TEST
+        )
+
+        async with client.start_session() as session:
+            await session.start_transaction()
+            with self.assertRaises(RuntimeError):
+                async with _PinThenFailCheckout(client, server, session):
+                    pass
+
+        # Session must be unpinned so future operations don't route to a stale
+        # server address or attempt a double-checkin through conn_mgr.
+        self.assertIsNone(session._transaction.pinned_address)
+        self.assertIsNone(session._transaction.conn_mgr)
 
     async def test_constants(self):
         """This test uses AsyncMongoClient explicitly to make sure that host and
@@ -1676,7 +1766,7 @@ class TestClient(AsyncIntegrationTest):
                     False,
                     None,
                 ),
-                unpack_res=AsyncCursor(client.pymongo_test.collection)._unpack_response,
+                run_with_conn=AsyncCursor(client.pymongo_test.collection)._run_with_conn,
                 address=("not-a-member", 27017),
             )
 
@@ -1811,6 +1901,76 @@ class TestClient(AsyncIntegrationTest):
                 client = await self.async_single_client(zlibcompressionlevel=level)
                 # No error
                 await client.pymongo_test.test.find_one()
+
+    async def test_compression_commands(self):
+        # Ensure the compression logic is actually exercised end-to-end by
+        # sending commands with each available compressor negotiated.
+        candidates: list[tuple[str, type]] = [("zlib", ZlibContext)]
+        if _have_snappy():
+            candidates.append(("snappy", SnappyContext))
+        if _have_zstd():
+            candidates.append(("zstd", ZstdContext))
+
+        negotiated = []
+        for name, ctx_type in candidates:
+            with self.subTest(compressor=name):
+                # maxPoolSize=1 ensures the operations below reuse the same
+                # connection the spy is installed on, unless it is replaced.
+                client = await self.async_single_client(compressors=name, maxPoolSize=1)
+                # Close each client before moving on: decompress() is patched
+                # globally below, so app traffic from a client left over from an
+                # earlier subtest could otherwise pollute the recorded ids.
+                try:
+                    # Trigger the connection handshake so the compressor is negotiated.
+                    await client.admin.command("ping")
+                    pool = await async_get_pool(client)
+                    async with pool.checkout() as conn:
+                        if conn.compression_context is None:
+                            continue
+                        negotiated.append(name)
+                        self.assertIsInstance(conn.compression_context, ctx_type)
+
+                        # Spy on the compress method to confirm the outgoing message
+                        # is actually compressed.
+                        compressed = []
+                        original = conn.compression_context.compress
+
+                        # Default args bind the current iteration's values so the
+                        # closure does not late-bind the loop variables.
+                        def spy(data, _original=original, _recorded=compressed):
+                            _recorded.append(data)
+                            return _original(data)
+
+                        conn.compression_context.compress = spy
+
+                    # Spy on the read path's decompress() to confirm the server's
+                    # replies are actually compressed too.
+                    decompressed = []
+                    original_decompress = network_layer.decompress
+
+                    def decompress_spy(
+                        data, compressor_id, _original=original_decompress, _recorded=decompressed
+                    ):
+                        _recorded.append(compressor_id)
+                        return _original(data, compressor_id)
+
+                    # Round-trip a command. Every non-sensitive command is
+                    # compressed.
+                    coll = client.pymongo_test.test_compression
+                    await coll.drop()
+                    with patch.object(network_layer, "decompress", decompress_spy):
+                        await coll.insert_one({"x": "y"})
+                        doc = await coll.find_one({}, {"_id": 0})
+                    self.assertEqual(doc, {"x": "y"})
+                    self.assertTrue(compressed, "compress() was never called")
+                    self.assertTrue(decompressed, "decompress() was never called")
+                    self.assertEqual(set(decompressed), {ctx_type.compressor_id})
+                    await coll.drop()
+                finally:
+                    await client.close()
+
+        if not negotiated:
+            self.skipTest("server did not negotiate compression for any compressor")
 
     @async_client_context.require_sync
     async def test_reset_during_update_pool(self):
@@ -2256,8 +2416,8 @@ class TestExhaustCursor(AsyncIntegrationTest):
 
     def setUp(self):
         super().setUp()
-        if async_client_context.is_mongos:
-            raise SkipTest("mongos doesn't support exhaust, SERVER-2627")
+        if not async_client_context.supports_exhaust_cursors():
+            raise SkipTest("mongos serves exhaust cursors only from 7.1, SERVER-57297")
 
     async def test_exhaust_query_server_error(self):
         # When doing an exhaust query, the socket stays checked out on success

@@ -79,6 +79,10 @@ pytest.importorskip("requests")
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.mlkem import (
+    MLKEM768PrivateKey,
+    MLKEM1024PrivateKey,
+)
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import (
@@ -181,6 +185,17 @@ class TestVerifySignature(unittest.TestCase):
             key = FakeX448()
             self.assertEqual(_verify_signature(key, b"sig", Mock(), b"data"), 1)  # type: ignore[arg-type]
             key.verify.assert_not_called()
+
+    def test_mlkem768_fails_closed(self):
+        # ML-KEM is a key encapsulation mechanism, so an ML-KEM public key has
+        # no verify(). Certificate.public_key() can return one, which used to
+        # reach the generic branch and raise AttributeError.
+        key = MLKEM768PrivateKey.generate().public_key()
+        self.assertEqual(_verify_signature(key, b"sig", Mock(), b"data"), 0)
+
+    def test_mlkem1024_fails_closed(self):
+        key = MLKEM1024PrivateKey.generate().public_key()
+        self.assertEqual(_verify_signature(key, b"sig", Mock(), b"data"), 0)
 
     def test_other_key_valid(self):
         key = Mock()

@@ -22,13 +22,19 @@ fi
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
+# Re-source env.sh: install-dependencies.sh may have appended to it, e.g. when it
+# had to install Python on an image that lacks a toolchain.
+if [ -f $HERE/env.sh ]; then
+  . $HERE/env.sh
+fi
+
+# Add the default install path to the path if needed.
+if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
+  export PATH="$PATH:$HOME/.local/bin"
+fi
+
 # Only run the next part if not running on CI.
 if [ -z "${CI:-}" ]; then
-  # Add the default install path to the path if needed.
-  if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
-    export PATH="$PATH:$HOME/.local/bin"
-  fi
-
   # Set up venv, making sure c extensions build unless disabled.
   if [ -z "${NO_EXT:-}" ]; then
     export PYMONGO_C_EXT_MUST_BUILD=1

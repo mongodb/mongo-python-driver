@@ -16,15 +16,11 @@ from __future__ import annotations
 
 import asyncio
 import collections
-import contextlib
-import logging
 import os
 import socket
-import ssl
-import sys
 import time
 import weakref
-from collections.abc import Generator, Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -35,6 +31,7 @@ from typing import (
 
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
+from pymongo._telemetry import _CmapTelemetry
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -62,12 +59,7 @@ from pymongo.lock import (
     _create_condition,
     _create_lock,
 )
-from pymongo.logger import (
-    _CONNECTION_LOGGER,
-    _ConnectionStatusMessage,
-    _debug_log,
-    _verbose_connection_error_reason,
-)
+from pymongo.logger import _CONNECTION_LOGGER, _is_debug_enabled
 from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
@@ -85,11 +77,14 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_api import _add_to_command
 from pymongo.server_type import SERVER_TYPE
 from pymongo.socket_checker import SocketChecker
+from pymongo.ssl_support import SSL_EOF_ERRORS
 from pymongo.synchronous.client_session import _validate_session_write_concern
 from pymongo.synchronous.command_runner import run_command
 from pymongo.synchronous.helpers import _handle_reauth
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from bson import CodecOptions
     from bson.objectid import ObjectId
     from pymongo.compression_support import (
@@ -102,7 +97,7 @@ if TYPE_CHECKING:
     from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.auth import _AuthContext
     from pymongo.synchronous.client_session import ClientSession
-    from pymongo.synchronous.mongo_client import MongoClient, _MongoClientErrorHandler
+    from pymongo.synchronous.mongo_client import MongoClient, _ClientCheckout
     from pymongo.typings import _Address, _CollationIn
     from pymongo.write_concern import WriteConcern
 
@@ -134,6 +129,7 @@ class Connection(_ConnectionTelemetryInfo):
         self.id = id
         self.is_sdam = is_sdam
         self.closed = False
+        self.creation_time = time.monotonic()
         self.last_checkin_time = time.monotonic()
         self.performed_handshake = False
         self.is_writable: bool = False
@@ -145,8 +141,7 @@ class Connection(_ConnectionTelemetryInfo):
         self.hello_ok: bool = False
         self.is_mongos = False
         self.listeners = pool.opts._event_listeners
-        self.enabled_for_cmap = pool.enabled_for_cmap
-        self.enabled_for_logging = pool.enabled_for_logging
+        self._telemetry = pool._telemetry
         self.compression_settings = pool.opts._compression_settings
         self.compression_context: Union[SnappyContext, ZlibContext, ZstdContext, None] = None
         self.socket_checker: SocketChecker = SocketChecker()
@@ -173,8 +168,6 @@ class Connection(_ConnectionTelemetryInfo):
         self.active = False
         self.last_timeout = self.opts.socket_timeout
         self.connect_rtt = 0.0
-        self._client_id = pool._client_id
-        self.creation_time = time.monotonic()
         # For gossiping $clusterTime from the connection handshake to the client.
         self._cluster_time = None
 
@@ -233,7 +226,7 @@ class Connection(_ConnectionTelemetryInfo):
 
     def hello_cmd(self) -> dict[str, Any]:
         # As of PYTHON-5713, always use OP_MSG for the handshake since all
-        # supported servers (MongoDB 4.2+, wire version >= 8) support it.
+        # supported servers (MongoDB 4.4+, wire version >= 9) support it.
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
             return {HelloCompat.CMD: 1}
         return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
@@ -249,7 +242,7 @@ class Connection(_ConnectionTelemetryInfo):
         cmd = self.hello_cmd()
         performing_handshake = not self.performed_handshake
         awaitable = False
-        cmd["backpressure"] = True
+        cmd["backpressure"] = "2"
         if performing_handshake:
             self.performed_handshake = True
             cmd["client"] = self.opts.metadata
@@ -295,7 +288,9 @@ class Connection(_ConnectionTelemetryInfo):
             hello.logical_session_timeout_minutes is not None and hello.is_readable
         )
         self.logical_session_timeout_minutes: Optional[int] = hello.logical_session_timeout_minutes
-        self.hello_ok = hello.hello_ok
+        # hello_ok is set from helloOk, which is only returned from ismaster
+        # don't overwrite this when connection switches to hello
+        self.hello_ok = self.hello_ok or hello.hello_ok
         self.is_repl = hello.server_type in (
             SERVER_TYPE.RSPrimary,
             SERVER_TYPE.RSSecondary,
@@ -475,21 +470,7 @@ class Connection(_ConnectionTelemetryInfo):
 
                 auth.authenticate(creds, self, reauthenticate=reauthenticate)
             self.ready = True
-            duration = time.monotonic() - self.creation_time
-            # Log before publishing event to prevent potential listener preemption in tests
-            if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _CONNECTION_LOGGER,
-                    message=_ConnectionStatusMessage.CONN_READY,
-                    clientId=self._client_id,
-                    serverHost=self.address[0],
-                    serverPort=self.address[1],
-                    driverConnectionId=self.id,
-                    durationMS=duration,
-                )
-            if self.enabled_for_cmap:
-                assert self.listeners is not None
-                self.listeners.publish_connection_ready(self.address, self.id, duration)
+            self._telemetry.connection_ready(self.id, self.creation_time)
 
     def validate_session(
         self, client: Optional[MongoClient[Any]], session: Optional[ClientSession]
@@ -508,20 +489,7 @@ class Connection(_ConnectionTelemetryInfo):
             return
         self._close_conn()
         if reason:
-            if self.enabled_for_cmap:
-                assert self.listeners is not None
-                self.listeners.publish_connection_closed(self.address, self.id, reason)
-            if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _CONNECTION_LOGGER,
-                    message=_ConnectionStatusMessage.CONN_CLOSED,
-                    clientId=self._client_id,
-                    serverHost=self.address[0],
-                    serverPort=self.address[1],
-                    driverConnectionId=self.id,
-                    reason=_verbose_connection_error_reason(reason),
-                    error=reason,
-                )
+            self._telemetry.connection_closed(self.id, reason)
 
     def _close_conn(self) -> None:
         """Close this connection."""
@@ -697,13 +665,6 @@ class Pool:
         self.address = address
         self.opts = options
         self.is_sdam = is_sdam
-        # Don't publish events or logs in Monitor pools.
-        self.enabled_for_cmap = (
-            not self.is_sdam
-            and self.opts._event_listeners is not None
-            and self.opts._event_listeners.enabled_for_cmap
-        )
-        self.enabled_for_logging = not self.is_sdam
 
         # The first portion of the wait queue.
         # Enforces: maxPoolSize
@@ -719,31 +680,19 @@ class Pool:
         self._max_connecting_cond = _create_condition(self.lock)
         self._pending = 0
         self._max_connecting = self.opts.max_connecting
-        self._client_id = client_id
         self._ssl_session_cache: Optional[list[Any]] = (
             [None] if self.opts._ssl_context is not None else None
         )
-        # Log before publishing event to prevent potential listener preemption in tests
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.POOL_CREATED,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-                **self.opts.non_default_options,
-            )
-        if self.enabled_for_cmap:
-            assert self.opts._event_listeners is not None
-            self.opts._event_listeners.publish_pool_created(
-                self.address, self.opts.non_default_options
-            )
+        self._telemetry = _CmapTelemetry(
+            client_id, address, options._event_listeners, publish=not is_sdam, log=not is_sdam
+        )
+        self._telemetry.pool_created(self.opts.non_default_options)
         # Similar to active_sockets but includes threads in the wait queue.
         self.operation_count: int = 0
         # Retain references to pinned connections to prevent the CPython GC
         # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
-        self.__pinned_sockets: set[Connection] = set()
+        self._pinned_sockets: set[Connection] = set()
         self.ncursors = 0
         self.ntxns = 0
 
@@ -752,17 +701,7 @@ class Pool:
         with self.lock:
             if self.state != PoolState.READY:
                 self.state = PoolState.READY
-                if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _CONNECTION_LOGGER,
-                        message=_ConnectionStatusMessage.POOL_READY,
-                        clientId=self._client_id,
-                        serverHost=self.address[0],
-                        serverPort=self.address[1],
-                    )
-                if self.enabled_for_cmap:
-                    assert self.opts._event_listeners is not None
-                    self.opts._event_listeners.publish_pool_ready(self.address)
+                self._telemetry.pool_ready()
 
     @property
     def closed(self) -> bool:
@@ -810,23 +749,7 @@ class Pool:
             # and free-threaded Python causes ConnectionCheckOutFailedEvent to
             # arrive before PoolClearedEvent (PYTHON-3519).
             if not close and old_state != PoolState.PAUSED:
-                _listeners = self.opts._event_listeners
-                if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _CONNECTION_LOGGER,
-                        message=_ConnectionStatusMessage.POOL_CLEARED,
-                        clientId=self._client_id,
-                        serverHost=self.address[0],
-                        serverPort=self.address[1],
-                        serviceId=service_id,
-                    )
-                if self.enabled_for_cmap:
-                    assert _listeners is not None
-                    _listeners.publish_pool_cleared(
-                        self.address,
-                        service_id=service_id,
-                        interrupt_connections=interrupt_connections,
-                    )
+                self._telemetry.pool_cleared(service_id, interrupt_connections)
 
             # Clear the wait queue
             self._max_connecting_cond.notify_all()
@@ -836,7 +759,6 @@ class Pool:
                 for context in self.active_contexts:
                     context.cancel()
 
-        listeners = self.opts._event_listeners
         # CMAP spec says that close() MUST close sockets before publishing the
         # PoolClosedEvent but that reset() SHOULD close sockets *after*
         # publishing the PoolClearedEvent.
@@ -849,17 +771,7 @@ class Pool:
             else:
                 for conn in sockets:
                     conn.close_conn(ConnectionClosedReason.POOL_CLOSED)
-            if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _CONNECTION_LOGGER,
-                    message=_ConnectionStatusMessage.POOL_CLOSED,
-                    clientId=self._client_id,
-                    serverHost=self.address[0],
-                    serverPort=self.address[1],
-                )
-            if self.enabled_for_cmap:
-                assert listeners is not None
-                listeners.publish_pool_closed(self.address)
+            self._telemetry.pool_closed()
         else:
             if not _IS_SYNC:
                 asyncio.gather(
@@ -972,12 +884,12 @@ class Pool:
         if isinstance(error.__cause__, (_CertificateError, SSLErrors, socket.gaierror)):
             # End of file errors are excluded, because the server may have disconnected
             # during the handshake.
-            if not isinstance(error.__cause__, (ssl.SSLEOFError, ssl.SSLZeroReturnError)):
+            if not isinstance(error.__cause__, SSL_EOF_ERRORS):
                 return
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
 
-    def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> Connection:
+    def connect(self, handler: Optional[_ClientCheckout] = None) -> Connection:
         """Connect to Mongo and return a new Connection.
 
         Can raise ConnectionFailure.
@@ -992,20 +904,7 @@ class Pool:
             tmp_context = _CancellationContext()
             self.active_contexts.add(tmp_context)
 
-        listeners = self.opts._event_listeners
-        # Log before publishing event to prevent potential listener preemption in tests
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.CONN_CREATED,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-                driverConnectionId=conn_id,
-            )
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_created(self.address, conn_id)
+        self._telemetry.connection_created(conn_id)
 
         try:
             networking_interface = _configured_socket_interface(
@@ -1015,22 +914,7 @@ class Pool:
         except BaseException as error:
             with self.lock:
                 self.active_contexts.discard(tmp_context)
-            if self.enabled_for_cmap:
-                assert listeners is not None
-                listeners.publish_connection_closed(
-                    self.address, conn_id, ConnectionClosedReason.ERROR
-                )
-            if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _CONNECTION_LOGGER,
-                    message=_ConnectionStatusMessage.CONN_CLOSED,
-                    clientId=self._client_id,
-                    serverHost=self.address[0],
-                    serverPort=self.address[1],
-                    driverConnectionId=conn_id,
-                    reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
-                    error=ConnectionClosedReason.ERROR,
-                )
+            self._telemetry.connection_closed(conn_id, ConnectionClosedReason.ERROR)
             if isinstance(error, (IOError, OSError, *SSLErrors)):
                 details = _get_timeout_details(self.opts)
                 # Wrap to AutoReconnect/NetworkTimeout BEFORE labeling so the
@@ -1073,105 +957,27 @@ class Pool:
 
         return conn
 
-    @contextlib.contextmanager
-    def checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> Generator[Connection, None]:
-        """Get a connection from the pool. Use with a "with" statement.
+    def checkout(self, handler: Optional[_ClientCheckout] = None) -> _PoolCheckout:
+        """Get a connection from the pool. Always use in a with statement::
 
-        Returns a :class:`Connection` object wrapping a connected
-        :class:`socket.socket`.
-
-        This method should always be used in a with-statement::
-
-            with pool.get_conn() as connection:
+            with pool.checkout() as connection:
                 connection.send_message(msg)
                 data = connection.receive_message(op_code, request_id)
 
         Can raise ConnectionFailure or OperationFailure.
 
-        :param handler: A _MongoClientErrorHandler.
+        :param handler: A _ClientCheckout error handler.
         """
-        listeners = self.opts._event_listeners
-        checkout_started_time = time.monotonic()
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_check_out_started(self.address)
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.CHECKOUT_STARTED,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-            )
-
-        conn = self._get_conn(checkout_started_time, handler=handler)
-
-        duration = time.monotonic() - checkout_started_time
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_checked_out(self.address, conn.id, duration)
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.CHECKOUT_SUCCEEDED,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-                driverConnectionId=conn.id,
-                durationMS=duration,
-            )
-        try:
-            with self.lock:
-                self.active_contexts.add(conn.cancel_context)
-            yield conn
-        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException:
-            # Exception in caller. Ensure the connection gets returned.
-            # Note that when pinned is True, the session owns the
-            # connection and it is responsible for checking the connection
-            # back into the pool.
-            pinned = conn.pinned_txn or conn.pinned_cursor
-            if handler:
-                # Perform SDAM error handling rules while the connection is
-                # still checked out.
-                exc_type, exc_val, _ = sys.exc_info()
-                handler.handle(exc_type, exc_val)
-            if not pinned and conn.active:
-                self.checkin(conn)
-            raise
-        if conn.pinned_txn:
-            with self.lock:
-                self.__pinned_sockets.add(conn)
-                self.ntxns += 1
-        elif conn.pinned_cursor:
-            with self.lock:
-                self.__pinned_sockets.add(conn)
-                self.ncursors += 1
-        elif conn.active:
-            self.checkin(conn)
+        return _PoolCheckout(self, handler)
 
     def _raise_if_not_ready(self, checkout_started_time: float, emit_event: bool) -> None:
         if self.state != PoolState.READY:
             if emit_event:
-                duration = time.monotonic() - checkout_started_time
-                if self.enabled_for_cmap:
-                    assert self.opts._event_listeners is not None
-                    self.opts._event_listeners.publish_connection_check_out_failed(
-                        self.address, ConnectionCheckOutFailedReason.CONN_ERROR, duration
-                    )
-                if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _CONNECTION_LOGGER,
-                        message=_ConnectionStatusMessage.CHECKOUT_FAILED,
-                        clientId=self._client_id,
-                        serverHost=self.address[0],
-                        serverPort=self.address[1],
-                        reason="An error occurred while trying to establish a new connection",
-                        error=ConnectionCheckOutFailedReason.CONN_ERROR,
-                        durationMS=duration,
-                    )
+                self._telemetry.checkout_failed(
+                    "An error occurred while trying to establish a new connection",
+                    ConnectionCheckOutFailedReason.CONN_ERROR,
+                    checkout_started_time,
+                )
 
             details = _get_timeout_details(self.opts)
             _raise_connection_failure(
@@ -1179,7 +985,7 @@ class Pool:
             )
 
     def _get_conn(
-        self, checkout_started_time: float, handler: Optional[_MongoClientErrorHandler] = None
+        self, checkout_started_time: float, handler: Optional[_ClientCheckout] = None
     ) -> Connection:
         """Get or create a Connection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
@@ -1189,23 +995,11 @@ class Pool:
             self.reset_without_pause()
 
         if self.closed:
-            duration = time.monotonic() - checkout_started_time
-            if self.enabled_for_cmap:
-                assert self.opts._event_listeners is not None
-                self.opts._event_listeners.publish_connection_check_out_failed(
-                    self.address, ConnectionCheckOutFailedReason.POOL_CLOSED, duration
-                )
-            if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                _debug_log(
-                    _CONNECTION_LOGGER,
-                    message=_ConnectionStatusMessage.CHECKOUT_FAILED,
-                    clientId=self._client_id,
-                    serverHost=self.address[0],
-                    serverPort=self.address[1],
-                    reason="Connection pool was closed",
-                    error=ConnectionCheckOutFailedReason.POOL_CLOSED,
-                    durationMS=duration,
-                )
+            self._telemetry.checkout_failed(
+                "Connection pool was closed",
+                ConnectionCheckOutFailedReason.POOL_CLOSED,
+                checkout_started_time,
+            )
             raise _PoolClosedError(
                 "Attempted to check out a connection from closed connection pool"
             )
@@ -1238,6 +1032,7 @@ class Pool:
         conn = None
         incremented = False
         emitted_event = False
+        is_new_conn = False
         try:
             with self.lock:
                 self.active_sockets += 1
@@ -1269,10 +1064,18 @@ class Pool:
                 else:  # We need to create a new connection
                     try:
                         conn = self.connect(handler=handler)
+                        is_new_conn = True
                     finally:
                         with self._max_connecting_cond:
                             self._pending -= 1
                             self._max_connecting_cond.notify()
+
+            conn.active = True
+            # connect() already adds cancel_context for new connections; only add
+            # here for reused connections taken from the idle pool.
+            if not is_new_conn:
+                with self.lock:
+                    self.active_contexts.add(conn.cancel_context)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             if conn:
@@ -1285,26 +1088,13 @@ class Pool:
                 self.size_cond.notify()
 
             if not emitted_event:
-                duration = time.monotonic() - checkout_started_time
-                if self.enabled_for_cmap:
-                    assert self.opts._event_listeners is not None
-                    self.opts._event_listeners.publish_connection_check_out_failed(
-                        self.address, ConnectionCheckOutFailedReason.CONN_ERROR, duration
-                    )
-                if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _CONNECTION_LOGGER,
-                        message=_ConnectionStatusMessage.CHECKOUT_FAILED,
-                        clientId=self._client_id,
-                        serverHost=self.address[0],
-                        serverPort=self.address[1],
-                        reason="An error occurred while trying to establish a new connection",
-                        error=ConnectionCheckOutFailedReason.CONN_ERROR,
-                        durationMS=duration,
-                    )
+                self._telemetry.checkout_failed(
+                    "An error occurred while trying to establish a new connection",
+                    ConnectionCheckOutFailedReason.CONN_ERROR,
+                    checkout_started_time,
+                )
             raise
 
-        conn.active = True
         return conn
 
     def checkin(self, conn: Connection) -> None:
@@ -1317,22 +1107,12 @@ class Pool:
         conn.active = False
         conn.pinned_txn = False
         conn.pinned_cursor = False
-        self.__pinned_sockets.discard(conn)
-        listeners = self.opts._event_listeners
+        self._pinned_sockets.discard(conn)
         with self.lock:
             self.active_contexts.discard(conn.cancel_context)
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_checked_in(self.address, conn.id)
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.CHECKEDIN,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-                driverConnectionId=conn.id,
-            )
+        telemetry = self._telemetry
+        if telemetry._should_publish or (telemetry._log and _is_debug_enabled(_CONNECTION_LOGGER)):
+            telemetry.checked_in(conn.id)
         if self.pid != os.getpid():
             self.reset_without_pause()
         else:
@@ -1340,22 +1120,7 @@ class Pool:
                 conn.close_conn(ConnectionClosedReason.POOL_CLOSED)
             elif conn.closed:
                 # CMAP requires the closed event be emitted after the check in.
-                if self.enabled_for_cmap:
-                    assert listeners is not None
-                    listeners.publish_connection_closed(
-                        self.address, conn.id, ConnectionClosedReason.ERROR
-                    )
-                if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-                    _debug_log(
-                        _CONNECTION_LOGGER,
-                        message=_ConnectionStatusMessage.CONN_CLOSED,
-                        clientId=self._client_id,
-                        serverHost=self.address[0],
-                        serverPort=self.address[1],
-                        driverConnectionId=conn.id,
-                        reason=_verbose_connection_error_reason(ConnectionClosedReason.ERROR),
-                        error=ConnectionClosedReason.ERROR,
-                    )
+                self._telemetry.connection_closed(conn.id, ConnectionClosedReason.ERROR)
             else:
                 close_conn = False
                 with self.lock:
@@ -1420,24 +1185,11 @@ class Pool:
         return False
 
     def _raise_wait_queue_timeout(self, checkout_started_time: float) -> NoReturn:
-        listeners = self.opts._event_listeners
-        duration = time.monotonic() - checkout_started_time
-        if self.enabled_for_cmap:
-            assert listeners is not None
-            listeners.publish_connection_check_out_failed(
-                self.address, ConnectionCheckOutFailedReason.TIMEOUT, duration
-            )
-        if self.enabled_for_logging and _CONNECTION_LOGGER.isEnabledFor(logging.DEBUG):
-            _debug_log(
-                _CONNECTION_LOGGER,
-                message=_ConnectionStatusMessage.CHECKOUT_FAILED,
-                clientId=self._client_id,
-                serverHost=self.address[0],
-                serverPort=self.address[1],
-                reason="Wait queue timeout elapsed without a connection becoming available",
-                error=ConnectionCheckOutFailedReason.TIMEOUT,
-                durationMS=duration,
-            )
+        self._telemetry.checkout_failed(
+            "Wait queue timeout elapsed without a connection becoming available",
+            ConnectionCheckOutFailedReason.TIMEOUT,
+            checkout_started_time,
+        )
         timeout = _csot.get_timeout() or self.opts.wait_queue_timeout
         if self.opts.load_balanced:
             other_ops = self.active_sockets - self.ncursors - self.ntxns
@@ -1459,3 +1211,71 @@ class Pool:
         if _IS_SYNC:
             for conn in self.conns:
                 conn.close_conn(None)  # type: ignore[unused-coroutine]
+
+
+class _PoolCheckout:
+    """Class-based context manager for pool connection checkout."""
+
+    __slots__ = ("_conn", "_handler", "_pool")
+
+    def __init__(
+        self,
+        pool: Pool,
+        handler: Optional[_ClientCheckout] = None,
+    ) -> None:
+        self._pool = pool
+        self._handler = handler
+        self._conn: Optional[Connection] = None
+
+    def __enter__(self) -> Connection:
+        pool = self._pool
+        telemetry = pool._telemetry
+        # Fast path: skip telemetry calls when CMAP events/logging are disabled
+        if not telemetry._should_publish and not (
+            telemetry._log and _is_debug_enabled(_CONNECTION_LOGGER)
+        ):
+            conn = pool._get_conn(time.monotonic(), handler=self._handler)
+            self._conn = conn
+            return conn
+        checkout_started_time = telemetry.checkout_started()
+
+        conn = pool._get_conn(checkout_started_time, handler=self._handler)
+        self._conn = conn
+        try:
+            telemetry.checkout_succeeded(conn.id, checkout_started_time)
+        except BaseException:
+            pool.checkin(conn)
+            self._conn = None
+            raise
+        return conn
+
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        conn = self._conn
+        if conn is None:
+            return
+        pool = self._pool
+        if exc_type is not None:
+            # Exception in caller. Ensure the connection gets returned.
+            # Note that when pinned is True, the session owns the connection
+            # and is responsible for checking it back into the pool.
+            # SDAM error handling is performed by _ClientCheckout.__exit__
+            # before this method is called.
+            pinned = conn.pinned_txn or conn.pinned_cursor
+            if not pinned and conn.active:
+                pool.checkin(conn)
+        else:
+            if conn.pinned_txn:
+                with pool.lock:
+                    pool._pinned_sockets.add(conn)
+                    pool.ntxns += 1
+            elif conn.pinned_cursor:
+                with pool.lock:
+                    pool._pinned_sockets.add(conn)
+                    pool.ncursors += 1
+            elif conn.active:
+                pool.checkin(conn)

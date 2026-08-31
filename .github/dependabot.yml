@@ -11,10 +11,11 @@ updates:
       actions:
         patterns:
           - "*"
-  # Python (uv)
+  # Python (uv). Routine version updates are handled by the uv-lock-update
+  # workflow, so a limit of 0 turns off Dependabot version-update PRs here.
+  # Security updates are exempt from this limit and still open normally.
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "weekly"
-    cooldown:
-      default-days: 7
+    open-pull-requests-limit: 0

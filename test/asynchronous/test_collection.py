@@ -27,7 +27,7 @@ from typing import Any, no_type_check
 
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import anext
-from test.asynchronous.utils import async_get_pool, async_is_mongos
+from test.asynchronous.utils import async_get_pool
 
 sys.path[0:0] = [""]
 
@@ -270,17 +270,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         with self.write_concern_collection() as coll:
             await coll.create_indexes([IndexModel("hello")])
 
-    @async_client_context.require_version_max(4, 3, -1)
-    async def test_create_indexes_commitQuorum_requires_44(self):
-        db = self.db
-        with self.assertRaisesRegex(
-            ConfigurationError,
-            r"Must be connected to MongoDB 4\.4\+ to use the commitQuorum option for createIndexes",
-        ):
-            await db.coll.create_indexes([IndexModel("a")], commitQuorum="majority")
-
     @async_client_context.require_no_standalone
-    @async_client_context.require_version_min(4, 4, -1)
     async def test_create_indexes_commitQuorum(self):
         await self.db.coll.create_indexes([IndexModel("a")], commitQuorum="majority")
 
@@ -1568,6 +1558,30 @@ class AsyncTestCollection(AsyncIntegrationTest):
         with self.write_concern_collection() as coll:
             await coll.aggregate([{"$out": "output-collection"}])
 
+    async def test_aggregate_reserved_options(self):
+        # "aggregate" and "pipeline" are fields of the aggregate command itself,
+        # so they must not be settable as keyword options: doing so would
+        # replace the command's target namespace or its pipeline.
+        db = self.db
+        reserved_options: list[dict[str, Any]] = [
+            {"aggregate": "other"},
+            {"pipeline": [{"$out": "other"}]},
+            {"aggregate": "other", "pipeline": [{"$out": "other"}]},
+        ]
+        for options in reserved_options:
+            with self.subTest(options=options):
+                # These helpers take the pipeline positionally, so only pass
+                # the options that do not collide with it.
+                if "pipeline" not in options:
+                    with self.assertRaises(ConfigurationError):
+                        await db.test.aggregate([], **options)
+                    with self.assertRaises(ConfigurationError):
+                        await db.test.aggregate_raw_batches([], **options)
+                    with self.assertRaises(ConfigurationError):
+                        await db.aggregate([], **options)
+                with self.assertRaises(ConfigurationError):
+                    await db.test.list_search_indexes(**options)
+
     async def test_aggregate_raw_bson(self):
         db = self.db
         await db.drop_collection("test")
@@ -1796,8 +1810,15 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await self.db.test.find(no_cursor_timeout=True).to_list()
         await self.db.test.find(no_cursor_timeout=False).to_list()
 
+    async def test_exhaust_limit_raises_without_iterating(self):
+        # The limit conflict is settled at find(); the mongos wire version is not.
+        with self.assertRaises(InvalidOperation):
+            self.db.test.find(cursor_type=CursorType.EXHAUST, limit=5)
+        self.db.test.find(cursor_type=CursorType.EXHAUST)
+
     async def test_exhaust(self):
-        if await async_is_mongos(self.db.client):
+        # mongos only serves exhaust cursors from 7.1 onwards (SERVER-57297).
+        if not async_client_context.supports_exhaust_cursors():
             with self.assertRaises(InvalidOperation):
                 await anext(self.db.test.find(cursor_type=CursorType.EXHAUST))
             return
@@ -1841,12 +1862,8 @@ class AsyncTestCollection(AsyncIntegrationTest):
         # and the socket has pending data (more_to_come=True) we have to close
         # and discard the socket.
         cur = client[self.db.name].test.find(cursor_type=CursorType.EXHAUST, batch_size=2)
-        if async_client_context.version.at_least(4, 2):
-            # On 4.2+ we use OP_MSG which only sets more_to_come=True after the
-            # first getMore.
-            for _ in range(3):
-                await anext(cur)
-        else:
+        # OP_MSG only sets more_to_come=True after the first getMore.
+        for _ in range(3):
             await anext(cur)
         self.assertEqual(0, len(pool.conns))
         # if sys.platform.startswith("java") or "PyPy" in sys.version:

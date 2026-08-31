@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 from bson import json_util
 from pymongo.errors import OperationFailure
-from pymongo.logger import _DEFAULT_DOCUMENT_LENGTH
+from pymongo.logger import _DEFAULT_DOCUMENT_LENGTH, _CommandStatusMessage
 from test import unittest
 from test.asynchronous import AsyncIntegrationTest, async_client_context
 
@@ -27,6 +27,15 @@ _IS_SYNC = False
 
 # https://github.com/mongodb/specifications/tree/master/source/command-logging-and-monitoring/tests#prose-tests
 class TestLogger(AsyncIntegrationTest):
+    def _get_command_log(self, records, command_name, status):
+        # PyPy's GC is non-deterministic, so cleanup commands from earlier tests can pollute the logs,
+        # filter for the specific command and status we want
+        for record in records:
+            log = json_util.loads(record.getMessage())
+            if log.get("commandName") == command_name and log.get("message") == status:
+                return log
+        self.fail(f"no {status!r} log found for command {command_name!r}")
+
     async def test_default_truncation_limit(self):
         docs = [{"x": "y"} for _ in range(100)]
         db = self.db
@@ -36,15 +45,21 @@ class TestLogger(AsyncIntegrationTest):
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                 await db.test.insert_many(docs)
 
-                cmd_started_log = json_util.loads(cm.records[0].getMessage())
+                cmd_started_log = self._get_command_log(
+                    cm.records, "insert", _CommandStatusMessage.STARTED
+                )
                 self.assertEqual(len(cmd_started_log["command"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
-                cmd_succeeded_log = json_util.loads(cm.records[1].getMessage())
+                cmd_succeeded_log = self._get_command_log(
+                    cm.records, "insert", _CommandStatusMessage.SUCCEEDED
+                )
                 self.assertLessEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                 await db.test.find({}).to_list()
-                cmd_succeeded_log = json_util.loads(cm.records[1].getMessage())
+                cmd_succeeded_log = self._get_command_log(
+                    cm.records, "find", _CommandStatusMessage.SUCCEEDED
+                )
                 self.assertEqual(len(cmd_succeeded_log["reply"]), _DEFAULT_DOCUMENT_LENGTH + 3)
 
     async def test_configured_truncation_limit(self):
@@ -54,14 +69,20 @@ class TestLogger(AsyncIntegrationTest):
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                 await db.command(cmd)
 
-                cmd_started_log = json_util.loads(cm.records[0].getMessage())
+                cmd_started_log = self._get_command_log(
+                    cm.records, "hello", _CommandStatusMessage.STARTED
+                )
                 self.assertEqual(len(cmd_started_log["command"]), 5 + 3)
 
-                cmd_succeeded_log = json_util.loads(cm.records[1].getMessage())
+                cmd_succeeded_log = self._get_command_log(
+                    cm.records, "hello", _CommandStatusMessage.SUCCEEDED
+                )
                 self.assertLessEqual(len(cmd_succeeded_log["reply"]), 5 + 3)
                 with self.assertRaises(OperationFailure):
                     await db.command({"notARealCommand": True})
-                cmd_failed_log = json_util.loads(cm.records[-1].getMessage())
+                cmd_failed_log = self._get_command_log(
+                    cm.records, "notARealCommand", _CommandStatusMessage.FAILED
+                )
                 self.assertEqual(len(cmd_failed_log["failure"]), 5 + 3)
 
     async def test_truncation_multi_byte_codepoints(self):
@@ -77,7 +98,9 @@ class TestLogger(AsyncIntegrationTest):
             with patch.dict("os.environ", {"MONGOB_LOG_MAX_DOCUMENT_LENGTH": length}):
                 with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                     await self.db.test.insert_one({"x": multi_byte_char_str})
-                    cmd_started_log = json_util.loads(cm.records[0].getMessage())["command"]
+                    cmd_started_log = self._get_command_log(
+                        cm.records, "insert", _CommandStatusMessage.STARTED
+                    )["command"]
 
                     cmd_started_log = cmd_started_log[:-3]
                     last_3_bytes = cmd_started_log.encode()[-3:].decode()

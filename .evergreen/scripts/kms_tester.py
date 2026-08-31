@@ -33,7 +33,7 @@ def _setup_azure_vm(base_env: dict[str, str]) -> None:
     env["AZUREKMS_CMD"] = "sudo apt-get install -y python3-dev build-essential"
     run_command(f"{azure_dir}/run-command.sh", env=env)
 
-    env["AZUREKMS_CMD"] = "bash .evergreen/just.sh setup-tests kms azure-remote"
+    env["AZUREKMS_CMD"] = "CI=true bash .evergreen/just.sh setup-tests kms azure-remote"
     run_command(f"{azure_dir}/run-command.sh", env=env)
     LOGGER.info("Setting up Azure VM... done.")
 
@@ -53,7 +53,7 @@ def _setup_gcp_vm(base_env: dict[str, str]) -> None:
     env["GCPKMS_CMD"] = "sudo apt-get install -y python3-dev build-essential"
     run_command(f"{gcp_dir}/run-command.sh", env=env)
 
-    env["GCPKMS_CMD"] = "bash ./.evergreen/just.sh setup-tests kms gcp-remote"
+    env["GCPKMS_CMD"] = "CI=true bash ./.evergreen/just.sh setup-tests kms gcp-remote"
     run_command(f"{gcp_dir}/run-command.sh", env=env)
     LOGGER.info("Setting up GCP VM...")
 
@@ -91,6 +91,8 @@ def setup_kms(sub_test_name: str) -> None:
         return
 
     if sub_test_target == "azure":
+        # Opt in to corporate Azure credentials (DRIVERS-3392)
+        os.environ["FLE_AZURE_USE_CORPORATE"] = "YES"
         run_command("./setup-secrets.sh", cwd=kms_dir)
 
     if success:
@@ -128,10 +130,10 @@ def test_kms_send_to_remote(sub_test_name: str) -> None:
         key_name = os.environ["KEY_NAME"]
         key_vault_endpoint = os.environ["KEY_VAULT_ENDPOINT"]
         env["AZUREKMS_CMD"] = (
-            f'KEY_NAME="{key_name}" KEY_VAULT_ENDPOINT="{key_vault_endpoint}" bash ./.evergreen/just.sh run-tests'
+            f'KEY_NAME="{key_name}" KEY_VAULT_ENDPOINT="{key_vault_endpoint}" CI=true bash ./.evergreen/just.sh run-tests'
         )
     else:
-        env["GCPKMS_CMD"] = "./.evergreen/just.sh run-tests"
+        env["GCPKMS_CMD"] = "CI=true ./.evergreen/just.sh run-tests"
     cmd = f"{DIRS[sub_test_name]}/run-command.sh"
     run_command(cmd, env=env)
 

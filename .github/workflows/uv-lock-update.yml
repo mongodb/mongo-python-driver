@@ -1,0 +1,42 @@
+name: uv Lock Update
+
+on:
+  schedule:
+    # Tuesdays at 12:00 UTC.
+    - cron: "0 12 * * 2"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run without pushing or opening a pull request"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  # A live run uses the app token, but a dry run looks up the existing pull
+  # request with github.token, so that read has to be granted here.
+  pull-requests: read
+
+concurrency:
+  group: uv-lock-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update uv.lock
+    runs-on: ubuntu-latest
+    environment: automation
+    if: github.repository_owner == 'mongodb' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          python-version: "3.10"
+      - uses: mongodb-labs/drivers-github-tools/python/uv-lock-update@89904229eb55a063655af02f5838bd7fe76505e5 # v3
+        with:
+          app_id: ${{ vars.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          dry_run: ${{ inputs.dry_run || 'false' }}
