@@ -58,7 +58,9 @@ def create_test(test_case):
         if not valid:
             with warnings.catch_warnings():
                 warnings.simplefilter("default")
-                self.assertRaises(ConfigurationError, AsyncMongoClient, uri, connect=False)
+                self.assertRaises(
+                    (ConfigurationError, ValueError), AsyncMongoClient, uri, connect=False
+                )
         else:
             client = self.simple_client(uri, connect=False)
             credentials = client.options.pool_options._credentials

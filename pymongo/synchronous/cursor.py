@@ -97,9 +97,9 @@ class Cursor(_CursorBase[_DocumentType]):
         let: Optional[bool] = None,
     ) -> None:
         """Create a new cursor.
+        Used by :meth:`~pymongo.collection.Collection.find` to iterate over MongoDB query results.
 
-        Should not be called directly by application developers - see
-        :meth:`~pymongo.collection.Collection.find` instead.
+        Should not be called directly by application developers.
 
         .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
         """
@@ -977,9 +977,7 @@ class Cursor(_CursorBase[_DocumentType]):
             raise InvalidOperation("exhaust cursors do not support auto encryption")
 
         try:
-            response = client._run_operation(
-                operation, self._unpack_response, address=self._address
-            )
+            response = client._run_operation(operation, self._run_with_conn, address=self._address)
         except OperationFailure as exc:
             if exc.code in _CURSOR_CLOSED_ERRORS or self._exhaust:
                 # Don't send killCursors because the cursor is already closed.

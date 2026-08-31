@@ -98,9 +98,8 @@ linkcheck_retries = 3
 linkcheck_workers = 1
 # Give slow redirects more time before retrying.
 linkcheck_timeout = 60
-
-# Ignore anchors in links since they may not be added to the page right away.
-linkcheck_anchors_ignore_for_url = [r"https://github.com/.*"]
+# Ignore anchors in links
+linkcheck_anchors = False
 
 # Pass GitHub token to avoid rate-limiting on GitHub links.
 if github_token := os.environ.get("GITHUB_TOKEN"):

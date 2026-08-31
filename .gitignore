@@ -30,6 +30,7 @@ expansion.yml
 .evergreen/scripts/test-env.sh
 specifications/
 results.json
+.synchro-modified
 .evergreen/atlas_x509_dev_client_certificate.pem
 
 # Lambda temp files
@@ -44,3 +45,6 @@ xunit-results/
 coverage.xml
 server.log
 .coverage
+
+# uv lockfiles
+uv.lock

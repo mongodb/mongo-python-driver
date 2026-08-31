@@ -1676,7 +1676,7 @@ class TestClient(AsyncIntegrationTest):
                     False,
                     None,
                 ),
-                unpack_res=AsyncCursor(client.pymongo_test.collection)._unpack_response,
+                run_with_conn=AsyncCursor(client.pymongo_test.collection)._run_with_conn,
                 address=("not-a-member", 27017),
             )
 

@@ -50,7 +50,7 @@ if HAVE_SSL:
     # CPython ssl module constants to configure certificate verification
     # at a high level. This is legacy behavior, but requires us to
     # import the ssl module even if we're only using it for this purpose.
-    import ssl as _stdlibssl  # noqa: F401
+    import ssl as _stdlibssl
     from ssl import CERT_NONE, CERT_REQUIRED
 
     IPADDR_SAFE = True
@@ -68,11 +68,17 @@ if HAVE_SSL:
             _pyssl.BLOCKING_IO_WRITE_ERROR,
             _ssl.BLOCKING_IO_WRITE_ERROR,
         )
+        SSL_EOF_ERRORS: tuple = (  # type: ignore[type-arg]
+            _stdlibssl.SSLEOFError,
+            _stdlibssl.SSLZeroReturnError,
+            *_pyssl.EOF_ERRORS,
+        )
     else:
         PYSSLError = _ssl.SSLError
         BLOCKING_IO_ERRORS: tuple = _ssl.BLOCKING_IO_ERRORS  # type: ignore[type-arg, no-redef]
         BLOCKING_IO_READ_ERROR: tuple = (_ssl.BLOCKING_IO_READ_ERROR,)  # type: ignore[type-arg, no-redef]
         BLOCKING_IO_WRITE_ERROR: tuple = (_ssl.BLOCKING_IO_WRITE_ERROR,)  # type: ignore[type-arg, no-redef]
+        SSL_EOF_ERRORS: tuple = (_stdlibssl.SSLEOFError, _stdlibssl.SSLZeroReturnError)  # type: ignore[type-arg, no-redef]
     SSLError = _ssl.SSLError
     BLOCKING_IO_LOOKUP_ERROR = BLOCKING_IO_READ_ERROR
 
@@ -138,6 +144,7 @@ else:
 
     IPADDR_SAFE = False
     BLOCKING_IO_ERRORS: tuple = ()  # type: ignore[type-arg, no-redef]
+    SSL_EOF_ERRORS: tuple = ()  # type: ignore[type-arg, no-redef]
 
     def _has_sni(is_sync: bool) -> bool:  # noqa: ARG001
         return False

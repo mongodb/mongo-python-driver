@@ -18,6 +18,12 @@ UV_TOOL_DIR=$PROJECT_DIRECTORY/.local/uv/tools
 UV_CACHE_DIR=$PROJECT_DIRECTORY/.local/uv/cache
 DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
 MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
+# GNU date on Linux and Windows, BSD date on macOS.
+UV_EXCLUDE_NEWER="$(date -u -d '7 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-7d +%Y-%m-%d)"
+if [ -z "$UV_EXCLUDE_NEWER" ]; then
+  echo "Failed to compute UV_EXCLUDE_NEWER" >&2
+  exit 1
+fi
 
 # On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
 if [ "${CI:-}" == "true" ]; then
@@ -65,6 +71,8 @@ export CARGO_HOME="$CARGO_HOME"
 export UV_TOOL_DIR="$UV_TOOL_DIR"
 export UV_CACHE_DIR="$UV_CACHE_DIR"
 export UV_TOOL_BIN_DIR="$DRIVERS_TOOLS_BINARIES"
+export UV_NO_LOCK=1
+export UV_EXCLUDE_NEWER="$UV_EXCLUDE_NEWER"
 export PYMONGO_BIN_DIR="$PYMONGO_BIN_DIR"
 export PATH="$PATH_EXT"
 # shellcheck disable=SC2154
