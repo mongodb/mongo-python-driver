@@ -660,7 +660,7 @@ class TestMongosAndReadPreference(IntegrationTest):
         num_members = shard.count(",") + 1
         if num_members == 1:
             raise SkipTest("Need a replica set shard to test.")
-        coll = self.db.get_collection("test", write_concern=WriteConcern(w=num_members))
+        coll = self.db.get_collection("coll", write_concern=WriteConcern(w=num_members))
         coll.drop()
         res = coll.insert_many([{} for _ in range(5)])
         first_id = res.inserted_ids[0]

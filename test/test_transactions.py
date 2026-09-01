@@ -603,7 +603,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     @client_context.require_transactions
     def test_in_transaction_property(self):
         client = client_context.client
-        coll = client.db.collcollection
+        coll = client.db.coll
         coll.insert_one({})
         self.addCleanup(coll.drop)
 

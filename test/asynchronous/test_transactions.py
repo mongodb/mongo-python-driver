@@ -615,7 +615,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_in_transaction_property(self):
         client = async_client_context.client
-        coll = client.db.collcollection
+        coll = client.db.coll
         await coll.insert_one({})
         self.addAsyncCleanup(coll.drop)
 
