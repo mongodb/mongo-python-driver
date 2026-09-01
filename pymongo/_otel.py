@@ -227,10 +227,11 @@ def _build_query_summary(command_name: str, dbname: str, collection: Optional[st
 # LUT of db.operation.name for operations the spec names differently from our `_Op`
 # values. The nested command span keeps the wire name in db.command.name, so
 # dropping a collection reports "dropCollection" over a "drop" command span.
-#
-# PYTHON-6054 tracks the operations the spec's table has yet to name: rename
-# sends renameCollection, countDocuments sends an aggregate but reports "count",
-# and a collection bulkWrite reports "insert" whatever the batch contains.
+# "dropCollection" and "createCollection" do not match their commands, and the
+# table omits operations we therefore name after the command: renameCollection,
+# countDocuments, watch, and a collection bulkWrite of mixed operations.
+# DRIVERS-3625 proposes what to do about both, and PYTHON-6054 follows whatever
+# it settles on.
 _OPERATION_NAME_OVERRIDES = {
     "drop": "dropCollection",
     "create": "createCollection",
