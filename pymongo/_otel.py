@@ -18,11 +18,9 @@ Kept separate from :mod:`pymongo._telemetry` so that module stays free of
 ``opentelemetry`` import guards. Every function here is a no-op when
 ``opentelemetry`` isn't installed or tracing isn't enabled.
 
-This module also owns the specification's naming and attribute rules, such as
-how span names, ``db.operation.name`` and ``db.query.summary`` are built.
-:mod:`pymongo._telemetry` owns span lifecycles. A specification change to a
-name or an attribute value stays here; one that changes when a span starts or
-ends, or what it nests under, affects both.
+This module builds span names and attributes; :mod:`pymongo._telemetry` starts
+and ends spans. So a specification change to a name or an attribute value lands
+here alone, while one to a span's lifetime or nesting touches both.
 """
 
 from __future__ import annotations
@@ -224,14 +222,9 @@ def _build_query_summary(command_name: str, dbname: str, collection: Optional[st
     return f"{command_name} {dbname}"
 
 
-# LUT of db.operation.name for operations the spec names differently from our `_Op`
-# values. The nested command span keeps the wire name in db.command.name, so
-# dropping a collection reports "dropCollection" over a "drop" command span.
-# "dropCollection" and "createCollection" do not match their commands, and the
-# table omits operations we therefore name after the command: renameCollection,
-# countDocuments, watch, and a collection bulkWrite of mixed operations.
-# DRIVERS-3625 proposes what to do about both, and PYTHON-6054 follows whatever
-# it settles on.
+# LUT of db.operation.name where the spec's name differs from our `_Op` value;
+# the nested command span still reports the wire name in db.command.name.
+# DRIVERS-3625 and PYTHON-6054 cover the table's gaps and inconsistencies.
 _OPERATION_NAME_OVERRIDES = {
     "drop": "dropCollection",
     "create": "createCollection",

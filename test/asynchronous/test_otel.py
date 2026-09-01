@@ -437,11 +437,8 @@ class TestOTelSpans(AsyncIntegrationTest):
         command_span_names = [s.name for s in self.spans() if "db.command.name" in s.attributes]
         self.assertNotIn("saslStart", command_span_names)
 
-        # The sensitive name must not leak onto the operation span either.
-        # Database.command() runs with is_run_command=True, so that span reads
-        # "runCommand" and "saslStart" appears nowhere. It still carries the
-        # Required db.namespace/db.operation.summary, backfilled before
-        # start_command_span's sensitive-command return.
+        # The operation span still carries namespace and summary, backfilled
+        # before start_command_span's sensitive-command return.
         finished = self.exporter.get_finished_spans()
         operation_names = [s.attributes.get("db.operation.name") for s in finished]
         self.assertNotIn("saslStart", operation_names)
@@ -717,15 +714,9 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(cmd_spans[0].parent.span_id, op_span.context.span_id)
 
     async def test_background_kill_cursors_span_is_a_trace_root(self):
-        # Regression test for PYTHON-5947: create_task freezes the calling
-        # coroutine's context, so without the reset in
-        # AsyncPeriodicExecutor._run every killCursors span the background tick
-        # emits is parented under whatever operation opened the executor.
-        #
-        # connect=False keeps _get_topology() out of construction, so the
-        # executor opens inside coll.drop() below with that span current. Waking
-        # the existing task runs the tick in that frozen context; calling
-        # _process_kill_cursors() here would use this coroutine's clean one.
+        # create_task freezes the caller's context, so the executor has to open
+        # inside coll.drop() (hence connect=False) and the tick has to run by
+        # waking that task; _process_kill_cursors() here would use a clean one.
         client = await self.async_rs_or_single_client(tracing={"enabled": True}, connect=False)
         coll = client.pymongo_test.bg_kill_cursors
         await coll.drop()
