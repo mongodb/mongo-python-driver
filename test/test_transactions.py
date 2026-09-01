@@ -27,15 +27,15 @@ from unittest.mock import patch
 
 import pymongo
 from gridfs.synchronous.grid_file import GridFS, GridFSBucket
+from pymongo.pool_shared import PoolState
 from pymongo.server_selectors import writable_server_selector
-from pymongo.synchronous.pool import PoolState
 
 sys.path[0:0] = [""]
 
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
-from pymongo import WriteConcern, _csot
+from pymongo import WriteConcern, _csot, client_session_shared
 from pymongo.errors import (
     AutoReconnect,
     CollectionInvalid,
@@ -49,7 +49,6 @@ from pymongo.errors import (
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous import client_session
 from pymongo.synchronous.client_session import TransactionOptions
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.cursor import Cursor
@@ -394,18 +393,18 @@ class TestTransactions(TransactionsBase):
 
 
 class PatchSessionTimeout:
-    """Patches the client_session's with_transaction timeout for testing."""
+    """Patches the client_session_shared's with_transaction timeout for testing."""
 
     def __init__(self, mock_timeout):
-        self.real_timeout = client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT
+        self.real_timeout = client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT
         self.mock_timeout = mock_timeout
 
     def __enter__(self):
-        client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.mock_timeout
+        client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.mock_timeout
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
+        client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
 
 
 class TestTransactionsConvenientAPI(TransactionsBase):

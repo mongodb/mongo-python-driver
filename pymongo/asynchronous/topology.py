@@ -34,10 +34,10 @@ from pymongo._telemetry import (
     _ServerSelectionTelemetry,
     log_server_selection_succeeded,
 )
-from pymongo.asynchronous.client_session import _ServerSession, _ServerSessionPool
 from pymongo.asynchronous.monitor import MonitorBase, SrvMonitor
 from pymongo.asynchronous.pool import Pool
 from pymongo.asynchronous.server import Server
+from pymongo.client_session_shared import _ServerSession, _ServerSessionPool
 from pymongo.errors import (
     ConnectionFailure,
     InvalidOperation,
@@ -72,32 +72,20 @@ from pymongo.topology_description import (
     _updated_topology_description_srv_polling,
     updated_topology_description,
 )
+from pymongo.topology_shared import (
+    _ErrorContext,
+    _is_stale_error_topology_version,
+    _is_stale_server_description,
+    process_events_queue,
+)
 
 if TYPE_CHECKING:
-    from bson import ObjectId
     from pymongo.asynchronous.settings import TopologySettings
     from pymongo.typings import ClusterTime, _Address
 
 _IS_SYNC = False
 
 _pymongo_dir = str(Path(__file__).parent)
-
-
-def process_events_queue(queue_ref: weakref.ReferenceType[queue.Queue]) -> bool:  # type: ignore[type-arg]
-    q = queue_ref()
-    if not q:
-        return False  # Cancel PeriodicExecutor.
-
-    while True:
-        try:
-            event = q.get_nowait()
-        except queue.Empty:
-            break
-        else:
-            fn, args = event
-            fn(*args)
-
-    return True  # Continue PeriodicExecutor.
 
 
 class Topology:
@@ -972,42 +960,3 @@ class Topology:
 
     def __hash__(self) -> int:
         return hash(self.eq_props())
-
-
-class _ErrorContext:
-    """An error with context for SDAM error handling."""
-
-    def __init__(
-        self,
-        error: BaseException,
-        max_wire_version: int,
-        sock_generation: int,
-        completed_handshake: bool,
-        service_id: Optional[ObjectId],
-    ):
-        self.error = error
-        self.max_wire_version = max_wire_version
-        self.sock_generation = sock_generation
-        self.completed_handshake = completed_handshake
-        self.service_id = service_id
-
-
-def _is_stale_error_topology_version(
-    current_tv: Optional[Mapping[str, Any]], error_tv: Optional[Mapping[str, Any]]
-) -> bool:
-    """Return True if the error's topologyVersion is <= current."""
-    if current_tv is None or error_tv is None:
-        return False
-    if current_tv["processId"] != error_tv["processId"]:
-        return False
-    return current_tv["counter"] >= error_tv["counter"]
-
-
-def _is_stale_server_description(current_sd: ServerDescription, new_sd: ServerDescription) -> bool:
-    """Return True if the new topologyVersion is < current."""
-    current_tv, new_tv = current_sd.topology_version, new_sd.topology_version
-    if current_tv is None or new_tv is None:
-        return False
-    if current_tv["processId"] != new_tv["processId"]:
-        return False
-    return current_tv["counter"] > new_tv["counter"]

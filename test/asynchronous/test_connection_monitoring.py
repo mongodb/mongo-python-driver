@@ -29,7 +29,6 @@ sys.path[0:0] = [""]
 
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo.asynchronous.pool import PoolState, _PoolClosedError
 from pymongo.errors import (
     ConnectionFailure,
     OperationFailure,
@@ -51,6 +50,7 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
+from pymongo.pool_shared import PoolState, _PoolClosedError
 from pymongo.read_preferences import ReadPreference
 from pymongo.topology_description import updated_topology_description
 from test.asynchronous import AsyncIntegrationTest, async_client_context, client_knobs, unittest

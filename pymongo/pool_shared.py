@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+import collections
 import functools
 import socket
 import ssl
@@ -36,6 +37,7 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConnectionFailure,
     NetworkTimeout,
+    PyMongoError,
     _CertificateError,
 )
 from pymongo.helpers_shared import _get_timeout_details, format_timeout_details
@@ -178,6 +180,49 @@ class _CancellationContext:
     def cancelled(self) -> bool:
         """Was cancel called?"""
         return self._cancelled
+
+
+class _PoolClosedError(PyMongoError):
+    """Internal error raised when a thread tries to get a connection from a
+    closed pool.
+    """
+
+
+class _PoolGeneration:
+    def __init__(self) -> None:
+        # Maps service_id to generation.
+        self._generations: dict[ObjectId, int] = collections.defaultdict(int)
+        # Overall pool generation.
+        self._generation = 0
+
+    def get(self, service_id: Optional[ObjectId]) -> int:
+        """Get the generation for the given service_id."""
+        if service_id is None:
+            return self._generation
+        return self._generations[service_id]
+
+    def get_overall(self) -> int:
+        """Get the Pool's overall generation."""
+        return self._generation
+
+    def inc(self, service_id: Optional[ObjectId]) -> None:
+        """Increment the generation for the given service_id."""
+        self._generation += 1
+        if service_id is None:
+            for service_id in self._generations:
+                self._generations[service_id] += 1
+        else:
+            self._generations[service_id] += 1
+
+    def stale(self, gen: int, service_id: Optional[ObjectId]) -> bool:
+        """Return if the given generation for a given service_id is stale."""
+        return gen != self.get(service_id)
+
+
+class PoolState:
+    PAUSED = 1
+    READY = 2
+    CLOSED = 3
 
 
 async def _async_create_connection(address: _Address, options: PoolOptions) -> socket.socket:

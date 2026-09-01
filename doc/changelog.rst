@@ -8,6 +8,7 @@ PyMongo 4.18 brings a number of changes including:
 
 - Dropped support for MongoDB 4.2.
 - Added support for MongoDB 9.0.
+- PyPy support is deprecated and will be removed in a future release.
 - Improved TLS connection performance by reusing TLS sessions across connections
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
@@ -37,6 +38,8 @@ PyMongo 4.18 brings a number of changes including:
   :class:`bytearray` are always :class:`bytes` copies.
 - :func:`bson.get_data_and_view` now returns a view of a private :class:`bytes` copy
   for buffer-protocol inputs other than :class:`bytes` or :class:`bytearray`.
+- Improved the performance of lazily decoding a
+  :class:`~bson.raw_bson.RawBSONDocument` when the C extension is available.
 - Fixed a potential out-of-bounds read in the C extension when decoding an
   array of BSON documents. An embedded document whose declared length exceeds
   the bytes remaining in the array now raises

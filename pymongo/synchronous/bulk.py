@@ -40,6 +40,7 @@ from pymongo.bulk_shared import (
     _raise_bulk_write_error,
     _Run,
 )
+from pymongo.client_session_shared import _validate_session_write_concern
 from pymongo.common import (
     validate_is_document_type,
     validate_ok_for_replace,
@@ -59,7 +60,7 @@ from pymongo.message import (
     _EncryptedBulkWriteContext,
 )
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.client_session import ClientSession, _validate_session_write_concern
+from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.command_runner import (
     run_bulk_write_command,
 )
