@@ -389,6 +389,6 @@ class ClientOptions:
     def tracing(self) -> _otel.TracingOptions:
         """The configured ``tracing`` option for OpenTelemetry command spans.
 
-        .. versionadded:: 4.18
+        .. versionadded:: 4.XX
         """
         return self.__tracing

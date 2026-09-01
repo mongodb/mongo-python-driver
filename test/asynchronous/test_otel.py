@@ -29,6 +29,7 @@ import pytest
 import pymongo._otel as _otel
 from pymongo import _telemetry, common
 from pymongo._telemetry import _OperationTelemetry
+from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
     ClientBulkWriteException,
     ConfigurationError,
@@ -682,6 +683,34 @@ class TestOTelSpans(AsyncIntegrationTest):
         (cmd_span,) = self.spans("aggregate")
         self.assertEqual(cmd_span.attributes["db.command.name"], "aggregate")
         self.assertEqual(cmd_span.parent.span_id, op_span.context.span_id)
+
+    async def test_tailable_rollover_is_not_an_error_span(self):
+        # A tailable cursor whose error code means "cursor closed" returns
+        # normally instead of raising, so the operation span is not a failure.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test
+        await db.drop_collection("otel_tailable")
+        await db.create_collection("otel_tailable", capped=True, size=4096)
+        await db.otel_tailable.insert_one({"x": 1})
+        self.addAsyncCleanup(db.drop_collection, "otel_tailable")
+
+        async with self.fail_point(
+            {
+                "mode": {"times": 1},
+                "data": {"failCommands": ["find"], "errorCode": 43},
+            }
+        ):
+            self.exporter.clear()
+            cursor = db.otel_tailable.find(cursor_type=CursorType.TAILABLE)
+            self.assertEqual(await cursor.to_list(), [])
+
+        (op_span,) = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "find"
+        ]
+        self.assertNotEqual(op_span.status.status_code, StatusCode.ERROR)
+        self.assertEqual(op_span.events, ())
 
     async def test_kill_cursors_gets_operation_span(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True})

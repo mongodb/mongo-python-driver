@@ -272,8 +272,9 @@ class _OperationTelemetry:
     span of its own underneath it. Retries are therefore visible as sibling
     command spans rather than being collapsed into one.
 
-    With ``set_current=False`` the span is not made current at construction.
-    That suits a span started outside the ``_retry_internal`` call it covers,
+    With ``set_current=False`` the span is not made current at construction, so
+    nothing nests under it until a caller opens a :meth:`use` block. That suits
+    a span started outside the ``_retry_internal`` call it covers,
     such as a cursor-creating command's, whose span has to exist before the
     cursor does; that caller makes it current with :meth:`use`.
     """

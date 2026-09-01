@@ -461,7 +461,7 @@ def create_otel_variants():
             [
                 # All three topologies, subset to keep the task count at 22.
                 #
-                # Replica set in full: the only topology where transaction spans
+                # Replica set keeps every task: the only topology where transaction spans
                 # run at all (they are skipped on standalone and sharded), and
                 # the only one covering free-threaded Python.
                 ".test-non-standard .replica_set-noauth-ssl",

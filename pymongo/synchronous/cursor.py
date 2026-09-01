@@ -979,7 +979,14 @@ class Cursor(_CursorBase[_DocumentType]):
                 operation_telemetry=self._operation_telemetry,
             )
         except OperationFailure as exc:
-            self._end_operation_telemetry(exc)
+            # A tailable cursor rolling over returns below instead of raising,
+            # so close() ends the span successfully rather than as a failure.
+            rolled_over = bool(
+                exc.code in _CURSOR_CLOSED_ERRORS
+                and self._query_flags & _QUERY_OPTIONS["tailable_cursor"]
+            )
+            if not rolled_over:
+                self._end_operation_telemetry(exc)
             if exc.code in _CURSOR_CLOSED_ERRORS or self._exhaust:
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
@@ -991,10 +998,7 @@ class Cursor(_CursorBase[_DocumentType]):
             # due to capped collection roll over. Setting
             # self._killed to True ensures Cursor.alive will be
             # False. No need to re-raise.
-            if (
-                exc.code in _CURSOR_CLOSED_ERRORS
-                and self._query_flags & _QUERY_OPTIONS["tailable_cursor"]
-            ):
+            if rolled_over:
                 return
             raise
         except ConnectionFailure as exc:
@@ -1116,10 +1120,9 @@ class Cursor(_CursorBase[_DocumentType]):
     def _send_message_in_operation_span(self, operation: Union[_Query, _GetMore]) -> None:
         """Send ``operation``, ending the operation span once it completes.
 
-        ``_send_message``'s own error handling already ends the span with the
-        error on every failure path, and an exhausted cursor's close() ends it
-        on the way out; both are idempotent, so this only has to cover the
-        remaining case of a successful send that leaves the cursor open.
+        _send_message ends the span on every failure path and close() ends it
+        for an exhausted cursor, so this covers the remaining case of a
+        successful send that leaves the cursor open.
         """
         try:
             self._send_message(operation)

@@ -349,12 +349,14 @@ def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
     """Set the cursor id (if any open cursor) and end the span."""
     if span is None:
         return
-    cursor = reply.get("cursor")
-    if isinstance(cursor, Mapping) and cursor.get("id"):
-        # Per the spec the attribute is omitted rather than set to 0, so a
-        # cursor-creating command that leaves no cursor open reports nothing.
-        span.set_attribute("db.mongodb.cursor_id", cursor["id"])
-    span.end()
+    try:
+        cursor = reply.get("cursor")
+        if isinstance(cursor, Mapping) and cursor.get("id"):
+            # Per the spec the attribute is omitted rather than set to 0, so a
+            # cursor-creating command that leaves no cursor open reports nothing.
+            span.set_attribute("db.mongodb.cursor_id", cursor["id"])
+    finally:
+        span.end()
 
 
 def _set_exception_attributes(span: Span, exc: BaseException) -> None:
@@ -383,13 +385,17 @@ def end_command_span_failure(
     """Record the exception, set the error status, and end the span."""
     if span is None:
         return
-    span.record_exception(exc)
-    _set_exception_attributes(span, exc)
-    code = failure.get("code")
-    if code is not None:
-        span.set_attribute("db.response.status_code", str(code))
-    span.set_status(Status(StatusCode.ERROR, description=failure.get("errmsg")))
-    span.end()
+    try:
+        span.record_exception(exc)
+        _set_exception_attributes(span, exc)
+        code = failure.get("code")
+        if code is not None:
+            span.set_attribute("db.response.status_code", str(code))
+        span.set_status(Status(StatusCode.ERROR, description=failure.get("errmsg")))
+    finally:
+        # End even if recording raised, so a failure here costs the attributes
+        # rather than leaking an unended span.
+        span.end()
 
 
 class _OperationSpanHandle:
@@ -524,11 +530,15 @@ def end_operation_span_failure(handle: Optional[_OperationSpanHandle], exc: Base
     """Record the exception, set the error status, and end the operation span."""
     if handle is None:
         return
-    handle.span.record_exception(exc)
-    _set_exception_attributes(handle.span, exc)
-    handle.span.set_status(Status(StatusCode.ERROR, description=str(exc)))
-    if handle._cm is None:
-        handle.span.end()
-        return
-    _CURRENT_OPERATION_NAME.reset(handle._name_token)
-    handle._cm.__exit__(None, None, None)
+    try:
+        handle.span.record_exception(exc)
+        _set_exception_attributes(handle.span, exc)
+        handle.span.set_status(Status(StatusCode.ERROR, description=str(exc)))
+    finally:
+        # Unwind even if recording raised, since a span left current would
+        # re-parent every later span in this task.
+        if handle._cm is None:
+            handle.span.end()
+        else:
+            _CURRENT_OPERATION_NAME.reset(handle._name_token)
+            handle._cm.__exit__(None, None, None)

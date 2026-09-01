@@ -2596,7 +2596,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             return cmd_cursor
 
         async with self._database.client._tmp_session(session) as s:
-            return await self._database.client._retryable_read_cursor(
+            return await self._database.client._retryable_read_cursor_in_span(
                 _cmd,
                 read_pref,
                 s,
@@ -2700,7 +2700,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return await self._database.client._retryable_read_cursor(
+        return await self._database.client._retryable_read_cursor_in_span(
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
@@ -2951,7 +2951,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return await self._database.client._retryable_read_cursor(
+        return await self._database.client._retryable_read_cursor_in_span(
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,

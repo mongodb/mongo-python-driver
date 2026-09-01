@@ -150,7 +150,6 @@ if TYPE_CHECKING:
 
 
 T = TypeVar("T")
-_CommandCursor = TypeVar("_CommandCursor", bound=AsyncCommandCursor[Any])
 
 _WriteCall = Callable[
     [Optional["AsyncClientSession"], "AsyncConnection", bool], Coroutine[Any, Any, T]
@@ -639,7 +638,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
-        .. versionchanged:: 4.18
+        .. versionchanged:: 4.XX
            Added the ``tracing`` keyword argument. Every public API call
            produces an operation span, which contains one span per command
            sent to the server. Inside a transaction, those operation spans
@@ -2070,7 +2069,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False.
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
-        :param operation_telemetry: As for ``_retry_internal``, defaults to None.
+        :param operation_telemetry: Same as ``_retry_internal``'s, defaults to None.
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2094,9 +2093,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 operation_telemetry=operation_telemetry,
             )
 
-    async def _retryable_read_cursor(
+    async def _retryable_read_cursor_in_span(
         self,
-        func: _ReadCall[_CommandCursor],
+        func: _ReadCall[AsyncCommandCursor[Any]],
         read_pref: _ServerMode,
         session: Optional[AsyncClientSession],
         operation: str,
@@ -2108,7 +2107,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         *,
         dbname: str,
         collection: Optional[str] = None,
-    ) -> _CommandCursor:
+    ) -> AsyncCommandCursor[Any]:
         """Run a command cursor read within its own operation span.
 
         Takes the same arguments as :meth:`_retryable_read`, plus the namespace
@@ -2122,6 +2121,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self.options.tracing,
             operation,
             session,
+            is_run_command=is_run_command,
             dbname=dbname,
             collection=collection,
             set_current=False,
