@@ -192,16 +192,21 @@ class TestStreamingProtocol(AsyncIntegrationTest):
             return isinstance(event, monitoring.ServerHeartbeatFailedEvent)
 
         fail_heartbeat = {
-            "mode": {"times": 2},
+            "mode": {"times": 4},
             "data": {
                 "failCommands": [HelloCompat.LEGACY_CMD, "hello"],
                 "closeConnection": True,
                 "appName": "heartbeatEventAwaitedFlag",
             },
         }
+        # PYTHON-6002: PyPy's JIT warm-up can delay the heartbeat monitor
+        # thread past the default timeout on slow/throttled CI runners.
+        timeout = 30 if "PyPy" in sys.version else 10
         async with self.fail_point(fail_heartbeat):
             await async_wait_until(
-                lambda: hb_listener.matching(hb_failed), "published failed event"
+                lambda: hb_listener.matching(hb_failed),
+                "published failed event",
+                timeout=timeout,
             )
         # Reconnect.
         await client.admin.command("ping")

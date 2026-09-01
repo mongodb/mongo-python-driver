@@ -68,7 +68,7 @@ coverage = [
     "coverage[toml]>=5,<=7.15.0"
 ]
 mockupdb = [
-    "mockupdb@git+https://github.com/mongodb-labs/mongo-mockup-db@master"
+    "mockupdb>=1.8.1"
 ]
 perf = ["simplejson>=3.17.0"]
 typing = [

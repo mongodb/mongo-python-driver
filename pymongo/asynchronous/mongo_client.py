@@ -60,14 +60,15 @@ from pymongo._telemetry import _generate_op_id_or_none, log_command_retry
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
-from pymongo.asynchronous.client_session import _SESSION, _EmptyServerSession
+from pymongo.asynchronous.client_session import _SESSION
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.helpers import (
     _RetryPolicy,
 )
 from pymongo.asynchronous.settings import TopologySettings
-from pymongo.asynchronous.topology import Topology, _ErrorContext
+from pymongo.asynchronous.topology import Topology
 from pymongo.client_options import ClientOptions
+from pymongo.client_session_shared import SessionOptions, TransactionOptions, _EmptyServerSession
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
@@ -81,7 +82,6 @@ from pymongo.errors import (
     PyMongoError,
     ServerSelectionTimeoutError,
     WaitQueueTimeoutError,
-    WriteConcernError,
 )
 from pymongo.lock import (
     _HAS_REGISTER_AT_FORK,
@@ -110,6 +110,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
+from pymongo.topology_shared import _ErrorContext
 from pymongo.typings import (
     ClusterTime,
     _Address,
@@ -134,11 +135,12 @@ if TYPE_CHECKING:
 
     from bson.objectid import ObjectId
     from pymongo.asynchronous.bulk import _AsyncBulk
-    from pymongo.asynchronous.client_session import AsyncClientSession, _ServerSession
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.cursor_base import _ConnectionManager
     from pymongo.asynchronous.encryption import _Encrypter
     from pymongo.asynchronous.pool import AsyncConnection, _PoolCheckout
     from pymongo.asynchronous.server import Server
+    from pymongo.client_session_shared import _ServerSession
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
     from pymongo.server_selectors import Selection
@@ -421,8 +423,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             zlib support requires the Python standard library zlib module. For
             Python before 3.14 zstd requires the `backports.zstd <https://pypi.org/project/backports.zstd/>`_
             package. By default no compression is used. Compression support
-            must also be enabled on the server. MongoDB 3.6+ supports snappy
-            and zlib compression. MongoDB 4.2+ adds support for zstd.
+            must also be enabled on the server.
             See `compress network traffic <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/network-compression/#compress-network-traffic>`_ for details.
           - `zlibCompressionLevel`: (int) The zlib compression level to use
             when zlib is used as the wire protocol compressor. Supported values
@@ -1390,13 +1391,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     def _start_session(self, implicit: bool, **kwargs: Any) -> AsyncClientSession:
         server_session = _EmptyServerSession()
-        opts = client_session.SessionOptions(**kwargs)
+        opts = SessionOptions(**kwargs)
         return client_session.AsyncClientSession(self, server_session, opts, implicit)
 
     def start_session(
         self,
         causal_consistency: Optional[bool] = None,
-        default_transaction_options: Optional[client_session.TransactionOptions] = None,
+        default_transaction_options: Optional[TransactionOptions] = None,
         snapshot: Optional[bool] = False,
     ) -> client_session.AsyncClientSession:
         """Start a logical session.
@@ -2585,7 +2586,7 @@ def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
     return None
 
 
-def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mongos: bool) -> None:
+def _add_retryable_write_error(exc: PyMongoError) -> None:
     doc = _retryable_error_doc(exc)
     if doc:
         code = doc.get("code", 0)
@@ -2597,16 +2598,8 @@ def _add_retryable_write_error(exc: PyMongoError, max_wire_version: int, is_mong
                 "to your connection string."
             )
             raise OperationFailure(errmsg, code, exc.details)  # type: ignore[attr-defined]
-        if max_wire_version >= 9:
-            # In MongoDB 4.4+, the server reports the error labels.
-            for label in doc.get("errorLabels", []):
-                exc._add_error_label(label)
-        else:
-            # Do not consult writeConcernError for pre-4.4 mongos.
-            if isinstance(exc, WriteConcernError) and is_mongos:
-                pass
-            elif code in helpers_shared._RETRYABLE_ERROR_CODES:
-                exc._add_error_label("RetryableWriteError")
+        for label in doc.get("errorLabels", []):
+            exc._add_error_label(label)
 
     # AsyncConnection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
     # handled above.
@@ -2735,14 +2728,6 @@ class _ClientCheckout:
             ):
                 session._pin(server, conn)
             self.contribute_socket(conn)
-            if (
-                self.client._encrypter
-                and not self.client._encrypter._bypass_auto_encryption
-                and conn.max_wire_version < 8
-            ):
-                raise ConfigurationError(
-                    "Auto-encryption requires a minimum MongoDB version of 4.2"
-                )
         except BaseException as exc:
             try:
                 await self.handle(type(exc), exc)
@@ -3111,17 +3096,13 @@ class _ClientConnectionRetryable(Generic[T]):
         :return: Output for func()'s call
         """
         try:
-            max_wire_version = 0
-            is_mongos = False
             self._server = await self._get_server()
             async with self._client._checkout(self._server, self._session) as conn:
-                max_wire_version = conn.max_wire_version
                 sessions_supported = (
                     self._session
                     and self._server.description.retryable_writes_supported
                     and conn.supports_sessions
                 )
-                is_mongos = conn.is_mongos
                 if not self._always_retryable and not sessions_supported:
                     # A retry is not possible because this server does
                     # not support sessions raise the last error.
@@ -3138,7 +3119,7 @@ class _ClientConnectionRetryable(Generic[T]):
             if not self._retryable:
                 raise
             # Add the RetryableWriteError label, if applicable.
-            _add_retryable_write_error(exc, max_wire_version, is_mongos)
+            _add_retryable_write_error(exc)
             raise
 
     async def _read(self) -> T:

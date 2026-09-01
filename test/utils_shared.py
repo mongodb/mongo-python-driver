@@ -51,10 +51,10 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
+from pymongo.pool_shared import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous.collection import ReturnDocument
-from pymongo.synchronous.pool import _CancellationContext, _PoolGeneration
 from pymongo.write_concern import WriteConcern
 from test import client_context
 from test.asynchronous.utils import async_wait_until

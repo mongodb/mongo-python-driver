@@ -95,9 +95,8 @@ from pymongo.synchronous.mongo_client import MongoClient, _ClientCheckout
 from pymongo.synchronous.pool import (
     Connection,
 )
-from pymongo.synchronous.settings import TOPOLOGY_TYPE
-from pymongo.synchronous.topology import _ErrorContext
-from pymongo.topology_description import TopologyDescription
+from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
+from pymongo.topology_shared import _ErrorContext
 from pymongo.write_concern import WriteConcern
 from test import (
     HAVE_IPADDRESS,
@@ -2374,8 +2373,8 @@ class TestExhaustCursor(IntegrationTest):
 
     def setUp(self):
         super().setUp()
-        if client_context.is_mongos:
-            raise SkipTest("mongos doesn't support exhaust, SERVER-2627")
+        if not client_context.supports_exhaust_cursors():
+            raise SkipTest("mongos serves exhaust cursors only from 7.1, SERVER-57297")
 
     def test_exhaust_query_server_error(self):
         # When doing an exhaust query, the socket stays checked out on success

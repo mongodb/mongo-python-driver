@@ -32,9 +32,9 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo._telemetry import _CmapTelemetry
-from pymongo.asynchronous.client_session import _validate_session_write_concern
 from pymongo.asynchronous.command_runner import run_command
 from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.client_session_shared import _validate_session_write_concern
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -51,7 +51,6 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     NetworkTimeout,
     NotPrimaryError,
     OperationFailure,
-    PyMongoError,
     WaitQueueTimeoutError,
     _CertificateError,
 )
@@ -70,10 +69,13 @@ from pymongo.monitoring import (
 from pymongo.network_layer import AsyncNetworkingInterface, async_receive_message, async_sendall
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
+    PoolState,
     SSLErrors,
     _CancellationContext,
     _configured_protocol_interface,
     _ConnectionTelemetryInfo,
+    _PoolClosedError,
+    _PoolGeneration,
     _raise_connection_failure,
 )
 from pymongo.read_preferences import ReadPreference
@@ -226,7 +228,7 @@ class AsyncConnection(_ConnectionTelemetryInfo):
 
     def hello_cmd(self) -> dict[str, Any]:
         # As of PYTHON-5713, always use OP_MSG for the handshake since all
-        # supported servers (MongoDB 4.2+, wire version >= 8) support it.
+        # supported servers (MongoDB 4.4+, wire version >= 9) support it.
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
             return {HelloCompat.CMD: 1}
         return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
@@ -581,49 +583,6 @@ class AsyncConnection(_ConnectionTelemetryInfo):
             (self.closed and " CLOSED") or "",
             id(self),
         )
-
-
-class _PoolClosedError(PyMongoError):
-    """Internal error raised when a thread tries to get a connection from a
-    closed pool.
-    """
-
-
-class _PoolGeneration:
-    def __init__(self) -> None:
-        # Maps service_id to generation.
-        self._generations: dict[ObjectId, int] = collections.defaultdict(int)
-        # Overall pool generation.
-        self._generation = 0
-
-    def get(self, service_id: Optional[ObjectId]) -> int:
-        """Get the generation for the given service_id."""
-        if service_id is None:
-            return self._generation
-        return self._generations[service_id]
-
-    def get_overall(self) -> int:
-        """Get the Pool's overall generation."""
-        return self._generation
-
-    def inc(self, service_id: Optional[ObjectId]) -> None:
-        """Increment the generation for the given service_id."""
-        self._generation += 1
-        if service_id is None:
-            for service_id in self._generations:
-                self._generations[service_id] += 1
-        else:
-            self._generations[service_id] += 1
-
-    def stale(self, gen: int, service_id: Optional[ObjectId]) -> bool:
-        """Return if the given generation for a given service_id is stale."""
-        return gen != self.get(service_id)
-
-
-class PoolState:
-    PAUSED = 1
-    READY = 2
-    CLOSED = 3
 
 
 class Pool:

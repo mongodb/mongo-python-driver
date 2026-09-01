@@ -34,8 +34,9 @@ from pymongo.synchronous.monitor import Monitor
 from pymongo.synchronous.pool import PoolOptions
 from pymongo.synchronous.server import Server
 from pymongo.synchronous.settings import TopologySettings
-from pymongo.synchronous.topology import Topology, _ErrorContext
+from pymongo.synchronous.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
+from pymongo.topology_shared import _ErrorContext
 from test import client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
 from test.utils import MockPool
@@ -581,7 +582,7 @@ class TestMultiServerTopology(TopologyTest):
         )
 
         self.assertEqual(server.description.min_wire_version, 1)
-        self.assertEqual(server.description.max_wire_version, 8)
+        self.assertEqual(server.description.max_wire_version, common.MIN_SUPPORTED_WIRE_VERSION)
         t.select_servers(any_server_selector, _Op.TEST)
 
         # Incompatible.
