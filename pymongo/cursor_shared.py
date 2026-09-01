@@ -104,10 +104,11 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
         since they will stop iterating even though they *may* return more
         results in the future.
 
-        With regular cursors, simply use an asynchronous for loop instead of :attr:`alive`::
+        With regular cursors, simply use a for loop instead of :attr:`alive`::
 
-            async for doc in collection.find():
+            for doc in collection.find():
                 print(doc)
+
 
         .. note:: Even if :attr:`alive` is True, :meth:`next` can raise
           :exc:`StopIteration`. :attr:`alive` can also be True while iterating
@@ -745,13 +746,13 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         Pass a field name and a direction, either
         :data:`~pymongo.ASCENDING` or :data:`~pymongo.DESCENDING`.::
 
-            async for doc in collection.find().sort('field', pymongo.ASCENDING):
+            for doc in collection.find().sort('field', pymongo.ASCENDING):
                 print(doc)
 
         To sort by multiple fields, pass a list of (key, direction) pairs.
         If just a name is given, :data:`~pymongo.ASCENDING` will be inferred::
 
-            async for doc in collection.find().sort([
+            for doc in collection.find().sort([
                     'field1',
                     ('field2', pymongo.DESCENDING)]):
                 print(doc)
@@ -765,7 +766,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
             # Sort by 'score' field.
             cursor.sort([('score', {'$meta': 'textScore'})])
 
-            async for doc in cursor:
+            for doc in cursor:
                 print(doc)
 
         For more advanced text search functionality, see MongoDB's
@@ -843,7 +844,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         to the object currently being scanned. For example::
 
             # Find all documents where field "a" is less than "b" plus "c".
-            async for doc in db.test.find().where('this.a < (this.b + this.c)'):
+            for doc in db.test.find().where('this.a < (this.b + this.c)'):
                 print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of
