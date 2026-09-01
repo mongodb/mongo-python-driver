@@ -295,9 +295,15 @@ def start_command_span(
 
     collection = _extract_collection_name(command_name, dbname, cmd)
     # Must stay above the sensitive-command return: the operation span needs
-    # these attributes even when the command itself gets no span. Runs per
-    # attempt, since an attempt that dies before building a command never
-    # reaches here, so a retry may be where the span learns its namespace.
+    # these attributes even when the command itself gets no span.
+    #
+    # This runs once per attempt rather than once per operation, and has to.
+    # An attempt that dies before building a command never reaches here, so a
+    # retry can be where the operation span first learns its namespace, and
+    # pinning the backfill to the first attempt would leave those spans with
+    # only the bare operation name. Repeating it is harmless: every attempt of
+    # one operation targets the same namespace, so the later writes are
+    # identical to the first.
     current_operation = _CURRENT_OPERATION_NAME.get()
     if current_operation is not None:
         current_span = trace.get_current_span()
