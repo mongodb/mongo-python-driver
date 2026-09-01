@@ -597,18 +597,32 @@ else:
 _T = TypeVar("_T", bound=MutableMapping[str, Any])
 
 
-def _raw_to_dict(
-    data: Any,
-    position: int,
-    obj_end: int,
-    opts: CodecOptions[RawBSONDocument],
-    result: _T,
-    raw_array: bool = False,
-) -> _T:
-    data, view = get_data_and_view(data)
-    return cast(
-        _T, _elements_to_dict(data, view, position, obj_end, opts, result, raw_array=raw_array)
-    )
+if _USE_C:
+
+    def _raw_to_dict(
+        data: Any,
+        position: int,
+        obj_end: int,
+        opts: CodecOptions[RawBSONDocument],
+        result: _T,
+        raw_array: bool = False,
+    ) -> _T:
+        return cast(_T, _cbson._raw_to_dict(data, position, obj_end, opts, result, raw_array))
+
+else:
+
+    def _raw_to_dict(
+        data: Any,
+        position: int,
+        obj_end: int,
+        opts: CodecOptions[RawBSONDocument],
+        result: _T,
+        raw_array: bool = False,
+    ) -> _T:
+        data, view = get_data_and_view(data)
+        return cast(
+            _T, _elements_to_dict(data, view, position, obj_end, opts, result, raw_array=raw_array)
+        )
 
 
 def _elements_to_dict(
