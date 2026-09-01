@@ -76,7 +76,7 @@ def _add_retryable_write_error(exc: PyMongoError) -> None:
 
 def _after_fork_child(clients: Mapping[Any, Any]) -> None:
     """Releases the locks in child process and resets the
-    topologies in all MongoClients.
+    topologies in the passed clients.
     """
     # Reinitialize locks
     _release_locks()
