@@ -297,8 +297,8 @@ def start_command_span(
     # Must stay above the sensitive-command return: the operation span needs
     # these attributes even when the command itself gets no span. Runs per
     # attempt, since one that dies before building a command never reaches here
-    # and a retry may be where the span first learns its namespace. Repeats
-    # write the same values.
+    # and a retry may be where the span first learns its namespace. A later
+    # attempt sets the same attributes to the same values.
     current_operation = _CURRENT_OPERATION_NAME.get()
     if current_operation is not None:
         current_span = trace.get_current_span()
