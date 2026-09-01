@@ -2237,7 +2237,6 @@ class TestExplicitQueryableEncryption(AsyncEncryptionIntegrationTest):
             "create", "explicit_encryption", encryptedFields=self.encrypted_fields
         )
         self.encrypted_fields_c10 = json_data("etc", "data", "encryptedFields-c10.json")
-        await self.client.drop_database(self.client.explicit_encryption_c10)
         await self.db.command(
             "create", "explicit_encryption_c10", encryptedFields=self.encrypted_fields_c10
         )

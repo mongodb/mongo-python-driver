@@ -2225,7 +2225,6 @@ class TestExplicitQueryableEncryption(EncryptionIntegrationTest):
         self.client.drop_database(self.db)
         self.db.command("create", "explicit_encryption", encryptedFields=self.encrypted_fields)
         self.encrypted_fields_c10 = json_data("etc", "data", "encryptedFields-c10.json")
-        self.client.drop_database(self.client.explicit_encryption_c10)
         self.db.command(
             "create", "explicit_encryption_c10", encryptedFields=self.encrypted_fields_c10
         )
