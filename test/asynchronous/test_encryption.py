@@ -2236,6 +2236,11 @@ class TestExplicitQueryableEncryption(AsyncEncryptionIntegrationTest):
         await self.db.command(
             "create", "explicit_encryption", encryptedFields=self.encrypted_fields
         )
+        self.encrypted_fields_c10 = json_data("etc", "data", "encryptedFields-c10.json")
+        await self.client.drop_database(self.client.explicit_encryption_c10)
+        await self.db.command(
+            "create", "explicit_encryption_c10", encryptedFields=self.encrypted_fields_c10
+        )
         key_vault = await create_key_vault(self.client.keyvault.datakeys, self.key1_document)
         self.addCleanup(key_vault.drop)
         self.key_vault_client = self.client
@@ -2271,20 +2276,13 @@ class TestExplicitQueryableEncryption(AsyncEncryptionIntegrationTest):
         self.assertEqual(docs[0]["encryptedIndexed"], val)
 
     async def test_02_insert_encrypted_indexed_and_find_contention(self):
-        # setUp creates the collection with contention=0 (from encryptedFields.json).
-        # This test uses contention_factor=10, so recreate the collection with contention=10.
-        await self.db.drop_collection("explicit_encryption", encrypted_fields=self.encrypted_fields)
-        encrypted_fields = copy.deepcopy(self.encrypted_fields)
-        encrypted_fields["fields"][0]["queries"]["contention"] = 10
-        await self.db.command("create", "explicit_encryption", encryptedFields=encrypted_fields)
-
         val = "encrypted indexed value"
         contention = 10
         for _ in range(contention):
             insert_payload = await self.client_encryption.encrypt(
                 val, Algorithm.INDEXED, self.key1_id, contention_factor=contention
             )
-            await self.encrypted_client[self.db.name].explicit_encryption.insert_one(
+            await self.encrypted_client[self.db.name].explicit_encryption_c10.insert_one(
                 {"encryptedIndexed": insert_payload}
             )
 
@@ -2298,7 +2296,7 @@ class TestExplicitQueryableEncryption(AsyncEncryptionIntegrationTest):
         )
         docs = (
             await self.encrypted_client[self.db.name]
-            .explicit_encryption.find({"encryptedIndexed": find_payload})
+            .explicit_encryption_c10.find({"encryptedIndexed": find_payload})
             .to_list()
         )
 
