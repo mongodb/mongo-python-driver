@@ -104,9 +104,6 @@ from pymongo.synchronous.change_stream import ChangeStream, ClusterChangeStream
 from pymongo.synchronous.client_bulk import _ClientBulk
 from pymongo.synchronous.client_session import _SESSION
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.helpers import (
-    _RetryPolicy,
-)
 from pymongo.synchronous.settings import TopologySettings
 from pymongo.synchronous.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
@@ -888,7 +885,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.read_concern,
         )
 
-        self._retry_policy = _RetryPolicy(attempts=self._options.max_adaptive_retries)
+        self._retry_policy = helpers_shared._RetryPolicy(
+            attempts=self._options.max_adaptive_retries
+        )
 
         self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
 

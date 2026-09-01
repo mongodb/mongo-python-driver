@@ -456,10 +456,7 @@ class TestRetryableReads(IntegrationTest):
 
     @client_context.require_failCommand_fail_point
     def test_backoff_is_not_applied_for_non_overload_errors(self):
-        if _IS_SYNC:
-            mock_target = "pymongo.synchronous.helpers._RetryPolicy.backoff"
-        else:
-            mock_target = "pymongo.helpers._RetryPolicy.backoff"
+        mock_target = "pymongo.helpers_shared._RetryPolicy.backoff"
 
         # Create a client.
         listener = OvertCommandListener()
