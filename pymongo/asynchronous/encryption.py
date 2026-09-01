@@ -1089,7 +1089,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
            Added the `string_opts` parameter, replacing the deprecated
            `text_opts`.
 
-        .. versionchanged:: 4.9
+        .. versionchanged:: 4.15
            Added the `text_opts` parameter.
 
         .. versionchanged:: 4.9
