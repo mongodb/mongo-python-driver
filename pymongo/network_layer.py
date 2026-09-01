@@ -609,10 +609,10 @@ class PyMongoProtocol(BufferedProtocol):
                     uncompressed_size,
                     self._compressor_id,
                 ) = self.process_compression_header()
-                if uncompressed_size > self._max_message_size:
+                if uncompressed_size + 16 > self._max_message_size:
                     self.close(
                         ProtocolError(
-                            f"Uncompressed message size ({uncompressed_size!r}) "
+                            f"Uncompressed message size ({uncompressed_size + 16!r}) "
                             f"is larger than server max message size "
                             f"({self._max_message_size!r})"
                         )
@@ -797,9 +797,9 @@ def receive_message(
         op_code, uncompressed_size, compressor_id = _UNPACK_COMPRESSION_HEADER(
             receive_data(conn, 9, deadline)
         )
-        if uncompressed_size > max_message_size:
+        if uncompressed_size + 16 > max_message_size:
             raise ProtocolError(
-                f"Uncompressed message size ({uncompressed_size!r}) is larger "
+                f"Uncompressed message size ({uncompressed_size + 16!r}) is larger "
                 f"than server max message size ({max_message_size!r})"
             )
         data = decompress(
