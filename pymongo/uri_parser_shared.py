@@ -33,7 +33,6 @@ from typing import (
 )
 from urllib.parse import unquote_plus
 
-from pymongo.asynchronous.srv_resolver import _have_dnspython
 from pymongo.client_options import _parse_ssl_options
 from pymongo.common import (
     INTERNAL_URI_OPTION_NAME_MAP,
@@ -46,6 +45,16 @@ from pymongo.typings import _Address
 
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext
+
+
+def _have_dnspython() -> bool:
+    try:
+        import dns  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
 
 SCHEME = "mongodb://"
 SCHEME_LEN = len(SCHEME)

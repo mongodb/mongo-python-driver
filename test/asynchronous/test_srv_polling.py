@@ -27,8 +27,8 @@ sys.path[0:0] = [""]
 
 import pymongo
 from pymongo import common
-from pymongo.asynchronous.srv_resolver import _have_dnspython
 from pymongo.errors import ConfigurationError
+from pymongo.uri_parser_shared import _have_dnspython
 from test.asynchronous import AsyncPyMongoTestCase, client_knobs, unittest
 from test.asynchronous.utils import async_wait_until
 
