@@ -213,7 +213,6 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Create a new search index on ``self.coll0``.
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = await self.coll0.create_search_index(model)
-        self.addAsyncCleanup(self.drop_and_wait, self.coll0, _NAME)
 
         # Assert that the command returns the name of the index: ``"test-search-index"``.
         self.assertEqual(resp, "test-search-index")
