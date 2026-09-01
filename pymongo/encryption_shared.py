@@ -1,4 +1,4 @@
-# Copyright 2019-present MongoDB, Inc.
+# Copyright 2026-present MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,10 +23,8 @@ from typing import Any, Optional
 
 try:
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import-untyped]
-
-    _HAVE_PYMONGOCRYPT = True
 except ImportError:
-    _HAVE_PYMONGOCRYPT = False
+    pass
 
 from bson.errors import BSONError
 from pymongo.errors import EncryptionError
@@ -48,7 +46,7 @@ def _wrap_encryption_errors() -> Iterator[None]:
 
 class RewrapManyDataKeyResult:
     """Result object returned by a
-    :meth:`~pymongo.encryption.ClientEncryption.rewrap_many_data_key` operation.
+    :meth:`~pymongo.encryption.ClientEncryption.rewrap_many_data_key` or :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.rewrap_many_data_key` operation.
 
     .. versionadded:: 4.2
     """
@@ -60,7 +58,7 @@ class RewrapManyDataKeyResult:
     def bulk_write_result(self) -> Optional[BulkWriteResult]:
         """The result of the bulk write operation used to update the key vault
         collection with one or more rewrapped data keys. If
-        :meth:`~pymongo.encryption.ClientEncryption.rewrap_many_data_key` does not
+        :meth:`~pymongo.encryption.ClientEncryption.rewrap_many_data_key` or :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.rewrap_many_data_key` does not
         find any matching keys to rewrap, no bulk write operation will be executed
         and this field will be ``None``.
         """
