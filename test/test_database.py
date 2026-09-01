@@ -134,10 +134,10 @@ class TestDatabase(IntegrationTest):
 
     def test_get_coll(self):
         db = Database(self.client, "pymongo_test")
-        self.assertEqual(db.test, db["test"])
-        self.assertEqual(db.test, Collection(db, "test"))
-        self.assertNotEqual(db.test, Collection(db, "mike"))
-        self.assertEqual(db.test.mike, db["test.mike"])
+        self.assertEqual(db.coll, db["coll"])
+        self.assertEqual(db.coll, Collection(db, "coll"))
+        self.assertNotEqual(db.coll, Collection(db, "mike"))
+        self.assertEqual(db.coll.mike, db["coll.mike"])
 
     def test_repr(self):
         name = "Database"

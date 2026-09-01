@@ -308,7 +308,7 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
         client = self.client
 
         # 2. Let `coll` be a collection.
-        coll = client.test.test
+        coll = client.db.coll
 
         # 3. Configure the random number generator used for exponential backoff jitter to always return a number as
         # close as possible to `1`.

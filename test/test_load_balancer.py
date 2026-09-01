@@ -52,7 +52,7 @@ class TestLB(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
     def test_exhaust_cursor(self):
-        coll = self.db.test
+        coll = self.db.coll
         coll.drop()
         coll.insert_many([{} for _ in range(150)])
         pool = get_pool(self.client)

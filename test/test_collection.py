@@ -171,21 +171,21 @@ class TestCollection(IntegrationTest):
                 # Unsatisfiable write concern.
                 yield Collection(
                     self.db,
-                    "test",
+                    "coll",
                     write_concern=WriteConcern(w=len(client_context.nodes) + 1),
                 )
         else:
             yield self.db.coll
 
     def test_equality(self):
-        self.assertIsInstance(self.db.test, Collection)
-        self.assertEqual(self.db.test, self.db["test"])
-        self.assertEqual(self.db.test, Collection(self.db, "test"))
-        self.assertEqual(self.db.test.mike, self.db["test.mike"])
-        self.assertEqual(self.db.test["mike"], self.db["test.mike"])
+        self.assertIsInstance(self.db.coll, Collection)
+        self.assertEqual(self.db.coll, self.db["coll"])
+        self.assertEqual(self.db.coll, Collection(self.db, "coll"))
+        self.assertEqual(self.db.coll.mike, self.db["coll.mike"])
+        self.assertEqual(self.db.coll["mike"], self.db["coll.mike"])
 
     def test_hashable(self):
-        self.assertIn(self.db.test.mike, {self.db["test.mike"]})
+        self.assertIn(self.db.coll.mike, {self.db["coll.mike"]})
 
     def test_create(self):
         # No Exception.
@@ -1556,13 +1556,13 @@ class TestCollection(IntegrationTest):
                 # the options that do not collide with it.
                 if "pipeline" not in options:
                     with self.assertRaises(ConfigurationError):
-                        db.test.aggregate([], **options)
+                        db.coll.aggregate([], **options)
                     with self.assertRaises(ConfigurationError):
-                        db.test.aggregate_raw_batches([], **options)
+                        db.coll.aggregate_raw_batches([], **options)
                     with self.assertRaises(ConfigurationError):
                         db.aggregate([], **options)
                 with self.assertRaises(ConfigurationError):
-                    db.test.list_search_indexes(**options)
+                    db.coll.list_search_indexes(**options)
 
     def test_aggregate_raw_bson(self):
         db = self.db
@@ -1795,8 +1795,8 @@ class TestCollection(IntegrationTest):
     def test_exhaust_limit_raises_without_iterating(self):
         # The limit conflict is settled at find(); the mongos wire version is not.
         with self.assertRaises(InvalidOperation):
-            self.db.test.find(cursor_type=CursorType.EXHAUST, limit=5)
-        self.db.test.find(cursor_type=CursorType.EXHAUST)
+            self.db.coll.find(cursor_type=CursorType.EXHAUST, limit=5)
+        self.db.coll.find(cursor_type=CursorType.EXHAUST)
 
     def test_exhaust(self):
         # mongos only serves exhaust cursors from 7.1 onwards (SERVER-57297).

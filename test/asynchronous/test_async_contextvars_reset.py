@@ -42,4 +42,4 @@ class TestAsyncContextVarsReset(AsyncIntegrationTest):
                 # The executor resets these on startup, so each must be present.
                 self.assertIn(name, values)
                 self.assertEqual(values[name], value)
-        await self.client.db.test.delete_many({})
+        await self.client.db.coll.delete_many({})

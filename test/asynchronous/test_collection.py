@@ -171,21 +171,21 @@ class AsyncTestCollection(AsyncIntegrationTest):
                 # Unsatisfiable write concern.
                 yield AsyncCollection(
                     self.db,
-                    "test",
+                    "coll",
                     write_concern=WriteConcern(w=len(async_client_context.nodes) + 1),
                 )
         else:
             yield self.db.coll
 
     async def test_equality(self):
-        self.assertIsInstance(self.db.test, AsyncCollection)
-        self.assertEqual(self.db.test, self.db["test"])
-        self.assertEqual(self.db.test, AsyncCollection(self.db, "test"))
-        self.assertEqual(self.db.test.mike, self.db["test.mike"])
-        self.assertEqual(self.db.test["mike"], self.db["test.mike"])
+        self.assertIsInstance(self.db.coll, AsyncCollection)
+        self.assertEqual(self.db.coll, self.db["coll"])
+        self.assertEqual(self.db.coll, AsyncCollection(self.db, "coll"))
+        self.assertEqual(self.db.coll.mike, self.db["coll.mike"])
+        self.assertEqual(self.db.coll["mike"], self.db["coll.mike"])
 
     async def test_hashable(self):
-        self.assertIn(self.db.test.mike, {self.db["test.mike"]})
+        self.assertIn(self.db.coll.mike, {self.db["coll.mike"]})
 
     async def test_create(self):
         # No Exception.
@@ -1574,13 +1574,13 @@ class AsyncTestCollection(AsyncIntegrationTest):
                 # the options that do not collide with it.
                 if "pipeline" not in options:
                     with self.assertRaises(ConfigurationError):
-                        await db.test.aggregate([], **options)
+                        await db.coll.aggregate([], **options)
                     with self.assertRaises(ConfigurationError):
-                        await db.test.aggregate_raw_batches([], **options)
+                        await db.coll.aggregate_raw_batches([], **options)
                     with self.assertRaises(ConfigurationError):
                         await db.aggregate([], **options)
                 with self.assertRaises(ConfigurationError):
-                    await db.test.list_search_indexes(**options)
+                    await db.coll.list_search_indexes(**options)
 
     async def test_aggregate_raw_bson(self):
         db = self.db
@@ -1813,8 +1813,8 @@ class AsyncTestCollection(AsyncIntegrationTest):
     async def test_exhaust_limit_raises_without_iterating(self):
         # The limit conflict is settled at find(); the mongos wire version is not.
         with self.assertRaises(InvalidOperation):
-            self.db.test.find(cursor_type=CursorType.EXHAUST, limit=5)
-        self.db.test.find(cursor_type=CursorType.EXHAUST)
+            self.db.coll.find(cursor_type=CursorType.EXHAUST, limit=5)
+        self.db.coll.find(cursor_type=CursorType.EXHAUST)
 
     async def test_exhaust(self):
         # mongos only serves exhaust cursors from 7.1 onwards (SERVER-57297).

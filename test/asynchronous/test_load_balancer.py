@@ -52,7 +52,7 @@ class TestLB(AsyncIntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
     async def test_exhaust_cursor(self):
-        coll = self.db.test
+        coll = self.db.coll
         await coll.drop()
         await coll.insert_many([{} for _ in range(150)])
         pool = await async_get_pool(self.client)

@@ -135,10 +135,10 @@ class TestDatabase(AsyncIntegrationTest):
 
     def test_get_coll(self):
         db = AsyncDatabase(self.client, "pymongo_test")
-        self.assertEqual(db.test, db["test"])
-        self.assertEqual(db.test, AsyncCollection(db, "test"))
-        self.assertNotEqual(db.test, AsyncCollection(db, "mike"))
-        self.assertEqual(db.test.mike, db["test.mike"])
+        self.assertEqual(db.coll, db["coll"])
+        self.assertEqual(db.coll, AsyncCollection(db, "coll"))
+        self.assertNotEqual(db.coll, AsyncCollection(db, "mike"))
+        self.assertEqual(db.coll.mike, db["coll.mike"])
 
     def test_repr(self):
         name = "AsyncDatabase"

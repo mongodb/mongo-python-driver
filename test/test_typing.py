@@ -544,7 +544,7 @@ class TestDocumentType(PyMongoTestCase):
         client: MongoClient[dict[str, str]] = MongoClient("test")
         db = client.test
         with client.start_session() as session:
-            index = db.test.create_index([("user_id", ASCENDING)], unique=True, session=session)
+            index = db.coll.create_index([("user_id", ASCENDING)], unique=True, session=session)
             assert isinstance(index, str)
 
 
