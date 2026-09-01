@@ -23,6 +23,7 @@ import sys
 import threading
 from unittest import mock
 
+from pymongo._asyncio_task import create_task
 from pymongo.common import MAX_ADAPTIVE_RETRIES
 from test.asynchronous.utils import async_set_fail_point, flaky
 
@@ -83,17 +84,21 @@ class InsertEventListener(EventListener):
             event.command_name == "insert"
             and event.reply.get("writeConcernError", {}).get("code", None) == 91
         ):
-            async_client_context.client.admin.command(
-                {
-                    "configureFailPoint": "failCommand",
-                    "mode": {"times": 1},
-                    "data": {
-                        "errorCode": 10107,
-                        "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
-                        "failCommands": ["insert"],
-                    },
-                }
-            )
+            cmd = {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 1},
+                "data": {
+                    "errorCode": 10107,
+                    "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
+                    "failCommands": ["insert"],
+                },
+            }
+            if _IS_SYNC:
+                async_client_context.client.admin.command(cmd)
+            else:
+                # succeeded() cannot await, so the fail point may be configured after
+                # the driver dispatches the retry it is meant to fail.
+                self._task = create_task(async_client_context.client.admin.command(cmd))  # type: ignore[arg-type]
 
 
 def retryable_single_statement_ops(coll):

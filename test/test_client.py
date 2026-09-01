@@ -31,7 +31,6 @@ import socket
 import struct
 import subprocess
 import sys
-import threading
 import time
 import uuid
 from collections.abc import Iterable
@@ -112,6 +111,7 @@ from test import (
     remove_all_users,
     unittest,
 )
+from test.helpers import ExceptionCatchingTask
 from test.pymongo_mocks import MockClient
 from test.test_binary import BinaryData
 from test.utils import (
@@ -1925,7 +1925,6 @@ class TestClient(IntegrationTest):
         if not negotiated:
             self.skipTest("server did not negotiate compression for any compressor")
 
-    @client_context.require_sync
     def test_reset_during_update_pool(self):
         client = self.rs_or_single_client(minPoolSize=10)
         client.admin.command("ping")
@@ -1933,39 +1932,30 @@ class TestClient(IntegrationTest):
         generation = pool.gen.get_overall()
 
         # Continuously reset the pool.
-        class ResetPoolThread(threading.Thread):
-            def __init__(self, pool):
-                super().__init__()
-                self.running = True
-                self.pool = pool
+        running = True
 
-            def stop(self):
-                self.running = False
+        def reset_pool():
+            while running:
+                exc = AutoReconnect("mock pool error")
+                ctx = _ErrorContext(exc, 0, pool.gen.get_overall(), False, None)
+                client._topology.handle_error(pool.address, ctx)
+                time.sleep(0.001)
 
-            def _run(self):
-                while self.running:
-                    exc = AutoReconnect("mock pool error")
-                    ctx = _ErrorContext(exc, 0, pool.gen.get_overall(), False, None)
-                    client._topology.handle_error(pool.address, ctx)
-                    time.sleep(0.001)
-
-            def run(self):
-                self._run()
-
-        t = ResetPoolThread(pool)
+        t = ExceptionCatchingTask(target=reset_pool)
         t.start()
 
         # Ensure that update_pool completes without error even when the pool
         # is reset concurrently.
         try:
-            while True:
+            while t.is_alive():
                 for _ in range(10):
                     client._topology.update_pool()
                 if generation != pool.gen.get_overall():
                     break
         finally:
-            t.stop()
+            running = False
             t.join()
+        self.assertIsNone(t.exc)
         client.admin.command("ping")
 
     def test_background_connections_do_not_hold_locks(self):
