@@ -29,15 +29,6 @@ if TYPE_CHECKING:
 _IS_SYNC = False
 
 
-def _have_dnspython() -> bool:
-    try:
-        import dns  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
-
-
 # dnspython can return bytes or str from various parts
 # of its API depending on version. We always want str.
 def maybe_decode(text: Union[str, bytes]) -> str:
