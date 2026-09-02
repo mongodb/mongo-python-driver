@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import Any
 
 from utils import DRIVERS_TOOLS, ROOT, get_test_options, run_command
@@ -11,6 +12,10 @@ def set_env(name: str, value: Any = "1") -> None:
 
 
 def start_server():
+    if {"-h", "--help"} & set(sys.argv[1:]):
+        run_command(["bash", f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh", "start", "-h"])
+        return
+
     opts, extra_opts = get_test_options(
         "Run a MongoDB server.  All given flags will be passed to run-mongodb.sh in DRIVERS_TOOLS.",
         require_sub_test_name=False,
