@@ -26,7 +26,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@e14f6900d9b9315b1bafbcb5c5400a9728a4c992
+        uses: blink1073/drivers-github-tools/python/setup@0fd560f3037493e1d2ff42a0b245646738a8a705
         with:
           python-version: "3.10"
       # Runs before the install so a stale lock fails in seconds rather than
@@ -80,7 +80,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@e14f6900d9b9315b1bafbcb5c5400a9728a4c992
+        uses: blink1073/drivers-github-tools/python/setup@0fd560f3037493e1d2ff42a0b245646738a8a705
         with:
           # The beta Python here relies on the action's prerelease default.
           python-version: ${{ matrix.python-version }}
@@ -102,7 +102,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@e14f6900d9b9315b1bafbcb5c5400a9728a4c992
+        uses: blink1073/drivers-github-tools/python/setup@0fd560f3037493e1d2ff42a0b245646738a8a705
         with:
           python-version: "3.10"
       - id: setup-mongodb
@@ -127,10 +127,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@e14f6900d9b9315b1bafbcb5c5400a9728a4c992
+        uses: blink1073/drivers-github-tools/python/setup@0fd560f3037493e1d2ff42a0b245646738a8a705
         with:
           python-version: "3.10"
-          run-install: "true"
+          just-recipes: "install"
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
@@ -148,10 +148,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@e14f6900d9b9315b1bafbcb5c5400a9728a4c992
+        uses: blink1073/drivers-github-tools/python/setup@0fd560f3037493e1d2ff42a0b245646738a8a705
         with:
           python-version: "3.10"
-          run-install: "true"
+          just-recipes: "install"
       - name: Build docs
         run: just docs
 
@@ -166,10 +166,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@e14f6900d9b9315b1bafbcb5c5400a9728a4c992
+        uses: blink1073/drivers-github-tools/python/setup@0fd560f3037493e1d2ff42a0b245646738a8a705
         with:
           python-version: "${{matrix.python}}"
-          run-install: "true"
+          just-recipes: "install"
       - name: Run typecheck
         run: |
           just typing
@@ -182,10 +182,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: blink1073/drivers-github-tools/python/setup@e14f6900d9b9315b1bafbcb5c5400a9728a4c992
+        uses: blink1073/drivers-github-tools/python/setup@0fd560f3037493e1d2ff42a0b245646738a8a705
         with:
           python-version: "3.10"
-          run-install: "true"
+          just-recipes: "install"
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
       - name: Run tests
@@ -267,7 +267,7 @@ jobs:
           with:
             persist-credentials: false
         - name: Install Python tooling
-          uses: blink1073/drivers-github-tools/python/setup@e14f6900d9b9315b1bafbcb5c5400a9728a4c992
+          uses: blink1073/drivers-github-tools/python/setup@0fd560f3037493e1d2ff42a0b245646738a8a705
           with:
             python-version: "3.9"
         - id: setup-mongodb
