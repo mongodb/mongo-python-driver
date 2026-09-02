@@ -61,7 +61,7 @@ class TestGridFileNoConnect(UnitTest):
 
     @classmethod
     def setUpClass(cls):
-        cls.db = MongoClient(connect=False).pymongo_test
+        cls.db = MongoClient(connect=False)["pymongo_test"]
 
     def test_grid_in_custom_opts(self):
         self.assertRaises(TypeError, GridIn, "foo")

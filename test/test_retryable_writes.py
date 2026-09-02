@@ -383,7 +383,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
         )
 
         with self.assertRaises(AutoReconnect):
-            client.t.t.insert_one({"x": 1})
+            client.db.coll.insert_one({"x": 1})
 
         # Disable failpoints on each mongos
         for client in mongos_clients:
@@ -433,7 +433,7 @@ class TestWriteConcernError(IntegrationTest):
         with self.fail_point(self.fail_insert):
             with self.client.start_session() as s:
                 s._start_retryable_write()
-                result = self.client.pymongo_test.command(
+                result = self.db.command(
                     "insert",
                     "testcoll",
                     documents=[{"_id": 1}],
@@ -478,7 +478,7 @@ class TestPoolPausedError(IntegrationTest):
         for _ in range(10):
             cmap_listener.reset()
             cmd_listener.reset()
-            threads = [InsertThread(client.pymongo_test.test) for _ in range(2)]
+            threads = [InsertThread(client.pymongo_test.coll) for _ in range(2)]
             fail_command = {
                 "mode": {"times": 1},
                 "data": {
@@ -537,7 +537,7 @@ class TestPoolPausedError(IntegrationTest):
     ):
         cmd_listener = InsertEventListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[cmd_listener])
-        client.test.test.drop()
+        client.db.coll.drop()
         cmd_listener.reset()
         client.admin.command(
             {
@@ -553,7 +553,7 @@ class TestPoolPausedError(IntegrationTest):
             }
         )
         with self.assertRaises(WriteConcernError) as exc:
-            client.test.test.insert_one({"_id": 1})
+            client.db.coll.insert_one({"_id": 1})
         self.assertEqual(exc.exception.code, 91)
         client.admin.command(
             {
@@ -667,7 +667,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         # Attempt an insertOne operation on any record for any database and collection.
         # Expect the insertOne to fail with a server error.
         with self.assertRaises(NotPrimaryError) as exc:
-            client.test.test.insert_one({})
+            client.db.coll.insert_one({})
 
         # Assert that the error code of the server error is 10107.
         assert exc.exception.errors["code"] == 10107  # type:ignore[call-overload]
@@ -720,7 +720,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         # Attempt an insertOne operation on any record for any database and collection.
         # Expect the insertOne to fail with a server error.
         with self.assertRaises(NotPrimaryError) as exc:
-            client.test.test.insert_one({})
+            client.db.coll.insert_one({})
 
         # Assert that the error code of the server error is 91.
         assert exc.exception.errors["code"] == 91  # type:ignore[call-overload]
@@ -774,7 +774,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         # Attempt an insertOne operation on any record for any database and collection.
         # Expect the insertOne to fail with a server error.
         with self.assertRaises(PyMongoError) as exc:
-            client.test.test.insert_one({})
+            client.db.coll.insert_one({})
 
         # Assert that the error code of the server error is 91.
         assert exc.exception.errors["code"] == 91
@@ -825,7 +825,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         self.addCleanup(self.configure_fail_point_sync, {}, off=True)
 
         with self.assertRaises(PyMongoError):
-            client.test.test.insert_one({"x": 1})
+            client.db.coll.insert_one({"x": 1})
 
         started_inserts = [e for e in listener.started_events if e.command_name == "insert"]
         self.assertEqual(len(started_inserts), MAX_ADAPTIVE_RETRIES + 1)
@@ -878,7 +878,7 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         # Perform a findOne operation with coll. Expect the operation to fail.
         with mock.patch(mock_target, return_value=0) as mock_backoff:
             with self.assertRaises(PyMongoError):
-                client.test.test.insert_one({})
+                client.db.coll.insert_one({})
 
         # Assert that backoff was applied only once for the initial overload error and not for the subsequent non-overload retryable errors.
         self.assertEqual(mock_backoff.call_count, 1)
