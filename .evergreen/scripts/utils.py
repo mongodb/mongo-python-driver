@@ -95,6 +95,20 @@ NO_RUN_ORCHESTRATION = [
 # Mapping of env variables to options
 OPTION_TO_ENV_VAR = {"cov": "COVERAGE", "crypt_shared": "TEST_CRYPT_SHARED"}
 
+# Options that consume a following value, so it isn't mistaken for the test_name
+# positional when inferring known_test_name below.
+OPTIONS_WITH_VALUES = ["--green-framework", "--compressor", "--mongodb-api-version"]
+
+
+def _first_positional_arg(argv: list[str]) -> str | None:
+    args = iter(argv)
+    for arg in args:
+        if arg in OPTIONS_WITH_VALUES:
+            next(args, None)
+        elif not arg.startswith("-"):
+            return arg
+    return None
+
 
 def get_test_options(
     description, require_sub_test_name=True, allow_extra_opts=False
@@ -104,9 +118,9 @@ def get_test_options(
     known_test_name = None
     sub_test_choices = None
     if require_sub_test_name:
-        positional_args = [arg for arg in sys.argv[1:] if not arg.startswith("-")]
-        if positional_args and positional_args[0] in SUB_TEST_NAME_MAP:
-            known_test_name = positional_args[0]
+        first_positional = _first_positional_arg(sys.argv[1:])
+        if first_positional in SUB_TEST_NAME_MAP:
+            known_test_name = first_positional
             sub_test_choices = SUB_TEST_NAME_MAP[known_test_name]
             description = f"{description.rstrip('.')} for '{known_test_name}'."
 
