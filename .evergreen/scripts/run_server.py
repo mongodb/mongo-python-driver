@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 from typing import Any
 
@@ -19,9 +20,12 @@ def start_server():
         )
 
     if {"-h", "--help"} & set(sys.argv[1:]):
-        run_command(
-            ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh", "start", "-h"],
+        # Forward straight to run-mongodb.sh's own help, without run_command's
+        # "Running command..." logging noise.
+        subprocess.run(  # noqa: S603
+            ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh", "start", "-h"],  # noqa: S607
             cwd=DRIVERS_TOOLS,
+            check=True,
         )
         return
 
