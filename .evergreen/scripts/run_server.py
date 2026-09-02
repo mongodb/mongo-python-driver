@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 from utils import DRIVERS_TOOLS, ROOT, get_test_options, run_command
@@ -13,12 +14,15 @@ def set_env(name: str, value: Any = "1") -> None:
 
 
 def start_server():
+    run_mongodb_script = (
+        Path(DRIVERS_TOOLS) / ".evergreen" / "run-mongodb.sh" if DRIVERS_TOOLS else None
+    )
     want_help = bool({"-h", "--help"} & set(sys.argv[1:]))
-    if want_help and DRIVERS_TOOLS:
+    if want_help and run_mongodb_script and run_mongodb_script.is_file():
         # Forward straight to run-mongodb.sh's own help, without run_command's
         # "Running command..." logging noise.
         subprocess.run(  # noqa: S603
-            ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh", "start", "-h"],  # noqa: S607
+            ["bash", str(run_mongodb_script), "start", "-h"],  # noqa: S607
             cwd=DRIVERS_TOOLS,
             check=True,
         )
