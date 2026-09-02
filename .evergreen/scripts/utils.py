@@ -134,15 +134,13 @@ def get_test_options(
             metavar=known_test_name or "test_name",
             help=test_name_help,
         )
-        if sub_test_choices:
-            example_sub_test_name = sub_test_choices[0]
-            help_text = (
-                f"The optional sub test name, for example {example_sub_test_name!r}. "
-                f"One of: {', '.join(sub_test_choices)}."
-            )
+        if known_test_name:
+            example_sub_test_name = sub_test_choices[0] if sub_test_choices else "azure"
+            help_text = f"The sub test name, for example {example_sub_test_name!r}. Required for {known_test_name!r}."
+            if sub_test_choices:
+                help_text += f" One of: {', '.join(sub_test_choices)}."
         else:
-            example_sub_test_name = "azure"
-            help_text = f"The optional sub test name, for example {example_sub_test_name!r}."
+            help_text = "The optional sub test name, for example 'azure'."
         parser.add_argument(
             "sub_test_name",
             nargs="?",

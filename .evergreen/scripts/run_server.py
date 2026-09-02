@@ -13,7 +13,10 @@ def set_env(name: str, value: Any = "1") -> None:
 
 def start_server():
     if {"-h", "--help"} & set(sys.argv[1:]):
-        run_command(["bash", f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh", "start", "-h"])
+        run_command(
+            ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh", "start", "-h"],
+            cwd=DRIVERS_TOOLS,
+        )
         return
 
     opts, extra_opts = get_test_options(
