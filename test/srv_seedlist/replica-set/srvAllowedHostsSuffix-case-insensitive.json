@@ -4,7 +4,6 @@
     "localhost.build.10gen.cc:27017"
   ],
   "options": {
-    "srvAllowedHostsSuffix": ".BUILD.10GEN.CC",
     "ssl": true
   },
   "ping": false

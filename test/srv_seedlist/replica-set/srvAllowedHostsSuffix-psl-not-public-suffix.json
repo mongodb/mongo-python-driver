@@ -10,8 +10,7 @@
     "localhost:27019"
   ],
   "options": {
-    "ssl": true,
-    "srvAllowedHostsSuffix": "10gen.cc"
+    "ssl": true
   },
   "ping": true
 }

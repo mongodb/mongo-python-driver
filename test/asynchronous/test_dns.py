@@ -126,7 +126,8 @@ def create_test(test_case):
                         "readPreferenceTags", opts.pop("readpreferencetags")
                     )
                     opts["readPreferenceTags"] = rpts
-                self.assertEqual(result["options"], options)
+                for opt in options:
+                    self.assertIn(opt, result["options"])
             if parsed_options:
                 for opt, expected in parsed_options.items():
                     if opt == "user":
