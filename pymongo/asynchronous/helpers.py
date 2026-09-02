@@ -19,20 +19,16 @@ from __future__ import annotations
 import asyncio
 import builtins
 import functools
-import random
 import socket
 import sys
-import time as time  # noqa: PLC0414 # needed in sync version
 from typing import (
     Any,
     Callable,
-    Optional,
     TypeVar,
     cast,
 )
 
-from pymongo import _csot, _op_id
-from pymongo.common import MAX_ADAPTIVE_RETRIES
+from pymongo import _op_id
 from pymongo.errors import (
     OperationFailure,
 )
@@ -78,52 +74,6 @@ def _handle_reauth(func: F) -> F:
             raise
 
     return cast(F, inner)
-
-
-_BACKOFF_INITIAL = 0.1
-_BACKOFF_MAX = 10
-
-
-def _backoff(
-    attempt: int,
-    base_backoff: float,
-    max_delay: float = _BACKOFF_MAX,
-) -> float:
-    jitter = random.random()  # noqa: S311
-    return jitter * min(base_backoff * (2**attempt), max_delay)
-
-
-class _RetryPolicy:
-    """A retry limiter that performs exponential backoff with jitter."""
-
-    def __init__(
-        self,
-        attempts: int = MAX_ADAPTIVE_RETRIES,
-        backoff_initial: float = _BACKOFF_INITIAL,
-        backoff_max: float = _BACKOFF_MAX,
-    ):
-        self.attempts = attempts
-        self.backoff_initial = backoff_initial
-        self.backoff_max = backoff_max
-
-    def backoff(self, attempt: int, base_backoff: Optional[float] = None) -> float:
-        """Return the actual backoff duration for the given attempt and base backoff."""
-        return _backoff(
-            max(0, attempt),
-            self.backoff_initial if base_backoff is None or base_backoff < 0 else base_backoff,
-            self.backoff_max,
-        )
-
-    async def should_retry(self, attempt: int, delay: float) -> bool:
-        """Return if we have retry attempts remaining and the next backoff would not exceed a timeout."""
-        if attempt > self.attempts:
-            return False
-
-        if _csot.get_timeout():
-            if time.monotonic() + delay > _csot.get_deadline():
-                return False
-
-        return True
 
 
 async def _getaddrinfo(

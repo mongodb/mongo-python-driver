@@ -62,9 +62,6 @@ from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterCh
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
 from pymongo.asynchronous.client_session import _SESSION
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
-from pymongo.asynchronous.helpers import (
-    _RetryPolicy,
-)
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology
 from pymongo.client_options import ClientOptions
@@ -72,28 +69,27 @@ from pymongo.client_session_shared import SessionOptions, TransactionOptions, _E
 from pymongo.driver_info import DriverInfo
 from pymongo.errors import (
     AutoReconnect,
-    BulkWriteError,
     ClientBulkWriteException,
     ConfigurationError,
     ConnectionFailure,
     InvalidOperation,
-    NotPrimaryError,
     OperationFailure,
     PyMongoError,
     ServerSelectionTimeoutError,
-    WaitQueueTimeoutError,
 )
 from pymongo.lock import (
     _HAS_REGISTER_AT_FORK,
     _async_create_lock,
-    _release_locks,
 )
 from pymongo.logger import (
-    _CLIENT_LOGGER,
     _log_client_error,
-    _log_or_warn,
 )
 from pymongo.message import _CursorAddress, _GetMore, _Query
+from pymongo.mongo_client_shared import (
+    _add_retryable_write_error,
+    _after_fork_child,
+    _detect_external_db,
+)
 from pymongo.monitoring import ConnectionClosedReason, _EventListeners
 from pymongo.operations import (
     DeleteMany,
@@ -887,7 +883,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._options.read_concern,
         )
 
-        self._retry_policy = _RetryPolicy(attempts=self._options.max_adaptive_retries)
+        self._retry_policy = helpers_shared._RetryPolicy(
+            attempts=self._options.max_adaptive_retries
+        )
 
         self._init_based_on_options(self._seeds, srv_max_hosts, srv_service_name)
 
@@ -2574,45 +2572,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return await blk.execute(session, _Op.BULK_WRITE)
 
 
-def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
-    """Return the server response from PyMongo exception or None."""
-    if isinstance(exc, (BulkWriteError, ClientBulkWriteException)):
-        # Check the last writeConcernError to determine if this
-        # BulkWriteError is retryable.
-        wces = exc.details["writeConcernErrors"]
-        return wces[-1] if wces else None
-    if isinstance(exc, (NotPrimaryError, OperationFailure)):
-        return cast(Mapping[str, Any], exc.details)
-    return None
-
-
-def _add_retryable_write_error(exc: PyMongoError) -> None:
-    doc = _retryable_error_doc(exc)
-    if doc:
-        code = doc.get("code", 0)
-        # retryWrites on MMAPv1 should raise an actionable error.
-        if code == 20 and str(exc).startswith("Transaction numbers"):
-            errmsg = (
-                "This MongoDB deployment does not support "
-                "retryable writes. Please add retryWrites=false "
-                "to your connection string."
-            )
-            raise OperationFailure(errmsg, code, exc.details)  # type: ignore[attr-defined]
-        for label in doc.get("errorLabels", []):
-            exc._add_error_label(label)
-
-    # AsyncConnection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
-    # handled above.
-    if isinstance(exc, ClientBulkWriteException):
-        exc_to_check = exc.error
-    else:
-        exc_to_check = exc
-    if isinstance(exc_to_check, ConnectionFailure) and not isinstance(
-        exc_to_check, (NotPrimaryError, WaitQueueTimeoutError)
-    ):
-        exc_to_check._add_error_label("RetryableWriteError")
-
-
 class _ClientCheckout:
     """Context manager for checking out a connection from the pool.
 
@@ -3028,7 +2987,7 @@ class _ClientConnectionRetryable(Generic[T]):
                         self._attempt_number,
                         self._base_backoff_ms / 1000 if self._base_backoff_ms else None,
                     )
-                    if not await self._retry_policy.should_retry(self._attempt_number, delay):
+                    if not self._retry_policy.should_retry(self._attempt_number, delay):
                         if exc_to_check.has_error_label("NoWritesPerformed") and self._last_error:
                             raise self._last_error from exc
                         else:
@@ -3144,45 +3103,8 @@ class _ClientConnectionRetryable(Generic[T]):
                 return await self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 
-def _after_fork_child() -> None:
-    """Releases the locks in child process and resets the
-    topologies in all MongoClients.
-    """
-    # Reinitialize locks
-    _release_locks()
-
-    # Perform cleanup in clients (i.e. get rid of topology)
-    for _, client in AsyncMongoClient._clients.items():
-        client._after_fork()
-
-
-def _detect_external_db(entity: str) -> bool:
-    """Detects external database hosts and logs an informational message at the INFO level."""
-    entity = entity.lower()
-    cosmos_db_hosts = [".cosmos.azure.com"]
-    document_db_hosts = [".docdb.amazonaws.com", ".docdb-elastic.amazonaws.com"]
-
-    for host in cosmos_db_hosts:
-        if entity.endswith(host):
-            _log_or_warn(
-                _CLIENT_LOGGER,
-                "You appear to be connected to a CosmosDB cluster. For more information regarding feature "
-                "compatibility and support please visit https://www.mongodb.com/supportability/cosmosdb",
-            )
-            return True
-    for host in document_db_hosts:
-        if entity.endswith(host):
-            _log_or_warn(
-                _CLIENT_LOGGER,
-                "You appear to be connected to a DocumentDB cluster. For more information regarding feature "
-                "compatibility and support please visit https://www.mongodb.com/supportability/documentdb",
-            )
-            return True
-    return False
-
-
 if _HAS_REGISTER_AT_FORK:
     # This will run in the same thread as the fork was called.
     # If we fork in a critical region on the same thread, it should break.
     # This is fine since we would never call fork directly from a critical region.
-    os.register_at_fork(after_in_child=_after_fork_child)
+    os.register_at_fork(after_in_child=lambda: _after_fork_child(AsyncMongoClient._clients))
