@@ -12,6 +12,12 @@ def set_env(name: str, value: Any = "1") -> None:
 
 
 def start_server():
+    if not DRIVERS_TOOLS:
+        raise ValueError(
+            "DRIVERS_TOOLS is not set; run `just run-server` from an Evergreen task "
+            "or set DRIVERS_TOOLS to a drivers-evergreen-tools checkout."
+        )
+
     if {"-h", "--help"} & set(sys.argv[1:]):
         run_command(
             ["bash", f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh", "start", "-h"],

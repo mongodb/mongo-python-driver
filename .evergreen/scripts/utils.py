@@ -104,12 +104,10 @@ def get_test_options(
     known_test_name = None
     sub_test_choices = None
     if require_sub_test_name:
-        for arg in sys.argv[1:]:
-            if arg in SUB_TEST_NAME_MAP:
-                known_test_name = arg
-                sub_test_choices = SUB_TEST_NAME_MAP[arg]
-                break
-        if known_test_name:
+        positional_args = [arg for arg in sys.argv[1:] if not arg.startswith("-")]
+        if positional_args and positional_args[0] in SUB_TEST_NAME_MAP:
+            known_test_name = positional_args[0]
+            sub_test_choices = SUB_TEST_NAME_MAP[known_test_name]
             description = f"{description.rstrip('.')} for '{known_test_name}'."
 
     parser = argparse.ArgumentParser(
