@@ -977,6 +977,15 @@ class BaseObject:
             return DEFAULT_WRITE_CONCERN
         return self.write_concern
 
+    def _write_concern_for_cmd(
+        self, cmd: Mapping[str, Any], session: Optional[_AgnosticClientSession]
+    ) -> WriteConcern:
+        raw_wc = cmd.get("writeConcern")
+        if raw_wc is not None:
+            return WriteConcern(**raw_wc)
+        else:
+            return self._write_concern_for(session)
+
     @property
     def read_preference(self) -> _ServerMode:
         """Read only access to the read preference of this instance.
