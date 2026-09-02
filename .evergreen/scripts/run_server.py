@@ -13,13 +13,8 @@ def set_env(name: str, value: Any = "1") -> None:
 
 
 def start_server():
-    if not DRIVERS_TOOLS:
-        raise ValueError(
-            "DRIVERS_TOOLS is not set; run `just run-server` from an Evergreen task "
-            "or set DRIVERS_TOOLS to a drivers-evergreen-tools checkout."
-        )
-
-    if {"-h", "--help"} & set(sys.argv[1:]):
+    want_help = bool({"-h", "--help"} & set(sys.argv[1:]))
+    if want_help and DRIVERS_TOOLS:
         # Forward straight to run-mongodb.sh's own help, without run_command's
         # "Running command..." logging noise.
         subprocess.run(  # noqa: S603
@@ -28,6 +23,14 @@ def start_server():
             check=True,
         )
         return
+
+    # DRIVERS_TOOLS is only needed to actually start a server. When it's unset and
+    # -h/--help was requested, fall through to get_test_options' own argparse help below.
+    if not want_help and not DRIVERS_TOOLS:
+        raise ValueError(
+            "DRIVERS_TOOLS is not set; run `just run-server` from an Evergreen task "
+            "or set DRIVERS_TOOLS to a drivers-evergreen-tools checkout."
+        )
 
     opts, extra_opts = get_test_options(
         "Run a MongoDB server.  All given flags will be passed to run-mongodb.sh in DRIVERS_TOOLS.",
