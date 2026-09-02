@@ -170,9 +170,9 @@ class _TestPoolingBase(IntegrationTest):
         self.c = self.rs_or_single_client()
         db = self.c[DB]
         db.unique.drop()
-        db.test.drop()
+        db.coll.drop()
         db.unique.insert_one({"_id": "jesse"})
-        db.test.insert_many([{} for _ in range(10)])
+        db.coll.insert_many([{} for _ in range(10)])
 
     def create_pool(self, pair=None, *args, **kwargs):
         if pair is None:
@@ -458,14 +458,14 @@ class TestPooling(_TestPoolingBase):
 
     def test_maxConnecting(self):
         client = self.rs_or_single_client()
-        self.client.test.test.insert_one({})
-        self.addCleanup(self.client.test.test.delete_many, {})
+        self.client.db.coll.insert_one({})
+        self.addCleanup(self.client.db.coll.delete_many, {})
         pool = get_pool(client)
         docs = []
 
         # Run 50 short running operations
         def find_one():
-            docs.append(client.test.test.find_one({}))
+            docs.append(client.db.coll.find_one({}))
 
         tasks = [ConcurrentRunner(target=find_one) for _ in range(50)]
         for task in tasks:
@@ -506,12 +506,12 @@ class TestPooling(_TestPoolingBase):
             },
         }
 
-        client.db.t.insert_one({"x": 1})
+        client.db.coll.insert_one({"x": 1})
 
         with self.fail_point(mock_connection_timeout):
             with self.assertRaises(Exception) as error:
                 with timeout(0.5):
-                    client.db.t.find_one({"$where": delay(2)})
+                    client.db.coll.find_one({"$where": delay(2)})
 
         self.assertIn("(configured timeouts: timeoutMS: 500.0ms", str(error.exception))
 
@@ -530,11 +530,11 @@ class TestPooling(_TestPoolingBase):
             },
         }
 
-        client.db.t.insert_one({"x": 1})
+        client.db.coll.insert_one({"x": 1})
 
         with self.fail_point(mock_connection_timeout):
             with self.assertRaises(Exception) as error:
-                client.db.t.find_one({"$where": delay(2)})
+                client.db.coll.find_one({"$where": delay(2)})
 
         self.assertIn(
             "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 20000.0ms)",
@@ -615,7 +615,7 @@ class TestPoolMaxSize(_TestPoolingBase):
     def test_max_pool_size(self):
         max_pool_size = 4
         c = self.rs_or_single_client(maxPoolSize=max_pool_size)
-        collection = c[DB].test
+        collection = c[DB].coll
 
         # Need one document.
         collection.drop()
@@ -654,7 +654,7 @@ class TestPoolMaxSize(_TestPoolingBase):
     )
     def test_max_pool_size_none(self):
         c = self.rs_or_single_client(maxPoolSize=None)
-        collection = c[DB].test
+        collection = c[DB].coll
 
         # Need one document.
         collection.drop()

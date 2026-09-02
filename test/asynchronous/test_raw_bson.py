@@ -38,7 +38,7 @@ class TestRawBSONDocument(AsyncIntegrationTest):
 
     async def asyncTearDown(self):
         if async_client_context.connected:
-            await self.client.pymongo_test.test_raw.drop()
+            await self.db.test_raw.drop()
 
     @async_client_context.require_connection
     async def test_round_trip_view_backed_document(self):
@@ -88,7 +88,7 @@ class TestRawBSONDocument(AsyncIntegrationTest):
             "date": datetime.datetime(2015, 6, 3, 18, 40, 50, 826000),
             "_id": uuid.UUID("026fab8f-975f-4965-9fbf-85ad874c60ff"),
         }
-        db = self.client.pymongo_test
+        db = self.db
         coll = db.get_collection(
             "test_raw", codec_options=CodecOptions(uuid_representation=JAVA_LEGACY)
         )
@@ -104,7 +104,7 @@ class TestRawBSONDocument(AsyncIntegrationTest):
     @async_client_context.require_connection
     async def test_raw_bson_document_embedded(self):
         doc = {"embedded": self.document}
-        db = self.client.pymongo_test
+        db = self.db
         await db.test_raw.insert_one(doc)
         result = await db.test_raw.find_one()
         assert result is not None
