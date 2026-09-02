@@ -47,15 +47,6 @@ if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext
 
 
-def _have_dnspython() -> bool:
-    try:
-        import dns  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
-
-
 SCHEME = "mongodb://"
 SCHEME_LEN = len(SCHEME)
 SRV_SCHEME = "mongodb+srv://"
@@ -112,6 +103,15 @@ URI_OPTIONS = frozenset(
         "zlibCompressionLevel",
     ]
 )
+
+
+def _have_dnspython() -> bool:
+    try:
+        import dns  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
 
 
 def _unquoted_percent(s: str) -> bool:
