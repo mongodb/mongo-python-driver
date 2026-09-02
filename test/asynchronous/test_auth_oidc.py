@@ -197,7 +197,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Create default OIDC client with authMechanism=MONGODB-OIDC.
         client = await self.create_client()
         # Perform a find operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
         # Close the client.
         await client.close()
 
@@ -205,7 +205,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Create a client with MONGODB_URI_SINGLE, a username of test_user1, authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = await self.create_client(username="test_user1")
         # Perform a find operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
         # Close the client.
         await client.close()
 
@@ -215,7 +215,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Create a client with MONGODB_URI_MULTI, a username of test_user1, authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = await self.create_client(self.uri_multiple, username="test_user1")
         # Perform a find operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
         # Close the client.
         await client.close()
 
@@ -226,7 +226,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Create a client with MONGODB_URI_MULTI, a username of test_user2, authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = await self.create_client(self.uri_multiple, username="test_user2")
         # Perform a find operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
         # Close the client.
         await client.close()
 
@@ -237,7 +237,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client(self.uri_multiple)
         # Assert that a find operation fails.
         with self.assertRaises(OperationFailure):
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
         # Close the client.
         await client.close()
 
@@ -248,7 +248,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client(authmechanismproperties=props)
         # Assert that a find operation fails with a client-side error.
         with self.assertRaises(ConfigurationError):
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
         # Close the client.
         await client.close()
 
@@ -267,7 +267,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             )
             # Assert that a find operation fails with a client-side error.
             with self.assertRaises(ConfigurationError):
-                await client.test.test.find_one()
+                await client.test.coll.find_one()
         # Close the client.
         await client.close()
 
@@ -289,7 +289,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         # Create a client with MONGODB_URI_SINGLE, a username of test_machine, authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = await self.create_client(username="test_machine")
         # Perform a find operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
         # Close the client.
         await client.close()
 
@@ -298,7 +298,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client()
         # Perform a find operation that succeeds. Verify that the human callback was called with the appropriate inputs, including the timeout parameter if possible.
         # Ensure that there are no unexpected fields.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
         # Close the client.
         await client.close()
 
@@ -311,7 +311,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client(request_cb=CustomCB())
         # Perform a find operation that fails.
         with self.assertRaises(ValueError):
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
         # Close the client.
         await client.close()
 
@@ -320,7 +320,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client()
 
         # Perform a find operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
 
         # Set a fail point for ``find`` commands.
         async with self.fail_point(
@@ -330,7 +330,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             }
         ):
             # Perform a ``find`` operation that succeeds.
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
 
         # Assert that the callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -351,7 +351,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         ):
             # Perform a ``find`` operation that fails.
             with self.assertRaises(AutoReconnect):
-                await client.test.test.find_one()
+                await client.test.coll.find_one()
 
         # Set a fail point for ``saslStart`` commands.
         async with self.fail_point(
@@ -361,7 +361,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             }
         ):
             # Perform a ``find`` operation that succeeds
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
 
         # Close the client.
         await client.close()
@@ -379,7 +379,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         ):
             # Perform a ``find`` operation that fails.
             with self.assertRaises(OperationFailure):
-                await client.test.test.find_one()
+                await client.test.coll.find_one()
 
         # Close the client.
         await client.close()
@@ -392,7 +392,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client(event_listeners=[listener])
 
         # Perform a find operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
 
         # Assert that the human callback has been called once.
         self.assertEqual(self.request_called, 1)
@@ -408,7 +408,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             }
         ):
             # Perform another find operation that succeeds.
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
 
         # Assert that the human callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -454,7 +454,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client(request_cb=CustomRequest())
 
         # Perform a find operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
 
         # Assert that the human callback has been called once.
         self.assertEqual(self.request_called, 1)
@@ -467,7 +467,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             }
         ):
             # Perform a find operation that succeeds.
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
 
         # Assert that the human callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -487,7 +487,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client(request_cb=CustomRequest())
 
         # Perform a find operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
 
         # Assert that the human callback has been called once.
         self.assertEqual(self.request_called, 1)
@@ -500,7 +500,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             }
         ):
             # Perform a find operation that succeeds.
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
 
         # Assert that the human callback has been called 2 times.
         self.assertEqual(self.request_called, 2)
@@ -527,7 +527,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client(request_cb=CustomRequest())
 
         # Perform a find operation that succeeds (to force a speculative auth).
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
         # Assert that the human callback has been called once.
         self.assertEqual(self.request_called, 1)
 
@@ -540,7 +540,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         ):
             # Perform a find operation that fails.
             with self.assertRaises(OperationFailure):
-                await client.test.test.find_one()
+                await client.test.coll.find_one()
 
         # Assert that the human callback has been called three times.
         self.assertEqual(self.request_called, 3)
@@ -555,7 +555,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
         client = await self.create_client(request_cb=RequestTokenNull())
         with self.assertRaises(ValueError):
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
         await client.close()
 
     async def test_request_callback_invalid_result(self):
@@ -565,7 +565,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
         client = await self.create_client(request_cb=CallbackInvalidToken())
         with self.assertRaises(ValueError):
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
         await client.close()
 
     async def test_reauthentication_succeeds_multiple_connections(self):
@@ -576,8 +576,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client2 = await self.create_client(request_cb=request_cb)
 
         # Perform an insert operation.
-        await client1.test.test.insert_many([{"a": 1}, {"a": 1}])
-        await client2.test.test.find_one()
+        await client1.test.coll.insert_many([{"a": 1}, {"a": 1}])
+        await client2.test.coll.find_one()
         self.assertEqual(self.request_called, 2)
 
         # Use the same authenticator for both clients
@@ -588,8 +588,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
             client1.options.pool_options._credentials.cache.data
         )
 
-        await client1.test.test.find_one()
-        await client2.test.test.find_one()
+        await client1.test.coll.find_one()
+        await client2.test.coll.find_one()
 
         async with self.fail_point(
             {
@@ -597,7 +597,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
                 "data": {"failCommands": ["find"], "errorCode": 391},
             }
         ):
-            await client1.test.test.find_one()
+            await client1.test.coll.find_one()
 
         self.assertEqual(self.request_called, 3)
 
@@ -607,7 +607,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
                 "data": {"failCommands": ["find"], "errorCode": 391},
             }
         ):
-            await client2.test.test.find_one()
+            await client2.test.coll.find_one()
 
         self.assertEqual(self.request_called, 3)
         await client1.close()
@@ -620,7 +620,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client()
 
         # Perform a find operation.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
 
         # Assert that the request callback has been called once.
         self.assertEqual(self.request_called, 1)
@@ -632,7 +632,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             }
         ):
             # Perform a bulk write operation.
-            await client.test.test.bulk_write([InsertOne({})])  # type:ignore[type-var]
+            await client.test.coll.bulk_write([InsertOne({})])  # type:ignore[type-var]
 
         # Assert that the request callback has been called twice.
         self.assertEqual(self.request_called, 2)
@@ -643,10 +643,10 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client()
 
         # Perform a find operation.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
 
         # Perform a bulk write operation.
-        await client.test.test.bulk_write([InsertOne({})])  # type:ignore[type-var]
+        await client.test.coll.bulk_write([InsertOne({})])  # type:ignore[type-var]
 
         # Assert that the request callback has been called once.
         self.assertEqual(self.request_called, 1)
@@ -658,7 +658,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             }
         ):
             # Perform a bulk read operation.
-            cursor = client.test.test.find_raw_batches({})
+            cursor = client.test.coll.find_raw_batches({})
             await cursor.to_list()
 
         # Assert that the request callback has been called twice.
@@ -670,7 +670,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client()
 
         # Perform an insert operation.
-        await client.test.test.insert_one({"a": 1})
+        await client.test.coll.insert_one({"a": 1})
 
         # Assert that the request callback has been called once.
         self.assertEqual(self.request_called, 1)
@@ -682,7 +682,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             }
         ):
             # Perform a find operation.
-            cursor = client.test.test.find({"a": 1})
+            cursor = client.test.coll.find({"a": 1})
             self.assertGreaterEqual(len(await cursor.to_list()), 1)
 
         # Assert that the request callback has been called twice.
@@ -694,7 +694,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client()
 
         # Perform an insert operation.
-        await client.test.test.insert_many([{"a": 1}, {"a": 1}])
+        await client.test.coll.insert_many([{"a": 1}, {"a": 1}])
 
         # Assert that the request callback has been called once.
         self.assertEqual(self.request_called, 1)
@@ -706,7 +706,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             }
         ):
             # Perform a find operation.
-            cursor = client.test.test.find({"a": 1}, batch_size=1)
+            cursor = client.test.coll.find({"a": 1}, batch_size=1)
             self.assertGreaterEqual(len(await cursor.to_list()), 1)
 
         # Assert that the request callback has been called twice.
@@ -724,7 +724,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client()
 
         # Perform an insert operation.
-        await client.test.test.insert_many([{"a": 1}, {"a": 1}])
+        await client.test.coll.insert_many([{"a": 1}, {"a": 1}])
 
         # Assert that the request callback has been called once.
         self.assertEqual(self.request_called, 1)
@@ -736,7 +736,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
             }
         ):
             # Perform a find operation.
-            cursor = client.test.test.find({"a": 1}, batch_size=1, cursor_type=CursorType.EXHAUST)
+            cursor = client.test.coll.find({"a": 1}, batch_size=1, cursor_type=CursorType.EXHAUST)
             self.assertGreaterEqual(len(await cursor.to_list()), 1)
 
         # Assert that the request callback has been called twice.
@@ -748,7 +748,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
         client = await self.create_client()
 
         # Perform an insert operation.
-        await client.test.test.insert_one({"a": 1})
+        await client.test.coll.insert_one({"a": 1})
 
         # Assert that the request callback has been called once.
         self.assertEqual(self.request_called, 1)
@@ -807,7 +807,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # implements the provider logic.
         client = await self.create_client()
         # Perform a ``find`` operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
         # Assert that the callback was called 1 time.
         self.assertEqual(self.request_called, 1)
 
@@ -820,7 +820,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Start 10 tasks and run 100 find operations that all succeed in each task.
         async def target():
             for _ in range(100):
-                await client.test.test.find_one()
+                await client.test.coll.find_one()
 
         tasks = []
         for i in range(10):
@@ -836,7 +836,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         # Create a AsyncMongoClient configured with an OIDC callback that validates its inputs and returns a valid access token.
         client = await self.create_client()
         # Perform a find operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
         # Assert that the OIDC callback was called with the appropriate inputs, including the timeout parameter if possible. Ensure that there are no unexpected fields.
         self.assertEqual(self.request_called, 1)
 
@@ -849,7 +849,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client = await self.create_client(request_cb=CallbackNullToken())
         # Perform a find operation that fails.
         with self.assertRaises(ValueError):
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
 
     async def test_2_3_oidc_callback_returns_missing_data(self):
         # Create a AsyncMongoClient configured with an OIDC callback that returns data not conforming to the OIDCCredential with missing fields.
@@ -863,7 +863,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client = await self.create_client(request_cb=CustomCallback())
         # Perform a find operation that fails.
         with self.assertRaises(ValueError):
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
 
     async def test_2_4_invalid_client_configuration_with_callback(self):
         # Create a AsyncMongoClient configured with an OIDC callback and auth mechanism property ENVIRONMENT:test.
@@ -918,13 +918,13 @@ class TestAuthOIDCMachine(OIDCTestBase):
             # Perform a ``find`` operation that fails. This is to force the ``AsyncMongoClient``
             # to cache an access token.
             with self.assertRaises(AutoReconnect):
-                await client.test.test.find_one()
+                await client.test.coll.find_one()
         # Poison the cache of the client.
         client.options.pool_options._credentials.cache.data.access_token = "bad"
         # Reset the request count.
         self.request_called = 0
         # Verify that a find succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
         # Verify that the callback was called 1 time.
         self.assertEqual(self.request_called, 1)
 
@@ -941,7 +941,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client = await self.create_client(request_cb=callback)
         # Perform a ``find`` operation that fails.
         with self.assertRaises(OperationFailure):
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
         # Verify that the callback was called 1 time.
         self.assertEqual(callback.count, 1)
 
@@ -958,13 +958,13 @@ class TestAuthOIDCMachine(OIDCTestBase):
         ):
             # Perform a ``find`` operation that fails.
             with self.assertRaises(OperationFailure):
-                await client.test.test.find_one()
+                await client.test.coll.find_one()
 
         # Assert that the callback has been called once.
         self.assertEqual(self.request_called, 1)
 
         # Perform a ``find`` operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
 
         # Assert that the callback has been called once.
         self.assertEqual(self.request_called, 1)
@@ -983,7 +983,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
             }
         ):
             # Perform a ``find`` operation that succeeds.
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
 
         # Verify that the callback was called 2 times (once during the connection
         # handshake, and again during reauthentication).
@@ -1009,7 +1009,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client = await self.create_client(request_cb=callback)
 
         # Perform a read operation that succeeds.
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
 
         # Set a fail point for the find command.
         async with self.fail_point(
@@ -1020,7 +1020,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         ):
             # Perform a ``find`` operation that fails.
             with self.assertRaises(OperationFailure):
-                await client.test.test.find_one()
+                await client.test.coll.find_one()
 
         # Verify that the callback was called 2 times.
         self.assertEqual(callback.count, 2)
@@ -1045,7 +1045,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client = await self.create_client(request_cb=callback)
 
         # Perform an insert operation that succeeds.
-        await client.test.test.insert_one({})
+        await client.test.coll.insert_one({})
 
         # Set a fail point for the find command.
         async with self.fail_point(
@@ -1056,7 +1056,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         ):
             # Perform a ``insert`` operation that fails.
             with self.assertRaises(OperationFailure):
-                await client.test.test.insert_one({})
+                await client.test.coll.insert_one({})
 
         # Verify that the callback was called 2 times.
         self.assertEqual(callback.count, 2)
@@ -1069,7 +1069,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
         # Preload the *Client Cache* with a valid access token to enforce Speculative Authentication.
         client2 = await self.create_client()
-        await client2.test.test.find_one()
+        await client2.test.coll.find_one()
         client.options.pool_options._credentials.cache.data = (
             client2.options.pool_options._credentials.cache.data
         )
@@ -1077,7 +1077,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.request_called = 0
 
         # Perform an `insert` operation that succeeds.
-        await client.test.test.insert_one({})
+        await client.test.coll.insert_one({})
 
         # Assert that the callback was not called.
         self.assertEqual(self.request_called, 0)
@@ -1096,7 +1096,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
             }
         ):
             # Perform an `insert` operation that succeeds.
-            await client.test.test.insert_one({})
+            await client.test.coll.insert_one({})
 
         # Assert that the callback was called once.
         self.assertEqual(self.request_called, 1)
@@ -1118,7 +1118,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
             # Start a new session.
             async with client.start_session() as session:
                 # In the started session perform a `find` operation that succeeds.
-                await client.test.test.find_one({}, session=session)
+                await client.test.coll.find_one({}, session=session)
 
         # Assert that the callback was called 2 times (once during the connection handshake, and again during reauthentication).
         self.assertEqual(self.request_called, 2)
@@ -1131,7 +1131,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
         props = dict(TOKEN_RESOURCE=resource, ENVIRONMENT="azure")
         client = await self.create_client(authMechanismProperties=props)
-        await client.test.test.find_one()
+        await client.test.coll.find_one()
 
     async def test_5_2_azure_with_bad_username(self):
         if ENVIRON != "azure":
@@ -1143,11 +1143,11 @@ class TestAuthOIDCMachine(OIDCTestBase):
         props = dict(TOKEN_RESOURCE=token_aud, ENVIRONMENT="azure")
         client = await self.create_client(username="bad", authmechanismproperties=props)
         with self.assertRaises(ValueError):
-            await client.test.test.find_one()
+            await client.test.coll.find_one()
 
     async def test_speculative_auth_success(self):
         client1 = await self.create_client()
-        await client1.test.test.find_one()
+        await client1.test.coll.find_one()
         client2 = await self.create_client()
         await client2.aconnect()
 
@@ -1164,15 +1164,15 @@ class TestAuthOIDCMachine(OIDCTestBase):
             }
         ):
             # Perform a find operation.
-            await client2.test.test.find_one()
+            await client2.test.coll.find_one()
 
     async def test_reauthentication_succeeds_multiple_connections(self):
         client1 = await self.create_client()
         client2 = await self.create_client()
 
         # Perform an insert operation.
-        await client1.test.test.insert_many([{"a": 1}, {"a": 1}])
-        await client2.test.test.find_one()
+        await client1.test.coll.insert_many([{"a": 1}, {"a": 1}])
+        await client2.test.coll.find_one()
         self.assertEqual(self.request_called, 2)
 
         # Use the same authenticator for both clients
@@ -1183,8 +1183,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
             client1.options.pool_options._credentials.cache.data
         )
 
-        await client1.test.test.find_one()
-        await client2.test.test.find_one()
+        await client1.test.coll.find_one()
+        await client2.test.coll.find_one()
 
         async with self.fail_point(
             {
@@ -1192,7 +1192,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
                 "data": {"failCommands": ["find"], "errorCode": 391},
             }
         ):
-            await client1.test.test.find_one()
+            await client1.test.coll.find_one()
 
         self.assertEqual(self.request_called, 3)
 
@@ -1202,7 +1202,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
                 "data": {"failCommands": ["find"], "errorCode": 391},
             }
         ):
-            await client2.test.test.find_one()
+            await client2.test.coll.find_one()
 
         self.assertEqual(self.request_called, 3)
 

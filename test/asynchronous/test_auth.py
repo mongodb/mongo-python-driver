@@ -231,7 +231,7 @@ class TestGSSAPI(AsyncPyMongoTestCase):
         # collection.find_one with a 1-second delay, forcing it to check out
         # multiple connections from the pool concurrently, proving that
         # auto-authentication works with GSSAPI.
-        collection = db.test
+        collection = db.coll
         if not await collection.count_documents({}):
             try:
                 await collection.drop()
@@ -340,7 +340,7 @@ class TestSASLPlain(AsyncPyMongoTestCase):
             authSource=SASL_DB,
             authMechanism="PLAIN",
         )
-        await client.ldap.test.find_one()
+        await client.ldap.coll.find_one()
 
         assert SASL_USER is not None
         assert SASL_PASS is not None
@@ -352,7 +352,7 @@ class TestSASLPlain(AsyncPyMongoTestCase):
             SASL_DB,
         )
         client = self.simple_client(uri)
-        await client.ldap.test.find_one()
+        await client.ldap.coll.find_one()
 
         set_name = async_client_context.replica_set_name
         if set_name:
@@ -365,7 +365,7 @@ class TestSASLPlain(AsyncPyMongoTestCase):
                 authSource=SASL_DB,
                 authMechanism="PLAIN",
             )
-            await client.ldap.test.find_one()
+            await client.ldap.coll.find_one()
 
             uri = "mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;authSource=%s;replicaSet=%s" % (
                 quote_plus(SASL_USER),
@@ -376,7 +376,7 @@ class TestSASLPlain(AsyncPyMongoTestCase):
                 str(set_name),
             )
             client = self.simple_client(uri)
-            await client.ldap.test.find_one()
+            await client.ldap.coll.find_one()
 
     async def test_sasl_plain_bad_credentials(self):
         def auth_string(user, password):
@@ -654,13 +654,13 @@ class TestSCRAM(AsyncIntegrationTest):
 
     @async_client_context.require_sync
     async def test_scram_threaded(self):
-        coll = async_client_context.client.db.test
+        coll = async_client_context.client.db.coll
         await coll.drop()
         await coll.insert_one({"_id": 1})
 
         # The first thread to call find() will authenticate
         client = await self.async_rs_or_single_client()
-        coll = client.db.test
+        coll = client.db.coll
         threads = []
         for _ in range(4):
             threads.append(AutoAuthenticateThread(coll))

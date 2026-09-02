@@ -114,11 +114,11 @@ class TestPymongo(IntegrationTest):
 
     def setUp(self):
         super().setUp()
-        self.coll = self.client.test.test
+        self.coll = self.client.db.coll
 
     def test_insert_find(self) -> None:
         doc = {"my": "doc"}
-        coll2 = self.client.test.test2
+        coll2 = self.client.db.coll2
         result = self.coll.insert_one(doc)
         self.assertEqual(result.inserted_id, doc["_id"])
         retrieved = self.coll.find_one({"_id": doc["_id"]})
@@ -215,7 +215,7 @@ class TestPymongo(IntegrationTest):
     def test_default_document_type(self) -> None:
         client = self.rs_or_single_client()
         self.addCleanup(client.close)
-        coll = client.test.test
+        coll = client.db.coll
         doc = {"my": "doc"}
         coll.insert_one(doc)
         retrieved = coll.find_one({"_id": doc["_id"]})
@@ -223,7 +223,7 @@ class TestPymongo(IntegrationTest):
         retrieved["a"] = 1
 
     def test_aggregate_pipeline(self) -> None:
-        coll3 = self.client.test.test3
+        coll3 = self.client.db.coll3
         coll3.insert_many(
             [
                 {"x": 1, "tags": ["dog", "cat"]},
@@ -402,7 +402,7 @@ class TestDocumentType(PyMongoTestCase):
     @only_type_check
     def test_default(self) -> None:
         client: MongoClient = MongoClient()
-        coll = client.test.test
+        coll = client.db.coll
         retrieved = coll.find_one({"_id": "foo"})
         assert retrieved is not None
         retrieved["a"] = 1
@@ -410,7 +410,7 @@ class TestDocumentType(PyMongoTestCase):
     @only_type_check
     def test_explicit_document_type(self) -> None:
         client: MongoClient[dict[str, Any]] = MongoClient()
-        coll = client.test.test
+        coll = client.db.coll
         retrieved = coll.find_one({"_id": "foo"})
         assert retrieved is not None
         retrieved["a"] = 1
@@ -418,7 +418,7 @@ class TestDocumentType(PyMongoTestCase):
     @only_type_check
     def test_typeddict_document_type(self) -> None:
         client: MongoClient[Movie] = MongoClient()
-        coll = client.test.test
+        coll = client.db.coll
         retrieved = coll.find_one({"_id": "foo"})
         assert retrieved is not None
         assert retrieved["year"] == 1
@@ -427,7 +427,7 @@ class TestDocumentType(PyMongoTestCase):
     @only_type_check
     def test_typeddict_document_type_insertion(self) -> None:
         client: MongoClient[Movie] = MongoClient()
-        coll = client.test.test
+        coll = client.db.coll
         mov = {"name": "THX-1138", "year": 1971}
         movie = Movie(name="THX-1138", year=1971)
         coll.insert_one(mov)  # type: ignore[arg-type]
@@ -449,7 +449,7 @@ class TestDocumentType(PyMongoTestCase):
     @only_type_check
     def test_bulk_write_document_type_insertion(self):
         client: MongoClient[MovieWithId] = MongoClient()
-        coll: Collection[MovieWithId] = client.test.test
+        coll: Collection[MovieWithId] = client.db.coll
         coll.bulk_write(
             [InsertOne(Movie({"name": "THX-1138", "year": 1971}))]  # type:ignore[arg-type]
         )
@@ -466,7 +466,7 @@ class TestDocumentType(PyMongoTestCase):
     @only_type_check
     def test_bulk_write_document_type_replacement(self):
         client: MongoClient[MovieWithId] = MongoClient()
-        coll: Collection[MovieWithId] = client.test.test
+        coll: Collection[MovieWithId] = client.db.coll
         coll.bulk_write(
             [ReplaceOne({}, Movie({"name": "THX-1138", "year": 1971}))]  # type:ignore[arg-type]
         )
@@ -513,7 +513,7 @@ class TestDocumentType(PyMongoTestCase):
         if NotRequired is None or ImplicitMovie is None:
             raise unittest.SkipTest("Python 3.11+ is required to use NotRequired.")
         client: MongoClient[ImplicitMovie] = self.rs_or_single_client()
-        coll = client.test.test
+        coll = client.db.coll
         coll.insert_one(ImplicitMovie(name="THX-1138", year=1971))
         out = coll.find_one({})
         assert out is not None
@@ -523,7 +523,7 @@ class TestDocumentType(PyMongoTestCase):
     @only_type_check
     def test_raw_bson_document_type(self) -> None:
         client = MongoClient(document_class=RawBSONDocument)
-        coll = client.test.test
+        coll = client.db.coll
         retrieved = coll.find_one({"_id": "foo"})
         assert retrieved is not None
         assert len(retrieved.raw) > 0
@@ -531,7 +531,7 @@ class TestDocumentType(PyMongoTestCase):
     @only_type_check
     def test_son_document_type(self) -> None:
         client = MongoClient(document_class=SON[str, Any])
-        coll = client.test.test
+        coll = client.db.coll
         retrieved = coll.find_one({"_id": "foo"})
         assert retrieved is not None
         retrieved["a"] = 1
@@ -544,7 +544,7 @@ class TestDocumentType(PyMongoTestCase):
         client: MongoClient[dict[str, str]] = MongoClient("test")
         db = client.test
         with client.start_session() as session:
-            index = db.test.create_index([("user_id", ASCENDING)], unique=True, session=session)
+            index = db.coll.create_index([("user_id", ASCENDING)], unique=True, session=session)
             assert isinstance(index, str)
 
 

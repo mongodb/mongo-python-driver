@@ -105,7 +105,7 @@ class TestTransactions(TransactionsBase):
         """Test txn overrides Client/Database/Collection write_concern."""
         client = self.rs_client(w=0)
         db = client.test
-        coll = db.test
+        coll = db.coll
         coll.insert_one({})
         with client.start_session() as s:
             with s.start_transaction(write_concern=WriteConcern(w=1)):
@@ -150,7 +150,7 @@ class TestTransactions(TransactionsBase):
         # to avoid false positives.
         client = self.rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
+        coll = client.db.coll
         # Create the collection.
         coll.insert_one({})
         with client.start_session() as s:
@@ -177,7 +177,7 @@ class TestTransactions(TransactionsBase):
         # to avoid false positives.
         client = self.rs_client(client_context.mongos_seeds(), localThresholdMS=1000)
         wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
+        coll = client.db.coll
         # Create the collection.
         coll.insert_one({})
         with client.start_session() as s:
@@ -199,7 +199,7 @@ class TestTransactions(TransactionsBase):
     @client_context.require_transactions
     def test_create_collection(self):
         client = client_context.client
-        db = client.pymongo_test
+        db = self.db
         coll = db.test_create_collection
         self.addCleanup(coll.drop)
 
@@ -226,7 +226,7 @@ class TestTransactions(TransactionsBase):
     @client_context.require_transactions
     def test_gridfs_does_not_support_transactions(self):
         client = client_context.client
-        db = client.pymongo_test
+        db = self.db
         gfs = GridFS(db)
         bucket = GridFSBucket(db)
 
@@ -308,7 +308,7 @@ class TestTransactions(TransactionsBase):
         # split.
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         coll.delete_many({})
         listener.reset()
         self.addCleanup(coll.drop)
@@ -336,7 +336,7 @@ class TestTransactions(TransactionsBase):
     @client_context.require_transactions
     def test_transaction_direct_connection(self):
         client = self.single_client()
-        coll = client.pymongo_test.test
+        coll = client.pymongo_test.coll
 
         # Make sure the collection exists.
         coll.insert_one({})
@@ -440,10 +440,10 @@ class TestTransactionsConvenientAPI(TransactionsBase):
         with self.client.start_session() as s:
             self.assertEqual(s.with_transaction(callback), "Foo")
 
-        self.db.test.insert_one({})
+        self.db.coll.insert_one({})
 
         def callback2(session):
-            self.db.test.insert_one({}, session=session)
+            self.db.coll.insert_one({}, session=session)
             return "Foo"
 
         with self.client.start_session() as s:
@@ -464,7 +464,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_3_1_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         def callback(session):
             coll.insert_one({}, session=session)
@@ -494,7 +494,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_3_2_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         def callback(session):
             coll.insert_one({}, session=session)
@@ -528,7 +528,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_3_3_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         def callback(session):
             coll.insert_one({}, session=session)
@@ -566,7 +566,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     def test_callback_not_retried_after_csot_timeout(self):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         def callback(session):
             coll.insert_one({}, session=session)
@@ -603,7 +603,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     @client_context.require_transactions
     def test_in_transaction_property(self):
         client = client_context.client
-        coll = client.test.testcollection
+        coll = client.db.coll
         coll.insert_one({})
         self.addCleanup(coll.drop)
 
@@ -640,7 +640,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
     @client_context.require_transactions
     def test_4_retry_backoff_is_enforced(self):
         client = client_context.client
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         end = start = no_backoff_time = 0
 
         # Make random.random always return 0 (no backoff)
@@ -703,7 +703,7 @@ class TestOptionsInsideTransactionProse(TransactionsBase):
         # Write concern not inherited from collection object inside transaction
         # Create a MongoClient running against a configured sharded/replica set/load balanced cluster.
         client = client_context.client
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         coll.delete_many({})
         # Start a new session on the client.
         with client.start_session() as s:
