@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
-from pymongo.network_layer import PyMongoProtocol, _async_socket_receive
+from pymongo.network_layer import PyMongoProtocol, _async_socket_receive, receive_message
 from test.asynchronous import AsyncUnitTest, unittest
 from test.utils_shared import pack_msg_header
 
@@ -276,8 +276,6 @@ class _FakeConn:
 
 class TestReceiveMessage(unittest.TestCase):
     def test_oversized_uncompressed_size_rejected(self):
-        from pymongo.network_layer import receive_message
-
         # Build OP_COMPRESSED with uncompressed_size > max_message_size.
         compressed = b"x" * 10
         total_len = 16 + 9 + len(compressed)
@@ -288,8 +286,6 @@ class TestReceiveMessage(unittest.TestCase):
             receive_message(conn, request_id=99, max_message_size=1024)  # type: ignore[arg-type]
 
     def test_uncompressed_size_equal_max_rejected(self):
-        from pymongo.network_layer import receive_message
-
         # uncompressed_size == max_message_size; the reconstructed message
         # (uncompressed_size + 16-byte header) must exceed the limit.
         compressed = b"x" * 10
@@ -301,8 +297,6 @@ class TestReceiveMessage(unittest.TestCase):
             receive_message(conn, request_id=99, max_message_size=1024)  # type: ignore[arg-type]
 
     def test_nonpositive_uncompressed_size_rejected(self):
-        from pymongo.network_layer import receive_message
-
         # uncompressed_size is a signed int32; zero and negative values must be
         # rejected as malformed rather than accepted by the upper-bound check.
         for size in (0, -1):

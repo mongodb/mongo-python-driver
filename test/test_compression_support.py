@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 import sys
+import tracemalloc
+import zlib
 from unittest.mock import patch
 
 sys.path[0:0] = [""]
@@ -165,8 +167,6 @@ class TestZlibContext(unittest.TestCase):
             self.skipTest("zlib not available")
 
     def test_compress_and_decompress_roundtrip(self):
-        import zlib
-
         ctx = ZlibContext(level=-1)
         data = b"hello world" * 100
         compressed = ctx.compress(data)
@@ -203,8 +203,6 @@ class TestDecompress(unittest.TestCase):
     def test_zlib_roundtrip(self):
         if not _have_zlib():
             self.skipTest("zlib not available")
-        import zlib
-
         data = b"hello world"
         self._assert_roundtrip(zlib.compress(data), ZlibContext.compressor_id, data)
 
@@ -225,9 +223,6 @@ class TestDecompress(unittest.TestCase):
 
 class TestDecompressSizeLimit(unittest.TestCase):
     def test_decompression_peak_memory_bounded(self):
-        import tracemalloc
-        import zlib
-
         # High expansion ratio payload (repeated zeros, ~100000:1 ratio)
         payload = zlib.compress(b"\x00" * 100_000_000)
         max_size = 1_000_000
@@ -243,8 +238,6 @@ class TestDecompressSizeLimit(unittest.TestCase):
         self.assertLess(peak, 10 * max_size)
 
     def test_zlib_exact_boundary(self):
-        import zlib
-
         # Data that decompresses to exactly max_message_size must be accepted.
         data = b"\x00" * 1000
         payload = zlib.compress(data)
@@ -269,8 +262,6 @@ class TestDecompressSizeLimit(unittest.TestCase):
     def test_snappy_peak_memory_bounded(self):
         if not _have_snappy():
             self.skipTest("python-snappy not installed")
-        import tracemalloc
-
         payload = SnappyContext.compress(b"\x00" * 100_000_000)
         max_size = 1_000_000
         tracemalloc.start()
@@ -286,8 +277,6 @@ class TestDecompressSizeLimit(unittest.TestCase):
     def test_zstd_peak_memory_bounded(self):
         if not _have_zstd():
             self.skipTest("zstd not available")
-        import tracemalloc
-
         payload = ZstdContext.compress(b"\x00" * 100_000_000)
         max_size = 1_000_000
         tracemalloc.start()
@@ -308,8 +297,6 @@ class TestDecompressSizeLimit(unittest.TestCase):
             decompress(payload, SnappyContext.compressor_id, max_message_size=1000)
 
     def test_zlib_truncated_rejected(self):
-        import zlib
-
         payload = zlib.compress(b"\x00" * 1000)[:-1]
         with self.assertRaises(ProtocolError):
             decompress(payload, ZlibContext.compressor_id, max_message_size=10_000)
@@ -323,8 +310,6 @@ class TestDecompressSizeLimit(unittest.TestCase):
             decompress(payload, ZstdContext.compressor_id, max_message_size=10_000)
 
     def test_zlib_trailing_data_rejected(self):
-        import zlib
-
         payload = zlib.compress(b"\x00" * 1000) + b"GARBAGE"
         with self.assertRaises(ProtocolError):
             decompress(payload, ZlibContext.compressor_id, max_message_size=10_000)
