@@ -20,11 +20,15 @@ from __future__ import annotations
 import abc
 import os
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 from urllib.parse import quote
 
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._gcp_helpers import _get_gcp_response
+from pymongo.errors import ConfigurationError
+
+if TYPE_CHECKING:
+    from pymongo.auth_shared import MongoCredential
 
 
 @dataclass
@@ -131,3 +135,32 @@ def _get_k8s_token() -> str:
             fname = os.environ[key]
     with open(fname) as fid:
         return fid.read()
+
+
+def _get_authenticator(
+    credentials: MongoCredential, address: tuple[str, int], authenticator_cls: Callable[..., Any]
+) -> Any:
+    # Extract values.
+    principal_name = credentials.username
+    properties = credentials.mechanism_properties
+
+    # Validate that the address is allowed.
+    if properties.human_callback is not None:
+        found = False
+        allowed_hosts = properties.allowed_hosts
+        for patt in allowed_hosts:
+            if patt == address[0]:
+                found = True
+            elif patt.startswith("*.") and address[0].endswith(patt[1:]):
+                found = True
+        if not found:
+            raise ConfigurationError(
+                f"Refusing to connect to {address[0]}, which is not in authOIDCAllowedHosts: {allowed_hosts}"
+            )
+
+    if credentials.cache.data:
+        return credentials.cache.data
+
+    # Get or create the cache data.
+    credentials.cache.data = authenticator_cls(username=principal_name, properties=properties)
+    return credentials.cache.data

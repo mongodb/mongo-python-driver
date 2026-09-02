@@ -35,7 +35,7 @@ from bson import SON
 from pymongo import MongoClient
 from pymongo._azure_helpers import _get_azure_response
 from pymongo._gcp_helpers import _get_gcp_response
-from pymongo.auth_oidc_shared import _get_k8s_token
+from pymongo.auth_oidc_shared import _get_authenticator, _get_k8s_token
 from pymongo.auth_shared import _build_credentials_tuple
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import AutoReconnect, ConfigurationError, OperationFailure
@@ -45,7 +45,7 @@ from pymongo.synchronous.auth_oidc import (
     OIDCCallback,
     OIDCCallbackContext,
     OIDCCallbackResult,
-    _get_authenticator,
+    _OIDCAuthenticator,
 )
 from pymongo.synchronous.uri_parser import parse_uri
 from test.unified_format import generate_test_classes, get_test_path
@@ -130,11 +130,13 @@ class TestOIDCAllowedHostsCache(unittest.TestCase):
         extra = {"authmechanismproperties": props}
         credentials = _build_credentials_tuple("MONGODB-OIDC", None, "user", None, extra, "test")
 
-        authenticator = _get_authenticator(credentials, ("good.example.com", 27017))
+        authenticator = _get_authenticator(
+            credentials, ("good.example.com", 27017), _OIDCAuthenticator
+        )
         self.assertIs(authenticator, credentials.cache.data)
 
         with self.assertRaisesRegex(ConfigurationError, "evil.example.com"):
-            _get_authenticator(credentials, ("evil.example.com", 27017))
+            _get_authenticator(credentials, ("evil.example.com", 27017), _OIDCAuthenticator)
 
 
 class TestAuthOIDCHuman(OIDCTestBase):
@@ -892,7 +894,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         extra = dict(authmechanismproperties=props)
         mongo_creds = _build_credentials_tuple("MONGODB-OIDC", None, "foo", None, extra, "test")
         # Assert that creating an authenticator for example.com does not result in an error.
-        authenticator = _get_authenticator(mongo_creds, ("example.com", 30))
+        authenticator = _get_authenticator(mongo_creds, ("example.com", 30), _OIDCAuthenticator)
         assert authenticator.properties.username == "foo"
 
         # Create a MongoCredential for OIDC with an ENVIRONMENT.
@@ -900,7 +902,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
         extra = dict(authmechanismproperties=props)
         mongo_creds = _build_credentials_tuple("MONGODB-OIDC", None, None, None, extra, "test")
         # Assert that creating an authenticator for example.com does not result in an error.
-        authenticator = _get_authenticator(mongo_creds, ("example.com", 30))
+        authenticator = _get_authenticator(mongo_creds, ("example.com", 30), _OIDCAuthenticator)
         assert authenticator.properties.username == ""
 
     def test_3_1_authentication_failure_with_cached_tokens_fetch_a_new_token_and_retry(self):
