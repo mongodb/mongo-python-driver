@@ -48,9 +48,6 @@ async def _authenticate_aws(credentials: MongoCredential, conn: AsyncConnection)
 
     set_use_cached_credentials(True)
 
-    if conn.max_wire_version < 9:
-        raise ConfigurationError("MONGODB-AWS authentication requires MongoDB version 4.4 or later")
-
     class AwsSaslContext(pymongo_auth_aws.AwsSaslContext):  # type: ignore
         # Dependency injection:
         def binary_type(self) -> type[Binary]:

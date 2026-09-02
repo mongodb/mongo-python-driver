@@ -247,9 +247,6 @@ class AsyncClientContext:
                 self.cmd_line = await self.client.admin.command("getCmdLineOpts")
 
             self.server_status = await self.client.admin.command("serverStatus")
-            if self.storage_engine == "mmapv1":
-                # MMAPv1 does not support retryWrites=True.
-                self.default_client_options["retryWrites"] = False
 
             hello = await self.hello
             self.sessions_enabled = "logicalSessionTimeoutMinutes" in hello
@@ -763,14 +760,24 @@ class AsyncClientContext:
             func=func,
         )
 
+    def supports_exhaust_cursors(self):
+        """Whether this deployment supports exhaust cursors."""
+        if self.load_balancer:
+            return True
+        if self.is_mongos:
+            return self.version.at_least(7, 1)
+        return True
+
+    def require_exhaust_cursors(self, func):
+        """Run a test only if the deployment supports exhaust cursors."""
+        return self._require(
+            self.supports_exhaust_cursors,
+            "This server does not support exhaust cursors",
+            func=func,
+        )
+
     def supports_transactions(self):
-        if self.version.at_least(4, 1, 8):
-            return self.is_mongos or self.is_rs
-
-        if self.version.at_least(4, 0):
-            return self.is_rs
-
-        return False
+        return self.is_mongos or self.is_rs
 
     def require_transactions(self, func):
         """Run a test only if the deployment might support transactions.
@@ -809,16 +816,7 @@ class AsyncClientContext:
     @property
     def supports_failCommand_fail_point(self):
         """Does the server support the failCommand fail point?"""
-        if self.is_mongos:
-            return self.version.at_least(4, 1, 5) and self.test_commands_enabled
-        else:
-            return self.version.at_least(4, 0) and self.test_commands_enabled
-
-    @property
-    def requires_hint_with_min_max_queries(self):
-        """Does the server require a hint with min/max queries."""
-        # Changed in SERVER-39567.
-        return self.version.at_least(4, 1, 10)
+        return self.test_commands_enabled
 
     @property
     async def max_bson_size(self):

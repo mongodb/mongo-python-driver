@@ -1010,10 +1010,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             else:
                 update_doc["arrayFilters"] = array_filters
         if hint is not None:
-            if not acknowledged and conn.max_wire_version < 8:
-                raise ConfigurationError(
-                    "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
-                )
             if not isinstance(hint, str):
                 hint = helpers_shared._index_document(hint)
             update_doc["hint"] = hint
@@ -1170,8 +1166,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             predicate specified either by its string name, or in the same
             format as passed to
             :meth:`~pymongo.collection.Collection.create_index` (e.g.
-            ``[('field', ASCENDING)]``). This option is only supported on
-            MongoDB 4.2 and above.
+            ``[('field', ASCENDING)]``).
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.
         :param let: Map of parameter names and values. Values must be
@@ -1286,8 +1281,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             predicate specified either by its string name, or in the same
             format as passed to
             :meth:`~pymongo.collection.Collection.create_index` (e.g.
-            ``[('field', ASCENDING)]``). This option is only supported on
-            MongoDB 4.2 and above.
+            ``[('field', ASCENDING)]``).
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.
         :param let: Map of parameter names and values. Values must be
@@ -1392,8 +1386,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             predicate specified either by its string name, or in the same
             format as passed to
             :meth:`~pymongo.collection.Collection.create_index` (e.g.
-            ``[('field', ASCENDING)]``). This option is only supported on
-            MongoDB 4.2 and above.
+            ``[('field', ASCENDING)]``).
         :param session: a
             :class:`~pymongo.client_session.ClientSession`.
         :param let: Map of parameter names and values. Values must be
@@ -1515,10 +1508,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             else:
                 delete_doc["collation"] = collation
         if hint is not None:
-            if not acknowledged and conn.max_wire_version < 9:
-                raise ConfigurationError(
-                    "Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands."
-                )
             if not isinstance(hint, str):
                 hint = helpers_shared._index_document(hint)
             delete_doc["hint"] = hint
@@ -1881,8 +1870,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
           - The `limit` option can not be used with an exhaust cursor.
 
-          - Exhaust cursors are not supported by mongos and can not be
-            used with a sharded cluster.
+          - When connected to mongos, exhaust cursors require MongoDB 7.1 or
+            newer; an older one raises
+            :class:`~pymongo.errors.InvalidOperation` on the first iteration.
+            On a cluster midway through an upgrade the same call may succeed
+            or raise depending on which mongos it reaches. Behind a load
+            balancer no version check applies; a pre-7.1 mongos there ignores
+            the exhaust request and the cursor falls back to ordinary getMore
+            batches.
 
           - A :class:`~pymongo.cursor.Cursor` instance created with the
             :attr:`~pymongo.cursor.CursorType.EXHAUST` cursor_type requires an
@@ -1891,6 +1886,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             completely iterated the underlying :class:`~socket.socket`
             connection will be closed and discarded without being returned to
             the connection pool.
+
+        .. versionchanged:: 4.18
+           :attr:`~pymongo.cursor.CursorType.EXHAUST` is now permitted when
+           connected to mongos 7.1 or newer. Against an older mongos the
+           resulting :class:`~pymongo.errors.InvalidOperation` is now raised on
+           the first iteration of the cursor rather than by this method.
 
         .. versionchanged:: 4.0
            Removed the ``modifiers`` option.
@@ -2234,8 +2235,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         def inner(
             session: Optional[ClientSession], conn: Connection, _retryable_write: bool
         ) -> list[str]:
-            supports_quorum = conn.max_wire_version >= 9
-
             def gen_indexes() -> Iterator[Mapping[str, Any]]:
                 for index in indexes:
                     if not isinstance(index, IndexModel):
@@ -2248,12 +2247,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
             cmd = {"createIndexes": self.name, "indexes": list(gen_indexes())}
             cmd.update(kwargs)
-            if "commitQuorum" in kwargs and not supports_quorum:
-                raise ConfigurationError(
-                    "Must be connected to MongoDB 4.4+ to use the "
-                    "commitQuorum option for createIndexes"
-                )
-
             self._command(
                 conn,
                 cmd,
@@ -2327,7 +2320,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.collation.Collation`.
           - `wildcardProjection`: Allows users to include or exclude specific
             field paths from a `wildcard index`_ using the {"$**" : 1} key
-            pattern. Requires MongoDB >= 4.2.
+            pattern.
           - `hidden`: if ``True``, this index will be hidden from the query
             planner and will not be evaluated as part of query plan
             selection. Requires MongoDB >= 4.4.
@@ -3289,14 +3282,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                     )
                 cmd["arrayFilters"] = list(array_filters)
             if hint is not None:
-                if conn.max_wire_version < 8:
-                    raise ConfigurationError(
-                        "Must be connected to MongoDB 4.2+ to use hint on find and modify commands."
-                    )
-                elif not acknowledged and conn.max_wire_version < 9:
-                    raise ConfigurationError(
-                        "Must be connected to MongoDB 4.4+ to use hint on unacknowledged find and modify commands."
-                    )
                 cmd["hint"] = hint
             out = self._command(
                 conn,

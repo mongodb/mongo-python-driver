@@ -130,8 +130,8 @@ class TestCursor(IntegrationTest):
         self.assertEqual(0, cursor._query_flags)
 
     def test_add_remove_option_exhaust(self):
-        # Exhaust - which mongos doesn't support
-        if client_context.is_mongos:
+        # mongos only serves exhaust cursors from 7.1 onwards (SERVER-57297).
+        if not client_context.supports_exhaust_cursors():
             with self.assertRaises(InvalidOperation):
                 next(self.db.test.find(cursor_type=CursorType.EXHAUST))
         else:
@@ -846,16 +846,13 @@ class TestCursor(IntegrationTest):
         self.assertEqual(3, len(db.test.find().where(Code("this.x < 3")).to_list()))
 
         code_with_scope = Code("this.x < i", {"i": 3})
-        if client_context.version.at_least(4, 3, 3):
-            # MongoDB 4.4 removed support for Code with scope.
-            with self.assertRaises(OperationFailure):
-                db.test.find().where(code_with_scope).to_list()
+        # MongoDB 4.4 removed support for Code with scope.
+        with self.assertRaises(OperationFailure):
+            db.test.find().where(code_with_scope).to_list()
 
-            code_with_empty_scope = Code("this.x < 3", {})
-            with self.assertRaises(OperationFailure):
-                db.test.find().where(code_with_empty_scope).to_list()
-        else:
-            self.assertEqual(3, len(db.test.find().where(code_with_scope).to_list()))
+        code_with_empty_scope = Code("this.x < 3", {})
+        with self.assertRaises(OperationFailure):
+            db.test.find().where(code_with_empty_scope).to_list()
 
         self.assertEqual(10, len(db.test.find().to_list()))
         self.assertEqual([0, 1, 2], [a["x"] for a in db.test.find().where("this.x < 3")])
@@ -1606,7 +1603,7 @@ class TestRawBatchCursor(IntegrationTest):
         self.assertIsInstance(next(cursor.clone()), bytes)
         self.assertIsInstance(next(copy.copy(cursor)), bytes)
 
-    @client_context.require_no_mongos
+    @client_context.require_exhaust_cursors
     def test_exhaust(self):
         c = self.db.test
         c.insert_many({"_id": i} for i in range(200))
@@ -1838,7 +1835,7 @@ class TestRawBatchCommandCursor(IntegrationTest):
             listener.reset()
 
     @client_context.require_version_min(5, 0, -1)
-    @client_context.require_no_mongos
+    @client_context.require_exhaust_cursors
     @client_context.require_sync
     def test_exhaust_cursor_db_set(self):
         listener = OvertCommandListener()

@@ -165,7 +165,6 @@ class TestBulk(BulkTestBase):
     def test_update_many(self):
         self._test_update_many({"$set": {"foo": "bar"}})
 
-    @client_context.require_version_min(4, 2, 0)
     def test_update_many_pipeline(self):
         self._test_update_many([{"$set": {"foo": "bar"}}])
 
@@ -206,7 +205,6 @@ class TestBulk(BulkTestBase):
     def test_update_one(self):
         self._test_update_one({"$set": {"foo": "bar"}})
 
-    @client_context.require_version_min(4, 2, 0)
     def test_update_one_pipeline(self):
         self._test_update_one([{"$set": {"foo": "bar"}}])
 

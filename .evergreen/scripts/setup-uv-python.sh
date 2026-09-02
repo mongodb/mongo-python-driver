@@ -41,9 +41,16 @@ if [ -z "${UV_PYTHON:-}" ]; then
           _exe="python.exe"
         fi
         if [ -n "${IS_WIN32:-}" ]; then
-            _python="C:/python/32/Python${_python}/${_exe}"
+            _win_python="C:/python/32/Python${_python}/${_exe}"
         else
-            _python="C:/python/Python${_python}/${_exe}"
+            _win_python="C:/python/Python${_python}/${_exe}"
+        fi
+        # Fall back to the version string if the toolchain path doesn't exist.
+        # uv will then download and manage Python itself.
+        if [ -f "$_win_python" ]; then
+            _python="$_win_python"
+        else
+            _python="$TOOLCHAIN_VERSION"
         fi
     elif [ -d "/opt/python/$_python/bin" ]; then
         _python="/opt/python/$_python/bin/python3"

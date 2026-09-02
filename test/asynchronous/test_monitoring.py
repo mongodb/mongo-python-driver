@@ -279,19 +279,6 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
             "allowPartialResults": True,
         }
 
-        if async_client_context.version < (4, 1, 0, -1):
-            query["max_scan"] = 10
-            cmd["maxScan"] = 10
-
-        await self._test_find_options(query, cmd)
-
-    @async_client_context.require_version_max(3, 7, 2)
-    async def test_find_snapshot(self):
-        # Test "snapshot" parameter separately, can't combine with "sort".
-        query = {"filter": {}, "snapshot": True}
-
-        cmd = {"find": "test", "filter": {}, "snapshot": True}
-
         await self._test_find_options(query, cmd)
 
     async def test_command_and_get_more(self):
@@ -422,7 +409,7 @@ class AsyncTestCommandMonitoring(AsyncIntegrationTest):
         self.assertIsInstance(failed.duration_micros, int)
         self.assertEqual(error, failed.failure)
 
-    @async_client_context.require_no_mongos
+    @async_client_context.require_exhaust_cursors
     async def test_exhaust(self):
         await self.client.pymongo_test.test.drop()
         await self.client.pymongo_test.test.insert_many([{} for _ in range(11)])

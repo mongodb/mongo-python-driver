@@ -17,13 +17,12 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
-import enum
+import functools
 import socket
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
-from collections.abc import AsyncGenerator, Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import AsyncGenerator, Mapping, MutableMapping, Sequence
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
@@ -43,7 +42,6 @@ try:
         AsyncMongoCryptCallback,
     )
     from pymongocrypt.errors import MongoCryptError  # type:ignore[import]
-    from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import]
 
     _HAVE_PYMONGOCRYPT = True
 except ImportError:
@@ -53,7 +51,6 @@ except ImportError:
 from bson import _dict_to_bson, decode, encode
 from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
-from bson.errors import BSONError
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot, _op_id
 from pymongo.asynchronous.collection import AsyncCollection
@@ -65,8 +62,19 @@ from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import (
     AutoEncryptionOpts,
     RangeOpts,
-    TextOpts,
+    StringOpts,
+    # Re-exported for backwards compatibility: TextOpts is deprecated but must
+    # remain importable from this module until it is removed.
+    TextOpts,  # noqa: F401
     check_min_pymongocrypt,
+)
+from pymongo.encryption_shared import (
+    # Algorithm and QueryType are re-exported for backwards compatibility.
+    Algorithm,  # noqa: F401
+    QueryType,  # noqa: F401
+    RewrapManyDataKeyResult,
+    _create_mongocrypt_options,
+    _wrap_encryption_errors,
 )
 from pymongo.errors import (
     ConfigurationError,
@@ -85,7 +93,7 @@ from pymongo.pool_shared import (
     _raise_connection_failure,
 )
 from pymongo.read_concern import ReadConcern
-from pymongo.results import BulkWriteResult, DeleteResult
+from pymongo.results import DeleteResult
 from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
 from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser_shared import _parse_kms_tls_options, parse_host
@@ -117,19 +125,6 @@ async def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.soc
         return await _async_configured_socket(address, opts)
     except Exception as exc:
         _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
-
-
-@contextlib.contextmanager
-def _wrap_encryption_errors() -> Iterator[None]:
-    """Context manager to wrap encryption related errors."""
-    try:
-        yield
-    except BSONError:
-        # BSON encoding/decoding errors are unrelated to encryption so
-        # we should propagate them unchanged.
-        raise
-    except Exception as exc:
-        raise EncryptionError(exc) from exc
 
 
 class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
@@ -353,29 +348,6 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             self.mongocryptd_client = None
 
 
-class RewrapManyDataKeyResult:
-    """Result object returned by a :meth:`~AsyncClientEncryption.rewrap_many_data_key` operation.
-
-    .. versionadded:: 4.2
-    """
-
-    def __init__(self, bulk_write_result: Optional[BulkWriteResult] = None) -> None:
-        self._bulk_write_result = bulk_write_result
-
-    @property
-    def bulk_write_result(self) -> Optional[BulkWriteResult]:
-        """The result of the bulk write operation used to update the key vault
-        collection with one or more rewrapped data keys. If
-        :meth:`~AsyncClientEncryption.rewrap_many_data_key` does not find any matching keys to rewrap,
-        no bulk write operation will be executed and this field will be
-        ``None``.
-        """
-        return self._bulk_write_result
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self._bulk_write_result!r})"
-
-
 class _Encrypter:
     """Encrypts and decrypts MongoDB commands.
 
@@ -500,89 +472,45 @@ class _Encrypter:
             self._internal_client = None
 
 
-class Algorithm(str, enum.Enum):
-    """An enum that defines the supported encryption algorithms."""
+@functools.lru_cache(maxsize=1)
+def _string_opts_kwarg() -> str:
+    """The name the installed pymongocrypt gives the string index options.
 
-    AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic = "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
-    """AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic."""
-    AEAD_AES_256_CBC_HMAC_SHA_512_Random = "AEAD_AES_256_CBC_HMAC_SHA_512-Random"
-    """AEAD_AES_256_CBC_HMAC_SHA_512_Random."""
-    INDEXED = "Indexed"
-    """Indexed.
-
-    .. versionadded:: 4.2
+    pymongocrypt renamed ``text_opts`` to ``string_opts`` in 1.19 and accepts
+    only one name per release. The rename landed on master before any release
+    carried it, so resolve the name from the installed signature rather than
+    from a version comparison. Resolved lazily and cached because importing
+    :mod:`inspect` is too expensive to do on the import path.
     """
-    UNINDEXED = "Unindexed"
-    """Unindexed.
+    import inspect
 
-    .. versionadded:: 4.2
+    params = inspect.signature(AsyncExplicitEncrypter.encrypt).parameters
+    return "string_opts" if "string_opts" in params else "text_opts"
+
+
+def _resolve_string_opts(
+    string_opts: Optional[StringOpts], text_opts: Optional[StringOpts]
+) -> Optional[StringOpts]:
+    """Resolve string_opts and its former name, text_opts.
+
+    pymongocrypt accepts only one of the two names per release, so passing the
+    name the installed pymongocrypt does not support is an error.
     """
-    RANGE = "Range"
-    """Range.
-
-    .. versionadded:: 4.9
-    """
-    RANGEPREVIEW = "RangePreview"
-    """**DEPRECATED** - RangePreview.
-
-    .. note:: Support for RangePreview is deprecated. Use :attr:`Algorithm.RANGE` instead.
-
-    .. versionadded:: 4.4
-    """
-    TEXTPREVIEW = "TextPreview"
-    """**BETA** - TextPreview.
-
-    .. versionadded:: 4.15
-    """
-
-
-class QueryType(str, enum.Enum):
-    """An enum that defines the supported values for explicit encryption query_type.
-
-    .. versionadded:: 4.2
-    """
-
-    EQUALITY = "equality"
-    """Used to encrypt a value for an equality query."""
-
-    RANGE = "range"
-    """Used to encrypt a value for a range query.
-
-    .. versionadded:: 4.9
-    """
-
-    RANGEPREVIEW = "RangePreview"
-    """**DEPRECATED** - Used to encrypt a value for a rangePreview query.
-
-    .. note:: Support for RangePreview is deprecated. Use :attr:`QueryType.RANGE` instead.
-
-    .. versionadded:: 4.4
-    """
-
-    PREFIXPREVIEW = "prefixPreview"
-    """**BETA** - Used to encrypt a value for a prefixPreview query.
-
-    .. versionadded:: 4.15
-    """
-
-    SUFFIXPREVIEW = "suffixPreview"
-    """**BETA** - Used to encrypt a value for a suffixPreview query.
-
-    .. versionadded:: 4.15
-    """
-
-    SUBSTRINGPREVIEW = "substringPreview"
-    """**BETA** - Used to encrypt a value for a substringPreview query.
-
-    .. versionadded:: 4.15
-    """
-
-
-def _create_mongocrypt_options(**kwargs: Any) -> MongoCryptOptions:
-    # For compat with pymongocrypt <1.13, avoid setting the default key_expiration_ms.
-    if kwargs.get("key_expiration_ms") is None:
-        kwargs.pop("key_expiration_ms", None)
-    return MongoCryptOptions(**kwargs, enable_multiple_collinfo=True)
+    if string_opts is not None and text_opts is not None:
+        raise ConfigurationError("Cannot set both string_opts and text_opts")
+    if string_opts is None and text_opts is None:
+        return None
+    if text_opts is not None and _string_opts_kwarg() == "string_opts":
+        raise ConfigurationError(
+            "text_opts is not supported by the installed pymongocrypt "
+            "(1.19 or later). Use string_opts instead."
+        )
+    if string_opts is not None and _string_opts_kwarg() == "text_opts":
+        raise ConfigurationError(
+            "string_opts requires pymongocrypt 1.19 or later. Use text_opts "
+            "with the installed pymongocrypt, or upgrade pymongocrypt."
+        )
+    return string_opts if string_opts is not None else text_opts
 
 
 class AsyncClientEncryption(Generic[_DocumentType]):
@@ -917,7 +845,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         contention_factor: Optional[int] = None,
         range_opts: Optional[RangeOpts] = None,
         is_expression: bool = False,
-        text_opts: Optional[TextOpts] = None,
+        string_opts: Optional[StringOpts] = None,
     ) -> Any:
         self._check_closed()
         if isinstance(key_id, uuid.UUID):
@@ -937,10 +865,10 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 range_opts.document,
                 codec_options=self._codec_options,
             )
-        text_opts_bytes = None
-        if text_opts:
-            text_opts_bytes = encode(
-                text_opts.document,
+        string_opts_bytes = None
+        if string_opts:
+            string_opts_bytes = encode(
+                string_opts.document,
                 codec_options=self._codec_options,
             )
         with _wrap_encryption_errors():
@@ -953,8 +881,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts_bytes,
                 is_expression=is_expression,
-                # For compatibility with pymongocrypt < 1.16:
-                **{"text_opts": text_opts_bytes} if text_opts_bytes else {},
+                **({_string_opts_kwarg(): string_opts_bytes} if string_opts_bytes else {}),
             )
             return decode(encrypted_doc)["v"]
 
@@ -967,7 +894,8 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         query_type: Optional[str] = None,
         contention_factor: Optional[int] = None,
         range_opts: Optional[RangeOpts] = None,
-        text_opts: Optional[TextOpts] = None,
+        string_opts: Optional[StringOpts] = None,
+        text_opts: Optional[StringOpts] = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -988,12 +916,20 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             used.
         :param range_opts: Index options for `range` queries. See
             :class:`RangeOpts` for some valid options.
-        :param text_opts: Index options for `textPreview` queries. See
-            :class:`TextOpts` for some valid options.
+        :param string_opts: Index options for `prefix`, `suffix`, and
+            `substring` queries. See :class:`StringOpts` for some valid options.
+        :param text_opts: **DEPRECATED** - The former name of `string_opts`,
+            added in pymongocrypt 1.16 and accepted only through pymongocrypt
+            1.18. Passing it to pymongocrypt 1.19 or later, or passing both
+            names, raises :exc:`~pymongo.errors.ConfigurationError`.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
 
-        .. versionchanged:: 4.9
+        .. versionchanged:: 4.18
+           Added the `string_opts` parameter, replacing the deprecated
+           `text_opts`.
+
+        .. versionchanged:: 4.15
            Added the `text_opts` parameter.
 
         .. versionchanged:: 4.9
@@ -1016,7 +952,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts,
                 is_expression=False,
-                text_opts=text_opts,
+                string_opts=_resolve_string_opts(string_opts, text_opts),
             ),
         )
 

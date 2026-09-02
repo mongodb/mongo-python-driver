@@ -64,10 +64,13 @@ MAX_WIRE_VERSION = 0
 MAX_WRITE_BATCH_SIZE = 100000
 
 # What this version of PyMongo supports.
-MIN_SUPPORTED_SERVER_VERSION = "4.2"
-MIN_SUPPORTED_WIRE_VERSION = 8
+MIN_SUPPORTED_SERVER_VERSION = "4.4"
+MIN_SUPPORTED_WIRE_VERSION = 9
 # MongoDB 9.0
 MAX_SUPPORTED_WIRE_VERSION = 29
+
+# MongoDB 7.1, the first release whose mongos continues an exhaust getMore stream.
+MONGOS_EXHAUST_WIRE_VERSION = 22
 
 # Frequency to call hello on servers, in seconds.
 HEARTBEAT_FREQUENCY = 10

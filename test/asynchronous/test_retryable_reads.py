@@ -278,7 +278,6 @@ class TestRetryableReads(AsyncIntegrationTest):
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     @async_client_context.require_failCommand_fail_point
-    @async_client_context.require_version_min(4, 4, 0)
     async def test_03_01_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available_and_overload_retargeting_is_enabled(
         self,
     ):
@@ -323,7 +322,6 @@ class TestRetryableReads(AsyncIntegrationTest):
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     @async_client_context.require_failCommand_fail_point
-    @async_client_context.require_version_min(4, 4, 0)
     async def test_03_02_retryable_reads_caused_by_non_overload_errors_are_retried_on_the_same_replicaset_server(
         self,
     ):
@@ -365,7 +363,6 @@ class TestRetryableReads(AsyncIntegrationTest):
     @async_client_context.require_replica_set
     @async_client_context.require_secondaries_count(1)
     @async_client_context.require_failCommand_fail_point
-    @async_client_context.require_version_min(4, 4, 0)
     async def test_03_03_retryable_reads_caused_by_overload_errors_are_retried_on_the_same_replicaset_server_when_one_is_available_and_overload_retargeting_is_disabled(
         self,
     ):
@@ -407,7 +404,6 @@ class TestRetryableReads(AsyncIntegrationTest):
         assert listener.failed_events[0].connection_id == listener.succeeded_events[0].connection_id
 
     @async_client_context.require_failCommand_fail_point
-    @async_client_context.require_version_min(4, 4, 0)  # type:ignore[untyped-decorator]
     async def test_overload_then_nonoverload_retries_increased_reads(self) -> None:
         # Create a client.
         listener = OvertCommandListener()
@@ -459,12 +455,8 @@ class TestRetryableReads(AsyncIntegrationTest):
         self.assertEqual(len(started_finds), MAX_ADAPTIVE_RETRIES + 1)
 
     @async_client_context.require_failCommand_fail_point
-    @async_client_context.require_version_min(4, 4, 0)  # type:ignore[untyped-decorator]
     async def test_backoff_is_not_applied_for_non_overload_errors(self):
-        if _IS_SYNC:
-            mock_target = "pymongo.synchronous.helpers._RetryPolicy.backoff"
-        else:
-            mock_target = "pymongo.asynchronous.helpers._RetryPolicy.backoff"
+        mock_target = "pymongo.helpers_shared._RetryPolicy.backoff"
 
         # Create a client.
         listener = OvertCommandListener()

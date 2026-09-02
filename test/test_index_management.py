@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import pathlib
 import sys
 import time
 import uuid
@@ -26,6 +25,8 @@ from collections.abc import Mapping
 from typing import Any
 
 import pytest
+
+from test.utils import flaky
 
 sys.path[0:0] = [""]
 
@@ -112,6 +113,18 @@ class SearchIndexIntegrationBase(PyMongoTestCase):
                 return indices[0]
             time.sleep(5)
 
+    def drop_and_wait(self, coll, name):
+        """Drop a search index and wait for it to be dropped."""
+        coll.drop_search_index(name)
+        start = time.time()
+        while True:
+            indices = (coll.list_search_indexes(name)).to_list()
+            if not indices:
+                return
+            if (time.time() - start) / 60 > 5:
+                raise TimeoutError("Timed out waiting for index deletion")
+            time.sleep(5)
+
 
 class TestSearchIndexIntegration(SearchIndexIntegrationBase):
     db_name = "test_search_index"
@@ -136,12 +149,14 @@ class TestSearchIndexIntegration(SearchIndexIntegrationBase):
 class TestSearchIndexProse(SearchIndexIntegrationBase):
     db_name = "test_search_index_prose"
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_1(self):
         """Driver can successfully create and list search indexes."""
 
         # Create a new search index on ``self.coll0`` with the ``createSearchIndex`` helper.  Use the following definition:
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = self.coll0.create_search_index(model)
+        self.addCleanup(self.drop_and_wait, self.coll0, _NAME)
 
         # Assert that the command returns the name of the index: ``"test-search-index"``.
         self.assertEqual(resp, _NAME)
@@ -154,6 +169,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         self.assertIn("latestDefinition", index)
         self.assertEqual(index["latestDefinition"], model["definition"])
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_2(self):
         """Driver can successfully create multiple indexes in batch."""
 
@@ -168,6 +184,8 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         self.coll0.create_search_indexes(
             [SearchIndexModel(i["definition"], i["name"]) for i in index_definitions]
         )
+        for index in index_definitions:
+            self.addCleanup(self.drop_and_wait, self.coll0, index["name"])
 
         # .Assert that the command returns an array containing the new indexes' names: ``["test-search-index-1", "test-search-index-2"]``.
         indices = (self.coll0.list_search_indexes()).to_list()
@@ -186,6 +204,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
             self.assertIn("latestDefinition", index)
             self.assertEqual(index["latestDefinition"], definition)
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_3(self):
         """Driver can successfully drop search indexes."""
 
@@ -213,12 +232,14 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
                 raise TimeoutError("Timed out waiting for index deletion")
             time.sleep(5)
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_4(self):
         """Driver can update a search index."""
 
         # Create a new search index on ``self.coll0``.
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = self.coll0.create_search_index(model)
+        self.addCleanup(self.drop_and_wait, self.coll0, _NAME)
 
         # Assert that the command returns the name of the index: ``"test-search-index"``.
         self.assertEqual(resp, _NAME)
@@ -243,6 +264,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         self.assertIn("latestDefinition", index)
         self.assertEqual(index["latestDefinition"], model2["definition"])
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_5(self):
         """``dropSearchIndex`` suppresses namespace not found errors."""
         # Create a driver-side collection object for a randomly generated collection name.  Do not create this collection on the server.
@@ -251,6 +273,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Run a ``dropSearchIndex`` command and assert that no error is thrown.
         coll0.drop_search_index("foo")
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_6(self):
         """Driver can successfully create and list search indexes with non-default readConcern and writeConcern."""
 
@@ -263,6 +286,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         name = "test-search-index-case6"
         model = {"name": name, "definition": {"mappings": {"dynamic": False}}}
         resp = coll0.create_search_index(model)
+        self.addCleanup(self.drop_and_wait, self.coll0, name)
 
         # Assert that the command returns the name of the index: ``"test-search-index-case6"``.
         self.assertEqual(resp, name)
@@ -275,6 +299,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         self.assertIn("latestDefinition", index)
         self.assertEqual(index["latestDefinition"], model["definition"])
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_7(self):
         """Driver handles index types."""
 
@@ -295,6 +320,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         implicit_search_resp = self.coll0.create_search_index(
             model={"name": _NAME + "-implicit", "definition": search_definition}
         )
+        self.addCleanup(self.drop_and_wait, self.coll0, _NAME + "-implicit")
 
         # Get the index definition.
         resp = (self.coll0.list_search_indexes(name=implicit_search_resp)).next()
@@ -306,6 +332,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         explicit_search_resp = self.coll0.create_search_index(
             model={"name": _NAME + "-explicit", "type": "search", "definition": search_definition}
         )
+        self.addCleanup(self.drop_and_wait, self.coll0, _NAME + "-explicit")
 
         # Get the index definition.
         resp = (self.coll0.list_search_indexes(name=explicit_search_resp)).next()
@@ -321,6 +348,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
                 "definition": vector_search_definition,
             }
         )
+        self.addCleanup(self.drop_and_wait, self.coll0, _NAME + "-vector")
 
         # Get the index definition.
         resp = (self.coll0.list_search_indexes(name=explicit_vector_resp)).next()

@@ -18,11 +18,12 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import sys
 import time
 from pathlib import Path
 
-from test.utils import get_pool, get_pools
+from test.utils import flaky, get_pool, get_pools
 
 sys.path[0:0] = [""]
 
@@ -49,8 +50,8 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
+from pymongo.pool_shared import PoolState, _PoolClosedError
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.pool import PoolState, _PoolClosedError
 from pymongo.topology_description import updated_topology_description
 from test import IntegrationTest, client_context, client_knobs, unittest
 from test.pymongo_mocks import DummyMonitor
@@ -216,6 +217,22 @@ class TestCMAP(IntegrationTest):
         self.configure_fail_point(self.client, command_args)
 
     def run_scenario(self, scenario_def, test):
+        # Handle flaky tests.
+        flaky_tests = [
+            ("PYTHON-6055", ".*pool_checkout_custom_maxConnecting_is_enforced.*"),
+            ("PYTHON-6055", ".*pool_checkout_maxConnecting_is_enforced.*"),
+            ("PYTHON-6055", ".*pool_checkout_maxConnecting_timeout.*"),
+            ("PYTHON-6055", ".*pool_checkout_minPoolSize_connection_maxConnecting.*"),
+            ("PYTHON-6055", ".*pool_checkout_returned_connection_maxConnecting.*"),
+        ]
+        for reason, flaky_test in flaky_tests:
+            if re.match(flaky_test.lower(), self.id().lower()) is not None:
+                decorator = flaky(reason=reason, func_name=self.id(), affects_cpython_linux=True)
+                decorator(self._run_scenario)(scenario_def, test)
+                return
+        self._run_scenario(scenario_def, test)
+
+    def _run_scenario(self, scenario_def, test):
         """Run a CMAP spec test."""
         self.logs: list = []
         self.assertEqual(scenario_def["version"], 1)

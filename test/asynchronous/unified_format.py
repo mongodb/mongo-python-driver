@@ -45,12 +45,13 @@ from gridfs import AsyncGridFSBucket, GridOut, NoFile
 from gridfs.errors import CorruptGridFile
 from pymongo import ASCENDING, AsyncMongoClient, CursorType, _csot
 from pymongo.asynchronous.change_stream import AsyncChangeStream
-from pymongo.asynchronous.client_session import AsyncClientSession, TransactionOptions, _TxnState
+from pymongo.asynchronous.client_session import AsyncClientSession, TransactionOptions
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.encryption import AsyncClientEncryption
 from pymongo.asynchronous.helpers import anext
+from pymongo.client_session_shared import _TxnState
 from pymongo.driver_info import DriverInfo
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT, AutoEncryptionOpts
 from pymongo.errors import (
@@ -642,6 +643,8 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 self.skipTest("CSOT not implemented for with_transaction")
             if "transaction" in class_name or "transaction" in description:
                 self.skipTest("CSOT not implemented for transactions")
+            if "COVERAGE" in os.environ:
+                self.skipTest("CSOT tests are inconsistent with coverage")
 
         # Some tests need to be skipped based on the operations they try to run.
         for op in spec["operations"]:
