@@ -285,7 +285,7 @@ class TestReceiveMessage(unittest.TestCase):
         sub_header = struct.pack("<iiB", 2013, 9999, 2)
         conn = _FakeConn(header + sub_header + compressed)
         with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
-            receive_message(conn, request_id=99, max_message_size=1024)
+            receive_message(conn, request_id=99, max_message_size=1024)  # type: ignore[arg-type]
 
     def test_uncompressed_size_equal_max_rejected(self):
         from pymongo.network_layer import receive_message
@@ -298,7 +298,7 @@ class TestReceiveMessage(unittest.TestCase):
         sub_header = struct.pack("<iiB", 2013, 1024, 2)
         conn = _FakeConn(header + sub_header + compressed)
         with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
-            receive_message(conn, request_id=99, max_message_size=1024)
+            receive_message(conn, request_id=99, max_message_size=1024)  # type: ignore[arg-type]
 
     def test_nonpositive_uncompressed_size_rejected(self):
         from pymongo.network_layer import receive_message
@@ -313,7 +313,7 @@ class TestReceiveMessage(unittest.TestCase):
                 sub_header = struct.pack("<iiB", 2013, size, 2)
                 conn = _FakeConn(header + sub_header + compressed)
                 with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
-                    receive_message(conn, request_id=99, max_message_size=1024)
+                    receive_message(conn, request_id=99, max_message_size=1024)  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":

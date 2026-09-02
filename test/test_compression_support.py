@@ -181,12 +181,10 @@ class TestSnappyUncompressedLength(unittest.TestCase):
         self.assertEqual(_snappy_uncompressed_length(b"\xac\x02"), 300)
 
     def test_truncated(self):
-
         with self.assertRaises(ProtocolError):
             _snappy_uncompressed_length(b"\xff")
 
     def test_overlong_varint(self):
-
         with self.assertRaises(ProtocolError):
             _snappy_uncompressed_length(b"\xff" * 5)
 
@@ -303,7 +301,6 @@ class TestDecompressSizeLimit(unittest.TestCase):
         self.assertLess(peak, 10 * max_size)
 
     def test_snappy_declared_size_exceeds_max_rejected(self):
-
         # Varint declaring 2^31 uncompressed bytes; rejected by the declared
         # size pre-check before python-snappy is imported.
         payload = b"\x80\x80\x80\x80\x08"

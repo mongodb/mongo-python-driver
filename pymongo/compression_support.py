@@ -185,7 +185,7 @@ def decompress(data: bytes | memoryview, compressor_id: int, max_message_size: i
         if declared > max_message_size:
             raise ProtocolError(
                 f"Decompressed message size ({declared!r}) is larger than "
-                f"server max message size ({max_message_size!r})"
+                f"maximum allowed payload size ({max_message_size!r})"
             )
         import snappy
 
@@ -224,6 +224,6 @@ def decompress(data: bytes | memoryview, compressor_id: int, max_message_size: i
     if len(result) > max_message_size:
         raise ProtocolError(
             f"Decompressed message size ({len(result)!r}) is larger than "
-            f"server max message size ({max_message_size!r})"
+            f"maximum allowed payload size ({max_message_size!r})"
         )
     return result
