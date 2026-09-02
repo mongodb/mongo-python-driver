@@ -551,7 +551,7 @@ class PyMongoProtocol(BufferedProtocol):
                         f"Got response id {response_to!r} but expected {request_id!r}"
                     )
             if compressor_id is not None:
-                data = decompress(data, compressor_id, self._max_message_size)
+                data = decompress(data, compressor_id, self._max_message_size - 16)
             return data, op_code
         raise OSError("connection closed")
 
@@ -609,11 +609,11 @@ class PyMongoProtocol(BufferedProtocol):
                     uncompressed_size,
                     self._compressor_id,
                 ) = self.process_compression_header()
-                if uncompressed_size + 16 > self._max_message_size:
+                if uncompressed_size <= 0 or uncompressed_size + 16 > self._max_message_size:
                     self.close(
                         ProtocolError(
-                            f"Uncompressed message size ({uncompressed_size + 16!r}) "
-                            f"is larger than server max message size "
+                            f"Uncompressed message size ({uncompressed_size!r}) is invalid or larger "
+                            f"than server max message size "
                             f"({self._max_message_size!r})"
                         )
                     )
@@ -797,13 +797,13 @@ def receive_message(
         op_code, uncompressed_size, compressor_id = _UNPACK_COMPRESSION_HEADER(
             receive_data(conn, 9, deadline)
         )
-        if uncompressed_size + 16 > max_message_size:
+        if uncompressed_size <= 0 or uncompressed_size + 16 > max_message_size:
             raise ProtocolError(
-                f"Uncompressed message size ({uncompressed_size + 16!r}) is larger "
+                f"Uncompressed message size ({uncompressed_size!r}) is invalid or larger "
                 f"than server max message size ({max_message_size!r})"
             )
         data = decompress(
-            receive_data(conn, length - 25, deadline), compressor_id, max_message_size
+            receive_data(conn, length - 25, deadline), compressor_id, max_message_size - 16
         )
     else:
         data = receive_data(conn, length - 16, deadline)

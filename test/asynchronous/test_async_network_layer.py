@@ -210,6 +210,27 @@ class TestBufferUpdated(AsyncUnitTest):
         with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
             await read_task
 
+    async def test_nonpositive_uncompressed_size_closes_connection(self):
+        self.protocol._max_message_size = 1024
+        read_task = asyncio.create_task(self.protocol.read(request_id=None, max_message_size=1024))
+        await asyncio.sleep(0)
+
+        # Feed OP_COMPRESSED header (length = 16 + 9 + 1 = 26).
+        header = pack_msg_header(length=26, request_id=1, response_to=99, op_code=2012)
+        buf = self.protocol.get_buffer(16)
+        buf[:16] = header
+        self.protocol.buffer_updated(16)
+
+        # uncompressed_size is a signed int32; zero and negative values must be
+        # rejected as malformed rather than accepted by the upper-bound check.
+        buf = self.protocol.get_buffer(9)
+        buf[:9] = struct.pack("<iiB", 2013, 0, 2)
+        self.protocol.buffer_updated(9)
+
+        self.assertTrue(self.protocol.transport.abort.called)
+        with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
+            await read_task
+
 
 class TestAsyncSocketReceive(AsyncUnitTest):
     async def test_raises_on_connection_closed(self):
@@ -278,6 +299,21 @@ class TestReceiveMessage(unittest.TestCase):
         conn = _FakeConn(header + sub_header + compressed)
         with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
             receive_message(conn, request_id=99, max_message_size=1024)
+
+    def test_nonpositive_uncompressed_size_rejected(self):
+        from pymongo.network_layer import receive_message
+
+        # uncompressed_size is a signed int32; zero and negative values must be
+        # rejected as malformed rather than accepted by the upper-bound check.
+        for size in (0, -1):
+            with self.subTest(uncompressed_size=size):
+                compressed = b"x" * 10
+                total_len = 16 + 9 + len(compressed)
+                header = struct.pack("<iiii", total_len, 1, 99, 2012)
+                sub_header = struct.pack("<iiB", 2013, size, 2)
+                conn = _FakeConn(header + sub_header + compressed)
+                with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
+                    receive_message(conn, request_id=99, max_message_size=1024)
 
 
 if __name__ == "__main__":
