@@ -111,7 +111,7 @@ class TestThreads(IntegrationTest):
         self.db = self.client.pymongo_test
 
     def test_threading(self):
-        self.db.drop_collection("test")
+        self.db.drop_collection("coll")
         self.db.coll.insert_many([{"x": i} for i in range(1000)])
 
         threads = []
