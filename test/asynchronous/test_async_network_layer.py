@@ -245,14 +245,23 @@ class TestAsyncSocketReceive(AsyncUnitTest):
 
 
 class _FakeSocket:
-    """Feeds a byte buffer, simulating a socket."""
+    """Feeds a byte buffer, simulating a socket.
+
+    On Windows and PyPy, receive_data() calls wait_for_read() before
+    recv_into(), which reaches through conn.conn.sock, so this also has to
+    look like a socket to that code path.
+    """
 
     def __init__(self, data: bytes):
         self.data = data
         self.pos = 0
+        self.sock = self
 
     def gettimeout(self):
         return None
+
+    def fileno(self):
+        return 1
 
     def recv_into(self, buf):
         n = min(len(buf), len(self.data) - self.pos)
@@ -263,9 +272,20 @@ class _FakeSocket:
         return n
 
 
+class _FakeSocketChecker:
+    def select(self, sock, read=False, write=False, timeout=None):
+        return True
+
+
+class _FakeCancelContext:
+    cancelled = False
+
+
 class _FakeConn:
     def __init__(self, data: bytes):
         self.conn = _FakeSocket(data)
+        self.socket_checker = _FakeSocketChecker()
+        self.cancel_context = _FakeCancelContext()
 
     def gettimeout(self):
         return None

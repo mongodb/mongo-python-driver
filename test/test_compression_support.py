@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import sys
-import tracemalloc
 import zlib
 from unittest.mock import patch
 
@@ -38,6 +37,16 @@ from pymongo.compression_support import (
 )
 from pymongo.errors import ProtocolError
 from test import unittest
+
+
+def _have_tracemalloc() -> bool:
+    try:
+        import tracemalloc
+
+        return True
+    except ImportError:
+        # PyPy does not ship the _tracemalloc C extension.
+        return False
 
 
 class TestValidateCompressors(unittest.TestCase):
@@ -223,6 +232,10 @@ class TestDecompress(unittest.TestCase):
 
 class TestDecompressSizeLimit(unittest.TestCase):
     def test_decompression_peak_memory_bounded(self):
+        if not _have_tracemalloc():
+            self.skipTest("tracemalloc not available")
+        import tracemalloc
+
         # High expansion ratio payload (repeated zeros, ~100000:1 ratio)
         payload = zlib.compress(b"\x00" * 100_000_000)
         max_size = 1_000_000
@@ -262,6 +275,10 @@ class TestDecompressSizeLimit(unittest.TestCase):
     def test_snappy_peak_memory_bounded(self):
         if not _have_snappy():
             self.skipTest("python-snappy not installed")
+        if not _have_tracemalloc():
+            self.skipTest("tracemalloc not available")
+        import tracemalloc
+
         payload = SnappyContext.compress(b"\x00" * 100_000_000)
         max_size = 1_000_000
         tracemalloc.start()
@@ -277,6 +294,10 @@ class TestDecompressSizeLimit(unittest.TestCase):
     def test_zstd_peak_memory_bounded(self):
         if not _have_zstd():
             self.skipTest("zstd not available")
+        if not _have_tracemalloc():
+            self.skipTest("tracemalloc not available")
+        import tracemalloc
+
         payload = ZstdContext.compress(b"\x00" * 100_000_000)
         max_size = 1_000_000
         tracemalloc.start()
