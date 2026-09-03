@@ -29,16 +29,14 @@ from test import IntegrationTest
 from test.utils_shared import is_greenthread_patched
 
 
+# self.fork suppresses the Python 3.12+ fork() DeprecationWarning; it is
+# benign for these intentional forks (PYTHON-5874).
 @unittest.skipIf(
     not hasattr(os, "register_at_fork"), "register_at_fork not available in this version of Python"
 )
 @unittest.skipIf(
     is_greenthread_patched(),
     "gevent does not support POSIX-style forking.",
-)
-@unittest.skipIf(
-    sys.version_info >= (3, 15),
-    "fork() in multi-threaded processes is deprecated in Python 3.15+ (PYTHON-5874)",
 )
 class TestFork(IntegrationTest):
     def test_lock_client(self):

@@ -950,7 +950,17 @@ class AsyncPyMongoTestCase(unittest.TestCase):
 
         ctx = multiprocessing.get_context("fork")
         proc = ctx.Process(target=_target)
-        proc.start()
+        # Python 3.12+ warns when os.fork() runs in a multi-threaded process. The
+        # warning is a general thread-count heuristic; benign here because the only
+        # extra threads are pymongo's, whose locks register_at_fork resets in the
+        # child. Suppressed only in this helper, not globally (PYTHON-5874).
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*use of fork\(\) may lead to deadlocks.*",
+                category=DeprecationWarning,
+            )
+            proc.start()
         try:
             yield proc  # type: ignore
         finally:
