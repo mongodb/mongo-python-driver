@@ -98,7 +98,7 @@
                   "$$type": "string"
                 },
                 "error.type": {
-                  "$$exists": false
+                  "$$type": "string"
                 }
               },
               "nested": [
@@ -209,7 +209,7 @@
                   "$$type": "string"
                 },
                 "error.type": {
-                  "$$exists": false
+                  "$$type": "string"
                 }
               },
               "nested": [
