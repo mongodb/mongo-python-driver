@@ -248,6 +248,9 @@ class ChangeStream(Generic[_DocumentType]):
             result_processor=self._process_result,
             comment=self._comment,
         )
+        # No operation span is attached to the resulting cursor: a change stream
+        # can tail indefinitely, so a span covering its whole lifetime would
+        # never end. Each getMore gets its own sibling span instead.
         return self._client._retryable_read(
             cmd.get_cursor,
             self._target._read_preference_for(session),
