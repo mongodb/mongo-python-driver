@@ -559,6 +559,20 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(span.attributes["error.type"], span.attributes["db.response.status_code"])
         self.assertTrue(any(event.name == "exception" for event in span.events))
 
+    async def test_operation_span_error_type_is_exception_class_name_for_server_error(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        with self.assertRaises(OperationFailure) as ctx:
+            await client[self.db.name].command("thisCommandDoesNotExist")
+
+        (op_span,) = [
+            s
+            for s in self.spans()
+            if "db.operation.name" in s.attributes and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(op_span.attributes["error.type"], op_span.attributes["exception.type"])
+        self.assertEqual(op_span.attributes["error.type"], _qualified_name(type(ctx.exception)))
+
     @async_client_context.require_failCommand_fail_point
     async def test_error_type_is_exception_class_name_for_connection_failure(self):
         # A closed connection produces no server reply, so error.type uses the class name.
