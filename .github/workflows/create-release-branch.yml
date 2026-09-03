@@ -33,10 +33,30 @@ jobs:
     outputs:
       version: ${{ steps.pre-publish.outputs.version }}
     steps:
-      - uses: mongodb-labs/drivers-github-tools/secure-checkout@v3
+      - name: Create app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
         with:
-          app_id: ${{ vars.APP_ID }}
-          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+      - name: Store token
+        shell: bash -eu {0}
+        # zizmor: ignore[template-injection] GH_TOKEN is a GitHub App installation token, not attacker-controllable
+        run: echo "GH_TOKEN=${{ steps.app-token.outputs.token }}" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.ref }}
+          token: ${{ env.GH_TOKEN }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Configure git auth for push
+        shell: bash -eu {0}
+        run: |
+          auth_header=$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)
+          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ${auth_header}"
       - uses: mongodb-labs/drivers-github-tools/setup@v3
         with:
           aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
