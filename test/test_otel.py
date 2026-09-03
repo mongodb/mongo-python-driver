@@ -34,7 +34,9 @@ from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
     ClientBulkWriteException,
     ConfigurationError,
+    ConnectionFailure,
     InvalidOperation,
+    NetworkTimeout,
     OperationFailure,
     ServerSelectionTimeoutError,
 )
@@ -74,6 +76,11 @@ class TestBuildQueryText(unittest.TestCase):
         for max_length in range(1, 10):
             text = _otel._build_query_text(cmd, max_length)
             self.assertLessEqual(len(text), max_length, (max_length, text))
+
+
+def _qualified_name(exc_type: type) -> str:
+    """Format an exception class the way the spans do: ``module.QualName``."""
+    return f"{exc_type.__module__}.{exc_type.__qualname__}"
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
@@ -548,7 +555,71 @@ class TestOTelSpans(IntegrationTest):
         span = spans[0]
         self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
         self.assertIn("db.response.status_code", span.attributes)
+        # For a server error the spec has error.type mirror the status code.
+        self.assertEqual(span.attributes["error.type"], span.attributes["db.response.status_code"])
         self.assertTrue(any(event.name == "exception" for event in span.events))
+
+    def test_operation_span_error_type_is_exception_class_name_for_server_error(self):
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        with self.assertRaises(OperationFailure) as ctx:
+            client[self.db.name].command("thisCommandDoesNotExist")
+
+        (op_span,) = [
+            s
+            for s in self.spans()
+            if "db.operation.name" in s.attributes and "db.command.name" not in s.attributes
+        ]
+        self.assertEqual(op_span.attributes["error.type"], op_span.attributes["exception.type"])
+        self.assertEqual(op_span.attributes["error.type"], _qualified_name(type(ctx.exception)))
+
+    @client_context.require_failCommand_fail_point
+    def test_error_type_is_exception_class_name_for_connection_failure(self):
+        # A closed connection produces no server reply, so error.type uses the class name.
+        client = self.rs_or_single_client(tracing={"enabled": True}, retryReads=False)
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {"failCommands": ["find"], "closeConnection": True},
+        }
+        with self.fail_point(fail_command):
+            self.exporter.clear()
+            with self.assertRaises(ConnectionFailure) as ctx:
+                client[self.db.name].test.find_one({})
+
+        spans = [s for s in self.spans() if s.attributes.get("db.command.name") == "find"]
+        self.assertEqual(len(spans), 1)
+        attrs = spans[0].attributes
+        self.assertNotIn("db.response.status_code", attrs)
+        self.assertEqual(attrs["error.type"], _qualified_name(type(ctx.exception)))
+        self.assertEqual(attrs["error.type"], attrs["exception.type"])
+
+    @client_context.require_failCommand_blockConnection
+    def test_error_type_is_exception_class_name_for_network_timeout(self):
+        # socketTimeoutMS trips before any reply, so there is no server error code.
+        client = self.rs_or_single_client(
+            tracing={"enabled": True}, socketTimeoutMS=200, retryReads=False
+        )
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "blockConnection": True,
+                "blockTimeMS": 1000,
+            },
+        }
+        with self.fail_point(fail_command):
+            self.exporter.clear()
+            with self.assertRaises(NetworkTimeout) as ctx:
+                client[self.db.name].test.find_one({})
+
+        spans = [s for s in self.spans() if s.attributes.get("db.command.name") == "find"]
+        self.assertEqual(len(spans), 1)
+        attrs = spans[0].attributes
+        self.assertNotIn("db.response.status_code", attrs)
+        self.assertEqual(attrs["error.type"], _qualified_name(NetworkTimeout))
+        self.assertIsInstance(ctx.exception, NetworkTimeout)
 
     def test_tracing_disabled_by_default(self):
         client = self.rs_or_single_client()
