@@ -597,7 +597,8 @@ def end_operation_span_failure(handle: Optional[_OperationSpanHandle], exc: Base
         return
     try:
         handle.span.record_exception(exc)
-        _set_exception_attributes(handle.span, exc)
+        exception_type = _set_exception_attributes(handle.span, exc)
+        handle.span.set_attribute("error.type", exception_type)
         handle.span.set_status(Status(StatusCode.ERROR, description=str(exc)))
     finally:
         # Unwind even if recording raised, since a span left current would
