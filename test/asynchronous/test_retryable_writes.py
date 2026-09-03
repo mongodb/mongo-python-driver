@@ -78,6 +78,12 @@ _IS_SYNC = False
 
 
 class InsertEventListener(EventListener):
+    fail_point_exc: BaseException | None = None
+
+    def _store_fail_point_exc(self, task: asyncio.Task) -> None:
+        if not task.cancelled():
+            self.fail_point_exc = task.exception()
+
     def succeeded(self, event: CommandSucceededEvent) -> None:
         super().succeeded(event)
         if (
@@ -99,6 +105,7 @@ class InsertEventListener(EventListener):
                 # succeeded() cannot await, so the fail point may be configured after
                 # the driver dispatches the retry it is meant to fail.
                 self._task = create_task(async_client_context.client.admin.command(cmd))  # type: ignore[arg-type]
+                self._task.add_done_callback(self._store_fail_point_exc)
 
 
 def retryable_single_statement_ops(coll):
@@ -564,6 +571,7 @@ class TestPoolPausedError(AsyncIntegrationTest):
         with self.assertRaises(WriteConcernError) as exc:
             await client.test.test.insert_one({"_id": 1})
         self.assertEqual(exc.exception.code, 91)
+        self.assertIsNone(cmd_listener.fail_point_exc)
         await client.admin.command(
             {
                 "configureFailPoint": "failCommand",
