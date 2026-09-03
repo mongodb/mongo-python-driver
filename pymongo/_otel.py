@@ -12,17 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Optional OpenTelemetry command-span support.
+"""Optional OpenTelemetry span support.
 
 Kept separate from :mod:`pymongo._telemetry` so that module stays free of
 ``opentelemetry`` import guards. Every function here is a no-op when
 ``opentelemetry`` isn't installed or tracing isn't enabled.
+
+This module builds span names and attributes; :mod:`pymongo._telemetry` starts
+and ends spans. So a specification change to a name or an attribute value lands
+here alone, while one to a span's lifetime or nesting touches both.
 """
 
 from __future__ import annotations
 
+import contextlib
+import enum
 import os
-from collections.abc import Mapping, MutableMapping
+import traceback
+from collections.abc import Iterator, Mapping, MutableMapping
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Optional, TypedDict
 
 from bson import json_util
@@ -31,19 +39,29 @@ from pymongo._version import __version__
 from pymongo.logger import _HELLO_COMMANDS, _JSON_OPTIONS, _SENSITIVE_COMMANDS
 
 try:
-    from opentelemetry import trace
-    from opentelemetry.trace import SpanKind, Status, StatusCode
+    from opentelemetry import context, trace  # type:ignore[import-not-found,unused-ignore]
+    from opentelemetry.trace import (  # type:ignore[import-not-found,unused-ignore]
+        SpanKind,
+        Status,
+        StatusCode,
+    )
 
     _HAS_OPENTELEMETRY = True
-    # Safe to cache at import time: opentelemetry.trace.get_tracer() returns a
-    # ProxyTracer when no real TracerProvider is registered yet, and that proxy
-    # transparently starts delegating to the real tracer once the application
-    # calls trace.set_tracer_provider() later, so this doesn't bind us to a
-    # permanently-inert no-op tracer.
+    # Safe to cache: get_tracer() returns a ProxyTracer when no provider is
+    # registered yet, and that proxy starts delegating once the application
+    # calls set_tracer_provider(), so this is not bound to a no-op tracer.
     _TRACER: Optional[Tracer] = trace.get_tracer("PyMongo", __version__)
 except ImportError:
     _HAS_OPENTELEMETRY = False
     _TRACER = None
+
+# Name of the active operation span, so start_command_span can backfill that
+# span's name and namespace attributes from the first command built inside it.
+# Call sites that know the namespace up front pass it to start_operation_span;
+# the generic retry path does not, and relies on this backfill.
+_CURRENT_OPERATION_NAME: ContextVar[Optional[str]] = ContextVar(
+    "_CURRENT_OPERATION_NAME", default=None
+)
 
 if TYPE_CHECKING:
     from opentelemetry.trace import Span, Tracer
@@ -52,16 +70,27 @@ if TYPE_CHECKING:
     from pymongo.typings import _DocumentOut
 
 
-class TracingOptions(TypedDict):
-    """The shape of the ``MongoClient`` ``tracing`` option.
+class _UnresolvedTracingOptions(TypedDict):
+    """The ``MongoClient`` ``tracing`` option as validated from user input.
 
-    ``query_text_max_length`` is None when the client didn't configure it, so
-    the environment variable can be consulted; any explicit value (including
-    0, to force ``db.query.text`` off) overrides the environment variable.
+    ``query_text_max_length`` is None when unset, which is distinct from an
+    explicit 0: None lets the environment variable supply a length, 0 turns
+    ``db.query.text`` off.
     """
 
     enabled: bool
     query_text_max_length: Optional[int]
+
+
+class TracingOptions(TypedDict):
+    """The ``MongoClient`` ``tracing`` option as a client holds it.
+
+    :func:`_resolve_tracing_options` has folded in the environment variables,
+    so ``query_text_max_length`` is an int of 0 or more.
+    """
+
+    enabled: bool
+    query_text_max_length: int
 
 
 _OTEL_ENABLED_ENV = "OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED"
@@ -72,19 +101,23 @@ _TRUTHY = frozenset({"1", "true", "yes"})
 # from the equivalent CommandStartedEvent.command per the OpenTelemetry spec.
 _QUERY_TEXT_EXCLUDED_FIELDS = frozenset({"lsid", "$db", "$clusterTime", "signature"})
 
-# getMore's own command value is the cursor id, not the collection name; the
-# collection lives under a separate "collection" key instead.
-# See _gen_get_more_command in pymongo/message.py.
+# getMore's command value is the cursor id, not a collection name; the collection
+# lives under a separate "collection" key. See _gen_get_more_command in message.py.
 _GET_MORE = "getMore"
 
-# explain wraps the real command (e.g. find/aggregate) rather than naming a
-# collection directly: {"explain": {"find": "coll", ...}}. See _Query.as_command
-# in pymongo/message.py.
+# explain wraps the real command rather than naming a collection directly:
+# {"explain": {"find": "coll", ...}}. See _Query.as_command in message.py.
 _EXPLAIN = "explain"
 
 # Commands against this database (e.g. user/role management, renameCollection)
 # never have a real collection name, even when their command value is a string.
 _ADMIN_DB = "admin"
+
+# A cursor opened by a command rather than over a collection (listCollections,
+# listIndexes, a database-level aggregate) has a namespace like
+# "$cmd.listCollections", which names no user collection, so per the spec
+# db.collection.name is omitted.
+_CMD_NAMESPACE_PREFIX = "$cmd"
 
 
 def _env_truthy(name: str) -> bool:
@@ -93,44 +126,47 @@ def _env_truthy(name: str) -> bool:
 
 
 def _is_tracing_enabled(tracing_options: Optional[TracingOptions]) -> bool:
-    """Return True if OTel command spans should be created for this client.
+    """Return True if spans should be created for this client.
 
-    The ``MongoClient`` ``tracing.enabled`` option and the
-    ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable both
-    gate enablement; either one being truthy is sufficient.
+    ClientOptions folds ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` into
+    ``tracing.enabled`` once at construction, so this is a lookup rather than
+    an os.environ read per command. ``None`` means there is no client to read the
+    option from, such as for monitor and handshake connections, which are never
+    traced.
     """
-    if not _HAS_OPENTELEMETRY:
-        return False
-    if tracing_options and tracing_options.get("enabled"):
-        return True
-    return _env_truthy(_OTEL_ENABLED_ENV)
+    return _HAS_OPENTELEMETRY and tracing_options is not None and tracing_options["enabled"]
+
+
+def _resolve_tracing_options(tracing_options: _UnresolvedTracingOptions) -> TracingOptions:
+    """Fold Otel environment variables into a client's validated tracing options.
+
+    Called once when the client is built, so nothing re-reads the environment
+    per command. An explicit client value wins, including a
+    ``query_text_max_length`` of 0, which turns ``db.query.text`` off.
+    """
+    max_length = tracing_options["query_text_max_length"]
+    if max_length is None:
+        try:
+            max_length = int(os.getenv(_OTEL_QUERY_TEXT_MAX_LENGTH_ENV, "0"))
+        except ValueError:
+            max_length = 0
+    return {
+        "enabled": tracing_options["enabled"] or _env_truthy(_OTEL_ENABLED_ENV),
+        "query_text_max_length": max(0, max_length),
+    }
 
 
 def _get_query_text_max_length(tracing_options: Optional[TracingOptions]) -> int:
-    """Return the configured db.query.text truncation length, or 0 to omit the attribute.
-
-    An explicit client value (including 0) always wins; the environment
-    variable is only consulted when the client didn't configure it at all.
-    """
-    client_value = tracing_options.get("query_text_max_length") if tracing_options else None
-    if client_value is not None:
-        return max(0, client_value)
-    try:
-        return max(0, int(os.getenv(_OTEL_QUERY_TEXT_MAX_LENGTH_ENV, "0")))
-    except ValueError:
-        return 0
+    """Return the db.query.text truncation length, or 0 to omit the attribute."""
+    return tracing_options["query_text_max_length"] if tracing_options else 0
 
 
 def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
     """Serialize ``cmd`` to extended JSON, redacted and truncated to ``max_length``.
 
-    Mirrors the truncation approach used for log messages: truncate field
-    values first, which usually keeps the result well-formed JSON (unlike a
-    blind cut of the fully-serialized string), then fall back to a hard
-    string cut as a safety net for whatever the field truncation's size
-    estimate still leaves over ``max_length``. The "..." marker is carved out
-    of the budget (not appended on top of it) so the result never exceeds
-    ``max_length``.
+    Mirrors log-message truncation: shorten field values first, which usually
+    keeps the result valid JSON, then hard-cut as a safety net. The "..."
+    marker comes out of the budget, so the result never exceeds ``max_length``.
     """
     filtered = {k: v for k, v in cmd.items() if k not in _QUERY_TEXT_EXCLUDED_FIELDS}
     truncated_cmd = _truncate_documents(filtered, max_length)[0]
@@ -139,7 +175,9 @@ def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
     text = json_util.dumps(truncated_cmd, json_options=_JSON_OPTIONS, default=repr)
     if len(text) > max_length:
         suffix = "..."
-        text = text[: max(0, max_length - len(suffix))] + suffix
+        if max_length < len(suffix):
+            return text[:max_length]
+        text = text[: max_length - len(suffix)] + suffix
     return text
 
 
@@ -148,7 +186,7 @@ def _extract_collection_name(
 ) -> Optional[str]:
     """Return the collection name targeted by ``cmd``, or None if it doesn't target one.
 
-    Always None for commands against the admin database: several (e.g. dropUser,
+    Always ``None`` for commands against the admin database: several (e.g. dropUser,
     renameCollection) carry a string command value that names a user, role, or
     namespace rather than a collection.
     """
@@ -162,7 +200,21 @@ def _extract_collection_name(
         return _extract_collection_name(inner_name, dbname, inner)
     key = "collection" if command_name == _GET_MORE else command_name
     value = cmd.get(key)
-    return value if isinstance(value, str) else None
+    if not isinstance(value, str) or is_command_namespace(value):
+        return None
+    return value
+
+
+def is_command_namespace(collection: Optional[str]) -> bool:
+    """Return True if ``collection`` is a command pseudo-namespace, not a user collection.
+
+    A cursor opened by a command (listCollections, a database-level aggregate)
+    reports something like "$cmd.listCollections", which targets no specific
+    collection, so per the spec ``db.collection.name`` is omitted.
+    """
+    return collection is not None and (
+        collection == _CMD_NAMESPACE_PREFIX or collection.startswith(_CMD_NAMESPACE_PREFIX + ".")
+    )
 
 
 def _build_query_summary(command_name: str, dbname: str, collection: Optional[str]) -> str:
@@ -170,6 +222,41 @@ def _build_query_summary(command_name: str, dbname: str, collection: Optional[st
     if collection:
         return f"{command_name} {dbname}.{collection}"
     return f"{command_name} {dbname}"
+
+
+# LUT of db.operation.name where the spec's name differs from our `_Op` value;
+# the nested command span still reports the wire name in db.command.name.
+# DRIVERS-3625 and PYTHON-6054 cover the table's gaps and inconsistencies.
+_OPERATION_NAME_OVERRIDES = {
+    "drop": "dropCollection",
+    "create": "createCollection",
+    "dropSearchIndexes": "dropSearchIndex",
+}
+
+# The spec names anything sent through the generic `Database.command()` API "runCommand",
+# not after the command it carries.
+_RUN_COMMAND_OPERATION_NAME = "runCommand"
+
+
+def _normalize_operation_name(operation: Any) -> str:
+    """Return the plain ``str`` form of an operation name.
+
+    Call sites pass an `_Op` (a `str`-mixin enum), and Python 3.11 changed
+    ``Enum.__format__`` so ``str(_Op.INSERT)`` yields ``"_Op.INSERT"`` rather
+    than ``"insert"``. Normalizing once here keeps every span name and
+    attribute stable across versions.
+    """
+    if isinstance(operation, enum.Enum):
+        return operation.value
+    return str(operation)
+
+
+def _build_operation_name(operation: Any, is_run_command: bool = False) -> str:
+    """Return the ``db.operation.name`` the spec wants for this operation."""
+    if is_run_command:
+        return _RUN_COMMAND_OPERATION_NAME
+    name = _normalize_operation_name(operation)
+    return _OPERATION_NAME_OVERRIDES.get(name, name)
 
 
 def _is_sensitive_command(command_name: str, speculative_hello: bool) -> bool:
@@ -198,17 +285,36 @@ def start_command_span(
     command_name: str,
     speculative_hello: bool,
 ) -> Optional[Span]:
-    """Start and return a CLIENT-kind span for a server command, or None.
+    """Start and return a CLIENT-kind span for a server command, or ``None``.
 
-    Returns None when tracing is disabled/unavailable or the command is
-    sensitive (mirroring the redaction applied to logs).
+    A no-op returning ``None`` when tracing is off; a sensitive command also
+    returns ``None`` but still backfills the current operation span first. There is one
+    span per wire-protocol message, parented to the current operation span but never
+    made current itself.
     """
     if not _is_tracing_enabled(tracing_options):
         return None
+
+    collection = _extract_collection_name(command_name, dbname, cmd)
+    # Must stay above the sensitive-command return: the operation span needs
+    # these attributes even when the command itself gets no span. Runs per
+    # attempt, since one that dies before building a command never reaches here
+    # and a retry may be where the span first learns its namespace. A later
+    # attempt sets the same attributes to the same values.
+    current_operation = _CURRENT_OPERATION_NAME.get()
+    if current_operation is not None:
+        current_span = trace.get_current_span()
+        if current_span.is_recording():
+            summary = _build_query_summary(current_operation, dbname, collection)
+            current_span.update_name(summary)
+            current_span.set_attribute("db.namespace", dbname)
+            current_span.set_attribute("db.operation.summary", summary)
+            if collection:
+                current_span.set_attribute("db.collection.name", collection)
+
     if _is_sensitive_command(command_name, speculative_hello):
         return None
 
-    collection = _extract_collection_name(command_name, dbname, cmd)
     address = conn.address
     transport = "unix" if address[1] is None else "tcp"
     attributes: dict[str, Any] = {
@@ -243,13 +349,35 @@ def start_command_span(
 
 
 def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
-    """Set the cursor id (if any) and end the span."""
+    """Set the cursor id (if any open cursor) and end the span."""
     if span is None:
         return
-    cursor = reply.get("cursor")
-    if isinstance(cursor, Mapping) and "id" in cursor:
-        span.set_attribute("db.mongodb.cursor_id", cursor["id"])
-    span.end()
+    try:
+        cursor = reply.get("cursor")
+        if isinstance(cursor, Mapping) and cursor.get("id"):
+            # Per the spec the attribute is omitted rather than set to 0, so a
+            # cursor-creating command that leaves no cursor open reports nothing.
+            span.set_attribute("db.mongodb.cursor_id", cursor["id"])
+    finally:
+        span.end()
+
+
+def _set_exception_attributes(span: Span, exc: BaseException) -> None:
+    """Set exception.type/exception.message/exception.stacktrace span attributes.
+
+    ``record_exception`` attaches these to an "exception" *event* only, but the
+    spec requires them as span *attributes* too, for both command and operation
+    spans. Formatting mirrors ``record_exception``.
+    """
+    module = type(exc).__module__
+    qualname = type(exc).__qualname__
+    exception_type = f"{module}.{qualname}" if module and module != "builtins" else qualname
+    span.set_attribute("exception.type", exception_type)
+    span.set_attribute("exception.message", str(exc))
+    span.set_attribute(
+        "exception.stacktrace",
+        "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+    )
 
 
 def end_command_span_failure(
@@ -260,9 +388,160 @@ def end_command_span_failure(
     """Record the exception, set the error status, and end the span."""
     if span is None:
         return
-    span.record_exception(exc)
-    code = failure.get("code")
-    if code is not None:
-        span.set_attribute("db.response.status_code", str(code))
-    span.set_status(Status(StatusCode.ERROR, description=failure.get("errmsg")))
-    span.end()
+    try:
+        span.record_exception(exc)
+        _set_exception_attributes(span, exc)
+        code = failure.get("code")
+        if code is not None:
+            span.set_attribute("db.response.status_code", str(code))
+        span.set_status(Status(StatusCode.ERROR, description=failure.get("errmsg")))
+    finally:
+        # End even if recording raised, so a failure here costs the attributes
+        # rather than leaking an unended span.
+        span.end()
+
+
+class _OperationSpanHandle:
+    """Bundles an operation span with what is needed to end it later.
+
+    ``_cm`` is the ``start_as_current_span`` context manager, or ``None`` in
+    detached mode, where ``use_operation_span`` makes the span current per use.
+    """
+
+    __slots__ = ("_cm", "_name_token", "operation_name", "span")
+
+    def __init__(
+        self,
+        span: Span,
+        cm: Any,
+        name_token: Any,
+        operation_name: str,
+    ) -> None:
+        self.span = span
+        self._cm = cm
+        self._name_token = name_token
+        self.operation_name = operation_name
+
+
+def start_operation_span(
+    tracing_options: Optional[TracingOptions],
+    operation: str,
+    parent_span: Optional[Span],
+    dbname: Optional[str] = None,
+    collection: Optional[str] = None,
+    set_current: bool = True,
+) -> Optional[_OperationSpanHandle]:
+    """Start a CLIENT-kind span for one logical operation, or ``None``.
+
+    Carries across all retry attempts of one ``_retry_internal`` call. Namespace
+    attributes are set eagerly from ``dbname``/``collection`` so an operation
+    that fails before building any command, such as a server selection
+    timeout, still produces a conformant span; ``start_command_span``
+    backfills the authoritative values once a command exists.
+
+    ``parent_span`` becomes an *explicit* parent rather than being read from
+    whichever span is current, so a concurrent unrelated session cannot be
+    captured.
+
+    ``set_current=False`` leaves the span and the operation-name contextvar
+    alone, for a caller that makes it current with ``use_operation_span``.
+    """
+    if not _is_tracing_enabled(tracing_options):
+        return None
+    assert _TRACER is not None  # _is_tracing_enabled already checked _HAS_OPENTELEMETRY
+    context = trace.set_span_in_context(parent_span) if parent_span is not None else None
+    attributes: dict[str, Any] = {
+        "db.system.name": "mongodb",
+        "db.operation.name": operation,
+    }
+    name = operation
+    if dbname is not None:
+        name = _build_query_summary(operation, dbname, collection)
+        attributes["db.namespace"] = dbname
+        if collection:
+            attributes["db.collection.name"] = collection
+    attributes["db.operation.summary"] = name
+    if not set_current:
+        span = _TRACER.start_span(
+            name, kind=SpanKind.CLIENT, context=context, attributes=attributes
+        )
+        return _OperationSpanHandle(span, None, None, operation)
+    cm = _TRACER.start_as_current_span(
+        name,
+        kind=SpanKind.CLIENT,
+        context=context,
+        attributes=attributes,
+    )
+    span = cm.__enter__()
+    name_token = _CURRENT_OPERATION_NAME.set(operation)
+    return _OperationSpanHandle(span, cm, name_token, operation)
+
+
+@contextlib.contextmanager
+def use_operation_span(handle: Optional[_OperationSpanHandle]) -> Iterator[None]:
+    """Make a detached operation span current for the duration of the block.
+
+    Does not end the span; its owner ends it explicitly. A no-op when
+    ``handle`` is ``None``.
+    """
+    if handle is None:
+        yield
+        return
+    token = _CURRENT_OPERATION_NAME.set(handle.operation_name)
+    try:
+        # Left on, these would auto-record any exception leaving the block and
+        # set ERROR status, duplicating the caller's end_operation_span_failure
+        # once the operation's final outcome is known.
+        with trace.use_span(
+            handle.span,
+            end_on_exit=False,
+            record_exception=False,
+            set_status_on_exception=False,
+        ):
+            yield
+    finally:
+        _CURRENT_OPERATION_NAME.reset(token)
+
+
+def reset_context() -> None:
+    """Clear the current OTel span and the operation-name contextvar.
+
+    ``asyncio.create_task`` freezes the caller's context, so without this a
+    long-lived background task parents every span it emits under an unrelated,
+    long-ended operation. Attaching an empty context makes spans started
+    afterwards into trace roots. Deliberately never detached: the task's context is
+    wrong for its whole life and dies with it.
+    """
+    if not _HAS_OPENTELEMETRY:
+        return
+    _CURRENT_OPERATION_NAME.set(None)
+    context.attach(context.Context())
+
+
+def end_operation_span_success(handle: Optional[_OperationSpanHandle]) -> None:
+    """End the operation span with no error status."""
+    if handle is None:
+        return
+    if handle._cm is None:
+        handle.span.end()
+        return
+    _CURRENT_OPERATION_NAME.reset(handle._name_token)
+    handle._cm.__exit__(None, None, None)
+
+
+def end_operation_span_failure(handle: Optional[_OperationSpanHandle], exc: BaseException) -> None:
+    """Record the exception, set the error status, and end the operation span."""
+    if handle is None:
+        return
+    try:
+        handle.span.record_exception(exc)
+        _set_exception_attributes(handle.span, exc)
+        handle.span.set_status(Status(StatusCode.ERROR, description=str(exc)))
+    finally:
+        # Unwind even if recording raised, since a span left current would
+        # re-parent every later span in this task.
+        if handle._cm is None:
+            handle.span.end()
+        else:
+            _CURRENT_OPERATION_NAME.reset(handle._name_token)
+            handle._cm.__exit__(None, None, None)

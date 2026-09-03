@@ -56,7 +56,12 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
-from pymongo._telemetry import _generate_op_id_or_none, log_command_retry
+from pymongo._telemetry import (
+    _generate_op_id_or_none,
+    _operation_telemetry_or_none,
+    _OperationTelemetry,
+    log_command_retry,
+)
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
@@ -617,7 +622,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           | **OpenTelemetry options:**
           | (Requires the ``opentelemetry-api`` package; install with the ``pymongo[opentelemetry]`` extra.)
 
-          - `tracing`: (dict) Configuration for OpenTelemetry command spans, with keys:
+          - `tracing`: (dict) Configuration for OpenTelemetry command, operation, and
+            transaction spans, with keys:
 
             - ``enabled``: (boolean) Whether to create spans for server commands issued by
               this client. Defaults to ``False``. Also controlled by the
@@ -632,8 +638,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
-        .. versionchanged:: 4.18
-           Added the ``tracing`` keyword argument.
+        .. versionchanged:: 4.XX
+           Added the ``tracing`` keyword argument. Every public API call
+           produces an operation span, which contains one span per command
+           sent to the server. Inside a transaction, those operation spans
+           nest under a ``"transaction"`` span.
 
         .. versionchanged:: 4.17
            Added the ``max_adaptive_retries`` and ``enable_overload_retargeting`` URI and keyword arguments.
@@ -1735,7 +1744,13 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
                 for i in range(0, len(session_ids), common._MAX_END_SESSIONS):
                     spec = {"endSessions": session_ids[i : i + common._MAX_END_SESSIONS]}
-                    await conn.command("admin", spec, read_preference=read_pref, client=self)
+                    # endSessions bypasses _retry_internal (errors are ignored per
+                    # spec, and it must not be retried), so start its span here.
+                    telemetry = _operation_telemetry_or_none(
+                        self.options.tracing, _Op.END_SESSIONS, None, dbname="admin"
+                    )
+                    with telemetry or contextlib.nullcontext():
+                        await conn.command("admin", spec, read_preference=read_pref, client=self)
         except PyMongoError:
             # Drivers MUST ignore any errors returned by the endSessions
             # command.
@@ -1884,6 +1899,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         operation: Union[_Query, _GetMore],
         run_with_conn: Callable,  # type: ignore[type-arg]
         address: Optional[_Address] = None,
+        operation_telemetry: Optional[_OperationTelemetry] = None,
     ) -> Response:
         """Run a _Query/_GetMore operation and return a Response.
 
@@ -1892,6 +1908,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             that executes the operation on a given connection.
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
+        :param operation_telemetry: The calling cursor's operation span (see
+            ``AsyncCursor._refresh``), or None, so this send's command spans
+            nest under it.
         """
         if operation.conn_mgr:
             server = await self._select_server(
@@ -1908,9 +1927,17 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     operation.session,  # type: ignore[arg-type]
                     operation.conn_mgr.conn,
                 ):
-                    return await run_with_conn(
-                        operation.conn_mgr.conn, operation, operation.read_preference
-                    )
+                    # Exhaust/pinned cursors bypass _retry_internal, so make the
+                    # caller's span current here to keep their command spans
+                    # nested under it.
+                    with (
+                        operation_telemetry.use()
+                        if operation_telemetry
+                        else contextlib.nullcontext()
+                    ):
+                        return await run_with_conn(
+                            operation.conn_mgr.conn, operation, operation.read_preference
+                        )
 
         async def _cmd(
             _session: Optional[AsyncClientSession],
@@ -1928,6 +1955,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             address=address,
             retryable=isinstance(operation, _Query),
             operation=operation.name,
+            operation_telemetry=operation_telemetry,
         )
 
     async def _retry_with_session(
@@ -1974,6 +2002,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         operation_id: Optional[int] = None,
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
+        operation_telemetry: Optional[_OperationTelemetry] = None,
     ) -> T:
         """Internal retryable helper for all client transactions.
 
@@ -1988,6 +2017,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
+        :param operation_telemetry: A cursor's operation span (see
+            ``AsyncCursor._refresh``), which this call makes current but
+            neither creates nor ends, defaults to None.
 
         :return: Output of the calling func()
         """
@@ -2004,6 +2036,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             operation_id=operation_id,
             is_run_command=is_run_command,
             is_aggregate_write=is_aggregate_write,
+            operation_telemetry=operation_telemetry,
         ).run()
 
     async def _retryable_read(
@@ -2017,6 +2050,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         operation_id: Optional[int] = None,
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
+        operation_telemetry: Optional[_OperationTelemetry] = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -2035,6 +2069,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False.
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
+        :param operation_telemetry: Same as ``_retry_internal``'s, defaults to None.
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2055,6 +2090,54 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 operation_id=operation_id,
                 is_run_command=is_run_command,
                 is_aggregate_write=is_aggregate_write,
+                operation_telemetry=operation_telemetry,
+            )
+
+    async def _retryable_read_cursor_in_span(
+        self,
+        func: _ReadCall[AsyncCommandCursor[Any]],
+        read_pref: _ServerMode,
+        session: Optional[AsyncClientSession],
+        operation: str,
+        address: Optional[_Address] = None,
+        retryable: bool = True,
+        operation_id: Optional[int] = None,
+        is_run_command: bool = False,
+        is_aggregate_write: bool = False,
+        *,
+        dbname: str,
+        collection: Optional[str] = None,
+    ) -> AsyncCommandCursor[Any]:
+        """Run a command cursor read within its own operation span.
+
+        Takes the same arguments as :meth:`_retryable_read`, plus the namespace
+        for the span. A command cursor's first batch is fetched inside that
+        call, before the cursor exists, so the span cannot be owned by the
+        cursor the way a find cursor's is; create it here instead.
+
+        The span ends with the command that created the cursor.
+        """
+        operation_telemetry = _operation_telemetry_or_none(
+            self.options.tracing,
+            operation,
+            session,
+            is_run_command=is_run_command,
+            dbname=dbname,
+            collection=collection,
+            set_current=False,
+        )
+        with operation_telemetry or contextlib.nullcontext():
+            return await self._retryable_read(
+                func,
+                read_pref,
+                session,
+                operation,
+                address,
+                retryable,
+                operation_id,
+                is_run_command,
+                is_aggregate_write,
+                operation_telemetry=operation_telemetry,
             )
 
     async def _retryable_write(
@@ -2193,9 +2276,15 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         conn: AsyncConnection,
     ) -> None:
         namespace = address.namespace
-        db, coll = namespace.split(".", 1)
+        db, coll = helpers_shared._split_namespace(namespace)
         spec = {"killCursors": coll, "cursors": cursor_ids}
-        await conn.command(db, spec, session=session, client=self)
+        # killCursors bypasses _retry_internal (it must never be retried), so
+        # start its span here.
+        telemetry = _operation_telemetry_or_none(
+            self.options.tracing, _Op.KILL_CURSORS, session, dbname=db, collection=coll
+        )
+        with telemetry or contextlib.nullcontext():
+            await conn.command(db, spec, session=session, client=self)
 
     async def _process_kill_cursors(self) -> None:
         """Process any pending kill cursors requests."""
@@ -2863,6 +2952,8 @@ class _ClientConnectionRetryable(Generic[T]):
         "_max_retries",
         "_operation",
         "_operation_id",
+        "_operation_telemetry",
+        "_owns_telemetry",
         "_read_pref",
         "_retry_policy",
         "_retryable",
@@ -2886,6 +2977,7 @@ class _ClientConnectionRetryable(Generic[T]):
         operation_id: Optional[int] = None,
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
+        operation_telemetry: Optional[_OperationTelemetry] = None,
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
@@ -2910,12 +3002,30 @@ class _ClientConnectionRetryable(Generic[T]):
         if operation_id is None:
             operation_id = _generate_op_id_or_none(self._client._event_listeners)
         self._operation_id = operation_id
+        # With nothing passed in, create the span here and end it in run(); with
+        # a span passed in, the caller owns it and run() only makes it current.
+        self._owns_telemetry = operation_telemetry is None
+        if self._owns_telemetry:
+            operation_telemetry = _operation_telemetry_or_none(
+                mongo_client.options.tracing, operation, session, is_run_command=is_run_command
+            )
+        self._operation_telemetry = operation_telemetry
         self._attempt_number = 0
         self._is_run_command = is_run_command
         self._is_aggregate_write = is_aggregate_write
         self._base_backoff_ms: Optional[float] = None
 
     async def run(self) -> T:
+        """Run the operation, retrying as allowed, within its operation span."""
+        if self._operation_telemetry is None:
+            return await self._run()
+        if not self._owns_telemetry:
+            with self._operation_telemetry.use():
+                return await self._run()
+        with self._operation_telemetry:
+            return await self._run()
+
+    async def _run(self) -> T:
         """Runs the supplied func() and attempts a retry
 
         :raises: self._last_error: Last exception raised
