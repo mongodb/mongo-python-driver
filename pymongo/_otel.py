@@ -175,7 +175,9 @@ def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
     text = json_util.dumps(truncated_cmd, json_options=_JSON_OPTIONS, default=repr)
     if len(text) > max_length:
         suffix = "..."
-        text = text[: max(0, max_length - len(suffix))] + suffix
+        if max_length < len(suffix):
+            return text[:max_length]
+        text = text[: max_length - len(suffix)] + suffix
     return text
 
 

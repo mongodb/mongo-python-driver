@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import gc
 import os
+import subprocess
 import sys
 from typing import Optional
 from unittest.mock import patch
@@ -65,6 +66,14 @@ pytestmark = pytest.mark.otel
 def _tracing_opts() -> _otel.TracingOptions:
     """Return resolved tracing options with tracing on and ``db.query.text`` disabled."""
     return {"enabled": True, "query_text_max_length": 0}
+
+
+class TestBuildQueryText(unittest.TestCase):
+    def test_result_never_exceeds_max_length(self):
+        cmd = {"find": "coll", "filter": {"x": 1}}
+        for max_length in range(1, 10):
+            text = _otel._build_query_text(cmd, max_length)
+            self.assertLessEqual(len(text), max_length, (max_length, text))
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
@@ -297,6 +306,49 @@ class TestOperationTelemetryContextManager(unittest.TestCase):
         self.assertEqual(self.exporter.get_finished_spans(), ())
         telemetry.succeeded()
         self.assertEqual(len(self.exporter.get_finished_spans()), 1)
+
+
+_NO_OPENTELEMETRY_SCRIPT = """
+import builtins
+import sys
+
+_real_import = builtins.__import__
+
+
+def _blocked_import(name, *args, **kwargs):
+    if name == "opentelemetry" or name.startswith("opentelemetry."):
+        raise ImportError("blocked for test")
+    return _real_import(name, *args, **kwargs)
+
+
+builtins.__import__ = _blocked_import
+
+import pymongo._otel as _otel
+
+assert _otel._HAS_OPENTELEMETRY is False, "expected opentelemetry to be unavailable"
+
+from pymongo import MongoClient
+
+client = MongoClient(sys.argv[1], tracing={"enabled": True})
+client.admin.command("ping")
+client.close()
+print("SUBPROCESS_OK")
+"""
+
+
+class TestOTelWithoutOpenTelemetryInstalled(AsyncIntegrationTest):
+    # Blocks the opentelemetry import at the interpreter level, so this covers
+    # the no-op path regardless of whether opentelemetry-sdk is installed here.
+    @async_client_context.require_sync
+    def test_no_op_when_opentelemetry_is_unimportable(self):
+        result = subprocess.run(
+            [sys.executable, "-c", _NO_OPENTELEMETRY_SCRIPT, async_client_context.uri],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("SUBPROCESS_OK", result.stdout)
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
@@ -853,6 +905,10 @@ class TestValidateTracingOrNone(unittest.TestCase):
     def test_rejects_negative_query_text_max_length(self):
         with self.assertRaises(ValueError):
             common.validate_tracing_or_none("tracing", {"query_text_max_length": -1})
+
+    def test_coerces_numeric_string_query_text_max_length(self):
+        result = common.validate_tracing_or_none("tracing", {"query_text_max_length": "100"})
+        self.assertEqual(result["query_text_max_length"], 100)
 
 
 class TestOTelTracerCaching(unittest.TestCase):

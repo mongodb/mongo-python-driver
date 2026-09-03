@@ -627,7 +627,9 @@ def validate_tracing_or_none(option: str, value: Any) -> Optional[_otel._Unresol
         # treating True/False as 1/0.
         if isinstance(query_text_max_length, bool):
             raise TypeError("tracing.query_text_max_length must be an integer, not a boolean")
-        validate_non_negative_integer("tracing.query_text_max_length", query_text_max_length)
+        query_text_max_length = validate_non_negative_integer(
+            "tracing.query_text_max_length", query_text_max_length
+        )
     return {"enabled": enabled, "query_text_max_length": query_text_max_length}
 
 
