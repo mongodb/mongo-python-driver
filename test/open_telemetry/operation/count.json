@@ -1,0 +1,123 @@
+{
+  "description": "operation count",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-count"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-count",
+      "documents": []
+    }
+  ],
+  "tests": [
+    {
+      "description": "estimated document count",
+      "operations": [
+        {
+          "object": "collection0",
+          "name": "estimatedDocumentCount",
+          "arguments": {},
+          "expectResult": 0
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "count operation-count.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-count",
+                "db.collection.name": "test",
+                "db.operation.name": "count",
+                "db.operation.summary": "count operation-count.test"
+              },
+              "nested": [
+                {
+                  "name": "count",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-count",
+                    "db.collection.name": "test",
+                    "db.command.name": "count",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "count operation-count.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "count": "test"
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -38,6 +38,7 @@ from typing import Any, Optional
 import pytest
 
 import pymongo
+import pymongo._otel as _otel
 from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.objectid import ObjectId
@@ -93,6 +94,7 @@ from test.unified_format_shared import (
     PLACEHOLDER_MAP,
     EventListenerUtil,
     MatchEvaluatorUtil,
+    _shared_test_provider,
     coerce_result,
     parse_bulk_write_error_result,
     parse_bulk_write_result,
@@ -112,6 +114,16 @@ from test.utils_shared import (
 from test.version import Version
 
 _IS_SYNC = False
+
+_HAS_OTEL_TEST_DEPS = False
+if _otel._HAS_OPENTELEMETRY:
+    try:
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        _HAS_OTEL_TEST_DEPS = True
+    except ImportError:
+        pass
 
 IS_INTERRUPTED = False
 
@@ -230,6 +242,9 @@ class EntityMapUtil:
         self._entities: dict[str, Any] = {}
         self._listeners: dict[str, EventListenerUtil] = {}
         self._session_lsids: dict[str, Mapping[str, Any]] = {}
+        # The one client entity created with observeTracingMessages. Spans carry
+        # no attribute identifying their client, so a second one is rejected.
+        self._tracing_client_id: Optional[str] = None
         self.test: UnifiedSpecTestMixinV1 = test_class
 
     def __contains__(self, item):
@@ -311,6 +326,23 @@ class EntityMapUtil:
             )
             self._listeners[spec["id"]] = listener
             kwargs["event_listeners"] = [listener]
+
+            observe_tracing = spec.get("observeTracingMessages")
+            if observe_tracing is not None:
+                if self._tracing_client_id is not None:
+                    self.test.fail(
+                        "Multiple clients with observeTracingMessages are not supported "
+                        f"by the unified test format runner (already tracking "
+                        f"{self._tracing_client_id!r}, got {spec['id']!r})"
+                    )
+                self._tracing_client_id = spec["id"]
+                enable_payload = observe_tracing.get("enableCommandPayload", False)
+                kwargs["tracing"] = {
+                    "enabled": True,
+                    # Tests match the full command, so never truncate.
+                    "query_text_max_length": 1_000_000 if enable_payload else None,
+                }
+
             if spec.get("useMultipleMongoses"):
                 if async_client_context.load_balancer:
                     kwargs["h"] = async_client_context.MULTI_MONGOS_LB_URI
@@ -482,6 +514,8 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     TEST_SPEC: Any
     TEST_PATH = ""  # This gets filled in by generate_test_classes
     mongos_clients: list[AsyncMongoClient] = []
+    # Set in setUpClass, only for test files that use observeTracingMessages.
+    _tracing_exporter: Optional[Any] = None
 
     @staticmethod
     async def should_run_on(run_on_spec):
@@ -526,6 +560,21 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
 
     @classmethod
     def setUpClass(cls) -> None:
+        # Only for test files that use observeTracingMessages: span processors
+        # accumulate on the process-wide provider and can never be removed.
+        cls._tracing_exporter = None
+        uses_tracing = any(
+            "observeTracingMessages" in entity.get("client", {})
+            for entity in cls.TEST_SPEC.get("createEntities", [])
+        )
+        if uses_tracing:
+            if not _HAS_OTEL_TEST_DEPS:
+                raise unittest.SkipTest(
+                    "observeTracingMessages requires opentelemetry-sdk to be installed"
+                )
+            cls._tracing_exporter = InMemorySpanExporter()
+            _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls._tracing_exporter))
+
         # Speed up the tests by decreasing the heartbeat frequency.
         cls.knobs = client_knobs(
             heartbeat_frequency=0.1,
@@ -538,6 +587,10 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.knobs.disable()
+        # The span processor can never be removed from the shared process-wide
+        # TracerProvider, so without this the exporter accumulates every span.
+        if cls._tracing_exporter is not None:
+            cls._tracing_exporter.shutdown()
 
     async def asyncSetUp(self):
         # super call creates internal client cls.client
@@ -576,6 +629,11 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             self.skipTest("PyMongo does not support the symbol type")
         if "timeoutms applied to entire download" in description:
             self.skipTest("PyMongo's open_download_stream does not cap the stream's lifetime")
+        if class_name == "testoperationmapreduce" and description == "mapreduce":
+            self.skipTest(
+                "PyMongo removed the map_reduce/inline_map_reduce Collection methods "
+                "(mapReduce is deprecated server-side); this operation cannot be exercised"
+            )
         if any(
             x in description
             for x in [
@@ -1463,6 +1521,70 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                     self.match_evaluator.match_result(expected_data, actual_data)
                     self.match_evaluator.match_result(expected_msg, actual_msg)
 
+    async def check_tracing_messages(self, operations, spec):
+        # A list of per-client blocks, like expectLogMessages, though only one
+        # client with observeTracingMessages is supported.
+        exporter = self._tracing_exporter
+        if exporter is None:
+            self.fail(
+                "expectTracingMessages requires a client entity created with observeTracingMessages"
+            )
+
+        exporter.clear()
+        await self.run_operations(operations)
+        finished_spans = exporter.get_finished_spans()
+
+        # Rebuild the parent/child tree from the exporter's flat, finish-ordered list.
+        children_by_parent_id = defaultdict(list)
+        for span in finished_spans:
+            parent_id = span.parent.span_id if span.parent is not None else None
+            children_by_parent_id[parent_id].append(span)
+
+        def check_span_list(expected_list, actual_list, ignore_extra_spans):
+            if ignore_extra_spans:
+                # Unlike ignoreExtraEvents, extra spans can finish interleaved
+                # anywhere rather than only at the end, so match by name in
+                # order instead of truncating the tail.
+                filtered = []
+                expected_iter = iter(expected_list)
+                current_expected = next(expected_iter, None)
+                for actual in actual_list:
+                    if current_expected is not None and actual.name == current_expected["name"]:
+                        filtered.append(actual)
+                        current_expected = next(expected_iter, None)
+                actual_list = filtered
+            self.assertEqual(
+                len(expected_list),
+                len(actual_list),
+                f"expected spans {[e['name'] for e in expected_list]} but got "
+                f"{[a.name for a in actual_list]}",
+            )
+            for expected, actual in zip(expected_list, actual_list):
+                self.assertEqual(expected["name"], actual.name)
+                self.match_evaluator.match_span_attributes(
+                    expected["attributes"], actual.attributes
+                )
+                expected_nested = expected.get("nested")
+                if expected_nested is not None:
+                    actual_children = children_by_parent_id[actual.context.span_id]
+                    check_span_list(expected_nested, actual_children, ignore_extra_spans)
+
+        for client_spec in spec:
+            expected_client_id = client_spec["client"]
+            tracing_client_id = self.entity_map._tracing_client_id
+            self.assertEqual(
+                expected_client_id,
+                tracing_client_id,
+                f"expectTracingMessages.client {expected_client_id!r} does not match the "
+                f"client with observeTracingMessages enabled ({tracing_client_id!r})",
+            )
+
+            ignore_extra_spans = client_spec.get("ignoreExtraSpans", False)
+            expected_spans = client_spec["spans"]
+            self.assertTrue(expected_spans, "expectTracingMessages spans must be non-empty")
+
+            check_span_list(expected_spans, children_by_parent_id[None], ignore_extra_spans)
+
     async def verify_outcome(self, spec):
         for collection_data in spec:
             coll_name = collection_data["collectionName"]
@@ -1551,6 +1673,10 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             expect_log_messages = spec["expectLogMessages"]
             self.assertTrue(expect_log_messages, "expectEvents must be non-empty")
             await self.check_log_messages(spec["operations"], expect_log_messages)
+        elif "expectTracingMessages" in spec:
+            expect_tracing_messages = spec["expectTracingMessages"]
+            self.assertTrue(expect_tracing_messages, "expectTracingMessages must be non-empty")
+            await self.check_tracing_messages(spec["operations"], expect_tracing_messages)
         else:
             # process operations
             await self.run_operations(spec["operations"])
