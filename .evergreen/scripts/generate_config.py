@@ -1040,7 +1040,8 @@ def create_aws_lambda_tasks():
 def create_search_index_tasks():
     assume_func = FunctionCall(func="assume ec2 role")
     server_func = FunctionCall(func="run server", vars=dict(TEST_NAME="search_index"))
-    vars = dict(TEST_NAME="search_index", TOOLCHAIN_VERSION=CPYTHONS[0])
+    vars = dict(TEST_NAME="search_index")
+    set_version_var(vars, CPYTHONS[0])
     test_func = FunctionCall(func="run tests", vars=vars)
     task_name = "test-search-index-helpers"
     tags = ["search_index"]
@@ -1272,7 +1273,6 @@ def create_run_server_func():
         "SSL",
         "ORCHESTRATION_FILE",
         "UV_PYTHON",
-        "TOOLCHAIN_VERSION",
         "STORAGE_ENGINE",
         "REQUIRE_API_VERSION",
         "DRIVERS_TOOLS",
@@ -1299,7 +1299,6 @@ def create_run_tests_func():
         "UV_PYTHON",
         "LIBMONGOCRYPT_URL",
         "MONGODB_URI",
-        "TOOLCHAIN_VERSION",
         "DISABLE_TEST_COMMANDS",
         "GREEN_FRAMEWORK",
         "NO_EXT",
@@ -1322,7 +1321,7 @@ def create_run_tests_func():
 
 
 def create_test_numpy_func():
-    includes = ["TOOLCHAIN_VERSION", "UV_PYTHON", "COVERAGE"]
+    includes = ["UV_PYTHON", "COVERAGE"]
     test_cmd = get_subprocess_exec(
         include_expansions_in_env=includes, args=[".evergreen/just.sh", "test-numpy"]
     )

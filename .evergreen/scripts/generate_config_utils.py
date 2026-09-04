@@ -27,8 +27,8 @@ PYPYS = ["pypy3.11"]
 MIN_SUPPORT_VERSIONS = ["3.9", "pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
-# Python versions not yet provisioned in the Evergreen toolchain, mapped to
-# the exact version uv must be requested to install (uv only installs a
+# Python versions that are not provisioned in the Evergreen toolchain, mapped
+# to the exact version uv must be requested to install (uv only installs a
 # pre-release when asked for its full version).  Drop an entry once the
 # toolchain provides the version.
 UV_PYTHON_VERSIONS = {
@@ -39,10 +39,7 @@ UV_PYTHON_VERSIONS = {
 
 def set_version_var(env: dict[str, str], version: str) -> None:
     """Set the env var on task vars that selects the given Python version."""
-    if version in UV_PYTHON_VERSIONS:
-        env["UV_PYTHON"] = UV_PYTHON_VERSIONS[version]
-    else:
-        env["TOOLCHAIN_VERSION"] = version
+    env["UV_PYTHON"] = UV_PYTHON_VERSIONS.get(version, version)
 
 
 BATCHTIME_WEEK = 10080
