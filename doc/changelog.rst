@@ -1,11 +1,22 @@
 Changelog
 =========
 
-Changes in Version 4.18.0 (2026/XX/XX)
+Changes in Version 4.18.0 (2026/09/03)
 --------------------------------------
 
 PyMongo 4.18 brings a number of changes including:
 
+- Added ``srvAllowedHostsSuffix`` as a URI option and keyword argument to
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`. When connecting
+  via ``mongodb+srv://``, this option overrides the default requirement that
+  SRV-returned hosts share the same parent domain as the seed hostname,
+  allowing hosts under a different domain suffix to be accepted. The suffix must
+  not be a public suffix (per the `Public Suffix List
+  <https://publicsuffix.org/list/>`_). See the
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` documentation for
+  security considerations.
 - Dropped support for MongoDB 4.2.
 - Added support for MongoDB 9.0.
 - PyPy support is deprecated and will be removed in a future release.
