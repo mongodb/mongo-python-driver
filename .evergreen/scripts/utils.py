@@ -48,8 +48,37 @@ TEST_SUITE_MAP = {
     "numpy": "",
 }
 
-# Tests that require a sub test suite.
-SUB_TEST_REQUIRED = ["auth_aws", "auth_oidc", "kms", "mod_wsgi", "perf"]
+# Tests that require a sub test suite, mapped to their valid sub_test_name
+# values, for test names where they're fully enumerable. A value of None
+# means the sub_test_name is required but not restricted to a fixed set.
+SUB_TEST_NAME_MAP: dict[str, list[str] | None] = {
+    "auth_aws": [
+        "regular",
+        "assume-role",
+        "ec2",
+        "env-creds",
+        "session-creds",
+        "web-identity",
+        "ecs",
+        "ecs-remote",
+    ],
+    "kms": ["azure", "azure-remote", "azure-fail", "gcp", "gcp-remote", "gcp-fail"],
+    "mod_wsgi": ["standalone", "embedded"],
+    "perf": ["sync", "async"],
+    "auth_oidc": [
+        "default",
+        "azure",
+        "azure-remote",
+        "gcp",
+        "gcp-remote",
+        "aks",
+        "aks-remote",
+        "gke",
+        "gke-remote",
+        "eks",
+        "eks-remote",
+    ],
+}
 
 EXTRA_TESTS = ["mod_wsgi", "aws_lambda", "doctest"]
 
@@ -66,31 +95,85 @@ NO_RUN_ORCHESTRATION = [
 # Mapping of env variables to options
 OPTION_TO_ENV_VAR = {"cov": "COVERAGE", "crypt_shared": "TEST_CRYPT_SHARED"}
 
+# Options that consume a following value, so it isn't mistaken for the test_name
+# positional when inferring known_test_name below.
+OPTIONS_WITH_VALUES = ["--green-framework", "--compressor", "--mongodb-api-version"]
+
+
+def _first_positional_arg(argv: list[str]) -> str | None:
+    args = iter(argv)
+    for arg in args:
+        if arg in OPTIONS_WITH_VALUES:
+            next(args, None)
+        elif not arg.startswith("-"):
+            return arg
+    return None
+
 
 def get_test_options(
     description, require_sub_test_name=True, allow_extra_opts=False
 ) -> tuple[argparse.Namespace, list[str]]:
+    # If a test name with known sub_test_name choices was given, pin the test_name
+    # argument to it so the usage/help output isn't cluttered with every choice.
+    known_test_name = None
+    sub_test_choices = None
+    if require_sub_test_name:
+        first_positional = _first_positional_arg(sys.argv[1:])
+        if first_positional in SUB_TEST_NAME_MAP:
+            known_test_name = first_positional
+            sub_test_choices = SUB_TEST_NAME_MAP[known_test_name]
+            description = f"{description.rstrip('.')} for '{known_test_name}'."
+
     parser = argparse.ArgumentParser(
         description=description, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     if require_sub_test_name:
+        if known_test_name:
+            parser.prog = f"{parser.prog} {known_test_name}"
+            test_name_choices = [known_test_name]
+            test_name_help = argparse.SUPPRESS
+        else:
+            test_name_choices = sorted(list(TEST_SUITE_MAP) + EXTRA_TESTS)
+            test_name_help = (
+                "The optional name of the test suite to set up, typically the same name "
+                f"as a pytest marker. One of: {', '.join(test_name_choices)}."
+            )
         parser.add_argument(
             "test_name",
-            choices=sorted(list(TEST_SUITE_MAP) + EXTRA_TESTS),
+            choices=test_name_choices,
             nargs="?",
             default="default",
-            help="The optional name of the test suite to set up, typically the same name as a pytest marker.",
+            metavar=known_test_name or "test_name",
+            help=test_name_help,
         )
+        if known_test_name:
+            example_sub_test_name = sub_test_choices[0] if sub_test_choices else "azure"
+            help_text = f"The sub test name, for example {example_sub_test_name!r}. Required for {known_test_name!r}."
+            if sub_test_choices:
+                help_text += f" One of: {', '.join(sub_test_choices)}."
+        else:
+            help_text = "The optional sub test name, for example 'azure'."
         parser.add_argument(
-            "sub_test_name", nargs="?", help="The optional sub test name, for example 'azure'."
+            "sub_test_name",
+            nargs="?",
+            choices=sub_test_choices,
+            metavar="sub_test_name",
+            help=help_text,
         )
     else:
+        run_server_choices = sorted(
+            set(list(TEST_SUITE_MAP) + EXTRA_TESTS) - set(NO_RUN_ORCHESTRATION)
+        )
         parser.add_argument(
             "test_name",
-            choices=set(list(TEST_SUITE_MAP) + EXTRA_TESTS) - set(NO_RUN_ORCHESTRATION),
+            choices=run_server_choices,
             nargs="?",
             default="default",
-            help="The optional name of the test suite to be run, which informs the server configuration.",
+            metavar="test_name",
+            help=(
+                "The optional name of the test suite to be run, which informs the server "
+                f"configuration. One of: {', '.join(run_server_choices)}."
+            ),
         )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Whether to log at the DEBUG level."
@@ -100,7 +183,9 @@ def get_test_options(
     )
     parser.add_argument("--auth", action="store_true", help="Whether to add authentication.")
     parser.add_argument("--ssl", action="store_true", help="Whether to add TLS configuration.")
-    parser.add_argument(
+
+    other_group = parser.add_argument_group("other options")
+    other_group.add_argument(
         "--test-min-deps", action="store_true", help="Test against minimum dependency versions"
     )
 
@@ -110,24 +195,26 @@ def get_test_options(
             "--debug-log", action="store_true", help="Enable pymongo standard logging."
         )
         parser.add_argument("--cov", action="store_true", help="Add test coverage.")
-        parser.add_argument(
+        other_group.add_argument(
             "--green-framework",
             nargs=1,
             choices=["gevent"],
             help="Optional green framework to test against.",
         )
-        parser.add_argument(
+        other_group.add_argument(
             "--compressor",
             nargs=1,
             choices=["zlib", "zstd", "snappy"],
             help="Optional compression algorithm.",
         )
-        parser.add_argument("--crypt-shared", action="store_true", help="Test with crypt_shared.")
-        parser.add_argument("--no-ext", action="store_true", help="Run without c extensions.")
-        parser.add_argument(
+        other_group.add_argument(
+            "--crypt-shared", action="store_true", help="Test with crypt_shared."
+        )
+        other_group.add_argument("--no-ext", action="store_true", help="Run without c extensions.")
+        other_group.add_argument(
             "--mongodb-api-version", choices=["1"], help="MongoDB stable API version to use."
         )
-        parser.add_argument(
+        other_group.add_argument(
             "--disable-test-commands", action="store_true", help="Disable test commands."
         )
 
@@ -146,7 +233,7 @@ def get_test_options(
     # Handle validation and environment variable overrides.
     test_name = opts.test_name
     sub_test_name = opts.sub_test_name if require_sub_test_name else ""
-    if require_sub_test_name and test_name in SUB_TEST_REQUIRED and not sub_test_name:
+    if require_sub_test_name and test_name in SUB_TEST_NAME_MAP and not sub_test_name:
         raise ValueError(f"Test '{test_name}' requires a sub_test_name")
     handle_env_overrides(parser, opts)
     if "auth" in test_name:
