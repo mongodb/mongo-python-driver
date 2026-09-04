@@ -19,6 +19,21 @@ fi
 # Handle the value for UV_PYTHON.
 . $HERE/setup-uv-python.sh
 
+# Ensure a bare-version interpreter is available before it is used.  uv
+# downloads a managed Python only on explicit request and never offers Python
+# pre-releases, so try `uv python install` first and fall back to fetching the
+# build ourselves.  The fallback is temporary until these versions are in the
+# Evergreen toolchain.
+if [ -n "${UV_PYTHON:-}" ] && [[ "$UV_PYTHON" != /* ]] && [[ "$UV_PYTHON" != ?:/* ]]; then
+  if ! uv python install "$UV_PYTHON" >/dev/null 2>&1; then
+    _interpreter="$(bash $HERE/fetch-python.sh)" || {
+      echo "Failed to obtain a Python $UV_PYTHON interpreter" >&2
+      exit 1
+    }
+    export UV_PYTHON="$_interpreter"
+  fi
+fi
+
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 

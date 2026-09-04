@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Changes in Version 4.19.0 (2026/XX/XX)
+--------------------------------------
+
+PyMongo 4.19 brings a number of changes including:
+
+- Added support for Python 3.15.
+
 Changes in Version 4.18.0 (2026/09/03)
 --------------------------------------
 

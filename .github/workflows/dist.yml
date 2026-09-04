@@ -73,7 +73,7 @@ jobs:
         # Note: the default manylinux is manylinux_2_28
         run: |
           python -m pip install -U pip
-          python -m pip install "cibuildwheel>=3.2.0,<4"
+          python -m pip install "cibuildwheel>=4.2.0,<5"
 
       - name: Build wheels
         env:
@@ -92,8 +92,10 @@ jobs:
           ls wheelhouse/*cp312*.whl
           ls wheelhouse/*cp313*.whl
           ls wheelhouse/*cp314*.whl
+          ls wheelhouse/*cp315*.whl
           # Free-threading builds:
           ls wheelhouse/*cp314t*.whl
+          ls wheelhouse/*cp315t*.whl
 
       - uses: actions/upload-artifact@v7
         with:
