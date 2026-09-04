@@ -31,7 +31,6 @@ import socket
 import struct
 import subprocess
 import sys
-import threading
 import time
 import uuid
 from collections.abc import Iterable
@@ -113,6 +112,7 @@ from test.asynchronous import (
     remove_all_users,
     unittest,
 )
+from test.asynchronous.helpers import ExceptionCatchingTask
 from test.asynchronous.pymongo_mocks import AsyncMockClient
 from test.asynchronous.utils import (
     async_get_pool,
@@ -1976,7 +1976,6 @@ class TestClient(AsyncIntegrationTest):
         if not negotiated:
             self.skipTest("server did not negotiate compression for any compressor")
 
-    @async_client_context.require_sync
     async def test_reset_during_update_pool(self):
         client = await self.async_rs_or_single_client(minPoolSize=10)
         await client.admin.command("ping")
@@ -1984,39 +1983,30 @@ class TestClient(AsyncIntegrationTest):
         generation = pool.gen.get_overall()
 
         # Continuously reset the pool.
-        class ResetPoolThread(threading.Thread):
-            def __init__(self, pool):
-                super().__init__()
-                self.running = True
-                self.pool = pool
+        running = True
 
-            def stop(self):
-                self.running = False
+        async def reset_pool():
+            while running:
+                exc = AutoReconnect("mock pool error")
+                ctx = _ErrorContext(exc, 0, pool.gen.get_overall(), False, None)
+                await client._topology.handle_error(pool.address, ctx)
+                await asyncio.sleep(0.001)
 
-            async def _run(self):
-                while self.running:
-                    exc = AutoReconnect("mock pool error")
-                    ctx = _ErrorContext(exc, 0, pool.gen.get_overall(), False, None)
-                    await client._topology.handle_error(pool.address, ctx)
-                    await asyncio.sleep(0.001)
-
-            def run(self):
-                self._run()
-
-        t = ResetPoolThread(pool)
-        t.start()
+        t = ExceptionCatchingTask(target=reset_pool)
+        await t.start()
 
         # Ensure that update_pool completes without error even when the pool
         # is reset concurrently.
         try:
-            while True:
+            while t.is_alive():
                 for _ in range(10):
                     await client._topology.update_pool()
                 if generation != pool.gen.get_overall():
                     break
         finally:
-            t.stop()
-            t.join()
+            running = False
+            await t.join()
+        self.assertIsNone(t.exc)
         await client.admin.command("ping")
 
     async def test_background_connections_do_not_hold_locks(self):

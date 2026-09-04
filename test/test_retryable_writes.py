@@ -23,6 +23,7 @@ import sys
 import threading
 from unittest import mock
 
+from pymongo._asyncio_task import create_task
 from pymongo.common import MAX_ADAPTIVE_RETRIES
 from test.utils import flaky, set_fail_point
 
@@ -77,23 +78,34 @@ _IS_SYNC = True
 
 
 class InsertEventListener(EventListener):
+    fail_point_exc: BaseException | None = None
+
+    def _store_fail_point_exc(self, task: asyncio.Task) -> None:
+        if not task.cancelled():
+            self.fail_point_exc = task.exception()
+
     def succeeded(self, event: CommandSucceededEvent) -> None:
         super().succeeded(event)
         if (
             event.command_name == "insert"
             and event.reply.get("writeConcernError", {}).get("code", None) == 91
         ):
-            client_context.client.admin.command(
-                {
-                    "configureFailPoint": "failCommand",
-                    "mode": {"times": 1},
-                    "data": {
-                        "errorCode": 10107,
-                        "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
-                        "failCommands": ["insert"],
-                    },
-                }
-            )
+            cmd = {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 1},
+                "data": {
+                    "errorCode": 10107,
+                    "errorLabels": ["RetryableWriteError", "NoWritesPerformed"],
+                    "failCommands": ["insert"],
+                },
+            }
+            if _IS_SYNC:
+                client_context.client.admin.command(cmd)
+            else:
+                # succeeded() cannot await, so the fail point may be configured after
+                # the driver dispatches the retry it is meant to fail.
+                self._task = create_task(client_context.client.admin.command(cmd))  # type: ignore[arg-type]
+                self._task.add_done_callback(self._store_fail_point_exc)
 
 
 def retryable_single_statement_ops(coll):
@@ -555,6 +567,7 @@ class TestPoolPausedError(IntegrationTest):
         with self.assertRaises(WriteConcernError) as exc:
             client.db.coll.insert_one({"_id": 1})
         self.assertEqual(exc.exception.code, 91)
+        self.assertIsNone(cmd_listener.fail_point_exc)
         client.admin.command(
             {
                 "configureFailPoint": "failCommand",
