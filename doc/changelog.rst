@@ -1,6 +1,18 @@
 Changelog
 =========
 
+Changes in Version 4.19.0 (2026/XX/XX)
+--------------------------------------
+
+Bug fixes
+.........
+
+- Fixed a bug where the synchronous client could permanently deadlock under
+  gevent when a greenlet was killed while checking a connection back into
+  the pool (`PYTHON-6074`_).
+
+.. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
+
 Changes in Version 4.18.0 (2026/XX/XX)
 --------------------------------------
 
@@ -1043,9 +1055,6 @@ Bug fixes
   after non-resumable errors (`PYTHON-3389`_).
 - Fixed a bug where the client could be unable to discover the new primary
   after a simultaneous replica set election and reconfig (`PYTHON-2970`_).
-- Fixed a bug where the synchronous client could permanently deadlock under
-  gevent when a greenlet was killed while checking a connection back into
-  the pool (`PYTHON-6074`_).
 
 Issues Resolved
 ...............
@@ -1057,7 +1066,6 @@ in this release.
 .. _PYTHON-2484: https://jira.mongodb.org/browse/PYTHON-2484
 .. _PYTHON-2970: https://jira.mongodb.org/browse/PYTHON-2970
 .. _PYTHON-3389: https://jira.mongodb.org/browse/PYTHON-3389
-.. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
 .. _PyMongo 4.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=33425
 
 Changes in Version 4.2.0 (2022/07/20)

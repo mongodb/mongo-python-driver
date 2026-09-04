@@ -1059,17 +1059,10 @@ class Pool:
     def _checkin_apply(
         self, conn: Connection, txn: bool, cursor: bool, forked: bool
     ) -> tuple[Optional[str], bool, bool]:
-        """Apply checkin accounting and decide the connection's disposition.
+        """Apply checkin accounting; caller holds ``size_cond``.
 
-        Caller must hold ``self.size_cond``. This method performs no cooperative
-        I/O (no await, no lock/condition acquire, no notify) so it is safe to
-        call while a gevent greenlet unwinds a ``GreenletExit``: gevent does not
-        re-throw ``GreenletExit`` at cooperative yields during unwind, so the
-        re-acquisition in the ``try/finally`` in ``checkin`` completes. The same
-        guarantee does not hold for an asyncio task cancelled with
-        ``CancelledError``, which is re-raised at the next await. Returns
-        ``(close_conn_reason, emit_closed, appended)`` describing work that must
-        be done outside the lock. See PYTHON-6074.
+        No cooperative I/O, so safe while a gevent greenlet unwinds. Returns
+        ``(close_conn_reason, emit_closed, appended)`` for outside the lock.
         """
         self.active_contexts.discard(conn.cancel_context)
         if txn:
@@ -1109,17 +1102,9 @@ class Pool:
         conn.pinned_cursor = False
         self._pinned_sockets.discard(conn)
         forked = self.pid != os.getpid()
-        # The pool accounting (requests/active_sockets) must be decremented and
-        # the connection returned under a single hold of self.size_cond. Under
-        # gevent, acquiring the lock and Condition.notify() both cooperatively
-        # yield, so a GreenletExit injected at such a yield -- e.g. a websocket
-        # handler greenlet being killed while it is checking a connection back
-        # in after a normal operation -- can interrupt checkin before the
-        # decrement, leaving requests/active_sockets permanently inflated and
-        # saturating the size gate (PYTHON-6074). The try/finally below
-        # re-applies the accounting while unwinding: gevent does not re-throw
-        # GreenletExit at cooperative yields during unwind, so the re-acquisition
-        # completes and the accounting is restored.
+        # Re-apply the accounting if a gevent GreenletExit interrupts during
+        # the size_cond acquisition; gevent lets the re-acquire complete while
+        # unwinding (PYTHON-6074).
         close_conn_reason: Optional[str] = None
         emit_closed = False
         accounted = False

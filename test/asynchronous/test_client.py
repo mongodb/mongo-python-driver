@@ -2626,17 +2626,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
 
     @async_client_context.require_sync
     def test_gevent_kill_churn_deadlock(self):
-        """Regression test for PYTHON-6074.
-
-        Under gevent, killing a greenlet that is checking a connection back in
-        (after a normal operation) interrupts ``Pool.checkin`` during the
-        contended ``size_cond`` acquisition, before the ``requests``/
-        ``active_sockets`` decrement. The accounting stays permanently inflated,
-        saturating the size gate so every subsequent checkout blocks forever.
-        This spawns workers that do find_one against a tiny pool plus a reaper
-        that kills and respawns a worker every few milliseconds, then fails
-        (rather than hanging) if the op counter stalls while workers are alive.
-        """
+        """A greenlet killed mid-operation must not leave the pool deadlocked (PYTHON-6074)."""
         if not gevent_monkey_patched():
             raise SkipTest("Must be running monkey patched by gevent")
         import random
