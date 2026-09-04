@@ -2704,12 +2704,12 @@ class TestExhaustCursor(AsyncIntegrationTest):
                 pass
             # Close the client but never hang on a wedged pool: without the
             # PYTHON-6074 fix the pool's size gate is saturated and close() can
-            # block forever, so bound it. gevent.Timeout is a BaseException, so
-            # catch BaseException to avoid masking the watchdog's self.fail().
+            # block forever, so bound it and let the watchdog's self.fail()
+            # propagate.
             try:
                 with Timeout(5):
                     client.close()
-            except BaseException:
+            except Timeout:
                 pass
 
 
