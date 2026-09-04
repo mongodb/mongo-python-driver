@@ -1040,11 +1040,24 @@ class Pool:
             if conn:
                 # We checked out a socket but authentication failed.
                 conn.close_conn(ConnectionClosedReason.ERROR)
-            with self.size_cond:
-                self.requests -= 1
-                if incremented:
-                    self.active_sockets -= 1
-                self.size_cond.notify()
+            # Re-apply the accounting if a GreenletExit interrupts
+            # during the size_cond acquisition; during unwind gevent
+            # lets the re-acquire complete (PYTHON-6074).
+            accounted = False
+            try:
+                with self.size_cond:
+                    self.requests -= 1
+                    if incremented:
+                        self.active_sockets -= 1
+                    accounted = True
+                    self.size_cond.notify()
+            finally:
+                if not accounted:
+                    with self.size_cond:
+                        self.requests -= 1
+                        if incremented:
+                            self.active_sockets -= 1
+                        self.size_cond.notify()
 
             if not emitted_event:
                 self._telemetry.checkout_failed(

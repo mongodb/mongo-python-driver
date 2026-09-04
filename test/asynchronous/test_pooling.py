@@ -277,6 +277,36 @@ class TestPooling(_TestPoolingBase):
         self.assertEqual(0, cx_pool.active_sockets)
         self.assertEqual(0, cx_pool.requests)
 
+    async def test_checkout_error_accounting_no_double_decrement(self):
+        # PYTHON-6074: an exception delivered while the checkout error handler
+        # is inside size_cond.notify() (a yield point under gevent, where a
+        # greenlet can be killed) must not cause the accounting to be applied
+        # a second time by the handler's fallback.
+        cx_pool = await self.create_pool(max_pool_size=1)
+
+        real_notify = cx_pool.size_cond.notify
+        notify_calls = []
+
+        def notify():
+            notify_calls.append(1)
+            if len(notify_calls) == 1:
+                # Simulate a kill delivered at the notify() yield point.
+                raise KeyboardInterrupt()
+            real_notify()
+
+        cx_pool.size_cond.notify = notify
+        try:
+            with patch.object(cx_pool, "connect", side_effect=asyncio.CancelledError()):
+                with self.assertRaises(KeyboardInterrupt):
+                    async with cx_pool.checkout():
+                        pass
+        finally:
+            cx_pool.size_cond.notify = real_notify
+
+        # Accounting was applied exactly once.
+        self.assertEqual(0, cx_pool.requests)
+        self.assertEqual(0, cx_pool.active_sockets)
+
     async def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.
         cx_pool = await self.create_pool()
