@@ -1056,6 +1056,47 @@ class Pool:
 
         return conn
 
+    def _checkin_apply(
+        self, conn: Connection, txn: bool, cursor: bool, forked: bool
+    ) -> tuple[Optional[str], bool, bool]:
+        """Apply checkin accounting and decide the connection's disposition.
+
+        Caller must hold ``self.size_cond``. This method performs no cooperative
+        I/O (no await, no lock/condition acquire, no notify) so it is safe to
+        call while a gevent greenlet unwinds a ``GreenletExit``: gevent does not
+        re-throw ``GreenletExit`` at cooperative yields during unwind, so the
+        re-acquisition in the ``try/finally`` in ``checkin`` completes. The same
+        guarantee does not hold for an asyncio task cancelled with
+        ``CancelledError``, which is re-raised at the next await. Returns
+        ``(close_conn_reason, emit_closed, appended)`` describing work that must
+        be done outside the lock. See PYTHON-6074.
+        """
+        self.active_contexts.discard(conn.cancel_context)
+        if txn:
+            self.ntxns -= 1
+        elif cursor:
+            self.ncursors -= 1
+        self.requests -= 1
+        self.active_sockets -= 1
+        self.operation_count -= 1
+        close_conn_reason: Optional[str] = None
+        emit_closed = False
+        appended = False
+        if not forked:
+            if self.closed:
+                close_conn_reason = ConnectionClosedReason.POOL_CLOSED
+            elif conn.closed:
+                # CMAP requires the closed event be emitted after the check in.
+                emit_closed = True
+            elif self.stale_generation(conn.generation, conn.service_id):
+                close_conn_reason = ConnectionClosedReason.STALE
+            else:
+                conn.update_last_checkin_time()
+                conn.update_is_writable(bool(self.is_writable))
+                self.conns.appendleft(conn)
+                appended = True
+        return close_conn_reason, emit_closed, appended
+
     def checkin(self, conn: Connection) -> None:
         """Return the connection to the pool, or if it's closed discard it.
 
@@ -1067,44 +1108,49 @@ class Pool:
         conn.pinned_txn = False
         conn.pinned_cursor = False
         self._pinned_sockets.discard(conn)
-        with self.lock:
-            self.active_contexts.discard(conn.cancel_context)
+        forked = self.pid != os.getpid()
+        # The pool accounting (requests/active_sockets) must be decremented and
+        # the connection returned under a single hold of self.size_cond. Under
+        # gevent, acquiring the lock and Condition.notify() both cooperatively
+        # yield, so a GreenletExit injected at such a yield -- e.g. a websocket
+        # handler greenlet being killed while it is checking a connection back
+        # in after a normal operation -- can interrupt checkin before the
+        # decrement, leaving requests/active_sockets permanently inflated and
+        # saturating the size gate (PYTHON-6074). The try/finally below
+        # re-applies the accounting while unwinding: gevent does not re-throw
+        # GreenletExit at cooperative yields during unwind, so the re-acquisition
+        # completes and the accounting is restored.
+        close_conn_reason: Optional[str] = None
+        emit_closed = False
+        accounted = False
+        try:
+            with self.size_cond:
+                close_conn_reason, emit_closed, appended = self._checkin_apply(
+                    conn, txn, cursor, forked
+                )
+                accounted = True
+                if appended:
+                    # Notify any threads waiting to create a connection.
+                    self._max_connecting_cond.notify()
+                self.size_cond.notify()
+        finally:
+            if not accounted:
+                with self.size_cond:
+                    close_conn_reason, emit_closed, appended = self._checkin_apply(
+                        conn, txn, cursor, forked
+                    )
+                    if appended:
+                        self._max_connecting_cond.notify()
+                    self.size_cond.notify()
         telemetry = self._telemetry
         if telemetry._should_publish or (telemetry._log and _is_debug_enabled(_CONNECTION_LOGGER)):
             telemetry.checked_in(conn.id)
-        if self.pid != os.getpid():
+        if emit_closed:
+            telemetry.connection_closed(conn.id, ConnectionClosedReason.ERROR)
+        if forked:
             self.reset_without_pause()
-        else:
-            if self.closed:
-                conn.close_conn(ConnectionClosedReason.POOL_CLOSED)
-            elif conn.closed:
-                # CMAP requires the closed event be emitted after the check in.
-                self._telemetry.connection_closed(conn.id, ConnectionClosedReason.ERROR)
-            else:
-                close_conn = False
-                with self.lock:
-                    # Hold the lock to ensure this section does not race with
-                    # Pool.reset().
-                    if self.stale_generation(conn.generation, conn.service_id):
-                        close_conn = True
-                    else:
-                        conn.update_last_checkin_time()
-                        conn.update_is_writable(bool(self.is_writable))
-                        self.conns.appendleft(conn)
-                        # Notify any threads waiting to create a connection.
-                        self._max_connecting_cond.notify()
-                if close_conn:
-                    conn.close_conn(ConnectionClosedReason.STALE)
-
-        with self.size_cond:
-            if txn:
-                self.ntxns -= 1
-            elif cursor:
-                self.ncursors -= 1
-            self.requests -= 1
-            self.active_sockets -= 1
-            self.operation_count -= 1
-            self.size_cond.notify()
+        elif close_conn_reason is not None:
+            conn.close_conn(close_conn_reason)
 
     def _perished(self, conn: Connection) -> bool:
         """Return True and close the connection if it is "perished".

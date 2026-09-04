@@ -2575,6 +2575,104 @@ class TestExhaustCursor(IntegrationTest):
         # Unpatch the instance.
         del pool.connect
 
+    @client_context.require_sync
+    def test_gevent_kill_churn_deadlock(self):
+        """Regression test for PYTHON-6074.
+
+        Under gevent, killing a greenlet that is checking a connection back in
+        (after a normal operation) interrupts ``Pool.checkin`` during the
+        contended ``size_cond`` acquisition, before the ``requests``/
+        ``active_sockets`` decrement. The accounting stays permanently inflated,
+        saturating the size gate so every subsequent checkout blocks forever.
+        This spawns workers that do find_one against a tiny pool plus a reaper
+        that kills and respawns a worker every few milliseconds, then fails
+        (rather than hanging) if the op counter stalls while workers are alive.
+        """
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        import random
+
+        import gevent
+        from gevent import Timeout, spawn
+
+        client = self.rs_or_single_client(maxPoolSize=2)
+        coll = client.pymongo_test.coll
+        coll.insert_one({})
+
+        op_count = [0]
+        running = [True]
+        workers: list = []
+
+        def worker():
+            while running[0]:
+                try:
+                    coll.find_one({})
+                    op_count[0] += 1
+                    time.sleep(0.001)
+                except Exception:
+                    return
+
+        def reaper():
+            while running[0]:
+                time.sleep(0.003)
+                if not workers:
+                    continue
+                idx = random.randrange(len(workers))
+                try:
+                    workers[idx].kill(block=False)
+                except Exception:
+                    pass
+                workers[idx] = spawn(worker)
+
+        workers[:] = [spawn(worker) for _ in range(8)]
+        reaper_gr = spawn(reaper)
+        try:
+            # Watchdog: fail (never hang) if no op completes for 8s while
+            # workers are alive. Without the fix the op counter freezes
+            # permanently once the size gate saturates; with the fix, ops keep
+            # flowing and the loop simply runs out the deadline.
+            last = op_count[0]
+            stale = 0.0
+            deadline = time.monotonic() + 12
+            while time.monotonic() < deadline:
+                time.sleep(2)
+                if op_count[0] == last:
+                    stale += 2
+                    if stale >= 8:
+                        self.fail(
+                            "Deadlock detected (PYTHON-6074): no ops completed "
+                            f"for {stale:.0f}s, op_count={op_count[0]}"
+                        )
+                else:
+                    stale = 0.0
+                    last = op_count[0]
+            # Direct liveness probe that does not depend on *when* the leak
+            # landed: on the fixed driver ops keep flowing, so this completes
+            # well within the timeout; on the unfixed driver a saturated size
+            # gate makes it block, the timeout fires and the test fails.
+            try:
+                with Timeout(3):
+                    coll.find_one({})
+            except Timeout:
+                self.fail("Pool gate saturated (PYTHON-6074)")
+            self.assertGreater(op_count[0], 0)
+        finally:
+            running[0] = False
+            gevent.killall(workers, block=False)
+            try:
+                reaper_gr.kill(block=False)
+            except Exception:
+                pass
+            # Close the client but never hang on a wedged pool: without the
+            # PYTHON-6074 fix the pool's size gate is saturated and close() can
+            # block forever, so bound it. gevent.Timeout is a BaseException, so
+            # catch BaseException to avoid masking the watchdog's self.fail().
+            try:
+                with Timeout(5):
+                    client.close()
+            except BaseException:
+                pass
+
 
 class TestClientLazyConnect(IntegrationTest):
     """Test concurrent operations on a lazily-connecting MongoClient."""
