@@ -2632,7 +2632,30 @@ class TestExhaustCursor(AsyncIntegrationTest):
         import random
 
         import gevent
+        import gevent.thread as _gthread
         from gevent import Timeout, spawn
+
+        # PYTHON-6074: widen gevent's courtesy-yield window (the bare
+        # sleep() on a failed non-blocking lock acquire, which
+        # Condition.notify()'s _is_owned() hits on every checkin) so a
+        # GreenletExit lands in that window deterministically. Synthetic:
+        # only the bare sleep() is widened; sleep(t) with args passes
+        # through, so the reaper and watchdog timings are unchanged. Set
+        # AMPLIFY_RACE=1 to enable; the unfixed test then deadlocks
+        # within seconds every run.
+        if os.environ.get("AMPLIFY_RACE", "0") == "1":
+            _AMPLIFY_SECONDS = float(os.environ.get("AMPLIFY_SECONDS", "0.02"))
+
+            _orig_thread_sleep = _gthread.sleep
+
+            def _amplified_sleep(*args):
+                if not args:  # bare sleep(): the courtesy yield on a failed
+                    # non-blocking acquire (Condition.notify -> _is_owned -> acquire(False))
+                    _orig_thread_sleep(_AMPLIFY_SECONDS)
+                else:  # sleep(0.001), sleep(2), etc.: passthrough
+                    _orig_thread_sleep(*args)
+
+            _gthread.sleep = _amplified_sleep
 
         client = self.async_rs_or_single_client(maxPoolSize=2)
         coll = client.pymongo_test.coll
@@ -2694,6 +2717,11 @@ class TestExhaustCursor(AsyncIntegrationTest):
                     coll.find_one({})
             except Timeout:
                 self.fail("Pool gate saturated (PYTHON-6074)")
+            # Deterministic check: a saturated size gate pins the pool's
+            # checkout counters at maxPoolSize (PYTHON-6074).
+            pool = async_get_pool(client)  # type:ignore
+            self.assertLess(pool.requests, pool.max_pool_size)
+            self.assertLess(pool.active_sockets, pool.max_pool_size)
             self.assertGreater(op_count[0], 0)
         finally:
             running[0] = False
