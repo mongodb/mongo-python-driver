@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from typing import Union
 
-__version__ = "4.19.0.dev0"
+__version__ = "4.18.0.dev0"
 
 
 def get_version_tuple(version: str) -> tuple[Union[int, str], ...]:
