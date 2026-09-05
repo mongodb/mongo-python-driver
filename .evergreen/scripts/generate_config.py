@@ -18,6 +18,7 @@ from generate_config_utils import (
     PYPYS,
     SYNCS,
     TOPOLOGIES,
+    UV_PYTHON_VERSIONS,
     create_variant,
     get_assume_role,
     get_s3_put,
@@ -968,7 +969,10 @@ def create_mod_wsgi_tasks():
     for (test, topology), python in zip_cycle(
         product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
     ):
-        if "t" in python:
+        # Skip free-threaded builds and versions not yet in the toolchain:
+        # mod_wsgi must be compiled against the toolchain python, and no
+        # mod_wsgi module exists for a version the toolchain lacks.
+        if "t" in python or python in UV_PYTHON_VERSIONS:
             continue
         if test == "standalone":
             task_name = "mod-wsgi-"

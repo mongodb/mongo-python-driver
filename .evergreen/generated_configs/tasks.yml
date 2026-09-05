@@ -377,18 +377,6 @@ tasks:
           SUB_TEST_NAME: embedded
           UV_PYTHON: "3.14"
     tags: [mod_wsgi, pr]
-  - name: mod-wsgi-embedded-mode-replica-set-python3.15
-    commands:
-      - func: run server
-        vars:
-          TOPOLOGY: replica_set
-          UV_PYTHON: 3.15.0rc2
-      - func: run tests
-        vars:
-          TEST_NAME: mod_wsgi
-          SUB_TEST_NAME: embedded
-          UV_PYTHON: 3.15.0rc2
-    tags: [mod_wsgi, pr]
 
   # No orchestration tests
   - name: test-no-orchestration-python3.10-min-deps
