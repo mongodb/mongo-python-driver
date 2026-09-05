@@ -18,6 +18,7 @@ from generate_config_utils import (
     PYPYS,
     SYNCS,
     TOPOLOGIES,
+    UV_PYTHON_VERSIONS,
     create_variant,
     get_assume_role,
     get_s3_put,
@@ -27,6 +28,7 @@ from generate_config_utils import (
     get_variant_name,
     get_versions_from,
     handle_c_ext,
+    set_version_var,
     write_functions_to_file,
     write_tasks_to_file,
     write_variants_to_file,
@@ -220,6 +222,8 @@ def create_compression_variants():
     tasks = [
         ".test-standard !.server-4.4 !.server-5.0 .python-3.14",
         ".test-standard !.server-4.4 !.server-5.0 .python-3.14t",
+        ".test-standard !.server-4.4 !.server-5.0 .python-3.15",
+        ".test-standard !.server-4.4 !.server-5.0 .python-3.15t",
     ]
     display_name = get_variant_name(f"Compression {compressor}", host)
     variants.append(
@@ -365,7 +369,8 @@ def create_test_numpy_tasks():
     tasks = []
     for python in MIN_MAX_PYTHON:
         tags = ["binary", "vector", f"python-{python}", "test-numpy"]
-        vars = dict(TOOLCHAIN_VERSION=python)
+        vars = dict()
+        set_version_var(vars, python)
         if python == MIN_MAX_PYTHON[-1]:
             tags.append("pr")
             vars["COVERAGE"] = "1"
@@ -645,7 +650,7 @@ def create_server_version_tasks():
         )
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
-        test_vars["TOOLCHAIN_VERSION"] = python
+        set_version_var(test_vars, python)
         test_vars["TEST_NAME"] = f"default_{sync}"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
@@ -707,7 +712,7 @@ def create_test_non_standard_tasks():
         name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
-        test_vars["TOOLCHAIN_VERSION"] = python
+        set_version_var(test_vars, python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
         # For each coverage task, also emit a non-coverage companion so that
@@ -725,7 +730,7 @@ def create_test_non_standard_tasks():
             nc_name = get_task_name("test-non-standard", python=python, **nc_expansions)
             nc_server_func = FunctionCall(func="run server", vars=nc_expansions)
             nc_test_vars = nc_expansions.copy()
-            nc_test_vars["TOOLCHAIN_VERSION"] = python
+            set_version_var(nc_test_vars, python)
             nc_test_func = FunctionCall(func="run tests", vars=nc_test_vars)
             tasks.append(
                 EvgTask(name=nc_name, tags=nc_tags, commands=[nc_server_func, nc_test_func])
@@ -756,7 +761,7 @@ def create_string_query_preview_tasks():
     name = get_task_name("test-string-query-preview", python=python, **expansions)
     server_func = FunctionCall(func="run server", vars=expansions)
     test_vars = expansions.copy()
-    test_vars["TOOLCHAIN_VERSION"] = python
+    set_version_var(test_vars, python)
     test_func = FunctionCall(func="run tests", vars=test_vars)
     return [EvgTask(name=name, tags=tags, commands=[server_func, test_func])]
 
@@ -799,7 +804,7 @@ def create_test_standard_auth_tasks():
         name = get_task_name("test-standard-auth", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
-        test_vars["TOOLCHAIN_VERSION"] = python
+        set_version_var(test_vars, python)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
@@ -839,7 +844,7 @@ def create_standard_tasks():
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
         test_vars = expansions.copy()
-        test_vars["TOOLCHAIN_VERSION"] = python
+        set_version_var(test_vars, python)
         test_vars["TEST_NAME"] = f"default_{sync}"
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
@@ -854,7 +859,8 @@ def create_no_orchestration_tasks():
             f"python-{python}",
         ]
         assume_func = FunctionCall(func="assume ec2 role")
-        test_vars = dict(TOOLCHAIN_VERSION=python)
+        test_vars = dict()
+        set_version_var(test_vars, python)
         if python == ALL_PYTHONS[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
         name = get_task_name("test-no-orchestration", **test_vars)
@@ -904,7 +910,8 @@ def create_aws_tasks():
         tags = [*base_tags, f"auth-aws-{test_type}"]
         if "t" in python:
             tags.append("free-threaded")
-        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, TOOLCHAIN_VERSION=python)
+        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type)
+        set_version_var(test_vars, python)
         if python == MIN_MAX_PYTHON[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
         elif python == MIN_MAX_PYTHON[-1]:
@@ -922,8 +929,8 @@ def create_aws_tasks():
                 TEST_NAME="auth_aws",
                 SUB_TEST_NAME="web-identity",
                 AWS_ROLE_SESSION_NAME="test",
-                TOOLCHAIN_VERSION=python,
             )
+            set_version_var(test_vars, python)
             if "t" in python:
                 tags.append("free-threaded")
             test_func = FunctionCall(func="run tests", vars=test_vars)
@@ -962,7 +969,10 @@ def create_mod_wsgi_tasks():
     for (test, topology), python in zip_cycle(
         product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
     ):
-        if "t" in python:
+        # Skip free-threaded builds and versions not yet in the toolchain:
+        # mod_wsgi must be compiled against the toolchain python, and no
+        # mod_wsgi module exists for a version the toolchain lacks.
+        if "t" in python or python in UV_PYTHON_VERSIONS:
             continue
         if test == "standalone":
             task_name = "mod-wsgi-"
@@ -970,11 +980,11 @@ def create_mod_wsgi_tasks():
             task_name = "mod-wsgi-embedded-mode-"
         task_name += topology.replace("_", "-")
         task_name = get_task_name(task_name, python=python)
-        server_vars = dict(TOPOLOGY=topology, TOOLCHAIN_VERSION=python)
+        server_vars = dict(TOPOLOGY=topology)
+        set_version_var(server_vars, python)
         server_func = FunctionCall(func="run server", vars=server_vars)
-        vars = dict(
-            TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0], TOOLCHAIN_VERSION=python
-        )
+        vars = dict(TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0])
+        set_version_var(vars, python)
         test_func = FunctionCall(func="run tests", vars=vars)
         tags = ["mod_wsgi", "pr"]
         commands = [server_func, test_func]
@@ -996,9 +1006,9 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
             ORCHESTRATION_FILE=file_name,
             OCSP_SERVER_TYPE=server_type,
             TEST_NAME="ocsp",
-            TOOLCHAIN_VERSION=python,
             VERSION=version,
         )
+        set_version_var(vars, python)
         if python == ALL_PYTHONS[0]:
             vars["TEST_MIN_DEPS"] = "1"
         tags = ["ocsp", f"ocsp-{algo}", version]
@@ -1059,7 +1069,8 @@ def create_aws_lambda_tasks():
 def create_search_index_tasks():
     assume_func = FunctionCall(func="assume ec2 role")
     server_func = FunctionCall(func="run server", vars=dict(TEST_NAME="search_index"))
-    vars = dict(TEST_NAME="search_index", TOOLCHAIN_VERSION=CPYTHONS[0])
+    vars = dict(TEST_NAME="search_index")
+    set_version_var(vars, CPYTHONS[0])
     test_func = FunctionCall(func="run tests", vars=vars)
     task_name = "test-search-index-helpers"
     tags = ["search_index"]
@@ -1291,7 +1302,6 @@ def create_run_server_func():
         "SSL",
         "ORCHESTRATION_FILE",
         "UV_PYTHON",
-        "TOOLCHAIN_VERSION",
         "STORAGE_ENGINE",
         "REQUIRE_API_VERSION",
         "DRIVERS_TOOLS",
@@ -1318,7 +1328,6 @@ def create_run_tests_func():
         "UV_PYTHON",
         "LIBMONGOCRYPT_URL",
         "MONGODB_URI",
-        "TOOLCHAIN_VERSION",
         "DISABLE_TEST_COMMANDS",
         "GREEN_FRAMEWORK",
         "NO_EXT",
@@ -1341,7 +1350,7 @@ def create_run_tests_func():
 
 
 def create_test_numpy_func():
-    includes = ["TOOLCHAIN_VERSION", "COVERAGE"]
+    includes = ["UV_PYTHON", "COVERAGE"]
     test_cmd = get_subprocess_exec(
         include_expansions_in_env=includes, args=[".evergreen/just.sh", "test-numpy"]
     )

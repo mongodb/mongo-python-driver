@@ -102,7 +102,6 @@ functions:
           - SSL
           - ORCHESTRATION_FILE
           - UV_PYTHON
-          - TOOLCHAIN_VERSION
           - STORAGE_ENGINE
           - REQUIRE_API_VERSION
           - DRIVERS_TOOLS
@@ -137,7 +136,6 @@ functions:
           - UV_PYTHON
           - LIBMONGOCRYPT_URL
           - MONGODB_URI
-          - TOOLCHAIN_VERSION
           - DISABLE_TEST_COMMANDS
           - GREEN_FRAMEWORK
           - NO_EXT
@@ -249,7 +247,7 @@ functions:
           - test-numpy
         working_dir: src
         include_expansions_in_env:
-          - TOOLCHAIN_VERSION
+          - UV_PYTHON
           - COVERAGE
       type: test
 

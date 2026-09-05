@@ -1,5 +1,5 @@
 #!/bin/bash
-# Set up the UV_PYTHON variable.
+# Set up the UV_PYTHON variable and put the toolchain pythons on the path.
 set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
@@ -18,43 +18,56 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
+# Always use UV_PYTHON to select the Python version.
 if [ -z "${UV_PYTHON:-}" ]; then
-  set -x
-  # Translate a TOOLCHAIN_VERSION to UV_PYTHON.
-  if [ -n "${TOOLCHAIN_VERSION:-}" ]; then
-    _python=$TOOLCHAIN_VERSION
-    if [ "$(uname -s)" = "Darwin" ]; then
-        if [[ "$_python" == *"t"* ]]; then
-            binary_name="python3t"
-            framework_dir="PythonT"
-        else
-            binary_name="python3"
-            framework_dir="Python"
-        fi
-        _python=$(echo "$_python" | sed 's/t//g')
-        _python="/Library/Frameworks/$framework_dir.Framework/Versions/$_python/bin/$binary_name"
-    elif [ "Windows_NT" = "${OS:-}" ]; then
-        _python=$(echo $_python | cut -d. -f1,2 | sed 's/\.//g; s/t//g')
-        if [[ "$TOOLCHAIN_VERSION" == *"t"* ]]; then
-          _exe="python${TOOLCHAIN_VERSION}.exe"
+  export UV_PYTHON="$_python"
+fi
+
+# Prefer a toolchain (system) python over a uv-managed download: resolve a
+# bare version like 3.10 or 3.14t to the toolchain interpreter when one is
+# installed, and put its directory on the path.  Anything else (a path, or a
+# version uv must install itself, such as a pre-release) is left alone.
+if [[ "$UV_PYTHON" =~ ^3\.[0-9]+t?$ ]]; then
+  case "$(uname -s)" in
+    Darwin)
+      if [[ "$UV_PYTHON" == *"t"* ]]; then
+        binary_name="python3t"
+        framework_dir="PythonT"
+      else
+        binary_name="python3"
+        framework_dir="Python"
+      fi
+      _version="${UV_PYTHON%t}"
+      _bin_dir="/Library/Frameworks/${framework_dir}.Framework/Versions/$_version/bin"
+      if [ -x "$_bin_dir/$binary_name" ]; then
+        export UV_PYTHON="$_bin_dir/$binary_name"
+        export PATH="$_bin_dir:$PATH"
+      fi
+      ;;
+    *)
+      if [ "Windows_NT" = "${OS:-}" ]; then
+        _dir=$(echo "$UV_PYTHON" | cut -d. -f1,2 | sed 's/\.//g; s/t//g')
+        if [[ "$UV_PYTHON" == *"t"* ]]; then
+          _exe="python${UV_PYTHON}.exe"
         else
           _exe="python.exe"
         fi
         if [ -n "${IS_WIN32:-}" ]; then
-            _win_python="C:/python/32/Python${_python}/${_exe}"
+          _bin_dir="C:/python/32/Python${_dir}"
         else
-            _win_python="C:/python/Python${_python}/${_exe}"
+          _bin_dir="C:/python/Python${_dir}"
         fi
-        # Fall back to the version string if the toolchain path doesn't exist.
-        # uv will then download and manage Python itself.
-        if [ -f "$_win_python" ]; then
-            _python="$_win_python"
-        else
-            _python="$TOOLCHAIN_VERSION"
+        if [ -f "$_bin_dir/$_exe" ]; then
+          export UV_PYTHON="$_bin_dir/$_exe"
+          export PATH="$_bin_dir:$PATH"
         fi
-    elif [ -d "/opt/python/$_python/bin" ]; then
-        _python="/opt/python/$_python/bin/python3"
-    fi
-  fi
-  export UV_PYTHON="$_python"
+      else
+        _bin_dir="/opt/python/$UV_PYTHON/bin"
+        if [ -x "$_bin_dir/python3" ]; then
+          export UV_PYTHON="$_bin_dir/python3"
+          export PATH="$_bin_dir:$PATH"
+        fi
+      fi
+      ;;
+  esac
 fi

@@ -19,6 +19,21 @@ fi
 # Handle the value for UV_PYTHON.
 . $HERE/setup-uv-python.sh
 
+# Python 3.15 pre-releases are not yet in the Evergreen toolchain or uv's
+# download index, so install them explicitly and fall back to fetching a
+# python-build-standalone build when uv cannot provide one.  The fallback is
+# temporary until these versions reach the toolchain.  Other versions resolve
+# through the toolchain or uv on their own.
+if [ -n "${UV_PYTHON:-}" ] && [[ "$UV_PYTHON" != /* ]] && [[ "$UV_PYTHON" != ?:/* ]] && [[ "$UV_PYTHON" == 3.15* ]]; then
+  if ! uv python install "$UV_PYTHON" >/dev/null 2>&1; then
+    _interpreter="$(bash $HERE/fetch-python.sh)" || {
+      echo "Failed to obtain a Python $UV_PYTHON interpreter" >&2
+      exit 1
+    }
+    export UV_PYTHON="$_interpreter"
+  fi
+fi
+
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 

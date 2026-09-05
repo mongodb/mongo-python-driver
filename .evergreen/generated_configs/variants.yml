@@ -144,6 +144,8 @@ buildvariants:
     tasks:
       - name: .test-standard !.server-4.4 !.server-5.0 .python-3.14
       - name: .test-standard !.server-4.4 !.server-5.0 .python-3.14t
+      - name: .test-standard !.server-4.4 !.server-5.0 .python-3.15
+      - name: .test-standard !.server-4.4 !.server-5.0 .python-3.15t
     display_name: Compression zstd Ubuntu-22
     run_on:
       - ubuntu2204-small

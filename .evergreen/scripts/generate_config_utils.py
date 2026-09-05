@@ -22,11 +22,26 @@ from shrub.v3.shrub_service import ShrubService
 ##############
 
 ALL_VERSIONS = ["4.4", "5.0", "6.0", "7.0", "8.0", "9.0", "rapid", "latest"]
-CPYTHONS = ["3.10", "3.11", "3.12", "3.13", "3.14t", "3.14"]
+CPYTHONS = ["3.10", "3.11", "3.12", "3.13", "3.14t", "3.14", "3.15t", "3.15"]
 PYPYS = ["pypy3.11"]
 MIN_SUPPORT_VERSIONS = ["3.9", "pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
+# Python versions that are not provisioned in the Evergreen toolchain, mapped
+# to the exact version uv must be requested to install (uv only installs a
+# pre-release when asked for its full version).  Drop an entry once the
+# toolchain provides the version.
+UV_PYTHON_VERSIONS = {
+    "3.15": "3.15.0rc2",
+    "3.15t": "3.15.0rc2t",
+}
+
+
+def set_version_var(env: dict[str, str], version: str) -> None:
+    """Set the env var on task vars that selects the given Python version."""
+    env["UV_PYTHON"] = UV_PYTHON_VERSIONS.get(version, version)
+
+
 BATCHTIME_WEEK = 10080
 BATCHTIME_DAY = 1440
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
@@ -178,7 +193,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
         display_name = f"{display_name}{sep}{version}"
     for key, value in kwargs.items():
         name = value
-        if key.lower() in ["python", "toolchain_version"]:
+        if key.lower() in ["python", "toolchain_version", "uv_python"]:
             if not value.startswith("pypy"):
                 name = f"Python{value}"
             else:
