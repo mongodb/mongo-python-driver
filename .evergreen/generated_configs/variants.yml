@@ -400,6 +400,13 @@ buildvariants:
     run_on:
       - rhel87-small
     batchtime: 10080
+  - name: ocsp-staples-rhel8
+    tasks:
+      - name: .ocsp-staple .pr
+    display_name: OCSP Staples RHEL8
+    run_on:
+      - rhel87-small
+    tags: [pr]
   - name: ocsp-win64
     tasks:
       - name: .ocsp-rsa !.ocsp-staple .latest

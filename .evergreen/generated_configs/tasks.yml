@@ -909,6 +909,7 @@ tasks:
       - ocsp-ecdsa
       - "4.4"
       - ocsp-staple
+      - pr
   - name: test-ocsp-ecdsa-valid-cert-server-staples-v5.0-python3.10-min-deps
     commands:
       - func: run tests
@@ -2173,7 +2174,7 @@ tasks:
       - ocsp-rsa
       - rapid
       - ocsp-staple
-  - name: test-ocsp-rsa-valid-cert-server-staples-latest-python3.15.0rc2-cov
+  - name: test-ocsp-rsa-valid-cert-server-staples-latest-python3.15.0rc2
     commands:
       - func: run tests
         vars:
@@ -2182,13 +2183,11 @@ tasks:
           TEST_NAME: ocsp
           VERSION: latest
           UV_PYTHON: 3.15.0rc2
-          COVERAGE: "1"
     tags:
       - ocsp
       - ocsp-rsa
       - latest
       - ocsp-staple
-      - pr
   - name: test-ocsp-rsa-invalid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
       - func: run tests

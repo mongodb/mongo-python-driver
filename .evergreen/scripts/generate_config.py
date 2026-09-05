@@ -68,6 +68,18 @@ def create_ocsp_variants() -> list[BuildVariant]:
             batchtime=BATCHTIME_WEEK,
         )
         variants.append(variant)
+        # Run the stapled OCSP tasks (tagged "pr") on every PR so cryptography-backend
+        # regressions, like the min-deps ML-KEM breakage in PYTHON-6032, are caught before merge
+        # instead of on the next weekly batch run.
+        if host == DEFAULT_HOST:
+            variants.append(
+                create_variant(
+                    [".ocsp-staple .pr"],
+                    get_variant_name("OCSP Staples", host),
+                    tags=["pr"],
+                    host=host,
+                )
+            )
     return variants
 
 
@@ -998,7 +1010,20 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         tags = ["ocsp", f"ocsp-{algo}", version]
         if "disableStapling" not in variant:
             tags.append("ocsp-staple")
-        if base_task_name == "valid-cert-server-staples" and version == "latest":
+        # Run exactly one min-deps and one latest-CPython stapled OCSP task on
+        # every PR (ecdsa only, to avoid doubling coverage across algorithms)
+        # so a cryptography-backend regression at either dependency extreme,
+        # like the min-deps ML-KEM breakage in PYTHON-6032, is caught before
+        # merge instead of on the next weekly mainline batch run.
+        if (
+            base_task_name == "valid-cert-server-staples"
+            and algo == "ecdsa"
+            and version
+            in (
+                "latest",
+                "4.4",
+            )
+        ):
             tags.append("pr")
             if "TEST_MIN_DEPS" not in vars:
                 vars["COVERAGE"] = "1"
