@@ -2656,6 +2656,7 @@ class TestExhaustCursor(AsyncIntegrationTest):
                     _orig_thread_sleep(*args)
 
             _gthread.sleep = _amplified_sleep
+            self.addCleanup(setattr, _gthread, "sleep", _orig_thread_sleep)
 
         client = self.async_rs_or_single_client(maxPoolSize=2)
         coll = client.pymongo_test.coll
