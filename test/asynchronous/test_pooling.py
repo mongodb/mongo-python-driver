@@ -307,6 +307,41 @@ class TestPooling(_TestPoolingBase):
         self.assertEqual(0, cx_pool.requests)
         self.assertEqual(0, cx_pool.active_sockets)
 
+    async def test_checkout_error_accounting_on_kill_during_acquire(self):
+        # PYTHON-6074: an exception delivered while the checkout error
+        # handler is waiting to acquire size_cond (a yield point under
+        # gevent) must not leak the checkout accounting; the handler's
+        # fallback re-applies it.
+        cx_pool = await self.create_pool(max_pool_size=1)
+
+        class _InterruptOnSecondEnter(type(cx_pool.size_cond)):
+            def __init__(self, lock):
+                super().__init__(lock)
+                self.enters = 0
+
+            async def __aenter__(self):
+                self.enters += 1
+                if self.enters == 2:
+                    # First enter is the checkout semaphore, second is the
+                    # error handler. Simulate a kill delivered while blocked
+                    # on the second.
+                    raise KeyboardInterrupt()
+                return await super().__aenter__()
+
+            async def __aexit__(self, *args):
+                return await super().__aexit__(*args)
+
+        cx_pool.size_cond = _InterruptOnSecondEnter(cx_pool.size_cond._lock)
+
+        with patch.object(cx_pool, "connect", side_effect=asyncio.CancelledError()):
+            with self.assertRaises(KeyboardInterrupt):
+                async with cx_pool.checkout():
+                    pass
+
+        # The fallback applied the accounting exactly once.
+        self.assertEqual(0, cx_pool.requests)
+        self.assertEqual(0, cx_pool.active_sockets)
+
     async def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.
         cx_pool = await self.create_pool()
