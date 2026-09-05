@@ -1044,11 +1044,24 @@ class Pool:
             if conn:
                 # We checked out a socket but authentication failed.
                 await conn.close_conn(ConnectionClosedReason.ERROR)
-            async with self.size_cond:
-                self.requests -= 1
-                if incremented:
-                    self.active_sockets -= 1
-                self.size_cond.notify()
+            # Re-apply the accounting if a GreenletExit interrupts
+            # during the size_cond acquisition; during unwind gevent
+            # lets the re-acquire complete (PYTHON-6074).
+            accounted = False
+            try:
+                async with self.size_cond:
+                    self.requests -= 1
+                    if incremented:
+                        self.active_sockets -= 1
+                    accounted = True
+                    self.size_cond.notify()
+            finally:
+                if not accounted:
+                    async with self.size_cond:
+                        self.requests -= 1
+                        if incremented:
+                            self.active_sockets -= 1
+                        self.size_cond.notify()
 
             if not emitted_event:
                 self._telemetry.checkout_failed(
@@ -1059,6 +1072,40 @@ class Pool:
             raise
 
         return conn
+
+    def _checkin_apply(
+        self, conn: AsyncConnection, txn: bool, cursor: bool, forked: bool
+    ) -> tuple[Optional[str], bool, bool]:
+        """Apply checkin accounting; caller holds ``size_cond``.
+
+        No cooperative I/O, so safe while a gevent greenlet unwinds. Returns
+        ``(close_conn_reason, emit_closed, appended)`` for outside the lock.
+        """
+        self.active_contexts.discard(conn.cancel_context)
+        if txn:
+            self.ntxns -= 1
+        elif cursor:
+            self.ncursors -= 1
+        self.requests -= 1
+        self.active_sockets -= 1
+        self.operation_count -= 1
+        close_conn_reason: Optional[str] = None
+        emit_closed = False
+        appended = False
+        if not forked:
+            if self.closed:
+                close_conn_reason = ConnectionClosedReason.POOL_CLOSED
+            elif conn.closed:
+                # CMAP requires the closed event be emitted after the check in.
+                emit_closed = True
+            elif self.stale_generation(conn.generation, conn.service_id):
+                close_conn_reason = ConnectionClosedReason.STALE
+            else:
+                conn.update_last_checkin_time()
+                conn.update_is_writable(bool(self.is_writable))
+                self.conns.appendleft(conn)
+                appended = True
+        return close_conn_reason, emit_closed, appended
 
     async def checkin(self, conn: AsyncConnection) -> None:
         """Return the connection to the pool, or if it's closed discard it.
@@ -1071,44 +1118,41 @@ class Pool:
         conn.pinned_txn = False
         conn.pinned_cursor = False
         self._pinned_sockets.discard(conn)
-        async with self.lock:
-            self.active_contexts.discard(conn.cancel_context)
+        forked = self.pid != os.getpid()
+        # Re-apply the accounting if a gevent GreenletExit interrupts during
+        # the size_cond acquisition; gevent lets the re-acquire complete while
+        # unwinding (PYTHON-6074).
+        close_conn_reason: Optional[str] = None
+        emit_closed = False
+        accounted = False
+        try:
+            async with self.size_cond:
+                close_conn_reason, emit_closed, appended = self._checkin_apply(
+                    conn, txn, cursor, forked
+                )
+                accounted = True
+                if appended:
+                    # Notify any threads waiting to create a connection.
+                    self._max_connecting_cond.notify()
+                self.size_cond.notify()
+        finally:
+            if not accounted:
+                async with self.size_cond:
+                    close_conn_reason, emit_closed, appended = self._checkin_apply(
+                        conn, txn, cursor, forked
+                    )
+                    if appended:
+                        self._max_connecting_cond.notify()
+                    self.size_cond.notify()
         telemetry = self._telemetry
         if telemetry._should_publish or (telemetry._log and _is_debug_enabled(_CONNECTION_LOGGER)):
             telemetry.checked_in(conn.id)
-        if self.pid != os.getpid():
+        if emit_closed:
+            telemetry.connection_closed(conn.id, ConnectionClosedReason.ERROR)
+        if forked:
             await self.reset_without_pause()
-        else:
-            if self.closed:
-                await conn.close_conn(ConnectionClosedReason.POOL_CLOSED)
-            elif conn.closed:
-                # CMAP requires the closed event be emitted after the check in.
-                self._telemetry.connection_closed(conn.id, ConnectionClosedReason.ERROR)
-            else:
-                close_conn = False
-                async with self.lock:
-                    # Hold the lock to ensure this section does not race with
-                    # Pool.reset().
-                    if self.stale_generation(conn.generation, conn.service_id):
-                        close_conn = True
-                    else:
-                        conn.update_last_checkin_time()
-                        conn.update_is_writable(bool(self.is_writable))
-                        self.conns.appendleft(conn)
-                        # Notify any threads waiting to create a connection.
-                        self._max_connecting_cond.notify()
-                if close_conn:
-                    await conn.close_conn(ConnectionClosedReason.STALE)
-
-        async with self.size_cond:
-            if txn:
-                self.ntxns -= 1
-            elif cursor:
-                self.ncursors -= 1
-            self.requests -= 1
-            self.active_sockets -= 1
-            self.operation_count -= 1
-            self.size_cond.notify()
+        elif close_conn_reason is not None:
+            await conn.close_conn(close_conn_reason)
 
     async def _perished(self, conn: AsyncConnection) -> bool:
         """Return True and close the connection if it is "perished".
