@@ -7,9 +7,9 @@ Changes in Version 4.18.1 (2026/09/10)
 Version 4.18.1 is a bug fix release.
 
 - Use an exact match for the file ID in GridFS delete methods
-  (`PYTHON-5994`_).
+  (`CVE-2026-88029`_).
 
-.. _PYTHON-5994: https://jira.mongodb.org/browse/PYTHON-5994
+.. CVE-2026-88029: https://www.cve.org/CVERecord?id=CVE-2026-88029
 
 Changes in Version 4.18.0 (2026/09/03)
 --------------------------------------
