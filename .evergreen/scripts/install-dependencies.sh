@@ -2,6 +2,13 @@
 # Install the necessary dependencies.
 set -euo pipefail
 
+# The uv tool installs below (pinning uv, rust-just) just need a working
+# interpreter, so drop the task's Python selection: it may not exist on this
+# host (e.g. 3.15 with a 3.14 toolchain), and uv would fail on a too-old
+# interpreter found in the search path (e.g. /usr/bin/python3 on RHEL) rather
+# than skip it. Later steps re-source env.sh, restoring the selection.
+unset UV_PYTHON UV_PYTHON_SEARCH_PATH UV_PYTHON_PREFERENCE
+
 HERE=$(dirname ${BASH_SOURCE:-$0})
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null

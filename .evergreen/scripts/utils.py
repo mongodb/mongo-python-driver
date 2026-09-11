@@ -297,8 +297,8 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
     kwargs.setdefault("check", True)
     # Prevent overriding the python used by other tools.
     env = kwargs.pop("env", os.environ).copy()
-    if "UV_PYTHON" in env:
-        del env["UV_PYTHON"]
+    for var in ["UV_PYTHON", "UV_PYTHON_SEARCH_PATH", "UV_PYTHON_PREFERENCE"]:
+        env.pop(var, None)
     kwargs["env"] = env
     try:
         subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
