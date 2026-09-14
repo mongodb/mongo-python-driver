@@ -27,22 +27,7 @@ else
   PYMONGO_BIN_DIR=$HOME/.local/bin
 fi
 
-# Add the latest MongoDB toolchain bin dir to PATH if it exists, so that hosts
-# with old system Python3 still get a modern interpreter for setup scripts.
-# It goes after PYMONGO_BIN_DIR so the pinned uv (installed there by setup-uv.py)
-# takes precedence over the toolchain's uv.
-if [ "Windows_NT" = "${OS:-}" ]; then
-  _toolchain_bin="/cygdrive/c/Python/Current/Scripts"
-elif [ "$(uname -s)" == "Darwin" ]; then
-  _toolchain_bin="/Library/Frameworks/Python.Framework/Versions/Current/bin"
-else
-  _toolchain_bin="/opt/python/Current/bin"
-fi
-if [ -d "$_toolchain_bin" ]; then
-  PATH_EXT="$MONGODB_BINARIES:$PYMONGO_BIN_DIR:$_toolchain_bin:$DRIVERS_TOOLS_BINARIES:\$PATH"
-else
-  PATH_EXT="$MONGODB_BINARIES:$PYMONGO_BIN_DIR:$DRIVERS_TOOLS_BINARIES:\$PATH"
-fi
+PATH_EXT="$MONGODB_BINARIES:$PYMONGO_BIN_DIR:$DRIVERS_TOOLS_BINARIES:\$PATH"
 
 # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
 if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
