@@ -16,22 +16,23 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
-# Handle the value for UV_PYTHON.
-. $HERE/setup-uv-python.sh
-
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
-# Re-source env.sh: install-dependencies.sh may have appended to it, e.g. when it
-# had to install Python on an image that lacks a toolchain.
+# Re-source env.sh in case a dependency install updated it, e.g. on a host
+# without a toolchain where uv was installed into a shared bin dir.
 if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
-# Add the default install path to the path if needed.
-if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
-  export PATH="$PATH:$HOME/.local/bin"
-fi
+# Add the install dir to the path before configuring uv, so the pinned uv/just
+# win over a different install earlier on PATH (in this parent shell, since the
+# dependency installer runs as a child process and its PATH change does not
+# propagate here).
+export PATH="${PYMONGO_BIN_DIR:-$HOME/.local/bin}:$PATH"
+
+# Handle the value for UV_PYTHON.
+. $HERE/setup-uv-python.sh
 
 # Only run the next part if not running on CI.
 if [ -z "${CI:-}" ]; then

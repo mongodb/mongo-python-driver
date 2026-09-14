@@ -199,6 +199,10 @@ the pages will re-render and the browser will automatically refresh.
 -   Run `just install` to set a local virtual environment, or you can manually
     create a virtual environment and run `pytest` directly.  If you want to use a specific
     version of Python, set `UV_PYTHON` before running `just install`.
+
+    `just install` installs the pinned version of `uv` (from `[tool.uv] required-version`) into `$HOME/.local/bin`,
+    so make sure that directory is on your `PATH` (it usually is).  If a project `uv` command (e.g. `just test`) runs
+    with a different `uv` version, `uv` fails fast and tells you how to update.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
     [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `$DRIVERS_TOOLS/.evergreen/run-mongodb.sh start -h`
@@ -419,6 +423,10 @@ tasks are host-agnostic.
       supported version of Python and use that.  This ensures a consistent behavior across host types that do not
       have the Python toolchain (e.g. Azure VMs), by having a known version of Python with the build headers (`Python.h`)
       needed to build the C extensions.
+    - The uv binary version is pinned once in `[tool.uv] required-version` in `pyproject.toml`.
+      `.evergreen/scripts/install-dependencies.sh` installs it with `uv tool install`, uv enforces it locally, and
+      `astral-sh/setup-uv` reads it on GitHub.  Bump it manually when a newer uv is needed.  If uv cannot find the
+      requested Python, it installs it; if that fails, the task fails.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
