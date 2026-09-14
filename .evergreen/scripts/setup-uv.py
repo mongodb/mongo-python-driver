@@ -101,7 +101,7 @@ def _write_env() -> None:
         keep.append(line)
     keep.append("")
     keep.extend(f'export {name}="{value}"' for name, value in sorted(values.items()))
-    ENV_SH.write_text("\n".join(keep) + "\n")
+    ENV_SH.write_text("\n".join(keep) + "\n", newline="\n")
 
 
 def main() -> int:
