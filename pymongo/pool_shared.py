@@ -304,16 +304,25 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
         raise OSError("getaddrinfo failed")
 
 
-async def _async_configured_socket(
-    address: _Address, options: PoolOptions
+def _close_late_socket(future: asyncio.Future[Any]) -> None:
+    """Close a socket produced after its awaiting task was cancelled."""
+    if not future.cancelled() and future.exception() is None:
+        future.result().close()
+
+
+async def _async_wrap_socket_tls(
+    sock: socket.socket, address: _Address, options: PoolOptions
 ) -> Union[socket.socket, _sslConn]:
-    """Given (host, port) and PoolOptions, return a raw configured socket.
+    """Given a connected socket, (host, port), and PoolOptions, apply TLS.
+
+    The handshake, SNI, and certificate/hostname verification all target
+    ``address``, which may differ from the peer ``sock`` is connected to, for
+    example when ``sock`` tunnels through an HTTP proxy.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
 
-    Sets socket's SSL and timeout options.
+    Sets the socket's SSL and timeout options.
     """
-    sock = await _async_create_connection(address, options)
     ssl_context = options._ssl_context
 
     if ssl_context is None:
@@ -326,13 +335,19 @@ async def _async_configured_socket(
         # to use SSLContext.check_hostname.
         if _has_sni(False):
             loop = asyncio.get_running_loop()
-            ssl_sock = await loop.run_in_executor(
-                None,
-                functools.partial(ssl_context.wrap_socket, sock, server_hostname=host),  # type: ignore[assignment, misc, unused-ignore]
-            )
+            wrap = functools.partial(ssl_context.wrap_socket, sock, server_hostname=host)  # type: ignore[assignment, misc, unused-ignore]
         else:
             loop = asyncio.get_running_loop()
-            ssl_sock = await loop.run_in_executor(None, ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc, unused-ignore]
+            wrap = functools.partial(ssl_context.wrap_socket, sock)  # type: ignore[assignment, misc, unused-ignore]
+        # Shield the executor future: wrap_socket hands the fd to a new
+        # SSLSocket, so cancellation must not orphan the result it produces.
+        future = loop.run_in_executor(None, wrap)
+        try:
+            ssl_sock = await asyncio.shield(future)
+        except asyncio.CancelledError:
+            future.add_done_callback(_close_late_socket)
+            sock.close()
+            raise
     except _CertificateError:
         sock.close()
         # Raise _CertificateError directly like we do after match_hostname
@@ -358,6 +373,19 @@ async def _async_configured_socket(
 
     ssl_sock.settimeout(options.socket_timeout)
     return ssl_sock
+
+
+async def _async_configured_socket(
+    address: _Address, options: PoolOptions
+) -> Union[socket.socket, _sslConn]:
+    """Given (host, port) and PoolOptions, return a raw configured socket.
+
+    Can raise socket.error, ConnectionFailure, or _CertificateError.
+
+    Sets socket's SSL and timeout options.
+    """
+    sock = await _async_create_connection(address, options)
+    return await _async_wrap_socket_tls(sock, address, options)
 
 
 async def _configured_protocol_interface(
@@ -510,14 +538,19 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
         raise OSError("getaddrinfo failed")
 
 
-def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
-    """Given (host, port) and PoolOptions, return a raw configured socket.
+def _wrap_socket_tls(
+    sock: socket.socket, address: _Address, options: PoolOptions
+) -> Union[socket.socket, _sslConn]:
+    """Given a connected socket, (host, port), and PoolOptions, apply TLS.
+
+    The handshake, SNI, and certificate/hostname verification all target
+    ``address``, which may differ from the peer ``sock`` is connected to, for
+    example when ``sock`` tunnels through an HTTP proxy.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
 
-    Sets socket's SSL and timeout options.
+    Sets the socket's SSL and timeout options.
     """
-    sock = _create_connection(address, options)
     ssl_context = options._ssl_context
 
     if ssl_context is None:
@@ -557,6 +590,17 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
 
     ssl_sock.settimeout(options.socket_timeout)
     return ssl_sock
+
+
+def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
+    """Given (host, port) and PoolOptions, return a raw configured socket.
+
+    Can raise socket.error, ConnectionFailure, or _CertificateError.
+
+    Sets socket's SSL and timeout options.
+    """
+    sock = _create_connection(address, options)
+    return _wrap_socket_tls(sock, address, options)
 
 
 def _configured_socket_interface(

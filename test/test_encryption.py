@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import copy
 import http.client
@@ -29,12 +30,16 @@ import socketserver
 import ssl
 import sys
 import textwrap
+import threading
+import time
 import traceback
 import uuid
 import warnings
+from asyncio.trsock import TransportSocket
 from collections.abc import Mapping
 from threading import Thread
 from typing import Any, Optional
+from unittest import mock
 
 import pytest
 
@@ -63,6 +68,7 @@ from pymongo.cursor_shared import CursorType
 from pymongo.encryption_options import (
     _HAVE_PYMONGOCRYPT,
     AutoEncryptionOpts,
+    HTTPProxyKMSConnect,
     RangeOpts,
     StringOpts,
     TextOpts,
@@ -81,8 +87,17 @@ from pymongo.errors import (
     WriteError,
 )
 from pymongo.operations import InsertOne, ReplaceOne, UpdateOne
+from pymongo.pool_options import PoolOptions
+from pymongo.ssl_support import get_ssl_context
 from pymongo.synchronous import encryption
-from pymongo.synchronous.encryption import Algorithm, ClientEncryption, QueryType
+from pymongo.synchronous.encryption import (
+    Algorithm,
+    ClientEncryption,
+    QueryType,
+    _connect_kms,
+    _EncryptionIO,
+    _wrap_encryption_errors,
+)
 from pymongo.synchronous.helpers import next
 from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
@@ -222,6 +237,9 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
 
 
+# KMS connect callback unit and prose tests live in test_kms_connect.py.
+
+
 class TestClientOptions(PyMongoTestCase):
     def test_default(self):
         client = self.simple_client(connect=False)
@@ -316,9 +334,15 @@ class EncryptionIntegrationTest(IntegrationTest):
         key_vault_client: MongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        kms_connect_callback: Optional[Any] = None,
     ):
         client_encryption = ClientEncryption(
-            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+            kms_providers,
+            key_vault_namespace,
+            key_vault_client,
+            codec_options,
+            kms_tls_options,
+            kms_connect_callback=kms_connect_callback,
         )
         self.addCleanup(client_encryption.close)
         return client_encryption
@@ -331,9 +355,15 @@ class EncryptionIntegrationTest(IntegrationTest):
         key_vault_client: MongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        kms_connect_callback: Optional[Any] = None,
     ):
         client_encryption = ClientEncryption(
-            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+            kms_providers,
+            key_vault_namespace,
+            key_vault_client,
+            codec_options,
+            kms_tls_options,
+            kms_connect_callback=kms_connect_callback,
         )
         return client_encryption
 
@@ -1970,6 +2000,9 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             self.client_encrypted.create_data_key("aws", master_key=key)
+
+
+# KMS connect callback unit and prose tests live in test_kms_connect.py.
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#kms-tls-options-tests
