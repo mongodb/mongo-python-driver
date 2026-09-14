@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -68,21 +69,35 @@ def _pin_uv(uv_pin: str) -> None:
     install-dependencies.sh / ensure-uv.sh, in native form on Windows). uv tool
     install writes the binary into UV_TOOL_BIN_DIR and the tool venv into
     UV_TOOL_DIR; --force lets it overwrite an existing install.
+
+    Windows will not overwrite a running executable, so when the current uv is
+    already the target bin dir, run the install from a copy of the binary.
     """
-    subprocess.run(  # noqa: S603
-        [
-            shutil.which("uv"),
-            "tool",
-            "install",
-            "--no-config",
-            "-q",
-            "--force",
-            "--from",
-            f"uv{uv_pin}",
-            "uv",
-        ],
-        check=True,
-    )
+    uv_path = shutil.which("uv")
+    tool = uv_path
+    tmp_uv = None
+    if os.name == "nt":
+        tmp_uv = Path(tempfile.mkdtemp()) / Path(uv_path).name
+        shutil.copy2(uv_path, tmp_uv)
+        tool = str(tmp_uv)
+    try:
+        subprocess.run(  # noqa: S603
+            [
+                tool,
+                "tool",
+                "install",
+                "--no-config",
+                "-q",
+                "--force",
+                "--from",
+                f"uv{uv_pin}",
+                "uv",
+            ],
+            check=True,
+        )
+    finally:
+        if tmp_uv:
+            shutil.rmtree(tmp_uv.parent, ignore_errors=True)
 
 
 def _write_env() -> None:
@@ -101,7 +116,9 @@ def _write_env() -> None:
         keep.append(line)
     keep.append("")
     keep.extend(f'export {name}="{value}"' for name, value in sorted(values.items()))
-    ENV_SH.write_text("\n".join(keep) + "\n", newline="\n")
+    # Write LF bytes directly: on Windows text mode translates \n to \r\n, which
+    # breaks bash sourcing env.sh, and `newline=` isn't available on all Pythons.
+    ENV_SH.write_bytes(("\n".join(keep) + "\n").encode())
 
 
 def main() -> int:
