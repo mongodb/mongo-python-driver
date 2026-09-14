@@ -46,8 +46,9 @@ if [ "$_need_setup" = "1" ]; then
     ensure_uv || exit 1
   fi
 
-  # Do the uv setup (bin dir, pinning, env.sh) under uv's own interpreter.
-  uv run "$HERE/setup-uv.py"
+  # Do the uv setup (bin dir, pinning, env.sh). Uses the toolchain python3
+  # (added to PATH by configure-env.sh) to avoid uv's required-version check.
+  python3 "$HERE/setup-uv.py"
 
   # Re-source env.sh so the values setup-uv.py wrote are available.
   if [ -f $HERE/env.sh ]; then

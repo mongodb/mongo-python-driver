@@ -18,7 +18,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 ENV_SH = HERE / "env.sh"
-ASTURL_INSTALL_URL = "https://astral.sh/uv/install.sh"
+ASTRAL_INSTALL_URL = "https://astral.sh/uv/install.sh"
 
 
 def required_uv_pin() -> str:
@@ -55,7 +55,7 @@ def _install_uv_astral() -> None:
     curl = shutil.which("curl")
     sh = shutil.which("sh")
     proc = subprocess.run(  # noqa: S603
-        [curl, "-LsSf", ASTURL_INSTALL_URL], capture_output=True, env=env, check=True
+        [curl, "-LsSf", ASTRAL_INSTALL_URL], capture_output=True, env=env, check=True
     )
     subprocess.run([sh], input=proc.stdout, env=env, check=True)  # noqa: S603
     _add_path(os.environ["UV_TOOL_BIN_DIR"])
