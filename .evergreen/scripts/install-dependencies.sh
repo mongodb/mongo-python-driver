@@ -11,96 +11,54 @@ if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
-# Set up the default bin directory.
-if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
-  PYMONGO_BIN_DIR="$HOME/.local/bin"
-fi
-# uv.exe on Windows needs Windows-style paths, while bash uses the cygwin form.
-# Keep PYMONGO_BIN_DIR in the form PATH uses and give uv the Windows form.
+# PYMONGO_BIN_DIR is set by setup-system.sh/env.sh (or setup-dev-env.sh); default
+# it for robustness. UV_TOOL_BIN_DIR is uv's name for the same dir (setup-uv.py
+# reads both). UV_TOOL_DIR is left to ensure_uv.sh.
+export PYMONGO_BIN_DIR="${PYMONGO_BIN_DIR:-$HOME/.local/bin}"
+export UV_TOOL_BIN_DIR="${UV_TOOL_BIN_DIR:-$PYMONGO_BIN_DIR}"
+# uv is a native Windows binary: give it a Windows path on cygwin.
 if [ "Windows_NT" = "${OS:-}" ]; then
   _uv_tool_bin="$(cygpath -m "$PYMONGO_BIN_DIR")"
-  _uv_tool_dir="$(cygpath -m "${UV_TOOL_DIR:-$(dirname "$PYMONGO_BIN_DIR")/uv-tools}")"
   export UV_TOOL_BIN_DIR="$_uv_tool_bin"
-  export UV_TOOL_DIR="$_uv_tool_dir"
-else
-  export UV_TOOL_BIN_DIR="$PYMONGO_BIN_DIR"
-fi
-mkdir -p "$PYMONGO_BIN_DIR"
-
-# Locate the Python toolchain's binary dir, so we can prefer its uv and just.
-_toolchain_bin=""
-if [ "Windows_NT" = "${OS:-}" ]; then
-  _toolchain_bin="/cygdrive/c/Python/Current/Scripts"
-elif [ "$(uname -s)" = "Darwin" ]; then
-  _toolchain_bin="/Library/Frameworks/Python.Framework/Versions/Current/bin"
-else
-  _toolchain_bin="/opt/python/Current/bin"
 fi
 
-# Prefer the toolchain's uv as a bootstrap when uv is not already on PATH, so we
-# do not fall back to installing from astral.
-if ! command -v uv &>/dev/null; then
-  if [ -x "$_toolchain_bin/uv" ] || [ -x "$_toolchain_bin/uv.exe" ]; then
-    echo "Found uv in the toolchain at $_toolchain_bin"
-    export PATH="$_toolchain_bin:$PATH"
+# If uv is on PATH, check it via `uv sync`, which fails fast if it is not the
+# pinned version (from pyproject.toml's [tool.uv] required-version). If that
+# succeeds, the environment is already correct and there is nothing to set up;
+# otherwise fall through to the setup below.
+#
+# On CI we also require UV_CACHE_DIR to be set: ensure_uv.sh scopes uv's cache
+# to a task-local dir, so an unset UV_CACHE_DIR means the uv setup has not run
+# yet in this task and we must do the setup phase.
+_need_setup=1
+if command -v uv >/dev/null 2>&1 && uv sync >/dev/null 2>&1; then
+  if [ "${CI:-}" != "true" ] || [ -n "${UV_CACHE_DIR:-}" ]; then
+    echo "uv is already set up; skipping uv setup."
+    _need_setup=0
   fi
 fi
 
-# Ensure uv is available (bootstrap if absent).
-if ! command -v uv &>/dev/null; then
-  _BIN_DIR=$PYMONGO_BIN_DIR
-  mkdir -p ${_BIN_DIR}
-  echo "uv not found on PATH; installing the latest uv from astral..."
-  curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$_BIN_DIR" INSTALLER_NO_MODIFY_PATH=1 sh
-  if [ "Windows_NT" = "${OS:-}" ]; then
-    chmod +x "$(cygpath -u $_BIN_DIR)/uv.exe"
+# Set up uv if needed.
+if [ "$_need_setup" = "1" ]; then
+  # ensure-uv.sh (drivers-evergreen-tools) finds or installs uv and scopes its env.
+  if [ -n "${DRIVERS_TOOLS:-}" ] && [ -f "$DRIVERS_TOOLS/.evergreen/ensure-uv.sh" ]; then
+    . "$DRIVERS_TOOLS/.evergreen/ensure-uv.sh"
+    ensure_uv || exit 1
   fi
-  export PATH="$PYMONGO_BIN_DIR:$PATH"
+
+  # Do the uv setup (bin dir, pinning, env.sh) under uv's own interpreter.
+  uv run "$HERE/setup-uv.py"
+
+  # Re-source env.sh so the values setup-uv.py wrote are available.
+  if [ -f $HERE/env.sh ]; then
+    . $HERE/env.sh
+  fi
 fi
 
-# Pin the uv binary to the version in pyproject.toml's [tool.uv] required-version.
-# Run the current uv directly: it writes into PYMONGO_BIN_DIR (a different
-# location), so nothing running is overwritten. If the running uv is already our
-# pinned bin-dir uv, skip the install to avoid overwriting it (Windows refuses to
-# overwrite a running executable); otherwise install so the pin lands in the bin
-# dir even when the discovered uv already matches.
-_uv_bin="$(command -v uv 2>/dev/null || true)"
-if [ -n "$_uv_bin" ]; then
-  _uv_pin="$(awk -F'"' '/^[[:space:]]*required-version[[:space:]]*=/{print $2}' pyproject.toml)"
-  case "$_uv_bin" in
-    "$PYMONGO_BIN_DIR"/*)
-      _uv_vers="$(uv --version 2>/dev/null | head -1 | awk '{print $2}' | sed 's/^v//')"
-      if [ "uv${_uv_pin}" != "uv==${_uv_vers}" ]; then
-        # The running uv lives in our bin dir and is not the pin, so run the
-        # install from a copy: Windows will not overwrite a running executable.
-        _uv_tmp="$(mktemp -d)/$(basename "$_uv_bin")"
-        cp "$_uv_bin" "$_uv_tmp" && chmod +x "$_uv_tmp"
-        "$_uv_tmp" tool install --no-config -q --force --from "uv${_uv_pin}" uv
-        rm -rf "$(dirname "$_uv_tmp")"
-        echo "Using uv at $PYMONGO_BIN_DIR/uv ($("$PYMONGO_BIN_DIR/uv" --version 2>/dev/null | head -1 | awk '{print $2}'))"
-      fi
-      ;;
-    *)
-      uv tool install --no-config -q --force --from "uv${_uv_pin}" uv
-      echo "Using uv at $PYMONGO_BIN_DIR/uv ($("$PYMONGO_BIN_DIR/uv" --version 2>/dev/null | head -1 | awk '{print $2}'))"
-      ;;
-  esac
-fi
-
-# Use just from the toolchain if available, otherwise install it. It must live in
-# our bin dir to be on PATH for callers; copying it keeps the toolchain's just.
-if [ ! -x "$PYMONGO_BIN_DIR/just" ] && [ ! -x "$PYMONGO_BIN_DIR/just.exe" ]; then
-  if [ -x "$_toolchain_bin/just" ]; then
-    echo "Using just from the toolchain"
-    cp "$_toolchain_bin/just" "$PYMONGO_BIN_DIR/just"
-    chmod +x "$PYMONGO_BIN_DIR/just"
-  elif [ -x "$_toolchain_bin/just.exe" ]; then
-    echo "Using just from the toolchain"
-    cp "$_toolchain_bin/just.exe" "$PYMONGO_BIN_DIR/just.exe"
-    chmod +x "$PYMONGO_BIN_DIR/just.exe"
-  else
-    uv tool install --no-config rust-just
-  fi
+# Make just available. It has no version constraint, so if it is already on PATH
+# there is nothing to do; otherwise install it into the bin dir via uv.
+if ! command -v just >/dev/null 2>&1; then
+  uv tool install --no-config rust-just
 fi
 
 popd > /dev/null

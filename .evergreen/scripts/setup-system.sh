@@ -15,16 +15,6 @@ if [ -z "${CI:-}" ]; then
   bash $HERE/setup-dev-env.sh
 fi
 
-# On non-CI hosts (spawn hosts, VMs such as GCP/Azure, and local dev) the pinned
-# uv and just live in the sourced install dir (env.sh's PYMONGO_BIN_DIR), so make
-# sure a login shell finds them by adding it to .bashrc if it is not already
-# there. env.sh's PATH does not persist past this SSH session.
-if [ "${CI:-}" != "true" ] && [ "${GITHUB_ACTIONS:-}" != "true" ]; then
-  _bin="${PYMONGO_BIN_DIR:-$HOME/.local/bin}"
-  grep -qF 'export PATH="'"$_bin"':$PATH"' "$HOME/.bashrc" 2>/dev/null || \
-    printf 'export PATH="%s:$PATH"\n' "$_bin" >> "$HOME/.bashrc"
-fi
-
 # Enable core dumps if enabled on the machine
 # Copied from https://github.com/mongodb/mongo/blob/master/etc/evergreen.yml
 if [ -f /proc/self/coredump_filter ]; then

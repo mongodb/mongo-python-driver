@@ -16,6 +16,25 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
+# The bin dir for the pinned uv/just. setup-system.sh sets it on evergreen hosts;
+# default it here so local dev (without setup-system.sh) also has a usable value.
+export PYMONGO_BIN_DIR="${PYMONGO_BIN_DIR:-$HOME/.local/bin}"
+
+# Make sure a login shell can find the bin dir by adding it to the rc file, so
+# local dev (which may never run setup-system.sh) still has it on PATH. env.sh's
+# PATH does not persist past this session. Prefer .zshrc when the shell is zsh.
+if [ "${CI:-}" != "true" ] && [ "${GITHUB_ACTIONS:-}" != "true" ]; then
+  if [ -f "$HOME/.zshrc" ]; then
+    _rc="$HOME/.zshrc"
+  else
+    _rc="$HOME/.bashrc"
+  fi
+  if [ -f "$_rc" ]; then
+    grep -qF 'export PATH="'"$PYMONGO_BIN_DIR"':$PATH"' "$_rc" 2>/dev/null || \
+      printf 'export PATH="%s:$PATH"\n' "$PYMONGO_BIN_DIR" >> "$_rc"
+  fi
+fi
+
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
@@ -24,12 +43,6 @@ bash $HERE/install-dependencies.sh
 if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
-
-# Add the install dir to the path before configuring uv, so the pinned uv/just
-# win over a different install earlier on PATH (in this parent shell, since the
-# dependency installer runs as a child process and its PATH change does not
-# propagate here).
-export PATH="${PYMONGO_BIN_DIR:-$HOME/.local/bin}:$PATH"
 
 # Handle the value for UV_PYTHON.
 . $HERE/setup-uv-python.sh

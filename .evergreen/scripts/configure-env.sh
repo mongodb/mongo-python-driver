@@ -14,18 +14,15 @@ fi
 PROJECT_DIRECTORY="$(pwd)"
 DRIVERS_TOOLS="$(dirname $PROJECT_DIRECTORY)/drivers-tools"
 CARGO_HOME=${CARGO_HOME:-${DRIVERS_TOOLS}/.cargo}
-UV_TOOL_DIR=$PROJECT_DIRECTORY/.local/uv/tools
-UV_CACHE_DIR=$PROJECT_DIRECTORY/.local/uv/cache
 DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
 MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
 
-# On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME. Put
-# our binaries (uv, just, ...) in a task-local dir we control, independent of the
-# drivers-tools tree.
+# On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME or
+# have binaries shared across tasks, so use a TMPDIR. On non-CI hosts
+# (spawn hosts, VMs such as GCP/Azure, and local dev), use the conventional
+# ~/.local/bin which tools on the PATH (or the shell rc) can find.
 if [ "${CI:-}" == "true" ]; then
-  PYMONGO_BIN_DIR="$PROJECT_DIRECTORY/.local/bin"
-# On non-CI hosts (spawn hosts, VMs such as GCP/Azure, and local dev), use the
-# conventional ~/.local/bin which tools on the PATH (or the shell rc) can find.
+  PYMONGO_BIN_DIR="${TMPDIR:-/tmp}"/pymongo_bin
 else
   PYMONGO_BIN_DIR=$HOME/.local/bin
 fi
@@ -37,12 +34,8 @@ if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
     DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
     PROJECT_DIRECTORY=$(cygpath -m $PROJECT_DIRECTORY)
     CARGO_HOME=$(cygpath -m $CARGO_HOME)
-    UV_TOOL_DIR=$(cygpath -m "$UV_TOOL_DIR")
-    UV_CACHE_DIR=$(cygpath -m "$UV_CACHE_DIR")
     DRIVERS_TOOLS_BINARIES=$(cygpath -m "$DRIVERS_TOOLS_BINARIES")
     MONGODB_BINARIES=$(cygpath -m "$MONGODB_BINARIES")
-    # Keep PYMONGO_BIN_DIR in cygwin form so bash can search it on PATH; native
-    # uv gets the Windows form (via cygpath -m) inside install-dependencies.sh.
     PYMONGO_BIN_DIR=$(cygpath -u "$PYMONGO_BIN_DIR")
 fi
 
@@ -67,10 +60,6 @@ export DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS_BINARIES"
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
 
 export CARGO_HOME="$CARGO_HOME"
-export UV_TOOL_DIR="$UV_TOOL_DIR"
-export UV_CACHE_DIR="$UV_CACHE_DIR"
-# Send uv tool installs into our own bin dir, alongside the pinned uv/just.
-export UV_TOOL_BIN_DIR="$PYMONGO_BIN_DIR"
 export PYMONGO_BIN_DIR="$PYMONGO_BIN_DIR"
 export PATH="$PATH_EXT"
 # shellcheck disable=SC2154
