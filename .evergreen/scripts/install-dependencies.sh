@@ -48,7 +48,12 @@ if [ "$_need_setup" = "1" ]; then
 
   # Do the uv setup (bin dir, pinning, env.sh). Uses the toolchain python3
   # (added to PATH by configure-env.sh) to avoid uv's required-version check.
-  python3 "$HERE/setup-uv.py"
+  # On Windows the script path must be a native Windows path for python3.
+  _uv_setup_script="$HERE/setup-uv.py"
+  if [ "Windows_NT" = "${OS:-}" ]; then
+    _uv_setup_script="$(cygpath -m "$_uv_setup_script")"
+  fi
+  python3 "$_uv_setup_script"
 
   # Re-source env.sh so the values setup-uv.py wrote are available.
   if [ -f $HERE/env.sh ]; then
