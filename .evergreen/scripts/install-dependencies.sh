@@ -48,8 +48,13 @@ if [ "$_need_setup" = "1" ]; then
 
   # Do the uv setup (bin dir, pinning, env.sh). `--no-config` skips the
   # required-version check from pyproject.toml, letting any bootstrapped uv
-  # install the pinned version in setup-uv.py.
-  uv run --no-config "$HERE/setup-uv.py"
+  # install the pinned version in setup-uv.py. On Windows the script path must
+  # be a native Windows path for uv.
+  _uv_setup_script="$HERE/setup-uv.py"
+  if [ "Windows_NT" = "${OS:-}" ]; then
+    _uv_setup_script="$(cygpath -m "$_uv_setup_script")"
+  fi
+  uv run --no-config "$_uv_setup_script"
 
   # Re-source env.sh so the values setup-uv.py wrote are available.
   if [ -f $HERE/env.sh ]; then
