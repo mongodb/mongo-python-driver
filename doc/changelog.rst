@@ -4,9 +4,9 @@ Changelog
 Changes in Version 4.19.0 (2026/XX/XX)
 --------------------------------------
 
-Bug fixes
-.........
+PyMongo 4.19 brings a number of changes including:
 
+- Added support for Python 3.15.
 - Fixed a bug where the synchronous client could permanently deadlock under
   gevent when a greenlet was killed while checking a connection back into
   the pool (`PYTHON-6074`_).

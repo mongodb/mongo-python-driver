@@ -203,6 +203,9 @@ class TestPymongo(IntegrationTest):
         result.items()
 
     def test_list_collections(self) -> None:
+        # list_collections() returns an empty cursor when the database has no
+        # collections, so create one first to guarantee next() succeeds.
+        self.client.test.pymongo_test_typing.insert_one({})
         cursor = self.client.test.list_collections()
         value = cursor.next()
         value.items()
