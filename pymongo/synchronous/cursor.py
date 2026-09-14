@@ -1058,11 +1058,6 @@ class Cursor(_CursorBase[_DocumentType]):
             self._session = self._collection.database.client._ensure_session()
 
         if self._id is None:  # Query
-            if (self._min or self._max) and not self._hint:
-                raise InvalidOperation(
-                    "Passing a 'hint' is required when using the min/max query"
-                    " option to ensure the query utilizes the correct index"
-                )
             q = self._query_class(
                 self._query_flags,
                 self._collection.database.name,
@@ -1090,6 +1085,15 @@ class Cursor(_CursorBase[_DocumentType]):
                 collection=self._collection.name,
                 set_current=False,
             )
+            if (self._min or self._max) and not self._hint:
+                # Record the failure on the span before raising, so a client-side
+                # validation error that never reaches the wire is still reported.
+                exc = InvalidOperation(
+                    "Passing a 'hint' is required when using the min/max query"
+                    " option to ensure the query utilizes the correct index"
+                )
+                self._end_operation_telemetry(exc)
+                raise exc
             self._send_message_in_operation_span(q)
         elif self._id:  # Get More
             if self._limit:
