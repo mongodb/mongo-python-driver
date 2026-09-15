@@ -267,7 +267,12 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         cases = [
             ("Gap in middle (version)", [("F1", None), ("F2", "2.0")], "|F1|F2", "||2.0"),
             ("Trailing delimiter retained", [("F1", None)], "|F1", "|"),
-            ("Equal versions do not collapse", [("F1", None)], "|F1", "|"),
+            (
+                "Equal versions do not collapse",
+                [("F1", "1.0"), ("F2", "1.0")],
+                "|F1|F2",
+                "|1.0|1.0",
+            ),
             ("Equal names do not collapse", [("PyMongo", "1.0")], "|PyMongo", "|1.0"),
             ("Duplicates still deduplicate", [("F1", "1.0"), ("F1", "1.0")], "|F1", "|1.0"),
             ("All versions absent", [("F1", None), ("F2", None)], "|F1|F2", "||"),

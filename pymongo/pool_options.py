@@ -235,46 +235,34 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     encoded_size = len(bson.encode(metadata))
     if encoded_size <= _MAX_METADATA_SIZE:
         return
-    # 5. Truncate driver info.
+    # 5. Truncate driver info, keeping name and version 1:1 index-aligned.
     driver = metadata.get("driver", {})
     if driver:
-        # Truncate the driver name and version in lockstep so the pipe-delimited
-        # entries stay 1:1 index-aligned.
+        # Trim the trailing wrapper version's content first so the driver's
+        # name identity is preserved for as long as possible. Only when no
+        # version content remains to trim do we drop the last name/version
+        # segment pair; both actions keep the entries 1:1 aligned.
         while True:
             encoded_size = len(bson.encode(metadata))
             if encoded_size <= _MAX_METADATA_SIZE:
                 break
             overflow = encoded_size - _MAX_METADATA_SIZE
-            previous = (metadata["driver"].get("name"), metadata["driver"].get("version"))
+            previous = (driver.get("name"), driver.get("version"))
+            n_parts = driver.get("name", "").split("|")
+            v_parts = driver.get("version", "").split("|")
 
-            name = metadata["driver"].get("name", "")
-            if len(name) > len(_METADATA["driver"]["name"]):
-                # Trim the tail of the name, never dropping below the base name.
-                name = name[:-overflow]
-                if len(name) < len(_METADATA["driver"]["name"]):
-                    name = _METADATA["driver"]["name"]
-                metadata["driver"]["name"] = name
+            if len(v_parts) > 1 and v_parts[-1]:
+                v_parts[-1] = v_parts[-1][:-overflow]
+                driver["version"] = "|".join(v_parts)
+            elif len(n_parts) > 1:
+                n_parts.pop()
+                v_parts.pop()
+                driver["name"] = "|".join(n_parts)
+                driver["version"] = "|".join(v_parts)
             else:
-                # Name is already minimal; trim the version's trailing content.
-                parts = metadata["driver"].get("version", "").split("|")
-                if len(parts) > 1:
-                    last = parts[-1]
-                    parts[-1] = last[:-overflow]
-                    metadata["driver"]["version"] = "|".join(parts)
-                else:
-                    break
+                break
 
-            # Rebuild the version to match the name's delimiter count so the
-            # entries stay 1:1 aligned.
-            parts = metadata["driver"].get("version", "").split("|")
-            target = metadata["driver"]["name"].count("|") + 1
-            if len(parts) > target:
-                parts = parts[:target]
-            elif len(parts) < target:
-                parts += [""] * (target - len(parts))
-            metadata["driver"]["version"] = "|".join(parts)
-
-            if previous == (metadata["driver"].get("name"), metadata["driver"].get("version")):
+            if previous == (driver.get("name"), driver.get("version")):
                 break
 
 
@@ -416,7 +404,10 @@ class PoolOptions:
                 metadata["driver"]["version"], driver.version or ""
             )
             if driver.platform:
-                metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+                if "platform" in metadata:
+                    metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+                else:
+                    metadata["platform"] = driver.platform
 
             _truncate_metadata(metadata)
 
