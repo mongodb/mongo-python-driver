@@ -18,26 +18,31 @@ from __future__ import annotations
 
 import struct
 import sys
+from io import BytesIO
 from typing import Any
 from unittest.mock import MagicMock
 
 sys.path[0:0] = [""]
 
-from bson import CodecOptions, encode
+from bson import CodecOptions, decode, encode
 from bson.objectid import ObjectId
 from pymongo.common import MIN_SUPPORTED_WIRE_VERSION, MONGOS_EXHAUST_WIRE_VERSION
 from pymongo.compression_support import ZlibContext, _have_zlib
 from pymongo.errors import DocumentTooLarge, InvalidOperation, OperationFailure
 from pymongo.hello import _get_server_type
 from pymongo.message import (
+    _batched_op_msg_impl,
     _check_exhaust_supported,
+    _client_do_batched_op_msg,
     _convert_client_bulk_exception,
     _convert_exception,
+    _do_batched_op_msg,
     _gen_find_command,
     _gen_get_more_command,
     _GetMore,
     _maybe_add_read_preference,
     _op_msg,
+    _op_msg_no_header,
     _Query,
     _raise_document_too_large,
 )
@@ -482,6 +487,120 @@ class TestMessage(unittest.TestCase):
             conn=self._make_conn(8),
         )
         self.assertNotIn("comment", cmd)
+
+
+class TestTelemetrySection(unittest.TestCase):
+    """Wire-format tests for the OP_MSG Payload Type 3 telemetry section.
+
+    ``_op_msg`` and ``_do_batched_op_msg`` dispatch to the C extension when it
+    is built and to the pure-Python encoders otherwise. ``_op_msg_no_header``,
+    ``_batched_op_msg_impl``, and ``_client_do_batched_op_msg`` are always the
+    pure-Python encoders.
+    """
+
+    TRACEPARENT = "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01"
+    MAX_BSON_SIZE = 16 * 1024 * 1024
+
+    @staticmethod
+    def _sections(payload: bytes) -> list[tuple[int, bytes]]:
+        """Split an OP_MSG body (flag bits first) into (kind, bytes) sections."""
+        sections = []
+        pos = 4  # Skip flagBits.
+        while pos < len(payload):
+            kind = payload[pos]
+            pos += 1
+            size = struct.unpack("<i", payload[pos : pos + 4])[0]
+            sections.append((kind, payload[pos : pos + size]))
+            pos += size
+        return sections
+
+    def _assert_telemetry_section(self, sections: list[tuple[int, bytes]]) -> None:
+        self.assertEqual(sections[-1][0], 3)
+        self.assertEqual(decode(sections[-1][1]), {"otel": {"traceparent": self.TRACEPARENT}})
+
+    def _ctx(self, max_message_size: int = MAX_BSON_SIZE) -> MagicMock:
+        ctx = MagicMock()
+        ctx.max_bson_size = self.MAX_BSON_SIZE
+        ctx.max_write_batch_size = 1000
+        ctx.max_message_size = max_message_size
+        ctx.conn.compression_context = None
+        return ctx
+
+    def test_op_msg_telemetry_section_is_last(self):
+        _, msg, _, _ = _op_msg(
+            0, {"insert": "coll"}, "db", None, _OPTS, traceparent=self.TRACEPARENT
+        )
+        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        self._assert_telemetry_section(self._sections(msg[16:]))
+
+    def test_op_msg_no_telemetry_section_without_traceparent(self):
+        _, msg, _, _ = _op_msg(0, {"insert": "coll"}, "db", None, _OPTS)
+        self.assertNotIn(3, [kind for kind, _ in self._sections(msg[16:])])
+
+    def test_op_msg_no_header_telemetry_section(self):
+        body, _, _ = _op_msg_no_header(0, {"insert": "coll"}, "", None, _OPTS, self.TRACEPARENT)
+        self._assert_telemetry_section(self._sections(body))
+
+    def test_batched_op_msg_telemetry_section(self):
+        _, msg, _ = _do_batched_op_msg(
+            "db.$cmd", 0, {"insert": "coll"}, [{"_id": 1}], _OPTS, self._ctx(), self.TRACEPARENT
+        )
+        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        self._assert_telemetry_section(self._sections(msg[16:]))
+
+    def test_batched_op_msg_impl_telemetry_section(self):
+        buf = BytesIO()
+        _batched_op_msg_impl(
+            0,
+            {"insert": "coll"},
+            [{"_id": 1}],
+            True,
+            _OPTS,
+            self._ctx(),
+            buf,
+            self.TRACEPARENT,
+        )
+        self._assert_telemetry_section(self._sections(buf.getvalue()))
+
+    def test_client_batched_op_msg_telemetry_section(self):
+        command = {"bulkWrite": 1, "errorsOnly": True, "ordered": True}
+        _, msg, _, _ = _client_do_batched_op_msg(
+            command,
+            [("insert", {"document": {"x": 1}})],
+            ["db.coll"],
+            _OPTS,
+            self._ctx(),
+            self.TRACEPARENT,
+        )
+        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        self._assert_telemetry_section(self._sections(msg[16:]))
+
+    def test_batched_op_msg_reserves_telemetry_section(self):
+        doc = {"x": "y" * 100}
+        command = {"insert": "coll"}
+        # The largest two-document message without a telemetry section.
+        _, reference, _ = _do_batched_op_msg("db.$cmd", 0, command, [doc, doc], _OPTS, self._ctx())
+        limit = len(reference)
+        ctx = self._ctx(max_message_size=limit)
+        _, msg, to_send = _do_batched_op_msg(
+            "db.$cmd", 0, command, [doc, doc], _OPTS, ctx, self.TRACEPARENT
+        )
+        self.assertEqual(len(to_send), 1)
+        self.assertLessEqual(len(msg), limit)
+
+    def test_batched_op_msg_impl_reserves_telemetry_section(self):
+        doc = {"x": "y" * 100}
+        command = {"insert": "coll"}
+        buf = BytesIO()
+        _batched_op_msg_impl(0, command, [doc, doc], True, _OPTS, self._ctx(), buf)
+        limit = len(buf.getvalue())
+        buf = BytesIO()
+        ctx = self._ctx(max_message_size=limit)
+        to_send, _ = _batched_op_msg_impl(
+            0, command, [doc, doc], True, _OPTS, ctx, buf, self.TRACEPARENT
+        )
+        self.assertEqual(len(to_send), 1)
+        self.assertLessEqual(len(buf.getvalue()), limit)
 
 
 if __name__ == "__main__":
