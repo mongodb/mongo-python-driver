@@ -271,6 +271,8 @@ class TestClientMetadataProse(IntegrationTest):
             ("Equal names do not collapse", [("PyMongo", "1.0")], "|PyMongo", "|1.0"),
             ("Duplicates still deduplicate", [("F1", "1.0"), ("F1", "1.0")], "|F1", "|1.0"),
             ("All versions absent", [("F1", None), ("F2", None)], "|F1|F2", "||"),
+            ("Gap in middle (name)", [(None, "1.0"), ("F2", "2.0")], "||F2", "|1.0|2.0"),
+            ("All names absent", [(None, "1.0"), (None, "2.0")], "||", "|1.0|2.0"),
             (
                 "Non-adjacent duplicate",
                 [("F1", "1.0"), ("F2", "2.0"), ("F1", "1.0")],
@@ -303,10 +305,9 @@ class TestClientMetadataProse(IntegrationTest):
                 # Append each DriverInfoOptions in order.
                 for opts in appended:
                     d_name = opts[0] if len(opts) > 0 else None
-                    assert d_name is not None
                     d_version = opts[1] if len(opts) > 1 else None
                     d_platform = opts[2] if len(opts) > 2 else None
-                    client.append_metadata(DriverInfo(d_name, d_version, d_platform))
+                    client.append_metadata(DriverInfo(d_name or "", d_version, d_platform))
 
                 # New handshake with the appended metadata.
                 name1, version1, _, _ = self.send_ping_and_get_metadata(client, True)
