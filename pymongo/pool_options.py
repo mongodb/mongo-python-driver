@@ -393,6 +393,7 @@ class PoolOptions:
             if driver in self.__appended_drivers:
                 return
 
+            name_delims = self.__metadata["driver"]["name"].count("|")
             metadata = copy.deepcopy(self.__metadata)
 
             metadata["driver"]["name"] = "{}|{}".format(
@@ -411,15 +412,10 @@ class PoolOptions:
 
             self.__metadata = metadata
 
-            # Keep the dedup list bounded: a driver that truncation dropped
-            # from the published metadata can't be re-appended anyway.
-            if driver.name:
-                represented = metadata["driver"]["name"].split("|")[-1] == driver.name
-            elif driver.version:
-                represented = metadata["driver"]["version"].split("|")[-1] == driver.version
-            else:
-                represented = True
-            if represented:
+            # Only track drivers whose appended name/version pair survived
+            # truncation (i.e. the name gained a segment), so __appended_drivers
+            # stays bounded and the dedup membership check stays fast.
+            if metadata["driver"]["name"].count("|") > name_delims:
                 self.__appended_drivers.append(driver)
 
     @property

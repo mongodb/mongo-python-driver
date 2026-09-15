@@ -486,27 +486,32 @@ class AsyncClientUnitTest(AsyncUnitTest):
             truncated["name"].count("|"),
             truncated["version"].count("|"),
         )
-        # Successive appends must also stay within the limit and keep name and
-        # version index-aligned after truncation.
+        # Successive appends must stay within the limit and keep name and
+        # version index-aligned after truncation. Once the metadata saturates,
+        # further appends must not grow the dedup tracking list.
         client = self.simple_client(connect=False)
-        for i in range(80):
+        for i in range(300):
             client.append_metadata(DriverInfo(name=f"D{i}", version=f"1.{i}"))
-        options = client.options
-        truncated = options.pool_options.metadata["driver"]
-        self.assertLessEqual(
-            len(bson.encode(options.pool_options.metadata)),
-            _MAX_METADATA_SIZE,
-        )
+        pool = client.options.pool_options
+        self.assertLessEqual(len(bson.encode(pool.metadata)), _MAX_METADATA_SIZE)
         self.assertEqual(
-            truncated["name"].count("|"),
-            truncated["version"].count("|"),
+            pool.metadata["driver"]["name"].count("|"),
+            pool.metadata["driver"]["version"].count("|"),
         )
-        # Truncated-away drivers must not be retained, so the dedup list stays
-        # bounded instead of growing one entry per append.
-        self.assertLess(
-            len(options.pool_options._PoolOptions__appended_drivers),
-            80,
-        )
+        count = len(pool._PoolOptions__appended_drivers)
+        for i in range(300, 600):
+            client.append_metadata(DriverInfo(name=f"D{i}", version=f"1.{i}"))
+        self.assertEqual(len(pool._PoolOptions__appended_drivers), count)
+        # Platform-only appends (empty name/version) stay bounded the same way.
+        client = self.simple_client(connect=False)
+        for i in range(300):
+            client.append_metadata(DriverInfo(name="", version="", platform=f"P{i}"))
+        pool = client.options.pool_options
+        self.assertLessEqual(len(bson.encode(pool.metadata)), _MAX_METADATA_SIZE)
+        count = len(pool._PoolOptions__appended_drivers)
+        for i in range(300, 600):
+            client.append_metadata(DriverInfo(name="", version="", platform=f"P{i}"))
+        self.assertEqual(len(pool._PoolOptions__appended_drivers), count)
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
