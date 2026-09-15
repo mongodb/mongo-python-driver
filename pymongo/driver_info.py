@@ -42,5 +42,7 @@ class DriverInfo(namedtuple("DriverInfo", ["name", "version", "platform"])):
                 raise TypeError(
                     f"Wrong type for DriverInfo {key} option, value must be an instance of str, not {type(value)}"
                 )
+            if value and "|" in value:
+                raise ValueError(f"DriverInfo {key} must not contain the '|' delimiter")
 
         return self

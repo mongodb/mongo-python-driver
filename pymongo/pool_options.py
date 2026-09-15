@@ -235,25 +235,51 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     if encoded_size <= _MAX_METADATA_SIZE:
         return
     # 5. Truncate driver info.
-    overflow = encoded_size - _MAX_METADATA_SIZE
     driver = metadata.get("driver", {})
     if driver:
-        # Truncate driver version.
-        driver_version = driver.get("version")[:-overflow]
-        if len(driver_version) >= len(_METADATA["driver"]["version"]):
-            metadata["driver"]["version"] = driver_version
-        else:
-            metadata["driver"]["version"] = _METADATA["driver"]["version"]
-        encoded_size = len(bson.encode(metadata))
-        if encoded_size <= _MAX_METADATA_SIZE:
-            return
-        # Truncate driver name.
-        overflow = encoded_size - _MAX_METADATA_SIZE
-        driver_name = driver.get("name")[:-overflow]
-        if len(driver_name) >= len(_METADATA["driver"]["name"]):
-            metadata["driver"]["name"] = driver_name
-        else:
-            metadata["driver"]["name"] = _METADATA["driver"]["name"]
+        # Truncate the driver name and version in lockstep so that the
+        # pipe-delimited name and version entries remain index-aligned (1:1).
+        # Trimming never removes a delimiter from one side alone, so the number
+        # of "|" in the name always matches the version. Under a large overflow
+        # the appended |c / |async / wrapped-driver entries are dropped together.
+        while True:
+            encoded_size = len(bson.encode(metadata))
+            if encoded_size <= _MAX_METADATA_SIZE:
+                break
+            overflow = encoded_size - _MAX_METADATA_SIZE
+            previous = (metadata["driver"].get("name"), metadata["driver"].get("version"))
+
+            name = metadata["driver"].get("name", "")
+            if len(name) > len(_METADATA["driver"]["name"]):
+                # Trim the tail of the name, never dropping below the base name.
+                name = name[:-overflow]
+                if len(name) < len(_METADATA["driver"]["name"]):
+                    name = _METADATA["driver"]["name"]
+                metadata["driver"]["name"] = name
+            else:
+                # Name is already minimal; trim the version's trailing content.
+                # Trimming to "" is fine: keeping the delimiter preserves the
+                # index alignment.
+                parts = metadata["driver"].get("version", "").split("|")
+                if len(parts) > 1:
+                    last = parts[-1]
+                    parts[-1] = last[:-overflow]
+                    metadata["driver"]["version"] = "|".join(parts)
+                else:
+                    break
+
+            # Rebuild the version to match the name's delimiter count so the
+            # entries stay 1:1 aligned.
+            parts = metadata["driver"].get("version", "").split("|")
+            target = metadata["driver"]["name"].count("|") + 1
+            if len(parts) > target:
+                parts = parts[:target]
+            elif len(parts) < target:
+                parts += [""] * (target - len(parts))
+            metadata["driver"]["version"] = "|".join(parts)
+
+            if previous == (metadata["driver"].get("name"), metadata["driver"].get("version")):
+                break
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
@@ -277,6 +303,7 @@ class PoolOptions:
     """
 
     __slots__ = (
+        "__appended_drivers",
         "__appname",
         "__compression_settings",
         "__connect_timeout",
@@ -336,6 +363,7 @@ class PoolOptions:
         self.__load_balanced = load_balanced
         self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
+        self.__appended_drivers: list[DriverInfo] = []
 
         if appname:
             self.__metadata["application"] = {"name": appname}
@@ -353,10 +381,18 @@ class PoolOptions:
                 self.__metadata["driver"]["name"],
                 "c",
             )
+            self.__metadata["driver"]["version"] = "{}|{}".format(
+                self.__metadata["driver"]["version"],
+                "",
+            )
         if not is_sync:
             self.__metadata["driver"]["name"] = "{}|{}".format(
                 self.__metadata["driver"]["name"],
                 "async",
+            )
+            self.__metadata["driver"]["version"] = "{}|{}".format(
+                self.__metadata["driver"]["version"],
+                "",
             )
         if driver:
             self._update_metadata(driver)
@@ -368,28 +404,21 @@ class PoolOptions:
         _truncate_metadata(self.__metadata)
 
     def _update_metadata(self, driver: DriverInfo) -> None:
-        """Updates the client's metadata"""
-        if driver.name and driver.name.lower() in self.__metadata["driver"]["name"].lower().split(
-            "|"
-        ):
+        """Updates the client's metadata."""
+        if driver in self.__appended_drivers:
             return
 
         metadata = copy.deepcopy(self.__metadata)
 
-        if driver.name:
-            metadata["driver"]["name"] = "{}|{}".format(
-                metadata["driver"]["name"],
-                driver.name,
-            )
-        if driver.version:
-            metadata["driver"]["version"] = "{}|{}".format(
-                metadata["driver"]["version"],
-                driver.version,
-            )
+        metadata["driver"]["name"] = "{}|{}".format(metadata["driver"]["name"], driver.name or "")
+        metadata["driver"]["version"] = "{}|{}".format(
+            metadata["driver"]["version"], driver.version or ""
+        )
         if driver.platform:
             metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
 
         self.__metadata = metadata
+        self.__appended_drivers.append(driver)
 
     @property
     def _credentials(self) -> Optional[MongoCredential]:
