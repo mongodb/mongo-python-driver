@@ -1,11 +1,44 @@
 Changelog
 =========
 
-Changes in Version 4.18.0 (2026/XX/XX)
+Changes in Version 4.19.0 (2026/XX/XX)
+--------------------------------------
+
+Bug fixes
+.........
+
+- Fixed a bug where the synchronous client could permanently deadlock under
+  gevent when a greenlet was killed while checking a connection back into
+  the pool (`PYTHON-6074`_).
+
+.. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
+
+Changes in Version 4.18.1 (2026/09/10)
+--------------------------------------
+
+Version 4.18.1 is a bug fix release.
+
+- Use an exact match for the file ID in GridFS delete methods
+  (`CVE-2026-88029`_).
+
+.. _CVE-2026-88029: https://www.cve.org/CVERecord?id=CVE-2026-88029
+
+Changes in Version 4.18.0 (2026/09/03)
 --------------------------------------
 
 PyMongo 4.18 brings a number of changes including:
 
+- Added ``srvAllowedHostsSuffix`` as a URI option and keyword argument to
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`. When connecting
+  via ``mongodb+srv://``, this option overrides the default requirement that
+  SRV-returned hosts share the same parent domain as the seed hostname,
+  allowing hosts under a different domain suffix to be accepted. The suffix must
+  not be a public suffix (per the `Public Suffix List
+  <https://publicsuffix.org/list/>`_). See the
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` documentation for
+  security considerations.
 - Dropped support for MongoDB 4.2.
 - Added support for MongoDB 9.0.
 - PyPy support is deprecated and will be removed in a future release.
@@ -31,6 +64,9 @@ PyMongo 4.18 brings a number of changes including:
   attempts, so consumers can correlate a retried operation's events. As a
   result, ``operation_id`` is no longer equal to the per-attempt ``request_id``
   for these operations.
+- Added validation of OP_COMPRESSED decompressed message size against
+  ``max_message_size`` to prevent memory exhaustion from maliciously crafted
+  compressed server responses.
 - Improved the performance and memory usage of decoding large documents to
   :class:`~bson.raw_bson.RawBSONDocument`. Documents and subdocuments that are 4KB or greater
   and decoded from an immutable buffer are now exposed as read-only :class:`memoryview`

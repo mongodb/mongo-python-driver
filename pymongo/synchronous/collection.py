@@ -392,15 +392,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             read_concern or self.read_concern,
         )
 
-    def _write_concern_for_cmd(
-        self, cmd: Mapping[str, Any], session: Optional[ClientSession]
-    ) -> WriteConcern:
-        raw_wc = cmd.get("writeConcern")
-        if raw_wc is not None:
-            return WriteConcern(**raw_wc)
-        else:
-            return self._write_concern_for(session)
-
     # See PYTHON-3084.
     __iter__ = None
 

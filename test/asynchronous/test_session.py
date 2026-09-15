@@ -243,17 +243,17 @@ class TestSession(AsyncIntegrationTest):
         # Retry up to 10 times because there is a known race condition that can cause multiple
         # sessions to be used: connection check in happens before session check in
         for _ in range(10):
-            cursor = client.db.test.find({})
+            cursor = client.db.coll.find({})
             ops: list[tuple[Callable, list[Any]]] = [
-                (client.db.test.find_one, [{"_id": 1}]),
-                (client.db.test.delete_one, [{}]),
-                (client.db.test.update_one, [{}, {"$set": {"x": 2}}]),
-                (client.db.test.bulk_write, [[UpdateOne({}, {"$set": {"x": 2}})]]),
-                (client.db.test.find_one_and_delete, [{}]),
-                (client.db.test.find_one_and_update, [{}, {"$set": {"x": 1}}]),
-                (client.db.test.find_one_and_replace, [{}, {}]),
-                (client.db.test.aggregate, [[{"$limit": 1}]]),
-                (client.db.test.find, []),
+                (client.db.coll.find_one, [{"_id": 1}]),
+                (client.db.coll.delete_one, [{}]),
+                (client.db.coll.update_one, [{}, {"$set": {"x": 2}}]),
+                (client.db.coll.bulk_write, [[UpdateOne({}, {"$set": {"x": 2}})]]),
+                (client.db.coll.find_one_and_delete, [{}]),
+                (client.db.coll.find_one_and_update, [{}, {"$set": {"x": 1}}]),
+                (client.db.coll.find_one_and_replace, [{}, {}]),
+                (client.db.coll.aggregate, [[{"$limit": 1}]]),
+                (client.db.coll.find, []),
                 (client.server_info, []),
                 (client.db.aggregate, [[{"$listLocalSessions": {}}, {"$limit": 1}]]),
                 (cursor.distinct, ["_id"]),
@@ -415,7 +415,7 @@ class TestSession(AsyncIntegrationTest):
         await self._test_ops(client, *ops)
 
     async def test_cursor_clone(self):
-        coll = self.client.pymongo_test.collection
+        coll = self.db.collection
         # Ensure some batches.
         await coll.insert_many({} for _ in range(10))
         self.addAsyncCleanup(coll.drop)
@@ -689,7 +689,7 @@ class TestSession(AsyncIntegrationTest):
         self.assertIn(lsid, session_ids(client))
 
     async def _test_cursor_helper(self, create_cursor, close_cursor):
-        coll = self.client.pymongo_test.collection
+        coll = self.db.collection
         await coll.insert_many([{} for _ in range(1000)])
 
         cursor = await create_cursor(coll, None)
@@ -828,7 +828,7 @@ class TestSession(AsyncIntegrationTest):
 
     async def test_unacknowledged_writes(self):
         # Ensure the collection exists.
-        await self.client.pymongo_test.create_collection("test_unacked_writes")
+        await self.db.create_collection("test_unacked_writes")
         client = await self.async_rs_or_single_client(w=0, event_listeners=[self.listener])
         db = client.pymongo_test
         coll = db.test_unacked_writes
@@ -870,7 +870,7 @@ class TestSession(AsyncIntegrationTest):
             self.assertRaises(TypeError, lambda: copy.copy(s))
 
     async def test_nested_session_binding(self):
-        coll = self.client.pymongo_test.test
+        coll = self.db.coll
         await coll.insert_one({"x": 1})
 
         session1 = self.client.start_session()
@@ -921,7 +921,7 @@ class TestSession(AsyncIntegrationTest):
             await session2.end_session()
 
     async def test_session_binding_end_session(self):
-        coll = self.client.pymongo_test.test
+        coll = self.db.coll
         await coll.insert_one({"x": 1})
 
         async with self.client.start_session().bind() as s1:
@@ -939,7 +939,7 @@ class TestSession(AsyncIntegrationTest):
     async def test_getmore_preserves_lsid_after_session_support_lost(self):
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(event_listeners=[listener], maxPoolSize=1)
-        coll = client.pymongo_test.test
+        coll = client.pymongo_test.coll
         await coll.drop()
         await coll.insert_many([{"x": i} for i in range(10)])
         self.addAsyncCleanup(coll.drop)
@@ -979,8 +979,8 @@ class TestCausalConsistency(AsyncUnitTest):
         await super().asyncSetUp()
         self.listener = SessionTestListener()
         self.client = await self.async_rs_or_single_client(event_listeners=[self.listener])
-        await self.client.pymongo_test.drop_collection("test")
-        await self.client.pymongo_test.create_collection("test")
+        await self.client.pymongo_test.drop_collection("coll")
+        await self.client.pymongo_test.create_collection("coll")
 
     @async_client_context.require_no_standalone
     async def test_core(self):
@@ -988,7 +988,7 @@ class TestCausalConsistency(AsyncUnitTest):
             self.assertIsNone(sess.cluster_time)
             self.assertIsNone(sess.operation_time)
             self.listener.reset()
-            await self.client.pymongo_test.test.find_one(session=sess)
+            await self.client.pymongo_test.coll.find_one(session=sess)
             started = self.listener.started_events[0]
             cmd = started.command
             self.assertIsNone(cmd.get("readConcern"))
@@ -999,7 +999,7 @@ class TestCausalConsistency(AsyncUnitTest):
             self.assertEqual(op_time, reply.get("operationTime"))
 
             # No explicit session
-            await self.client.pymongo_test.test.insert_one({})
+            await self.client.pymongo_test.coll.insert_one({})
             self.assertEqual(sess.operation_time, op_time)
             self.listener.reset()
             try:
@@ -1031,7 +1031,7 @@ class TestCausalConsistency(AsyncUnitTest):
                 self.assertEqual(sess.operation_time, sess2.operation_time)
 
     async def _test_reads(self, op, exception=None):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         async with self.client.start_session() as sess:
             await coll.find_one({}, session=sess)
             operation_time = sess.operation_time
@@ -1074,7 +1074,7 @@ class TestCausalConsistency(AsyncUnitTest):
             )
 
     async def _test_writes(self, op):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         async with self.client.start_session() as sess:
             await op(coll, sess)
             operation_time = sess.operation_time
@@ -1127,7 +1127,7 @@ class TestCausalConsistency(AsyncUnitTest):
         await self._test_writes(lambda coll, session: coll.drop_indexes(session=session))
 
     async def _test_no_read_concern(self, op):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         async with self.client.start_session() as sess:
             await coll.find_one({}, session=sess)
             operation_time = sess.operation_time
@@ -1145,7 +1145,7 @@ class TestCausalConsistency(AsyncUnitTest):
 
     @async_client_context.require_no_standalone
     async def test_get_more_does_not_include_read_concern(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         async with self.client.start_session() as sess:
             await coll.find_one({}, session=sess)
             operation_time = sess.operation_time
@@ -1161,9 +1161,9 @@ class TestCausalConsistency(AsyncUnitTest):
 
     async def test_session_not_causal(self):
         async with self.client.start_session(causal_consistency=False) as s:
-            await self.client.pymongo_test.test.insert_one({}, session=s)
+            await self.client.pymongo_test.coll.insert_one({}, session=s)
             self.listener.reset()
-            await self.client.pymongo_test.test.find_one({}, session=s)
+            await self.client.pymongo_test.coll.find_one({}, session=s)
             act = (
                 self.listener.started_events[0]
                 .command.get("readConcern", {})
@@ -1174,9 +1174,9 @@ class TestCausalConsistency(AsyncUnitTest):
     @async_client_context.require_standalone
     async def test_server_not_causal(self):
         async with self.client.start_session(causal_consistency=True) as s:
-            await self.client.pymongo_test.test.insert_one({}, session=s)
+            await self.client.pymongo_test.coll.insert_one({}, session=s)
             self.listener.reset()
-            await self.client.pymongo_test.test.find_one({}, session=s)
+            await self.client.pymongo_test.coll.find_one({}, session=s)
             act = (
                 self.listener.started_events[0]
                 .command.get("readConcern", {})
@@ -1187,7 +1187,7 @@ class TestCausalConsistency(AsyncUnitTest):
     @async_client_context.require_no_standalone
     async def test_read_concern(self):
         async with self.client.start_session(causal_consistency=True) as s:
-            coll = self.client.pymongo_test.test
+            coll = self.client.pymongo_test.coll
             await coll.insert_one({}, session=s)
             self.listener.reset()
             await coll.find_one({}, session=s)
@@ -1207,14 +1207,14 @@ class TestCausalConsistency(AsyncUnitTest):
     @async_client_context.require_no_standalone
     async def test_cluster_time_with_server_support(self):
         self.listener.reset()
-        await self.client.pymongo_test.test.find_one({})
+        await self.client.pymongo_test.coll.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")
         self.assertIsNotNone(after_cluster_time)
 
     @async_client_context.require_standalone
     async def test_cluster_time_no_server_support(self):
         self.listener.reset()
-        await self.client.pymongo_test.test.find_one({})
+        await self.client.pymongo_test.coll.find_one({})
         after_cluster_time = self.listener.started_events[0].command.get("$clusterTime")
         self.assertIsNone(after_cluster_time)
 
@@ -1321,7 +1321,7 @@ class TestClusterTime(AsyncIntegrationTest):
             self.assertEqual(c1._topology.max_cluster_time(), cluster_time)
 
             # Advance the server's $clusterTime by performing an insert via another client.
-            await self.db.test.insert_one({"advance": "$clusterTime"})
+            await self.db.coll.insert_one({"advance": "$clusterTime"})
             # Wait until the client C1 processes the next pair of SDAM heartbeat started + succeeded events.
             heartbeat_listener.reset()
 

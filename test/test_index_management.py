@@ -49,7 +49,7 @@ class TestCreateSearchIndex(IntegrationTest):
     def test_inputs(self):
         listener = AllowListEventListener("createSearchIndexes")
         client = self.simple_client(event_listeners=[listener])
-        coll = client.test.test
+        coll = client.db.coll
         coll.drop()
         definition = dict(mappings=dict(dynamic=True))
         model_kwarg_list: list[Mapping[str, Any]] = [
@@ -211,7 +211,6 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Create a new search index on ``self.coll0``.
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = self.coll0.create_search_index(model)
-        self.addCleanup(self.drop_and_wait, self.coll0, _NAME)
 
         # Assert that the command returns the name of the index: ``"test-search-index"``.
         self.assertEqual(resp, "test-search-index")

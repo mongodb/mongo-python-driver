@@ -61,7 +61,7 @@ class AsyncTestGridFileNoConnect(AsyncUnitTest):
 
     @classmethod
     def setUpClass(cls):
-        cls.db = AsyncMongoClient(connect=False).pymongo_test
+        cls.db = AsyncMongoClient(connect=False)["pymongo_test"]
 
     def test_grid_in_custom_opts(self):
         self.assertRaises(TypeError, AsyncGridIn, "foo")

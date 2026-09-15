@@ -215,7 +215,7 @@ class TestCustomServerSelectorFunction(IntegrationTest):
         client = self.rs_client(
             event_listeners=[hb_listener], heartbeatFrequencyMS=500, appName="heartbeatFailedClient"
         )
-        coll = client.db.test
+        coll = client.db.coll
         coll.drop()
         docs = [{"x": 1} for _ in range(5)]
         coll.insert_many(docs)

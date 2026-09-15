@@ -124,11 +124,11 @@ class TestCommon(IntegrationTest):
 
         db = c.pymongo_test
         self.assertEqual(wc, db.write_concern)
-        coll = db.test
+        coll = db.coll
         self.assertEqual(wc, coll.write_concern)
 
         cwc = WriteConcern(j=True)
-        coll = db.get_collection("test", write_concern=cwc)
+        coll = db.get_collection("coll", write_concern=cwc)
         self.assertEqual(cwc, coll.write_concern)
         self.assertEqual(wc, db.write_concern)
 
@@ -172,11 +172,12 @@ class TestCommon(IntegrationTest):
         self.assertFalse(direct != direct2)
 
     def test_validate_boolean(self):
-        self.db.test.update_one({}, {"$set": {"total": 1}}, upsert=True)
+        self.addCleanup(self.db.coll.drop)
+        self.db.coll.update_one({}, {"$set": {"total": 1}}, upsert=True)
         with self.assertRaisesRegex(
             TypeError, "upsert must be True or False, was: upsert={'upsert': True}"
         ):
-            self.db.test.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
+            self.db.coll.update_one({}, {"$set": {"total": 1}}, {"upsert": True})  # type: ignore
 
 
 if __name__ == "__main__":
