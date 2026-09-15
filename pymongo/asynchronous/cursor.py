@@ -29,6 +29,8 @@ from typing import (
 )
 
 from bson import _convert_raw_document_lists_to_streams
+from pymongo import helpers_shared
+from pymongo._telemetry import _operation_telemetry_or_none
 from pymongo.asynchronous.cursor_base import _AsyncCursorBase, _ConnectionManager
 from pymongo.asynchronous.helpers import anext
 from pymongo.cursor_shared import (
@@ -237,9 +239,20 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
 
         try:
             response = await client._run_operation(
-                operation, self._run_with_conn, address=self._address
+                operation,
+                self._run_with_conn,
+                address=self._address,
+                operation_telemetry=self._operation_telemetry,
             )
         except OperationFailure as exc:
+            # A tailable cursor rolling over returns below instead of raising,
+            # so close() ends the span successfully rather than as a failure.
+            rolled_over = bool(
+                exc.code in _CURSOR_CLOSED_ERRORS
+                and self._query_flags & _QUERY_OPTIONS["tailable_cursor"]
+            )
+            if not rolled_over:
+                self._end_operation_telemetry(exc)
             if exc.code in _CURSOR_CLOSED_ERRORS or self._exhaust:
                 # Don't send killCursors because the cursor is already closed.
                 self._killed = True
@@ -251,18 +264,17 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
             # due to capped collection roll over. Setting
             # self._killed to True ensures AsyncCursor.alive will be
             # False. No need to re-raise.
-            if (
-                exc.code in _CURSOR_CLOSED_ERRORS
-                and self._query_flags & _QUERY_OPTIONS["tailable_cursor"]
-            ):
+            if rolled_over:
                 return
             raise
-        except ConnectionFailure:
+        except ConnectionFailure as exc:
+            self._end_operation_telemetry(exc)
             self._killed = True
             await self.close()
             raise
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException:
+        except BaseException as exc:
+            self._end_operation_telemetry(exc)
             await self.close()
             raise
         self._address = response.address
@@ -280,7 +292,7 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
                 # Update the namespace used for future getMore commands.
                 ns = cursor.get("ns")
                 if ns:
-                    self._dbname, self._collname = ns.split(".", 1)
+                    self._dbname, self._collname = helpers_shared._split_namespace(ns)
             else:
                 documents = cursor["nextBatch"]
             self._data = deque(documents)
@@ -312,11 +324,6 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
             self._session = self._collection.database.client._ensure_session()
 
         if self._id is None:  # Query
-            if (self._min or self._max) and not self._hint:
-                raise InvalidOperation(
-                    "Passing a 'hint' is required when using the min/max query"
-                    " option to ensure the query utilizes the correct index"
-                )
             q = self._query_class(
                 self._query_flags,
                 self._collection.database.name,
@@ -335,7 +342,25 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
                 self._allow_disk_use,
                 self._exhaust,
             )
-            await self._send_message(q)
+            client = self._collection.database.client
+            self._operation_telemetry = _operation_telemetry_or_none(
+                client.options.tracing,
+                q.name,
+                self._session,
+                dbname=self._collection.database.name,
+                collection=self._collection.name,
+                set_current=False,
+            )
+            if (self._min or self._max) and not self._hint:
+                # Record the failure on the span before raising, so a client-side
+                # validation error that never reaches the wire is still reported.
+                exc = InvalidOperation(
+                    "Passing a 'hint' is required when using the min/max query"
+                    " option to ensure the query utilizes the correct index"
+                )
+                self._end_operation_telemetry(exc)
+                raise exc
+            await self._send_message_in_operation_span(q)
         elif self._id:  # Get More
             if self._limit:
                 limit = self._limit - self._retrieved
@@ -361,6 +386,20 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
             await self._send_message(g)
 
         return len(self._data)
+
+    async def _send_message_in_operation_span(self, operation: Union[_Query, _GetMore]) -> None:
+        """Send ``operation``, ending the operation span once it completes.
+
+        _send_message ends the span on every failure path and close() ends it
+        for an exhausted cursor, so this covers the remaining case of a
+        successful send that leaves the cursor open.
+        """
+        try:
+            await self._send_message(operation)
+        except BaseException as exc:
+            self._end_operation_telemetry(exc)
+            raise
+        self._end_operation_telemetry()
 
     async def rewind(self) -> AsyncCursor[_DocumentType]:
         """Rewind this cursor to its unevaluated state.

@@ -110,6 +110,15 @@ PyMongo 4.18 brings a number of changes including:
   for buffer-protocol inputs other than :class:`bytes` or :class:`bytearray`.
 - Improved the performance of lazily decoding a
   :class:`~bson.raw_bson.RawBSONDocument` when the C extension is available.
+- Added optional OpenTelemetry tracing support, conforming to the
+  `OpenTelemetry driver specification <https://github.com/mongodb/specifications/blob/master/source/open-telemetry/open-telemetry.md>`_.
+  Every public API call produces an operation span, which contains one span
+  per command sent to the server. Inside a transaction, those operation spans
+  nest under a ``transaction`` span. Enable it with the
+  ``tracing`` :class:`~pymongo.mongo_client.MongoClient` option or the
+  ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable.
+  Install the ``opentelemetry-api`` package, or use the
+  ``pymongo[opentelemetry]`` extra, to enable this feature.
 - Fixed a potential out-of-bounds read in the C extension when decoding an
   array of BSON documents. An embedded document whose declared length exceeds
   the bytes remaining in the array now raises
@@ -152,12 +161,6 @@ PyMongo 4.18 brings a number of changes including:
   :meth:`~pymongo.synchronous.database.Database.aggregate`, and
   :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_search_indexes`
   and :meth:`~pymongo.synchronous.collection.Collection.list_search_indexes`.
-- Added optional OpenTelemetry command-span support, conforming to the
-  `OpenTelemetry driver specification <https://github.com/mongodb/specifications/blob/master/source/open-telemetry/open-telemetry.md>`_.
-  Enable it with the ``tracing`` :class:`~pymongo.mongo_client.MongoClient`
-  option or the ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment
-  variable. Install the ``opentelemetry-api`` package, or use the
-  ``pymongo[opentelemetry]`` extra, to enable this feature.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------

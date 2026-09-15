@@ -150,13 +150,16 @@ class TestOperationIdRetry(IntegrationTest):
         find_op_ids = []
         original_init = _CommandTelemetry.__init__
 
+        # Accept and forward any trailing arguments (e.g. tracing_options,
+        # speculative_hello) so this stays working as _CommandTelemetry gains
+        # parameters; only cmd and op_id are of interest here.
         def recording_init(
-            self, topology_id, conn, listeners, cmd, dbname, request_id, op_id, name=None
+            self, topology_id, conn, listeners, cmd, dbname, request_id, op_id, *args, **kwargs
         ):
             if next(iter(cmd)) == "find":
                 find_op_ids.append(op_id)
             original_init(
-                self, topology_id, conn, listeners, cmd, dbname, request_id, op_id, name=name
+                self, topology_id, conn, listeners, cmd, dbname, request_id, op_id, *args, **kwargs
             )
 
         fail_point = {
