@@ -18,11 +18,22 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections import deque
 from collections.abc import Mapping, Sequence
-from typing import Any, Generic, Optional, Union
+from typing import TYPE_CHECKING, Any, Generic, Optional, Union
 
-from pymongo.message import _CursorAddress
-from pymongo.typings import _Address, _DocumentType
+from bson import CodecOptions
+from pymongo.message import _CursorAddress, _GetMore, _OpMsg
+from pymongo.typings import (
+    _Address,
+    _AgnosticClientSession,
+    _AgnosticCollection,
+    _DocumentOut,
+    _DocumentType,
+)
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
@@ -131,6 +142,115 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
             self._session._attached_to_cursor = False
             self._session = None
         self._sock_mgr = None
+
+
+class _AgnosticCommandCursorBase(_AgnosticCursorBase[_DocumentType]):
+    """An agnostic cursor / iterator over command cursors.
+    Used by aggregate, list_indexes, list_search_indexes, list_collections, cursor_command,
+    and list_databases helpers on both synchronous and asynchronous APIs to iterate MongoDB
+    command results.
+
+    Should not be called directly by application developers.
+    """
+
+    _getmore_class = _GetMore
+
+    def __init__(
+        self,
+        collection: _AgnosticCollection[_DocumentType],
+        cursor_info: Mapping[str, Any],
+        address: Optional[_Address],
+        batch_size: int = 0,
+        max_await_time_ms: Optional[int] = None,
+        session: Optional[_AgnosticClientSession] = None,
+        comment: Any = None,
+    ) -> None:
+        """Create a new command cursor."""
+        self._sock_mgr: Any = None
+        self._collection = collection
+        self._id = cursor_info["id"]
+        self._data = deque(cursor_info["firstBatch"])
+        self._postbatchresumetoken: Optional[Mapping[str, Any]] = cursor_info.get(
+            "postBatchResumeToken"
+        )
+        self._address = address
+        self._batch_size = batch_size
+        self._max_await_time_ms = max_await_time_ms
+        self._timeout = self._collection.database.client.options.timeout
+        self._session = session
+        if self._session is not None:
+            self._session._attached_to_cursor = True
+        self._killed = self._id == 0
+        self._comment = comment
+        if self._killed:
+            self._end_session()
+
+        if "ns" in cursor_info:
+            self._ns = cursor_info["ns"]
+        else:
+            self._ns = collection.full_name
+
+        self.batch_size(batch_size)
+
+        if not isinstance(max_await_time_ms, int) and max_await_time_ms is not None:
+            raise TypeError(
+                f"max_await_time_ms must be an integer or None, not {type(max_await_time_ms)}"
+            )
+
+    def _get_namespace(self) -> str:
+        return self._ns
+
+    def batch_size(self, batch_size: int) -> Self:
+        """Limits the number of documents returned in one batch. Each batch
+        requires a round trip to the server. It can be adjusted to optimize
+        performance and limit data transfer.
+
+        .. note:: batch_size can not override MongoDB's internal limits on the
+           amount of data it will return to the client in a single batch (i.e
+           if you set batch size to 1,000,000,000, MongoDB will currently only
+           return 4-16MB of results per batch).
+
+        Raises :exc:`TypeError` if `batch_size` is not an integer.
+        Raises :exc:`ValueError` if `batch_size` is less than ``0``.
+
+        :param batch_size: The size of each batch of results requested.
+        """
+        if not isinstance(batch_size, int):
+            raise TypeError(f"batch_size must be an integer, not {type(batch_size)}")
+        if batch_size < 0:
+            raise ValueError("batch_size must be >= 0")
+
+        self._batch_size = (batch_size == 1 and 2) or batch_size
+        return self
+
+    def _has_next(self) -> bool:
+        """Returns `True` if the cursor has documents remaining from the
+        previous batch.
+        """
+        return len(self._data) > 0
+
+    @property
+    def _post_batch_resume_token(self) -> Optional[Mapping[str, Any]]:
+        """Retrieve the postBatchResumeToken from the response to a
+        changeStream aggregate or getMore.
+        """
+        return self._postbatchresumetoken
+
+    def _unpack_response(
+        self,
+        response: _OpMsg,
+        cursor_id: Optional[int],
+        codec_options: CodecOptions[Mapping[str, Any]],
+        user_fields: Optional[Mapping[str, Any]] = None,
+        legacy_response: bool = False,
+    ) -> Sequence[_DocumentOut]:
+        return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
+
+    def _end_session(self) -> None:
+        if self._session and self._session._implicit:
+            self._session._attached_to_cursor = False
+            self._session._end_implicit_session()
+            self._session = None
 
 
 # These errors mean that the server has already killed the cursor so there is
