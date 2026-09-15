@@ -458,7 +458,23 @@ def create_otel_variants():
     expansions = dict(TEST_NAME="otel", COVERAGE="1")
     return [
         create_variant(
-            [".test-non-standard .standalone-noauth-nossl"],
+            [
+                # All three topologies, subset to keep the task count at 22.
+                #
+                # Replica set keeps every task: the only topology where transaction spans
+                # run at all (they are skipped on standalone and sharded), and
+                # the only one covering free-threaded Python.
+                ".test-non-standard .replica_set-noauth-ssl",
+                # Sharded adds mongos, which rewrites commands and reports a
+                # different server.address, plus auth and ssl, which exercise
+                # sensitive-command redaction. Newest CPython across server
+                # versions, and PyPy for the alternate implementation.
+                ".test-non-standard .sharded_cluster-auth-ssl .python-3.14",
+                ".test-non-standard .sharded_cluster-auth-ssl .python-pypy3.11",
+                # Standalone only for its min-deps tasks, which resolve
+                # opentelemetry-api down to the floor in requirements/.
+                ".test-non-standard .standalone-noauth-nossl .python-3.10",
+            ],
             get_variant_name("OTel", host),
             host=host,
             tags=["pr"],

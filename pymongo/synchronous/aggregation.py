@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from pymongo import common
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import ConfigurationError
+from pymongo.helpers_shared import _split_namespace
 from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 if TYPE_CHECKING:
@@ -256,5 +257,5 @@ class _DatabaseAggregationCommand(_AggregationCommand):
         # Collection level aggregate may not always return the "ns" field
         # according to our MockupDB tests. Let's handle that case for db level
         # aggregate too by defaulting to the <db>.$cmd.aggregate namespace.
-        _, collname = cursor.get("ns", self._cursor_namespace).split(".", 1)
+        _, collname = _split_namespace(cursor.get("ns", self._cursor_namespace))
         return self._database[collname]

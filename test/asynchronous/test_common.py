@@ -25,10 +25,24 @@ from bson.binary import PYTHON_LEGACY, STANDARD, Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo.errors import OperationFailure
+from pymongo.helpers_shared import _split_namespace
 from pymongo.write_concern import WriteConcern
 from test.asynchronous import AsyncIntegrationTest, async_client_context, connected, unittest
 
 _IS_SYNC = False
+
+
+class TestSplitNamespace(unittest.TestCase):
+    def test_plain_namespace(self):
+        self.assertEqual(_split_namespace("db.coll"), ("db", "coll"))
+
+    def test_collection_name_with_dots(self):
+        self.assertEqual(_split_namespace("db.coll.with.dots"), ("db", "coll.with.dots"))
+
+    def test_no_dot(self):
+        # No separator: the whole string is treated as the database name
+        # and the collection name is empty, matching str.partition.
+        self.assertEqual(_split_namespace("dbonly"), ("dbonly", ""))
 
 
 class TestCommon(AsyncIntegrationTest):
