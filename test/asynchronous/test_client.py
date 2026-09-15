@@ -512,6 +512,23 @@ class AsyncClientUnitTest(AsyncUnitTest):
         for i in range(300, 600):
             client.append_metadata(DriverInfo(name="", version="", platform=f"P{i}"))
         self.assertEqual(len(pool._PoolOptions__appended_drivers), count)
+        # The '|' delimiter is reserved for joining appended metadata, so it
+        # must be rejected in every field.
+        self.assertRaises(ValueError, DriverInfo, "a|b", "1.0", None)
+        self.assertRaises(ValueError, DriverInfo, "lib", "1|0", None)
+        self.assertRaises(ValueError, DriverInfo, "lib", "1.0", "Frame|Platform")
+        # Appending a platform after truncation has dropped it recreates the field.
+        client = self.simple_client(connect=False)
+        for i in range(300):
+            client.append_metadata(DriverInfo(name="", version="", platform=f"Q{i}"))
+        pool = client.options.pool_options
+        self.assertLess(len(pool._PoolOptions__appended_drivers), 300)
+        client.append_metadata(DriverInfo(name="Wrapper", version="1.0", platform="Recreated"))
+        self.assertLessEqual(len(bson.encode(pool.metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(
+            pool.metadata["driver"]["name"].count("|"),
+            pool.metadata["driver"]["version"].count("|"),
+        )
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
