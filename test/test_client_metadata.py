@@ -114,7 +114,7 @@ class TestClientMetadataProse(IntegrationTest):
         new_metadata.pop("platform")
         self.assertEqual(metadata, new_metadata)
 
-    def test_append_metadata(self):
+    def test_1_test_that_the_driver_updates_metadata(self):
         client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
@@ -122,7 +122,7 @@ class TestClientMetadataProse(IntegrationTest):
         )
         self.check_metadata_added(client, "framework", "2.0", "Framework Platform")
 
-    def test_append_metadata_platform_none(self):
+    def test_1_test_that_the_driver_updates_metadata_platform_none(self):
         client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
@@ -130,7 +130,7 @@ class TestClientMetadataProse(IntegrationTest):
         )
         self.check_metadata_added(client, "framework", "2.0", None)
 
-    def test_append_metadata_version_none(self):
+    def test_1_test_that_the_driver_updates_metadata_version_none(self):
         client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
@@ -138,7 +138,7 @@ class TestClientMetadataProse(IntegrationTest):
         )
         self.check_metadata_added(client, "framework", None, "Framework Platform")
 
-    def test_append_metadata_platform_version_none(self):
+    def test_1_test_that_the_driver_updates_metadata_platform_version_none(self):
         client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
@@ -146,14 +146,14 @@ class TestClientMetadataProse(IntegrationTest):
         )
         self.check_metadata_added(client, "framework", None, None)
 
-    def test_multiple_successive_metadata_updates(self):
+    def test_2_multiple_successive_metadata_updates(self):
         client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string, maxIdleTimeMS=1, connect=False
         )
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         self.check_metadata_added(client, "framework", "2.0", "Framework Platform")
 
-    def test_multiple_successive_metadata_updates_platform_none(self):
+    def test_2_multiple_successive_metadata_updates_platform_none(self):
         client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
@@ -161,7 +161,7 @@ class TestClientMetadataProse(IntegrationTest):
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         self.check_metadata_added(client, "framework", "2.0", None)
 
-    def test_multiple_successive_metadata_updates_version_none(self):
+    def test_2_multiple_successive_metadata_updates_version_none(self):
         client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
@@ -169,7 +169,7 @@ class TestClientMetadataProse(IntegrationTest):
         client.append_metadata(DriverInfo("library", "1.2", "Library Platform"))
         self.check_metadata_added(client, "framework", None, "Framework Platform")
 
-    def test_multiple_successive_metadata_updates_platform_version_none(self):
+    def test_2_multiple_successive_metadata_updates_platform_version_none(self):
         client = self.rs_or_single_client(
             "mongodb://" + self.server.address_string,
             maxIdleTimeMS=1,
@@ -219,8 +219,7 @@ class TestClientMetadataProse(IntegrationTest):
         self.assertEqual(new_version, version)
         self.assertEqual(new_platform, platform)
 
-    # Prose test no. 9
-    def test_handshake_documents_include_backpressure(self):
+    def test_9_handshake_documents_include_backpressure(self):
         # Create a `MongoClient` that is configured to record all handshake documents sent to the server as a part of
         # connection establishment.
         client = self.rs_or_single_client("mongodb://" + self.server.address_string)
@@ -233,37 +232,7 @@ class TestClientMetadataProse(IntegrationTest):
         # the document has a field `backpressure` whose value is `"2"`.
         self.assertEqual(self.handshake_req["backpressure"], "2")
 
-    # Prose test no. 11
-    def test_append_metadata_rejects_delimiter(self):
-        cases = [
-            ("frame|work", "2.0", "Framework Platform"),
-            ("framework", "2|0", "Framework Platform"),
-            ("framework", "2.0", "Framework|Platform"),
-        ]
-        for name, version, platform in cases:
-            with self.subTest(name=name, version=version, platform=platform):
-                client = self.rs_or_single_client(
-                    "mongodb://" + self.server.address_string,
-                    maxIdleTimeMS=1,
-                    driver=DriverInfo("library", "1.2", "Library Platform"),
-                )
-                # Send initial handshake.
-                name0, version0, platform0, _metadata = self.send_ping_and_get_metadata(
-                    client, True
-                )
-                time.sleep(0.005)
-                # Appending metadata containing the delimiter raises.
-                with self.assertRaises(ValueError):
-                    DriverInfo(name, version, platform)
-                # Metadata is unchanged on the next handshake.
-                name1, version1, platform1, _ = self.send_ping_and_get_metadata(client, True)
-                self.assertEqual(name1, name0)
-                self.assertEqual(version1, version0)
-                self.assertEqual(platform1, platform0)
-                client.close()
-
-    # Prose test no. 10
-    def test_index_correspondence(self):
+    def test_10_entries_in_driver_name_and_driver_version_correspond_by_index(self):
         cases = [
             ("Gap in middle (name)", [(None, None), ("F2", None)], "||F2", "||"),
             ("Gap in middle (version)", [("F1", None), ("F2", "2.0")], "|F1|F2", "||2.0"),
@@ -351,6 +320,34 @@ class TestClientMetadataProse(IntegrationTest):
                         driver_name=driver_name, driver_version=driver_version
                     ),
                 )
+                client.close()
+
+    def test_11_appending_metadata_containing_the_delimiter_raises_an_error(self):
+        cases = [
+            ("frame|work", "2.0", "Framework Platform"),
+            ("framework", "2|0", "Framework Platform"),
+            ("framework", "2.0", "Framework|Platform"),
+        ]
+        for name, version, platform in cases:
+            with self.subTest(name=name, version=version, platform=platform):
+                client = self.rs_or_single_client(
+                    "mongodb://" + self.server.address_string,
+                    maxIdleTimeMS=1,
+                    driver=DriverInfo("library", "1.2", "Library Platform"),
+                )
+                # Send initial handshake.
+                name0, version0, platform0, _metadata = self.send_ping_and_get_metadata(
+                    client, True
+                )
+                time.sleep(0.005)
+                # Appending metadata containing the delimiter raises.
+                with self.assertRaises(ValueError):
+                    DriverInfo(name, version, platform)
+                # Metadata is unchanged on the next handshake.
+                name1, version1, platform1, _ = self.send_ping_and_get_metadata(client, True)
+                self.assertEqual(name1, name0)
+                self.assertEqual(version1, version0)
+                self.assertEqual(platform1, platform0)
                 client.close()
 
 
