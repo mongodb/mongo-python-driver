@@ -33,6 +33,7 @@ from collections.abc import Iterator, Mapping, MutableMapping
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Optional, TypedDict
 
+from bson import encode as _bson_encode
 from bson import json_util
 from bson.json_util import _truncate_documents
 from pymongo._version import __version__
@@ -396,6 +397,59 @@ def _set_operation_cursor_id(cursor_id: int) -> None:
         current_span.set_attribute("db.mongodb.cursor_id", cursor_id)
 
 
+def _set_command_span_query_text(
+    span: Optional[Span],
+    tracing_options: Optional[TracingOptions],
+    cmd: Mapping[str, Any],
+) -> None:
+    """Rebuild db.query.text from a command that gained fields after span creation.
+
+    Client-level bulkWrite adds its ops and nsInfo only at send time, after the
+    command span exists, so its text is refreshed once they are known.
+    """
+    if span is None:
+        return
+    max_query_text_length = _get_query_text_max_length(tracing_options)
+    if max_query_text_length > 0:
+        span.set_attribute("db.query.text", _build_query_text(cmd, max_query_text_length))
+
+
+_TELEMETRY_TRACEPARENT_KEY = "traceparent"
+_TELEMETRY_OTEL_KEY = "otel"
+# MongoDB 9.0, the first server that accepts the Payload Type 3 telemetry section.
+_TELEMETRY_MIN_WIRE_VERSION = 29
+# Marks "tracing is on but this command gets no span" (a sensitive command).
+# Distinct from None, which means the caller did not pre-create a span.
+_NO_COMMAND_SPAN = object()
+
+
+def _traceparent_from_span(span: Optional[Span]) -> Optional[str]:
+    """Return the W3C traceparent string for ``span``, or ``None``.
+
+    The traceparent carries the command span's own span id as the parent-id
+    so server spans join the trace as children of that command. The span
+    need not be recording: an unsampled context (trace-flags ``00``) is
+    still propagated. Returns ``None`` when the span or its context is
+    invalid (e.g. all-zero trace-id or span-id).
+    """
+    if span is None:
+        return None
+    ctx = span.get_span_context()
+    if not ctx.is_valid:
+        return None
+    return f"00-{ctx.trace_id:032x}-{ctx.span_id:016x}-{ctx.trace_flags:02x}"
+
+
+def _telemetry_section(traceparent: str) -> bytes:
+    """Encode the OP_MSG Payload Type 3 telemetry section.
+
+    Returns ``\\x03`` (payload type) followed by the BSON document
+    ``{"otel": {"traceparent": traceparent}}``. The caller appends this
+    to the OP_MSG body after the Type 0 and Type 1 sections.
+    """
+    return b"\x03" + _bson_encode({_TELEMETRY_OTEL_KEY: {_TELEMETRY_TRACEPARENT_KEY: traceparent}})
+
+
 def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
     """Set the cursor id (if any open cursor) and end the span."""
     if span is None:
@@ -455,6 +509,38 @@ def end_command_span_failure(
         # End even if recording raised, so a failure here costs the attributes
         # rather than leaking an unended span.
         span.end()
+
+
+@contextlib.contextmanager
+def _command_span_for_encoding(
+    tracing_options: Optional[TracingOptions],
+    conn: _ConnectionTelemetryInfo,
+    cmd: MutableMapping[str, Any],
+    dbname: str,
+    command_name: str,
+    speculative_hello: bool = False,
+) -> Iterator[tuple[Optional[Span], Any, Optional[str]]]:
+    """Start the command span for a command that is about to be encoded.
+
+    Yields ``(span, precreated_span, traceparent)``. An exception raised while
+    encoding ends the span, so an encode failure that never reaches the send
+    cannot leak it. Otherwise the caller passes ``precreated_span`` to
+    ``_CommandTelemetry``, which ends the span after the send.
+    """
+    span = None
+    traceparent = None
+    if _is_tracing_enabled(tracing_options):
+        span = start_command_span(
+            tracing_options, conn, cmd, dbname, command_name, speculative_hello
+        )
+        if conn.max_wire_version >= _TELEMETRY_MIN_WIRE_VERSION:
+            traceparent = _traceparent_from_span(span)
+    precreated_span = span if span is not None else _NO_COMMAND_SPAN
+    try:
+        yield span, precreated_span, traceparent
+    except Exception as exc:
+        end_command_span_failure(span, {}, exc)
+        raise
 
 
 class _OperationSpanHandle:

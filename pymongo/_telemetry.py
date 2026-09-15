@@ -92,6 +92,7 @@ class _CommandTelemetry:
         "_listeners",
         "_name",
         "_op_id",
+        "_precreated_span",
         "_publish",
         "_request_id",
         "_should_log",
@@ -115,6 +116,7 @@ class _CommandTelemetry:
         tracing_options: Optional[_otel.TracingOptions] = None,
         speculative_hello: bool = False,
         name: Optional[str] = None,
+        precreated_span: Optional[Any] = None,
     ) -> None:
         # NOTE: the _run_command fast path in command_runner.py inline this gate for performance
         # They must be kept in sync with any gating changes
@@ -137,6 +139,7 @@ class _CommandTelemetry:
         self._request_id = request_id
         self._op_id = op_id if op_id is not None else _op_id.OP_ID.get()
         self._speculative_hello = speculative_hello
+        self._precreated_span = precreated_span
 
     def _emit_log(self, message: _CommandStatusMessage, **extra: Any) -> None:
         _debug_log(
@@ -175,7 +178,12 @@ class _CommandTelemetry:
                 self._op_id,
                 service_id=self._conn.service_id,
             )
-        if self._tracing_enabled:
+        if self._precreated_span is _otel._NO_COMMAND_SPAN:
+            # Tracing is on but the command is sensitive, so it has no span.
+            self._span = None
+        elif self._precreated_span is not None:
+            self._span = self._precreated_span
+        elif self._tracing_enabled:
             self._span = _otel.start_command_span(
                 self._tracing_options,
                 self._conn,

@@ -212,6 +212,57 @@ fail:
     return result;
 }
 
+static int
+_write_telemetry_section(struct module_state *state, buffer_t buffer,
+                         const char* traceparent, codec_options_t* options) {
+    PyObject* otel_dict = NULL;
+    PyObject* parent_dict = NULL;
+    PyObject* tp_str = NULL;
+    int tp_size;
+
+    if (!traceparent) {
+        return 1;
+    }
+    otel_dict = PyDict_New();
+    parent_dict = PyDict_New();
+    if (!otel_dict || !parent_dict) {
+        Py_XDECREF(otel_dict);
+        Py_XDECREF(parent_dict);
+        return 0;
+    }
+    tp_str = PyUnicode_FromString(traceparent);
+    if (!tp_str) {
+        Py_DECREF(otel_dict);
+        Py_DECREF(parent_dict);
+        return 0;
+    }
+    if (PyDict_SetItemString(parent_dict, "traceparent", tp_str) < 0) {
+        Py_DECREF(tp_str);
+        Py_DECREF(otel_dict);
+        Py_DECREF(parent_dict);
+        return 0;
+    }
+    Py_DECREF(tp_str);
+    if (PyDict_SetItemString(otel_dict, "otel", parent_dict) < 0) {
+        Py_DECREF(otel_dict);
+        Py_DECREF(parent_dict);
+        return 0;
+    }
+    Py_DECREF(parent_dict);
+
+    /* Payload type 3 section */
+    if (!buffer_write_bytes(buffer, "\x03", 1)) {
+        Py_DECREF(otel_dict);
+        return 0;
+    }
+    tp_size = write_dict(state->_cbson, buffer, otel_dict, 0, options, 1);
+    Py_DECREF(otel_dict);
+    if (!tp_size) {
+        return 0;
+    }
+    return 1;
+}
+
 /*
  * NOTE this method handles multiple documents in a type one payload but
  * it does not perform batch splitting and the total message size is
@@ -234,20 +285,22 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
     int max_doc_size = 0;
     PyObject* result = NULL;
     PyObject* iterator = NULL;
+    const char* traceparent = NULL;
     struct module_state *state = GETSTATE(self);
     if (!state) {
         return NULL;
     }
 
-    /*flags, command, identifier, docs, opts*/
-    if (!(PyArg_ParseTuple(args, "IOet#OO",
+    /*flags, command, identifier, docs, opts, [traceparent]*/
+    if (!(PyArg_ParseTuple(args, "IOet#OO|z",
                           &flags,
                           &command,
                           "utf-8",
                           &identifier,
                           &identifier_length,
                           &docs,
-                          &options_obj) &&
+                          &options_obj,
+                          &traceparent) &&
             convert_codec_options(state->_cbson, options_obj, &options))) {
         return NULL;
     }
@@ -313,6 +366,14 @@ static PyObject* _cbson_op_msg(PyObject* self, PyObject* args) {
         total_size += payload_length;
     }
 
+    if (traceparent) {
+        int before = pymongo_buffer_get_position(buffer);
+        if (!_write_telemetry_section(state, buffer, traceparent, &options)) {
+            goto fail;
+        }
+        total_size += pymongo_buffer_get_position(buffer) - before;
+    }
+
     message_length = pymongo_buffer_get_position(buffer) - length_location;
     buffer_write_int32_at_position(
         buffer, length_location, (int32_t)message_length);
@@ -358,7 +419,8 @@ _batched_op_msg(
         unsigned char op, unsigned char ack,
         PyObject* command, PyObject* docs, PyObject* ctx,
         PyObject* to_publish, codec_options_t options,
-        buffer_t buffer, struct module_state *state) {
+        buffer_t buffer, struct module_state *state,
+        const char* traceparent) {
 
     long max_bson_size;
     long max_write_batch_size;
@@ -393,6 +455,14 @@ _batched_op_msg(
     Py_XDECREF(max_message_size_obj);
     if (max_message_size == -1) {
         return 0;
+    }
+
+    if (traceparent) {
+        /* The Payload Type 3 section is appended after the batch is split, so
+         * reserve its encoded size now to keep the message within
+         * max_message_size. The section is the traceparent plus 35 bytes of
+         * BSON overhead; see _write_telemetry_section. */
+        max_message_size -= (long)strlen(traceparent) + 35;
     }
 
     if (!buffer_write_bytes(buffer, flags, 4)) {
@@ -523,6 +593,11 @@ _batched_op_msg(
     position = pymongo_buffer_get_position(buffer);
     length = position - size_location;
     buffer_write_int32_at_position(buffer, size_location, (int32_t)length);
+    if (traceparent) {
+        if (!_write_telemetry_section(state, buffer, traceparent, &options)) {
+            goto fail;
+        }
+    }
     return 1;
 
 fail:
@@ -543,14 +618,15 @@ _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
     PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer;
+    const char* traceparent = NULL;
     struct module_state *state = GETSTATE(self);
     if (!state) {
         return NULL;
     }
 
-    if (!(PyArg_ParseTuple(args, "bOObOO",
+    if (!(PyArg_ParseTuple(args, "bOObOO|z",
                           &op, &command, &docs, &ack,
-                          &options_obj, &ctx) &&
+                          &options_obj, &ctx, &traceparent) &&
             convert_codec_options(state->_cbson, options_obj, &options))) {
         return NULL;
     }
@@ -571,7 +647,8 @@ _cbson_encode_batched_op_msg(PyObject* self, PyObject* args) {
             to_publish,
             options,
             buffer,
-            state)) {
+            state,
+            traceparent)) {
         goto fail;
     }
 
@@ -600,14 +677,15 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
     PyObject* options_obj = NULL;
     codec_options_t options;
     buffer_t buffer;
+    const char* traceparent = NULL;
     struct module_state *state = GETSTATE(self);
     if (!state) {
         return NULL;
     }
 
-    if (!(PyArg_ParseTuple(args, "bOObOO",
+    if (!(PyArg_ParseTuple(args, "bOObOO|z",
                           &op, &command, &docs, &ack,
-                          &options_obj, &ctx) &&
+                          &options_obj, &ctx, &traceparent) &&
             convert_codec_options(state->_cbson, options_obj, &options))) {
         return NULL;
     }
@@ -638,7 +716,8 @@ _cbson_batched_op_msg(PyObject* self, PyObject* args) {
             to_publish,
             options,
             buffer,
-            state)) {
+            state,
+            traceparent)) {
         goto fail;
     }
 

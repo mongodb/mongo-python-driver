@@ -43,6 +43,7 @@ from bson.raw_bson import (
     RawBSONDocument,
     _inflate_bson,
 )
+from pymongo import _otel
 from pymongo.common import MONGOS_EXHAUST_WIRE_VERSION
 from pymongo.monitoring import _EventListeners
 
@@ -289,6 +290,7 @@ def _op_msg_no_header(
     identifier: str,
     docs: Optional[list[Mapping[str, Any]]],
     opts: CodecOptions[Any],
+    traceparent: Optional[str] = None,
 ) -> tuple[bytes, int, int]:
     """Get a OP_MSG message.
 
@@ -301,6 +303,7 @@ def _op_msg_no_header(
     flags_type = _pack_op_msg_flags_type(flags, 0)
     total_size = len(encoded)
     max_doc_size = 0
+    data: list[bytes] = [flags_type, encoded]
     if identifier and docs is not None:
         type_one = _pack_byte(1)
         cstring = _make_c_string(identifier)
@@ -309,9 +312,11 @@ def _op_msg_no_header(
         encoded_size = _pack_int(size)
         total_size += size
         max_doc_size = max(len(doc) for doc in encoded_docs)
-        data = [flags_type, encoded, type_one, encoded_size, cstring, *encoded_docs]
-    else:
-        data = [flags_type, encoded]
+        data.extend([type_one, encoded_size, cstring, *encoded_docs])
+    if traceparent is not None:
+        section = _otel._telemetry_section(traceparent)
+        data.append(section)
+        total_size += len(section)
     return b"".join(data), total_size, max_doc_size
 
 
@@ -322,9 +327,12 @@ def _op_msg_compressed(
     docs: Optional[list[Mapping[str, Any]]],
     opts: CodecOptions[Any],
     ctx: Union[SnappyContext, ZlibContext, ZstdContext],
+    traceparent: Optional[str] = None,
 ) -> tuple[int, bytes, int, int]:
     """Internal OP_MSG message helper."""
-    msg, total_size, max_bson_size = _op_msg_no_header(flags, command, identifier, docs, opts)
+    msg, total_size, max_bson_size = _op_msg_no_header(
+        flags, command, identifier, docs, opts, traceparent
+    )
     rid, msg = _compress(2013, msg, ctx)
     return rid, msg, total_size, max_bson_size
 
@@ -335,9 +343,12 @@ def _op_msg_uncompressed(
     identifier: str,
     docs: Optional[list[Mapping[str, Any]]],
     opts: CodecOptions[Any],
+    traceparent: Optional[str] = None,
 ) -> tuple[int, bytes, int, int]:
     """Internal compressed OP_MSG message helper."""
-    data, total_size, max_bson_size = _op_msg_no_header(flags, command, identifier, docs, opts)
+    data, total_size, max_bson_size = _op_msg_no_header(
+        flags, command, identifier, docs, opts, traceparent
+    )
     request_id, op_message = __pack_message(2013, data)
     return request_id, op_message, total_size, max_bson_size
 
@@ -353,6 +364,7 @@ def _op_msg(
     read_preference: Optional[_ServerMode],
     opts: CodecOptions[Any],
     ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
+    traceparent: Optional[str] = None,
 ) -> tuple[int, bytes, int, int]:
     """Get a OP_MSG message."""
     command["$db"] = dbname
@@ -370,8 +382,8 @@ def _op_msg(
         docs = None
     try:
         if ctx:
-            return _op_msg_compressed(flags, command, identifier, docs, opts, ctx)
-        return _op_msg_uncompressed(flags, command, identifier, docs, opts)
+            return _op_msg_compressed(flags, command, identifier, docs, opts, ctx, traceparent)
+        return _op_msg_uncompressed(flags, command, identifier, docs, opts, traceparent)
     finally:
         # Add the field back to the command.
         if identifier:
@@ -526,11 +538,14 @@ class _BulkWriteContext(_BulkWriteContextBase):
         )
 
     def batch_command(
-        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
+        self,
+        cmd: MutableMapping[str, Any],
+        docs: list[Mapping[str, Any]],
+        traceparent: Optional[str] = None,
     ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]]]:
         namespace = self.db_name + ".$cmd"
         request_id, msg, to_send = _do_batched_op_msg(
-            namespace, self.op_type, cmd, docs, self.codec, self
+            namespace, self.op_type, cmd, docs, self.codec, self, traceparent
         )
         if not to_send:
             raise InvalidOperation("cannot do an empty bulk write")
@@ -541,8 +556,13 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
     __slots__ = ()
 
     def batch_command(
-        self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
+        self,
+        cmd: MutableMapping[str, Any],
+        docs: list[Mapping[str, Any]],
+        traceparent: Optional[str] = None,
     ) -> tuple[int, dict[str, Any], list[Mapping[str, Any]]]:
+        # traceparent is unused: the batched command is sent through
+        # conn.command(), whose own command span carries the traceparent.
         namespace = self.db_name + ".$cmd"
         msg, to_send = _encode_batched_write_command(
             namespace, self.op_type, cmd, docs, self.codec, self
@@ -591,11 +611,16 @@ def _batched_op_msg_impl(
     opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
     buf: _BytesIO,
+    traceparent: Optional[str] = None,
 ) -> tuple[list[Mapping[str, Any]], int]:
     """Create a batched OP_MSG write."""
     max_bson_size = ctx.max_bson_size
     max_write_batch_size = ctx.max_write_batch_size
     max_message_size = ctx.max_message_size
+    section = _otel._telemetry_section(traceparent) if traceparent is not None else b""
+    # The telemetry section is appended after the batch is split, so reserve its
+    # bytes now to keep the final message within max_message_size.
+    max_message_size -= len(section)
 
     flags = b"\x00\x00\x00\x00" if ack else b"\x02\x00\x00\x00"
     # Flags
@@ -643,10 +668,15 @@ def _batched_op_msg_impl(
 
     # Write type 1 section size
     length = buf.tell()
+    if section:
+        buf.write(section)
+        total_length = buf.tell()
+    else:
+        total_length = length
     buf.seek(size_location)
     buf.write(_pack_int(length - size_location))
 
-    return to_send, length
+    return to_send, total_length
 
 
 def _encode_batched_op_msg(
@@ -656,13 +686,14 @@ def _encode_batched_op_msg(
     ack: bool,
     opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
+    traceparent: Optional[str] = None,
 ) -> tuple[bytes, list[Mapping[str, Any]]]:
     """Encode the next batched insert, update, or delete operation
     as OP_MSG.
     """
     buf = _BytesIO()
 
-    to_send, _ = _batched_op_msg_impl(operation, command, docs, ack, opts, ctx, buf)
+    to_send, _ = _batched_op_msg_impl(operation, command, docs, ack, opts, ctx, buf, traceparent)
     return buf.getvalue(), to_send
 
 
@@ -677,11 +708,12 @@ def _batched_op_msg_compressed(
     ack: bool,
     opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
+    traceparent: Optional[str] = None,
 ) -> tuple[int, bytes, list[Mapping[str, Any]]]:
     """Create the next batched insert, update, or delete operation
     with OP_MSG, compressed.
     """
-    data, to_send = _encode_batched_op_msg(operation, command, docs, ack, opts, ctx)
+    data, to_send = _encode_batched_op_msg(operation, command, docs, ack, opts, ctx, traceparent)
 
     assert ctx.conn.compression_context is not None
     request_id, msg = _compress(2013, data, ctx.conn.compression_context)
@@ -695,6 +727,7 @@ def _batched_op_msg(
     ack: bool,
     opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
+    traceparent: Optional[str] = None,
 ) -> tuple[int, bytes, list[Mapping[str, Any]]]:
     """OP_MSG implementation entry point."""
     buf = _BytesIO()
@@ -704,7 +737,9 @@ def _batched_op_msg(
     # responseTo, opCode
     buf.write(b"\x00\x00\x00\x00\xdd\x07\x00\x00")
 
-    to_send, length = _batched_op_msg_impl(operation, command, docs, ack, opts, ctx, buf)
+    to_send, length = _batched_op_msg_impl(
+        operation, command, docs, ack, opts, ctx, buf, traceparent
+    )
 
     # Header - request id and message length
     buf.seek(4)
@@ -727,6 +762,7 @@ def _do_batched_op_msg(
     docs: list[Mapping[str, Any]],
     opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
+    traceparent: Optional[str] = None,
 ) -> tuple[int, bytes, list[Mapping[str, Any]]]:
     """Create the next batched insert, update, or delete operation
     using OP_MSG.
@@ -737,8 +773,8 @@ def _do_batched_op_msg(
     else:
         ack = True
     if ctx.conn.compression_context:
-        return _batched_op_msg_compressed(operation, command, docs, ack, opts, ctx)
-    return _batched_op_msg(operation, command, docs, ack, opts, ctx)
+        return _batched_op_msg_compressed(operation, command, docs, ack, opts, ctx, traceparent)
+    return _batched_op_msg(operation, command, docs, ack, opts, ctx, traceparent)
 
 
 class _ClientBulkWriteContext(_BulkWriteContextBase):
@@ -772,9 +808,10 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
         cmd: MutableMapping[str, Any],
         operations: list[tuple[str, Mapping[str, Any]]],
         namespaces: list[str],
+        traceparent: Optional[str] = None,
     ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]], list[Mapping[str, Any]]]:
         request_id, msg, to_send_ops, to_send_ns = _client_do_batched_op_msg(
-            cmd, operations, namespaces, self.codec, self
+            cmd, operations, namespaces, self.codec, self, traceparent
         )
         if not to_send_ops:
             raise InvalidOperation("cannot do an empty bulk write")
@@ -790,6 +827,7 @@ def _client_construct_op_msg(
     to_send_ns_encoded: list[bytes],
     ack: bool,
     buf: _BytesIO,
+    traceparent: Optional[str] = None,
 ) -> int:
     # Write flags
     flags = b"\x00\x00\x00\x00" if ack else b"\x02\x00\x00\x00"
@@ -829,6 +867,11 @@ def _client_construct_op_msg(
     buf.seek(size_location)
     buf.write(_pack_int(length - size_location))
 
+    if traceparent is not None:
+        buf.seek(0, 2)
+        buf.write(_otel._telemetry_section(traceparent))
+        length = buf.tell()
+
     return length
 
 
@@ -840,6 +883,7 @@ def _client_batched_op_msg_impl(
     opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
     buf: _BytesIO,
+    traceparent: Optional[str] = None,
 ) -> tuple[list[Mapping[str, Any]], list[Mapping[str, Any]], int]:
     """Create a batched OP_MSG write for client-level bulk write."""
 
@@ -854,6 +898,7 @@ def _client_batched_op_msg_impl(
     max_bson_size = ctx.max_bson_size
     max_write_batch_size = ctx.max_write_batch_size
     max_message_size = ctx.max_message_size
+    section = _otel._telemetry_section(traceparent) if traceparent is not None else b""
 
     command_encoded = _dict_to_bson(command, False, opts)
     # When OP_MSG is used unacknowledged we have to check command
@@ -872,8 +917,11 @@ def _client_batched_op_msg_impl(
     command_abridged = {key: command[key] for key in abridged_keys}
     command_len_abridged = len(_dict_to_bson(command_abridged, False, opts))
 
-    # Maximum combined size of the ops and nsInfo document sequences.
-    max_doc_sequences_bytes = max_message_size - (_OP_MSG_OVERHEAD + command_len_abridged)
+    # Maximum combined size of the ops and nsInfo document sequences. Reserve
+    # the telemetry section, which _client_construct_op_msg appends last.
+    max_doc_sequences_bytes = max_message_size - (
+        _OP_MSG_OVERHEAD + command_len_abridged + len(section)
+    )
 
     ns_info = {}
     to_send_ops: list[Mapping[str, Any]] = []
@@ -941,7 +989,7 @@ def _client_batched_op_msg_impl(
 
     # Construct the entire OP_MSG.
     length = _client_construct_op_msg(
-        command_encoded, to_send_ops_encoded, to_send_ns_encoded, ack, buf
+        command_encoded, to_send_ops_encoded, to_send_ns_encoded, ack, buf, traceparent
     )
 
     return to_send_ops, to_send_ns, length
@@ -954,6 +1002,7 @@ def _client_encode_batched_op_msg(
     ack: bool,
     opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
+    traceparent: Optional[str] = None,
 ) -> tuple[bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
     """Encode the next batched client-level bulkWrite
     operation as OP_MSG.
@@ -961,7 +1010,7 @@ def _client_encode_batched_op_msg(
     buf = _BytesIO()
 
     to_send_ops, to_send_ns, _ = _client_batched_op_msg_impl(
-        command, operations, namespaces, ack, opts, ctx, buf
+        command, operations, namespaces, ack, opts, ctx, buf, traceparent
     )
     return buf.getvalue(), to_send_ops, to_send_ns
 
@@ -973,12 +1022,13 @@ def _client_batched_op_msg_compressed(
     ack: bool,
     opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
+    traceparent: Optional[str] = None,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
     """Create the next batched client-level bulkWrite operation
     with OP_MSG, compressed.
     """
     data, to_send_ops, to_send_ns = _client_encode_batched_op_msg(
-        command, operations, namespaces, ack, opts, ctx
+        command, operations, namespaces, ack, opts, ctx, traceparent
     )
 
     assert ctx.conn.compression_context is not None
@@ -993,6 +1043,7 @@ def _client_batched_op_msg(
     ack: bool,
     opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
+    traceparent: Optional[str] = None,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
     """OP_MSG implementation entry point for client-level bulkWrite."""
     buf = _BytesIO()
@@ -1003,7 +1054,7 @@ def _client_batched_op_msg(
     buf.write(b"\x00\x00\x00\x00\xdd\x07\x00\x00")
 
     to_send_ops, to_send_ns, length = _client_batched_op_msg_impl(
-        command, operations, namespaces, ack, opts, ctx, buf
+        command, operations, namespaces, ack, opts, ctx, buf, traceparent
     )
 
     # Header - request id and message length
@@ -1022,6 +1073,7 @@ def _client_do_batched_op_msg(
     namespaces: list[str],
     opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
+    traceparent: Optional[str] = None,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
     """Create the next batched client-level bulkWrite
     operation using OP_MSG.
@@ -1032,8 +1084,10 @@ def _client_do_batched_op_msg(
     else:
         ack = True
     if ctx.conn.compression_context:
-        return _client_batched_op_msg_compressed(command, operations, namespaces, ack, opts, ctx)
-    return _client_batched_op_msg(command, operations, namespaces, ack, opts, ctx)
+        return _client_batched_op_msg_compressed(
+            command, operations, namespaces, ack, opts, ctx, traceparent
+        )
+    return _client_batched_op_msg(command, operations, namespaces, ack, opts, ctx, traceparent)
 
 
 # End OP_MSG -----------------------------------------------------
@@ -1353,7 +1407,11 @@ class _Query:
         return self._as_command
 
     def get_message(
-        self, read_preference: _ServerMode, conn: _AgnosticConnection, use_cmd: bool = False
+        self,
+        read_preference: _ServerMode,
+        conn: _AgnosticConnection,
+        use_cmd: bool = False,
+        traceparent: Optional[str] = None,
     ) -> tuple[int, bytes, int]:
         """Get a query message"""
         # Use the read_preference decided by _socket_from_server.
@@ -1367,6 +1425,7 @@ class _Query:
             read_preference,
             self.codec_options,
             ctx=conn.compression_context,
+            traceparent=traceparent,
         )
         return request_id, msg, size
 
@@ -1464,7 +1523,11 @@ class _GetMore:
         return self._as_command
 
     def get_message(
-        self, dummy0: Any, conn: _AgnosticConnection, use_cmd: bool = False
+        self,
+        dummy0: Any,
+        conn: _AgnosticConnection,
+        use_cmd: bool = False,
+        traceparent: Optional[str] = None,
     ) -> Union[tuple[int, bytes, int], tuple[int, bytes]]:
         """Get a getmore message."""
         ns = self.namespace()
@@ -1477,7 +1540,13 @@ class _GetMore:
             else:
                 flags = 0
             request_id, msg, size, _ = _op_msg(
-                flags, spec, self.db, None, self.codec_options, ctx=conn.compression_context
+                flags,
+                spec,
+                self.db,
+                None,
+                self.codec_options,
+                ctx=conn.compression_context,
+                traceparent=traceparent,
             )
             return request_id, msg, size
 
