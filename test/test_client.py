@@ -133,6 +133,19 @@ from test.utils_shared import (
 _IS_SYNC = True
 
 
+def _driver_version(base_version: str, name: str, last_version: str | None = None) -> str:
+    """Build a metadata driver version aligned 1:1 with ``name`` segments.
+
+    The ``|c`` and ``|async`` name segments always have an empty version entry,
+    so the version string has one delimiter per name delimiter. ``last_version``
+    is used when the final segment carries a wrapped driver's version.
+    """
+    segments = [""] * name.count("|")
+    if last_version is not None:
+        segments[-1] = last_version
+    return "|".join([base_version, *segments])
+
+
 class ClientUnitTest(UnitTest):
     """MongoClient tests that don't require a server."""
 
@@ -379,6 +392,9 @@ class ClientUnitTest(UnitTest):
             metadata["driver"]["name"] = "PyMongo|c"
         else:
             metadata["driver"]["name"] = "PyMongo"
+        metadata["driver"]["version"] = _driver_version(
+            _METADATA["driver"]["version"], metadata["driver"]["name"]
+        )
         metadata["application"] = {"name": "foobar"}
         client = self.simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
@@ -405,7 +421,9 @@ class ClientUnitTest(UnitTest):
             metadata["driver"]["name"] = "PyMongo|c|FooDriver"
         else:
             metadata["driver"]["name"] = "PyMongo|FooDriver"
-        metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
+        metadata["driver"]["version"] = _driver_version(
+            _METADATA["driver"]["version"], metadata["driver"]["name"], last_version="1.2.3"
+        )
         client = self.simple_client(
             "foo",
             27017,
@@ -415,6 +433,13 @@ class ClientUnitTest(UnitTest):
         )
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
+        if has_c():
+            metadata["driver"]["name"] = "PyMongo|c|FooDriver"
+        else:
+            metadata["driver"]["name"] = "PyMongo|FooDriver"
+        metadata["driver"]["version"] = _driver_version(
+            _METADATA["driver"]["version"], metadata["driver"]["name"], last_version="1.2.3"
+        )
         metadata["platform"] = "{}|FooPlatform".format(_METADATA["platform"])
         client = self.simple_client(
             "foo",
@@ -431,19 +456,98 @@ class ClientUnitTest(UnitTest):
             connect=False,
         )
         options = client.options
+        truncated = options.pool_options.metadata["driver"]
         self.assertLessEqual(
             len(bson.encode(options.pool_options.metadata)),
             _MAX_METADATA_SIZE,
+        )
+        self.assertEqual(
+            truncated["name"].count("|"),
+            truncated["version"].count("|"),
         )
         client = self.simple_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE, version="s" * _MAX_METADATA_SIZE),
             connect=False,
         )
         options = client.options
+        truncated = options.pool_options.metadata["driver"]
         self.assertLessEqual(
             len(bson.encode(options.pool_options.metadata)),
             _MAX_METADATA_SIZE,
         )
+        self.assertEqual(
+            truncated["name"].count("|"),
+            truncated["version"].count("|"),
+        )
+        # An oversized wrapper name with no version must retain a truncated
+        # name rather than collapse to the base entry.
+        client = self.simple_client(
+            driver=DriverInfo(name="x" * (_MAX_METADATA_SIZE * 2), version=None),
+            connect=False,
+        )
+        truncated = client.options.pool_options.metadata["driver"]
+        self.assertLessEqual(
+            len(bson.encode(client.options.pool_options.metadata)),
+            _MAX_METADATA_SIZE,
+        )
+        self.assertIn("xxxx", truncated["name"])
+        self.assertEqual(
+            truncated["name"].count("|"),
+            truncated["version"].count("|"),
+        )
+        # Successive appends must stay within the limit and keep name and
+        # version index-aligned after truncation. Once the metadata saturates,
+        # further appends must not grow the dedup tracking list.
+        client = self.simple_client(connect=False)
+        for i in range(300):
+            client.append_metadata(DriverInfo(name=f"D{i}", version=f"1.{i}"))
+        pool = client.options.pool_options
+        self.assertLessEqual(len(bson.encode(pool.metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(
+            pool.metadata["driver"]["name"].count("|"),
+            pool.metadata["driver"]["version"].count("|"),
+        )
+        count = len(pool._PoolOptions__appended_drivers)
+        for i in range(300, 600):
+            client.append_metadata(DriverInfo(name=f"D{i}", version=f"1.{i}"))
+        self.assertEqual(len(pool._PoolOptions__appended_drivers), count)
+        # Platform-only appends (empty name/version) stay bounded the same way.
+        client = self.simple_client(connect=False)
+        for i in range(300):
+            client.append_metadata(DriverInfo(name="", version="", platform=f"P{i}"))
+        pool = client.options.pool_options
+        self.assertLessEqual(len(bson.encode(pool.metadata)), _MAX_METADATA_SIZE)
+        count = len(pool._PoolOptions__appended_drivers)
+        for i in range(300, 600):
+            client.append_metadata(DriverInfo(name="", version="", platform=f"P{i}"))
+        self.assertEqual(len(pool._PoolOptions__appended_drivers), count)
+        # The '|' delimiter is reserved for joining appended metadata, so it
+        # must be rejected in every field.
+        self.assertRaises(ValueError, DriverInfo, "a|b", "1.0", None)
+        self.assertRaises(ValueError, DriverInfo, "lib", "1|0", None)
+        self.assertRaises(ValueError, DriverInfo, "lib", "1.0", "Frame|Platform")
+        # Appending a platform after truncation has dropped it recreates the field.
+        client = self.simple_client(connect=False)
+        for i in range(300):
+            client.append_metadata(DriverInfo(name="", version="", platform=f"Q{i}"))
+        pool = client.options.pool_options
+        self.assertLess(len(pool._PoolOptions__appended_drivers), 300)
+        client.append_metadata(DriverInfo(name="Wrapper", version="1.0", platform="Recreated"))
+        self.assertLessEqual(len(bson.encode(pool.metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(
+            pool.metadata["driver"]["name"].count("|"),
+            pool.metadata["driver"]["version"].count("|"),
+        )
+        # Empty strings are treated as unset, so a duplicate differing only in
+        # None vs "" is a no-op.
+        client = self.simple_client(connect=False)
+        client.append_metadata(DriverInfo("library", None, "Library Platform"))
+        names = client.options.pool_options.metadata["driver"]["name"]
+        vers = client.options.pool_options.metadata["driver"]["version"]
+        client.append_metadata(DriverInfo("library", "", "Library Platform"))
+        metadata = client.options.pool_options.metadata
+        self.assertEqual(metadata["driver"]["name"], names)
+        self.assertEqual(metadata["driver"]["version"], vers)
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
@@ -2177,6 +2281,9 @@ class TestClient(IntegrationTest):
                 metadata["driver"]["name"] = "PyMongo|c"
             else:
                 metadata["driver"]["name"] = "PyMongo"
+            metadata["driver"]["version"] = _driver_version(
+                _METADATA["driver"]["version"], metadata["driver"]["name"]
+            )
             if expected_env is not None:
                 metadata["env"] = expected_env
 

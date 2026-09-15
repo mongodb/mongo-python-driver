@@ -37,6 +37,7 @@ from pymongo.common import (
     WAIT_QUEUE_TIMEOUT,
     has_c,
 )
+from pymongo.lock import _create_lock
 
 if TYPE_CHECKING:
     from pymongo.auth_shared import MongoCredential
@@ -200,6 +201,25 @@ def _metadata_env() -> dict[str, Any]:
 _MAX_METADATA_SIZE = 512
 
 
+def _truncate_utf8(content: str, overflow: int) -> str:
+    """Trim `overflow` UTF-8 bytes from the end of content, keeping a valid prefix."""
+    if overflow <= 0:
+        return content
+    data = content.encode("utf-8")
+    if len(data) <= overflow:
+        return ""
+    return data[: len(data) - overflow].decode("utf-8", errors="ignore")
+
+
+def _normalize_driver(driver: DriverInfo) -> DriverInfo:
+    """Treat None and "" as equivalent unset fields for deduplication."""
+    return driver._replace(
+        name=driver.name or "",
+        version=driver.version or "",
+        platform=driver.platform or "",
+    )
+
+
 # See: https://github.com/mongodb/specifications/blob/master/source/mongodb-handshake/handshake.md#limitations
 def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     """Perform metadata truncation."""
@@ -226,7 +246,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     overflow = encoded_size - _MAX_METADATA_SIZE
     plat = metadata.get("platform", "")
     if plat:
-        plat = plat[:-overflow]
+        plat = _truncate_utf8(plat, overflow)
     if plat:
         metadata["platform"] = plat
     else:
@@ -234,26 +254,36 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     encoded_size = len(bson.encode(metadata))
     if encoded_size <= _MAX_METADATA_SIZE:
         return
-    # 5. Truncate driver info.
-    overflow = encoded_size - _MAX_METADATA_SIZE
+    # 5. Truncate driver info, keeping name and version 1:1 index-aligned.
     driver = metadata.get("driver", {})
     if driver:
-        # Truncate driver version.
-        driver_version = driver.get("version")[:-overflow]
-        if len(driver_version) >= len(_METADATA["driver"]["version"]):
-            metadata["driver"]["version"] = driver_version
-        else:
-            metadata["driver"]["version"] = _METADATA["driver"]["version"]
-        encoded_size = len(bson.encode(metadata))
-        if encoded_size <= _MAX_METADATA_SIZE:
-            return
-        # Truncate driver name.
-        overflow = encoded_size - _MAX_METADATA_SIZE
-        driver_name = driver.get("name")[:-overflow]
-        if len(driver_name) >= len(_METADATA["driver"]["name"]):
-            metadata["driver"]["name"] = driver_name
-        else:
-            metadata["driver"]["name"] = _METADATA["driver"]["name"]
+        # Trim wrapper version and name content first, dropping paired segments
+        # only as a last resort, so name and version stay 1:1 aligned.
+        while True:
+            encoded_size = len(bson.encode(metadata))
+            if encoded_size <= _MAX_METADATA_SIZE:
+                break
+            overflow = encoded_size - _MAX_METADATA_SIZE
+            previous = (driver.get("name"), driver.get("version"))
+            n_parts = driver.get("name", "").split("|")
+            v_parts = driver.get("version", "").split("|")
+
+            if len(v_parts) > 1 and v_parts[-1]:
+                v_parts[-1] = _truncate_utf8(v_parts[-1], overflow)
+                driver["version"] = "|".join(v_parts)
+            elif len(n_parts) > 1 and n_parts[-1]:
+                n_parts[-1] = _truncate_utf8(n_parts[-1], overflow)
+                driver["name"] = "|".join(n_parts)
+            elif len(n_parts) > 1:
+                n_parts.pop()
+                v_parts.pop()
+                driver["name"] = "|".join(n_parts)
+                driver["version"] = "|".join(v_parts)
+            else:
+                break
+
+            if previous == (driver.get("name"), driver.get("version")):
+                break
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
@@ -277,6 +307,7 @@ class PoolOptions:
     """
 
     __slots__ = (
+        "__appended_drivers",
         "__appname",
         "__compression_settings",
         "__connect_timeout",
@@ -288,6 +319,7 @@ class PoolOptions:
         "__max_idle_time_seconds",
         "__max_pool_size",
         "__metadata",
+        "__metadata_lock",
         "__min_pool_size",
         "__pause_enabled",
         "__server_api",
@@ -336,6 +368,8 @@ class PoolOptions:
         self.__load_balanced = load_balanced
         self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
+        self.__appended_drivers: list[DriverInfo] = []
+        self.__metadata_lock = _create_lock()
 
         if appname:
             self.__metadata["application"] = {"name": appname}
@@ -353,10 +387,18 @@ class PoolOptions:
                 self.__metadata["driver"]["name"],
                 "c",
             )
+            self.__metadata["driver"]["version"] = "{}|{}".format(
+                self.__metadata["driver"]["version"],
+                "",
+            )
         if not is_sync:
             self.__metadata["driver"]["name"] = "{}|{}".format(
                 self.__metadata["driver"]["name"],
                 "async",
+            )
+            self.__metadata["driver"]["version"] = "{}|{}".format(
+                self.__metadata["driver"]["version"],
+                "",
             )
         if driver:
             self._update_metadata(driver)
@@ -368,28 +410,36 @@ class PoolOptions:
         _truncate_metadata(self.__metadata)
 
     def _update_metadata(self, driver: DriverInfo) -> None:
-        """Updates the client's metadata"""
-        if driver.name and driver.name.lower() in self.__metadata["driver"]["name"].lower().split(
-            "|"
-        ):
-            return
+        """Updates the client's metadata."""
+        with self.__metadata_lock:
+            driver = _normalize_driver(driver)
+            if driver in self.__appended_drivers:
+                return
 
-        metadata = copy.deepcopy(self.__metadata)
+            name_delims = self.__metadata["driver"]["name"].count("|")
+            metadata = copy.deepcopy(self.__metadata)
 
-        if driver.name:
             metadata["driver"]["name"] = "{}|{}".format(
-                metadata["driver"]["name"],
-                driver.name,
+                metadata["driver"]["name"], driver.name or ""
             )
-        if driver.version:
             metadata["driver"]["version"] = "{}|{}".format(
-                metadata["driver"]["version"],
-                driver.version,
+                metadata["driver"]["version"], driver.version or ""
             )
-        if driver.platform:
-            metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+            if driver.platform:
+                if "platform" in metadata:
+                    metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+                else:
+                    metadata["platform"] = driver.platform
 
-        self.__metadata = metadata
+            _truncate_metadata(metadata)
+
+            self.__metadata = metadata
+
+            # Only track drivers whose appended name/version pair survived
+            # truncation (i.e. the name gained a segment), so __appended_drivers
+            # stays bounded and the dedup membership check stays fast.
+            if metadata["driver"]["name"].count("|") > name_delims:
+                self.__appended_drivers.append(driver)
 
     @property
     def _credentials(self) -> Optional[MongoCredential]:
