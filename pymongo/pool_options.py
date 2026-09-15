@@ -23,7 +23,6 @@ import copy
 import os
 import platform
 import sys
-import threading
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
@@ -38,6 +37,7 @@ from pymongo.common import (
     WAIT_QUEUE_TIMEOUT,
     has_c,
 )
+from pymongo.lock import _create_lock
 
 if TYPE_CHECKING:
     from pymongo.auth_shared import MongoCredential
@@ -361,7 +361,7 @@ class PoolOptions:
         self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
         self.__appended_drivers: list[DriverInfo] = []
-        self.__metadata_lock = threading.Lock()
+        self.__metadata_lock = _create_lock()
 
         if appname:
             self.__metadata["application"] = {"name": appname}
