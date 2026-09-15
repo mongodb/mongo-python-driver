@@ -359,6 +359,65 @@ class TestSrvPolling(AsyncPyMongoTestCase):
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
                 await self.assert_nodelist_change(response, client)
 
+    async def test_14_the_validator_is_consulted_when_srv_records_are_rescanned(self):
+        seen = []
+
+        def validator(host):
+            seen.append(host)
+            return True
+
+        response = self.BASE_SRV_RESPONSE[:]
+        response.append(("localhost.test.build.10gen.cc", 27019))
+
+        with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
+            client = self.simple_client(self.CONNECTION_STRING, srv_host_validator=validator)
+            await client.aconnect()
+            await self.assert_nodelist_change(self.BASE_SRV_RESPONSE, client)
+            seen.clear()
+            with SrvPollingKnobs(nodelist_callback=lambda: response):
+                await self.assert_nodelist_change(response, client)
+
+        self.assertIn("localhost.test.build.10gen.cc", seen)
+
+    async def test_15_a_rejecting_or_raising_validator_does_not_raise_or_stop_polling(self):
+        def rejecting(host):
+            return False
+
+        def raising(host):
+            raise RuntimeError("boom")
+
+        response = self.BASE_SRV_RESPONSE[:]
+        response.append(("localhost.test.build.10gen.cc", 27019))
+
+        for failing in (rejecting, raising):
+            with self.subTest(validator=failing.__name__):
+                # Accept everything until the client is connected, then start failing.
+                state = {"validator": lambda host: True}
+
+                with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
+                    client = self.simple_client(
+                        self.CONNECTION_STRING,
+                        srv_host_validator=lambda host: state["validator"](host),
+                    )
+                    await client.aconnect()
+                    await self.assert_nodelist_change(self.BASE_SRV_RESPONSE, client)
+
+                    # The rescan sees the new record but the validator fails: no
+                    # error reaches the application and the topology is unchanged.
+                    state["validator"] = failing
+                    with SrvPollingKnobs(
+                        nodelist_callback=lambda: response, count_resolver_calls=True
+                    ):
+                        await self.assert_nodelist_nochange(self.BASE_SRV_RESPONSE, client)
+
+                    # Polling was not stopped by the failures: once the validator
+                    # accepts again, the new host is picked up.
+                    state["validator"] = lambda host: True
+                    with SrvPollingKnobs(nodelist_callback=lambda: response):
+                        await self.assert_nodelist_change(response, client)
+
+                    await client.close()
+
     async def test_srv_waits_to_poll(self):
         modified = [("localhost.test.build.10gen.cc", 27019)]
 

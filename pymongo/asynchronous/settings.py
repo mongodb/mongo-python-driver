@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Collection
-from typing import Optional
+from typing import Callable, Optional
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -51,6 +51,7 @@ class TopologySettings(_BaseTopologySettings[type[Pool], type[monitor.Monitor]])
         srv_service_name: str = common.SRV_SERVICE_NAME,
         srv_max_hosts: int = 0,
         srv_allowed_hosts_suffix: Optional[str] = None,
+        srv_host_validator: Optional[Callable[[str], bool]] = None,
         server_monitoring_mode: str = common.SERVER_MONITORING_MODE,
         topology_id: Optional[ObjectId] = None,
     ):
@@ -77,6 +78,7 @@ class TopologySettings(_BaseTopologySettings[type[Pool], type[monitor.Monitor]])
             srv_service_name,
             srv_max_hosts,
             srv_allowed_hosts_suffix,
+            srv_host_validator,
             server_monitoring_mode,
             topology_id,
         )

@@ -21,6 +21,26 @@ from typing import Optional
 
 _PUBLIC_SUFFIXES: Optional[tuple[set[str], set[str], set[str]]] = None
 
+# Single labels that srvAllowedHostsSuffix may be set to. See the
+# srvAllowedHostsSuffix section of the Initial DNS Seedlist Discovery spec.
+SPECIAL_USE_LABELS = frozenset(
+    [
+        # RFC 6761 special use names.
+        "test",
+        "localhost",
+        "invalid",
+        "example",
+        # RFC 6762 multicast DNS.
+        "local",
+        # Reserved by ICANN for private use.
+        "internal",
+        # Not officially reserved by ICANN but commonly used privately.
+        "corp",
+        "home",
+        "mail",
+    ]
+)
+
 
 def _to_punycode(string: str) -> str:
     """Convert a string to Punycode."""
