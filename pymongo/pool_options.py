@@ -410,7 +410,17 @@ class PoolOptions:
             _truncate_metadata(metadata)
 
             self.__metadata = metadata
-            self.__appended_drivers.append(driver)
+
+            # Keep the dedup list bounded: a driver that truncation dropped
+            # from the published metadata can't be re-appended anyway.
+            if driver.name:
+                represented = metadata["driver"]["name"].split("|")[-1] == driver.name
+            elif driver.version:
+                represented = metadata["driver"]["version"].split("|")[-1] == driver.version
+            else:
+                represented = True
+            if represented:
+                self.__appended_drivers.append(driver)
 
     @property
     def _credentials(self) -> Optional[MongoCredential]:

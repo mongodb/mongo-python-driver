@@ -494,6 +494,12 @@ class ClientUnitTest(UnitTest):
             truncated["name"].count("|"),
             truncated["version"].count("|"),
         )
+        # Truncated-away drivers must not be retained, so the dedup list stays
+        # bounded instead of growing one entry per append.
+        self.assertLess(
+            len(options.pool_options._PoolOptions__appended_drivers),
+            80,
+        )
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
