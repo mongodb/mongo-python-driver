@@ -233,7 +233,7 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         # the document has a field `backpressure` whose value is `"2"`.
         self.assertEqual(self.handshake_req["backpressure"], "2")
 
-    # Prose test no. 10
+    # Prose test no. 11
     async def test_append_metadata_rejects_delimiter(self):
         cases = [
             ("frame|work", "2.0", "Framework Platform"),
@@ -262,16 +262,26 @@ class TestClientMetadataProse(AsyncIntegrationTest):
                 self.assertEqual(platform1, platform0)
                 await client.close()
 
-    # Prose test no. 11
+    # Prose test no. 10
     async def test_index_correspondence(self):
         cases = [
+            ("Gap in middle (name)", [(None, None), ("F2", None)], "||F2", "||"),
             ("Gap in middle (version)", [("F1", None), ("F2", "2.0")], "|F1|F2", "||2.0"),
             ("Trailing delimiter retained", [("F1", None)], "|F1", "|"),
-            ("Equal versions do not collapse", [("F1", None)], "|F1", "|"),
-            ("Equal names do not collapse", [("PyMongo", "1.0")], "|PyMongo", "|1.0"),
+            (
+                "Equal versions do not collapse",
+                [("F1", "{driver_version}")],
+                "|F1",
+                "|{driver_version}",
+            ),
+            (
+                "Equal names do not collapse",
+                [("{driver_name}", "1.0")],
+                "|{driver_name}",
+                "|1.0",
+            ),
             ("Duplicates still deduplicate", [("F1", "1.0"), ("F1", "1.0")], "|F1", "|1.0"),
             ("All versions absent", [("F1", None), ("F2", None)], "|F1|F2", "||"),
-            ("Gap in middle (name)", [(None, "1.0"), ("F2", "2.0")], "||F2", "|1.0|2.0"),
             ("All names absent", [(None, "1.0"), (None, "2.0")], "||", "|1.0|2.0"),
             (
                 "Non-adjacent duplicate",
@@ -285,7 +295,12 @@ class TestClientMetadataProse(AsyncIntegrationTest):
                 "|F1|F1",
                 "|1.0|1.0",
             ),
-            ("Wrapper matching the driver's own identity", [("PyMongo", None)], "|PyMongo", "|"),
+            (
+                "Wrapper matching the driver's own identity",
+                [("{driver_name}", "{driver_version}")],
+                "|{driver_name}",
+                "|{driver_version}",
+            ),
         ]
         for (
             description,
@@ -302,20 +317,40 @@ class TestClientMetadataProse(AsyncIntegrationTest):
                 name0, version0, _, _ = await self.send_ping_and_get_metadata(client, True)
                 await asyncio.sleep(0.005)
 
+                assert name0 is not None
+                assert version0 is not None
+                driver_name = name0.split("|")[0]
+                driver_version = version0.split("|")[0]
+
+                def resolve(value: Optional[str]) -> Optional[str]:
+                    if value is None:
+                        return None
+                    return value.format(driver_name=driver_name, driver_version=driver_version)
+
                 # Append each DriverInfoOptions in order.
                 for opts in appended:
-                    d_name = opts[0] if len(opts) > 0 else None
-                    d_version = opts[1] if len(opts) > 1 else None
-                    d_platform = opts[2] if len(opts) > 2 else None
+                    d_name = resolve(opts[0]) if len(opts) > 0 else None
+                    d_version = resolve(opts[1]) if len(opts) > 1 else None
+                    d_platform = resolve(opts[2]) if len(opts) > 2 else None
                     client.append_metadata(DriverInfo(d_name or "", d_version, d_platform))
 
                 # New handshake with the appended metadata.
                 name1, version1, _, _ = await self.send_ping_and_get_metadata(client, True)
 
-                assert name0 is not None
-                assert version0 is not None
-                self.assertEqual(name1, name0 + expected_name_suffix)
-                self.assertEqual(version1, version0 + expected_version_suffix)
+                self.assertEqual(
+                    name1,
+                    name0
+                    + expected_name_suffix.format(
+                        driver_name=driver_name, driver_version=driver_version
+                    ),
+                )
+                self.assertEqual(
+                    version1,
+                    version0
+                    + expected_version_suffix.format(
+                        driver_name=driver_name, driver_version=driver_version
+                    ),
+                )
                 await client.close()
 
 
