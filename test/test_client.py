@@ -538,6 +538,16 @@ class ClientUnitTest(UnitTest):
             pool.metadata["driver"]["name"].count("|"),
             pool.metadata["driver"]["version"].count("|"),
         )
+        # Empty strings are treated as unset, so a duplicate differing only in
+        # None vs "" is a no-op.
+        client = self.simple_client(connect=False)
+        client.append_metadata(DriverInfo("library", None, "Library Platform"))
+        names = client.options.pool_options.metadata["driver"]["name"]
+        vers = client.options.pool_options.metadata["driver"]["version"]
+        client.append_metadata(DriverInfo("library", "", "Library Platform"))
+        metadata = client.options.pool_options.metadata
+        self.assertEqual(metadata["driver"]["name"], names)
+        self.assertEqual(metadata["driver"]["version"], vers)
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):

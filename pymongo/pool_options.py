@@ -211,6 +211,15 @@ def _truncate_utf8(content: str, overflow: int) -> str:
     return data[: len(data) - overflow].decode("utf-8", errors="ignore")
 
 
+def _normalize_driver(driver: DriverInfo) -> DriverInfo:
+    """Treat None and "" as equivalent unset fields for deduplication."""
+    return driver._replace(
+        name=driver.name or "",
+        version=driver.version or "",
+        platform=driver.platform or "",
+    )
+
+
 # See: https://github.com/mongodb/specifications/blob/master/source/mongodb-handshake/handshake.md#limitations
 def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     """Perform metadata truncation."""
@@ -403,6 +412,7 @@ class PoolOptions:
     def _update_metadata(self, driver: DriverInfo) -> None:
         """Updates the client's metadata."""
         with self.__metadata_lock:
+            driver = _normalize_driver(driver)
             if driver in self.__appended_drivers:
                 return
 
