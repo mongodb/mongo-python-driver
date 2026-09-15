@@ -201,6 +201,16 @@ def _metadata_env() -> dict[str, Any]:
 _MAX_METADATA_SIZE = 512
 
 
+def _truncate_utf8(content: str, overflow: int) -> str:
+    """Trim `overflow` UTF-8 bytes from the end of content, keeping a valid prefix."""
+    if overflow <= 0:
+        return content
+    data = content.encode("utf-8")
+    if len(data) <= overflow:
+        return ""
+    return data[: len(data) - overflow].decode("utf-8", errors="ignore")
+
+
 # See: https://github.com/mongodb/specifications/blob/master/source/mongodb-handshake/handshake.md#limitations
 def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     """Perform metadata truncation."""
@@ -227,7 +237,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     overflow = encoded_size - _MAX_METADATA_SIZE
     plat = metadata.get("platform", "")
     if plat:
-        plat = plat[:-overflow]
+        plat = _truncate_utf8(plat, overflow)
     if plat:
         metadata["platform"] = plat
     else:
@@ -250,10 +260,10 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
             v_parts = driver.get("version", "").split("|")
 
             if len(v_parts) > 1 and v_parts[-1]:
-                v_parts[-1] = v_parts[-1][:-overflow]
+                v_parts[-1] = _truncate_utf8(v_parts[-1], overflow)
                 driver["version"] = "|".join(v_parts)
             elif len(n_parts) > 1 and n_parts[-1]:
-                n_parts[-1] = n_parts[-1][:-overflow]
+                n_parts[-1] = _truncate_utf8(n_parts[-1], overflow)
                 driver["name"] = "|".join(n_parts)
             elif len(n_parts) > 1:
                 n_parts.pop()
