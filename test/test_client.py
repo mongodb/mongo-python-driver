@@ -133,6 +133,19 @@ from test.utils_shared import (
 _IS_SYNC = True
 
 
+def _driver_version(base_version: str, name: str, last_version: str | None = None) -> str:
+    """Build a metadata driver version aligned 1:1 with ``name`` segments.
+
+    The ``|c`` and ``|async`` name segments always have an empty version entry,
+    so the version string has one delimiter per name delimiter. ``last_version``
+    is used when the final segment carries a wrapped driver's version.
+    """
+    segments = [""] * name.count("|")
+    if last_version is not None:
+        segments[-1] = last_version
+    return "|".join([base_version, *segments])
+
+
 class ClientUnitTest(UnitTest):
     """MongoClient tests that don't require a server."""
 
@@ -379,6 +392,9 @@ class ClientUnitTest(UnitTest):
             metadata["driver"]["name"] = "PyMongo|c"
         else:
             metadata["driver"]["name"] = "PyMongo"
+        metadata["driver"]["version"] = _driver_version(
+            _METADATA["driver"]["version"], metadata["driver"]["name"]
+        )
         metadata["application"] = {"name": "foobar"}
         client = self.simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
@@ -405,7 +421,9 @@ class ClientUnitTest(UnitTest):
             metadata["driver"]["name"] = "PyMongo|c|FooDriver"
         else:
             metadata["driver"]["name"] = "PyMongo|FooDriver"
-        metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
+        metadata["driver"]["version"] = _driver_version(
+            _METADATA["driver"]["version"], metadata["driver"]["name"], last_version="1.2.3"
+        )
         client = self.simple_client(
             "foo",
             27017,
@@ -415,6 +433,13 @@ class ClientUnitTest(UnitTest):
         )
         options = client.options
         self.assertEqual(options.pool_options.metadata, metadata)
+        if has_c():
+            metadata["driver"]["name"] = "PyMongo|c|FooDriver"
+        else:
+            metadata["driver"]["name"] = "PyMongo|FooDriver"
+        metadata["driver"]["version"] = _driver_version(
+            _METADATA["driver"]["version"], metadata["driver"]["name"], last_version="1.2.3"
+        )
         metadata["platform"] = "{}|FooPlatform".format(_METADATA["platform"])
         client = self.simple_client(
             "foo",
@@ -431,18 +456,28 @@ class ClientUnitTest(UnitTest):
             connect=False,
         )
         options = client.options
+        truncated = options.pool_options.metadata["driver"]
         self.assertLessEqual(
             len(bson.encode(options.pool_options.metadata)),
             _MAX_METADATA_SIZE,
+        )
+        self.assertEqual(
+            truncated["name"].count("|"),
+            truncated["version"].count("|"),
         )
         client = self.simple_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE, version="s" * _MAX_METADATA_SIZE),
             connect=False,
         )
         options = client.options
+        truncated = options.pool_options.metadata["driver"]
         self.assertLessEqual(
             len(bson.encode(options.pool_options.metadata)),
             _MAX_METADATA_SIZE,
+        )
+        self.assertEqual(
+            truncated["name"].count("|"),
+            truncated["version"].count("|"),
         )
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
@@ -2177,6 +2212,9 @@ class TestClient(IntegrationTest):
                 metadata["driver"]["name"] = "PyMongo|c"
             else:
                 metadata["driver"]["name"] = "PyMongo"
+            metadata["driver"]["version"] = _driver_version(
+                _METADATA["driver"]["version"], metadata["driver"]["name"]
+            )
             if expected_env is not None:
                 metadata["env"] = expected_env
 

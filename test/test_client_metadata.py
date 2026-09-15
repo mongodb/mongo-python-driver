@@ -99,20 +99,14 @@ class TestClientMetadataProse(IntegrationTest):
         new_name, new_version, new_platform, new_metadata = self.send_ping_and_get_metadata(
             client, True
         )
-        if add_name is not None and add_name.lower() in name.lower().split("|"):
-            self.assertEqual(name, new_name)
-            self.assertEqual(version, new_version)
-            self.assertEqual(platform, new_platform)
-        else:
-            self.assertEqual(new_name, f"{name}|{add_name}" if add_name is not None else name)
-            self.assertEqual(
-                new_version,
-                f"{version}|{add_version}" if add_version is not None else version,
-            )
-            self.assertEqual(
-                new_platform,
-                f"{platform}|{add_platform}" if add_platform is not None else platform,
-            )
+        # Name and version always get a delimiter (empty string if None) to
+        # preserve 1:1 index correspondence.
+        self.assertEqual(new_name, f"{name}|{add_name or ''}")
+        self.assertEqual(new_version, f"{version}|{add_version or ''}")
+        self.assertEqual(
+            new_platform,
+            f"{platform}|{add_platform}" if add_platform is not None else platform,
+        )
 
         metadata.pop("driver")
         metadata.pop("platform")
@@ -216,8 +210,42 @@ class TestClientMetadataProse(IntegrationTest):
         self.check_metadata_added(client, "framework", None, None)
         # wait for connection to become idle
         time.sleep(0.005)
-        # add same metadata again
-        self.check_metadata_added(client, "Framework", None, None)
+        # Append the exact same DriverInfo again: no-op.
+        name, version, platform, _ = self.send_ping_and_get_metadata(client, True)
+        time.sleep(0.005)
+        client.append_metadata(DriverInfo("framework", None, None))
+        new_name, new_version, new_platform, _ = self.send_ping_and_get_metadata(client, True)
+        self.assertEqual(new_name, name)
+        self.assertEqual(new_version, version)
+        self.assertEqual(new_platform, platform)
+
+    def test_append_metadata_rejects_delimiter(self):
+        cases = [
+            ("frame|work", "2.0", "Framework Platform"),
+            ("framework", "2|0", "Framework Platform"),
+            ("framework", "2.0", "Framework|Platform"),
+        ]
+        for name, version, platform in cases:
+            with self.subTest(name=name, version=version, platform=platform):
+                client = self.rs_or_single_client(
+                    "mongodb://" + self.server.address_string,
+                    maxIdleTimeMS=1,
+                    driver=DriverInfo("library", "1.2", "Library Platform"),
+                )
+                # Send initial handshake.
+                name0, version0, platform0, _metadata = self.send_ping_and_get_metadata(
+                    client, True
+                )
+                time.sleep(0.005)
+                # Appending metadata containing the delimiter raises.
+                with self.assertRaises(ValueError):
+                    DriverInfo(name, version, platform)
+                # Metadata is unchanged on the next handshake.
+                name1, version1, platform1, _ = self.send_ping_and_get_metadata(client, True)
+                self.assertEqual(name1, name0)
+                self.assertEqual(version1, version0)
+                self.assertEqual(platform1, platform0)
+                client.close()
 
     def test_handshake_documents_include_backpressure(self):
         # Create a `MongoClient` that is configured to record all handshake documents sent to the server as a part of
@@ -231,6 +259,60 @@ class TestClientMetadataProse(IntegrationTest):
         # Assert that for every handshake document intercepted:
         # the document has a field `backpressure` whose value is `"2"`.
         self.assertEqual(self.handshake_req["backpressure"], "2")
+
+    def test_index_correspondence(self):
+        cases = [
+            ("Gap in middle (version)", [("F1", None), ("F2", "2.0")], "|F1|F2", "||2.0"),
+            ("Trailing delimiter retained", [("F1", None)], "|F1", "|"),
+            ("Equal versions do not collapse", [("F1", None)], "|F1", "|"),
+            ("Equal names do not collapse", [("PyMongo", "1.0")], "|PyMongo", "|1.0"),
+            ("Duplicates still deduplicate", [("F1", "1.0"), ("F1", "1.0")], "|F1", "|1.0"),
+            ("All versions absent", [("F1", None), ("F2", None)], "|F1|F2", "||"),
+            (
+                "Non-adjacent duplicate",
+                [("F1", "1.0"), ("F2", "2.0"), ("F1", "1.0")],
+                "|F1|F2",
+                "|1.0|2.0",
+            ),
+            (
+                "Platform-only difference is not a duplicate",
+                [("F1", "1.0", "P1"), ("F1", "1.0", "P2")],
+                "|F1|F1",
+                "|1.0|1.0",
+            ),
+            ("Wrapper matching the driver's own identity", [("PyMongo", None)], "|PyMongo", "|"),
+        ]
+        for (
+            description,
+            appended,
+            expected_name_suffix,
+            expected_version_suffix,
+        ) in cases:
+            with self.subTest(description=description):
+                client = self.rs_or_single_client(
+                    "mongodb://" + self.server.address_string,
+                    maxIdleTimeMS=1,
+                )
+                # Capture the driver's own name and version from the first handshake.
+                name0, version0, _, _ = self.send_ping_and_get_metadata(client, True)
+                time.sleep(0.005)
+
+                # Append each DriverInfoOptions in order.
+                for opts in appended:
+                    d_name = opts[0] if len(opts) > 0 else None
+                    assert d_name is not None
+                    d_version = opts[1] if len(opts) > 1 else None
+                    d_platform = opts[2] if len(opts) > 2 else None
+                    client.append_metadata(DriverInfo(d_name, d_version, d_platform))
+
+                # New handshake with the appended metadata.
+                name1, version1, _, _ = self.send_ping_and_get_metadata(client, True)
+
+                assert name0 is not None
+                assert version0 is not None
+                self.assertEqual(name1, name0 + expected_name_suffix)
+                self.assertEqual(version1, version0 + expected_version_suffix)
+                client.close()
 
 
 if __name__ == "__main__":
