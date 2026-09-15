@@ -31,7 +31,6 @@ import socket
 import struct
 import subprocess
 import sys
-import threading
 import time
 import uuid
 from collections.abc import Iterable
@@ -113,6 +112,7 @@ from test.asynchronous import (
     remove_all_users,
     unittest,
 )
+from test.asynchronous.helpers import ExceptionCatchingTask
 from test.asynchronous.pymongo_mocks import AsyncMockClient
 from test.asynchronous.utils import (
     async_get_pool,
@@ -1976,7 +1976,6 @@ class TestClient(AsyncIntegrationTest):
         if not negotiated:
             self.skipTest("server did not negotiate compression for any compressor")
 
-    @async_client_context.require_sync
     async def test_reset_during_update_pool(self):
         client = await self.async_rs_or_single_client(minPoolSize=10)
         await client.admin.command("ping")
@@ -1984,39 +1983,30 @@ class TestClient(AsyncIntegrationTest):
         generation = pool.gen.get_overall()
 
         # Continuously reset the pool.
-        class ResetPoolThread(threading.Thread):
-            def __init__(self, pool):
-                super().__init__()
-                self.running = True
-                self.pool = pool
+        running = True
 
-            def stop(self):
-                self.running = False
+        async def reset_pool():
+            while running:
+                exc = AutoReconnect("mock pool error")
+                ctx = _ErrorContext(exc, 0, pool.gen.get_overall(), False, None)
+                await client._topology.handle_error(pool.address, ctx)
+                await asyncio.sleep(0.001)
 
-            async def _run(self):
-                while self.running:
-                    exc = AutoReconnect("mock pool error")
-                    ctx = _ErrorContext(exc, 0, pool.gen.get_overall(), False, None)
-                    await client._topology.handle_error(pool.address, ctx)
-                    await asyncio.sleep(0.001)
-
-            def run(self):
-                self._run()
-
-        t = ResetPoolThread(pool)
-        t.start()
+        t = ExceptionCatchingTask(target=reset_pool)
+        await t.start()
 
         # Ensure that update_pool completes without error even when the pool
         # is reset concurrently.
         try:
-            while True:
+            while t.is_alive():
                 for _ in range(10):
                     await client._topology.update_pool()
                 if generation != pool.gen.get_overall():
                     break
         finally:
-            t.stop()
-            t.join()
+            running = False
+            await t.join()
+        self.assertIsNone(t.exc)
         await client.admin.command("ping")
 
     async def test_background_connections_do_not_hold_locks(self):
@@ -2623,6 +2613,119 @@ class TestExhaustCursor(AsyncIntegrationTest):
         self.assertTrue(tt.get())
         # Unpatch the instance.
         del pool.connect
+
+    @async_client_context.require_sync
+    def test_gevent_kill_churn_deadlock(self):
+        """A greenlet killed mid-operation must not leave the pool deadlocked (PYTHON-6074)."""
+        if not gevent_monkey_patched():
+            raise SkipTest("Must be running monkey patched by gevent")
+        import random
+
+        import gevent
+        import gevent.thread as _gthread
+        from gevent import Timeout, spawn
+
+        # AMPLIFY_RACE=1 widens gevent's brief sleep on a contended lock
+        # so a kill lands there reliably. Only the bare sleep() is
+        # widened; timed sleeps pass through. The unfixed test then
+        # deadlocks within seconds.
+        if os.environ.get("AMPLIFY_RACE", "0") == "1":
+            _AMPLIFY_SECONDS = float(os.environ.get("AMPLIFY_SECONDS", "0.02"))
+
+            _orig_thread_sleep = _gthread.sleep
+
+            def _amplified_sleep(*args):
+                if not args:  # bare sleep(): the courtesy yield on a failed
+                    # non-blocking acquire (Condition.notify -> _is_owned -> acquire(False))
+                    _orig_thread_sleep(_AMPLIFY_SECONDS)
+                else:  # sleep(0.001), sleep(2), etc.: passthrough
+                    _orig_thread_sleep(*args)
+
+            _gthread.sleep = _amplified_sleep
+            self.addCleanup(setattr, _gthread, "sleep", _orig_thread_sleep)
+
+        client = self.async_rs_or_single_client(maxPoolSize=2)
+        coll = client.pymongo_test.coll
+        coll.insert_one({})
+
+        op_count = [0]
+        running = [True]
+        workers: list = []
+
+        def worker():
+            while running[0]:
+                try:
+                    coll.find_one({})
+                    op_count[0] += 1
+                    time.sleep(0.001)
+                except Exception:
+                    return
+
+        def reaper():
+            while running[0]:
+                time.sleep(0.003)
+                if not workers:
+                    continue
+                idx = random.randrange(len(workers))
+                try:
+                    workers[idx].kill(block=False)
+                except Exception:
+                    pass
+                workers[idx] = spawn(worker)
+
+        workers[:] = [spawn(worker) for _ in range(8)]
+        reaper_gr = spawn(reaper)
+        try:
+            # Watchdog: fail (never hang) if no op completes for 8s while
+            # workers are alive. Without the fix the op counter freezes
+            # permanently once the size gate saturates; with the fix, ops keep
+            # flowing and the loop simply runs out the deadline.
+            last = op_count[0]
+            stale = 0.0
+            deadline = time.monotonic() + 12
+            while time.monotonic() < deadline:
+                time.sleep(2)
+                if op_count[0] == last:
+                    stale += 2
+                    if stale >= 8:
+                        self.fail(
+                            "Deadlock detected (PYTHON-6074): no ops completed "
+                            f"for {stale:.0f}s, op_count={op_count[0]}"
+                        )
+                else:
+                    stale = 0.0
+                    last = op_count[0]
+            # Direct liveness probe that does not depend on *when* the leak
+            # landed: on the fixed driver ops keep flowing, so this completes
+            # well within the timeout; on the unfixed driver a saturated size
+            # gate makes it block, the timeout fires and the test fails.
+            try:
+                with Timeout(3):
+                    coll.find_one({})
+            except Timeout:
+                self.fail("Pool gate saturated (PYTHON-6074)")
+            # Deterministic check: a saturated size gate pins the pool's
+            # checkout counters at maxPoolSize (PYTHON-6074).
+            pool = async_get_pool(client)  # type:ignore
+            self.assertLess(pool.requests, pool.max_pool_size)
+            self.assertLess(pool.active_sockets, pool.max_pool_size)
+            self.assertGreater(op_count[0], 0)
+        finally:
+            running[0] = False
+            gevent.killall(workers, block=False)
+            try:
+                reaper_gr.kill(block=False)
+            except Exception:
+                pass
+            # Close the client but don't hang if the pool deadlocked: without
+            # the PYTHON-6074 fix the pool's size gate is saturated and close()
+            # can block forever, so bound it and let the watchdog's self.fail()
+            # propagate.
+            try:
+                with Timeout(5):
+                    client.close()
+            except Timeout:
+                pass
 
 
 class TestClientLazyConnect(AsyncIntegrationTest):

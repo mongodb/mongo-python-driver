@@ -58,6 +58,7 @@ ENVIRON = os.environ.get("OIDC_ENV", "test")
 DOMAIN = os.environ.get("OIDC_DOMAIN", "")
 TOKEN_DIR = os.environ.get("OIDC_TOKEN_DIR", "")
 TOKEN_FILE = os.environ.get("OIDC_TOKEN_FILE", "")
+APP_NAME = os.environ.get("OIDC_APP_NAME", "auth_oidc")
 
 # Generate unified tests.
 globals().update(generate_test_classes(get_test_path("auth", "unified"), module=__name__))
@@ -104,15 +105,16 @@ class OIDCTestBase(AsyncPyMongoTestCase):
 
     @asynccontextmanager
     async def fail_point(self, command_args):
-        cmd_on = dict(configureFailPoint="failCommand", appName="auth_oidc")
+        cmd_on = dict(configureFailPoint="failCommand")
         cmd_on.update(command_args)
+        cmd_on["data"]["appName"] = APP_NAME
         client = AsyncMongoClient(self.uri_admin)
         await client.admin.command(cmd_on)
         try:
             yield
         finally:
             await client.admin.command(
-                "configureFailPoint", cmd_on["configureFailPoint"], mode="off", appName="auth_oidc"
+                "configureFailPoint", cmd_on["configureFailPoint"], mode="off", appName=APP_NAME
             )
             await client.close()
 
