@@ -28,11 +28,12 @@ from typing import (
     Any,
     Optional,
     Union,
+    cast,
 )
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
-from pymongo import _csot, common
+from pymongo import _csot, _otel, common
 from pymongo._telemetry import _generate_op_id_or_none, _operation_telemetry_or_none
 from pymongo.bulk_shared import (
     _COMMANDS,
@@ -232,7 +233,6 @@ class _Bulk:
             if run.ops:
                 yield run
 
-    @_handle_reauth
     def write_command(
         self,
         bwc: _BulkWriteContext,
@@ -241,6 +241,8 @@ class _Bulk:
         msg: bytes,
         docs: list[Mapping[str, Any]],
         client: MongoClient[Any],
+        *,
+        precreated_span: Optional[Any] = None,
     ) -> dict[str, Any]:
         """Run a batch write command, returning the response as a dict."""
         cmd[bwc.field] = docs
@@ -250,6 +252,7 @@ class _Bulk:
             request_id,
             msg,
             client=client,
+            precreated_span=precreated_span,
         )
         return result_docs[0]
 
@@ -262,6 +265,8 @@ class _Bulk:
         max_doc_size: int,
         docs: list[Mapping[str, Any]],
         client: MongoClient[Any],
+        *,
+        precreated_span: Optional[Any] = None,
     ) -> Optional[Mapping[str, Any]]:
         """Send an unacknowledged batch write command."""
         # Historically the STARTED log omits the documents while the published
@@ -278,6 +283,7 @@ class _Bulk:
             orig=published,
             max_doc_size=max_doc_size,
             unacknowledged=True,
+            precreated_span=precreated_span,
         )
         return None
 
@@ -298,13 +304,23 @@ class _Bulk:
                 client=client,  # type: ignore[arg-type]
             )
         else:
-            request_id, msg, to_send = bwc.batch_command(cmd, ops)
+            tracing_options = client.options.tracing
+            with _otel._command_span_for_encoding(
+                tracing_options, bwc.conn, cmd, bwc.db_name, bwc.name
+            ) as (span, precreated_span, traceparent):
+                request_id, msg, to_send = bwc.batch_command(cmd, ops, traceparent=traceparent)
+                _otel._set_command_span_query_text(
+                    span, tracing_options, {**cmd, bwc.field: to_send}
+                )
+            msg = cast(bytes, msg)
             # Though this isn't strictly a "legacy" write, the helper
             # handles publishing commands and sending our message
             # without receiving a result. Send 0 for max_doc_size
             # to disable size checking. Size checking is handled while
             # the documents are encoded to BSON.
-            self.unack_write(bwc, cmd, request_id, msg, 0, to_send, client)  # type: ignore[arg-type]
+            self.unack_write(
+                bwc, cmd, request_id, msg, 0, to_send, client, precreated_span=precreated_span
+            )  # type: ignore[arg-type]
 
         return to_send
 
@@ -312,10 +328,12 @@ class _Bulk:
         self,
         bwc: Union[_BulkWriteContext, _EncryptedBulkWriteContext],
         cmd: dict[str, Any],
-        ops: list[Mapping[str, Any]],
+        run_ops: list[Mapping[str, Any]],
+        idx_offset: int,
         client: MongoClient[Any],
     ) -> tuple[dict[str, Any], list[Mapping[str, Any]]]:
         if self.is_encrypted:
+            ops = cast("list[Mapping[str, Any]]", islice(run_ops, idx_offset, None))
             _, batched_cmd, to_send = bwc.batch_command(cmd, ops)
             result = bwc.conn.command(  # type: ignore[misc]
                 bwc.db_name,
@@ -324,11 +342,31 @@ class _Bulk:
                 session=bwc.session,  # type: ignore[arg-type]
                 client=client,  # type: ignore[arg-type]
             )
-        else:
-            request_id, msg, to_send = bwc.batch_command(cmd, ops)
-            result = self.write_command(bwc, cmd, request_id, msg, to_send, client)  # type: ignore[arg-type]
+            return result, to_send  # type: ignore[return-value]
 
-        return result, to_send  # type: ignore[return-value]
+        def run(
+            ctx: _BulkWriteContext,
+        ) -> tuple[dict[str, Any], list[Mapping[str, Any]]]:
+            # Reauthentication re-runs this closure, so undo the field that
+            # write_command added and re-encode against a fresh span and
+            # traceparent.
+            cmd.pop(ctx.field, None)
+            tracing_options = client.options.tracing
+            with _otel._command_span_for_encoding(
+                tracing_options, ctx.conn, cmd, ctx.db_name, ctx.name
+            ) as (span, precreated_span, traceparent):
+                ops = cast("list[Mapping[str, Any]]", islice(run_ops, idx_offset, None))
+                request_id, msg, to_send = ctx.batch_command(cmd, ops, traceparent=traceparent)
+                _otel._set_command_span_query_text(
+                    span, tracing_options, {**cmd, ctx.field: to_send}
+                )
+            msg = cast(bytes, msg)
+            result = self.write_command(
+                ctx, cmd, request_id, msg, to_send, client, precreated_span=precreated_span
+            )
+            return result, to_send
+
+        return _handle_reauth(run)(bwc)
 
     def _execute_command(
         self,
@@ -402,7 +440,7 @@ class _Bulk:
 
                 # Run as many ops as possible in one command.
                 if write_concern.acknowledged:
-                    result, to_send = self._execute_batch(bwc, cmd, ops, client)
+                    result, to_send = self._execute_batch(bwc, cmd, run.ops, run.idx_offset, client)
 
                     # Retryable writeConcernErrors halt the execution of this run.
                     wce = result.get("writeConcernError", {})

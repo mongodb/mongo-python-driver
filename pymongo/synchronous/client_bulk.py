@@ -28,11 +28,12 @@ from typing import (
     Any,
     Optional,
     Union,
+    cast,
 )
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
-from pymongo import _csot, common
+from pymongo import _csot, _otel, common
 from pymongo._telemetry import _generate_op_id_or_none, _operation_telemetry_or_none
 from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
@@ -234,6 +235,8 @@ class _ClientBulk:
         op_docs: list[Mapping[str, Any]],
         ns_docs: list[Mapping[str, Any]],
         client: MongoClient[Any],
+        *,
+        precreated_span: Optional[Any] = None,
     ) -> dict[str, Any]:
         """Run a client-level batch write command, returning the response as a dict."""
         cmd["ops"] = op_docs
@@ -245,6 +248,7 @@ class _ClientBulk:
                 request_id,
                 msg,  # type: ignore[arg-type]
                 client=client,
+                precreated_span=precreated_span,
             )
             reply = result_docs[0]
         except Exception as exc:
@@ -261,6 +265,8 @@ class _ClientBulk:
         op_docs: list[Mapping[str, Any]],
         ns_docs: list[Mapping[str, Any]],
         client: MongoClient[Any],
+        *,
+        precreated_span: Optional[Any] = None,
     ) -> Optional[Mapping[str, Any]]:
         """Send an unacknowledged client-level batch write command."""
         # Historically the STARTED log omits the ops/nsInfo while the published
@@ -279,6 +285,7 @@ class _ClientBulk:
                 orig=published,
                 max_doc_size=bwc.max_bson_size,
                 unacknowledged=True,
+                precreated_span=precreated_span,
             )
             reply: Mapping[str, Any] = result_docs[0]
         except Exception as exc:
@@ -294,8 +301,29 @@ class _ClientBulk:
         namespaces: list[str],
     ) -> tuple[list[Mapping[str, Any]], list[Mapping[str, Any]]]:
         """Executes a batch of bulkWrite server commands (unack)."""
-        request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(cmd, ops, namespaces)
-        self.unack_write(bwc, cmd, request_id, msg, to_send_ops, to_send_ns, self.client)  # type: ignore[arg-type]
+        tracing_options = self.client.options.tracing
+        with _otel._command_span_for_encoding(
+            tracing_options, bwc.conn, cmd, bwc.db_name, bwc.name
+        ) as (span, precreated_span, traceparent):
+            request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(
+                cmd, ops, namespaces, traceparent=traceparent
+            )
+            # The ops and nsInfo are only known after encoding, so the query text
+            # is refreshed from the full published command.
+            _otel._set_command_span_query_text(
+                span, tracing_options, {**cmd, "ops": to_send_ops, "nsInfo": to_send_ns}
+            )
+        msg = cast(bytes, msg)
+        self.unack_write(
+            bwc,
+            cmd,
+            request_id,
+            msg,
+            to_send_ops,
+            to_send_ns,
+            self.client,
+            precreated_span=precreated_span,
+        )  # type: ignore[arg-type]
         return to_send_ops, to_send_ns
 
     def _execute_batch(
@@ -306,8 +334,29 @@ class _ClientBulk:
         namespaces: list[str],
     ) -> tuple[dict[str, Any], list[Mapping[str, Any]], list[Mapping[str, Any]]]:
         """Executes a batch of bulkWrite server commands (ack)."""
-        request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(cmd, ops, namespaces)
-        result = self.write_command(bwc, cmd, request_id, msg, to_send_ops, to_send_ns, self.client)  # type: ignore[arg-type]
+        tracing_options = self.client.options.tracing
+        with _otel._command_span_for_encoding(
+            tracing_options, bwc.conn, cmd, bwc.db_name, bwc.name
+        ) as (span, precreated_span, traceparent):
+            request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(
+                cmd, ops, namespaces, traceparent=traceparent
+            )
+            # The ops and nsInfo are only known after encoding, so the query text
+            # is refreshed from the full published command.
+            _otel._set_command_span_query_text(
+                span, tracing_options, {**cmd, "ops": to_send_ops, "nsInfo": to_send_ns}
+            )
+        msg = cast(bytes, msg)
+        result = self.write_command(
+            bwc,
+            cmd,
+            request_id,
+            msg,
+            to_send_ops,
+            to_send_ns,
+            self.client,
+            precreated_span=precreated_span,
+        )  # type: ignore[arg-type]
         return result, to_send_ops, to_send_ns  # type: ignore[return-value]
 
     def _process_results_cursor(

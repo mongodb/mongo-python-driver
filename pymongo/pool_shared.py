@@ -59,6 +59,7 @@ class _ConnectionTelemetryInfo(Protocol):
     server_connection_id: Optional[int]
     address: _Address
     service_id: Optional[ObjectId]
+    max_wire_version: int
 
 
 def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:

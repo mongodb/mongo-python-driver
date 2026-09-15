@@ -20,7 +20,7 @@ from abc import abstractmethod
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
-from pymongo import _csot
+from pymongo import _csot, _otel
 from pymongo.asynchronous.command_runner import run_cursor_command
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.cursor_shared import _CURSOR_DOC_FIELDS, _AgnosticCursorBase, _split_message
@@ -111,11 +111,17 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
         use_cmd = operation.use_command(conn)
         more_to_come = bool(operation.conn_mgr and operation.conn_mgr.more_to_come)
         cmd, dbn = await _operation_to_command(operation, conn, use_cmd)
-        if more_to_come:
-            request_id, data, max_doc_size = 0, b"", 0
-        else:
-            message = operation.get_message(read_preference, conn)
-            request_id, data, max_doc_size = _split_message(message)
+        tracing_options = client.options.tracing
+        with _otel._command_span_for_encoding(tracing_options, conn, cmd, dbn, operation.name) as (
+            _,
+            precreated_span,
+            traceparent,
+        ):
+            if more_to_come:
+                request_id, data, max_doc_size = 0, b"", 0
+            else:
+                message = operation.get_message(read_preference, conn, traceparent=traceparent)
+                request_id, data, max_doc_size = _split_message(message)
         user_fields = _CURSOR_DOC_FIELDS if use_cmd else None
         docs, reply, duration = await run_cursor_command(
             conn,
@@ -134,6 +140,7 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
             more_to_come=more_to_come,
             unpack_res=self._unpack_response,
             cursor_id=operation.cursor_id,
+            precreated_span=precreated_span,
         )
         assert reply is not None
         if client._should_pin_cursor(operation.session) or operation.exhaust:  # type: ignore[arg-type]

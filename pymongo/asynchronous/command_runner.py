@@ -102,6 +102,7 @@ async def _run_command(
     set_conn_more_to_come: bool = False,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
+    precreated_span: Optional[Any] = None,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], float]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration_s)``,
     where ``duration_s`` is the round-trip duration in seconds.
@@ -185,6 +186,7 @@ async def _run_command(
             tracing_options=tracing_options,
             speculative_hello=speculative_hello,
             name=name,
+            precreated_span=precreated_span,
         )
         telemetry.started(orig, ensure_db)
         start = 0.0
@@ -269,6 +271,7 @@ async def run_bulk_write_command(
     orig: Optional[MutableMapping[str, Any]] = None,
     max_doc_size: int = 0,
     unacknowledged: bool = False,
+    precreated_span: Optional[Any] = None,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], float]:
     """Send a bulk write batch and return ``(docs, reply, duration_s)``.
 
@@ -300,6 +303,7 @@ async def run_bulk_write_command(
         max_doc_size=max_doc_size,
         unacknowledged=unacknowledged,
         decrypt_reply=False,
+        precreated_span=precreated_span,
     )
 
 
@@ -321,6 +325,7 @@ async def run_cursor_command(
     more_to_come: bool = False,
     unpack_res: Optional[Callable[..., Any]] = None,
     cursor_id: Optional[int] = None,
+    precreated_span: Optional[Any] = None,
 ) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
     """Run a cursor ``find``/``getMore`` operation over ``conn``.
 
@@ -362,6 +367,7 @@ async def run_cursor_command(
         more_to_come=more_to_come,
         unpack_res=unpack_res,
         cursor_id=cursor_id,
+        precreated_span=precreated_span,
     )
     # The cursor path stores the duration on Response, which expects a timedelta.
     return docs, reply, datetime.timedelta(seconds=duration_s)
@@ -444,16 +450,26 @@ async def run_command(
 
     flags = _OpMsg.MORE_TO_COME if unacknowledged else 0
     flags |= _OpMsg.EXHAUST_ALLOWED if exhaust_allowed else 0
-    request_id, msg, size, max_doc_size = message._op_msg(
-        flags, spec, dbname, read_preference, codec_options, ctx=compression_ctx
-    )
-    # If this is an unacknowledged write then make sure the encoded doc(s)
-    # are small enough, otherwise rely on the server to return an error.
-    if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
-        message._raise_document_too_large(name, size, max_bson_size)
+    tracing_options = client.options.tracing if client is not None else None
+    with _otel._command_span_for_encoding(
+        tracing_options, conn, spec, dbname, name, speculative_hello
+    ) as (_, precreated_span, traceparent):
+        request_id, msg, size, max_doc_size = message._op_msg(
+            flags,
+            spec,
+            dbname,
+            read_preference,
+            codec_options,
+            ctx=compression_ctx,
+            traceparent=traceparent,
+        )
+        # If this is an unacknowledged write then make sure the encoded doc(s)
+        # are small enough, otherwise rely on the server to return an error.
+        if unacknowledged and max_bson_size is not None and max_doc_size > max_bson_size:
+            message._raise_document_too_large(name, size, max_bson_size)
 
-    if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
-        message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
+        if max_bson_size is not None and size > max_bson_size + message._COMMAND_OVERHEAD:
+            message._raise_document_too_large(name, size, max_bson_size + message._COMMAND_OVERHEAD)
     docs, _, _ = await _run_command(
         conn,
         spec,
@@ -473,5 +489,6 @@ async def run_command(
         speculative_hello=speculative_hello,
         unacknowledged=unacknowledged,
         set_conn_more_to_come=True,
+        precreated_span=precreated_span,
     )
     return docs[0]  # type: ignore[return-value]
