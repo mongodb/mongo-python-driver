@@ -708,7 +708,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 kwargs,
                 user_fields={"cursor": {"firstBatch": 1}},
             )
-            return await self.client._retryable_read_cursor_in_span(
+            return await self.client._retryable_read(
                 cmd.get_cursor,
                 cmd.get_read_preference(s),  # type: ignore[arg-type]
                 s,
@@ -1052,7 +1052,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
 
-            return await self.client._retryable_read_cursor_in_span(
+            return await self.client._retryable_read(
                 inner,
                 read_preference,
                 tmp_session,
@@ -1157,7 +1157,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 conn, session, read_preference=read_preference, **kwargs
             )
 
-        return await self._client._retryable_read_cursor_in_span(
+        return await self._client._retryable_read(
             _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS, dbname=self.name
         )
 

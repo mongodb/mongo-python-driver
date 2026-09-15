@@ -2592,7 +2592,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             return cmd_cursor
 
         with self._database.client._tmp_session(session) as s:
-            return self._database.client._retryable_read_cursor_in_span(
+            return self._database.client._retryable_read(
                 _cmd,
                 read_pref,
                 s,
@@ -2696,7 +2696,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return self._database.client._retryable_read_cursor_in_span(
+        return self._database.client._retryable_read(
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,
@@ -2945,7 +2945,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             user_fields={"cursor": {"firstBatch": 1}},
         )
 
-        return self._database.client._retryable_read_cursor_in_span(
+        return self._database.client._retryable_read(
             cmd.get_cursor,
             cmd.get_read_preference(session),  # type: ignore[arg-type]
             session,

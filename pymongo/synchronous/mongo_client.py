@@ -1998,6 +1998,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
         operation_telemetry: Optional[_OperationTelemetry] = None,
+        *,
+        dbname: Optional[str] = None,
+        collection: Optional[str] = None,
     ) -> T:
         """Internal retryable helper for all client transactions.
 
@@ -2015,6 +2018,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation_telemetry: A cursor's operation span (see
             ``Cursor._refresh``), which this call makes current but
             neither creates nor ends, defaults to None.
+        :param dbname: Namespace for the operation span when this call creates
+            it, defaults to None.
+        :param collection: Collection for the operation span, defaults to None.
 
         :return: Output of the calling func()
         """
@@ -2032,6 +2038,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             is_run_command=is_run_command,
             is_aggregate_write=is_aggregate_write,
             operation_telemetry=operation_telemetry,
+            dbname=dbname,
+            collection=collection,
         ).run()
 
     def _retryable_read(
@@ -2046,6 +2054,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
         operation_telemetry: Optional[_OperationTelemetry] = None,
+        *,
+        dbname: Optional[str] = None,
+        collection: Optional[str] = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -2065,6 +2076,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
         :param operation_telemetry: Same as ``_retry_internal``'s, defaults to None.
+        :param dbname: Namespace for the operation span, when this call owns it,
+            defaults to None.
+        :param collection: Collection for the operation span, defaults to None.
         """
 
         # Ensure that the client supports retrying on reads and there is no session in
@@ -2086,53 +2100,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 is_run_command=is_run_command,
                 is_aggregate_write=is_aggregate_write,
                 operation_telemetry=operation_telemetry,
-            )
-
-    def _retryable_read_cursor_in_span(
-        self,
-        func: _ReadCall[CommandCursor[Any]],
-        read_pref: _ServerMode,
-        session: Optional[ClientSession],
-        operation: str,
-        address: Optional[_Address] = None,
-        retryable: bool = True,
-        operation_id: Optional[int] = None,
-        is_run_command: bool = False,
-        is_aggregate_write: bool = False,
-        *,
-        dbname: str,
-        collection: Optional[str] = None,
-    ) -> CommandCursor[Any]:
-        """Run a command cursor read within its own operation span.
-
-        Takes the same arguments as :meth:`_retryable_read`, plus the namespace
-        for the span. A command cursor's first batch is fetched inside that
-        call, before the cursor exists, so the span cannot be owned by the
-        cursor the way a find cursor's is; create it here instead.
-
-        The span ends with the command that created the cursor.
-        """
-        operation_telemetry = _operation_telemetry_or_none(
-            self.options.tracing,
-            operation,
-            session,
-            is_run_command=is_run_command,
-            dbname=dbname,
-            collection=collection,
-            set_current=False,
-        )
-        with operation_telemetry or contextlib.nullcontext():
-            return self._retryable_read(
-                func,
-                read_pref,
-                session,
-                operation,
-                address,
-                retryable,
-                operation_id,
-                is_run_command,
-                is_aggregate_write,
-                operation_telemetry=operation_telemetry,
+                dbname=dbname,
+                collection=collection,
             )
 
     def _retryable_write(
@@ -2967,6 +2936,8 @@ class _ClientConnectionRetryable(Generic[T]):
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
         operation_telemetry: Optional[_OperationTelemetry] = None,
+        dbname: Optional[str] = None,
+        collection: Optional[str] = None,
     ):
         self._last_error: Optional[Exception] = None
         self._retrying = False
@@ -2996,7 +2967,12 @@ class _ClientConnectionRetryable(Generic[T]):
         self._owns_telemetry = operation_telemetry is None
         if self._owns_telemetry:
             operation_telemetry = _operation_telemetry_or_none(
-                mongo_client.options.tracing, operation, session, is_run_command=is_run_command
+                mongo_client.options.tracing,
+                operation,
+                session,
+                is_run_command=is_run_command,
+                dbname=dbname,
+                collection=collection,
             )
         self._operation_telemetry = operation_telemetry
         self._attempt_number = 0

@@ -708,7 +708,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 kwargs,
                 user_fields={"cursor": {"firstBatch": 1}},
             )
-            return self.client._retryable_read_cursor_in_span(
+            return self.client._retryable_read(
                 cmd.get_cursor,
                 cmd.get_read_preference(s),  # type: ignore[arg-type]
                 s,
@@ -1052,7 +1052,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
 
-            return self.client._retryable_read_cursor_in_span(
+            return self.client._retryable_read(
                 inner,
                 read_preference,
                 tmp_session,
@@ -1155,7 +1155,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         ) -> CommandCursor[MutableMapping[str, Any]]:
             return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
-        return self._client._retryable_read_cursor_in_span(
+        return self._client._retryable_read(
             _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS, dbname=self.name
         )
 
