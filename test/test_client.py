@@ -479,6 +479,21 @@ class ClientUnitTest(UnitTest):
             truncated["name"].count("|"),
             truncated["version"].count("|"),
         )
+        # Successive appends must also stay within the limit and keep name and
+        # version index-aligned after truncation.
+        client = self.simple_client(connect=False)
+        for i in range(80):
+            client.append_metadata(DriverInfo(name=f"D{i}", version=f"1.{i}"))
+        options = client.options
+        truncated = options.pool_options.metadata["driver"]
+        self.assertLessEqual(
+            len(bson.encode(options.pool_options.metadata)),
+            _MAX_METADATA_SIZE,
+        )
+        self.assertEqual(
+            truncated["name"].count("|"),
+            truncated["version"].count("|"),
+        )
 
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):

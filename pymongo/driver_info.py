@@ -31,6 +31,10 @@ class DriverInfo(namedtuple("DriverInfo", ["name", "version", "platform"])):
     can add its own info to this log message. Initialize with three strings
     like 'MyDriver', '1.2.3', 'some platform info'. Any of these strings may be
     None to accept PyMongo's default.
+
+    The ``|`` character is the reserved delimiter used to join appended
+    metadata, so it must not appear in any of the fields. A
+    :class:`ValueError` is raised if it does.
     """
 
     def __new__(

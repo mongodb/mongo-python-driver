@@ -23,6 +23,7 @@ import copy
 import os
 import platform
 import sys
+import threading
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
@@ -310,6 +311,7 @@ class PoolOptions:
         "__max_idle_time_seconds",
         "__max_pool_size",
         "__metadata",
+        "__metadata_lock",
         "__min_pool_size",
         "__pause_enabled",
         "__server_api",
@@ -359,6 +361,7 @@ class PoolOptions:
         self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
         self.__appended_drivers: list[DriverInfo] = []
+        self.__metadata_lock = threading.Lock()
 
         if appname:
             self.__metadata["application"] = {"name": appname}
@@ -400,20 +403,25 @@ class PoolOptions:
 
     def _update_metadata(self, driver: DriverInfo) -> None:
         """Updates the client's metadata."""
-        if driver in self.__appended_drivers:
-            return
+        with self.__metadata_lock:
+            if driver in self.__appended_drivers:
+                return
 
-        metadata = copy.deepcopy(self.__metadata)
+            metadata = copy.deepcopy(self.__metadata)
 
-        metadata["driver"]["name"] = "{}|{}".format(metadata["driver"]["name"], driver.name or "")
-        metadata["driver"]["version"] = "{}|{}".format(
-            metadata["driver"]["version"], driver.version or ""
-        )
-        if driver.platform:
-            metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+            metadata["driver"]["name"] = "{}|{}".format(
+                metadata["driver"]["name"], driver.name or ""
+            )
+            metadata["driver"]["version"] = "{}|{}".format(
+                metadata["driver"]["version"], driver.version or ""
+            )
+            if driver.platform:
+                metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
 
-        self.__metadata = metadata
-        self.__appended_drivers.append(driver)
+            _truncate_metadata(metadata)
+
+            self.__metadata = metadata
+            self.__appended_drivers.append(driver)
 
     @property
     def _credentials(self) -> Optional[MongoCredential]:
