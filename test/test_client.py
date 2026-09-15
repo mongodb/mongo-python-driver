@@ -479,6 +479,22 @@ class ClientUnitTest(UnitTest):
             truncated["name"].count("|"),
             truncated["version"].count("|"),
         )
+        # An oversized wrapper name with no version must retain a truncated
+        # name rather than collapse to the base entry.
+        client = self.simple_client(
+            driver=DriverInfo(name="x" * (_MAX_METADATA_SIZE * 2), version=None),
+            connect=False,
+        )
+        truncated = client.options.pool_options.metadata["driver"]
+        self.assertLessEqual(
+            len(bson.encode(client.options.pool_options.metadata)),
+            _MAX_METADATA_SIZE,
+        )
+        self.assertIn("xxxx", truncated["name"])
+        self.assertEqual(
+            truncated["name"].count("|"),
+            truncated["version"].count("|"),
+        )
         # Successive appends must stay within the limit and keep name and
         # version index-aligned after truncation. Once the metadata saturates,
         # further appends must not grow the dedup tracking list.

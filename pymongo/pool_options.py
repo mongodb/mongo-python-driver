@@ -238,8 +238,8 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     # 5. Truncate driver info, keeping name and version 1:1 index-aligned.
     driver = metadata.get("driver", {})
     if driver:
-        # Trim wrapper version content first, dropping paired segments only as
-        # a last resort, so name and version stay 1:1 aligned.
+        # Trim wrapper version and name content first, dropping paired segments
+        # only as a last resort, so name and version stay 1:1 aligned.
         while True:
             encoded_size = len(bson.encode(metadata))
             if encoded_size <= _MAX_METADATA_SIZE:
@@ -252,6 +252,9 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
             if len(v_parts) > 1 and v_parts[-1]:
                 v_parts[-1] = v_parts[-1][:-overflow]
                 driver["version"] = "|".join(v_parts)
+            elif len(n_parts) > 1 and n_parts[-1]:
+                n_parts[-1] = n_parts[-1][:-overflow]
+                driver["name"] = "|".join(n_parts)
             elif len(n_parts) > 1:
                 n_parts.pop()
                 v_parts.pop()
