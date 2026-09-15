@@ -260,8 +260,8 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
                 "expected_error": "Invalid SRV host",
             },
             {
-                "query": "_mongodb._tcp.blogs.mongo.local",
-                "mock_target": "test_1.evil.com",
+                "query": "_mongodb._tcp.mongo.local",
+                "mock_target": "test_1.evil.local",
                 "expected_error": "Invalid SRV host",
             },
         ]
@@ -312,6 +312,11 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
         )
         self.assertEqual(["blogs.evil.com"], [node[0] for node in res["nodelist"]])
 
+        # "mongo.local" does not add a domain level to an SRV hostname with fewer
+        # than three "." separated parts, which the default check also rejects.
+        res = self._parse("mongo.local", "mongo.local", srv_host_validator=lambda host: True)
+        self.assertEqual(["mongo.local"], [node[0] for node in res["nodelist"]])
+
     def test_6_reject_a_host_the_default_verification_would_accept(self):
         with self.assertRaisesRegex(ConfigurationError, "rejected by srv_host_validator"):
             self._parse(
@@ -329,11 +334,18 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
         self.assertEqual(["cluster.mongodb.com"], seen)
 
     def test_8_wrap_an_error_raised_by_the_validator(self):
-        def validator(host):
-            raise RuntimeError("boom")
+        original_exc = Exception("validator_error")
 
-        with self.assertRaisesRegex(ConfigurationError, "srv_host_validator raised an exception"):
+        def validator(host):
+            raise original_exc
+
+        with self.assertRaisesRegex(
+            ConfigurationError, "srv_host_validator raised an exception"
+        ) as ctx:
             self._parse("blogs.mongodb.com", "cluster.mongodb.com", srv_host_validator=validator)
+        # The wrapping error must retain the error raised by the validator.
+        self.assertIs(original_exc, ctx.exception.__cause__)
+        self.assertIn("validator_error", str(ctx.exception))
 
     def test_9_throw_when_both_srv_allowed_hosts_suffix_and_srv_host_validator_are_configured(
         self,
@@ -368,11 +380,23 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
         with self.assertRaisesRegex(ValueError, "must be a callable"):
             self.simple_client("mongodb+srv://blogs.mongodb.com", srv_host_validator="notacallable")
 
-    def test_validator_replaces_the_identical_hostname_check(self):
-        # The callback is the complete verdict, so a permissive validator accepts
-        # a returned address the default check would reject as identical.
-        res = self._parse("mongo.local", "mongo.local", srv_host_validator=lambda host: True)
-        self.assertEqual(["mongo.local"], [node[0] for node in res["nodelist"]])
+    def test_12_accept_a_reserved_single_label_as_srv_allowed_hosts_suffix(self):
+        # A single label is a public suffix under the Public Suffix List's "*"
+        # rule, but the reserved names are accepted despite that.
+        res = self._parse(
+            "cluster.localhost", "db.cluster.localhost", srv_allowed_hosts_suffix="localhost"
+        )
+        self.assertEqual(["db.cluster.localhost"], [node[0] for node in res["nodelist"]])
+
+    def test_13_throw_when_srv_host_validator_is_used_with_a_non_srv_uri(self):
+        with self.assertRaisesRegex(
+            ConfigurationError, "only allowed with 'mongodb\\+srv://' URIs"
+        ):
+            self.simple_client(
+                "mongodb://localhost:27017",
+                srv_host_validator=lambda host: True,
+                connect=False,
+            )
 
     def test_srv_hostname_with_three_or_more_parts_may_equal_the_returned_hostname(
         self,
