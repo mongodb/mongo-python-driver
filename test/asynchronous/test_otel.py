@@ -49,6 +49,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.typings import _Address
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.utils import async_wait_until
+from test.unified_format_shared import _shared_test_provider
 
 _HAS_OTEL_TEST_DEPS = False
 if _otel._HAS_OPENTELEMETRY:
@@ -897,6 +898,7 @@ class TestOTelSpans(AsyncIntegrationTest):
 
         (span,) = self.spans("getMore")
         self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
+
     async def test_bulk_write_unacknowledged_gets_operation_span(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True}, w=0)
         self.exporter.clear()
@@ -1454,9 +1456,8 @@ class TestServerTraceContext(AsyncIntegrationTest):
                 f"Server span for {s.get('name')} joined a driver trace",
             )
 
-
-# These unit tests cover the validator's edge cases: the rejection paths and the
-# explicit-zero vs unset distinction for query_text_max_length.
+    # These unit tests cover the validator's edge cases: the rejection paths and the
+    # explicit-zero vs unset distinction for query_text_max_length.
     def test_coerces_numeric_string_query_text_max_length(self):
         result = common.validate_tracing_or_none("tracing", {"query_text_max_length": "100"})
         self.assertEqual(result["query_text_max_length"], 100)

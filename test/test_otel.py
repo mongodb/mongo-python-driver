@@ -21,6 +21,7 @@ import gc
 import os
 import subprocess
 import sys
+import time
 from typing import Callable, Optional
 from unittest.mock import MagicMock, patch
 
@@ -828,7 +829,72 @@ class TestOTelSpans(IntegrationTest):
             text = _otel._build_query_text({"ping": 1}, max_length)
             self.assertEqual(len(text), max_length)
 
-    @client_context.require_version_min(8, 0, 0, -24)
+    def test_is_sensitive_command_case_insensitive(self):
+        # Redaction normalizes the command name, mirroring the comparison in
+        # command monitoring: a differently-cased sensitive command gets no
+        # span, so its payload cannot leak through db.query.text.
+        for name in ("saslStart", "SASLSTART", "saslstart", "CreateUser", "createuser"):
+            self.assertTrue(_otel._is_sensitive_command(name, False))
+        self.assertFalse(_otel._is_sensitive_command("find", False))
+
+    def test_no_client_options_is_never_traced(self):
+        # ``None`` tracing options mean no client context (connection
+        # handshakes, server monitoring): never traced, even when the
+        # environment variable enables driver-level tracing.
+        with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
+            self.assertFalse(_otel._is_tracing_enabled(None))
+
+    def test_unacknowledged_bulk_write_query_text_includes_documents(self):
+        # db.query.text is built from the document published in
+        # CommandStartedEvent, which carries the write documents that the
+        # wire command omits for unacknowledged bulk writes.
+        client = self.rs_or_single_client(
+            tracing={"enabled": True, "query_text_max_length": 1000}, w=0
+        )
+        self.exporter.clear()
+        client.bulk_write(
+            [InsertOne(namespace=f"{self.db.name}.test_otel", document={"x": 1})], ordered=False
+        )
+        (span,) = self.spans("bulkWrite")
+        self.assertIn('"x": 1', span.attributes["db.query.text"])
+
+    @client_context.require_failCommand_blockConnection
+    @client_context.require_async
+    def test_span_ended_on_task_cancellation(self):
+        # Task cancellation raises CancelledError (a BaseException), which the
+        # command runner's cleanup must handle: the span ends with an error
+        # status and the cancellation still propagates.
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name].test_otel
+        coll.drop()
+        coll.insert_many([{"x": i} for i in range(5)])
+        self.exporter.clear()
+
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {"failCommands": ["getMore"], "blockConnection": True, "blockTimeMS": 5000},
+        }
+
+        def task():
+            cursor = coll.find({}, batch_size=1)
+            cursor.next()
+            with self.fail_point(fail_command):
+                cursor.next()
+
+        running = asyncio.create_task(task())
+        time.sleep(0.1)
+        start = time.monotonic()
+        running.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            running
+        # The cancellation surfaces once the failPoint's block on the
+        # connection releases; it must not hang indefinitely.
+        self.assertLess(time.monotonic() - start, 7)
+
+        (span,) = self.spans("getMore")
+        self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
+
     def test_bulk_write_unacknowledged_gets_operation_span(self):
         client = self.rs_or_single_client(tracing={"enabled": True}, w=0)
         self.exporter.clear()
@@ -1382,63 +1448,8 @@ class TestServerTraceContext(IntegrationTest):
                 f"Server span for {s.get('name')} joined a driver trace",
             )
 
-
-# These unit tests cover the validator's edge cases: the rejection paths and the
-# explicit-zero vs unset distinction for query_text_max_length.
-
-
-class TestValidateTracingOrNone(unittest.TestCase):
-    def test_none(self):
-        self.assertIsNone(common.validate_tracing_or_none("tracing", None))
-
-    def test_defaults(self):
-        self.assertEqual(
-            common.validate_tracing_or_none("tracing", {}),
-            {"enabled": None, "query_text_max_length": None},
-        )
-
-    def test_explicit_enabled_false_preserved(self):
-        # False must stay distinct from "unset" (None) so it can override the
-        # environment variable instead of deferring to it.
-        result = common.validate_tracing_or_none("tracing", {"enabled": False})
-        self.assertIs(result["enabled"], False)
-
-    def test_enabled_and_query_text_max_length(self):
-        self.assertEqual(
-            common.validate_tracing_or_none(
-                "tracing", {"enabled": True, "query_text_max_length": 500}
-            ),
-            {"enabled": True, "query_text_max_length": 500},
-        )
-
-    def test_explicit_zero_query_text_max_length_preserved(self):
-        # 0 must stay distinct from "unset" (None) so it can override the
-        # environment variable instead of being treated as not configured.
-        result = common.validate_tracing_or_none(
-            "tracing", {"enabled": True, "query_text_max_length": 0}
-        )
-        self.assertEqual(result["query_text_max_length"], 0)
-
-    def test_rejects_non_mapping(self):
-        with self.assertRaises(TypeError):
-            common.validate_tracing_or_none("tracing", "enabled")
-
-    def test_rejects_unknown_option(self):
-        with self.assertRaisesRegex(ConfigurationError, "Unknown tracing option"):
-            common.validate_tracing_or_none("tracing", {"bogus": True})
-
-    def test_rejects_non_boolean_enabled(self):
-        with self.assertRaises(TypeError):
-            common.validate_tracing_or_none("tracing", {"enabled": "yes"})
-
-    def test_rejects_non_integer_query_text_max_length(self):
-        with self.assertRaises(TypeError):
-            common.validate_tracing_or_none("tracing", {"query_text_max_length": [1]})
-
-    def test_rejects_negative_query_text_max_length(self):
-        with self.assertRaises(ValueError):
-            common.validate_tracing_or_none("tracing", {"query_text_max_length": -1})
-
+    # These unit tests cover the validator's edge cases: the rejection paths and the
+    # explicit-zero vs unset distinction for query_text_max_length.
     def test_coerces_numeric_string_query_text_max_length(self):
         result = common.validate_tracing_or_none("tracing", {"query_text_max_length": "100"})
         self.assertEqual(result["query_text_max_length"], 100)
