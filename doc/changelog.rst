@@ -12,8 +12,16 @@ Bug fixes
   the pool (`PYTHON-6074`_).
 - ``MongoClient.append_metadata()`` and ``AsyncMongoClient.append_metadata()``
   now detect duplicates by comparing the whole
-  :class:`~pymongo.driver_info.DriverInfo` instead of only its name
+  :class:`~pymongo.driver_info.DriverInfo` instead of only its name. The
+  comparison is exact, so drivers that differ in name case or platform are no
+  longer treated as duplicates (`PYTHON-6040`_).
+- ``driver.name`` and ``driver.version`` in the handshake metadata are now
+  ``|``-delimited lists with 1:1 index correspondence, including empty version
+  entries for the built-in ``|c`` and ``|async`` name segments
   (`PYTHON-6040`_).
+- Fixed a bug where truncating the handshake metadata to 512 bytes could leave
+  ``driver.name`` and ``driver.version`` with different numbers of ``|``
+  delimiters (`PYTHON-6040`_).
 - :class:`~pymongo.driver_info.DriverInfo` now raises :class:`ValueError` when
   any field contains the reserved ``|`` delimiter (`PYTHON-6040`_).
 
