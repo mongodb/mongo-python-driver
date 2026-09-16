@@ -1353,11 +1353,22 @@ class TestServerTraceContext(AsyncIntegrationTest):
         cmd_span = cmd_spans[0]
         trace_id = f"{cmd_span.context.trace_id:032x}"
         span_id = f"{cmd_span.context.span_id:016x}"
-        server_spans = await self._poll_server_spans(self.OTEL_TRACE_DIR, trace_id)
-        self.assertTrue(server_spans, f"No server span found for trace {trace_id}")
-        insert_server_spans = [s for s in server_spans if s.get("name") == "insert"]
-        self.assertEqual(len(insert_server_spans), 1)
-        self.assertEqual(insert_server_spans[0].get("parentSpanId"), span_id)
+
+        # On a sharded cluster the command fans out through mongos to the shard,
+        # and every hop exports its own span named for the command. The ingress
+        # span is the one whose parent is the driver's command span. Poll for it
+        # explicitly: the deeper hops end (and flush) first, so a poll that
+        # stops at the first span of the trace would miss it.
+        def has_ingress_span(spans: list[dict]) -> bool:
+            ingress = [s for s in spans if s.get("parentSpanId") == span_id]
+            return len(ingress) == 1 and ingress[0].get("name") == "insert"
+
+        server_spans = await self._poll_server_spans(
+            self.OTEL_TRACE_DIR, trace_id, has_ingress_span
+        )
+        ingress_spans = [s for s in server_spans if s.get("parentSpanId") == span_id]
+        self.assertEqual(len(ingress_spans), 1)
+        self.assertEqual(ingress_spans[0].get("name"), "insert")
 
     @async_client_context.require_version_min(9, 0)
     @async_client_context.require_failCommand_fail_point
