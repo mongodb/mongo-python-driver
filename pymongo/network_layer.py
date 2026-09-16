@@ -184,21 +184,18 @@ async def _async_blocking_socket_call(
     """Run a blocking socket operation in a worker thread with a timeout.
 
     The worker cannot be interrupted, so the future is shielded from cancellation.
+    The call holds a default-executor thread until the socket timeout fires.
     """
-    fut = asyncio.shield(loop.run_in_executor(None, func, arg))
+    inner = loop.run_in_executor(None, func, arg)
+    fut = asyncio.shield(inner)
     try:
         return await asyncio.wait_for(fut, timeout=timeout)
     except asyncio.TimeoutError:
         if timeout is not None:
+            # Wait for the worker so the caller does not close the socket under it.
             try:
-                await asyncio.wait_for(fut, timeout=timeout)
-            except (
-                asyncio.TimeoutError,
-                asyncio.CancelledError,
-                OSError,
-                *ssl_support.BLOCKING_IO_ERRORS,
-            ):
-                # Wait for the worker; its result is unused because we raise the timeout.
+                await asyncio.wait_for(inner, timeout=timeout)
+            except (asyncio.TimeoutError, OSError, *ssl_support.BLOCKING_IO_ERRORS):
                 pass
         raise
     except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as exc:

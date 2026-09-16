@@ -290,14 +290,13 @@ def handle_test_env() -> None:
             krb_conf.touch()
             write_env("KRB5_CONFIG", krb_conf)
             LOGGER.info("Writing keytab")
-            # Python 3.15's base64.b64decode rejects missing padding (and
-            # whitespace) by default, so strip whitespace and use padded=False
-            # where available to accept both padded and unpadded input.
+            # Python 3.15 rejects unpadded base64 by default; padded=False
+            # accepts it, and older Pythons need the padding added explicitly.
             keytab_b64 = "".join(config["KEYTAB_BASE64"].split())
             try:
                 keytab = base64.b64decode(keytab_b64, padded=False)
             except TypeError:
-                keytab = base64.b64decode(keytab_b64)
+                keytab = base64.b64decode(keytab_b64 + "=" * (-len(keytab_b64) % 4))
             keytab_file = ROOT / ".evergreen/drivers.keytab"
             with keytab_file.open("wb") as fid:
                 fid.write(keytab)

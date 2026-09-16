@@ -19,13 +19,20 @@ from __future__ import annotations
 import asyncio
 import struct
 import sys
+import threading
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path[0:0] = [""]
 
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
-from pymongo.network_layer import PyMongoProtocol, _async_socket_receive, receive_message
+from pymongo.network_layer import (
+    PyMongoProtocol,
+    _async_blocking_socket_call,
+    _async_socket_receive,
+    receive_message,
+)
 from test.asynchronous import AsyncUnitTest, unittest
 from test.utils_shared import pack_msg_header
 
@@ -242,6 +249,25 @@ class TestAsyncSocketReceive(AsyncUnitTest):
         with patch.object(loop, "sock_recv_into", new=AsyncMock(return_value=0)):
             with self.assertRaisesRegex(OSError, "connection closed"):
                 await _async_socket_receive(mock_socket, 10, loop)
+
+
+class TestAsyncBlockingSocketCall(AsyncUnitTest):
+    async def test_returns_result(self):
+        result = await _async_blocking_socket_call(asyncio.get_running_loop(), len, b"abc", None)
+        self.assertEqual(result, 3)
+
+    async def test_timeout_waits_for_worker(self):
+        # On timeout the call must wait for the worker so the caller does not
+        # close the socket while it is still in use.
+        finished = threading.Event()
+
+        def slow(arg):
+            time.sleep(0.3)
+            finished.set()
+
+        with self.assertRaises(asyncio.TimeoutError):
+            await _async_blocking_socket_call(asyncio.get_running_loop(), slow, None, 0.2)
+        self.assertTrue(finished.is_set())
 
 
 class _FakeSocket:
