@@ -602,7 +602,9 @@ class TestOTelSpans(IntegrationTest):
         self.assertTrue(any(event.name == "exception" for event in span.events))
 
     @client_context.require_failCommand_fail_point
-    def test_operation_span_error_type_is_exception_class_name_for_server_error(self):
+    def test_prose_6_error_type_on_operation_span_is_exception_class_name_for_server_error(
+        self,
+    ):
         # A non-retryable server error names the exception class on the operation
         # span, not the server error code.
         client = self.rs_or_single_client(tracing={"enabled": True}, retryReads=False)
@@ -625,7 +627,7 @@ class TestOTelSpans(IntegrationTest):
         )
 
     @client_context.require_failCommand_fail_point
-    def test_error_type_is_exception_class_name_for_connection_failure(self):
+    def test_prose_5_error_type_is_exception_class_name_for_non_server_error(self):
         # A closed connection produces no server reply, so error.type uses the class name.
         client = self.rs_or_single_client(tracing={"enabled": True}, retryReads=False)
         fail_command = {
