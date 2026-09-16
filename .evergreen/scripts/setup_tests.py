@@ -458,7 +458,9 @@ def handle_test_env() -> None:
     if test_name == "otel":
         # The SDK is test-only tooling (for the in-memory span exporter); the driver
         # itself must not depend on it, only on opentelemetry-api (the "opentelemetry" extra).
-        UV_ARGS.append("--with opentelemetry-sdk")
+        # The floor matches requirements/opentelemetry.txt: with --resolution=lowest-direct an
+        # unpinned sdk resolves to 1.0.0 and drags opentelemetry-api down to it. PYTHON-5947.
+        UV_ARGS.append('--with "opentelemetry-sdk>=1.20.0"')
 
     if test_name == "perf":
         data_dir = ROOT / "specifications/source/benchmarking/data"
