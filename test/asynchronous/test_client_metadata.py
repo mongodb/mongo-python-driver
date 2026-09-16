@@ -282,48 +282,46 @@ class TestClientMetadataProse(AsyncIntegrationTest):
                     "mongodb://" + self.server.address_string,
                     maxIdleTimeMS=1,
                 )
-                try:
-                    # Capture the driver's own name and version from the first handshake.
-                    name0, version0, _, _ = await self.send_ping_and_get_metadata(client, True)
-                    await asyncio.sleep(0.005)
+                self.addAsyncCleanup(client.close)
+                # Capture the driver's own name and version from the first handshake.
+                name0, version0, _, _ = await self.send_ping_and_get_metadata(client, True)
+                await asyncio.sleep(0.005)
 
-                    self.assertIsNotNone(name0)
-                    self.assertIsNotNone(version0)
-                    version0 = cast(str, version0)
-                    driver_name = name0.split("|")[0]
-                    driver_version = version0.split("|")[0]
+                self.assertIsNotNone(name0)
+                self.assertIsNotNone(version0)
+                version0 = cast(str, version0)
+                driver_name = name0.split("|")[0]
+                driver_version = version0.split("|")[0]
 
-                    def resolve(value: Optional[str]) -> Optional[str]:
-                        if value is None:
-                            return None
-                        return value.format(driver_name=driver_name, driver_version=driver_version)
+                def resolve(value: Optional[str]) -> Optional[str]:
+                    if value is None:
+                        return None
+                    return value.format(driver_name=driver_name, driver_version=driver_version)
 
-                    # Append each DriverInfo in order.
-                    for opts in appended:
-                        d_name = resolve(opts[0]) if len(opts) > 0 else None
-                        d_version = resolve(opts[1]) if len(opts) > 1 else None
-                        d_platform = resolve(opts[2]) if len(opts) > 2 else None
-                        client.append_metadata(DriverInfo(d_name or "", d_version, d_platform))
+                # Append each DriverInfo in order.
+                for opts in appended:
+                    d_name = resolve(opts[0]) if len(opts) > 0 else None
+                    d_version = resolve(opts[1]) if len(opts) > 1 else None
+                    d_platform = resolve(opts[2]) if len(opts) > 2 else None
+                    client.append_metadata(DriverInfo(d_name or "", d_version, d_platform))
 
-                    # New handshake with the appended metadata.
-                    name1, version1, _, _ = await self.send_ping_and_get_metadata(client, True)
+                # New handshake with the appended metadata.
+                name1, version1, _, _ = await self.send_ping_and_get_metadata(client, True)
 
-                    self.assertEqual(
-                        name1,
-                        name0
-                        + expected_name_suffix.format(
-                            driver_name=driver_name, driver_version=driver_version
-                        ),
-                    )
-                    self.assertEqual(
-                        version1,
-                        version0
-                        + expected_version_suffix.format(
-                            driver_name=driver_name, driver_version=driver_version
-                        ),
-                    )
-                finally:
-                    await client.close()
+                self.assertEqual(
+                    name1,
+                    name0
+                    + expected_name_suffix.format(
+                        driver_name=driver_name, driver_version=driver_version
+                    ),
+                )
+                self.assertEqual(
+                    version1,
+                    version0
+                    + expected_version_suffix.format(
+                        driver_name=driver_name, driver_version=driver_version
+                    ),
+                )
 
     async def test_11_appending_metadata_containing_the_delimiter_raises_an_error(self):
         cases = [
@@ -338,24 +336,20 @@ class TestClientMetadataProse(AsyncIntegrationTest):
                     maxIdleTimeMS=1,
                     driver=DriverInfo("library", "1.2", "Library Platform"),
                 )
-                try:
-                    # Send initial handshake.
-                    name0, version0, platform0, _metadata = await self.send_ping_and_get_metadata(
-                        client, True
-                    )
-                    await asyncio.sleep(0.005)
-                    # Constructing metadata containing the delimiter raises.
-                    with self.assertRaises(ValueError):
-                        DriverInfo(name, version, platform)
-                    # Metadata is unchanged on the next handshake.
-                    name1, version1, platform1, _ = await self.send_ping_and_get_metadata(
-                        client, True
-                    )
-                    self.assertEqual(name1, name0)
-                    self.assertEqual(version1, version0)
-                    self.assertEqual(platform1, platform0)
-                finally:
-                    await client.close()
+                self.addAsyncCleanup(client.close)
+                # Send initial handshake.
+                name0, version0, platform0, _metadata = await self.send_ping_and_get_metadata(
+                    client, True
+                )
+                await asyncio.sleep(0.005)
+                # Constructing metadata containing the delimiter raises.
+                with self.assertRaises(ValueError):
+                    DriverInfo(name, version, platform)
+                # Metadata is unchanged on the next handshake.
+                name1, version1, platform1, _ = await self.send_ping_and_get_metadata(client, True)
+                self.assertEqual(name1, name0)
+                self.assertEqual(version1, version0)
+                self.assertEqual(platform1, platform0)
 
 
 if __name__ == "__main__":
