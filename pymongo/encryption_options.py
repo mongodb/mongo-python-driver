@@ -19,9 +19,16 @@
 
 from __future__ import annotations
 
+import asyncio
+import functools
+import socket
+import ssl
+import threading
+import time
 import warnings
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Optional, TypedDict
+from collections.abc import Awaitable, Mapping
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict
 
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 
@@ -55,6 +62,259 @@ def check_min_pymongocrypt() -> None:
         )
 
 
+@dataclass(frozen=True)
+class KMSConnectContext:
+    """Information about a pending KMS connection.
+
+    Passed to ``kms_connect_callback``, which must return a plain, unwrapped
+    :class:`socket.socket`. The driver performs the KMS TLS handshake over it
+    against ``host``, not the peer actually reached, which is what makes
+    proxying safe.
+
+    Prefer :class:`HTTPProxyKMSConnect` or :class:`AsyncHTTPProxyKMSConnect`
+    over writing a callback.
+
+    :param host: Hostname of the KMS server, and the TLS verification target.
+    :param port: Port of the KMS server.
+    :param timeout: Seconds left in the timeout budget, else the default KMS
+        connect timeout.
+
+    .. note:: ``timeoutMS`` does not constrain KMS requests for explicit
+       encryption, so ``timeout`` is always the default there. Automatic
+       encryption passes the remaining budget. This deviates from the Client
+       Side Operations Timeout specification; see PYTHON-6037.
+
+    .. versionadded:: 4.19
+    """
+
+    host: str
+    port: int
+    timeout: float
+
+
+# A callback that opens a connection to a KMS host.
+AsyncKMSConnectCallback = Callable[[KMSConnectContext], Awaitable[socket.socket]]
+KMSConnectCallback = Callable[[KMSConnectContext], socket.socket]
+
+# Largest CONNECT response header accepted, so a proxy that never sends the
+# terminator cannot grow the buffer without bound.
+_MAX_CONNECT_HEADER = 8192
+
+
+def _close_completed_socket(future: asyncio.Future[socket.socket]) -> None:
+    """Close a socket produced after its awaiting task was cancelled."""
+    if not future.cancelled() and future.exception() is None:
+        future.result().close()
+
+
+def _remaining(deadline: float) -> float:
+    """Seconds left before ``deadline``."""
+    left = deadline - time.monotonic()
+    if left <= 0:
+        raise socket.timeout("timed out connecting through the proxy")
+    return left
+
+
+class HTTPProxyKMSConnect:
+    """Route KMS connections through an HTTP proxy, for the synchronous API.
+
+    Pass an instance as ``kms_connect_callback`` to reach KMS hosts through a
+    forward proxy that speaks HTTP ``CONNECT``::
+
+      from pymongo.encryption_options import AutoEncryptionOpts, HTTPProxyKMSConnect
+
+      opts = AutoEncryptionOpts(
+          kms_providers={"aws": aws_creds},
+          key_vault_namespace="keyvault.datakeys",
+          kms_connect_callback=HTTPProxyKMSConnect("proxy.example.com", 8080),
+      )
+
+    To reach the proxy over TLS, pass an :class:`ssl.SSLContext`. It applies
+    only to the proxy connection; KMS TLS is still negotiated end to end::
+
+      import ssl
+
+      proxy_tls = ssl.create_default_context(cafile="proxy-ca.pem")
+      callback = HTTPProxyKMSConnect("proxy.example.com", 8443, proxy_tls)
+
+    Use :class:`AsyncHTTPProxyKMSConnect` with the asynchronous API.
+
+    :param host: Hostname of the proxy.
+    :param port: Port of the proxy.
+    :param ssl_context: Optional :class:`ssl.SSLContext` for connecting to the
+        proxy over TLS. Defaults to ``None``, meaning a plain connection.
+
+    .. versionadded:: 4.19
+    """
+
+    def __init__(self, host: str, port: int, ssl_context: Optional[ssl.SSLContext] = None):
+        self.host = host
+        self.port = port
+        self.ssl_context = ssl_context
+
+    def _tunnel(self, sock: socket.socket, context: KMSConnectContext, deadline: float) -> None:
+        # An IPv6 literal needs brackets to be a valid HTTP authority.
+        host = f"[{context.host}]" if ":" in context.host else context.host
+        target = f"{host}:{context.port}"
+        sock.sendall(f"CONNECT {target} HTTP/1.1\r\nHost: {target}\r\n\r\n".encode())
+        # A byte at a time: a bulk read could consume tunnelled bytes sent in
+        # the same segment as the response, and the driver reads those from
+        # this same socket. Reapply the remaining budget before each read so a
+        # proxy that trickles bytes cannot keep this loop alive past the deadline.
+        response = bytearray()
+        while not response.endswith(b"\r\n\r\n"):
+            sock.settimeout(_remaining(deadline))
+            chunk = sock.recv(1)
+            if not chunk:
+                raise OSError(f"proxy closed the connection while tunneling to {target}")
+            response += chunk
+            if len(response) > _MAX_CONNECT_HEADER:
+                raise OSError(f"proxy sent an oversized CONNECT response for {target}")
+        status = bytes(response).split(b"\r\n", 1)[0]
+        # A CONNECT is successful for any 2xx status, e.g. "HTTP/1.0 200" or
+        # "HTTP/1.1 201"; require a three-digit code and reject malformed lines.
+        parts = status.split(b" ", 2)
+        valid = (
+            len(parts) >= 2
+            and parts[0].startswith(b"HTTP/")
+            and len(parts[1]) == 3
+            and parts[1].isdigit()
+        )
+        if not valid or not 200 <= int(parts[1]) < 300:
+            raise OSError(f"proxy refused CONNECT to {target}: {status!r}")
+
+    def _bridge(self, proxy: socket.socket) -> socket.socket:
+        """Relay a TLS proxy connection through a socketpair.
+
+        Python cannot layer TLS over an :class:`ssl.SSLSocket`, so return the
+        plain end of a pair. Uses threads rather than tasks, even in
+        :class:`AsyncHTTPProxyKMSConnect`, because the event loop cannot read
+        an :class:`ssl.SSLSocket`.
+        """
+        # Clear the CONNECT-phase timeout before relaying: the KMS request that
+        # follows through the tunnel is governed by the driver's own timeout on
+        # driver_side, not the already-elapsed connect budget.
+        proxy.settimeout(None)
+        driver_side, relay_side = socket.socketpair()
+
+        def relay(src: socket.socket, dst: socket.socket) -> None:
+            # These run in daemon threads: any error, including the ValueError
+            # an SSLSocket.shutdown can raise during the teardown race, ends the
+            # relay quietly.
+            try:
+                while True:
+                    buf = src.recv(16384)
+                    if not buf:
+                        break
+                    dst.sendall(buf)
+            except (OSError, ValueError):
+                pass
+            finally:
+                # Send EOF to the peer instead of closing a socket it may be reading.
+                try:
+                    dst.shutdown(socket.SHUT_RDWR)
+                except (OSError, ValueError):
+                    pass
+                src.close()
+
+        try:
+            for pair in ((relay_side, proxy), (proxy, relay_side)):
+                threading.Thread(target=relay, args=pair, daemon=True).start()
+        except BaseException:
+            # Unblock any thread that did start, then drop every socket.
+            for sock in (proxy, relay_side, driver_side):
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                sock.close()
+            raise
+        return driver_side
+
+    def __call__(
+        self, context: KMSConnectContext, deadline: Optional[float] = None
+    ) -> socket.socket:
+        # A configurable KMS host could inject CR/LF into the CONNECT request
+        # or Host header, so reject it before opening the proxy connection.
+        if "\r" in context.host or "\n" in context.host:
+            raise ConfigurationError(
+                f"KMS host must not contain control characters: {context.host!r}"
+            )
+        # One deadline for all three phases; a timeout per phase would let the
+        # total run to several times the caller's budget. The async wrapper
+        # computes the deadline before scheduling so queueing behind other
+        # executor work is charged against it.
+        if deadline is None:
+            deadline = time.monotonic() + context.timeout
+        sock = self._connect_proxy(deadline)
+        try:
+            if self.ssl_context is not None:
+                sock.settimeout(_remaining(deadline))
+                sock = self.ssl_context.wrap_socket(sock, server_hostname=self.host)
+            sock.settimeout(_remaining(deadline))
+            self._tunnel(sock, context, deadline)
+        except BaseException:
+            sock.close()
+            raise
+        if self.ssl_context is None:
+            return sock
+        try:
+            return self._bridge(sock)
+        except BaseException:
+            sock.close()
+            raise
+
+    def _connect_proxy(self, deadline: float) -> socket.socket:
+        # Resolve and try each address with the budget recomputed per attempt,
+        # instead of create_connection applying the timeout to every address.
+        last_error: Optional[OSError] = None
+        for family, socktype, proto, _, sockaddr in socket.getaddrinfo(
+            self.host, self.port, type=socket.SOCK_STREAM
+        ):
+            sock = socket.socket(family, socktype, proto)
+            try:
+                # _remaining raises socket.timeout once the deadline passes;
+                # propagate it rather than disguise it as a connect error below.
+                sock.settimeout(_remaining(deadline))
+            except socket.timeout:
+                sock.close()
+                raise
+            try:
+                sock.connect(sockaddr)
+            except OSError as exc:
+                last_error = exc
+                sock.close()
+                continue
+            return sock
+        raise OSError(
+            f"could not connect to proxy {self.host}:{self.port}: {last_error}"
+        ) from last_error
+
+
+class AsyncHTTPProxyKMSConnect(HTTPProxyKMSConnect):
+    """Route KMS connections through an HTTP proxy, for the asynchronous API.
+
+    Behaves exactly like :class:`HTTPProxyKMSConnect`, but is a coroutine
+    callable and runs the blocking connect in a thread so the event loop stays
+    free.
+
+    .. versionadded:: 4.19
+    """
+
+    async def __call__(self, context: KMSConnectContext) -> socket.socket:  # type: ignore[override]
+        # Capture the deadline before scheduling so time spent queued behind
+        # other executor work counts against the KMS budget.
+        deadline = time.monotonic() + context.timeout
+        connect = functools.partial(super().__call__, context, deadline)
+        future = asyncio.get_running_loop().run_in_executor(None, connect)
+        try:
+            return await asyncio.shield(future)
+        except asyncio.CancelledError:
+            # The thread runs on regardless, so close the socket it returns.
+            future.add_done_callback(_close_completed_socket)
+            raise
+
+
 class AutoEncryptionOpts:
     """Options to configure automatic client-side field level encryption."""
 
@@ -75,6 +335,7 @@ class AutoEncryptionOpts:
         bypass_query_analysis: bool = False,
         encrypted_fields_map: Optional[Mapping[str, Any]] = None,
         key_expiration_ms: Optional[int] = None,
+        kms_connect_callback: Optional[Callable[[KMSConnectContext], Any]] = None,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -212,7 +473,20 @@ class AutoEncryptionOpts:
         :param key_expiration_ms: The cache expiration time for data encryption keys.
             Defaults to ``None`` which defers to libmongocrypt's default which is currently 60000.
             Set to 0 to disable key expiration.
+        :param kms_connect_callback: A callable that opens the connection to a
+            KMS host, used to route KMS requests through an HTTP proxy. It
+            receives a :class:`KMSConnectContext` and returns a connected,
+            unwrapped :class:`socket.socket`; the driver then performs the KMS
+            TLS handshake over it. Must be a coroutine function for
+            :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` and a
+            regular function for
+            :class:`~pymongo.synchronous.mongo_client.MongoClient`. For an
+            ordinary HTTP proxy, pass :class:`HTTPProxyKMSConnect` or
+            :class:`AsyncHTTPProxyKMSConnect`. Defaults to ``None``, meaning
+            the driver connects to KMS hosts directly.
 
+        .. versionchanged:: 4.19
+           Added the `kms_connect_callback` parameter.
         .. versionchanged:: 4.12
            Added the `key_expiration_ms` parameter.
         .. versionchanged:: 4.2
@@ -259,6 +533,11 @@ class AutoEncryptionOpts:
         self._async_kms_ssl_contexts: Optional[dict[str, SSLContext]] = None
         self._bypass_query_analysis = bypass_query_analysis
         self._key_expiration_ms = key_expiration_ms
+        if kms_connect_callback is not None and not callable(kms_connect_callback):
+            raise TypeError(
+                f"kms_connect_callback must be callable, not {type(kms_connect_callback)}"
+            )
+        self._kms_connect_callback = kms_connect_callback
 
     def _kms_ssl_contexts(self, is_sync: bool) -> dict[str, SSLContext]:
         if is_sync:

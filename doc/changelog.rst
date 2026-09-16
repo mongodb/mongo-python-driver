@@ -4,6 +4,18 @@ Changelog
 Changes in Version 4.19.0 (2026/XX/XX)
 --------------------------------------
 
+- Added support for routing Key Management Service (KMS) requests for
+  Client-Side Field Level Encryption and Queryable Encryption through an HTTP
+  proxy, using the new ``kms_connect_callback`` option on
+  :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
+  :class:`~pymongo.encryption.ClientEncryption`, and
+  :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`. The callback
+  opens the connection and the driver performs the KMS TLS handshake over it, so
+  verification still targets the KMS host rather than the proxy. For an ordinary
+  HTTP proxy, pass :class:`~pymongo.encryption_options.HTTPProxyKMSConnect` or
+  :class:`~pymongo.encryption_options.AsyncHTTPProxyKMSConnect` instead of
+  writing a callback.
+
 Bug fixes
 .........
 
