@@ -296,7 +296,7 @@ class TestClientMetadataProse(AsyncIntegrationTest):
                         return None
                     return value.format(driver_name=driver_name, driver_version=driver_version)
 
-                # Append each DriverInfoOptions in order.
+                # Append each DriverInfo in order.
                 for opts in appended:
                     d_name = resolve(opts[0]) if len(opts) > 0 else None
                     d_version = resolve(opts[1]) if len(opts) > 1 else None
