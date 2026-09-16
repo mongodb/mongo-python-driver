@@ -39,10 +39,11 @@ class TestReadConcern(IntegrationTest):
         self.listener = OvertCommandListener()
         self.client = self.rs_or_single_client(event_listeners=[self.listener])
         self.db = self.client.pymongo_test
-        client_context.client.pymongo_test.create_collection("coll")
+        self.db.create_collection("coll")
+        self.listener.reset()
 
     def tearDown(self):
-        client_context.client.pymongo_test.drop_collection("coll")
+        self.db.drop_collection("coll")
 
     def test_read_concern(self):
         rc = ReadConcern()

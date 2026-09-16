@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+import struct
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -24,7 +25,7 @@ sys.path[0:0] = [""]
 
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.errors import ProtocolError
-from pymongo.network_layer import PyMongoProtocol, _async_socket_receive
+from pymongo.network_layer import PyMongoProtocol, _async_socket_receive, receive_message
 from test.asynchronous import AsyncUnitTest, unittest
 from test.utils_shared import pack_msg_header
 
@@ -87,6 +88,13 @@ class TestProcessHeader(AsyncUnitTest):
         )
         with self.assertRaisesRegex(ProtocolError, "larger than server max"):
             self.protocol.process_header()
+
+    def test_process_compression_header_returns_uncompressed_size(self):
+        self.protocol._compression_header[:] = struct.pack("<iiB", 2013, 9999, 2)
+        op_code, uncompressed_size, compressor_id = self.protocol.process_compression_header()
+        self.assertEqual(op_code, 2013)
+        self.assertEqual(uncompressed_size, 9999)
+        self.assertEqual(compressor_id, 2)
 
 
 class TestClose(AsyncUnitTest):
@@ -160,6 +168,69 @@ class TestBufferUpdated(AsyncUnitTest):
         _data, op_code = await read_task
         self.assertEqual(op_code, 2013)
 
+    async def test_oversized_uncompressed_size_closes_connection(self):
+        self.protocol._max_message_size = 1024
+        read_task = asyncio.create_task(self.protocol.read(request_id=None, max_message_size=1024))
+        await asyncio.sleep(0)
+
+        # Feed OP_COMPRESSED header (length = 16 + 9 + 1 = 26).
+        header = pack_msg_header(length=26, request_id=1, response_to=99, op_code=2012)
+        buf = self.protocol.get_buffer(16)
+        buf[:16] = header
+        self.protocol.buffer_updated(16)
+        self.assertTrue(self.protocol._expecting_compression)
+
+        # Feed compression sub-header with uncompressed_size > max (1024).
+        buf = self.protocol.get_buffer(9)
+        buf[:9] = struct.pack("<iiB", 2013, 9999, 2)
+        self.protocol.buffer_updated(9)
+
+        self.assertTrue(self.protocol.transport.abort.called)
+        with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
+            await read_task
+
+    async def test_uncompressed_size_equal_max_closes_connection(self):
+        self.protocol._max_message_size = 1024
+        read_task = asyncio.create_task(self.protocol.read(request_id=None, max_message_size=1024))
+        await asyncio.sleep(0)
+
+        # Feed OP_COMPRESSED header (length = 16 + 9 + 1 = 26).
+        header = pack_msg_header(length=26, request_id=1, response_to=99, op_code=2012)
+        buf = self.protocol.get_buffer(16)
+        buf[:16] = header
+        self.protocol.buffer_updated(16)
+
+        # uncompressed_size == max_message_size: reconstructed message
+        # (uncompressed_size + 16-byte header) must exceed the limit.
+        buf = self.protocol.get_buffer(9)
+        buf[:9] = struct.pack("<iiB", 2013, 1024, 2)
+        self.protocol.buffer_updated(9)
+
+        self.assertTrue(self.protocol.transport.abort.called)
+        with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
+            await read_task
+
+    async def test_nonpositive_uncompressed_size_closes_connection(self):
+        self.protocol._max_message_size = 1024
+        read_task = asyncio.create_task(self.protocol.read(request_id=None, max_message_size=1024))
+        await asyncio.sleep(0)
+
+        # Feed OP_COMPRESSED header (length = 16 + 9 + 1 = 26).
+        header = pack_msg_header(length=26, request_id=1, response_to=99, op_code=2012)
+        buf = self.protocol.get_buffer(16)
+        buf[:16] = header
+        self.protocol.buffer_updated(16)
+
+        # uncompressed_size is a signed int32; zero and negative values must be
+        # rejected as malformed rather than accepted by the upper-bound check.
+        buf = self.protocol.get_buffer(9)
+        buf[:9] = struct.pack("<iiB", 2013, 0, 2)
+        self.protocol.buffer_updated(9)
+
+        self.assertTrue(self.protocol.transport.abort.called)
+        with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
+            await read_task
+
 
 class TestAsyncSocketReceive(AsyncUnitTest):
     async def test_raises_on_connection_closed(self):
@@ -171,6 +242,92 @@ class TestAsyncSocketReceive(AsyncUnitTest):
         with patch.object(loop, "sock_recv_into", new=AsyncMock(return_value=0)):
             with self.assertRaisesRegex(OSError, "connection closed"):
                 await _async_socket_receive(mock_socket, 10, loop)
+
+
+class _FakeSocket:
+    """Feeds a byte buffer, simulating a socket.
+
+    On Windows and PyPy, receive_data() calls wait_for_read() before
+    recv_into(), which reaches through conn.conn.sock, so this also has to
+    look like a socket to that code path.
+    """
+
+    def __init__(self, data: bytes):
+        self.data = data
+        self.pos = 0
+        self.sock = self
+
+    def gettimeout(self):
+        return None
+
+    def fileno(self):
+        return 1
+
+    def recv_into(self, buf):
+        n = min(len(buf), len(self.data) - self.pos)
+        if n <= 0:
+            return 0
+        buf[:n] = self.data[self.pos : self.pos + n]
+        self.pos += n
+        return n
+
+
+class _FakeSocketChecker:
+    def select(self, sock, read=False, write=False, timeout=None):
+        return True
+
+
+class _FakeCancelContext:
+    cancelled = False
+
+
+class _FakeConn:
+    def __init__(self, data: bytes):
+        self.conn = _FakeSocket(data)
+        self.socket_checker = _FakeSocketChecker()
+        self.cancel_context = _FakeCancelContext()
+
+    def gettimeout(self):
+        return None
+
+    def set_conn_timeout(self, t):
+        pass
+
+
+class TestReceiveMessage(unittest.TestCase):
+    def test_oversized_uncompressed_size_rejected(self):
+        # Build OP_COMPRESSED with uncompressed_size > max_message_size.
+        compressed = b"x" * 10
+        total_len = 16 + 9 + len(compressed)
+        header = struct.pack("<iiii", total_len, 1, 99, 2012)
+        sub_header = struct.pack("<iiB", 2013, 9999, 2)
+        conn = _FakeConn(header + sub_header + compressed)
+        with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
+            receive_message(conn, request_id=99, max_message_size=1024)  # type: ignore[arg-type]
+
+    def test_uncompressed_size_equal_max_rejected(self):
+        # uncompressed_size == max_message_size; the reconstructed message
+        # (uncompressed_size + 16-byte header) must exceed the limit.
+        compressed = b"x" * 10
+        total_len = 16 + 9 + len(compressed)
+        header = struct.pack("<iiii", total_len, 1, 99, 2012)
+        sub_header = struct.pack("<iiB", 2013, 1024, 2)
+        conn = _FakeConn(header + sub_header + compressed)
+        with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
+            receive_message(conn, request_id=99, max_message_size=1024)  # type: ignore[arg-type]
+
+    def test_nonpositive_uncompressed_size_rejected(self):
+        # uncompressed_size is a signed int32; zero and negative values must be
+        # rejected as malformed rather than accepted by the upper-bound check.
+        for size in (0, -1):
+            with self.subTest(uncompressed_size=size):
+                compressed = b"x" * 10
+                total_len = 16 + 9 + len(compressed)
+                header = struct.pack("<iiii", total_len, 1, 99, 2012)
+                sub_header = struct.pack("<iiB", 2013, size, 2)
+                conn = _FakeConn(header + sub_header + compressed)
+                with self.assertRaisesRegex(ProtocolError, "Uncompressed message size"):
+                    receive_message(conn, request_id=99, max_message_size=1024)  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":

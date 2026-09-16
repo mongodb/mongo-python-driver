@@ -78,7 +78,8 @@ class TestCSOT(IntegrationTest):
     @client_context.require_change_streams
     @flaky(reason="PYTHON-3522")
     def test_change_stream_can_resume_after_timeouts(self):
-        coll = self.db.test
+        self.addCleanup(self.db.coll.drop)
+        coll = self.db.coll
         coll.insert_one({})
         with coll.watch() as stream:
             with pymongo.timeout(0.1):

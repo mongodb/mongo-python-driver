@@ -18,6 +18,7 @@ import warnings
 from collections.abc import Iterable
 from typing import Any, Optional, Union
 
+from pymongo.errors import ProtocolError
 from pymongo.hello import HelloCompat
 from pymongo.helpers_shared import _SENSITIVE_COMMANDS
 
@@ -164,25 +165,65 @@ class ZstdContext:
         return zstd.compress(data)
 
 
-def decompress(data: bytes | memoryview, compressor_id: int) -> bytes:
+def _snappy_uncompressed_length(data: bytes | memoryview) -> int:
+    """Read the varint-encoded uncompressed length from a raw snappy block."""
+    result = shift = 0
+    for i in range(5):
+        if i >= len(data):
+            raise ProtocolError("Truncated snappy payload")
+        byte = data[i]
+        result |= (byte & 0x7F) << shift
+        if not byte & 0x80:
+            return result
+        shift += 7
+    raise ProtocolError("Invalid snappy uncompressed length header")
+
+
+def decompress(data: bytes | memoryview, compressor_id: int, max_message_size: int) -> bytes:
     if compressor_id == SnappyContext.compressor_id:
+        declared = _snappy_uncompressed_length(data)
+        if declared > max_message_size:
+            raise ProtocolError(
+                f"Decompressed message size ({declared!r}) is larger than "
+                f"maximum allowed payload size ({max_message_size!r})"
+            )
+        import snappy
+
         # python-snappy doesn't support the buffer interface.
         # https://github.com/andrix/python-snappy/issues/65
         # This only matters when data is a memoryview since
         # id(bytes(data)) == id(data) when data is a bytes.
-        import snappy
-
-        return snappy.uncompress(bytes(data))
+        result = snappy.uncompress(bytes(data))
     elif compressor_id == ZlibContext.compressor_id:
         import zlib
 
-        return zlib.decompress(data)
+        dc = zlib.decompressobj()
+        # Bound the decompressed output during decompression to avoid
+        # allocating a huge buffer before the size check runs.
+        result = dc.decompress(data, max_message_size + 1)
+        if len(result) <= max_message_size:
+            if not dc.eof:
+                raise ProtocolError("Truncated zlib-compressed message")
+            if dc.unused_data:
+                raise ProtocolError("Trailing data after zlib-compressed message")
     elif compressor_id == ZstdContext.compressor_id:
         if sys.version_info >= (3, 14):
             from compression import zstd
         else:
             from backports import zstd
 
-        return zstd.decompress(data)
+        zdc = zstd.ZstdDecompressor()
+        result = zdc.decompress(data, max_message_size + 1)
+        if len(result) <= max_message_size:
+            if not zdc.eof:
+                raise ProtocolError("Truncated zstd-compressed message")
+            if zdc.unused_data:
+                raise ProtocolError("Trailing data after zstd-compressed message")
     else:
         raise ValueError(f"Unknown compressorId {compressor_id}")
+    if len(result) > max_message_size:
+        raise ProtocolError(
+            f"Decompressed message size ({len(result)!r}) is larger than "
+            f"maximum allowed payload size ({max_message_size!r})"
+        )
+    return result

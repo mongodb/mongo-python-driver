@@ -80,8 +80,8 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.mlkem import (
-    MLKEM768PrivateKey,
-    MLKEM1024PrivateKey,
+    MLKEM768PublicKey,
+    MLKEM1024PublicKey,
 )
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -189,13 +189,14 @@ class TestVerifySignature(unittest.TestCase):
     def test_mlkem768_fails_closed(self):
         # ML-KEM is a key encapsulation mechanism, so an ML-KEM public key has
         # no verify(). Certificate.public_key() can return one, which used to
-        # reach the generic branch and raise AttributeError.
-        key = MLKEM768PrivateKey.generate().public_key()
-        self.assertEqual(_verify_signature(key, b"sig", Mock(), b"data"), 0)
+        # reach the generic branch and raise AttributeError. A spec'd mock has
+        # no verify() either, so reaching that branch again would raise here too.
+        key = MagicMock(spec=MLKEM768PublicKey)
+        self.assertEqual(_verify_signature(key, b"sig", Mock(), b"data"), 0)  # type: ignore[arg-type]
 
     def test_mlkem1024_fails_closed(self):
-        key = MLKEM1024PrivateKey.generate().public_key()
-        self.assertEqual(_verify_signature(key, b"sig", Mock(), b"data"), 0)
+        key = MagicMock(spec=MLKEM1024PublicKey)
+        self.assertEqual(_verify_signature(key, b"sig", Mock(), b"data"), 0)  # type: ignore[arg-type]
 
     def test_other_key_valid(self):
         key = Mock()

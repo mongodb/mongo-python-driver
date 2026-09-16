@@ -44,7 +44,7 @@ class AsyncBulkTestBase(AsyncIntegrationTest):
 
     async def asyncSetUp(self):
         await super().asyncSetUp()
-        self.coll = self.db.test
+        self.coll = self.db.coll
         await self.coll.drop()
         self.coll_w0 = self.coll.with_options(write_concern=WriteConcern(w=0))
 
@@ -792,7 +792,7 @@ class AsyncBulkAuthorizationTestBase(AsyncBulkTestBase):
             privileges=[
                 {
                     "actions": ["insert", "update", "find"],
-                    "resource": {"db": "pymongo_test", "collection": "test"},
+                    "resource": {"db": "pymongo_test", "collection": "coll"},
                 }
             ],
             roles=[],
@@ -899,7 +899,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
         cli = await self.async_rs_or_single_client_noauth(
             username="readonly", password="pw", authSource="pymongo_test"
         )
-        coll = cli.pymongo_test.test
+        coll = cli.pymongo_test.coll
         await coll.find_one()
         with self.assertRaises(OperationFailure):
             await coll.bulk_write([InsertOne({"x": 1})])
@@ -910,7 +910,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
         cli = await self.async_rs_or_single_client_noauth(
             username="noremove", password="pw", authSource="pymongo_test"
         )
-        coll = cli.pymongo_test.test
+        coll = cli.pymongo_test.coll
         await coll.find_one()
         requests = [
             InsertOne({"x": 1}),

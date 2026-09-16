@@ -50,6 +50,7 @@ class TopologySettings(_BaseTopologySettings[type[Pool], type[monitor.Monitor]])
         load_balanced: Optional[bool] = None,
         srv_service_name: str = common.SRV_SERVICE_NAME,
         srv_max_hosts: int = 0,
+        srv_allowed_hosts_suffix: Optional[str] = None,
         server_monitoring_mode: str = common.SERVER_MONITORING_MODE,
         topology_id: Optional[ObjectId] = None,
     ):
@@ -75,6 +76,7 @@ class TopologySettings(_BaseTopologySettings[type[Pool], type[monitor.Monitor]])
             load_balanced,
             srv_service_name,
             srv_max_hosts,
+            srv_allowed_hosts_suffix,
             server_monitoring_mode,
             topology_id,
         )

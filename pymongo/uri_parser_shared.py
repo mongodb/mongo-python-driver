@@ -33,7 +33,6 @@ from typing import (
 )
 from urllib.parse import unquote_plus
 
-from pymongo.asynchronous.srv_resolver import _have_dnspython
 from pymongo.client_options import _parse_ssl_options
 from pymongo.common import (
     INTERNAL_URI_OPTION_NAME_MAP,
@@ -46,6 +45,7 @@ from pymongo.typings import _Address
 
 if TYPE_CHECKING:
     from pymongo.pyopenssl_context import SSLContext
+
 
 SCHEME = "mongodb://"
 SCHEME_LEN = len(SCHEME)
@@ -85,6 +85,7 @@ URI_OPTIONS = frozenset(
         "serverSelectionTimeoutMS",
         "serverSelectionTryOnce",
         "socketTimeoutMS",
+        "srvAllowedHostsSuffix",
         "srvMaxHosts",
         "srvServiceName",
         "ssl",
@@ -103,6 +104,15 @@ URI_OPTIONS = frozenset(
         "zlibCompressionLevel",
     ]
 )
+
+
+def _have_dnspython() -> bool:
+    try:
+        import dns  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
 
 
 def _unquoted_percent(s: str) -> bool:
@@ -581,6 +591,10 @@ def _validate_uri(
     elif not is_srv and options.get("srvServiceName") is not None:
         raise ConfigurationError(
             "The srvServiceName option is only allowed with 'mongodb+srv://' URIs"
+        )
+    elif not is_srv and options.get("srvAllowedHostsSuffix") is not None:
+        raise ConfigurationError(
+            "The srvAllowedHostsSuffix option is only allowed with 'mongodb+srv://' URIs"
         )
     elif not is_srv and srv_max_hosts:
         raise ConfigurationError(

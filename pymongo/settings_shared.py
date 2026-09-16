@@ -51,6 +51,7 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
         load_balanced: Optional[bool] = None,
         srv_service_name: str = common.SRV_SERVICE_NAME,
         srv_max_hosts: int = 0,
+        srv_allowed_hosts_suffix: Optional[str] = None,
         server_monitoring_mode: str = common.SERVER_MONITORING_MODE,
         topology_id: Optional[ObjectId] = None,
     ):
@@ -77,6 +78,7 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
         self._load_balanced = load_balanced
         self._srv_service_name = srv_service_name
         self._srv_max_hosts = srv_max_hosts or 0
+        self._srv_allowed_hosts_suffix = srv_allowed_hosts_suffix
         self._server_monitoring_mode = server_monitoring_mode
         if topology_id is not None:
             self._topology_id = topology_id
@@ -153,6 +155,11 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
     def srv_max_hosts(self) -> int:
         """The srvMaxHosts."""
         return self._srv_max_hosts
+
+    @property
+    def srv_allowed_hosts_suffix(self) -> Optional[str]:
+        """The srvAllowedHostsSuffix."""
+        return self._srv_allowed_hosts_suffix
 
     @property
     def server_monitoring_mode(self) -> str:

@@ -748,6 +748,7 @@ URI_OPTIONS_VALIDATOR_MAP: dict[str, Callable[[Any, Any], Any]] = {
     "zlibcompressionlevel": validate_zlib_compression_level,
     "srvservicename": validate_string,
     "srvmaxhosts": validate_non_negative_integer,
+    "srvallowedhostssuffix": validate_string,
     "timeoutms": validate_timeoutms,
     "servermonitoringmode": validate_server_monitoring_mode,
     "maxadaptiveretries": validate_non_negative_integer,
@@ -976,6 +977,15 @@ class BaseObject:
         if session and session.in_transaction:
             return DEFAULT_WRITE_CONCERN
         return self.write_concern
+
+    def _write_concern_for_cmd(
+        self, cmd: Mapping[str, Any], session: Optional[_AgnosticClientSession]
+    ) -> WriteConcern:
+        raw_wc = cmd.get("writeConcern")
+        if raw_wc is not None:
+            return WriteConcern(**raw_wc)
+        else:
+            return self._write_concern_for(session)
 
     @property
     def read_preference(self) -> _ServerMode:
