@@ -1278,6 +1278,9 @@ def create_run_server_func():
         "LOAD_BALANCER",
         "LOCAL_ATLAS",
         "NO_EXT",
+        # Enables the server's OpenTelemetry file exporter; run-mongodb.sh exports
+        # OTEL_TRACE_DIR through mo-expansion.yml when it is set.
+        "OTEL",
     ]
     args = [".evergreen/just.sh", "run-server", "${TEST_NAME}"]
     sub_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
@@ -1311,10 +1314,13 @@ def create_run_tests_func():
         "IS_WIN32",
         "REQUIRE_FIPS",
         "TEST_MIN_DEPS",
+        "OTEL_TRACE_DIR",
     ]
     args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
     setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
-    test_cmd = get_subprocess_exec(args=[".evergreen/just.sh", "run-tests"])
+    test_cmd = get_subprocess_exec(
+        include_expansions_in_env=["OTEL_TRACE_DIR"], args=[".evergreen/just.sh", "run-tests"]
+    )
     return "run tests", [setup_cmd, test_cmd]
 
 
