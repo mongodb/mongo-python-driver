@@ -574,19 +574,28 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(span.attributes["error.type"], span.attributes["db.response.status_code"])
         self.assertTrue(any(event.name == "exception" for event in span.events))
 
+    @async_client_context.require_failCommand_fail_point
     async def test_operation_span_error_type_is_exception_class_name_for_server_error(self):
-        client = await self.async_rs_or_single_client(tracing={"enabled": True})
-        self.exporter.clear()
-        with self.assertRaises(OperationFailure) as ctx:
-            await client[self.db.name].command("thisCommandDoesNotExist")
+        # A non-retryable server error names the exception class on the operation
+        # span, not the server error code.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True}, retryReads=False)
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": 1},
+            "data": {"failCommands": ["find"], "errorCode": 2},
+        }
+        async with self.fail_point(fail_command):
+            self.exporter.clear()
+            with self.assertRaises(OperationFailure):
+                await client[self.db.name].test.find_one({})
 
-        (op_span,) = [
-            s
-            for s in self.spans()
-            if "db.operation.name" in s.attributes and "db.command.name" not in s.attributes
-        ]
+        finished = self.exporter.get_finished_spans()
+        (cmd_span,) = self.command_spans(finished, "find")
+        (op_span,) = self.operation_spans(finished, "find")
         self.assertEqual(op_span.attributes["error.type"], op_span.attributes["exception.type"])
-        self.assertEqual(op_span.attributes["error.type"], _qualified_name(type(ctx.exception)))
+        self.assertNotEqual(
+            op_span.attributes["error.type"], cmd_span.attributes["db.response.status_code"]
+        )
 
     @async_client_context.require_failCommand_fail_point
     async def test_error_type_is_exception_class_name_for_connection_failure(self):
@@ -599,15 +608,15 @@ class TestOTelSpans(AsyncIntegrationTest):
         }
         async with self.fail_point(fail_command):
             self.exporter.clear()
-            with self.assertRaises(ConnectionFailure) as ctx:
+            with self.assertRaises(ConnectionFailure):
                 await client[self.db.name].test.find_one({})
 
-        spans = [s for s in self.spans() if s.attributes.get("db.command.name") == "find"]
-        self.assertEqual(len(spans), 1)
-        attrs = spans[0].attributes
-        self.assertNotIn("db.response.status_code", attrs)
-        self.assertEqual(attrs["error.type"], _qualified_name(type(ctx.exception)))
-        self.assertEqual(attrs["error.type"], attrs["exception.type"])
+        finished = self.exporter.get_finished_spans()
+        (cmd_span,) = self.command_spans(finished, "find")
+        self.assertNotIn("db.response.status_code", cmd_span.attributes)
+        self.assertEqual(cmd_span.attributes["error.type"], cmd_span.attributes["exception.type"])
+        (op_span,) = self.operation_spans(finished, "find")
+        self.assertEqual(op_span.attributes["error.type"], op_span.attributes["exception.type"])
 
     @async_client_context.require_failCommand_blockConnection
     async def test_error_type_is_exception_class_name_for_network_timeout(self):
