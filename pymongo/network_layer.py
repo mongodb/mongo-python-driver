@@ -27,6 +27,7 @@ from asyncio import AbstractEventLoop, BaseTransport, BufferedProtocol, Future, 
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Optional,
     Union,
 )
@@ -75,64 +76,116 @@ BLOCKING_IO_ERRORS = (BlockingIOError, *BLOCKING_IO_LOOKUP_ERROR, *ssl_support.B
 # the MongoDB wire protocol
 async def async_socket_sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
     timeout = sock.gettimeout()
+    loop = asyncio.get_running_loop()
+    try:
+        if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
+            # Drive the SSL socket with a *blocking* operation in a worker thread,
+            # mirroring synchronous socket behavior.  This avoids the hand-rolled
+            # add_reader/add_writer non-blocking machinery that breaks under
+            # asyncio on Python 3.15 (a peer reset surfaces as a raw
+            # ConnectionResetError/BrokenPipeError before any bytes are sent).
+            await _async_blocking_socket_call(loop, sock.sendall, buf, timeout)
+        else:
+            # loop.sock_sendall requires a non-blocking socket.
+            sock.settimeout(0.0)
+            try:
+                await asyncio.wait_for(loop.sock_sendall(sock, buf), timeout=timeout)  # type: ignore[arg-type]
+            finally:
+                sock.settimeout(timeout)
+    except asyncio.TimeoutError as exc:
+        # Convert the asyncio.wait_for timeout error to socket.timeout which pool.py understands.
+        raise socket.timeout("timed out") from exc
+
+
+async def _async_blocking_socket_call(
+    loop: AbstractEventLoop,
+    func: Callable[..., Any],
+    arg: Any,
+    timeout: Optional[float],
+) -> Any:
+    """Run a blocking socket operation in a worker thread with a timeout.
+
+    The worker thread cannot be interrupted, and the socket is not thread-safe
+    to close while another thread is blocked inside an SSL operation.  So the
+    future is *shielded* from cancellation: on timeout, wait for the worker to
+    finish (its blocking op is bounded by the socket's own timeout) before
+    propagating the timeout to the caller.
+    """
+    fut = asyncio.shield(loop.run_in_executor(None, func, arg))
+    try:
+        return await asyncio.wait_for(fut, timeout=timeout)
+    except asyncio.TimeoutError:
+        if timeout is not None:
+            try:
+                await asyncio.wait_for(fut, timeout=timeout)
+            except (
+                asyncio.TimeoutError,
+                asyncio.CancelledError,
+                OSError,
+                *ssl_support.BLOCKING_IO_ERRORS,
+            ):
+                # The worker finished (in error or via shutdown); its result is
+                # not needed since we are propagating the timeout.
+                pass
+        raise
+    except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as exc:
+        # The peer reset the connection.  On older Pythons/OpenSSL this surfaces
+        # as a clean EOF; on Python 3.15's OpenSSL it raises a raw
+        # BrokenPipeError/ConnectionResetError instead.  Map it back to a
+        # graceful close so KMS requests treat it as a retryable connection
+        # failure like they do everywhere else.
+        raise OSError("connection closed") from exc
+
+
+def sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
+    sock.sendall(buf)
+
+
+async def _poll_cancellation(conn: AsyncConnection) -> None:
+    while True:
+        if conn.cancel_context.cancelled:
+            return
+
+        await asyncio.sleep(_POLL_TIMEOUT)
+
+
+async def async_receive_data_socket(
+    sock: Union[socket.socket, _sslConn], length: int
+) -> memoryview:
+    timeout = sock.gettimeout()
     sock.settimeout(0.0)
     loop = asyncio.get_running_loop()
     try:
         if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
-            await asyncio.wait_for(_async_socket_sendall_ssl(sock, buf, loop), timeout=timeout)
+            return await asyncio.wait_for(
+                _async_socket_receive_ssl(sock, length, loop, once=True),  # type: ignore[arg-type]
+                timeout=timeout,
+            )
         else:
-            await asyncio.wait_for(loop.sock_sendall(sock, buf), timeout=timeout)  # type: ignore[arg-type]
-    except asyncio.TimeoutError as exc:
-        # Convert the asyncio.wait_for timeout error to socket.timeout which pool.py understands.
-        raise socket.timeout("timed out") from exc
+            return await asyncio.wait_for(
+                _async_socket_receive(sock, length, loop),  # type: ignore[arg-type]
+                timeout=timeout,
+            )
+    except asyncio.TimeoutError as err:
+        raise socket.timeout("timed out") from err
     finally:
         sock.settimeout(timeout)
 
 
+async def _async_socket_receive(
+    conn: socket.socket, length: int, loop: AbstractEventLoop
+) -> memoryview:
+    mv = memoryview(bytearray(length))
+    bytes_read = 0
+    while bytes_read < length:
+        chunk_length = await loop.sock_recv_into(conn, mv[bytes_read:])
+        if chunk_length == 0:
+            raise OSError("connection closed")
+        bytes_read += chunk_length
+    return mv
+
+
 if sys.platform != "win32":
-
-    async def _async_socket_sendall_ssl(
-        sock: Union[socket.socket, _sslConn], buf: bytes, loop: AbstractEventLoop
-    ) -> None:
-        view = memoryview(buf)
-        sent = 0
-
-        def _is_ready(fut: Future[Any]) -> None:
-            if fut.done():
-                return
-            fut.set_result(None)
-
-        while sent < len(buf):
-            try:
-                sent += sock.send(view[sent:])
-            except BLOCKING_IO_ERRORS as exc:
-                fd = sock.fileno()
-                # Check for closed socket.
-                if fd == -1:
-                    raise SSLError("Underlying socket has been closed") from None
-                if isinstance(exc, BLOCKING_IO_READ_ERROR):
-                    fut = loop.create_future()
-                    loop.add_reader(fd, _is_ready, fut)
-                    try:
-                        await fut
-                    finally:
-                        loop.remove_reader(fd)
-                if isinstance(exc, BLOCKING_IO_WRITE_ERROR):
-                    fut = loop.create_future()
-                    loop.add_writer(fd, _is_ready, fut)
-                    try:
-                        await fut
-                    finally:
-                        loop.remove_writer(fd)
-                if _HAVE_PYOPENSSL and isinstance(exc, BLOCKING_IO_LOOKUP_ERROR):
-                    fut = loop.create_future()
-                    loop.add_reader(fd, _is_ready, fut)
-                    try:
-                        loop.add_writer(fd, _is_ready, fut)
-                        await fut
-                    finally:
-                        loop.remove_reader(fd)
-                        loop.remove_writer(fd)
 
     async def _async_socket_receive_ssl(
         conn: _sslConn, length: int, loop: AbstractEventLoop, once: Optional[bool] = False
@@ -150,7 +203,8 @@ if sys.platform != "win32":
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
-                # KMS responses update their expected size after the first batch, stop reading after one loop
+                # KMS responses update their expected size after the first batch,
+                # stop reading after one loop.
                 if once:
                     return mv[:read]
                 total_read += read
@@ -185,30 +239,9 @@ if sys.platform != "win32":
         return mv
 
 else:
-    # The default Windows asyncio event loop does not support loop.add_reader/add_writer:
+    # The default Windows asyncio event loop does not support
+    # loop.add_reader/add_writer:
     # https://docs.python.org/3/library/asyncio-platforms.html#asyncio-platform-support
-    # Note: In PYTHON-4493 we plan to replace this code with asyncio streams.
-    async def _async_socket_sendall_ssl(
-        sock: Union[socket.socket, _sslConn], buf: bytes, dummy: AbstractEventLoop
-    ) -> None:
-        view = memoryview(buf)
-        total_length = len(buf)
-        total_sent = 0
-        # Backoff starts at 1ms, doubles on timeout up to 512ms, and halves on success
-        # down to 1ms.
-        backoff = 0.001
-        while total_sent < total_length:
-            try:
-                sent = sock.send(view[total_sent:])
-            except BLOCKING_IO_ERRORS:
-                await asyncio.sleep(backoff)
-                sent = 0
-            if sent > 0:
-                backoff = max(backoff / 2, 0.001)
-            else:
-                backoff = min(backoff * 2, 0.512)
-            total_sent += sent
-
     async def _async_socket_receive_ssl(
         conn: _sslConn, length: int, dummy: AbstractEventLoop, once: Optional[bool] = False
     ) -> memoryview:
@@ -222,7 +255,8 @@ else:
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
-                # KMS responses update their expected size after the first batch, stop reading after one loop
+                # KMS responses update their expected size after the first batch,
+                # stop reading after one loop.
                 if once:
                     return mv[:read]
             except BLOCKING_IO_ERRORS:
@@ -234,56 +268,6 @@ else:
                 backoff = min(backoff * 2, 0.512)
             total_read += read
         return mv
-
-
-def sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
-    sock.sendall(buf)
-
-
-async def _poll_cancellation(conn: AsyncConnection) -> None:
-    while True:
-        if conn.cancel_context.cancelled:
-            return
-
-        await asyncio.sleep(_POLL_TIMEOUT)
-
-
-async def async_receive_data_socket(
-    sock: Union[socket.socket, _sslConn], length: int
-) -> memoryview:
-    sock_timeout = sock.gettimeout()
-    timeout = sock_timeout
-
-    sock.settimeout(0.0)
-    loop = asyncio.get_running_loop()
-    try:
-        if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
-            return await asyncio.wait_for(
-                _async_socket_receive_ssl(sock, length, loop, once=True),  # type: ignore[arg-type]
-                timeout=timeout,
-            )
-        else:
-            return await asyncio.wait_for(
-                _async_socket_receive(sock, length, loop),  # type: ignore[arg-type]
-                timeout=timeout,
-            )
-    except asyncio.TimeoutError as err:
-        raise socket.timeout("timed out") from err
-    finally:
-        sock.settimeout(sock_timeout)
-
-
-async def _async_socket_receive(
-    conn: socket.socket, length: int, loop: AbstractEventLoop
-) -> memoryview:
-    mv = memoryview(bytearray(length))
-    bytes_read = 0
-    while bytes_read < length:
-        chunk_length = await loop.sock_recv_into(conn, mv[bytes_read:])
-        if chunk_length == 0:
-            raise OSError("connection closed")
-        bytes_read += chunk_length
-    return mv
 
 
 _PYPY = "PyPy" in sys.version

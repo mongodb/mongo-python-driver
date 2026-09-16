@@ -19,13 +19,6 @@ fi
 # Handle the value for UV_PYTHON.
 . $HERE/setup-uv-python.sh
 
-# Ensure the requested interpreter is available before it is used.  uv only
-# installs a managed Python on explicit request, so install one when
-# UV_PYTHON names a version rather than a path.
-if [ -n "${UV_PYTHON:-}" ] && [[ "$UV_PYTHON" != /* ]] && [[ "$UV_PYTHON" != ?:/* ]]; then
-  uv python install "$UV_PYTHON"
-fi
-
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
@@ -33,6 +26,11 @@ bash $HERE/install-dependencies.sh
 # had to install Python on an image that lacks a toolchain.
 if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
+fi
+
+# Install a uv-managed interpreter when no toolchain Python matches.
+if [ -n "${UV_PYTHON:-}" ] && [ "${PYTHON_FOUND:-}" != "1" ]; then
+  uv python install "$UV_PYTHON"
 fi
 
 # Add the default install path to the path if needed.

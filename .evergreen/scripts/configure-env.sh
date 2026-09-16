@@ -43,14 +43,30 @@ fi
 
 SCRIPT_DIR="$PROJECT_DIRECTORY/.evergreen/scripts"
 
+export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
+export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
+
+# Always clone the drivers-tools module at the desired branch.  The env.sh
+# early-exit below must not skip this, otherwise a pre-existing env.sh leaves
+# the module on whatever branch it was first provisioned from.
+rm -rf $DRIVERS_TOOLS
+BRANCH=master
+ORG=mongodb-labs
+git clone --branch $BRANCH https://github.com/$ORG/drivers-evergreen-tools.git $DRIVERS_TOOLS
+
+# Write the .env file for drivers-tools.
+cat <<EOT > ${DRIVERS_TOOLS}/.env
+SKIP_LEGACY_SHELL=1
+DRIVERS_TOOLS="$DRIVERS_TOOLS"
+MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
+MONGODB_BINARIES="$MONGODB_BINARIES"
+EOT
+
 if [ -f "$SCRIPT_DIR/env.sh" ]; then
   echo "Reading $SCRIPT_DIR/env.sh file"
   . "$SCRIPT_DIR/env.sh"
   exit 0
 fi
-
-export MONGO_ORCHESTRATION_HOME="$DRIVERS_TOOLS/.evergreen/orchestration"
-export MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
 
 cat <<EOT > "$SCRIPT_DIR"/env.sh
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
@@ -70,19 +86,6 @@ export PATH="$PATH_EXT"
 # shellcheck disable=SC2154
 export PROJECT="${project:-mongo-python-driver}"
 export PIP_QUIET=1
-EOT
-
-# Write the .env file for drivers-tools.
-rm -rf $DRIVERS_TOOLS
-BRANCH=master
-ORG=mongodb-labs
-git clone --branch $BRANCH https://github.com/$ORG/drivers-evergreen-tools.git $DRIVERS_TOOLS
-
-cat <<EOT > ${DRIVERS_TOOLS}/.env
-SKIP_LEGACY_SHELL=1
-DRIVERS_TOOLS="$DRIVERS_TOOLS"
-MONGO_ORCHESTRATION_HOME="$MONGO_ORCHESTRATION_HOME"
-MONGODB_BINARIES="$MONGODB_BINARIES"
 EOT
 
 # Add these expansions to make it easier to call out tests scripts from the EVG yaml

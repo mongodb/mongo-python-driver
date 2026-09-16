@@ -18,16 +18,35 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
-# Always use UV_PYTHON to select the Python version.
-if [ -z "${UV_PYTHON:-}" ]; then
-  export UV_PYTHON="$_python"
+# Prefer system/toolchain interpreters over uv-managed downloads.  Skip on
+# Windows, where the first python3 on the path is a broken Chocolatey shim that
+# uv cannot inspect.
+if [ "Windows_NT" != "${OS:-}" ]; then
+  export UV_PYTHON_PREFERENCE=system
 fi
 
-# Prefer a toolchain (system) python over a uv-managed download: resolve a
-# bare version like 3.10 or 3.14t to the toolchain interpreter when one is
-# installed, and put its directory on the path.  Anything else (a path, or a
-# version uv must install itself, such as a pre-release) is left alone.
-if [[ "$UV_PYTHON" =~ ^3\.[0-9]+t?$ ]]; then
+# UV_PYTHON is a version identifier (e.g. 3.14) on Linux/macOS, where uv
+# discovers a matching toolchain Python from the path.  On Windows uv cannot
+# reliably resolve a bare version (its path search trips over a broken
+# Chocolatey python3 shim), so UV_PYTHON is set to the interpreter path there.
+if [ -z "${UV_PYTHON:-}" ]; then
+  if [ "${REQUIRE_FIPS:-}" = "1" ]; then
+    # FIPS hosts provision a specific Python; put its directory first on the
+    # path and leave UV_PYTHON unset so uv resolves the interpreter from PATH.
+    export PATH="/usr/bin:$PATH"
+  else
+    export UV_PYTHON="$_python"
+  fi
+fi
+
+# Whether a toolchain Python matching UV_PYTHON was found on the host.
+PYTHON_FOUND=0
+# UV_PYTHON may already be an absolute path, e.g. the Windows toolchain path
+# resolved on a prior invocation.  A path is already usable, so it is treated as
+# found and never triggers a download.
+if [ -n "${UV_PYTHON:-}" ] && [[ "$UV_PYTHON" == /* || "$UV_PYTHON" == ?:/* ]]; then
+  PYTHON_FOUND=1
+elif [ -n "${UV_PYTHON:-}" ] && [[ "$UV_PYTHON" =~ ^3\.[0-9]+t?$ ]]; then
   case "$(uname -s)" in
     Darwin)
       if [[ "$UV_PYTHON" == *"t"* ]]; then
@@ -40,8 +59,8 @@ if [[ "$UV_PYTHON" =~ ^3\.[0-9]+t?$ ]]; then
       _version="${UV_PYTHON%t}"
       _bin_dir="/Library/Frameworks/${framework_dir}.Framework/Versions/$_version/bin"
       if [ -x "$_bin_dir/$binary_name" ]; then
-        export UV_PYTHON="$_bin_dir/$binary_name"
         export PATH="$_bin_dir:$PATH"
+        PYTHON_FOUND=1
       fi
       ;;
     *)
@@ -58,16 +77,20 @@ if [[ "$UV_PYTHON" =~ ^3\.[0-9]+t?$ ]]; then
           _bin_dir="C:/python/Python${_dir}"
         fi
         if [ -f "$_bin_dir/$_exe" ]; then
+          # Windows: point UV_PYTHON at the interpreter (path-based) so uv does
+          # not probe the path and trip over a broken Chocolatey python3 shim.
           export UV_PYTHON="$_bin_dir/$_exe"
           export PATH="$_bin_dir:$PATH"
+          PYTHON_FOUND=1
         fi
       else
         _bin_dir="/opt/python/$UV_PYTHON/bin"
         if [ -x "$_bin_dir/python3" ]; then
-          export UV_PYTHON="$_bin_dir/python3"
           export PATH="$_bin_dir:$PATH"
+          PYTHON_FOUND=1
         fi
       fi
       ;;
   esac
 fi
+export PYTHON_FOUND
