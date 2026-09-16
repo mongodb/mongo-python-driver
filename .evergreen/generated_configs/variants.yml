@@ -276,10 +276,10 @@ buildvariants:
     batchtime: 1440
     expansions:
       TEST_NAME: encryption
-    tags: [encryption_tag]
+    tags: [encryption_tag, pr]
   - name: encryption-pyopenssl-rhel9.7
     tasks:
-      - name: .test-non-standard .python-3.15t
+      - name: .test-non-standard !python-3.15t
     display_name: Encryption PyOpenSSL RHEL9.7
     run_on:
       - rhel97-small
@@ -287,7 +287,7 @@ buildvariants:
     expansions:
       TEST_NAME: encryption
       SUB_TEST_NAME: pyopenssl
-    tags: [encryption_tag]
+    tags: [encryption_tag, pr]
 
   # Enterprise auth tests
   - name: auth-enterprise-rhel8
