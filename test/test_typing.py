@@ -203,6 +203,8 @@ class TestPymongo(IntegrationTest):
         result.items()
 
     def test_list_collections(self) -> None:
+        self.client.test.test_list_collections.insert_one({})
+        self.addCleanup(self.client.test.drop_collection, "test_list_collections")
         cursor = self.client.test.list_collections()
         value = cursor.next()
         value.items()

@@ -120,7 +120,9 @@ def _grid_in_property(
         if warn_str:
             warnings.warn(warn_str, stacklevel=2, category=DeprecationWarning)
         if self._closed:
-            self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {field_name: value}})
+            self._coll.files.update_one(
+                {"_id": {"$eq": self._file["_id"]}}, {"$set": {field_name: value}}
+            )
         self._file[field_name] = value
 
     if read_only:
