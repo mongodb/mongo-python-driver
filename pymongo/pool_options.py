@@ -252,39 +252,26 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         metadata["platform"] = plat
     else:
         metadata.pop("platform", None)
-    encoded_size = len(bson.encode(metadata))
-    if encoded_size <= _MAX_METADATA_SIZE:
-        return
     # 5. Truncate driver info, keeping name and version 1:1 index-aligned.
     driver = metadata.get("driver", {})
     if driver:
-        # Trim wrapper version and name content first, dropping paired segments
-        # only as a last resort, so name and version stay 1:1 aligned.
+        # Keep the name and version segments paired so they stay 1:1 aligned,
+        # trimming wrapper content and dropping paired segments only as a
+        # last resort.
+        pairs = list(zip(driver.get("name", "").split("|"), driver.get("version", "").split("|")))
         while True:
-            encoded_size = len(bson.encode(metadata))
-            if encoded_size <= _MAX_METADATA_SIZE:
+            driver["name"] = "|".join(name for name, _ in pairs)
+            driver["version"] = "|".join(version for _, version in pairs)
+            overflow = len(bson.encode(metadata)) - _MAX_METADATA_SIZE
+            if overflow <= 0 or len(pairs) <= 1:
                 break
-            overflow = encoded_size - _MAX_METADATA_SIZE
-            previous = (driver.get("name", ""), driver.get("version", ""))
-            n_parts = driver.get("name", "").split("|")
-            v_parts = driver.get("version", "").split("|")
-
-            if len(v_parts) > 1 and v_parts[-1]:
-                v_parts[-1] = _truncate_utf8(v_parts[-1], overflow)
-                driver["version"] = "|".join(v_parts)
-            elif len(n_parts) > 1 and n_parts[-1]:
-                n_parts[-1] = _truncate_utf8(n_parts[-1], overflow)
-                driver["name"] = "|".join(n_parts)
-            elif len(n_parts) > 1:
-                n_parts.pop()
-                v_parts.pop()
-                driver["name"] = "|".join(n_parts)
-                driver["version"] = "|".join(v_parts)
+            last_name, last_version = pairs[-1]
+            if last_version:
+                pairs[-1] = (last_name, _truncate_utf8(last_version, overflow))
+            elif last_name:
+                pairs[-1] = (_truncate_utf8(last_name, overflow), last_version)
             else:
-                break
-
-            if previous == (driver.get("name"), driver.get("version")):
-                break
+                pairs.pop()
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
