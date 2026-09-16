@@ -28,11 +28,6 @@ if [ -f $HERE/env.sh ]; then
   . $HERE/env.sh
 fi
 
-# Install a uv-managed interpreter when no toolchain Python matches.
-if [ -n "${UV_PYTHON:-}" ] && [ "${PYTHON_FOUND:-}" != "1" ]; then
-  uv python install "$UV_PYTHON"
-fi
-
 # Add the default install path to the path if needed.
 if [ -z "${PYMONGO_BIN_DIR:-}" ]; then
   export PATH="$PATH:$HOME/.local/bin"

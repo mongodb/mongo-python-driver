@@ -79,11 +79,7 @@ async def async_socket_sendall(sock: Union[socket.socket, _sslConn], buf: bytes)
     loop = asyncio.get_running_loop()
     try:
         if _HAVE_SSL and isinstance(sock, (SSLSocket, _sslConn)):
-            # Drive the SSL socket with a *blocking* operation in a worker thread,
-            # mirroring synchronous socket behavior.  This avoids the hand-rolled
-            # add_reader/add_writer non-blocking machinery that breaks under
-            # asyncio on Python 3.15 (a peer reset surfaces as a raw
-            # ConnectionResetError/BrokenPipeError before any bytes are sent).
+            # Blocking SSL send: non-blocking send raises on a peer reset on Python 3.15.
             await _async_blocking_socket_call(loop, sock.sendall, buf, timeout)
         else:
             # loop.sock_sendall requires a non-blocking socket.
@@ -105,11 +101,7 @@ async def _async_blocking_socket_call(
 ) -> Any:
     """Run a blocking socket operation in a worker thread with a timeout.
 
-    The worker thread cannot be interrupted, and the socket is not thread-safe
-    to close while another thread is blocked inside an SSL operation.  So the
-    future is *shielded* from cancellation: on timeout, wait for the worker to
-    finish (its blocking op is bounded by the socket's own timeout) before
-    propagating the timeout to the caller.
+    The worker cannot be interrupted, so the future is shielded from cancellation.
     """
     fut = asyncio.shield(loop.run_in_executor(None, func, arg))
     try:
@@ -124,16 +116,11 @@ async def _async_blocking_socket_call(
                 OSError,
                 *ssl_support.BLOCKING_IO_ERRORS,
             ):
-                # The worker finished (in error or via shutdown); its result is
-                # not needed since we are propagating the timeout.
+                # Wait for the worker; its result is unused because we raise the timeout.
                 pass
         raise
     except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as exc:
-        # The peer reset the connection.  On older Pythons/OpenSSL this surfaces
-        # as a clean EOF; on Python 3.15's OpenSSL it raises a raw
-        # BrokenPipeError/ConnectionResetError instead.  Map it back to a
-        # graceful close so KMS requests treat it as a retryable connection
-        # failure like they do everywhere else.
+        # A peer reset raises here on Python 3.15; report it as a graceful close.
         raise OSError("connection closed") from exc
 
 
@@ -203,8 +190,7 @@ if sys.platform != "win32":
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
-                # KMS responses update their expected size after the first batch,
-                # stop reading after one loop.
+                # KMS responses update their expected size after the first batch, stop reading after one loop
                 if once:
                     return mv[:read]
                 total_read += read
@@ -239,8 +225,7 @@ if sys.platform != "win32":
         return mv
 
 else:
-    # The default Windows asyncio event loop does not support
-    # loop.add_reader/add_writer:
+    # The default Windows asyncio event loop does not support loop.add_reader/add_writer:
     # https://docs.python.org/3/library/asyncio-platforms.html#asyncio-platform-support
     async def _async_socket_receive_ssl(
         conn: _sslConn, length: int, dummy: AbstractEventLoop, once: Optional[bool] = False
@@ -255,8 +240,7 @@ else:
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
-                # KMS responses update their expected size after the first batch,
-                # stop reading after one loop.
+                # KMS responses update their expected size after the first batch, stop reading after one loop
                 if once:
                     return mv[:read]
             except BLOCKING_IO_ERRORS:

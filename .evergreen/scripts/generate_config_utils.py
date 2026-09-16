@@ -27,13 +27,6 @@ PYPYS = ["pypy3.11"]
 MIN_SUPPORT_VERSIONS = ["3.9", "pypy3.9", "pypy3.10"]
 ALL_PYTHONS = CPYTHONS + PYPYS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
-
-
-def set_version_var(env: dict[str, str], version: str) -> None:
-    """Set the env var on task vars that selects the given Python version."""
-    env["TOOLCHAIN_VERSION"] = version
-
-
 BATCHTIME_WEEK = 10080
 BATCHTIME_DAY = 1440
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
@@ -185,7 +178,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
         display_name = f"{display_name}{sep}{version}"
     for key, value in kwargs.items():
         name = value
-        if key.lower() in ["python", "toolchain_version", "uv_python"]:
+        if key.lower() in ["python", "toolchain_version"]:
             if not value.startswith("pypy"):
                 name = f"Python{value}"
             else:

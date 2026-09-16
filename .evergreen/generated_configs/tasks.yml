@@ -466,8 +466,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v5.0-python3.10-min-deps
@@ -477,8 +477,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v6.0-python3.10-min-deps
@@ -488,8 +488,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v7.0-python3.10-min-deps
@@ -499,8 +499,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v8.0-python3.10-min-deps
@@ -510,8 +510,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v9.0-python3.10-min-deps
@@ -521,8 +521,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-rapid-python3.10-min-deps
@@ -532,8 +532,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-latest-python3.15
@@ -543,8 +543,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
@@ -553,8 +553,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v5.0-python3.10-min-deps
@@ -564,8 +564,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v6.0-python3.10-min-deps
@@ -575,8 +575,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v7.0-python3.10-min-deps
@@ -586,8 +586,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v8.0-python3.10-min-deps
@@ -597,8 +597,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v9.0-python3.10-min-deps
@@ -608,8 +608,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-rapid-python3.10-min-deps
@@ -619,8 +619,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-latest-python3.15
@@ -630,8 +630,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
@@ -640,8 +640,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v5.0-python3.10-min-deps
@@ -651,8 +651,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v6.0-python3.10-min-deps
@@ -662,8 +662,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v7.0-python3.10-min-deps
@@ -673,8 +673,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v8.0-python3.10-min-deps
@@ -684,8 +684,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v9.0-python3.10-min-deps
@@ -695,8 +695,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-rapid-python3.10-min-deps
@@ -706,8 +706,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-latest-python3.15
@@ -717,8 +717,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
@@ -727,8 +727,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v5.0-python3.10-min-deps
@@ -738,8 +738,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v6.0-python3.10-min-deps
@@ -749,8 +749,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v7.0-python3.10-min-deps
@@ -760,8 +760,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v8.0-python3.10-min-deps
@@ -771,8 +771,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v9.0-python3.10-min-deps
@@ -782,8 +782,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-rapid-python3.10-min-deps
@@ -793,8 +793,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-latest-python3.15
@@ -804,8 +804,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-soft-fail-v4.4-python3.10-min-deps
     commands:
@@ -814,8 +814,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-soft-fail-v5.0-python3.10-min-deps
@@ -825,8 +825,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-soft-fail-v6.0-python3.10-min-deps
@@ -836,8 +836,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-soft-fail-v7.0-python3.10-min-deps
@@ -847,8 +847,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-soft-fail-v8.0-python3.10-min-deps
@@ -858,8 +858,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-soft-fail-v9.0-python3.10-min-deps
@@ -869,8 +869,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-soft-fail-rapid-python3.10-min-deps
@@ -880,8 +880,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-soft-fail-latest-python3.15
@@ -891,8 +891,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-valid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
@@ -901,8 +901,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -917,8 +917,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -932,8 +932,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -947,8 +947,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -962,8 +962,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -977,8 +977,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -992,8 +992,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1007,8 +1007,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
           COVERAGE: "1"
     tags:
       - ocsp
@@ -1023,8 +1023,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1038,8 +1038,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1053,8 +1053,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1068,8 +1068,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1083,8 +1083,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1098,8 +1098,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1113,8 +1113,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1128,8 +1128,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -1142,8 +1142,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1157,8 +1157,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1172,8 +1172,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1187,8 +1187,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1202,8 +1202,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1217,8 +1217,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1232,8 +1232,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1247,8 +1247,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -1261,8 +1261,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1276,8 +1276,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1291,8 +1291,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1306,8 +1306,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1321,8 +1321,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1336,8 +1336,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1351,8 +1351,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -1366,8 +1366,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -1380,8 +1380,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
@@ -1391,8 +1391,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
@@ -1402,8 +1402,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
@@ -1413,8 +1413,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
@@ -1424,8 +1424,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.10-min-deps
@@ -1435,8 +1435,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10-min-deps
@@ -1446,8 +1446,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.15
@@ -1457,8 +1457,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
@@ -1467,8 +1467,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
@@ -1478,8 +1478,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
@@ -1489,8 +1489,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
@@ -1500,8 +1500,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
@@ -1511,8 +1511,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.10-min-deps
@@ -1522,8 +1522,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10-min-deps
@@ -1533,8 +1533,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.15
@@ -1544,8 +1544,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
@@ -1554,8 +1554,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "4.4"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
@@ -1565,8 +1565,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "5.0"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
@@ -1576,8 +1576,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "6.0"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
@@ -1587,8 +1587,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "7.0"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
@@ -1598,8 +1598,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v9.0-python3.10-min-deps
@@ -1609,8 +1609,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-rapid-python3.10-min-deps
@@ -1620,8 +1620,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, rapid]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-latest-python3.15
@@ -1631,8 +1631,8 @@ tasks:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-ecdsa, latest]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
@@ -1641,8 +1641,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v5.0-python3.10-min-deps
@@ -1652,8 +1652,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v6.0-python3.10-min-deps
@@ -1663,8 +1663,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v7.0-python3.10-min-deps
@@ -1674,8 +1674,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v8.0-python3.10-min-deps
@@ -1685,8 +1685,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v9.0-python3.10-min-deps
@@ -1696,8 +1696,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-rapid-python3.10-min-deps
@@ -1707,8 +1707,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-latest-python3.15
@@ -1718,8 +1718,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
@@ -1728,8 +1728,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v5.0-python3.10-min-deps
@@ -1739,8 +1739,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v6.0-python3.10-min-deps
@@ -1750,8 +1750,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v7.0-python3.10-min-deps
@@ -1761,8 +1761,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v8.0-python3.10-min-deps
@@ -1772,8 +1772,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v9.0-python3.10-min-deps
@@ -1783,8 +1783,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-rapid-python3.10-min-deps
@@ -1794,8 +1794,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-latest-python3.15
@@ -1805,8 +1805,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
@@ -1815,8 +1815,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v5.0-python3.10-min-deps
@@ -1826,8 +1826,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v6.0-python3.10-min-deps
@@ -1837,8 +1837,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v7.0-python3.10-min-deps
@@ -1848,8 +1848,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v8.0-python3.10-min-deps
@@ -1859,8 +1859,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v9.0-python3.10-min-deps
@@ -1870,8 +1870,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-rapid-python3.10-min-deps
@@ -1881,8 +1881,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-latest-python3.15
@@ -1892,8 +1892,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
@@ -1902,8 +1902,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v5.0-python3.10-min-deps
@@ -1913,8 +1913,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v6.0-python3.10-min-deps
@@ -1924,8 +1924,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v7.0-python3.10-min-deps
@@ -1935,8 +1935,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v8.0-python3.10-min-deps
@@ -1946,8 +1946,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v9.0-python3.10-min-deps
@@ -1957,8 +1957,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-rapid-python3.10-min-deps
@@ -1968,8 +1968,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-latest-python3.15
@@ -1979,8 +1979,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-soft-fail-v4.4-python3.10-min-deps
     commands:
@@ -1989,8 +1989,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-soft-fail-v5.0-python3.10-min-deps
@@ -2000,8 +2000,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-soft-fail-v6.0-python3.10-min-deps
@@ -2011,8 +2011,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-soft-fail-v7.0-python3.10-min-deps
@@ -2022,8 +2022,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-soft-fail-v8.0-python3.10-min-deps
@@ -2033,8 +2033,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-soft-fail-v9.0-python3.10-min-deps
@@ -2044,8 +2044,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-soft-fail-rapid-python3.10-min-deps
@@ -2055,8 +2055,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-soft-fail-latest-python3.15
@@ -2066,8 +2066,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-valid-cert-server-staples-v4.4-python3.10-min-deps
     commands:
@@ -2076,8 +2076,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2091,8 +2091,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2106,8 +2106,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2121,8 +2121,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2136,8 +2136,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2151,8 +2151,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2166,8 +2166,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2181,8 +2181,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags:
       - ocsp
       - ocsp-rsa
@@ -2195,8 +2195,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2210,8 +2210,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2225,8 +2225,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2240,8 +2240,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2255,8 +2255,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2270,8 +2270,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2285,8 +2285,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2300,8 +2300,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags:
       - ocsp
       - ocsp-rsa
@@ -2314,8 +2314,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2329,8 +2329,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2344,8 +2344,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2359,8 +2359,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2374,8 +2374,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2389,8 +2389,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2404,8 +2404,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2419,8 +2419,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags:
       - ocsp
       - ocsp-rsa
@@ -2433,8 +2433,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2448,8 +2448,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2463,8 +2463,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2478,8 +2478,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2493,8 +2493,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2508,8 +2508,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2523,8 +2523,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags:
       - ocsp
@@ -2538,8 +2538,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags:
       - ocsp
       - ocsp-rsa
@@ -2552,8 +2552,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
@@ -2563,8 +2563,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
@@ -2574,8 +2574,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
@@ -2585,8 +2585,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
@@ -2596,8 +2596,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.10-min-deps
@@ -2607,8 +2607,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10-min-deps
@@ -2618,8 +2618,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.15
@@ -2629,8 +2629,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
@@ -2639,8 +2639,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
@@ -2650,8 +2650,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
@@ -2661,8 +2661,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
@@ -2672,8 +2672,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
@@ -2683,8 +2683,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.10-min-deps
@@ -2694,8 +2694,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.10-min-deps
@@ -2705,8 +2705,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-latest-python3.15
@@ -2716,8 +2716,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v4.4-python3.10-min-deps
     commands:
@@ -2726,8 +2726,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "4.4"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "4.4"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "4.4"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v5.0-python3.10-min-deps
@@ -2737,8 +2737,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "5.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "5.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "5.0"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v6.0-python3.10-min-deps
@@ -2748,8 +2748,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "6.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "6.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "6.0"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v7.0-python3.10-min-deps
@@ -2759,8 +2759,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "7.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "7.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "7.0"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v8.0-python3.10-min-deps
@@ -2770,8 +2770,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "8.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v9.0-python3.10-min-deps
@@ -2781,8 +2781,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: "9.0"
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: "9.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-rapid-python3.10-min-deps
@@ -2792,8 +2792,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: rapid
           TOOLCHAIN_VERSION: "3.10"
+          VERSION: rapid
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, rapid]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-latest-python3.15
@@ -2803,8 +2803,8 @@ tasks:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          VERSION: latest
           TOOLCHAIN_VERSION: "3.15"
+          VERSION: latest
     tags: [ocsp, ocsp-rsa, latest]
 
   # Oidc tests
