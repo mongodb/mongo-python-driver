@@ -143,15 +143,15 @@ def create_encryption_variants() -> list[BuildVariant]:
     ):
         expansions = get_encryption_expansions(encryption)
         display_name = get_variant_name(encryption, host, **expansions)
-        tasks = [".test-non-standard !python-3.15t", ".test-string-query-preview"]
+        tasks = [".test-non-standard !.python-3.15t", ".test-string-query-preview"]
         if host != "rhel8":
             # Exclude PyPy (not tested with encryption on macOS/win64) and coverage tasks
             # (encryption suites exceed the 60-min timeout with coverage overhead on macOS/win64).
             # Also include the non-coverage companion tasks (test-non-standard-no-cov) which
             # carry the "latest" server tasks without COVERAGE=1.
             tasks = [
-                ".test-non-standard !.pypy !.cov !python-3.15t",
-                ".test-non-standard-no-cov !.pypy !python-3.15t",
+                ".test-non-standard !.pypy !.cov !.python-3.15t",
+                ".test-non-standard-no-cov !.pypy !.python-3.15t",
                 ".test-string-query-preview",
             ]
         variant = create_variant(
@@ -170,7 +170,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     expansions = get_encryption_expansions(encryption)
     display_name = get_variant_name(encryption, host, **expansions)
     variant = create_variant(
-        [".test-non-standard !python-3.15t"],
+        [".test-non-standard !.python-3.15t"],
         display_name,
         host=host,
         expansions=expansions,
@@ -179,13 +179,14 @@ def create_encryption_variants() -> list[BuildVariant]:
     )
     variants.append(variant)
 
-    # The 3.15t encryption tests only run on RHEL 9.7 for now.
-    host = HOSTS["rhel97"]
+    # The 3.15t encryption tests only run on Ubuntu 22, whose OpenSSL 3.0.2 is
+    # needed to build the cryptography package; only MongoDB 6.0+ runs there.
+    host = HOSTS["ubuntu22"]
     expansions = get_encryption_expansions("Encryption")
     display_name = get_variant_name("Encryption", host, **expansions)
     variants.append(
         create_variant(
-            [".test-non-standard .python-3.15t"],
+            [".test-non-standard .python-3.15t !.server-4.4 !.server-5.0"],
             display_name,
             host=host,
             expansions=expansions,
@@ -194,12 +195,12 @@ def create_encryption_variants() -> list[BuildVariant]:
         )
     )
 
-    # PyOpenSSL does not run on 3.15t; RHEL 9.7 covers its newer OpenSSL.
+    # PyOpenSSL does not run on 3.15t.
     expansions = get_encryption_expansions("Encryption PyOpenSSL")
     display_name = get_variant_name("Encryption PyOpenSSL", host, **expansions)
     variants.append(
         create_variant(
-            [".test-non-standard !python-3.15t"],
+            [".test-non-standard !.python-3.15t !.server-4.4 !.server-5.0"],
             display_name,
             host=host,
             expansions=expansions,
@@ -290,9 +291,9 @@ def create_pyopenssl_variants():
     for host in ["rhel8", "macos", "win64"]:
         display_name = get_variant_name(base_name, host)
         base_task = (
-            ".test-standard !python-3.15t"
+            ".test-standard !.python-3.15t"
             if host == "rhel8"
-            else ".test-standard !.pypy !python-3.15t"
+            else ".test-standard !.pypy !.python-3.15t"
         )
         # We only need to run a subset on async.
         tasks = [f"{base_task} .sync", f"{base_task} .async .replica_set-noauth-ssl"]

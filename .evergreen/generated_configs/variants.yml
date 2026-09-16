@@ -185,7 +185,7 @@ buildvariants:
   # Encryption tests
   - name: encryption-rhel8
     tasks:
-      - name: .test-non-standard !python-3.15t
+      - name: .test-non-standard !.python-3.15t
       - name: .test-string-query-preview
     display_name: Encryption RHEL8
     run_on:
@@ -196,8 +196,8 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-macos
     tasks:
-      - name: .test-non-standard !.pypy !.cov !python-3.15t
-      - name: .test-non-standard-no-cov !.pypy !python-3.15t
+      - name: .test-non-standard !.pypy !.cov !.python-3.15t
+      - name: .test-non-standard-no-cov !.pypy !.python-3.15t
       - name: .test-string-query-preview
     display_name: Encryption macOS
     run_on:
@@ -208,8 +208,8 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-win64
     tasks:
-      - name: .test-non-standard !.pypy !.cov !python-3.15t
-      - name: .test-non-standard-no-cov !.pypy !python-3.15t
+      - name: .test-non-standard !.pypy !.cov !.python-3.15t
+      - name: .test-non-standard-no-cov !.pypy !.python-3.15t
       - name: .test-string-query-preview
     display_name: Encryption Win64
     run_on:
@@ -220,7 +220,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-crypt_shared-rhel8
     tasks:
-      - name: .test-non-standard !python-3.15t
+      - name: .test-non-standard !.python-3.15t
       - name: .test-string-query-preview
     display_name: Encryption crypt_shared RHEL8
     run_on:
@@ -232,8 +232,8 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-crypt_shared-macos
     tasks:
-      - name: .test-non-standard !.pypy !.cov !python-3.15t
-      - name: .test-non-standard-no-cov !.pypy !python-3.15t
+      - name: .test-non-standard !.pypy !.cov !.python-3.15t
+      - name: .test-non-standard-no-cov !.pypy !.python-3.15t
       - name: .test-string-query-preview
     display_name: Encryption crypt_shared macOS
     run_on:
@@ -245,8 +245,8 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-crypt_shared-win64
     tasks:
-      - name: .test-non-standard !.pypy !.cov !python-3.15t
-      - name: .test-non-standard-no-cov !.pypy !python-3.15t
+      - name: .test-non-standard !.pypy !.cov !.python-3.15t
+      - name: .test-non-standard-no-cov !.pypy !.python-3.15t
       - name: .test-string-query-preview
     display_name: Encryption crypt_shared Win64
     run_on:
@@ -258,7 +258,7 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8
     tasks:
-      - name: .test-non-standard !python-3.15t
+      - name: .test-non-standard !.python-3.15t
     display_name: Encryption PyOpenSSL RHEL8
     run_on:
       - rhel8.10-small
@@ -267,22 +267,22 @@ buildvariants:
       TEST_NAME: encryption
       SUB_TEST_NAME: pyopenssl
     tags: [encryption_tag]
-  - name: encryption-rhel9.7
+  - name: encryption-ubuntu-22
     tasks:
-      - name: .test-non-standard .python-3.15t
-    display_name: Encryption RHEL9.7
+      - name: .test-non-standard .python-3.15t !.server-4.4 !.server-5.0
+    display_name: Encryption Ubuntu-22
     run_on:
-      - rhel97-small
+      - ubuntu2204-small
     batchtime: 1440
     expansions:
       TEST_NAME: encryption
     tags: [encryption_tag, pr]
-  - name: encryption-pyopenssl-rhel9.7
+  - name: encryption-pyopenssl-ubuntu-22
     tasks:
-      - name: .test-non-standard !python-3.15t
-    display_name: Encryption PyOpenSSL RHEL9.7
+      - name: .test-non-standard !.python-3.15t !.server-4.4 !.server-5.0
+    display_name: Encryption PyOpenSSL Ubuntu-22
     run_on:
-      - rhel97-small
+      - ubuntu2204-small
     batchtime: 1440
     expansions:
       TEST_NAME: encryption
@@ -490,8 +490,8 @@ buildvariants:
   # Pyopenssl tests
   - name: pyopenssl-rhel8
     tasks:
-      - name: .test-standard !python-3.15t .sync
-      - name: .test-standard !python-3.15t .async .replica_set-noauth-ssl
+      - name: .test-standard !.python-3.15t .sync
+      - name: .test-standard !.python-3.15t .async .replica_set-noauth-ssl
     display_name: PyOpenSSL RHEL8
     run_on:
       - rhel8.10-small
@@ -500,8 +500,8 @@ buildvariants:
       SUB_TEST_NAME: pyopenssl
   - name: pyopenssl-macos
     tasks:
-      - name: .test-standard !.pypy !python-3.15t .sync
-      - name: .test-standard !.pypy !python-3.15t .async .replica_set-noauth-ssl
+      - name: .test-standard !.pypy !.python-3.15t .sync
+      - name: .test-standard !.pypy !.python-3.15t .async .replica_set-noauth-ssl
     display_name: PyOpenSSL macOS
     run_on:
       - macos-14
@@ -510,8 +510,8 @@ buildvariants:
       SUB_TEST_NAME: pyopenssl
   - name: pyopenssl-win64
     tasks:
-      - name: .test-standard !.pypy !python-3.15t .sync
-      - name: .test-standard !.pypy !python-3.15t .async .replica_set-noauth-ssl
+      - name: .test-standard !.pypy !.python-3.15t .sync
+      - name: .test-standard !.pypy !.python-3.15t .async .replica_set-noauth-ssl
     display_name: PyOpenSSL Win64
     run_on:
       - windows-2022-latest-small
