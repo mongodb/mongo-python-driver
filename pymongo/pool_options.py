@@ -23,8 +23,8 @@ import copy
 import os
 import platform
 import sys
-import threading
 from collections.abc import MutableMapping
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -371,7 +371,9 @@ class PoolOptions:
         self.__metadata = copy.deepcopy(_METADATA)
         self.__appended_drivers: list[DriverInfo] = []
         # Only the synchronous client can append metadata from multiple threads.
-        self.__metadata_lock: Optional[threading.Lock] = _create_lock() if is_sync else None
+        self.__metadata_lock: AbstractContextManager[bool | None] = (
+            _create_lock() if is_sync else nullcontext()
+        )
 
         if appname:
             self.__metadata["application"] = {"name": appname}
@@ -413,44 +415,37 @@ class PoolOptions:
 
     def _update_metadata(self, driver: DriverInfo) -> None:
         """Updates the client's metadata."""
-        lock = self.__metadata_lock
-        if lock is None:
-            self._apply_metadata(driver)
-        else:
-            with lock:
-                self._apply_metadata(driver)
+        with self.__metadata_lock:
+            driver = _normalize_driver(driver)
+            if driver in self.__appended_drivers:
+                return
 
-    def _apply_metadata(self, driver: DriverInfo) -> None:
-        driver = _normalize_driver(driver)
-        if driver in self.__appended_drivers:
-            return
+            name_delims = self.__metadata["driver"]["name"].count("|")
+            version_delims = self.__metadata["driver"]["version"].count("|")
+            metadata = copy.deepcopy(self.__metadata)
 
-        name_delims = self.__metadata["driver"]["name"].count("|")
-        version_delims = self.__metadata["driver"]["version"].count("|")
-        metadata = copy.deepcopy(self.__metadata)
+            metadata["driver"]["name"] = "{}|{}".format(metadata["driver"]["name"], driver.name)
+            metadata["driver"]["version"] = "{}|{}".format(
+                metadata["driver"]["version"], driver.version
+            )
+            if driver.platform:
+                if "platform" in metadata:
+                    metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+                else:
+                    metadata["platform"] = driver.platform
 
-        metadata["driver"]["name"] = "{}|{}".format(metadata["driver"]["name"], driver.name)
-        metadata["driver"]["version"] = "{}|{}".format(
-            metadata["driver"]["version"], driver.version
-        )
-        if driver.platform:
-            if "platform" in metadata:
-                metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
-            else:
-                metadata["platform"] = driver.platform
+            _truncate_metadata(metadata)
 
-        _truncate_metadata(metadata)
+            self.__metadata = metadata
 
-        self.__metadata = metadata
-
-        # Only track drivers whose appended name/version pair survived
-        # truncation (i.e. both gained a segment), so __appended_drivers
-        # stays bounded and the dedup membership check stays fast.
-        if (
-            metadata["driver"]["name"].count("|") > name_delims
-            and metadata["driver"]["version"].count("|") > version_delims
-        ):
-            self.__appended_drivers.append(driver)
+            # Only track drivers whose appended name/version pair survived
+            # truncation (i.e. both gained a segment), so __appended_drivers
+            # stays bounded and the dedup membership check stays fast.
+            if (
+                metadata["driver"]["name"].count("|") > name_delims
+                and metadata["driver"]["version"].count("|") > version_delims
+            ):
+                self.__appended_drivers.append(driver)
 
     @property
     def _credentials(self) -> Optional[MongoCredential]:
