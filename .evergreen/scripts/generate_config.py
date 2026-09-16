@@ -178,6 +178,25 @@ def create_encryption_variants() -> list[BuildVariant]:
         tags=tags,
     )
     variants.append(variant)
+
+    # The 3.15t encryption and PyOpenSSL tests only run on RHEL 9.7 for now.
+    host = HOSTS["rhel97"]
+    for encryption, tasks in [
+        ("Encryption", [".test-non-standard .python-3.15t"]),
+        ("Encryption PyOpenSSL", [".test-non-standard .python-3.15t"]),
+    ]:
+        expansions = get_encryption_expansions(encryption)
+        display_name = get_variant_name(encryption, host, **expansions)
+        variants.append(
+            create_variant(
+                tasks,
+                display_name,
+                host=host,
+                expansions=expansions,
+                batchtime=batchtime,
+                tags=tags,
+            )
+        )
     return variants
 
 
