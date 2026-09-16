@@ -93,37 +93,6 @@ async def async_socket_sendall(sock: Union[socket.socket, _sslConn], buf: bytes)
         raise socket.timeout("timed out") from exc
 
 
-async def _async_blocking_socket_call(
-    loop: AbstractEventLoop,
-    func: Callable[..., Any],
-    arg: Any,
-    timeout: Optional[float],
-) -> Any:
-    """Run a blocking socket operation in a worker thread with a timeout.
-
-    The worker cannot be interrupted, so the future is shielded from cancellation.
-    """
-    fut = asyncio.shield(loop.run_in_executor(None, func, arg))
-    try:
-        return await asyncio.wait_for(fut, timeout=timeout)
-    except asyncio.TimeoutError:
-        if timeout is not None:
-            try:
-                await asyncio.wait_for(fut, timeout=timeout)
-            except (
-                asyncio.TimeoutError,
-                asyncio.CancelledError,
-                OSError,
-                *ssl_support.BLOCKING_IO_ERRORS,
-            ):
-                # Wait for the worker; its result is unused because we raise the timeout.
-                pass
-        raise
-    except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as exc:
-        # A peer reset raises here on Python 3.15; report it as a graceful close.
-        raise OSError("connection closed") from exc
-
-
 if sys.platform != "win32":
 
     async def _async_socket_receive_ssl(
@@ -204,6 +173,37 @@ else:
                 backoff = min(backoff * 2, 0.512)
             total_read += read
         return mv
+
+
+async def _async_blocking_socket_call(
+    loop: AbstractEventLoop,
+    func: Callable[..., Any],
+    arg: Any,
+    timeout: Optional[float],
+) -> Any:
+    """Run a blocking socket operation in a worker thread with a timeout.
+
+    The worker cannot be interrupted, so the future is shielded from cancellation.
+    """
+    fut = asyncio.shield(loop.run_in_executor(None, func, arg))
+    try:
+        return await asyncio.wait_for(fut, timeout=timeout)
+    except asyncio.TimeoutError:
+        if timeout is not None:
+            try:
+                await asyncio.wait_for(fut, timeout=timeout)
+            except (
+                asyncio.TimeoutError,
+                asyncio.CancelledError,
+                OSError,
+                *ssl_support.BLOCKING_IO_ERRORS,
+            ):
+                # Wait for the worker; its result is unused because we raise the timeout.
+                pass
+        raise
+    except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as exc:
+        # A peer reset raises here on Python 3.15; report it as a graceful close.
+        raise OSError("connection closed") from exc
 
 
 def sendall(sock: Union[socket.socket, _sslConn], buf: bytes) -> None:
