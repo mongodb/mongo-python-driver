@@ -1358,6 +1358,7 @@ class TestServerTraceContext(AsyncIntegrationTest):
         self.assertEqual(insert_server_spans[0].get("parentSpanId"), span_id)
 
     @async_client_context.require_version_min(9, 0)
+    @async_client_context.require_failCommand_fail_point
     async def test_prose_6_one_server_span_per_retry_attempt(self):
         """Prose Test 6: One server span per retry attempt."""
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
