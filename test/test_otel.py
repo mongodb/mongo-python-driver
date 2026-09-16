@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import gc
 import os
 import subprocess
@@ -1102,6 +1103,19 @@ class TestTraceparent(unittest.TestCase):
 
         self.assertIsNone(_otel._traceparent_from_span(NonRecordingSpan(context=ctx)))
 
+    @unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
+    def test_traceparent_from_span_flags_above_one_byte(self):
+        from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
+
+        ctx = SpanContext(
+            trace_id=int("0123456789abcdef0123456789abcdef", 16),
+            span_id=int("0123456789abcdef", 16),
+            is_remote=False,
+            trace_flags=TraceFlags(0x1234),
+        )
+
+        self.assertIsNone(_otel._traceparent_from_span(NonRecordingSpan(context=ctx)))
+
     def test_telemetry_section_format(self):
         tp = "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01"
         section = _otel._telemetry_section(tp)
@@ -1161,22 +1175,28 @@ class TestServerTraceContext(IntegrationTest):
         import json
         from pathlib import Path
 
-        spans: list[dict] = []
-        for p in Path(trace_dir).rglob("*"):
-            if not p.is_file():
-                continue
-            for line in p.read_text().splitlines():
-                line = line.strip()
-                if not line:
+        def read() -> list[dict]:
+            spans: list[dict] = []
+            for p in Path(trace_dir).rglob("*"):
+                if not p.is_file():
                     continue
-                try:
-                    batch = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                for rs in batch.get("resourceSpans", []):
-                    for ss in rs.get("scopeSpans", []):
-                        spans.extend(ss.get("spans", []))
-        return spans
+                for line in p.read_text().splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        batch = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    for rs in batch.get("resourceSpans", []):
+                        for ss in rs.get("scopeSpans", []):
+                            spans.extend(ss.get("spans", []))
+            return spans
+
+        # File reads block, so keep them off the event loop in the async driver.
+        if not _IS_SYNC:
+            return asyncio.get_running_loop().run_in_executor(None, read)  # type: ignore[return-value]
+        return read()
 
     @staticmethod
     def _poll_server_spans(

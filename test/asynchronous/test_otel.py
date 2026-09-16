@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import gc
 import os
 import subprocess
@@ -1108,6 +1109,19 @@ class TestTraceparent(unittest.TestCase):
 
         self.assertIsNone(_otel._traceparent_from_span(NonRecordingSpan(context=ctx)))
 
+    @unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
+    def test_traceparent_from_span_flags_above_one_byte(self):
+        from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
+
+        ctx = SpanContext(
+            trace_id=int("0123456789abcdef0123456789abcdef", 16),
+            span_id=int("0123456789abcdef", 16),
+            is_remote=False,
+            trace_flags=TraceFlags(0x1234),
+        )
+
+        self.assertIsNone(_otel._traceparent_from_span(NonRecordingSpan(context=ctx)))
+
     def test_telemetry_section_format(self):
         tp = "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01"
         section = _otel._telemetry_section(tp)
@@ -1162,30 +1176,36 @@ class TestServerTraceContext(AsyncIntegrationTest):
         return [s for s in finished if s.attributes.get("db.command.name") == command]
 
     @staticmethod
-    def _read_server_spans(trace_dir: str) -> list[dict]:
+    async def _read_server_spans(trace_dir: str) -> list[dict]:
         """Read all OTLP JSON span files under trace_dir."""
         import json
         from pathlib import Path
 
-        spans: list[dict] = []
-        for p in Path(trace_dir).rglob("*"):
-            if not p.is_file():
-                continue
-            for line in p.read_text().splitlines():
-                line = line.strip()
-                if not line:
+        def read() -> list[dict]:
+            spans: list[dict] = []
+            for p in Path(trace_dir).rglob("*"):
+                if not p.is_file():
                     continue
-                try:
-                    batch = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                for rs in batch.get("resourceSpans", []):
-                    for ss in rs.get("scopeSpans", []):
-                        spans.extend(ss.get("spans", []))
-        return spans
+                for line in p.read_text().splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        batch = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    for rs in batch.get("resourceSpans", []):
+                        for ss in rs.get("scopeSpans", []):
+                            spans.extend(ss.get("spans", []))
+            return spans
+
+        # File reads block, so keep them off the event loop in the async driver.
+        if not _IS_SYNC:
+            return await asyncio.get_running_loop().run_in_executor(None, read)  # type: ignore[return-value]
+        return read()
 
     @staticmethod
-    def _poll_server_spans(
+    async def _poll_server_spans(
         trace_dir: str,
         trace_id: str,
         predicate: Optional[Callable[[list[dict]], bool]] = None,
@@ -1202,7 +1222,7 @@ class TestServerTraceContext(AsyncIntegrationTest):
         deadline = time.monotonic() + timeout
         matching: list[dict] = []
         while True:
-            spans = TestServerTraceContext._read_server_spans(trace_dir)
+            spans = await TestServerTraceContext._read_server_spans(trace_dir)
             matching = [s for s in spans if s.get("traceId") == trace_id]
             if predicate is not None:
                 if predicate(matching):
@@ -1211,7 +1231,7 @@ class TestServerTraceContext(AsyncIntegrationTest):
                 return matching
             if time.monotonic() >= deadline:
                 return matching
-            time.sleep(0.5)
+            await asyncio.sleep(0.5)
 
     @async_client_context.require_version_min(9, 0)
     async def test_prose_5_server_spans_join_driver_trace(self):
@@ -1225,7 +1245,7 @@ class TestServerTraceContext(AsyncIntegrationTest):
         cmd_span = cmd_spans[0]
         trace_id = f"{cmd_span.context.trace_id:032x}"
         span_id = f"{cmd_span.context.span_id:016x}"
-        server_spans = self._poll_server_spans(self.OTEL_TRACE_DIR, trace_id)
+        server_spans = await self._poll_server_spans(self.OTEL_TRACE_DIR, trace_id)
         self.assertTrue(server_spans, f"No server span found for trace {trace_id}")
         insert_server_spans = [s for s in server_spans if s.get("name") == "insert"]
         self.assertEqual(len(insert_server_spans), 1)
@@ -1269,7 +1289,7 @@ class TestServerTraceContext(AsyncIntegrationTest):
         def _both_attempts_have_child(spans: list[dict]) -> bool:
             return span_ids <= {s.get("parentSpanId") for s in spans}
 
-        server_spans = self._poll_server_spans(
+        server_spans = await self._poll_server_spans(
             self.OTEL_TRACE_DIR, trace_id, _both_attempts_have_child
         )
         parented = [s for s in server_spans if s.get("parentSpanId") in span_ids]
@@ -1295,9 +1315,9 @@ class TestServerTraceContext(AsyncIntegrationTest):
         find_cmd_spans = self.command_spans(finished, "find")
         self.assertTrue(find_cmd_spans)
         trace_id = f"{find_cmd_spans[0].context.trace_id:032x}"
-        self._poll_server_spans(self.OTEL_TRACE_DIR, trace_id)
+        await self._poll_server_spans(self.OTEL_TRACE_DIR, trace_id)
         # Collect all server spans that match any driver trace id
-        all_server_spans = self._read_server_spans(self.OTEL_TRACE_DIR)
+        all_server_spans = await self._read_server_spans(self.OTEL_TRACE_DIR)
         driver_server_spans = [s for s in all_server_spans if s.get("traceId") in driver_trace_ids]
         auth_monitor_names = {
             "hello",

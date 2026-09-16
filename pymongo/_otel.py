@@ -437,6 +437,10 @@ def _traceparent_from_span(span: Optional[Span]) -> Optional[str]:
     ctx = span.get_span_context()
     if not ctx.is_valid:
         return None
+    # :02x only pads to a minimum width, so flags wider than one byte would
+    # push the traceparent past 55 characters.
+    if not 0 <= ctx.trace_flags <= 0xFF:
+        return None
     return f"00-{ctx.trace_id:032x}-{ctx.span_id:016x}-{ctx.trace_flags:02x}"
 
 
