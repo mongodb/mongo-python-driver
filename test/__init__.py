@@ -360,7 +360,9 @@ class ClientContext:
         try:
             subprocess.run(["fips-mode-setup", "--is-enabled"], check=True)
             self._fips_enabled = True
-        except (subprocess.SubprocessError, FileNotFoundError):
+        except (subprocess.SubprocessError, FileNotFoundError, DeprecationWarning):
+            # Python 3.15 warns on fork() in multi-threaded processes, which
+            # gevent's monkey-patched subprocess triggers.
             self._fips_enabled = False
         if os.environ.get("REQUIRE_FIPS") and not self._fips_enabled:
             raise RuntimeError("Expected FIPS to be enabled")
