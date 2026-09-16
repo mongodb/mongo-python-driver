@@ -516,15 +516,17 @@ def create_doctests_variants():
 def create_otel_variants():
     host = DEFAULT_HOST
     # Merge otel's coverage into the combined report; see setup_tests.py's COVERAGE handling.
-    expansions = dict(TEST_NAME="otel", COVERAGE="1")
+    # OTEL=1 makes drivers-evergreen-tools enable the server's OpenTelemetry file exporter
+    # and export OTEL_TRACE_DIR, which TestServerTraceContext requires.
+    expansions = dict(TEST_NAME="otel", COVERAGE="1", OTEL="1")
     return [
         create_variant(
             [
                 # All three topologies, subset to keep the task count at 22.
                 #
-                # Replica set keeps every task: the only topology where transaction spans
-                # run at all (they are skipped on standalone and sharded), and
-                # the only one covering free-threaded Python.
+                # Replica set keeps every task: transactions run here and on sharded
+                # (mongos supports them), and this is the only topology covering
+                # free-threaded Python.
                 ".test-non-standard .replica_set-noauth-ssl",
                 # Sharded adds mongos, which rewrites commands and reports a
                 # different server.address, plus auth and ssl, which exercise
