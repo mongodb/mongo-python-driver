@@ -78,7 +78,7 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        return cast(Optional[ClientSession], super().session)
+        return cast("Optional[ClientSession]", super().session)
 
     @abstractmethod
     def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]

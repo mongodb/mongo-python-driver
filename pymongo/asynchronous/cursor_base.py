@@ -78,7 +78,7 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        return cast(Optional[AsyncClientSession], super().session)
+        return cast("Optional[AsyncClientSession]", super().session)
 
     @abstractmethod
     async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]
