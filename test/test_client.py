@@ -123,6 +123,7 @@ from test.utils_shared import (
     NTHREADS,
     CMAPListener,
     FunctionCallRecorder,
+    _driver_version,
     delay,
     gevent_monkey_patched,
     is_greenthread_patched,
@@ -131,19 +132,6 @@ from test.utils_shared import (
 )
 
 _IS_SYNC = True
-
-
-def _driver_version(base_version: str, name: str, last_version: str | None = None) -> str:
-    """Build a metadata driver version aligned 1:1 with ``name`` segments.
-
-    The ``|c`` and ``|async`` name segments always have an empty version entry,
-    so the version string has one delimiter per name delimiter. ``last_version``
-    is used when the final segment carries a wrapped driver's version.
-    """
-    segments = [""] * name.count("|")
-    if last_version is not None:
-        segments[-1] = last_version
-    return "|".join([base_version, *segments])
 
 
 class ClientUnitTest(UnitTest):
@@ -386,6 +374,22 @@ class ClientUnitTest(UnitTest):
         )
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
+    def _metadata_with_appended_driver(
+        self, name: str, version: str, platform: str | None = None
+    ) -> dict[str, Any]:
+        metadata = copy.deepcopy(_METADATA)
+        if has_c():
+            metadata["driver"]["name"] = "PyMongo|c|" + name
+        else:
+            metadata["driver"]["name"] = "PyMongo|" + name
+        metadata["driver"]["version"] = _driver_version(
+            _METADATA["driver"]["version"], metadata["driver"]["name"], last_version=version
+        )
+        metadata["application"] = {"name": "foobar"}
+        if platform is not None:
+            metadata["platform"] = "{}|{}".format(_METADATA["platform"], platform)
+        return metadata
+
     def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         if has_c():
@@ -406,6 +410,8 @@ class ClientUnitTest(UnitTest):
         self.simple_client(appname="x" * 128)
         with self.assertRaises(ValueError):
             self.simple_client(appname="x" * 129)
+
+    def test_metadata_bad_driver_options(self):
         # Bad "driver" options.
         self.assertRaises(TypeError, DriverInfo, "Foo", 1, "a")
         self.assertRaises(TypeError, DriverInfo, version="1", platform="a")
@@ -416,14 +422,9 @@ class ClientUnitTest(UnitTest):
             self.simple_client(driver="abc")
         with self.assertRaises(TypeError):
             self.simple_client(driver=("Foo", "1", "a"))
-        # Test appending to driver info.
-        if has_c():
-            metadata["driver"]["name"] = "PyMongo|c|FooDriver"
-        else:
-            metadata["driver"]["name"] = "PyMongo|FooDriver"
-        metadata["driver"]["version"] = _driver_version(
-            _METADATA["driver"]["version"], metadata["driver"]["name"], last_version="1.2.3"
-        )
+
+    def test_metadata_appends_driver_info(self):
+        metadata = self._metadata_with_appended_driver("FooDriver", "1.2.3")
         client = self.simple_client(
             "foo",
             27017,
@@ -431,16 +432,9 @@ class ClientUnitTest(UnitTest):
             driver=DriverInfo("FooDriver", "1.2.3", None),
             connect=False,
         )
-        options = client.options
-        self.assertEqual(options.pool_options.metadata, metadata)
-        if has_c():
-            metadata["driver"]["name"] = "PyMongo|c|FooDriver"
-        else:
-            metadata["driver"]["name"] = "PyMongo|FooDriver"
-        metadata["driver"]["version"] = _driver_version(
-            _METADATA["driver"]["version"], metadata["driver"]["name"], last_version="1.2.3"
-        )
-        metadata["platform"] = "{}|FooPlatform".format(_METADATA["platform"])
+        self.assertEqual(client.options.pool_options.metadata, metadata)
+
+        metadata = self._metadata_with_appended_driver("FooDriver", "1.2.3", "FooPlatform")
         client = self.simple_client(
             "foo",
             27017,
@@ -448,9 +442,11 @@ class ClientUnitTest(UnitTest):
             driver=DriverInfo("FooDriver", "1.2.3", "FooPlatform"),
             connect=False,
         )
-        options = client.options
-        self.assertEqual(options.pool_options.metadata, metadata)
-        # Test truncating driver info metadata.
+        self.assertEqual(client.options.pool_options.metadata, metadata)
+
+    def test_metadata_truncates_driver_info(self):
+        # Truncated driver info must stay within the limit and keep name and
+        # version index-aligned.
         client = self.simple_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE),
             connect=False,
@@ -495,6 +491,8 @@ class ClientUnitTest(UnitTest):
             truncated["name"].count("|"),
             truncated["version"].count("|"),
         )
+
+    def test_metadata_append_is_bounded(self):
         # Successive appends must stay within the limit and keep name and
         # version index-aligned after truncation. Once the metadata saturates,
         # further appends must not grow the dedup tracking list.
@@ -521,11 +519,15 @@ class ClientUnitTest(UnitTest):
         for i in range(300, 600):
             client.append_metadata(DriverInfo(name="", version="", platform=f"P{i}"))
         self.assertEqual(len(pool._PoolOptions__appended_drivers), count)
+
+    def test_metadata_rejects_delimiter(self):
         # The '|' delimiter is reserved for joining appended metadata, so it
         # must be rejected in every field.
         self.assertRaises(ValueError, DriverInfo, "a|b", "1.0", None)
         self.assertRaises(ValueError, DriverInfo, "lib", "1|0", None)
         self.assertRaises(ValueError, DriverInfo, "lib", "1.0", "Frame|Platform")
+
+    def test_metadata_recreates_platform_after_truncation(self):
         # Appending a platform after truncation has dropped it recreates the field.
         client = self.simple_client(connect=False)
         for i in range(300):
@@ -538,6 +540,8 @@ class ClientUnitTest(UnitTest):
             pool.metadata["driver"]["name"].count("|"),
             pool.metadata["driver"]["version"].count("|"),
         )
+
+    def test_metadata_deduplicates_none_and_empty(self):
         # Empty strings are treated as unset, so a duplicate differing only in
         # None vs "" is a no-op.
         client = self.simple_client(connect=False)

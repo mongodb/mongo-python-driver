@@ -10,8 +10,15 @@ Bug fixes
 - Fixed a bug where the synchronous client could permanently deadlock under
   gevent when a greenlet was killed while checking a connection back into
   the pool (`PYTHON-6074`_).
+- ``MongoClient.append_metadata()`` and ``AsyncMongoClient.append_metadata()``
+  now detect duplicates by comparing the whole
+  :class:`~pymongo.driver_info.DriverInfo` instead of only its name
+  (`PYTHON-6040`_).
+- :class:`~pymongo.driver_info.DriverInfo` now raises :class:`ValueError` when
+  any field contains the reserved ``|`` delimiter (`PYTHON-6040`_).
 
 .. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
+.. _PYTHON-6040: https://jira.mongodb.org/browse/PYTHON-6040
 
 Changes in Version 4.18.1 (2026/09/10)
 --------------------------------------

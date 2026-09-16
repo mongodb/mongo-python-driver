@@ -773,3 +773,16 @@ def pack_msg_header(length: int, request_id: int, response_to: int, op_code: int
     production header-packing never does.
     """
     return struct.pack("<iiii", length, request_id, response_to, op_code)
+
+
+def _driver_version(base_version: str, name: str, last_version: str | None = None) -> str:
+    """Build a metadata driver version aligned 1:1 with ``name`` segments.
+
+    The ``|c`` and ``|async`` name segments always have an empty version entry,
+    so the version string has one delimiter per name delimiter. ``last_version``
+    is used when the final segment carries a wrapped driver's version.
+    """
+    segments = [""] * name.count("|")
+    if last_version is not None:
+        segments[-1] = last_version
+    return "|".join([base_version, *segments])
