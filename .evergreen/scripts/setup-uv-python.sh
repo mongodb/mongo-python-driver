@@ -34,6 +34,9 @@ if [ -z "${UV_PYTHON:-}" ]; then
     # FIPS hosts provision a specific Python; put its directory first on the
     # path and leave UV_PYTHON unset so uv resolves the interpreter from PATH.
     export PATH="/usr/bin:$PATH"
+  elif [ -n "${TOOLCHAIN_VERSION:-}" ]; then
+    # Toolchain variants select the Python with TOOLCHAIN_VERSION.
+    export UV_PYTHON="$TOOLCHAIN_VERSION"
   else
     export UV_PYTHON="$_python"
   fi

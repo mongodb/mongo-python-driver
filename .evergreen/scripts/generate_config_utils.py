@@ -31,7 +31,7 @@ MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 
 def set_version_var(env: dict[str, str], version: str) -> None:
     """Set the env var on task vars that selects the given Python version."""
-    env["UV_PYTHON"] = version
+    env["TOOLCHAIN_VERSION"] = version
 
 
 BATCHTIME_WEEK = 10080

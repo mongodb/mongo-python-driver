@@ -1300,6 +1300,7 @@ def create_run_server_func():
         "SSL",
         "ORCHESTRATION_FILE",
         "UV_PYTHON",
+        "TOOLCHAIN_VERSION",
         "STORAGE_ENGINE",
         "REQUIRE_API_VERSION",
         "DRIVERS_TOOLS",
@@ -1324,6 +1325,7 @@ def create_run_tests_func():
         "AWS_SESSION_TOKEN",
         "COVERAGE",
         "UV_PYTHON",
+        "TOOLCHAIN_VERSION",
         "LIBMONGOCRYPT_URL",
         "MONGODB_URI",
         "DISABLE_TEST_COMMANDS",
@@ -1348,7 +1350,7 @@ def create_run_tests_func():
 
 
 def create_test_numpy_func():
-    includes = ["UV_PYTHON", "COVERAGE"]
+    includes = ["TOOLCHAIN_VERSION", "UV_PYTHON", "COVERAGE"]
     test_cmd = get_subprocess_exec(
         include_expansions_in_env=includes, args=[".evergreen/just.sh", "test-numpy"]
     )
