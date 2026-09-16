@@ -57,7 +57,7 @@ class Host:
 
 
 # Hosts with toolchains.
-HOSTS["rhel8"] = Host("rhel8", "rhel87-small", "RHEL8", dict())
+HOSTS["rhel8"] = Host("rhel8", "rhel8.10-small", "RHEL8", dict())
 HOSTS["win64"] = Host("win64", "windows-64-vsMulti-small", "Win64", dict())
 HOSTS["win-latest"] = Host("win-latest", "windows-2022-latest-small", "WinLatest", dict())
 HOSTS["win32"] = Host("win32", "windows-64-vsMulti-small", "Win32", dict())
@@ -93,7 +93,7 @@ def create_variant_generic(
     display_name: str,
     *,
     host: Host | str | None = None,
-    default_run_on="rhel87-small",
+    default_run_on="rhel8.10-small",
     expansions: dict | None = None,
     **kwargs: Any,
 ) -> BuildVariant:
