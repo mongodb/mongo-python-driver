@@ -1270,7 +1270,7 @@ class TestServerTraceContext(IntegrationTest):
             time.sleep(0.5)
 
     @client_context.require_version_min(9, 0)
-    def test_prose_5_server_spans_join_driver_trace(self):
+    def test_prose_7_server_spans_join_driver_trace(self):
         """Prose Test 5: Server spans join the driver's trace."""
         client = self.rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name]["test_prose_5"]
@@ -1289,7 +1289,7 @@ class TestServerTraceContext(IntegrationTest):
 
     @client_context.require_version_min(9, 0)
     @client_context.require_failCommand_fail_point
-    def test_prose_6_one_server_span_per_retry_attempt(self):
+    def test_prose_8_one_server_span_per_retry_attempt(self):
         """Prose Test 6: One server span per retry attempt."""
         client = self.rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name]["test_prose_6"]
@@ -1337,7 +1337,7 @@ class TestServerTraceContext(IntegrationTest):
 
     @client_context.require_version_min(9, 0)
     @client_context.require_auth
-    def test_prose_7_no_trace_context_for_auth_monitoring(self):
+    def test_prose_9_no_trace_context_for_auth_monitoring(self):
         """Prose Test 7: No trace context for authentication and monitoring commands."""
         client = self.rs_or_single_client(tracing={"enabled": True})
         coll = client[self.db.name]["test_prose_7"]
