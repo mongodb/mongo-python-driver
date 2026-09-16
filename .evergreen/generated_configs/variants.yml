@@ -455,6 +455,7 @@ buildvariants:
     expansions:
       TEST_NAME: otel
       COVERAGE: "1"
+      OTEL: "1"
     tags: [pr]
 
   # Perf tests
