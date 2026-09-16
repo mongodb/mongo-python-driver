@@ -94,10 +94,16 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
         ...
 
     @property
-    @abstractmethod
-    def session(self) -> Optional[Any]:
-        """The cursor's session, or None. Typed more accurately in subclasses."""
-        ...
+    def session(self) -> Optional[_AgnosticClientSession]:
+        """The cursor's session, or None if the session is implicit.
+
+        Typed more accurately in subclasses.
+
+        .. versionadded:: 3.6
+        """
+        if self._session and not self._session._implicit:
+            return self._session
+        return None
 
     def __del__(self) -> None:
         self._die_no_lock()
@@ -111,9 +117,14 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
         since they will stop iterating even though they *may* return more
         results in the future.
 
-        With regular cursors, simply use a for loop instead of :attr:`alive`::
+        With regular cursors, simply iterate the cursor instead of :attr:`alive`::
 
+            # Synchronous
             for doc in collection.find():
+                print(doc)
+
+            # Asynchronous
+            async for doc in collection.find():
                 print(doc)
 
 
@@ -368,7 +379,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
 
     def __init__(
         self,
-        collection: Any,
+        collection: _AgnosticCollection[_DocumentType],
         filter: Optional[Mapping[str, Any]] = None,
         projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
         skip: int = 0,
@@ -389,7 +400,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         show_record_id: Optional[bool] = None,
         snapshot: Optional[bool] = None,
         comment: Optional[Any] = None,
-        session: Optional[Any] = None,
+        session: Optional[_AgnosticClientSession] = None,
         allow_disk_use: Optional[bool] = None,
         let: Optional[bool] = None,
     ) -> None:
@@ -403,11 +414,10 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         # Initialize all attributes used in __del__ before possibly raising
         # an error to avoid attribute errors during garbage collection.
         self._collection = collection
-        self._id: Any = None
+        self._id = None
         self._exhaust = False
         self._sock_mgr: Any = None
         self._killed = False
-        self._session: Optional[Any]
 
         if session:
             self._session = session
@@ -541,7 +551,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         """
         return self._clone(True)
 
-    def _clone(self, deepcopy: bool = True, base: Optional[Any] = None) -> Any:
+    def _clone(self, deepcopy: bool = True, base: Optional[Any] = None) -> Self:
         """Internal clone helper."""
         if not base:
             if self._session and not self._session._implicit:
@@ -862,13 +872,25 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         Pass a field name and a direction, either
         :data:`~pymongo.ASCENDING` or :data:`~pymongo.DESCENDING`.::
 
+            # Synchronous
             for doc in collection.find().sort('field', pymongo.ASCENDING):
+                print(doc)
+
+            # Asynchronous
+            async for doc in collection.find().sort('field', pymongo.ASCENDING):
                 print(doc)
 
         To sort by multiple fields, pass a list of (key, direction) pairs.
         If just a name is given, :data:`~pymongo.ASCENDING` will be inferred::
 
+            # Synchronous
             for doc in collection.find().sort([
+                    'field1',
+                    ('field2', pymongo.DESCENDING)]):
+                print(doc)
+
+            # Asynchronous
+            async for doc in collection.find().sort([
                     'field1',
                     ('field2', pymongo.DESCENDING)]):
                 print(doc)
@@ -882,7 +904,12 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
             # Sort by 'score' field.
             cursor.sort([('score', {'$meta': 'textScore'})])
 
+            # Synchronous
             for doc in cursor:
+                print(doc)
+
+            # Asynchronous
+            async for doc in cursor:
                 print(doc)
 
         For more advanced text search functionality, see MongoDB's
@@ -960,7 +987,12 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         to the object currently being scanned. For example::
 
             # Find all documents where field "a" is less than "b" plus "c".
+            # Synchronous
             for doc in db.test.find().where('this.a < (this.b + this.c)'):
+                print(doc)
+
+            # Asynchronous
+            async for doc in db.test.find().where('this.a < (this.b + this.c)'):
                 print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from pymongo import _csot
 from pymongo.asynchronous.command_runner import run_cursor_command
@@ -78,9 +78,7 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        if self._session and not self._session._implicit:
-            return self._session
-        return None
+        return cast(Optional[AsyncClientSession], super().session)
 
     @abstractmethod
     async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]
