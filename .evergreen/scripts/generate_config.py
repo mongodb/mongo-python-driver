@@ -461,21 +461,22 @@ def create_otel_variants():
     return [
         create_variant(
             [
-                # All three topologies, subset to keep the task count at 22.
+                # All three topologies, one task each to keep the task count small.
                 #
-                # Replica set keeps every task: transactions run here and on sharded
-                # (mongos supports them), and this is the only topology covering
-                # free-threaded Python.
-                ".test-non-standard .replica_set-noauth-ssl",
+                # OTEL=1 enables the server's OpenTelemetry file exporter, which
+                # requires MongoDB 9.0+ and a binary that accepts every OTel
+                # setParameter; only the latest nightly qualifies (the v9.0
+                # nightly rejects openTelemetryTracingFileFlushCount), so only
+                # latest tasks are selected.
+                ".test-non-standard .replica_set-noauth-ssl .server-latest",
                 # Sharded adds mongos, which rewrites commands and reports a
                 # different server.address, plus auth and ssl, which exercise
-                # sensitive-command redaction. Newest CPython across server
-                # versions, and PyPy for the alternate implementation.
-                ".test-non-standard .sharded_cluster-auth-ssl .python-3.14",
-                ".test-non-standard .sharded_cluster-auth-ssl .python-pypy3.11",
-                # Standalone only for its min-deps tasks, which resolve
+                # sensitive-command redaction and prose 9. PyPy covers the
+                # alternate implementation.
+                ".test-non-standard .sharded_cluster-auth-ssl .server-latest .python-pypy3.11",
+                # Standalone for its min-deps task, which resolves
                 # opentelemetry-api down to the floor in requirements/.
-                ".test-non-standard .standalone-noauth-nossl .python-3.10",
+                ".test-non-standard .standalone-noauth-nossl .server-latest .python-3.10",
             ],
             get_variant_name("OTel", host),
             host=host,
