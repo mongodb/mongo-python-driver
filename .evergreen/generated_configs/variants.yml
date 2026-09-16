@@ -11,6 +11,7 @@ buildvariants:
       VERSION: latest
       NO_EXT: "1"
       REQUIRE_FIPS: "1"
+      UV_PYTHON: /usr/bin/python3.11
     tags: []
   - name: other-hosts-rhel8-zseries-latest
     tasks:

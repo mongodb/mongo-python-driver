@@ -584,6 +584,8 @@ def create_alternative_hosts_variants():
         tags = []
         if "fips" in host_name.lower():
             expansions["REQUIRE_FIPS"] = "1"
+            # Use explicit Python 3.11 binary on the host since the default python3 is 3.9.
+            expansions["UV_PYTHON"] = "/usr/bin/python3.11"
         if "amazon" in host_name.lower():
             tags.append("pr")
         variants.append(
@@ -1325,9 +1327,9 @@ def create_run_tests_func():
         "AWS_SESSION_TOKEN",
         "COVERAGE",
         "UV_PYTHON",
-        "TOOLCHAIN_VERSION",
         "LIBMONGOCRYPT_URL",
         "MONGODB_URI",
+        "TOOLCHAIN_VERSION",
         "DISABLE_TEST_COMMANDS",
         "GREEN_FRAMEWORK",
         "NO_EXT",
@@ -1350,7 +1352,7 @@ def create_run_tests_func():
 
 
 def create_test_numpy_func():
-    includes = ["TOOLCHAIN_VERSION", "UV_PYTHON", "COVERAGE"]
+    includes = ["TOOLCHAIN_VERSION", "COVERAGE"]
     test_cmd = get_subprocess_exec(
         include_expansions_in_env=includes, args=[".evergreen/just.sh", "test-numpy"]
     )
