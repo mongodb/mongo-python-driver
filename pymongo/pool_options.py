@@ -264,7 +264,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
             if encoded_size <= _MAX_METADATA_SIZE:
                 break
             overflow = encoded_size - _MAX_METADATA_SIZE
-            previous = (driver.get("name"), driver.get("version"))
+            previous = (driver.get("name", ""), driver.get("version", ""))
             n_parts = driver.get("name", "").split("|")
             v_parts = driver.get("version", "").split("|")
 
