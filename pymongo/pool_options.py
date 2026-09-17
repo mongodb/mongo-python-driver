@@ -467,11 +467,15 @@ class PoolOptions:
             self.__metadata = metadata
 
             # Only track drivers whose appended name/version pair survived
-            # truncation, so __appended_drivers stays bounded.
-            pairs = zip(
-                metadata["driver"]["name"].split("|"),
-                metadata["driver"]["version"].split("|"),
-            )
+            # truncation, so __appended_drivers stays bounded. Truncation
+            # keeps name and version index-aligned, so strict=True never
+            # raises.
+            names = metadata["driver"]["name"].split("|")
+            versions = metadata["driver"]["version"].split("|")
+            if sys.version_info >= (3, 10):
+                pairs = zip(names, versions, strict=True)
+            else:
+                pairs = zip(names, versions)
             if (driver.name, driver.version) in pairs:
                 self.__appended_drivers.add(driver)
 
