@@ -221,37 +221,62 @@ def _normalize_driver(driver: DriverInfo) -> DriverInfo:
     )
 
 
+def _element_size(key: str, value: Any) -> int:
+    """Size in bytes of the BSON element for ``key``, excluding doc overhead."""
+    # bson.encode({key: value}) is 4 bytes of document header plus 1 byte of
+    # document terminator on top of the element itself.
+    return len(bson.encode({key: value})) - 5
+
+
 # See: https://github.com/mongodb/specifications/blob/master/source/mongodb-handshake/handshake.md#limitations
 def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     """Perform metadata truncation."""
-    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
+    # The only full encode is the initial size check; each step then shrinks
+    # the tracked size by the exact bytes its change removes.
+    size = len(bson.encode(metadata))
+    if size <= _MAX_METADATA_SIZE:
         return
     # 1. Omit fields from env except env.name.
     env_name = metadata.get("env", {}).get("name")
     if env_name:
-        metadata["env"] = {"name": env_name}
-    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
+        env = {"name": env_name}
+        size += _element_size("env", env) - _element_size("env", metadata["env"])
+        metadata["env"] = env
+    if size <= _MAX_METADATA_SIZE:
         return
     # 2. Omit fields from os except os.type.
     os_type = metadata.get("os", {}).get("type")
     if os_type:
-        metadata["os"] = {"type": os_type}
-    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
+        old_os = metadata["os"]
+        new_os = {"type": os_type}
+        size += _element_size("os", new_os) - _element_size("os", old_os)
+        metadata["os"] = new_os
+    if size <= _MAX_METADATA_SIZE:
         return
     # 3. Omit the env document entirely.
-    metadata.pop("env", None)
-    encoded_size = len(bson.encode(metadata))
-    if encoded_size <= _MAX_METADATA_SIZE:
+    env = metadata.pop("env", None)
+    if env is not None:
+        size -= _element_size("env", env)
+    if size <= _MAX_METADATA_SIZE:
         return
     # 4. Truncate platform.
-    overflow = encoded_size - _MAX_METADATA_SIZE
+    overflow = size - _MAX_METADATA_SIZE
     plat = metadata.get("platform", "")
     if plat:
-        plat = _truncate_utf8(plat, overflow)
-    if plat:
-        metadata["platform"] = plat
+        truncated = _truncate_utf8(plat, overflow)
+        if truncated:
+            size += _element_size("platform", truncated) - _element_size("platform", plat)
+        else:
+            size -= _element_size("platform", plat)
+        if truncated:
+            metadata["platform"] = truncated
+        else:
+            del metadata["platform"]
     else:
-        metadata.pop("platform", None)
+        # The platform field may be present but empty.
+        plat = metadata.pop("platform", None)
+        if plat is not None:
+            size -= _element_size("platform", plat)
     # 5. Truncate driver info, keeping name and version 1:1 index-aligned.
     driver = metadata.get("driver", {})
     if driver:
@@ -259,16 +284,18 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         # trimming wrapper content and dropping paired segments only as a
         # last resort. Blank pairs (for example from a platform-only appended
         # driver) are dropped first since they cost nothing.
-        pairs = [
-            (name, version)
-            for name, version in zip(
-                driver.get("name", "").split("|"), driver.get("version", "").split("|")
-            )
-            if name or version
-        ]
-        driver["name"] = "|".join(name for name, _ in pairs)
-        driver["version"] = "|".join(version for _, version in pairs)
-        overflow = len(bson.encode(metadata)) - _MAX_METADATA_SIZE
+        name_str = driver.get("name", "")
+        version_str = driver.get("version", "")
+        raw_pairs = list(zip(name_str.split("|"), version_str.split("|")))
+        pairs = [(name, version) for name, version in raw_pairs if name or version]
+        new_name = "|".join(name for name, _ in pairs)
+        new_version = "|".join(version for _, version in pairs)
+        size += (len(new_name.encode("utf-8")) - len(name_str.encode("utf-8"))) + (
+            len(new_version.encode("utf-8")) - len(version_str.encode("utf-8"))
+        )
+        driver["name"] = new_name
+        driver["version"] = new_version
+        overflow = size - _MAX_METADATA_SIZE
         while overflow > 0 and len(pairs) > 1:
             # A single remaining pair never exceeds the limit: it is the base
             # driver pair, which steps 1-4 left small enough to fit.
