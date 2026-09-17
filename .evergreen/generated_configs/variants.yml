@@ -279,7 +279,7 @@ buildvariants:
     tags: [encryption_tag, pr]
   - name: encryption-pyopenssl-ubuntu-22
     tasks:
-      - name: .test-non-standard !.python-3.15t !.server-4.4 !.server-5.0
+      - name: .test-non-standard .python-3.15t
     display_name: Encryption PyOpenSSL Ubuntu-22
     run_on:
       - ubuntu2204-small

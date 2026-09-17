@@ -195,12 +195,13 @@ def create_encryption_variants() -> list[BuildVariant]:
         )
     )
 
-    # PyOpenSSL does not run on 3.15t.
+    # The 3.15t PyOpenSSL tests only run on Ubuntu 22, whose OpenSSL 3.0.2 is
+    # needed to build the cryptography package.
     expansions = get_encryption_expansions("Encryption PyOpenSSL")
     display_name = get_variant_name("Encryption PyOpenSSL", host, **expansions)
     variants.append(
         create_variant(
-            [".test-non-standard !.python-3.15t !.server-4.4 !.server-5.0"],
+            [".test-non-standard .python-3.15t"],
             display_name,
             host=host,
             expansions=expansions,
