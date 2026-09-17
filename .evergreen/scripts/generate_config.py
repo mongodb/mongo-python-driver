@@ -455,25 +455,28 @@ def create_doctests_variants():
 def create_otel_variants():
     host = DEFAULT_HOST
     # Merge otel's coverage into the combined report; see setup_tests.py's COVERAGE handling.
-    expansions = dict(TEST_NAME="otel", COVERAGE="1")
+    # OTEL=1 makes drivers-evergreen-tools enable the server's OpenTelemetry file exporter
+    # and export OTEL_TRACE_DIR, which TestServerTraceContext requires.
+    expansions = dict(TEST_NAME="otel", COVERAGE="1", OTEL="1")
     return [
         create_variant(
             [
-                # All three topologies, subset to keep the task count at 22.
+                # All three topologies, one task each to keep the task count small.
                 #
-                # Replica set keeps every task: the only topology where transaction spans
-                # run at all (they are skipped on standalone and sharded), and
-                # the only one covering free-threaded Python.
-                ".test-non-standard .replica_set-noauth-ssl",
+                # OTEL=1 enables the server's OpenTelemetry file exporter, which
+                # requires MongoDB 9.0+ and a binary that accepts every OTel
+                # setParameter; only the latest nightly qualifies (the v9.0
+                # nightly rejects openTelemetryTracingFileFlushCount), so only
+                # latest tasks are selected.
+                ".test-non-standard .replica_set-noauth-ssl .server-latest",
                 # Sharded adds mongos, which rewrites commands and reports a
                 # different server.address, plus auth and ssl, which exercise
-                # sensitive-command redaction. Newest CPython across server
-                # versions, and PyPy for the alternate implementation.
-                ".test-non-standard .sharded_cluster-auth-ssl .python-3.14",
-                ".test-non-standard .sharded_cluster-auth-ssl .python-pypy3.11",
-                # Standalone only for its min-deps tasks, which resolve
+                # sensitive-command redaction and prose 9. PyPy covers the
+                # alternate implementation.
+                ".test-non-standard .sharded_cluster-auth-ssl .server-latest .python-pypy3.11",
+                # Standalone for its min-deps task, which resolves
                 # opentelemetry-api down to the floor in requirements/.
-                ".test-non-standard .standalone-noauth-nossl .python-3.10",
+                ".test-non-standard .standalone-noauth-nossl .server-latest .python-3.10",
             ],
             get_variant_name("OTel", host),
             host=host,
@@ -1276,6 +1279,9 @@ def create_run_server_func():
         "LOAD_BALANCER",
         "LOCAL_ATLAS",
         "NO_EXT",
+        # Enables the server's OpenTelemetry file exporter; run-mongodb.sh exports
+        # OTEL_TRACE_DIR through mo-expansion.yml when it is set.
+        "OTEL",
     ]
     args = [".evergreen/just.sh", "run-server", "${TEST_NAME}"]
     sub_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
@@ -1309,10 +1315,13 @@ def create_run_tests_func():
         "IS_WIN32",
         "REQUIRE_FIPS",
         "TEST_MIN_DEPS",
+        "OTEL_TRACE_DIR",
     ]
     args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
     setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
-    test_cmd = get_subprocess_exec(args=[".evergreen/just.sh", "run-tests"])
+    test_cmd = get_subprocess_exec(
+        include_expansions_in_env=["OTEL_TRACE_DIR"], args=[".evergreen/just.sh", "run-tests"]
+    )
     return "run tests", [setup_cmd, test_cmd]
 
 

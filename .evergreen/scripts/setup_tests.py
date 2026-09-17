@@ -504,6 +504,17 @@ def handle_test_env() -> None:
         TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
+        if test_name == "otel":
+            # Collect only the otel test files: sweeping the whole tree imports
+            # unrelated modules, whose import-time skips (test_ocsp_support without
+            # the ocsp extra) end up in the results.
+            TEST_ARGS += (
+                " test/asynchronous/test_otel.py test/asynchronous/test_otel_getmore.py"
+                " test/asynchronous/test_otel_transactions.py"
+                " test/asynchronous/test_open_telemetry_unified.py"
+                " test/test_otel.py test/test_otel_getmore.py"
+                " test/test_otel_transactions.py test/test_open_telemetry_unified.py"
+            )
 
     write_env("TEST_ARGS", TEST_ARGS)
     write_env("UV_ARGS", " ".join(UV_ARGS))
