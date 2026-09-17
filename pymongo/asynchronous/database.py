@@ -33,6 +33,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
+from pymongo._otel import internal_cursor_iteration
 from pymongo.asynchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.asynchronous.change_stream import AsyncDatabaseChangeStream
 from pymongo.asynchronous.collection import AsyncCollection
@@ -715,6 +716,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 retryable=not cmd._performs_write,
                 operation=_Op.AGGREGATE,
                 dbname=self.name,
+                attach_operation_telemetry=True,
             )
 
     @overload
@@ -1061,6 +1063,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 False,
                 dbname=self.name,
                 is_run_command=True,
+                attach_operation_telemetry=True,
             )
 
     async def _retryable_read_command(
@@ -1158,7 +1161,12 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             )
 
         return await self._client._retryable_read(
-            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS, dbname=self.name
+            _cmd,
+            read_pref,
+            session,
+            operation=_Op.LIST_COLLECTIONS,
+            dbname=self.name,
+            attach_operation_telemetry=True,
         )
 
     async def list_collections(
@@ -1218,10 +1226,11 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             if not filter or (len(filter) == 1 and "name" in filter):
                 kwargs["nameOnly"] = True
 
-        return [
-            result["name"]
-            async for result in await self._list_collections_helper(session=session, **kwargs)
-        ]
+        with internal_cursor_iteration():
+            return [
+                result["name"]
+                async for result in await self._list_collections_helper(session=session, **kwargs)
+            ]
 
     async def list_collection_names(
         self,

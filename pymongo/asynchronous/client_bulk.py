@@ -336,6 +336,9 @@ class _AsyncClientBulk:
                 session=session,
                 comment=self.comment,
             )
+            # These getMores run inside the enclosing bulkWrite operation span,
+            # so a getMore operation span of their own would be spurious.
+            cmd_cursor._reuse_current_span_for_getmore = True
             await cmd_cursor._maybe_pin_connection(conn)
 
             # Iterate the cursor to get individual write results.
