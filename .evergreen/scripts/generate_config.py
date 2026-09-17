@@ -307,6 +307,24 @@ def create_pyopenssl_variants():
             )
         )
 
+    # The 3.15t PyOpenSSL tests only run on Ubuntu 22, whose OpenSSL 3.0.2 is
+    # needed to build the cryptography package; only MongoDB 6.0+ runs there.
+    host = HOSTS["ubuntu22"]
+    tasks = [
+        ".test-standard .python-3.15t !.server-4.4 !.server-5.0 .sync",
+        ".test-standard .python-3.15t !.server-4.4 !.server-5.0 .async .replica_set-noauth-ssl",
+    ]
+    variants.append(
+        create_variant(
+            tasks,
+            get_variant_name(base_name, host),
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+            tags=["pr"],
+        )
+    )
+
     return variants
 
 
