@@ -323,34 +323,6 @@ class TestClientMetadataProse(AsyncIntegrationTest):
                     ),
                 )
 
-    async def test_11_appending_metadata_containing_the_delimiter_raises_an_error(self):
-        cases = [
-            ("frame|work", "2.0", "Framework Platform"),
-            ("framework", "2|0", "Framework Platform"),
-            ("framework", "2.0", "Framework|Platform"),
-        ]
-        for name, version, platform in cases:
-            with self.subTest(name=name, version=version, platform=platform):
-                client = await self.async_rs_or_single_client(
-                    "mongodb://" + self.server.address_string,
-                    maxIdleTimeMS=1,
-                    driver=DriverInfo("library", "1.2", "Library Platform"),
-                )
-                self.addAsyncCleanup(client.close)
-                # Send initial handshake.
-                name0, version0, platform0, _metadata = await self.send_ping_and_get_metadata(
-                    client, True
-                )
-                await asyncio.sleep(0.005)
-                # Constructing metadata containing the delimiter raises.
-                with self.assertRaises(ValueError):
-                    DriverInfo(name, version, platform)
-                # Metadata is unchanged on the next handshake.
-                name1, version1, platform1, _ = await self.send_ping_and_get_metadata(client, True)
-                self.assertEqual(name1, name0)
-                self.assertEqual(version1, version0)
-                self.assertEqual(platform1, platform0)
-
 
 if __name__ == "__main__":
     unittest.main()

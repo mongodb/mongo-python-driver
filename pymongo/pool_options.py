@@ -257,21 +257,35 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     if driver:
         # Keep the name and version segments paired so they stay 1:1 aligned,
         # trimming wrapper content and dropping paired segments only as a
-        # last resort.
-        pairs = list(zip(driver.get("name", "").split("|"), driver.get("version", "").split("|")))
-        while True:
-            driver["name"] = "|".join(name for name, _ in pairs)
-            driver["version"] = "|".join(version for _, version in pairs)
-            overflow = len(bson.encode(metadata)) - _MAX_METADATA_SIZE
-            if overflow <= 0 or len(pairs) <= 1:
-                break
+        # last resort. Blank pairs (for example from a platform-only appended
+        # driver) are dropped first since they cost nothing.
+        pairs = [
+            (name, version)
+            for name, version in zip(
+                driver.get("name", "").split("|"), driver.get("version", "").split("|")
+            )
+            if name or version
+        ]
+        driver["name"] = "|".join(name for name, _ in pairs)
+        driver["version"] = "|".join(version for _, version in pairs)
+        overflow = len(bson.encode(metadata)) - _MAX_METADATA_SIZE
+        while overflow > 0 and len(pairs) > 1:
+            # A single remaining pair never exceeds the limit: it is the base
+            # driver pair, which steps 1-4 left small enough to fit.
             last_name, last_version = pairs[-1]
             if last_version:
-                pairs[-1] = (last_name, _truncate_utf8(last_version, overflow))
+                new_version = _truncate_utf8(last_version, overflow)
+                overflow -= len(last_version.encode("utf-8")) - len(new_version.encode("utf-8"))
+                pairs[-1] = (last_name, new_version)
             elif last_name:
-                pairs[-1] = (_truncate_utf8(last_name, overflow), last_version)
+                new_name = _truncate_utf8(last_name, overflow)
+                overflow -= len(last_name.encode("utf-8")) - len(new_name.encode("utf-8"))
+                pairs[-1] = (new_name, last_version)
             else:
                 pairs.pop()
+                overflow -= len(f"|{last_name}|{last_version}".encode())
+        driver["name"] = "|".join(name for name, _ in pairs)
+        driver["version"] = "|".join(version for _, version in pairs)
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
@@ -356,7 +370,7 @@ class PoolOptions:
         self.__load_balanced = load_balanced
         self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
-        self.__appended_drivers: list[DriverInfo] = []
+        self.__appended_drivers: set[DriverInfo] = set()
         # Only the synchronous client can append metadata from multiple threads.
         self.__metadata_lock: AbstractContextManager[bool | None] = (
             _create_lock() if is_sync else nullcontext()
@@ -409,7 +423,9 @@ class PoolOptions:
 
             name_delims = self.__metadata["driver"]["name"].count("|")
             version_delims = self.__metadata["driver"]["version"].count("|")
-            metadata = copy.deepcopy(self.__metadata)
+            # Only the top-level keys and the "driver" document are mutated,
+            # so shallow copies of those two are enough.
+            metadata = {**self.__metadata, "driver": dict(self.__metadata["driver"])}
 
             metadata["driver"]["name"] = "{}|{}".format(metadata["driver"]["name"], driver.name)
             metadata["driver"]["version"] = "{}|{}".format(
@@ -427,12 +443,12 @@ class PoolOptions:
 
             # Only track drivers whose appended name/version pair survived
             # truncation (i.e. both gained a segment), so __appended_drivers
-            # stays bounded and the dedup membership check stays fast.
+            # stays bounded.
             if (
                 metadata["driver"]["name"].count("|") > name_delims
                 and metadata["driver"]["version"].count("|") > version_delims
             ):
-                self.__appended_drivers.append(driver)
+                self.__appended_drivers.add(driver)
 
     @property
     def _credentials(self) -> Optional[MongoCredential]:

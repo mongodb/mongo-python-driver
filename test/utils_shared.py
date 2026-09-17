@@ -31,9 +31,11 @@ import warnings
 from collections import abc, defaultdict
 from functools import partial
 from inspect import iscoroutinefunction
+from typing import Any
 
 from bson.objectid import ObjectId
 from pymongo import monitoring, operations, read_preferences
+from pymongo.common import has_c
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import OperationFailure
 from pymongo.helpers_shared import _SENSITIVE_COMMANDS
@@ -51,6 +53,7 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
+from pymongo.pool_options import _METADATA
 from pymongo.pool_shared import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.server_type import SERVER_TYPE
@@ -786,3 +789,23 @@ def _driver_version(base_version: str, name: str, last_version: str | None = Non
     if last_version is not None:
         segments[-1] = last_version
     return "|".join([base_version, *segments])
+
+
+def _metadata_with_appended_driver(
+    is_sync: bool, name: str, version: str, platform: str | None = None
+) -> dict[str, Any]:
+    """Build the expected client metadata after appending a driver."""
+    driver_name = "PyMongo"
+    if has_c():
+        driver_name += "|c"
+    if not is_sync:
+        driver_name += "|async"
+    metadata = copy.deepcopy(_METADATA)
+    metadata["driver"]["name"] = driver_name + f"|{name}"
+    metadata["driver"]["version"] = _driver_version(
+        _METADATA["driver"]["version"], metadata["driver"]["name"], last_version=version
+    )
+    metadata["application"] = {"name": "foobar"}
+    if platform is not None:
+        metadata["platform"] = "{}|{}".format(_METADATA["platform"], platform)
+    return metadata

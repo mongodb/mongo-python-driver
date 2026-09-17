@@ -81,7 +81,13 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo.pool_options import _MAX_METADATA_SIZE, _METADATA, ENV_VAR_K8S, PoolOptions
+from pymongo.pool_options import (
+    _MAX_METADATA_SIZE,
+    _METADATA,
+    ENV_VAR_K8S,
+    PoolOptions,
+    _truncate_metadata,
+)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
@@ -124,6 +130,7 @@ from test.utils_shared import (
     CMAPListener,
     FunctionCallRecorder,
     _driver_version,
+    _metadata_with_appended_driver,
     delay,
     gevent_monkey_patched,
     is_greenthread_patched,
@@ -374,22 +381,6 @@ class ClientUnitTest(UnitTest):
         )
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
-    def _metadata_with_appended_driver(
-        self, name: str, version: str, platform: str | None = None
-    ) -> dict[str, Any]:
-        metadata = copy.deepcopy(_METADATA)
-        if has_c():
-            metadata["driver"]["name"] = "PyMongo|c|" + name
-        else:
-            metadata["driver"]["name"] = "PyMongo|" + name
-        metadata["driver"]["version"] = _driver_version(
-            _METADATA["driver"]["version"], metadata["driver"]["name"], last_version=version
-        )
-        metadata["application"] = {"name": "foobar"}
-        if platform is not None:
-            metadata["platform"] = "{}|{}".format(_METADATA["platform"], platform)
-        return metadata
-
     def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         if has_c():
@@ -424,7 +415,7 @@ class ClientUnitTest(UnitTest):
             self.simple_client(driver=("Foo", "1", "a"))
 
     def test_metadata_appends_driver_info(self):
-        metadata = self._metadata_with_appended_driver("FooDriver", "1.2.3")
+        metadata = _metadata_with_appended_driver(_IS_SYNC, "FooDriver", "1.2.3")
         client = self.simple_client(
             "foo",
             27017,
@@ -434,7 +425,7 @@ class ClientUnitTest(UnitTest):
         )
         self.assertEqual(client.options.pool_options.metadata, metadata)
 
-        metadata = self._metadata_with_appended_driver("FooDriver", "1.2.3", "FooPlatform")
+        metadata = _metadata_with_appended_driver(_IS_SYNC, "FooDriver", "1.2.3", "FooPlatform")
         client = self.simple_client(
             "foo",
             27017,
@@ -490,6 +481,28 @@ class ClientUnitTest(UnitTest):
         self.assertEqual(
             truncated["name"].count("|"),
             truncated["version"].count("|"),
+        )
+
+    def test_metadata_truncation_drops_blank_pairs_first(self):
+        # A platform-only driver appends a blank name/version pair. Truncation
+        # must drop that pair before trimming a real driver's content.
+        def metadata_for(name_len: int) -> dict[str, Any]:
+            name = "PyMongo||" + "W" * name_len  # blank pair in the middle
+            return {"driver": {"name": name, "version": "1.0||1.0"}}
+
+        # Size the name so the document is exactly two bytes over the limit:
+        # dropping the blank pair alone must make it fit.
+        name_len = next(
+            n
+            for n in range(1, 2 * _MAX_METADATA_SIZE)
+            if len(bson.encode(metadata_for(n))) == _MAX_METADATA_SIZE + 2
+        )
+        metadata = metadata_for(name_len)
+        _truncate_metadata(metadata)
+        self.assertEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(
+            metadata["driver"],
+            {"name": "PyMongo|" + "W" * name_len, "version": "1.0|1.0"},
         )
 
     def test_metadata_append_is_bounded(self):
