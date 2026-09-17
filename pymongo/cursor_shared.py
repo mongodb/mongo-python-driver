@@ -127,7 +127,6 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
             async for doc in collection.find():
                 print(doc)
 
-
         .. note:: Even if :attr:`alive` is True, :meth:`next` can raise
           :exc:`StopIteration`. :attr:`alive` can also be True while iterating
           a cursor from a failed server. In this case :attr:`alive` will
