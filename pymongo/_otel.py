@@ -545,3 +545,24 @@ def end_operation_span_failure(handle: Optional[_OperationSpanHandle], exc: Base
         else:
             _CURRENT_OPERATION_NAME.reset(handle._name_token)
             handle._cm.__exit__(None, None, None)
+
+
+def start_transaction_span(tracing_options: Optional[TracingOptions]) -> Optional[Span]:
+    """Start (but do not make current) the ``"transaction"`` pseudo-span, or None.
+
+    Passed as the explicit ``parent_span`` for operation spans in this
+    transaction, never made current.
+    """
+    if not _is_tracing_enabled(tracing_options):
+        return None
+    assert _TRACER is not None
+    return _TRACER.start_span(
+        "transaction", kind=SpanKind.CLIENT, attributes={"db.system.name": "mongodb"}
+    )
+
+
+def end_transaction_span(span: Optional[Span]) -> None:
+    """End the transaction span, if any."""
+    if span is None:
+        return
+    span.end()
