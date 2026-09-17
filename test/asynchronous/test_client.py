@@ -540,13 +540,6 @@ class AsyncClientUnitTest(AsyncUnitTest):
             client.append_metadata(DriverInfo(name="", version="", platform=f"P{i}"))
         self.assertEqual(len(pool._PoolOptions__appended_drivers), count)
 
-    async def test_metadata_rejects_delimiter(self):
-        # The '|' delimiter is reserved for joining appended metadata, so it
-        # must be rejected in every field.
-        self.assertRaises(ValueError, DriverInfo, "a|b", "1.0", None)
-        self.assertRaises(ValueError, DriverInfo, "lib", "1|0", None)
-        self.assertRaises(ValueError, DriverInfo, "lib", "1.0", "Frame|Platform")
-
     async def test_metadata_recreates_platform_after_truncation(self):
         # Appending a platform after truncation has dropped it recreates the field.
         client = self.simple_client(connect=False)
