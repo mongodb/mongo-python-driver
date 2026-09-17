@@ -190,6 +190,14 @@ async def _async_blocking_socket_call(
     fut = asyncio.shield(inner)
     try:
         return await asyncio.wait_for(fut, timeout=timeout)
+    except asyncio.CancelledError:
+        # The caller is abandoning this operation (CSOT deadline, client close)
+        # and will close the socket, so wait for the worker to finish first.
+        try:
+            await inner
+        except OSError:
+            pass
+        raise
     except asyncio.TimeoutError:
         if timeout is not None:
             # Wait for the worker so the caller does not close the socket under it.
@@ -199,7 +207,8 @@ async def _async_blocking_socket_call(
                 pass
         raise
     except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as exc:
-        # A peer reset raises here on Python 3.15; report it as a graceful close.
+        # A send to a connection the peer closed or reset raises raw on
+        # Python 3.15; report it as the graceful close the KMS path expects.
         raise OSError("connection closed") from exc
 
 

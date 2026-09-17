@@ -262,11 +262,29 @@ class TestAsyncBlockingSocketCall(AsyncUnitTest):
         finished = threading.Event()
 
         def slow(arg):
-            time.sleep(0.3)
+            time.sleep(0.4)
             finished.set()
 
         with self.assertRaises(asyncio.TimeoutError):
-            await _async_blocking_socket_call(asyncio.get_running_loop(), slow, None, 0.2)
+            await _async_blocking_socket_call(asyncio.get_running_loop(), slow, None, 0.3)
+        self.assertTrue(finished.is_set())
+
+    async def test_cancellation_waits_for_worker(self):
+        # On cancellation the call must also wait for the worker, for the same
+        # reason: the caller closes the socket once the cancellation propagates.
+        finished = threading.Event()
+
+        def slow(arg):
+            time.sleep(0.2)
+            finished.set()
+
+        task = asyncio.create_task(
+            _async_blocking_socket_call(asyncio.get_running_loop(), slow, None, None)
+        )
+        await asyncio.sleep(0.05)
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
         self.assertTrue(finished.is_set())
 
 
