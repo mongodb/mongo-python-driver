@@ -358,11 +358,17 @@ class AsyncClientContext:
         if self._fips_enabled is not None:
             return self._fips_enabled
         try:
-            subprocess.run(["fips-mode-setup", "--is-enabled"], check=True)
-            self._fips_enabled = True
-        except (subprocess.SubprocessError, FileNotFoundError, DeprecationWarning):
             # Python 3.15 warns on fork() in multi-threaded processes, which
             # gevent's monkey-patched subprocess triggers.
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message=r".*use of fork\(\) may lead to deadlocks.*",
+                    category=DeprecationWarning,
+                )
+                subprocess.run(["fips-mode-setup", "--is-enabled"], check=True)
+            self._fips_enabled = True
+        except (subprocess.SubprocessError, FileNotFoundError):
             self._fips_enabled = False
         if os.environ.get("REQUIRE_FIPS") and not self._fips_enabled:
             raise RuntimeError("Expected FIPS to be enabled")

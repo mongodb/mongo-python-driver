@@ -190,21 +190,14 @@ async def _async_blocking_socket_call(
     fut = asyncio.shield(inner)
     try:
         return await asyncio.wait_for(fut, timeout=timeout)
-    except asyncio.CancelledError:
-        # The caller is abandoning this operation (CSOT deadline, client close)
-        # and will close the socket, so wait for the worker to finish first.
+    except (asyncio.CancelledError, asyncio.TimeoutError):
+        # The caller will close the socket once this propagates, so wait for
+        # the worker to finish first.  The worker's blocking operation is
+        # bounded by the socket timeout.
         try:
             await inner
         except OSError:
             pass
-        raise
-    except asyncio.TimeoutError:
-        if timeout is not None:
-            # Wait for the worker so the caller does not close the socket under it.
-            try:
-                await asyncio.wait_for(inner, timeout=timeout)
-            except (asyncio.TimeoutError, OSError, *ssl_support.BLOCKING_IO_ERRORS):
-                pass
         raise
     except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as exc:
         # A send to a connection the peer closed or reset raises raw on
