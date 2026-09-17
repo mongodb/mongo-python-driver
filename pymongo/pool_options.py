@@ -448,8 +448,6 @@ class PoolOptions:
             if driver in self.__appended_drivers:
                 return
 
-            name_delims = self.__metadata["driver"]["name"].count("|")
-            version_delims = self.__metadata["driver"]["version"].count("|")
             # Only the top-level keys and the "driver" document are mutated,
             # so shallow copies of those two are enough.
             metadata = {**self.__metadata, "driver": dict(self.__metadata["driver"])}
@@ -469,12 +467,12 @@ class PoolOptions:
             self.__metadata = metadata
 
             # Only track drivers whose appended name/version pair survived
-            # truncation (i.e. both gained a segment), so __appended_drivers
-            # stays bounded.
-            if (
-                metadata["driver"]["name"].count("|") > name_delims
-                and metadata["driver"]["version"].count("|") > version_delims
-            ):
+            # truncation, so __appended_drivers stays bounded.
+            pairs = zip(
+                metadata["driver"]["name"].split("|"),
+                metadata["driver"]["version"].split("|"),
+            )
+            if (driver.name, driver.version) in pairs:
                 self.__appended_drivers.add(driver)
 
     @property
