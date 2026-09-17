@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import collections
+import contextlib
 import errno
 import socket
 import struct
@@ -193,11 +194,10 @@ async def _async_blocking_socket_call(
     except (asyncio.CancelledError, asyncio.TimeoutError):
         # The caller will close the socket once this propagates, so wait for
         # the worker to finish first.  The worker's blocking operation is
-        # bounded by the socket timeout.
-        try:
+        # bounded by the socket timeout.  Whatever outcome the worker finished
+        # with, this call surfaces the timeout or cancellation.
+        with contextlib.suppress(Exception):
             await inner
-        except OSError:
-            pass
         raise
     except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as exc:
         # A send to a connection the peer closed or reset raises raw on
