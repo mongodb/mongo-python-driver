@@ -470,6 +470,31 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                        srvAllowedHostsSuffix=".internal.example.com",
                    )
 
+          - `srv_host_validator`: (callable or None) A callback used in place of the
+            default parent-domain check for hosts returned by SRV DNS records. It is
+            called once per returned host with the lowercased hostname as its only
+            argument, and must return ``True`` to accept the host or ``False`` to
+            reject it. Rejecting a host raises
+            :exc:`~pymongo.errors.ConfigurationError`, as does an exception raised by
+            the callback itself. Use this when the set of acceptable hosts cannot be
+            expressed as a single suffix::
+
+                def validator(host: str) -> bool:
+                    return host.endswith((".a.example.com", ".b.example.com"))
+
+                AsyncMongoClient(
+                    "mongodb+srv://cluster.example.com/",
+                    srv_host_validator=validator,
+                )
+
+            The callback must not block. It is mutually exclusive with
+            ``srvAllowedHostsSuffix``. Because this option is a callable, it can
+            only be passed in as a keyword argument, not through the connection string.
+
+            .. warning::
+
+               This option replaces the built-in DNS spoofing safeguards.
+               Please use with caution.
 
           | **Write Concern options:**
           | (Only set if passed. No default values.)
@@ -823,6 +848,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         srv_service_name = keyword_opts.get("srvservicename")
         srv_max_hosts = keyword_opts.get("srvmaxhosts")
         srv_allowed_hosts_suffix = keyword_opts.get("srvallowedhostssuffix")
+        srv_host_validator = keyword_opts.get("srv_host_validator")
         if len([h for h in self._host if "/" in h]) > 1:
             raise ConfigurationError("host must not contain multiple MongoDB URIs")
         for entity in self._host:
@@ -915,7 +941,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         )
 
         self._init_based_on_options(
-            self._seeds, srv_max_hosts, srv_service_name, srv_allowed_hosts_suffix
+            self._seeds,
+            srv_max_hosts,
+            srv_service_name,
+            srv_allowed_hosts_suffix,
+            srv_host_validator,
         )
 
         self._opened = False
@@ -935,6 +965,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         srv_service_name = keyword_opts.get("srvservicename")
         srv_max_hosts = keyword_opts.get("srvmaxhosts")
         srv_allowed_hosts_suffix = keyword_opts.get("srvallowedhostssuffix")
+        srv_host_validator = keyword_opts.get("srv_host_validator")
         for entity in self._host:
             # A hostname can only include a-z, 0-9, '-' and '.'. If we find a '/'
             # it must be a URI,
@@ -956,6 +987,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     srv_service_name=srv_service_name,
                     srv_max_hosts=srv_max_hosts,
                     srv_allowed_hosts_suffix=srv_allowed_hosts_suffix,
+                    srv_host_validator=srv_host_validator,
                 )
                 seeds.update(res["nodelist"])
                 opts = res["options"]
@@ -1000,7 +1032,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             )
 
             self._init_based_on_options(
-                seeds, srv_max_hosts, srv_service_name, srv_allowed_hosts_suffix
+                seeds,
+                srv_max_hosts,
+                srv_service_name,
+                srv_allowed_hosts_suffix,
+                srv_host_validator,
             )
 
     def _init_based_on_options(
@@ -1009,7 +1045,17 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         srv_max_hosts: Any,
         srv_service_name: Any,
         srv_allowed_hosts_suffix: Any,
+        srv_host_validator: Any = None,
     ) -> None:
+        if srv_host_validator is not None:
+            if srv_allowed_hosts_suffix is not None:
+                raise ConfigurationError(
+                    "Cannot specify both srv_host_validator and srvAllowedHostsSuffix"
+                )
+            if not self._resolve_srv_info["is_srv"]:
+                raise ConfigurationError(
+                    "The srv_host_validator option is only allowed with 'mongodb+srv://' URIs"
+                )
         self._event_listeners = self._options.pool_options._event_listeners
         self._topology_settings = TopologySettings(
             seeds=seeds,
@@ -1028,6 +1074,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             srv_service_name=srv_service_name,
             srv_max_hosts=srv_max_hosts,
             srv_allowed_hosts_suffix=srv_allowed_hosts_suffix,
+            srv_host_validator=srv_host_validator,
             server_monitoring_mode=self._options.server_monitoring_mode,
             topology_id=self._topology_settings._topology_id if self._topology_settings else None,
         )

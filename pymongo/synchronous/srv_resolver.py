@@ -18,9 +18,9 @@ from __future__ import annotations
 
 import ipaddress
 import random
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
-from pymongo._psl import is_public_suffix
+from pymongo._psl import SPECIAL_USE_LABELS, _to_punycode, is_public_suffix
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
@@ -64,21 +64,42 @@ class _SrvResolver:
         srv_service_name: str,
         srv_max_hosts: int = 0,
         srv_allowed_hosts_suffix: Optional[str] = None,
+        srv_host_validator: Optional[Callable[[str], bool]] = None,
     ):
         self.__fqdn = fqdn.lower()
         self.__srv = srv_service_name
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
         self.__srv_max_hosts = srv_max_hosts or 0
-        self.__srv_allowed_hosts_suffix = (
-            "." + srv_allowed_hosts_suffix.lower().strip(".") if srv_allowed_hosts_suffix else None
-        )  # ensure there's a . at the beginning of the domain
-        if self.__srv_allowed_hosts_suffix is not None and is_public_suffix(
-            self.__srv_allowed_hosts_suffix
-        ):
+        self.__srv_host_validator = srv_host_validator
+        # MongoClient rejects this combination earlier and with a better
+        # error, but parse_uri() reaches this constructor directly. Checking
+        # here too ensures srvAllowedHostsSuffix is never silently discarded.
+        if srv_host_validator is not None and srv_allowed_hosts_suffix is not None:
             raise ConfigurationError(
-                f"srvAllowedHostsSuffix must not be a public suffix, got: {srv_allowed_hosts_suffix}"
+                "Cannot specify both srv_host_validator and srvAllowedHostsSuffix"
             )
-        # Validate the fully qualified domain name.
+        self.__srv_allowed_hosts_suffix = None
+        if srv_allowed_hosts_suffix is not None:
+            suffix = srv_allowed_hosts_suffix.strip(".")
+            if not suffix:
+                raise ConfigurationError(
+                    f"srvAllowedHostsSuffix must not be empty, got: {srv_allowed_hosts_suffix!r}"
+                )
+            suffix = _to_punycode(suffix).lower()
+
+            is_special_use = suffix in SPECIAL_USE_LABELS
+            if len(suffix.split(".")) < 2 and not is_special_use:
+                raise ConfigurationError(
+                    "srvAllowedHostsSuffix must contain at least two '.' separated labels, "
+                    f"got: {srv_allowed_hosts_suffix}"
+                )
+
+            if not is_special_use and is_public_suffix(suffix):
+                raise ConfigurationError(
+                    f"srvAllowedHostsSuffix must not be a public suffix, got: {srv_allowed_hosts_suffix}"
+                )
+            self.__srv_allowed_hosts_suffix = "." + suffix
+
         try:
             ipaddress.ip_address(fqdn)
             raise ConfigurationError(_INVALID_HOST_MSG % ("an IP address",))
@@ -133,14 +154,25 @@ class _SrvResolver:
         # Validate hosts
         for node in nodes:
             srv_host = node[0].lower()
-            if self.__fqdn == srv_host and self.nparts < 3:
-                raise ConfigurationError(
-                    "Invalid SRV host: return address is identical to SRV hostname"
-                )
-            if self.__srv_allowed_hosts_suffix is not None:
+            if self.__srv_host_validator is not None:
+                try:
+                    allowed = self.__srv_host_validator(srv_host)
+                except Exception as exc:
+                    raise ConfigurationError(
+                        f"srv_host_validator raised an exception for SRV host {node[0]}: {exc}"
+                    ) from exc
+                if not allowed:
+                    raise ConfigurationError(
+                        f"Invalid SRV host: {node[0]} was rejected by srv_host_validator"
+                    )
+            elif self.__srv_allowed_hosts_suffix is not None:
                 if not srv_host.endswith(self.__srv_allowed_hosts_suffix):
                     raise ConfigurationError(f"Invalid SRV host: {node[0]}")
             else:
+                if self.__fqdn == srv_host and self.nparts < 3:
+                    raise ConfigurationError(
+                        "Invalid SRV host: return address is identical to SRV hostname"
+                    )
                 try:
                     nlist = srv_host.split(".")[1:][-self.__slen :]
                 except Exception as exc:
