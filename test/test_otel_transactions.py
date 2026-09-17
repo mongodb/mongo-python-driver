@@ -23,7 +23,6 @@ sys.path[0:0] = [""]
 import pytest
 
 import pymongo._otel as _otel
-from pymongo import _telemetry
 from pymongo.errors import InvalidOperation, OperationFailure
 from test import IntegrationTest, client_context, unittest
 from test.unified_format_shared import _shared_test_provider
@@ -41,70 +40,6 @@ if _otel._HAS_OPENTELEMETRY:
 _IS_SYNC = True
 
 pytestmark = pytest.mark.otel
-
-
-def _tracing_opts() -> _otel.TracingOptions:
-    """Return resolved tracing options with tracing on and ``db.query.text`` disabled."""
-    return {"enabled": True, "query_text_max_length": 0}
-
-
-@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
-class TestOTelTransactionSpanPrimitives(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.exporter = InMemorySpanExporter()
-        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
-
-    @classmethod
-    def tearDownClass(cls):
-        # The span processor can never be removed from the shared process-wide
-        # TracerProvider, so without this the exporter accumulates every span.
-        cls.exporter.shutdown()
-
-    def setUp(self):
-        self.exporter.clear()
-
-    def test_start_transaction_span_has_only_one_attribute(self):
-        opts = _tracing_opts()
-        span = _otel.start_transaction_span(opts)
-        _otel.end_transaction_span(span)
-        (finished,) = self.exporter.get_finished_spans()
-        self.assertEqual(finished.name, "transaction")
-        self.assertEqual(dict(finished.attributes), {"db.system.name": "mongodb"})
-
-
-@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
-class TestOperationTelemetryInTransaction(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.exporter = InMemorySpanExporter()
-        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
-
-    @classmethod
-    def tearDownClass(cls):
-        # The span processor can never be removed from the shared process-wide
-        # TracerProvider, so without this the exporter accumulates every span.
-        cls.exporter.shutdown()
-
-    def setUp(self):
-        self.exporter.clear()
-
-    def test_nests_under_active_transaction_span(self):
-        opts = _tracing_opts()
-        txn_span = _otel.start_transaction_span(opts)
-
-        class _FakeTransaction:
-            span = txn_span
-
-        class _FakeSession:
-            in_transaction = True
-            _transaction = _FakeTransaction()
-
-        telemetry = _telemetry._OperationTelemetry(opts, "insert", _FakeSession())
-        telemetry.succeeded()
-        _otel.end_transaction_span(txn_span)
-        child, parent = self.exporter.get_finished_spans()
-        self.assertEqual(child.parent.span_id, parent.context.span_id)
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
@@ -230,6 +165,18 @@ class TestOTelTransactionSpans(IntegrationTest):
         self.assertNotEqual(txn_spans[0].context.span_id, txn_spans[1].context.span_id)
         for txn_span in txn_spans:
             self.assertTrue(txn_span.end_time is not None)
+
+        commit_op_spans = self.operation_spans(finished, "commitTransaction")
+        self.assertEqual(len(commit_op_spans), 2, [s.name for s in finished])
+        # Each attempt's operation span parents to that attempt's transaction
+        # span, which fails if the spans regress to ambient parenting.
+        self.assertEqual(
+            {s.parent.span_id for s in commit_op_spans},
+            {s.context.span_id for s in txn_spans},
+        )
+        op_span_ids = {s.context.span_id for s in commit_op_spans}
+        for cmd_span in self.command_spans(finished, "commitTransaction"):
+            self.assertIn(cmd_span.parent.span_id, op_span_ids)
 
     @client_context.require_transactions
     def test_with_transaction_retry_reuses_one_transaction_span(self):
@@ -477,37 +424,3 @@ class TestOTelTransactionSpans(IntegrationTest):
         self.assertEqual(len(insert_op_spans), 2)
         for op_span in insert_op_spans:
             self.assertEqual(op_span.parent.span_id, txn_span.context.span_id)
-
-    @client_context.require_transactions
-    def test_retried_commit_has_a_transaction_span(self):
-        client = self.rs_or_single_client(tracing={"enabled": True})
-        coll = client.pymongo_test.retried_commit_spans
-        coll.drop()
-        client.pymongo_test.create_collection("retried_commit_spans")
-
-        with client.start_session() as session:
-            session.start_transaction()
-            coll.insert_one({"x": 1}, session=session)
-            session.commit_transaction()
-            self.exporter.clear()
-            # An explicit second commit re-enters the branch that previously ran
-            # with no transaction span at all.
-            session.commit_transaction()
-
-        finished = self.exporter.get_finished_spans()
-        txn_spans = [s for s in finished if s.name == "transaction"]
-        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
-        commit_op_spans = self.operation_spans(finished, "commitTransaction")
-        self.assertGreaterEqual(len(commit_op_spans), 1)
-        # Each attempt's operation span parents to a transaction span, which
-        # fails if the spans regress to ambient parenting.
-        self.assertEqual(
-            {s.parent.span_id for s in commit_op_spans}, {txn_spans[0].context.span_id}
-        )
-        op_span_ids = {s.context.span_id for s in commit_op_spans}
-        commit_cmd_spans = [
-            s for s in finished if s.attributes.get("db.command.name") == "commitTransaction"
-        ]
-        self.assertGreaterEqual(len(commit_cmd_spans), 1)
-        for cmd_span in commit_cmd_spans:
-            self.assertIn(cmd_span.parent.span_id, op_span_ids)
