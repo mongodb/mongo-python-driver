@@ -16,40 +16,23 @@
 
 from __future__ import annotations
 
-import os
 import sys
-from typing import Optional
-from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
 import pytest
 
 import pymongo._otel as _otel
-from pymongo import _telemetry, common
-from pymongo._telemetry import _OperationTelemetry
-from pymongo.errors import (
-    ClientBulkWriteException,
-    ConfigurationError,
-    InvalidOperation,
-    OperationFailure,
-    ServerSelectionTimeoutError,
-)
-from pymongo.logger import _HELLO_COMMANDS
-from pymongo.operations import InsertOne
-from pymongo.read_preferences import ReadPreference
-from pymongo.typings import _Address
+from pymongo import _telemetry
+from pymongo.errors import InvalidOperation, OperationFailure
 from test import IntegrationTest, client_context, unittest
 from test.unified_format_shared import _shared_test_provider
-from test.utils import wait_until
 
 _HAS_OTEL_TEST_DEPS = False
 if _otel._HAS_OPENTELEMETRY:
     try:
-        from opentelemetry import trace
         from opentelemetry.sdk.trace.export import SimpleSpanProcessor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-        from opentelemetry.trace import StatusCode
 
         _HAS_OTEL_TEST_DEPS = True
     except ImportError:
@@ -317,6 +300,99 @@ class TestOTelTransactionSpans(IntegrationTest):
             self.assertIsNotNone(txn_span.end_time)
 
     @client_context.require_transactions
+    def test_reentrant_with_transaction_raises_with_tracing_disabled(self):
+        # The guard is not part of tracing: it must raise the same
+        # InvalidOperation when spans are disabled.
+        client = self.rs_or_single_client()
+        coll = client.pymongo_test.reentrant_with_txn_no_tracing
+        coll.drop()
+        client.pymongo_test.create_collection("reentrant_with_txn_no_tracing")
+
+        def inner_callback(session):
+            coll.insert_one({"x": 1}, session=session)
+
+        def outer_callback(session):
+            # End the outer transaction so the session is free, the one state a
+            # nested call could otherwise slip into.
+            session.commit_transaction()
+            session.with_transaction(inner_callback)
+
+        with client.start_session() as session:
+            with self.assertRaises(InvalidOperation):
+                session.with_transaction(outer_callback)
+
+    @client_context.require_transactions
+    def test_with_transaction_on_ended_session_emits_no_span(self):
+        # A transaction that never starts emits no span: start_transaction()
+        # creates it only after its preflight checks pass.
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        session = client.start_session()
+        session.end_session()
+        self.exporter.clear()
+
+        def callback(session):
+            pass
+
+        with self.assertRaises(InvalidOperation):
+            session.with_transaction(callback)
+
+        finished = self.exporter.get_finished_spans()
+        self.assertEqual([s.name for s in finished if s.name == "transaction"], [])
+
+    @client_context.require_test_commands
+    @client_context.require_transactions
+    def test_with_transaction_commit_retry_reuses_one_transaction_span(self):
+        # A commit retried through with_transaction()'s
+        # UnknownTransactionCommitResult path nests under the call's one span.
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.with_txn_commit_retry
+        coll.drop()
+        client.pymongo_test.create_collection("with_txn_commit_retry")
+        self.configure_fail_point(
+            client,
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 1},
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    # NoSuchTransaction is not itself a retryable error, so the
+                    # label alone drives the commit retry.
+                    "errorCode": 251,
+                    "errorLabels": ["UnknownTransactionCommitResult"],
+                },
+            },
+        )
+        self.addCleanup(
+            self.configure_fail_point,
+            client,
+            {"configureFailPoint": "failCommand", "mode": "off"},
+        )
+
+        def callback(session):
+            coll.insert_one({"x": 1}, session=session)
+
+        self.exporter.clear()
+        with client.start_session() as session:
+            session.with_transaction(callback)
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        self.assertIsNotNone(txn_spans[0].end_time)
+
+        commit_op_spans = self.operation_spans(finished, "commitTransaction")
+        self.assertEqual(len(commit_op_spans), 2, [s.name for s in finished])
+        self.assertEqual(
+            {s.parent.span_id for s in commit_op_spans}, {txn_spans[0].context.span_id}
+        )
+
+        commit_cmd_spans = self.command_spans(finished, "commitTransaction")
+        self.assertEqual(len(commit_cmd_spans), 2, [s.name for s in finished])
+        op_span_ids = {s.context.span_id for s in commit_op_spans}
+        for cmd_span in commit_cmd_spans:
+            self.assertIn(cmd_span.parent.span_id, op_span_ids)
+
+    @client_context.require_transactions
     def test_nested_with_transaction_on_another_session_keeps_spans_separate(self):
         # Nesting on a different session is legal, and each session's operations
         # must parent to its own transaction span.
@@ -421,9 +497,17 @@ class TestOTelTransactionSpans(IntegrationTest):
         finished = self.exporter.get_finished_spans()
         txn_spans = [s for s in finished if s.name == "transaction"]
         self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        commit_op_spans = self.operation_spans(finished, "commitTransaction")
+        self.assertGreaterEqual(len(commit_op_spans), 1)
+        # Each attempt's operation span parents to a transaction span, which
+        # fails if the spans regress to ambient parenting.
+        self.assertEqual(
+            {s.parent.span_id for s in commit_op_spans}, {txn_spans[0].context.span_id}
+        )
+        op_span_ids = {s.context.span_id for s in commit_op_spans}
         commit_cmd_spans = [
             s for s in finished if s.attributes.get("db.command.name") == "commitTransaction"
         ]
         self.assertGreaterEqual(len(commit_cmd_spans), 1)
         for cmd_span in commit_cmd_spans:
-            self.assertIsNotNone(cmd_span.parent)
+            self.assertIn(cmd_span.parent.span_id, op_span_ids)
