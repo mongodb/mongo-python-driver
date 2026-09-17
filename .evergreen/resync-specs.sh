@@ -127,6 +127,9 @@ do
       cpjson command-logging-and-monitoring/tests/logging command_logging
       cpjson command-logging-and-monitoring/tests/monitoring command_monitoring
       ;;
+    open-telemetry|otel|open_telemetry)
+      cpjson open-telemetry/tests open_telemetry
+      ;;
     crud|CRUD)
       cpjson crud/tests/ crud
       ;;
