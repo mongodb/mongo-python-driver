@@ -42,7 +42,7 @@ cd /home/smoke/src
 ulimit -n 65536
 
 # Mirror the GHA job and test the newest supported CPython.
-LATEST_PYTHON=$(uv run --no-project --with 'shrub.py>=3.10.0' python .evergreen/scripts/mod_wsgi_matrix.py | jq -r '.include[-1]."python-version"')
+LATEST_PYTHON=$(uv run --no-project --with 'shrub.py>=3.10.0' python .evergreen/scripts/mod_wsgi_matrix.py | jq -r '.[-1]."python-version"')
 echo "Testing with CPython $LATEST_PYTHON"
 uv python install "$LATEST_PYTHON" >/dev/null
 

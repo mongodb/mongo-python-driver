@@ -141,37 +141,28 @@ jobs:
           just setup-tests doctest
           just run-tests
 
-  mod_wsgi_matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.matrix.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install Python tooling
-        uses: mongodb-labs/drivers-github-tools/python/setup@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
-      - id: matrix
-        # The Mod WSGI matrix comes from the Evergreen config's version lists.
-        run: echo "matrix=$(uv run --no-project --with 'shrub.py>=3.10.0' python .evergreen/scripts/mod_wsgi_matrix.py)" >> "$GITHUB_OUTPUT"
-
   mod_wsgi_standalone:
-    needs: mod_wsgi_matrix
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: ["standalone"]
-        include: ${{ fromJSON(needs.mod_wsgi_matrix.outputs.matrix).include }}
-    name: Mod WSGI Standalone (${{ matrix.python-version }} ${{ matrix.mongodb-version }})
+    name: Mod WSGI Standalone
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - id: versions
+        # The versions come from the Evergreen config's version lists.
+        run: |
+          JSON=$(uv run --no-project --with 'shrub.py>=3.10.0' python .evergreen/scripts/mod_wsgi_matrix.py)
+          echo "min-python=$(jq -r '.[0]."python-version"' <<<"$JSON")" >> "$GITHUB_OUTPUT"
+          echo "min-mongodb=$(jq -r '.[0]."mongodb-version"' <<<"$JSON")" >> "$GITHUB_OUTPUT"
+          echo "max-python=$(jq -r '.[1]."python-version"' <<<"$JSON")" >> "$GITHUB_OUTPUT"
+          echo "max-mongodb=$(jq -r '.[1]."mongodb-version"' <<<"$JSON")" >> "$GITHUB_OUTPUT"
+      # Test the minimum dependencies on the oldest supported Python and
+      # MongoDB, then the newest on the newest.
       - name: Install Python tooling
         uses: mongodb-labs/drivers-github-tools/python/setup@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ steps.versions.outputs.min-python }}
       - name: Install Apache
         run: sudo apt-get install -y apache2 apache2-dev
       - name: Install dependencies
@@ -183,37 +174,60 @@ jobs:
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
-          version: ${{ matrix.mongodb-version }}
+          version: ${{ steps.versions.outputs.min-mongodb }}
           topology: "replica_set"
-      - name: Run tests
+      - name: Run min deps tests
         env:
-          TEST_MIN_DEPS: ${{ matrix.test-min-deps }}
+          TEST_MIN_DEPS: "1"
         # Call the test scripts directly: the just recipes run "uv sync",
         # which would drop the mod_wsgi group before teardown can stop Apache.
         run: |
-          bash .evergreen/scripts/setup-tests.sh mod_wsgi ${{ matrix.mode }}
+          bash .evergreen/scripts/setup-tests.sh mod_wsgi standalone
           bash .evergreen/run-tests.sh
       - name: Teardown
         if: always()
         run: bash .evergreen/scripts/teardown-tests.sh
+      - name: Install max Python tooling
+        uses: mongodb-labs/drivers-github-tools/python/setup@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
+        with:
+          python-version: ${{ steps.versions.outputs.max-python }}
+      - name: Rebuild virtual environment
+        run: rm -rf .venv && uv sync --group mod_wsgi
+      - id: setup-mongodb-max
+        uses: mongodb-labs/drivers-evergreen-tools@master
+        with:
+          version: ${{ steps.versions.outputs.max-mongodb }}
+          topology: "replica_set"
+      - name: Run max deps tests
+        run: |
+          bash .evergreen/scripts/setup-tests.sh mod_wsgi standalone
+          bash .evergreen/run-tests.sh
+      - name: Teardown max
+        if: always()
+        run: bash .evergreen/scripts/teardown-tests.sh
 
   mod_wsgi_embedded:
-    needs: mod_wsgi_matrix
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: ["embedded"]
-        include: ${{ fromJSON(needs.mod_wsgi_matrix.outputs.matrix).include }}
-    name: Mod WSGI Embedded (${{ matrix.python-version }} ${{ matrix.mongodb-version }})
+    name: Mod WSGI Embedded
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - id: versions
+        # The versions come from the Evergreen config's version lists.
+        run: |
+          JSON=$(uv run --no-project --with 'shrub.py>=3.10.0' python .evergreen/scripts/mod_wsgi_matrix.py)
+          echo "min-python=$(jq -r '.[0]."python-version"' <<<"$JSON")" >> "$GITHUB_OUTPUT"
+          echo "min-mongodb=$(jq -r '.[0]."mongodb-version"' <<<"$JSON")" >> "$GITHUB_OUTPUT"
+          echo "max-python=$(jq -r '.[1]."python-version"' <<<"$JSON")" >> "$GITHUB_OUTPUT"
+          echo "max-mongodb=$(jq -r '.[1]."mongodb-version"' <<<"$JSON")" >> "$GITHUB_OUTPUT"
+      # Test the minimum dependencies on the oldest supported Python and
+      # MongoDB, then the newest on the newest.
       - name: Install Python tooling
         uses: mongodb-labs/drivers-github-tools/python/setup@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ steps.versions.outputs.min-python }}
       - name: Install Apache
         run: sudo apt-get install -y apache2 apache2-dev
       - name: Install dependencies
@@ -225,17 +239,35 @@ jobs:
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
-          version: ${{ matrix.mongodb-version }}
+          version: ${{ steps.versions.outputs.min-mongodb }}
           topology: "replica_set"
-      - name: Run tests
+      - name: Run min deps tests
         env:
-          TEST_MIN_DEPS: ${{ matrix.test-min-deps }}
+          TEST_MIN_DEPS: "1"
         # Call the test scripts directly: the just recipes run "uv sync",
         # which would drop the mod_wsgi group before teardown can stop Apache.
         run: |
-          bash .evergreen/scripts/setup-tests.sh mod_wsgi ${{ matrix.mode }}
+          bash .evergreen/scripts/setup-tests.sh mod_wsgi embedded
           bash .evergreen/run-tests.sh
       - name: Teardown
+        if: always()
+        run: bash .evergreen/scripts/teardown-tests.sh
+      - name: Install max Python tooling
+        uses: mongodb-labs/drivers-github-tools/python/setup@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
+        with:
+          python-version: ${{ steps.versions.outputs.max-python }}
+      - name: Rebuild virtual environment
+        run: rm -rf .venv && uv sync --group mod_wsgi
+      - id: setup-mongodb-max
+        uses: mongodb-labs/drivers-evergreen-tools@master
+        with:
+          version: ${{ steps.versions.outputs.max-mongodb }}
+          topology: "replica_set"
+      - name: Run max deps tests
+        run: |
+          bash .evergreen/scripts/setup-tests.sh mod_wsgi embedded
+          bash .evergreen/run-tests.sh
+      - name: Teardown max
         if: always()
         run: bash .evergreen/scripts/teardown-tests.sh
 
