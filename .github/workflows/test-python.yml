@@ -155,15 +155,57 @@ jobs:
         # The Mod WSGI matrix comes from the Evergreen config's version lists.
         run: echo "matrix=$(uv run --no-project --with 'shrub.py>=3.10.0' python .evergreen/scripts/mod_wsgi_matrix.py)" >> "$GITHUB_OUTPUT"
 
-  mod_wsgi:
+  mod_wsgi_standalone:
     needs: mod_wsgi_matrix
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        mode: ["standalone", "embedded"]
-        include: ${{ fromJSON(needs.mod_wsgi_matrix.outputs.matrix) }}
-    name: Mod WSGI (${{ matrix.mode }} ${{ matrix.python-version }} ${{ matrix.mongodb-version }})
+        mode: ["standalone"]
+        include: ${{ fromJSON(needs.mod_wsgi_matrix.outputs.matrix).include }}
+    name: Mod WSGI Standalone (${{ matrix.python-version }} ${{ matrix.mongodb-version }})
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Python tooling
+        uses: mongodb-labs/drivers-github-tools/python/setup@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Apache
+        run: sudo apt-get install -y apache2 apache2-dev
+      - name: Install dependencies
+        run: |
+          # CI skips the venv setup in setup-dev-env.sh, so create it here.
+          export PYMONGO_C_EXT_MUST_BUILD=1
+          just install
+          uv sync --group mod_wsgi
+      - id: setup-mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@master
+        with:
+          version: ${{ matrix.mongodb-version }}
+          topology: "replica_set"
+      - name: Run tests
+        env:
+          TEST_MIN_DEPS: ${{ matrix.test-min-deps }}
+        # Call the test scripts directly: the just recipes run "uv sync",
+        # which would drop the mod_wsgi group before teardown can stop Apache.
+        run: |
+          bash .evergreen/scripts/setup-tests.sh mod_wsgi ${{ matrix.mode }}
+          bash .evergreen/run-tests.sh
+      - name: Teardown
+        if: always()
+        run: bash .evergreen/scripts/teardown-tests.sh
+
+  mod_wsgi_embedded:
+    needs: mod_wsgi_matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: ["embedded"]
+        include: ${{ fromJSON(needs.mod_wsgi_matrix.outputs.matrix).include }}
+    name: Mod WSGI Embedded (${{ matrix.python-version }} ${{ matrix.mongodb-version }})
     steps:
       - uses: actions/checkout@v7.0.1
         with:
