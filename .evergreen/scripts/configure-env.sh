@@ -14,31 +14,45 @@ fi
 PROJECT_DIRECTORY="$(pwd)"
 DRIVERS_TOOLS="$(dirname $PROJECT_DIRECTORY)/drivers-tools"
 CARGO_HOME=${CARGO_HOME:-${DRIVERS_TOOLS}/.cargo}
-UV_TOOL_DIR=$PROJECT_DIRECTORY/.local/uv/tools
-UV_CACHE_DIR=$PROJECT_DIRECTORY/.local/uv/cache
 DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
 MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
 
-# On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME.
+# On Evergreen jobs, "CI" will be set, and we don't want to write to $HOME or
+# have binaries shared across tasks, so use a TMPDIR. On non-CI hosts
+# (spawn hosts, VMs such as GCP/Azure, and local dev), use the conventional
+# ~/.local/bin which tools on the PATH (or the shell rc) can find.
 if [ "${CI:-}" == "true" ]; then
-  PYMONGO_BIN_DIR=${DRIVERS_TOOLS_BINARIES:-}
-# We want to use a path that's already on PATH on spawn hosts.
+  PYMONGO_BIN_DIR="${TMPDIR:-/tmp}"/pymongo_bin
 else
-  PYMONGO_BIN_DIR=$HOME/cli_bin
+  PYMONGO_BIN_DIR=$HOME/.local/bin
 fi
 
-PATH_EXT="$MONGODB_BINARIES:$DRIVERS_TOOLS_BINARIES:$PYMONGO_BIN_DIR:\$PATH"
+# Add the latest MongoDB toolchain bin dir to PATH if it exists, so that hosts
+# with an old system Python (e.g. RHEL8's 3.6) still get a modern interpreter
+# for tool installs like `uv tool install rust-just`. It goes after
+# PYMONGO_BIN_DIR so the pinned uv (installed there by setup-uv.py) takes
+# precedence over the toolchain's uv.
+if [ "Windows_NT" = "${OS:-}" ]; then
+  _toolchain_bin="/cygdrive/c/Python/Current/Scripts"
+elif [ "$(uname -s)" == "Darwin" ]; then
+  _toolchain_bin="/Library/Frameworks/Python.Framework/Versions/Current/bin"
+else
+  _toolchain_bin="/opt/python/Current/bin"
+fi
+if [ -d "$_toolchain_bin" ]; then
+  PATH_EXT="$MONGODB_BINARIES:$PYMONGO_BIN_DIR:$_toolchain_bin:$DRIVERS_TOOLS_BINARIES:\$PATH"
+else
+  PATH_EXT="$MONGODB_BINARIES:$PYMONGO_BIN_DIR:$DRIVERS_TOOLS_BINARIES:\$PATH"
+fi
 
 # Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home directory
 if [ "Windows_NT" = "${OS:-}" ]; then # Magic variable in cygwin
     DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
     PROJECT_DIRECTORY=$(cygpath -m $PROJECT_DIRECTORY)
     CARGO_HOME=$(cygpath -m $CARGO_HOME)
-    UV_TOOL_DIR=$(cygpath -m "$UV_TOOL_DIR")
-    UV_CACHE_DIR=$(cygpath -m "$UV_CACHE_DIR")
     DRIVERS_TOOLS_BINARIES=$(cygpath -m "$DRIVERS_TOOLS_BINARIES")
     MONGODB_BINARIES=$(cygpath -m "$MONGODB_BINARIES")
-    PYMONGO_BIN_DIR=$(cygpath -m "$PYMONGO_BIN_DIR")
+    PYMONGO_BIN_DIR=$(cygpath -u "$PYMONGO_BIN_DIR")
 fi
 
 SCRIPT_DIR="$PROJECT_DIRECTORY/.evergreen/scripts"
@@ -62,9 +76,6 @@ export DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS_BINARIES"
 export PROJECT_DIRECTORY="$PROJECT_DIRECTORY"
 
 export CARGO_HOME="$CARGO_HOME"
-export UV_TOOL_DIR="$UV_TOOL_DIR"
-export UV_CACHE_DIR="$UV_CACHE_DIR"
-export UV_TOOL_BIN_DIR="$DRIVERS_TOOLS_BINARIES"
 export PYMONGO_BIN_DIR="$PYMONGO_BIN_DIR"
 export PATH="$PATH_EXT"
 # shellcheck disable=SC2154
@@ -90,25 +101,3 @@ cat <<EOT > expansion.yml
 DRIVERS_TOOLS: "$DRIVERS_TOOLS"
 PROJECT_DIRECTORY: "$PROJECT_DIRECTORY"
 EOT
-
-# If the toolchain is available, symlink binaries to the bin dir.  This has to be done
-# after drivers-tools is cloned, since we might be using its binary dir.
-_bin_path=""
-if [ "Windows_NT" == "${OS:-}" ]; then
-  _bin_path="/cygdrive/c/Python/Current/Scripts"
-elif [ "$(uname -s)" == "Darwin" ]; then
-  _bin_path="/Library/Frameworks/Python.Framework/Versions/Current/bin"
-else
-  _bin_path="/opt/python/Current/bin"
-fi
-if [ -d "${_bin_path}" ]; then
-  _suffix=""
-  if [ "Windows_NT" == "${OS:-}" ]; then
-    _suffix=".exe"
-  fi
-  echo "Symlinking binaries from toolchain"
-  mkdir -p $PYMONGO_BIN_DIR
-  ln -s ${_bin_path}/just${_suffix} $PYMONGO_BIN_DIR/just${_suffix}
-  ln -s ${_bin_path}/uv${_suffix} $PYMONGO_BIN_DIR/uv${_suffix}
-  ln -s ${_bin_path}/uvx${_suffix} $PYMONGO_BIN_DIR/uvx${_suffix}
-fi
