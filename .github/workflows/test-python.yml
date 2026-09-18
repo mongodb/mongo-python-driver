@@ -170,7 +170,8 @@ jobs:
           # CI skips the venv setup in setup-dev-env.sh, so create it here.
           export PYMONGO_C_EXT_MUST_BUILD=1
           just install
-          uv sync --group mod_wsgi
+          uv sync --group mod_wsgi --refresh-package pymongo
+          uv run --no-sync python tools/fail_if_no_c.py
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
@@ -192,7 +193,11 @@ jobs:
         with:
           python-version: ${{ steps.versions.outputs.max-python }}
       - name: Rebuild virtual environment
-        run: rm -rf .venv && uv sync --group mod_wsgi
+        run: |
+          rm -rf .venv
+          export PYMONGO_C_EXT_MUST_BUILD=1
+          uv sync --group mod_wsgi --refresh-package pymongo
+          uv run --no-sync python tools/fail_if_no_c.py
       - id: setup-mongodb-max
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
@@ -235,7 +240,8 @@ jobs:
           # CI skips the venv setup in setup-dev-env.sh, so create it here.
           export PYMONGO_C_EXT_MUST_BUILD=1
           just install
-          uv sync --group mod_wsgi
+          uv sync --group mod_wsgi --refresh-package pymongo
+          uv run --no-sync python tools/fail_if_no_c.py
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
@@ -257,7 +263,11 @@ jobs:
         with:
           python-version: ${{ steps.versions.outputs.max-python }}
       - name: Rebuild virtual environment
-        run: rm -rf .venv && uv sync --group mod_wsgi
+        run: |
+          rm -rf .venv
+          export PYMONGO_C_EXT_MUST_BUILD=1
+          uv sync --group mod_wsgi --refresh-package pymongo
+          uv run --no-sync python tools/fail_if_no_c.py
       - id: setup-mongodb-max
         uses: mongodb-labs/drivers-evergreen-tools@master
         with:
