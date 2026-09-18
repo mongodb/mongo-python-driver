@@ -287,6 +287,32 @@ class TestAsyncBlockingSocketCall(AsyncUnitTest):
             await task
         self.assertTrue(finished.is_set())
 
+    async def test_second_cancellation_does_not_interrupt_cleanup(self):
+        # A cancellation landing while the cleanup is already waiting on the
+        # worker must not skip the wait: the worker finishes before the
+        # original cancellation propagates.
+        finished = threading.Event()
+
+        def slow(arg):
+            time.sleep(0.3)
+            finished.set()
+
+        task = asyncio.create_task(
+            _async_blocking_socket_call(asyncio.get_running_loop(), slow, None, None)
+        )
+        await asyncio.sleep(0.05)
+        task.cancel()
+
+        async def cancel_again():
+            await asyncio.sleep(0.05)
+            task.cancel()
+
+        re_cancel = asyncio.create_task(cancel_again())
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+        await re_cancel
+        self.assertTrue(finished.is_set())
+
 
 class _FakeSocket:
     """Feeds a byte buffer, simulating a socket.
