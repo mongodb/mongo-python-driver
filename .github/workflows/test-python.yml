@@ -141,6 +141,49 @@ jobs:
           just setup-tests doctest
           just run-tests
 
+  mod_wsgi:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: ["standalone", "embedded"]
+    name: Mod WSGI (${{ matrix.mode }})
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      # endoflife.date returns releases newest-first, so the first entry is
+      # the latest stable CPython.
+      - id: latest-python
+        run: echo "version=$(curl -fsSL https://endoflife.date/api/python.json | jq -r '.[0].latest')" >> "$GITHUB_OUTPUT"
+      - name: Install Python tooling
+        uses: mongodb-labs/drivers-github-tools/python/setup@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
+        with:
+          python-version: ${{ steps.latest-python.outputs.version }}
+      - name: Install Apache
+        run: sudo apt-get install -y apache2 apache2-dev
+      - name: Install dependencies
+        run: |
+          export PYMONGO_C_EXT_MUST_BUILD=1
+          just install
+          # mod_wsgi >= 5 segfaults Apache children in embedded mode under load.
+          uv pip install "mod_wsgi==4.9.4"
+      - id: setup-mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@master
+        with:
+          version: "8.0"
+          topology: "replica_set"
+      - name: Run tests
+        # Call the test scripts directly: the just recipes run "uv sync",
+        # which would remove the ad-hoc mod_wsgi install before teardown can
+        # stop Apache.
+        run: |
+          bash .evergreen/scripts/setup-tests.sh mod_wsgi ${{ matrix.mode }}
+          bash .evergreen/run-tests.sh
+      - name: Teardown
+        if: always()
+        run: bash .evergreen/scripts/teardown-tests.sh
+
   docs:
     name: Docs Checks
     runs-on: ubuntu-latest

@@ -13,44 +13,31 @@ mod_wsgi creates.
 Test Matrix
 -----------
 
-PyMongo should be tested with several versions of mod_wsgi and a selection
-of Python versions. Each combination of mod_wsgi and Python version should
-be tested with a standalone and a replica set. ``mod_wsgi_test.py``
-detects if the deployment is a replica set and connects to the whole set.
+Continuous integration tests the latest stable CPython with the mod_wsgi
+release from PyPI, against a replica set, using both daemon and embedded
+mode. Other combinations of mod_wsgi and Python versions can be tested
+manually.
 
 Setup
 -----
 
-Compile Python
+Install Apache
 ..............
 
-We need a Python interpreter built as a shared library. Download the
-source tarball for each Python version tested, untar it, and run::
+On Ubuntu, install Apache and the headers used to build mod_wsgi::
 
-    ./configure --prefix=/some/directory --enable-shared LDFLAGS="-Wl,--rpath=/some/directory/lib"
-    make
-    make install
+    sudo apt-get install -y apache2 apache2-dev
 
-This results in an executable named "python" or "python3" and a shared
-library named something like "libpython2.7.so.1.0" or "libpython3.3m.so.1.0".
-
-Compile mod_wsgi
+Install mod_wsgi
 ................
 
-Compile mod_wsgi for each combination for Python and mod_wsgi version in the
-test matrix. For example, to compile mod_wsgi 3.4 for Python 2.7 on a
-RedHat-like Linux::
+Install mod_wsgi 4.9.4 into the project virtualenv. pip builds mod_wsgi
+against the interpreter it is installed with::
 
-    sudo yum install -y httpd httpd-devel
-    wget https://modwsgi.googlecode.com/files/mod_wsgi-3.4.tar.gz
-    tar xzf mod_wsgi-3.4.tar.gz
-    cd mod_wsgi-3.4
-    ./configure --with-python=/some/directory/bin/python LDFLAGS="-Wl,--rpath=/some/directory/lib"
-    make
-    make install
+    uv pip install "mod_wsgi==4.9.4"
 
-To ease testing of several matrix combinations, copy the resulting
-``mod_wsgi.so`` to a safe place.
+mod_wsgi releases 5 and newer crash Apache children in embedded mode under
+load, so the test pins the 4.9 series.
 
 Start mongod
 ............
@@ -64,7 +51,7 @@ Configure Apache
 Set a MOD_WSGI_SO environment variable so our ``mod_wsgi_test.conf``
 can find and load mod_wsgi.so::
 
-    export MOD_WSGI_SO=/path/to/mod_wsgi.so
+    export MOD_WSGI_SO=$(find .venv -name "mod_wsgi*.so")
 
 Start Apache with one of the config files in this directory.
 
@@ -104,7 +91,8 @@ the workaround added in `PYTHON-569 <https://jira.mongodb.org/browse/PYTHON-569>
 Automation
 ----------
 
-At MongoDB, Inc. we use a continuous integration job that tests each
-combination in the matrix. The job starts up Apache, starts a single server
-or replica set, and runs ``test_client.py`` with the proper arguments.
-See `run-mod-wsgi-tests.sh <https://github.com/mongodb/mongo-python-driver/blob/master/.evergreen/scripts/run-mod-wsgi-tests.sh>`_
+Continuous integration runs the test on every pull request in the Mod WSGI
+job of `.github/workflows/test-python.yml
+<https://github.com/mongodb/mongo-python-driver/blob/master/.github/workflows/test-python.yml>`_.
+To run the same steps locally, use ``just smoke-mod-wsgi``, which runs an
+ubuntu container with Apache, a single-node replica set, and both test modes.

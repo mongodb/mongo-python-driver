@@ -351,14 +351,19 @@ You will need to set up access to the `drivers-test-secrets-role`, see the [Wiki
 
 ### mod_wsgi tests
 
-Note: these tests can only be run from an Evergreen Linux host that has the Python toolchain.
+Continuous integration runs the tests on every pull request in the Mod WSGI job of
+`.github/workflows/test-python.yml`.  To run the same steps locally in an ubuntu container,
+run `just smoke-mod-wsgi`.
 
-- Run `just run-server`.
+To run the tests by hand, install Apache and mod_wsgi (`sudo apt-get install -y apache2
+apache2-dev` and `uv pip install "mod_wsgi==4.9.4"` on Ubuntu; mod_wsgi 5+ crashes in embedded
+mode), then:
+
+- Run `TOPOLOGY=replica_set just run-server`.
 - Run `just setup-tests mod_wsgi <mode>`.
 - Run `just run-tests`.
 
-The `mode` can be `standalone` or `embedded`.  For the `replica_set` version of the tests, use
-`TOPOLOGY=replica_set just run-server`.
+The `mode` can be `standalone` or `embedded`.
 
 ### OCSP tests
 

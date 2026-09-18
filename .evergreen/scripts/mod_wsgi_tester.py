@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import socket
 import sys
 import time
 import urllib.error
@@ -22,6 +23,17 @@ def make_request(url, timeout=10):
     raise TimeoutError(f"Failed to access {url}")
 
 
+def find_mod_wsgi_so() -> str:
+    # pip builds the Apache module against the installing interpreter, so the
+    # .so lives inside the installed package.
+    import mod_wsgi
+
+    so_files = list((Path(mod_wsgi.__file__).parent / "server").glob("mod_wsgi*.so"))
+    if len(so_files) != 1:
+        raise ValueError(f"Expected one mod_wsgi.so in {mod_wsgi.__file__}, found {so_files}")
+    return str(so_files[0])
+
+
 def setup_mod_wsgi(sub_test_name: str) -> None:
     env = os.environ.copy()
     if sub_test_name == "embedded":
@@ -34,20 +46,14 @@ def setup_mod_wsgi(sub_test_name: str) -> None:
     apache = which("apache2")
     if not apache and Path("/usr/lib/apache2/mpm-prefork/apache2").exists():
         apache = "/usr/lib/apache2/mpm-prefork/apache2"
-    if apache:
-        apache_config = "apache24ubuntu161404.conf"
-    else:
-        apache = which("httpd")
-        if not apache:
-            raise ValueError("Could not find apache2 or httpd")
-        apache_config = "apache22amazon.conf"
-    python_version = ".".join(str(val) for val in sys.version_info[:2])
-    mod_wsgi_version = 4
-    so_file = f"/opt/python/mod_wsgi/python_version/{python_version}/mod_wsgi_version/{mod_wsgi_version}/mod_wsgi.so"
+    if not apache:
+        raise ValueError("Could not find apache2")
+    apache_config = "apache24ubuntu.conf"
+    so_file = find_mod_wsgi_so()
     write_env("MOD_WSGI_SO", so_file)
     env["MOD_WSGI_SO"] = so_file
-    env["PYTHONHOME"] = f"/opt/python/{python_version}"
     env["PROJECT_DIRECTORY"] = project_directory = str(ROOT)
+    write_env("PROJECT_DIRECTORY", project_directory)
     write_env("APACHE_BINARY", apache)
     write_env("APACHE_CONFIG", apache_config)
     uri1 = f"http://localhost:8080/interpreter1{project_directory}"
@@ -87,6 +93,17 @@ def teardown_mod_wsgi() -> None:
     apache_config = os.environ["APACHE_CONFIG"]
 
     run_command(f"{apache} -k stop -f {ROOT}/test/mod_wsgi_test/{apache_config}")
+
+    # -k stop signals the master process and returns before it exits. Wait for
+    # the port to be released so another instance can bind it.
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        try:
+            socket.create_connection(("127.0.0.1", 8080), timeout=1).close()
+        except OSError:
+            return
+        time.sleep(0.5)
+    raise ValueError("Apache did not release port 8080")
 
 
 if __name__ == "__main__":

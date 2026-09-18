@@ -124,6 +124,11 @@ coverage-xml:
     uv tool run --with "coverage[toml]" coverage xml
     @echo "Coverage report generated in coverage.xml"
 
+# Run the mod_wsgi tests in an ubuntu container
+[group('test')]
+smoke-mod-wsgi:
+    bash .evergreen/scripts/mod_wsgi_smoke_test.sh
+
 # Start a MongoDB server via drivers-evergreen-tools
 [group('server')]
 run-server *args="":
