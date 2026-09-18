@@ -35,16 +35,17 @@ curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null
 export PATH="$HOME/.local/bin:$PATH"
 uv tool install rust-just >/dev/null
 
-# Mirror the GHA job and test the latest stable CPython.
-LATEST_PYTHON=$(curl -fsSL https://endoflife.date/api/python.json | jq -r '.[0].latest')
+cd /home/smoke/src
+
+# Mirror the GHA job and test the newest supported CPython.
+LATEST_PYTHON=$(uv run --no-project --with 'shrub.py>=3.10.0' python .evergreen/scripts/mod_wsgi_matrix.py | jq -r '.include[-1]."python-version"')
 echo "Testing with CPython $LATEST_PYTHON"
 uv python install "$LATEST_PYTHON" >/dev/null
-
-cd /home/smoke/src
 
 export UV_PYTHON=$LATEST_PYTHON
 export PYMONGO_C_EXT_MUST_BUILD=1
 just install
+uv sync --group mod_wsgi
 
 # Start a single-node replica set.
 MARCH=$(uname -m)
@@ -53,7 +54,7 @@ if [ "$MARCH" != "aarch64" ] && [ "$MARCH" != "x86_64" ]; then
   exit 1
 fi
 MONGODB_URL=$(curl -fsSL https://downloads.mongodb.org/current.json | jq -r "
-  .versions[] | select(.version | startswith(\"8.0\")) | .downloads[] |
+  .versions[] | select(.current and .production_release) | .downloads[] |
   select(.target==\"ubuntu2404\" and .arch==\"$MARCH\") | .archive.url" | grep -v enterprise | head -1)
 curl -fsSL "$MONGODB_URL" -o /tmp/mongo.tgz
 MEMBER=$(tar -tzf /tmp/mongo.tgz | grep "bin/mongod$")
@@ -67,12 +68,9 @@ client.admin.command('replSetInitiate', {'_id': 'rs0', 'members': [{'_id': 0, 'h
 MongoClient().admin.command('hello')
 "
 
-# uv sync prunes ad-hoc packages, so install mod_wsgi before each setup. Call
-# the test scripts directly: the just recipes run "uv sync", which would
-# remove mod_wsgi before teardown can stop Apache.
+# The mod_wsgi group is part of the synced environment, so both modes can run
+# without reinstalling.
 for MODE in standalone embedded; do
-  # mod_wsgi >= 5 segfaults Apache children in embedded mode under load.
-  uv pip install -q "mod_wsgi==4.9.4"
   bash .evergreen/scripts/setup-tests.sh mod_wsgi $MODE
   bash .evergreen/run-tests.sh
   bash .evergreen/scripts/teardown-tests.sh

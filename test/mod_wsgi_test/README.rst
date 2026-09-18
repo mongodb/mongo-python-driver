@@ -13,10 +13,11 @@ mod_wsgi creates.
 Test Matrix
 -----------
 
-Continuous integration tests the latest stable CPython with the mod_wsgi
-release from PyPI, against a replica set, using both daemon and embedded
-mode. Other combinations of mod_wsgi and Python versions can be tested
-manually.
+Continuous integration tests the oldest supported CPython against the oldest
+supported MongoDB with minimum dependencies, and the newest supported CPython
+against the latest MongoDB, in both daemon and embedded mode against a replica
+set. The Python and MongoDB versions come from ``generate_config_utils.py`` in
+``.evergreen/scripts``. Other combinations can be tested manually.
 
 Setup
 -----
@@ -31,13 +32,11 @@ On Ubuntu, install Apache and the headers used to build mod_wsgi::
 Install mod_wsgi
 ................
 
-Install mod_wsgi 4.9.4 into the project virtualenv. pip builds mod_wsgi
-against the interpreter it is installed with::
+The project defines a ``mod_wsgi`` dependency group that pins the version
+used for testing. pip builds mod_wsgi against the interpreter it is
+installed with::
 
-    uv pip install "mod_wsgi==4.9.4"
-
-mod_wsgi releases 5 and newer crash Apache children in embedded mode under
-load, so the test pins the 4.9 series.
+    uv sync --group mod_wsgi
 
 Start mongod
 ............
