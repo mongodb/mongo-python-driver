@@ -65,8 +65,10 @@ unasync = [
 ]
 pip = ["pip>=20.2"]
 gevent = ["gevent>=21.12"]
-# mod_wsgi >= 5 crashes Apache children in embedded mode under load.
-mod_wsgi = ["mod_wsgi==4.9.4"]
+# The test config sets WSGIDestroyInterpreter Off; without it, mod_wsgi 6
+# crashes live pymongo monitor threads when it destroys interpreters as
+# child processes exit.
+mod_wsgi = ["mod_wsgi>=4.9.4"]
 coverage = [
     "coverage[toml]>=5,<=7.15.0"
 ]

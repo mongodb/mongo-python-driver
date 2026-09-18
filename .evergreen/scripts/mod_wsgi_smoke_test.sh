@@ -37,6 +37,10 @@ uv tool install rust-just >/dev/null
 
 cd /home/smoke/src
 
+# mongod inherits the soft nofile limit; the 1024 default is exhausted by the
+# connection storm the parallel test generates.
+ulimit -n 65536
+
 # Mirror the GHA job and test the newest supported CPython.
 LATEST_PYTHON=$(uv run --no-project --with 'shrub.py>=3.10.0' python .evergreen/scripts/mod_wsgi_matrix.py | jq -r '.include[-1]."python-version"')
 echo "Testing with CPython $LATEST_PYTHON"

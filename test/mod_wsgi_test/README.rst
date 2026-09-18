@@ -32,9 +32,8 @@ On Ubuntu, install Apache and the headers used to build mod_wsgi::
 Install mod_wsgi
 ................
 
-The project defines a ``mod_wsgi`` dependency group that pins the version
-used for testing. pip builds mod_wsgi against the interpreter it is
-installed with::
+The project defines a ``mod_wsgi`` dependency group used for testing. pip
+builds mod_wsgi against the interpreter it is installed with::
 
     uv sync --group mod_wsgi
 

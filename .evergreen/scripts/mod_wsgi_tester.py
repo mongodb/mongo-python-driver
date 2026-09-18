@@ -83,9 +83,10 @@ def test_mod_wsgi() -> None:
 
         args = f"-n 25000 serial {uri1} {uri2}"
         main(*parse_args(args.split()))
-    except Exception as e:
+    except BaseException:
+        # The test client raises KeyboardInterrupt in the failing path.
         LOGGER.error(Path("error_log").read_text())
-        raise e
+        raise
 
 
 def teardown_mod_wsgi() -> None:

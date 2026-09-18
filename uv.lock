@@ -2227,9 +2227,23 @@ wheels = [
 
 [[package]]
 name = "mod-wsgi"
-version = "4.9.4"
+version = "5.0.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fe/12/b3756f3b72ae3410a83a9b98862925aea64e854c93ef16c1e46b11e32d59/mod_wsgi-4.9.4.tar.gz", hash = "sha256:8e762662ea5b01afc386bbcfbaa079748eb6203ab1d6d3a3dac9237f5666cfc9", size = 497531, upload-time = "2022-09-12T03:12:20.178Z" }
+resolution-markers = [
+    "python_full_version > '3.9' and python_full_version < '3.10'",
+    "python_full_version <= '3.9'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ca/4d/275853efa4d2a4efe1614aa0df06295e71f2082cebccc4d40d0f0a551c24/mod_wsgi-5.0.2.tar.gz", hash = "sha256:6fe5557c3ef25c184c2c994905fe52be1c06ae5c46235ecafe558e84789e2159", size = 498627, upload-time = "2024-11-22T08:53:22.752Z" }
+
+[[package]]
+name = "mod-wsgi"
+version = "6.0.6"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.11'",
+    "python_full_version == '3.10.*'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c2/ce/fdbfe51f596e37c657176ea64d637737074214bfcd21c2177aa6b1f1da14/mod_wsgi-6.0.6.tar.gz", hash = "sha256:897f58ee961be7dcfe527074dd64d43d18ca108cf919d4c3bcf10fa6a4c12921", size = 607559, upload-time = "2026-08-19T09:51:18.52Z" }
 
 [[package]]
 name = "mypy"
@@ -2470,7 +2484,8 @@ mockupdb = [
     { name = "mockupdb" },
 ]
 mod-wsgi = [
-    { name = "mod-wsgi" },
+    { name = "mod-wsgi", version = "5.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "mod-wsgi", version = "6.0.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
 perf = [
     { name = "simplejson" },
@@ -2525,7 +2540,7 @@ dev = []
 gevent = [{ name = "gevent", specifier = ">=21.12" }]
 lint = [{ name = "ruff", specifier = "==0.15.20" }]
 mockupdb = [{ name = "mockupdb", specifier = ">=1.8.1" }]
-mod-wsgi = [{ name = "mod-wsgi", specifier = "==4.9.4" }]
+mod-wsgi = [{ name = "mod-wsgi", specifier = ">=4.9.4" }]
 perf = [{ name = "simplejson", specifier = ">=3.17.0" }]
 pip = [{ name = "pip", specifier = ">=20.2" }]
 typing = [
