@@ -164,8 +164,10 @@ jobs:
         run: sudo apt-get install -y apache2 apache2-dev
       - name: Install dependencies
         run: |
+          # CI skips the venv setup in setup-dev-env.sh, so create it here.
           export PYMONGO_C_EXT_MUST_BUILD=1
           just install
+          uv sync
           # mod_wsgi >= 5 segfaults Apache children in embedded mode under load.
           uv pip install "mod_wsgi==4.9.4"
       - id: setup-mongodb
