@@ -191,12 +191,8 @@ async def _async_blocking_socket_call(
     try:
         return await asyncio.wait_for(fut, timeout=timeout)
     except (asyncio.CancelledError, asyncio.TimeoutError):
-        # The caller will close the socket once this propagates, so wait for
-        # the worker to finish first.  The worker's blocking operation is
-        # bounded by the socket timeout.  Shield the wait so further
-        # cancellations cannot interrupt it, and whatever outcome the worker
-        # finished with, this call surfaces the original timeout or
-        # cancellation.
+        # Wait for the worker, shielded from further cancellations, so the
+        # caller does not close the socket under it.
         while True:
             try:
                 await asyncio.shield(inner)
