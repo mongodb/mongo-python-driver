@@ -4,13 +4,13 @@ import json
 
 from generate_config_utils import ALL_VERSIONS, CPYTHONS
 
-# MongoDB 8.0 with the oldest supported CPython and minimum dependencies, and
-# the latest MongoDB with the newest supported CPython. ubuntu-24.04 runners
-# cannot install MongoDB older than 8.0, so no earlier version can be tested.
+# MongoDB 6.0 with the oldest supported CPython and minimum dependencies, and
+# the latest MongoDB with the newest supported CPython. The jobs run on
+# ubuntu-22.04 runners, where MongoDB 6.0 is the oldest version that installs.
 VERSIONS = [
     {
         "python-version": CPYTHONS[0],
-        "mongodb-version": "8.0",
+        "mongodb-version": "6.0",
     },
     {
         "python-version": CPYTHONS[-1],

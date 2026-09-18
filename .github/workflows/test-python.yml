@@ -142,7 +142,7 @@ jobs:
           just run-tests
 
   mod_wsgi_standalone:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: Mod WSGI Standalone
     steps:
       - uses: actions/checkout@v7.0.1
@@ -213,7 +213,7 @@ jobs:
         run: bash .evergreen/scripts/teardown-tests.sh
 
   mod_wsgi_embedded:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: Mod WSGI Embedded
     steps:
       - uses: actions/checkout@v7.0.1
