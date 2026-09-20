@@ -17,16 +17,27 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
+import os
 import sys
+import textwrap
 import threading
 import time
+from typing import Any
+
+_interpreters: Any = None
+if sys.version_info >= (3, 14):
+    _interpreters = importlib.import_module("concurrent.interpreters")
 
 sys.path[0:0] = [""]
 
+import pymongo
 from pymongo.periodic_executor import PeriodicExecutor
 from test import UnitTest, unittest
 
 _IS_SYNC = True
+
+_PYMONGO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(pymongo.__file__)))
 
 
 class TestPeriodicExecutor(UnitTest):
@@ -177,6 +188,38 @@ class TestPeriodicExecutor(UnitTest):
         if not _IS_SYNC and executor._task is not None and executor._task.done():
             executor._task.exception()
         self.assertEqual(call_count, 2, "executor should run again after re-open")
+
+    def test_subinterpreter_shutdown(self):
+        if not _IS_SYNC:
+            self.skipTest("subinterpreters are only used with the sync driver")
+        if _interpreters is None:
+            self.skipTest("concurrent.interpreters requires Python 3.14+")
+            return
+
+        root = _PYMONGO_ROOT
+        code = textwrap.dedent(
+            f"""
+            import sys
+            sys.path.insert(0, {root!r})
+            from pymongo.periodic_executor import PeriodicExecutor
+
+            def target():
+                return True
+
+            executor = PeriodicExecutor(
+                interval=30.0, min_interval=0.05, target=target, name="subinterp"
+            )
+            executor.open()
+            """
+        )
+        interp = _interpreters.create()
+        try:
+            interp.exec(code)
+        finally:
+            # Destroying the subinterpreter must stop and join the executor
+            # thread without crashing or hanging. Regression test for
+            # PYTHON-6114.
+            interp.close()
 
 
 if __name__ == "__main__":
