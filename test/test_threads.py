@@ -16,7 +16,15 @@
 
 from __future__ import annotations
 
+import sys
+import textwrap
 import threading
+import uuid
+
+try:
+    from concurrent import interpreters
+except ImportError:  # pragma: no cover - Python < 3.14
+    interpreters = None  # type: ignore[assignment]
 
 from test import IntegrationTest, client_context, unittest
 from test.utils import joinall
@@ -159,6 +167,102 @@ class TestThreads(IntegrationTest):
 
         error.join()
         okay.join()
+
+    @staticmethod
+    def _get_n(queue, n, errors):
+        try:
+            return sorted(queue.get(timeout=30) for _ in range(n))
+        except interpreters.QueueEmpty:
+            raise AssertionError(f"subinterpreters failed to run: {errors!r}") from None
+
+    @unittest.skipUnless(
+        sys.version_info >= (3, 14), "concurrent.interpreters requires Python 3.14+"
+    )
+    def test_subinterpreters(self):
+        if interpreters is None:
+            self.skipTest("concurrent.interpreters is not available")
+
+        # Run live MongoClients in more than one subinterpreter at the same
+        # time. This mirrors the mod_wsgi test, which mounts the same app in
+        # two interpreters, and covers pymongo shutting down its background
+        # threads when an interpreter is destroyed (PYTHON-6114).
+        n_interpreters = 2
+        coll_name = f"subinterp-{uuid.uuid4().hex}"
+        self.addCleanup(self.db.drop_collection, coll_name)
+
+        ready = interpreters.create_queue()
+        release = interpreters.create_queue()
+        done = interpreters.create_queue()
+        code = textwrap.dedent(
+            """
+            import sys
+            sys.path[:0] = path
+
+            from pymongo import MongoClient
+
+            client = MongoClient(uri, serverSelectionTimeoutMS=30000)
+            collection = client.get_database(db_name).get_collection(coll_name)
+            collection.insert_one({"subinterp": i})
+            assert collection.find_one({"subinterp": i}) is not None
+            ready.put(i)
+            # Hold the client open until every interpreter has connected, so
+            # that all of the clients are live at the same time.
+            release.get(timeout=60)
+            assert collection.find_one({"subinterp": i}) is not None
+            done.put(i)
+            """
+        )
+
+        errors: list[BaseException] = []
+
+        def run(interp):
+            try:
+                interp.exec(code)
+            except BaseException as exc:
+                errors.append(exc)
+
+        interps = []
+        threads = []
+        try:
+            for i in range(n_interpreters):
+                interp = interpreters.create()
+                interp.prepare_main(
+                    uri=client_context.uri,
+                    db_name=self.db.name,
+                    coll_name=coll_name,
+                    i=i,
+                    path=tuple(sys.path),
+                    ready=ready,
+                    release=release,
+                    done=done,
+                )
+                interps.append(interp)
+                thread = threading.Thread(target=run, args=(interp,), name=f"subinterp-{i}")
+                threads.append(thread)
+                thread.start()
+
+            started = self._get_n(ready, n_interpreters, errors)
+            self.assertEqual(started, list(range(n_interpreters)))
+            for _ in range(n_interpreters):
+                release.put(True)
+
+            for thread in threads:
+                thread.join(60)
+                self.assertFalse(thread.is_alive(), f"{thread.name} did not exit")
+
+            finished = self._get_n(done, n_interpreters, errors)
+            self.assertEqual(finished, list(range(n_interpreters)))
+            if errors:
+                self.fail(f"subinterpreter errors: {errors!r}")
+        finally:
+            # Unblock any interpreter still waiting, then destroy them all.
+            for _ in range(n_interpreters):
+                release.put(True)
+            for interp in interps:
+                interp.close()
+
+        found = sorted(doc["subinterp"] for doc in self.db[coll_name].find({}, {"subinterp": 1}))
+        self.assertEqual(found, list(range(n_interpreters)))
 
 
 if __name__ == "__main__":

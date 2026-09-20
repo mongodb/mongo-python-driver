@@ -185,7 +185,14 @@ class PeriodicExecutor:
 
         if not started:
             thread = threading.Thread(target=self._run, name=self._name)
-            thread.daemon = True
+            try:
+                # Daemon threads are disabled in subinterpreters unless the
+                # interpreter was created with allow_daemon_threads=True.
+                # _shutdown_executors stops and joins the thread during
+                # interpreter shutdown, so a non-daemon thread is safe.
+                thread.daemon = True
+            except RuntimeError:
+                pass
             self._thread = weakref.proxy(thread)
             _register_executor(self)
             # Mitigation to RuntimeError firing when thread starts on shutdown

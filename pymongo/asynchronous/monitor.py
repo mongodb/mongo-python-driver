@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import threading
 import time
 import weakref
 from typing import TYPE_CHECKING, Any, Optional
@@ -492,3 +493,9 @@ def _shutdown_resources() -> None:
 
 if _IS_SYNC:
     atexit.register(_shutdown_resources)
+    # Also register with threading so executors are stopped before the
+    # interpreter tries to join their (possibly non-daemon) threads. Unlike
+    # atexit, this runs for subinterpreters, where daemon threads are
+    # generally not allowed and CPython is strict about background threads.
+    if hasattr(threading, "_register_atexit"):
+        threading._register_atexit(_shutdown_resources)  # type: ignore[attr-defined]
