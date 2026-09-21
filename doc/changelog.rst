@@ -9,11 +9,12 @@ PyMongo 4.19 brings a number of changes including:
 - Added support for Python 3.15.
 - Added support for running PyMongo in subinterpreters, including inside
   ``concurrent.futures.InterpreterPoolExecutor`` (Python 3.14+). In
-  interpreters that do not allow daemon threads, monitor threads now start as
-  non-daemon threads and are stopped and joined when the interpreter is torn
-  down. Note that because these threads are non-daemon, an interpreter may
-  block on teardown until any in-flight monitor work completes. Subinterpreter
-  support is currently only exercised with the synchronous client.
+  interpreters that do not allow daemon threads, the synchronous client's
+  monitor threads now start as non-daemon threads and are stopped and joined
+  when the interpreter is torn down. Note that because these threads are
+  non-daemon, an interpreter may block on teardown until any in-flight
+  monitor work completes. Tests cover both the synchronous and asynchronous
+  clients running in subinterpreters.
 
 Bug fixes
 .........

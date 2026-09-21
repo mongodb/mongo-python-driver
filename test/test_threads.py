@@ -264,7 +264,12 @@ class TestThreads(IntegrationTest):
             for _ in range(n_interpreters):
                 release.put(True)
             for interp in interps:
-                interp.close()
+                # Finalize the idle interpreters: closing one runs
+                # threading._shutdown, which stops and joins pymongo's
+                # monitor threads. Skip any that are still executing to
+                # avoid masking the original error.
+                if not interp.is_running():
+                    interp.close()
 
         found = sorted(doc["subinterp"] for doc in self.db[coll_name].find({}, {"subinterp": 1}))
         self.assertEqual(found, list(range(n_interpreters)))
