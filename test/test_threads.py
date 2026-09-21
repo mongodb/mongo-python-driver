@@ -40,20 +40,6 @@ def setUpModule():
     pass
 
 
-def _interpreter_pool_worker(i, uri, db_name, coll_name, path):
-    import sys
-
-    sys.path[:0] = list(path)
-
-    from pymongo import MongoClient
-
-    client: MongoClient = MongoClient(uri, serverSelectionTimeoutMS=30000)
-    collection = client.get_database(db_name).get_collection(coll_name)
-    collection.insert_one({"interp-pool": i})
-    assert collection.find_one({"interp-pool": i}) is not None
-    return i
-
-
 class AutoAuthenticateThreads(threading.Thread):
     def __init__(self, collection, num):
         threading.Thread.__init__(self)
@@ -298,13 +284,26 @@ class TestThreads(IntegrationTest):
         coll_name = f"interp-pool-{uuid.uuid4().hex}"
         self.addCleanup(self.db.drop_collection, coll_name)
 
-        args = (client_context.uri, self.db.name, coll_name, tuple(sys.path))
+        # The worker runs in an interpreter whose sys.path has not picked up
+        # the repo root, so pass the callable as a builtin (exec) and insert
+        # the main interpreter's sys.path before importing pymongo.
+        code = textwrap.dedent(
+            f"""
+            import sys
+            sys.path[:0] = {tuple(sys.path)!r}
+
+            from pymongo import MongoClient
+
+            client = MongoClient({client_context.uri!r}, serverSelectionTimeoutMS=30000)
+            collection = client.get_database({self.db.name!r}).get_collection({coll_name!r})
+            collection.insert_one({{"interp-pool": i}})
+            assert collection.find_one({{"interp-pool": i}}) is not None
+            """
+        )
         with InterpreterPoolExecutor(max_workers=n_interpreters) as executor:
-            futures = [
-                executor.submit(_interpreter_pool_worker, i, *args) for i in range(n_interpreters)
-            ]
-            for i, future in enumerate(futures):
-                self.assertEqual(future.result(timeout=120), i)
+            futures = [executor.submit(exec, code, {"i": i}) for i in range(n_interpreters)]
+            for future in futures:
+                future.result(timeout=120)
 
         found = sorted(
             doc["interp-pool"] for doc in self.db[coll_name].find({}, {"interp-pool": 1})
