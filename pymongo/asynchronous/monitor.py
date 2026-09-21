@@ -493,12 +493,9 @@ def _shutdown_resources() -> None:
 
 if _IS_SYNC:
     atexit.register(_shutdown_resources)
-    # In subinterpreters, daemon threads are not allowed and the executors'
-    # threads are joined (unlike atexit, threading._register_atexit runs for
-    # subinterpreters), so the executors must be stopped before the
-    # interpreter tries to join them. Probe for that restriction: in the
-    # main interpreter the assignment always succeeds and the normal atexit
-    # ordering is preserved.
+    # In subinterpreters, the executors' threads are non-daemon and are
+    # joined at shutdown, so they must be stopped first. The probe preserves
+    # the normal atexit ordering in the main interpreter.
     try:
         threading.Thread().daemon = True
     except RuntimeError:

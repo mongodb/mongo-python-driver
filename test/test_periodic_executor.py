@@ -190,35 +190,52 @@ class TestPeriodicExecutor(UnitTest):
         self.assertEqual(call_count, 2, "executor should run again after re-open")
 
     def test_subinterpreter_shutdown(self):
-        if not _IS_SYNC:
-            self.skipTest("subinterpreters are only used with the sync driver")
         if _interpreters is None:
             self.skipTest("concurrent.interpreters requires Python 3.14+")
             return
 
         root = _PYMONGO_ROOT
-        code = textwrap.dedent(
-            f"""
-            import sys
-            sys.path.insert(0, {root!r})
-            from pymongo.periodic_executor import PeriodicExecutor
+        if _IS_SYNC:
+            code = textwrap.dedent(
+                f"""
+                import sys
+                sys.path.insert(0, {root!r})
+                from pymongo.periodic_executor import PeriodicExecutor
 
-            def target():
-                return True
+                def target():
+                    return True
 
-            executor = PeriodicExecutor(
-                interval=30.0, min_interval=0.05, target=target, name="subinterp"
+                executor = PeriodicExecutor(
+                    interval=30.0, min_interval=0.05, target=target, name="subinterp"
+                )
+                executor.open()
+                """
             )
-            executor.open()
-            """
-        )
+        else:
+            code = textwrap.dedent(
+                f"""
+                import asyncio
+                import sys
+                sys.path.insert(0, {root!r})
+                from pymongo.periodic_executor import PeriodicExecutor
+
+                def target():
+                    return True
+
+                def main():
+                    executor = PeriodicExecutor(
+                        interval=30.0, min_interval=0.05, target=target, name="subinterp"
+                    )
+                    executor.open()
+
+                asyncio.run(main())
+                """
+            )
         interp = _interpreters.create()
         try:
             interp.exec(code)
         finally:
-            # Destroying the subinterpreter must stop and join the executor
-            # thread without crashing or hanging. Regression test for
-            # PYTHON-6114.
+            # Destroying the subinterpreter must not crash or hang.
             interp.close()
 
 

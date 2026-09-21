@@ -188,9 +188,8 @@ class TestThreads(IntegrationTest):
             self.skipTest("concurrent.interpreters is not available")
 
         # Run live MongoClients in more than one subinterpreter at the same
-        # time. This mirrors the mod_wsgi test, which mounts the same app in
-        # two interpreters, and covers pymongo shutting down its background
-        # threads when an interpreter is destroyed (PYTHON-6114).
+        # time, mirroring the mod_wsgi test, which mounts the same app in two
+        # interpreters.
         n_interpreters = 2
         coll_name = f"subinterp-{uuid.uuid4().hex}"
         self.addCleanup(self.db.drop_collection, coll_name)
@@ -264,10 +263,9 @@ class TestThreads(IntegrationTest):
             for _ in range(n_interpreters):
                 release.put(True)
             for interp in interps:
-                # Finalize the idle interpreters: closing one runs
-                # threading._shutdown, which stops and joins pymongo's
-                # monitor threads. Skip any that are still executing to
-                # avoid masking the original error.
+                # Closing an idle interpreter runs threading._shutdown, which
+                # stops and joins pymongo's monitor threads. Skip running
+                # ones to avoid masking the original error.
                 if not interp.is_running():
                     interp.close()
 
@@ -281,17 +279,15 @@ class TestThreads(IntegrationTest):
         if InterpreterPoolExecutor is None:
             self.skipTest("InterpreterPoolExecutor is not available")
 
-        # Run live MongoClients inside interpreters managed by the standard
-        # InterpreterPoolExecutor (PYTHON-5418).  The pool's interpreters do
-        # not allow daemon threads, so pymongo must start non-daemon monitor
-        # threads and stop them when the interpreter is destroyed.
+        # Run live MongoClients in InterpreterPoolExecutor workers. The
+        # interpreters disallow daemon threads, so pymongo starts non-daemon
+        # monitor threads.
         n_interpreters = 2
         coll_name = f"interp-pool-{uuid.uuid4().hex}"
         self.addCleanup(self.db.drop_collection, coll_name)
 
-        # The worker runs in an interpreter whose sys.path has not picked up
-        # the repo root, so pass the callable as a builtin (exec) and insert
-        # the main interpreter's sys.path before importing pymongo.
+        # The worker's sys.path lacks the repo root, so submit the builtin
+        # exec and fix sys.path in the code.
         code = textwrap.dedent(
             f"""
             import sys
@@ -322,17 +318,15 @@ class TestThreads(IntegrationTest):
         if InterpreterPoolExecutor is None:
             self.skipTest("InterpreterPoolExecutor is not available")
 
-        # Run live AsyncMongoClients inside interpreters managed by the
-        # standard InterpreterPoolExecutor. The async client runs its
-        # background tasks on the interpreter's own event loop instead of in
-        # threads.
+        # Run live AsyncMongoClients in InterpreterPoolExecutor workers; the
+        # async client runs its background tasks on the interpreter's own
+        # event loop.
         n_interpreters = 2
         coll_name = f"interp-pool-async-{uuid.uuid4().hex}"
         self.addCleanup(self.db.drop_collection, coll_name)
 
-        # The worker runs in an interpreter whose sys.path has not picked up
-        # the repo root, so pass the callable as a builtin (exec) and insert
-        # the main interpreter's sys.path before importing pymongo.
+        # The worker's sys.path lacks the repo root, so submit the builtin
+        # exec and fix sys.path in the code.
         code = textwrap.dedent(
             """
             import asyncio
