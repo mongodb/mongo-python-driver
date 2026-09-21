@@ -21,6 +21,20 @@ if [ "$(id -u)" = "0" ]; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -qq
   apt-get install -y -qq apache2 apache2-dev build-essential curl jq git >/dev/null
+  # Install uv to a system path from a pinned release, verifying the published
+  # checksum, rather than piping a mutable installer script into a shell.
+  UV_VERSION=0.12.17
+  case "$(uname -m)" in
+    x86_64) UV_TARGET=x86_64-unknown-linux-gnu ;;
+    aarch64 | arm64) UV_TARGET=aarch64-unknown-linux-gnu ;;
+    *) echo "Unsupported architecture" >&2; exit 1 ;;
+  esac
+  curl -fsSL -o "/tmp/uv-${UV_TARGET}.tar.gz" "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_TARGET}.tar.gz"
+  curl -fsSL -o "/tmp/uv-${UV_TARGET}.tar.gz.sha256" "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_TARGET}.tar.gz.sha256"
+  (cd /tmp && sha256sum -c "uv-${UV_TARGET}.tar.gz.sha256")
+  tar -xzf "/tmp/uv-${UV_TARGET}.tar.gz" -C /tmp
+  install -m 0755 "/tmp/uv-${UV_TARGET}/uv" /usr/local/bin/uv
+  rm -rf "/tmp/uv-${UV_TARGET}.tar.gz" "/tmp/uv-${UV_TARGET}.tar.gz.sha256" "/tmp/uv-${UV_TARGET}"
   useradd -m smoke
   mkdir -p /home/smoke/src
   # Leave out the generated env files so they cannot override the versions
@@ -31,21 +45,6 @@ if [ "$(id -u)" = "0" ]; then
   exec su - smoke -c "bash /src/.evergreen/scripts/mod_wsgi_smoke_test.sh"
 fi
 
-# Install uv from a pinned release, verifying the published checksum, rather
-# than piping a mutable installer script into a shell.
-UV_VERSION=0.12.17
-case "$(uname -m)" in
-  x86_64) UV_TARGET=x86_64-unknown-linux-gnu ;;
-  aarch64 | arm64) UV_TARGET=aarch64-unknown-linux-gnu ;;
-  *) echo "Unsupported architecture" >&2; exit 1 ;;
-esac
-curl -fsSL -o "/tmp/uv-${UV_TARGET}.tar.gz" "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_TARGET}.tar.gz"
-curl -fsSL -o "/tmp/uv-${UV_TARGET}.tar.gz.sha256" "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_TARGET}.tar.gz.sha256"
-(cd /tmp && sha256sum -c "uv-${UV_TARGET}.tar.gz.sha256")
-tar -xzf "/tmp/uv-${UV_TARGET}.tar.gz" -C /tmp
-mkdir -p "$HOME/.local/bin"
-install -m 0755 "/tmp/uv-${UV_TARGET}/uv" "$HOME/.local/bin/uv"
-rm -rf "/tmp/uv-${UV_TARGET}.tar.gz" "/tmp/uv-${UV_TARGET}.tar.gz.sha256" "/tmp/uv-${UV_TARGET}"
 export PATH="$HOME/.local/bin:$PATH"
 uv tool install rust-just >/dev/null
 
