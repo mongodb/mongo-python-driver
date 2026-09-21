@@ -41,6 +41,7 @@ from pymongo.uri_parser_shared import (
     split_options,
 )
 from test import unittest
+from test.utils_shared import suppress_fork_deprecation
 
 
 class TestURI(unittest.TestCase):
@@ -700,12 +701,13 @@ class TestURI(unittest.TestCase):
 class TestMainBlock(unittest.TestCase):
     def test_valid_uri_prints_parsed_dict(self):
         # Run uri_parser.py as a script; a valid URI is pretty-printed.
-        result = subprocess.run(
-            [sys.executable, "-m", "pymongo.uri_parser", "mongodb://localhost:27017/mydb"],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
+        with suppress_fork_deprecation():
+            result = subprocess.run(
+                [sys.executable, "-m", "pymongo.uri_parser", "mongodb://localhost:27017/mydb"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
         self.assertEqual(0, result.returncode)
         # The output is a valid Python literal; parse it and assert on values
         # rather than the formatting of the pretty-printed text.
@@ -715,12 +717,13 @@ class TestMainBlock(unittest.TestCase):
 
     def test_invalid_uri_prints_error(self):
         # An invalid URI is caught and its message printed, still exiting 0.
-        result = subprocess.run(
-            [sys.executable, "-m", "pymongo.uri_parser", "not-a-valid-uri"],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
+        with suppress_fork_deprecation():
+            result = subprocess.run(
+                [sys.executable, "-m", "pymongo.uri_parser", "not-a-valid-uri"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
         self.assertEqual(0, result.returncode)
         self.assertIn("Invalid URI scheme", result.stdout)
 
