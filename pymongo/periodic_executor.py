@@ -189,7 +189,10 @@ class PeriodicExecutor:
                 # Daemon threads are disabled in subinterpreters unless the
                 # interpreter was created with allow_daemon_threads=True.
                 # _shutdown_executors stops and joins the thread during
-                # interpreter shutdown, so a non-daemon thread is safe.
+                # interpreter shutdown, so a non-daemon thread is safe. Note
+                # that if the join times out, interpreter shutdown still
+                # joins the thread without a timeout, so a stuck target can
+                # block interpreter teardown.
                 thread.daemon = True
             except RuntimeError:
                 pass
