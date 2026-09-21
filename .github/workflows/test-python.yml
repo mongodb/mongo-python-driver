@@ -169,7 +169,8 @@ jobs:
           uv sync --group mod_wsgi --refresh-package pymongo
           uv run --no-sync python tools/fail_if_no_c.py
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        # Pinned to a commit hash to satisfy CodeQL's ref-pin check.
+        uses: mongodb-labs/drivers-evergreen-tools@63fb7765ba349b1c8495f722e1942ef39e1b05b9
         with:
           version: ${{ steps.versions.outputs.mongodb }}
           topology: "replica_set"
@@ -222,7 +223,8 @@ jobs:
           uv sync --group mod_wsgi --refresh-package pymongo
           uv run --no-sync python tools/fail_if_no_c.py
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        # Pinned to a commit hash to satisfy CodeQL's ref-pin check.
+        uses: mongodb-labs/drivers-evergreen-tools@63fb7765ba349b1c8495f722e1942ef39e1b05b9
         with:
           version: ${{ steps.versions.outputs.mongodb }}
           topology: "replica_set"
