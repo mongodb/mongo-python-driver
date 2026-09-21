@@ -63,7 +63,6 @@ SUB_TEST_NAME_MAP: dict[str, list[str] | None] = {
         "ecs-remote",
     ],
     "kms": ["azure", "azure-remote", "azure-fail", "gcp", "gcp-remote", "gcp-fail"],
-    "mod_wsgi": ["standalone", "embedded"],
     "perf": ["sync", "async"],
     "auth_oidc": [
         "default",
@@ -80,7 +79,7 @@ SUB_TEST_NAME_MAP: dict[str, list[str] | None] = {
     ],
 }
 
-EXTRA_TESTS = ["mod_wsgi", "aws_lambda", "doctest"]
+EXTRA_TESTS = ["aws_lambda", "doctest"]
 
 # Tests that do not use run-mongodb directly.
 NO_RUN_ORCHESTRATION = [
