@@ -310,6 +310,66 @@ class TestThreads(IntegrationTest):
         )
         self.assertEqual(found, list(range(n_interpreters)))
 
+    @unittest.skipUnless(
+        sys.version_info >= (3, 14), "InterpreterPoolExecutor requires Python 3.14+"
+    )
+    def test_interpreter_pool_executor_async(self):
+        if InterpreterPoolExecutor is None:
+            self.skipTest("InterpreterPoolExecutor is not available")
+
+        # Run live AsyncMongoClients inside interpreters managed by the
+        # standard InterpreterPoolExecutor. The async client runs its
+        # background tasks on the interpreter's own event loop instead of in
+        # threads.
+        n_interpreters = 2
+        coll_name = f"interp-pool-async-{uuid.uuid4().hex}"
+        self.addCleanup(self.db.drop_collection, coll_name)
+
+        # The worker runs in an interpreter whose sys.path has not picked up
+        # the repo root, so pass the callable as a builtin (exec) and insert
+        # the main interpreter's sys.path before importing pymongo.
+        code = textwrap.dedent(
+            """
+            import asyncio
+            import sys
+            sys.path[:0] = path
+
+            from pymongo import AsyncMongoClient
+
+            async def main():
+                client = AsyncMongoClient(uri, serverSelectionTimeoutMS=30000)
+                collection = client.get_database(db_name).get_collection(coll_name)
+                await collection.insert_one({"interp-pool-async": i})
+                assert await collection.find_one({"interp-pool-async": i}) is not None
+                await client.close()
+
+            asyncio.run(main())
+            """
+        )
+        with InterpreterPoolExecutor(max_workers=n_interpreters) as executor:
+            futures = [
+                executor.submit(
+                    exec,
+                    code,
+                    {
+                        "i": i,
+                        "path": tuple(sys.path),
+                        "uri": client_context.uri,
+                        "db_name": self.db.name,
+                        "coll_name": coll_name,
+                    },
+                )
+                for i in range(n_interpreters)
+            ]
+            for future in futures:
+                future.result(timeout=120)
+
+        found = sorted(
+            doc["interp-pool-async"]
+            for doc in self.db[coll_name].find({}, {"interp-pool-async": 1})
+        )
+        self.assertEqual(found, list(range(n_interpreters)))
+
 
 if __name__ == "__main__":
     unittest.main()
