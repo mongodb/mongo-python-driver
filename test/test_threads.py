@@ -26,6 +26,11 @@ try:
 except ImportError:  # pragma: no cover - Python < 3.14
     interpreters = None  # type: ignore[assignment]
 
+try:
+    from concurrent.futures import InterpreterPoolExecutor
+except ImportError:  # pragma: no cover - Python < 3.14
+    InterpreterPoolExecutor = None  # type: ignore[assignment,misc]
+
 from test import IntegrationTest, client_context, unittest
 from test.utils import joinall
 
@@ -33,6 +38,20 @@ from test.utils import joinall
 @client_context.require_connection
 def setUpModule():
     pass
+
+
+def _interpreter_pool_worker(i, uri, db_name, coll_name, path):
+    import sys
+
+    sys.path[:0] = list(path)
+
+    from pymongo import MongoClient
+
+    client: MongoClient = MongoClient(uri, serverSelectionTimeoutMS=30000)
+    collection = client.get_database(db_name).get_collection(coll_name)
+    collection.insert_one({"interp-pool": i})
+    assert collection.find_one({"interp-pool": i}) is not None
+    return i
 
 
 class AutoAuthenticateThreads(threading.Thread):
@@ -262,6 +281,34 @@ class TestThreads(IntegrationTest):
                 interp.close()
 
         found = sorted(doc["subinterp"] for doc in self.db[coll_name].find({}, {"subinterp": 1}))
+        self.assertEqual(found, list(range(n_interpreters)))
+
+    @unittest.skipUnless(
+        sys.version_info >= (3, 14), "InterpreterPoolExecutor requires Python 3.14+"
+    )
+    def test_interpreter_pool_executor(self):
+        if InterpreterPoolExecutor is None:
+            self.skipTest("InterpreterPoolExecutor is not available")
+
+        # Run live MongoClients inside interpreters managed by the standard
+        # InterpreterPoolExecutor (PYTHON-5418).  The pool's interpreters do
+        # not allow daemon threads, so pymongo must start non-daemon monitor
+        # threads and stop them when the interpreter is destroyed.
+        n_interpreters = 2
+        coll_name = f"interp-pool-{uuid.uuid4().hex}"
+        self.addCleanup(self.db.drop_collection, coll_name)
+
+        args = (client_context.uri, self.db.name, coll_name, tuple(sys.path))
+        with InterpreterPoolExecutor(max_workers=n_interpreters) as executor:
+            futures = [
+                executor.submit(_interpreter_pool_worker, i, *args) for i in range(n_interpreters)
+            ]
+            for i, future in enumerate(futures):
+                self.assertEqual(future.result(timeout=120), i)
+
+        found = sorted(
+            doc["interp-pool"] for doc in self.db[coll_name].find({}, {"interp-pool": 1})
+        )
         self.assertEqual(found, list(range(n_interpreters)))
 
 
