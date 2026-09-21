@@ -13,10 +13,12 @@ mod_wsgi creates.
 Test Matrix
 -----------
 
-Continuous integration tests the oldest supported CPython against the oldest
-supported MongoDB with minimum dependencies, and the newest supported CPython
-against the latest MongoDB, in both daemon and embedded mode against a replica
-set. The Python and MongoDB versions come from ``generate_config_utils.py`` in
+Continuous integration tests the oldest supported CPython against MongoDB 6.0
+with minimum dependencies, and the newest supported CPython against the latest
+MongoDB, in both daemon and embedded mode against a replica set. MongoDB 6.0
+is used instead of the oldest supported version because the ubuntu-22.04
+runners cannot install older MongoDB versions. The Python versions and the
+latest MongoDB version come from ``generate_config_utils.py`` in
 ``.evergreen/scripts``. Other combinations can be tested manually.
 
 Setup

@@ -359,10 +359,13 @@ To run the tests by hand, install Apache and mod_wsgi (`sudo apt-get install -y 
 apache2-dev` and `uv sync --group mod_wsgi` on Ubuntu), then:
 
 - Run `TOPOLOGY=replica_set just run-server`.
-- Run `just setup-tests mod_wsgi <mode>`.
-- Run `just run-tests`.
+- Run `bash .evergreen/scripts/setup-tests.sh mod_wsgi <mode>`.
+- Run `bash .evergreen/run-tests.sh`.
+- Run `bash .evergreen/scripts/teardown-tests.sh`.
 
-The `mode` can be `standalone` or `embedded`.
+The `mode` can be `standalone` or `embedded`. Call the test scripts directly
+rather than using the `just` recipes: the recipes run an exact `uv sync`,
+which drops the `mod_wsgi` group.
 
 ### OCSP tests
 

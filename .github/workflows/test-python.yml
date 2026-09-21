@@ -22,7 +22,7 @@ jobs:
   static:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Python tooling
@@ -76,7 +76,7 @@ jobs:
 
     name: Python ${{ matrix.python-version }}-${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Python tooling
@@ -98,7 +98,7 @@ jobs:
 
     name: Coverage
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Python tooling
@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     name: DocTest
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Python tooling
@@ -143,9 +143,10 @@ jobs:
 
   mod_wsgi_min_deps:
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
     name: Mod WSGI Min Deps
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
@@ -160,13 +161,18 @@ jobs:
         with:
           python-version: ${{ steps.versions.outputs.python }}
       - name: Install Apache
-        run: sudo apt-get install -y apache2 apache2-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apache2 apache2-dev
       - name: Install dependencies
         run: |
           # CI skips the venv setup in setup-dev-env.sh, so create it here.
           export PYMONGO_C_EXT_MUST_BUILD=1
           just install
           uv sync --group mod_wsgi --refresh-package pymongo
+          # Test the minimum mod_wsgi version declared in pyproject.toml;
+          # the lock file has the latest version.
+          uv pip install "mod_wsgi==4.9.4"
           uv run --no-sync python tools/fail_if_no_c.py
       - id: setup-mongodb
         # Pinned to a commit hash to satisfy CodeQL's ref-pin check.
@@ -177,8 +183,8 @@ jobs:
       - name: Run standalone tests
         env:
           TEST_MIN_DEPS: "1"
-        # Call the test scripts directly: the just recipes run "uv sync",
-        # which would drop the mod_wsgi group before teardown can stop Apache.
+        # Call the test scripts directly: the just recipes run an exact
+        # "uv sync", which would drop the mod_wsgi group.
         run: |
           bash .evergreen/scripts/setup-tests.sh mod_wsgi standalone
           bash .evergreen/run-tests.sh
@@ -197,9 +203,10 @@ jobs:
 
   mod_wsgi_latest:
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
     name: Mod WSGI Latest
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
@@ -214,7 +221,9 @@ jobs:
         with:
           python-version: ${{ steps.versions.outputs.python }}
       - name: Install Apache
-        run: sudo apt-get install -y apache2 apache2-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apache2 apache2-dev
       - name: Install dependencies
         run: |
           # CI skips the venv setup in setup-dev-env.sh, so create it here.
@@ -229,8 +238,8 @@ jobs:
           version: ${{ steps.versions.outputs.mongodb }}
           topology: "replica_set"
       - name: Run standalone tests
-        # Call the test scripts directly: the just recipes run "uv sync",
-        # which would drop the mod_wsgi group before teardown can stop Apache.
+        # Call the test scripts directly: the just recipes run an exact
+        # "uv sync", which would drop the mod_wsgi group.
         run: |
           bash .evergreen/scripts/setup-tests.sh mod_wsgi standalone
           bash .evergreen/run-tests.sh
@@ -249,7 +258,7 @@ jobs:
     name: Docs Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Python tooling
@@ -268,7 +277,7 @@ jobs:
       matrix:
         python: ["3.10", "3.11"]
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Python tooling
@@ -285,7 +294,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Integration Tests
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Python tooling
@@ -311,7 +320,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "Make an sdist"
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-python@v7.0.0
@@ -371,7 +380,7 @@ jobs:
       runs-on: ubuntu-latest
       name: Test minimum dependencies and Python
       steps:
-        - uses: actions/checkout@v7.0.1
+        - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
           with:
             persist-credentials: false
         - name: Install Python tooling

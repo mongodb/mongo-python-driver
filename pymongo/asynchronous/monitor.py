@@ -493,9 +493,14 @@ def _shutdown_resources() -> None:
 
 if _IS_SYNC:
     atexit.register(_shutdown_resources)
-    # Also register with threading so executors are stopped before the
-    # interpreter tries to join their (possibly non-daemon) threads. Unlike
-    # atexit, this runs for subinterpreters, where daemon threads are
-    # generally not allowed and CPython is strict about background threads.
-    if hasattr(threading, "_register_atexit"):
-        threading._register_atexit(_shutdown_resources)  # type: ignore[attr-defined]
+    # In subinterpreters, daemon threads are not allowed and the executors'
+    # threads are joined (unlike atexit, threading._register_atexit runs for
+    # subinterpreters), so the executors must be stopped before the
+    # interpreter tries to join them. Probe for that restriction: in the
+    # main interpreter the assignment always succeeds and the normal atexit
+    # ordering is preserved.
+    try:
+        threading.Thread().daemon = True
+    except RuntimeError:
+        if hasattr(threading, "_register_atexit"):
+            threading._register_atexit(_shutdown_resources)  # type: ignore[attr-defined]

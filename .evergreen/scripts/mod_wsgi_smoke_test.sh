@@ -31,15 +31,30 @@ if [ "$(id -u)" = "0" ]; then
   exec su - smoke -c "bash /src/.evergreen/scripts/mod_wsgi_smoke_test.sh"
 fi
 
-curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null
+# Install uv from a pinned release, verifying the published checksum, rather
+# than piping a mutable installer script into a shell.
+UV_VERSION=0.12.17
+case "$(uname -m)" in
+  x86_64) UV_TARGET=x86_64-unknown-linux-gnu ;;
+  aarch64 | arm64) UV_TARGET=aarch64-unknown-linux-gnu ;;
+  *) echo "Unsupported architecture" >&2; exit 1 ;;
+esac
+curl -fsSL -o "/tmp/uv-${UV_TARGET}.tar.gz" "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_TARGET}.tar.gz"
+curl -fsSL -o "/tmp/uv-${UV_TARGET}.tar.gz.sha256" "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_TARGET}.tar.gz.sha256"
+(cd /tmp && sha256sum -c "uv-${UV_TARGET}.tar.gz.sha256")
+tar -xzf "/tmp/uv-${UV_TARGET}.tar.gz" -C /tmp
+mkdir -p "$HOME/.local/bin"
+install -m 0755 "/tmp/uv-${UV_TARGET}/uv" "$HOME/.local/bin/uv"
+rm -rf "/tmp/uv-${UV_TARGET}.tar.gz" "/tmp/uv-${UV_TARGET}.tar.gz.sha256" "/tmp/uv-${UV_TARGET}"
 export PATH="$HOME/.local/bin:$PATH"
 uv tool install rust-just >/dev/null
 
 cd /home/smoke/src
 
 # mongod inherits the soft nofile limit; the 1024 default is exhausted by the
-# connection storm the parallel test generates.
-ulimit -n 65536
+# connection storm the parallel test generates. Best effort: some container
+# hosts set a lower hard limit.
+ulimit -n 65536 2>/dev/null || true
 
 # Mirror the GHA job and test the newest supported CPython.
 LATEST_PYTHON=$(uv run --no-project --with 'shrub.py>=3.10.0' python .evergreen/scripts/mod_wsgi_matrix.py | jq -r '.[-1]."python-version"')
