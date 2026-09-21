@@ -47,7 +47,7 @@ EXTRAS_MAP = {
 
 
 # Map the test name to test group.
-GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
+GROUP_MAP = dict(mockupdb="mockupdb", perf="perf", mod_wsgi="mod_wsgi")
 
 # The python version used for perf tests.
 PERF_PYTHON_VERSION = "3.10.11"

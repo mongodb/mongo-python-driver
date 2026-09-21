@@ -170,9 +170,6 @@ jobs:
           export PYMONGO_C_EXT_MUST_BUILD=1
           just install
           uv sync --group mod_wsgi --refresh-package pymongo
-          # Test the minimum mod_wsgi version declared in pyproject.toml;
-          # the lock file has the latest version.
-          uv pip install "mod_wsgi==4.9.4"
           uv run --no-sync python tools/fail_if_no_c.py
       - id: setup-mongodb
         # Pinned to a commit hash to satisfy CodeQL's ref-pin check.
@@ -184,7 +181,9 @@ jobs:
         env:
           TEST_MIN_DEPS: "1"
         # Call the test scripts directly: the just recipes run an exact
-        # "uv sync", which would drop the mod_wsgi group.
+        # "uv sync", which would drop the mod_wsgi group. The group is
+        # resolved with TEST_MIN_DEPS via GROUP_MAP in setup_tests.py, so
+        # mod_wsgi is tested at the minimum version from pyproject.toml.
         run: |
           bash .evergreen/scripts/setup-tests.sh mod_wsgi standalone
           bash .evergreen/run-tests.sh
