@@ -65,6 +65,13 @@ class TestSubinterpreters(IntegrationTest):
         # The async client's constructor starts a task, which requires a
         # running event loop; synchro translates the rest of the block.
         run_stmt = "asyncio.run(main())" if not _IS_SYNC else "main()"
+        # The sync monitor reads the queue on its thread; the async monitor
+        # reads it off-loop so the client's tasks keep running.
+        release_stmt = (
+            "asyncio.to_thread(release.get, timeout=60)"
+            if not _IS_SYNC
+            else "release.get(timeout=60)"
+        )
         code = textwrap.dedent(
             f"""
             import asyncio
@@ -80,7 +87,7 @@ class TestSubinterpreters(IntegrationTest):
                 assert collection.find_one({{"subinterp": i}}) is not None
                 ready.put(i)
                 # Hold the client open until every interpreter has connected.
-                release.get(timeout=60)
+                {release_stmt}
                 assert collection.find_one({{"subinterp": i}}) is not None
                 done.put(i)
 
@@ -185,6 +192,13 @@ class TestSubinterpreters(IntegrationTest):
             {run_stmt}
             """
         )
+        # Wait for the workers off-loop in the async suite; synchro keeps the
+        # direct call for the sync suite.
+        result_stmt = (
+            "asyncio.to_thread(future.result, 120)"
+            if not _IS_SYNC
+            else "future.result(timeout=120)"
+        )
         with InterpreterPoolExecutor(max_workers=n_interpreters) as executor:
             uri = client_context.uri
             futures = [
@@ -202,7 +216,7 @@ class TestSubinterpreters(IntegrationTest):
                 for i in range(n_interpreters)
             ]
             for future in futures:
-                future.result(timeout=120)
+                {result_stmt}
 
         docs = self.db[coll_name].find({}, {"interp-pool": 1}).to_list()
         found = sorted(doc["interp-pool"] for doc in docs)
