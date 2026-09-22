@@ -22,6 +22,14 @@ if [ "Windows_NT" = "${OS:-}" ]; then
   export UV_TOOL_BIN_DIR="$_uv_tool_bin"
 fi
 
+# Ensure the bin dir is on PATH: hosts without env.sh (e.g. auth-aws-ecs) never
+# export it, so a fresh pinned install there would be invisible to the probe
+# below and to later steps like `uv tool install` and `uv sync`.
+case ":$PATH:" in
+  *":$PYMONGO_BIN_DIR:"*) ;;
+  *) export PATH="$PYMONGO_BIN_DIR:$PATH" ;;
+esac
+
 # If uv is on PATH, check it via `uv sync`, which fails fast if it is not the
 # pinned version (from pyproject.toml's [tool.uv] required-version). If that
 # succeeds, the environment is already correct and there is nothing to set up;

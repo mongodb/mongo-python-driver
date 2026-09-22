@@ -3,10 +3,9 @@
 
 install-dependencies.sh bails out if the pinned uv is already on PATH, sources
 ensure-uv.sh (which finds or installs uv), then runs this script for the rest.
-Only the standard library is used.
+Only the standard library is used, and it must run on the old system
+Pythons (3.6) found on some no-toolchain hosts.
 """
-
-from __future__ import annotations
 
 import os
 import re
@@ -56,7 +55,11 @@ def _install_uv_astral() -> None:
     curl = shutil.which("curl")
     sh = shutil.which("sh")
     proc = subprocess.run(  # noqa: S603
-        [curl, "-LsSf", ASTRAL_INSTALL_URL], capture_output=True, env=env, check=True
+        [curl, "-LsSf", ASTRAL_INSTALL_URL],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+        check=True,
     )
     subprocess.run([sh], input=proc.stdout, env=env, check=True)  # noqa: S603
     _add_path(os.environ["UV_TOOL_BIN_DIR"])

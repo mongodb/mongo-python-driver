@@ -201,8 +201,8 @@ the pages will re-render and the browser will automatically refresh.
     version of Python, set `UV_PYTHON` before running `just install`.
 
     `just install` installs the pinned version of `uv` (from `[tool.uv] required-version`) into `$HOME/.local/bin`,
-    so make sure that directory is on your `PATH` (it usually is).  If a project `uv` command (e.g. `just test`) runs
-    with a different `uv` version, `uv` fails fast and tells you how to update.
+    and adds that directory to your shell rc file when missing, so the pinned `uv` takes effect in new shells.  If a
+    project `uv` command (e.g. `just test`) runs with a different `uv` version, `uv` fails fast and tells you how to update.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
     [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `$DRIVERS_TOOLS/.evergreen/run-mongodb.sh start -h`
