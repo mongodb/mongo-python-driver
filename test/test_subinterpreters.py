@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import sys
 import textwrap
 import threading
@@ -192,13 +193,6 @@ class TestSubinterpreters(IntegrationTest):
             {run_stmt}
             """
         )
-        # Wait for the workers off-loop in the async suite; synchro keeps the
-        # direct call for the sync suite.
-        result_stmt = (
-            "asyncio.to_thread(future.result, 120)"
-            if not _IS_SYNC
-            else "future.result(timeout=120)"
-        )
         with InterpreterPoolExecutor(max_workers=n_interpreters) as executor:
             uri = client_context.uri
             futures = [
@@ -216,7 +210,11 @@ class TestSubinterpreters(IntegrationTest):
                 for i in range(n_interpreters)
             ]
             for future in futures:
-                {result_stmt}
+                if _IS_SYNC:
+                    future.result(timeout=120)
+                else:
+                    # Keep the event loop free while waiting for the workers.
+                    asyncio.to_thread(future.result, 120)
 
         docs = self.db[coll_name].find({}, {"interp-pool": 1}).to_list()
         found = sorted(doc["interp-pool"] for doc in docs)
