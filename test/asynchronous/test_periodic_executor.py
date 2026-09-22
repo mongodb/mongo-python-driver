@@ -195,42 +195,28 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
             return
 
         root = _PYMONGO_ROOT
-        if _IS_SYNC:
-            code = textwrap.dedent(
-                f"""
-                import sys
-                sys.path.insert(0, {root!r})
-                from pymongo.periodic_executor import PeriodicExecutor
+        # The async executor's open() starts a task, which requires a running
+        # event loop; synchro translates the rest of the block for the sync suite.
+        run_stmt = "asyncio.run(main())" if not _IS_SYNC else "main()"
+        code = textwrap.dedent(
+            f"""
+            import asyncio
+            import sys
+            sys.path.insert(0, {root!r})
+            from pymongo.periodic_executor import AsyncPeriodicExecutor
 
-                def target():
-                    return True
+            async def target():
+                return True
 
-                executor = PeriodicExecutor(
+            async def main():
+                executor = AsyncPeriodicExecutor(
                     interval=30.0, min_interval=0.05, target=target, name="subinterp"
                 )
                 executor.open()
-                """
-            )
-        else:
-            code = textwrap.dedent(
-                f"""
-                import asyncio
-                import sys
-                sys.path.insert(0, {root!r})
-                from pymongo.periodic_executor import AsyncPeriodicExecutor
 
-                def target():
-                    return True
-
-                async def main():
-                    executor = AsyncPeriodicExecutor(
-                        interval=30.0, min_interval=0.05, target=target, name="subinterp"
-                    )
-                    executor.open()
-
-                asyncio.run(main())
-                """
-            )
+            {run_stmt}
+            """
+        )
         interp = _interpreters.create()
         try:
             interp.exec(code)
