@@ -53,9 +53,8 @@ class TestSubinterpreters(AsyncIntegrationTest):
         if interpreters is None:
             self.skipTest("concurrent.interpreters is not available")
 
-        # Run live clients in more than one subinterpreter at the same time,
-        # mirroring the mod_wsgi test, which mounts the same app in two
-        # interpreters.
+        # Run live clients in multiple subinterpreters at once, mirroring the
+        # mod_wsgi test, which mounts the same app in two interpreters.
         n_interpreters = 2
         coll_name = f"subinterp-{uuid.uuid4().hex}"
         self.addCleanup(self.db.drop_collection, coll_name)
@@ -64,8 +63,7 @@ class TestSubinterpreters(AsyncIntegrationTest):
         release = interpreters.create_queue()
         done = interpreters.create_queue()
         # The async client's constructor starts a task, which requires a
-        # running event loop; synchro translates the rest of the block for the
-        # sync suite.
+        # running event loop; synchro translates the rest of the block.
         run_stmt = "asyncio.run(main())" if not _IS_SYNC else "main()"
         code = textwrap.dedent(
             f"""
@@ -81,8 +79,7 @@ class TestSubinterpreters(AsyncIntegrationTest):
                 await collection.insert_one({{"subinterp": i}})
                 assert await collection.find_one({{"subinterp": i}}) is not None
                 ready.put(i)
-                # Hold the client open until every interpreter has connected, so
-                # that all of the clients are live at the same time.
+                # Hold the client open until every interpreter has connected.
                 release.get(timeout=60)
                 assert await collection.find_one({{"subinterp": i}}) is not None
                 done.put(i)
@@ -139,8 +136,8 @@ class TestSubinterpreters(AsyncIntegrationTest):
                 release.put(True)
             for interp in interps:
                 # Closing an idle interpreter runs threading._shutdown, which
-                # stops and joins pymongo's monitor threads. Skip running
-                # ones to avoid masking the original error.
+                # stops and joins pymongo's monitor threads; skip running ones
+                # to avoid masking errors.
                 if not interp.is_running():
                     interp.close()
 
@@ -155,21 +152,19 @@ class TestSubinterpreters(AsyncIntegrationTest):
         if InterpreterPoolExecutor is None:
             self.skipTest("InterpreterPoolExecutor is not available")
 
-        # Run live clients in InterpreterPoolExecutor workers. The
-        # interpreters disallow daemon threads, so the sync client starts
-        # non-daemon monitor threads, while the async client runs its
-        # background tasks on the interpreter's own event loop.
+        # The interpreters disallow daemon threads, so the sync client starts
+        # non-daemon monitor threads; the async client runs tasks on the
+        # interpreter's own event loop.
         n_interpreters = 2
         coll_name = f"interp-pool-{uuid.uuid4().hex}"
         self.addCleanup(self.db.drop_collection, coll_name)
 
         # The async client's constructor starts a task, which requires a
-        # running event loop; synchro translates the rest of the block for the
-        # sync suite.
+        # running event loop; synchro translates the rest of the block.
         run_stmt = "asyncio.run(main())" if not _IS_SYNC else "main()"
 
-        # The worker's sys.path lacks the repo root, so submit the builtin
-        # exec and fix sys.path in the code.
+        # The worker's sys.path lacks the repo root, so submit the builtin exec
+        # and fix sys.path in the code.
         code = textwrap.dedent(
             f"""
             import asyncio
