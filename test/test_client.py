@@ -78,6 +78,7 @@ from pymongo.errors import (
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
 from pymongo.pool_options import (
     _AGENT_ENV_VARS,
+    _MAX_AGENT_SIZE,
     _MAX_METADATA_SIZE,
     _METADATA,
     ENV_VAR_K8S,
@@ -2062,9 +2063,9 @@ class TestClient(IntegrationTest):
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
     def _test_handshake(self, env_vars, expected_env):
-        # Clear any ambient agent-detection vars (e.g. AI_AGENT/AGENT set by the
-        # CI runner) so detection is deterministic and only reflects env_vars.
-        agent_vars = ["AI_AGENT", "AGENT", *(var for var, _ in _AGENT_ENV_VARS)]
+        # Clear any ambient agent-detection vars (e.g. AI_AGENT or CLAUDECODE set
+        # by the CI runner) so detection only reflects env_vars.
+        agent_vars = ["AI_AGENT", *(var for var, _ in _AGENT_ENV_VARS)]
         cleared = {var: "" for var in agent_vars if var not in env_vars}
         with patch.dict("os.environ", {**cleared, **env_vars}):
             metadata = copy.deepcopy(_METADATA)
@@ -2172,36 +2173,51 @@ class TestClient(IntegrationTest):
         )
 
     def test_handshake_10_agent_known(self):
-        # A known coding-agent env var maps to its metadata value.
-        self._test_handshake({"CLAUDECODE": "1"}, {"agent": "CLAUDECODE"})
-        self._test_handshake({"CURSOR_AGENT": "1"}, {"agent": "CURSOR"})
-        self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "OPENCODE"})
+        # A known agent env var maps to its fixed name, regardless of value.
+        self._test_handshake({"CLAUDECODE": "1"}, {"agent": "claude_code"})
+        self._test_handshake({"CURSOR_AGENT": "some-value-42"}, {"agent": "cursor"})
+        self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
 
     def test_handshake_10b_agent_known_precedence(self):
         # When multiple known agent vars are set, the first in _AGENT_ENV_VARS
         # order wins, regardless of which comes first in the environment dict.
-        first_var, first_name = _AGENT_ENV_VARS[0]
-        last_var, _ = _AGENT_ENV_VARS[-1]
-        self._test_handshake({last_var: "1", first_var: "1"}, {"agent": first_name})
+        self._test_handshake({"GEMINI_CLI": "1", "CURSOR_AGENT": "1"}, {"agent": "cursor"})
 
-    def test_handshake_11_agent_generic(self):
-        # Generic AI_AGENT/AGENT vars are used verbatim and take precedence.
-        self._test_handshake({"AI_AGENT": "myagent"}, {"agent": "myagent"})
-        self._test_handshake({"AGENT": "myagent"}, {"agent": "myagent"})
-        self._test_handshake({"AI_AGENT": "myagent", "CLAUDECODE": "1"}, {"agent": "myagent"})
+    def test_handshake_11_agent_known_beats_generic(self):
+        # A known agent wins over the generic AI_AGENT variable, so a versioned
+        # AI_AGENT value cannot mask a known agent.
+        self._test_handshake(
+            {"AI_AGENT": "custom-agent", "CLAUDECODE": "1"}, {"agent": "claude_code"}
+        )
 
-    def test_handshake_12_agent_with_provider(self):
+    def test_handshake_12_agent_generic(self):
+        # A descriptive AI_AGENT value is used as-is, and the boolean values
+        # "1" and "true" map to the fixed string "ai_agent".
+        self._test_handshake({"AI_AGENT": "custom-agent"}, {"agent": "custom-agent"})
+        self._test_handshake({"AI_AGENT": "1"}, {"agent": "ai_agent"})
+        self._test_handshake({"AI_AGENT": "true"}, {"agent": "ai_agent"})
+
+    def test_handshake_13_agent_generic_normalized(self):
+        # AI_AGENT is trimmed and lowercased.
+        self._test_handshake(
+            {"AI_AGENT": " Claude-Code_2-1-238_Agent "}, {"agent": "claude-code_2-1-238_agent"}
+        )
+
+    def test_handshake_14_agent_generic_truncated(self):
+        # A long AI_AGENT value is truncated to _MAX_AGENT_SIZE characters.
+        self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
+
+    def test_handshake_15_agent_unset(self):
+        # An empty or whitespace-only value is treated as unset.
+        self._test_handshake({"AI_AGENT": ""}, None)
+        self._test_handshake({"AI_AGENT": "   "}, None)
+        self._test_handshake({"CLAUDECODE": "   "}, None)
+
+    def test_handshake_16_agent_with_provider(self):
         # agent is reported alongside a FaaS provider.
         self._test_handshake(
             {"FUNCTIONS_WORKER_RUNTIME": "python", "CLAUDECODE": "1"},
-            {"name": "azure.func", "agent": "CLAUDECODE"},
-        )
-
-    def test_handshake_13_agent_too_long(self):
-        # A too-long agent value is dropped during truncation before env.name.
-        self._test_handshake(
-            {"FUNCTIONS_WORKER_RUNTIME": "python", "AI_AGENT": "a" * 512},
-            {"name": "azure.func"},
+            {"name": "azure.func", "agent": "claude_code"},
         )
 
     def test_dict_hints(self):

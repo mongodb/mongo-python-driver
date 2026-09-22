@@ -149,32 +149,49 @@ def _is_faas() -> bool:
     return _is_lambda() or _is_azure_func() or _is_gcp_func() or _is_vercel()
 
 
-# Environment variables that indicate a coding agent, checked in order. The
-# first match determines the value of the client.env.agent metadata field.
+# Environment variables that indicate a known coding agent, checked in order.
+# The first populated variable determines the value of the client.env.agent
+# metadata field, regardless of the variable's value. This list and the agent
+# names match the detection that mongosh implements.
 # See DRIVERS-3529 and PYTHON-5929.
 _AGENT_ENV_VARS = [
-    ("CLAUDECODE", "CLAUDECODE"),
-    ("CURSOR_AGENT", "CURSOR"),
-    ("GEMINI_CLI", "GEMINI_CLI"),
-    ("CODEX_SANDBOX", "CODEX_SANDBOX"),
-    ("AUGMENT_AGENT", "AUGMENT"),
-    ("OPENCODE_CLIENT", "OPENCODE"),
+    ("CLAUDECODE", "claude_code"),
+    ("CLAUDE_CODE_ENTRYPOINT", "claude_code"),
+    ("CURSOR_AGENT", "cursor"),
+    ("CODEX_SANDBOX", "codex_cli"),
+    ("CLINE_ACTIVE", "cline"),
+    ("GEMINI_CLI", "gemini_cli"),
+    ("AUGMENT_AGENT", "auggie_cli"),
+    ("OPENCODE_CLIENT", "opencode_client"),
+    ("TRAE_AI_SHELL_ID", "trae_ai"),
+    ("GOOSE_TERMINAL", "goose"),
+    ("GOOSE_AGENT", "goose"),
 ]
+
+# The generic agent variable, evaluated after every known agent so that a
+# known agent is always reported under its fixed name.
+_GENERIC_AGENT_ENV_VAR = "AI_AGENT"
+
+# Maximum length of a normalized AI_AGENT value.
+_MAX_AGENT_SIZE = 64
 
 
 def _metadata_agent() -> Optional[str]:
     """Detect a coding agent from the environment for client.env.agent.
 
-    A generic AI_AGENT or AGENT environment variable takes precedence and its
-    value is used verbatim. Otherwise the first matching known agent variable
-    determines the value."""
-    agent = os.getenv("AI_AGENT") or os.getenv("AGENT")
-    if agent:
-        return agent
+    The first populated known agent variable determines the value. The generic
+    AI_AGENT variable is evaluated last: its value is trimmed, lowercased and
+    truncated, and the boolean values "1" and "true" map to "ai_agent"."""
     for var, name in _AGENT_ENV_VARS:
-        if os.getenv(var):
+        # A variable that is unset, empty or whitespace-only is not populated.
+        if (os.getenv(var) or "").strip():
             return name
-    return None
+    agent = (os.getenv(_GENERIC_AGENT_ENV_VAR) or "").strip().lower()
+    if not agent:
+        return None
+    if agent in ("1", "true"):
+        return "ai_agent"
+    return agent[:_MAX_AGENT_SIZE]
 
 
 def _getenv_int(key: str) -> Optional[int]:
@@ -245,9 +262,8 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         metadata.pop("env", None)
     if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
         return
-    # 1b. Drop env.agent (which may hold an arbitrarily large AI_AGENT/AGENT
-    # value) before trimming os and before sacrificing env.name, so the more
-    # valuable os and env.name fields are preserved as long as possible.
+    # 2. Omit env.agent, before trimming os and before sacrificing env.name.
+    # Drivers have reported env.name since before env.agent existed.
     if "agent" in trimmed_env:
         del trimmed_env["agent"]
         if trimmed_env:
@@ -256,18 +272,18 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
             metadata.pop("env", None)
     if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
         return
-    # 2. Omit fields from os except os.type.
+    # 3. Omit fields from os except os.type.
     os_type = metadata.get("os", {}).get("type")
     if os_type:
         metadata["os"] = {"type": os_type}
     if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
         return
-    # 3. Omit the env document entirely.
+    # 4. Omit the env document entirely.
     metadata.pop("env", None)
     encoded_size = len(bson.encode(metadata))
     if encoded_size <= _MAX_METADATA_SIZE:
         return
-    # 4. Truncate platform.
+    # 5. Truncate platform.
     overflow = encoded_size - _MAX_METADATA_SIZE
     plat = metadata.get("platform", "")
     if plat:
@@ -279,7 +295,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     encoded_size = len(bson.encode(metadata))
     if encoded_size <= _MAX_METADATA_SIZE:
         return
-    # 5. Truncate driver info.
+    # 6. Truncate driver info.
     overflow = encoded_size - _MAX_METADATA_SIZE
     driver = metadata.get("driver", {})
     if driver:
