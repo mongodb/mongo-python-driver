@@ -26,6 +26,7 @@ sys.path[0:0] = [""]
 import pymongo.daemon as daemon_module
 from pymongo.daemon import _popen_wait, _silence_resource_warning, _spawn_daemon
 from test import unittest
+from test.utils_shared import suppress_fork_deprecation
 
 
 class TestPopenWait(unittest.TestCase):
@@ -172,10 +173,11 @@ class TestSpawnDaemonWindows(unittest.TestCase):
 class TestMainBlock(unittest.TestCase):
     def test_exits_with_zero(self):
         # Run daemon.py as a script with a no-op subprocess; verify it exits cleanly.
-        result = subprocess.run(
-            [sys.executable, "-m", "pymongo.daemon", sys.executable, "-c", "pass"],
-            timeout=15,
-        )
+        with suppress_fork_deprecation():
+            result = subprocess.run(
+                [sys.executable, "-m", "pymongo.daemon", sys.executable, "-c", "pass"],
+                timeout=15,
+            )
         self.assertEqual(0, result.returncode)
 
 
