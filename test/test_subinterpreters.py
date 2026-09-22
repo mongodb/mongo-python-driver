@@ -125,16 +125,27 @@ class TestSubinterpreters(IntegrationTest):
                 threads.append(thread)
                 thread.start()
 
-            started = self._get_n(ready, n_interpreters, errors)
+            started = (
+                asyncio.to_thread(self._get_n, ready, n_interpreters, errors)
+                if not _IS_SYNC
+                else self._get_n(ready, n_interpreters, errors)
+            )
             self.assertEqual(started, list(range(n_interpreters)))
             for _ in range(n_interpreters):
                 release.put(True)
 
             for thread in threads:
-                thread.join(60)
+                if _IS_SYNC:
+                    thread.join(60)
+                else:
+                    asyncio.to_thread(thread.join, 60)
                 self.assertFalse(thread.is_alive(), f"{thread.name} did not exit")
 
-            finished = self._get_n(done, n_interpreters, errors)
+            finished = (
+                asyncio.to_thread(self._get_n, done, n_interpreters, errors)
+                if not _IS_SYNC
+                else self._get_n(done, n_interpreters, errors)
+            )
             self.assertEqual(finished, list(range(n_interpreters)))
             if errors:
                 self.fail(f"subinterpreter errors: {errors!r}")
@@ -144,7 +155,10 @@ class TestSubinterpreters(IntegrationTest):
             for _ in range(n_interpreters):
                 release.put(True)
             for thread in threads:
-                thread.join(60)
+                if _IS_SYNC:
+                    thread.join(60)
+                else:
+                    asyncio.to_thread(thread.join, 60)
             for interp in interps:
                 # Closing an idle interpreter runs threading._shutdown, which
                 # stops and joins pymongo's monitor threads; skip running ones
@@ -193,7 +207,8 @@ class TestSubinterpreters(IntegrationTest):
             {run_stmt}
             """
         )
-        with InterpreterPoolExecutor(max_workers=n_interpreters) as executor:
+        executor = InterpreterPoolExecutor(max_workers=n_interpreters)
+        try:
             uri = client_context.uri
             futures = [
                 executor.submit(
@@ -215,6 +230,13 @@ class TestSubinterpreters(IntegrationTest):
                 else:
                     # Keep the event loop free while waiting for the workers.
                     asyncio.to_thread(future.result, 120)
+        finally:
+            # Worker interpreter teardown joins monitor threads, which can
+            # take a while; keep the event loop free while waiting.
+            if _IS_SYNC:
+                executor.shutdown(wait=True)
+            else:
+                asyncio.to_thread(executor.shutdown)
 
         docs = self.db[coll_name].find({}, {"interp-pool": 1}).to_list()
         found = sorted(doc["interp-pool"] for doc in docs)
