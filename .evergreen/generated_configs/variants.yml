@@ -384,16 +384,6 @@ buildvariants:
       TEST_NAME: mockupdb
     tags: [pr]
 
-  # Mod wsgi tests
-  - name: mod_wsgi-ubuntu-22
-    tasks:
-      - name: .mod_wsgi
-    display_name: Mod_WSGI Ubuntu-22
-    run_on:
-      - ubuntu2204-small
-    expansions:
-      MOD_WSGI_VERSION: "4"
-
   # No c ext tests
   - name: no-c-ext-rhel8
     tasks:
