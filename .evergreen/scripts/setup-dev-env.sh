@@ -20,19 +20,28 @@ fi
 # default it here so local dev (without setup-system.sh) also has a usable value.
 export PYMONGO_BIN_DIR="${PYMONGO_BIN_DIR:-$HOME/.local/bin}"
 
+# install-dependencies.sh runs as a child process, so its PATH changes do not
+# propagate back here: ensure the bin dir is on this process's PATH too, so a
+# fresh install (first run, bin dir not on PATH yet) is visible to the
+# `uv sync` and pre-commit setup below.
+case ":$PATH:" in
+  *":$PYMONGO_BIN_DIR:"*) ;;
+  *) export PATH="$PYMONGO_BIN_DIR:$PATH" ;;
+esac
+
 # Make sure a login shell can find the bin dir by adding it to the rc file, so
 # local dev (which may never run setup-system.sh) still has it on PATH. env.sh's
-# PATH does not persist past this session. Prefer .zshrc when the shell is zsh.
+# PATH does not persist past this session. Select the rc file from $SHELL (not
+# by which rc file happens to exist) so the user's actual shell is updated, and
+# create it if it does not exist yet.
 if [ "${CI:-}" != "true" ] && [ "${GITHUB_ACTIONS:-}" != "true" ]; then
-  if [ -f "$HOME/.zshrc" ]; then
-    _rc="$HOME/.zshrc"
-  else
-    _rc="$HOME/.bashrc"
-  fi
-  if [ -f "$_rc" ]; then
-    grep -qF 'export PATH="'"$PYMONGO_BIN_DIR"':$PATH"' "$_rc" 2>/dev/null || \
-      printf 'export PATH="%s:$PATH"\n' "$PYMONGO_BIN_DIR" >> "$_rc"
-  fi
+  case "${SHELL:-}" in
+    */zsh) _rc="$HOME/.zshrc" ;;
+    *) _rc="$HOME/.bashrc" ;;
+  esac
+  touch "$_rc"
+  grep -qF 'export PATH="'"$PYMONGO_BIN_DIR"':$PATH"' "$_rc" 2>/dev/null || \
+    printf 'export PATH="%s:$PATH"\n' "$PYMONGO_BIN_DIR" >> "$_rc"
 fi
 
 # Ensure dependencies are installed.

@@ -58,13 +58,8 @@ if [ "$_need_setup" = "1" ]; then
   # RHEL8's 3.6 is too old for setup-uv.py): prepend the mongodbtoolchain's
   # "Current" python dir, the same location configure-env.sh puts on PATH via
   # env.sh, for hosts that skip or delete env.sh (e.g. auth-aws-ecs).
-  if [ "Windows_NT" = "${OS:-}" ]; then
-    _toolchain_bin="/cygdrive/c/Python/Current/Scripts"
-  elif [ "$(uname -s)" = "Darwin" ]; then
-    _toolchain_bin="/Library/Frameworks/Python.Framework/Versions/Current/bin"
-  else
-    _toolchain_bin="/opt/python/Current/bin"
-  fi
+  . "$HERE/toolchain-bin.sh"
+  _toolchain_bin="$(mongodb_toolchain_bin)"
   if [ -d "$_toolchain_bin" ]; then
     case ":$PATH:" in
       *":$_toolchain_bin:"*) ;;

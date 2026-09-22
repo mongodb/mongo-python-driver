@@ -9,6 +9,7 @@ Pythons (3.6) found on some no-toolchain hosts.
 
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -103,9 +104,15 @@ def _pin_uv(uv_pin: str) -> None:
             shutil.rmtree(tmp_uv.parent, ignore_errors=True)
 
 
+# The UV_* env vars this bootstrap manages and may persist into env.sh.
+# Deliberately narrow: other UV_* vars (e.g. UV_PUBLISH_TOKEN,
+# UV_INDEX_..._PASSWORD) may hold credentials and must never be written out.
+PERSISTED_UV_VARS = ("UV_CACHE_DIR", "UV_TOOL_BIN_DIR", "UV_TOOL_DIR")
+
+
 def _write_env() -> None:
-    """Write every UV_* env var into env.sh, replacing existing UV_* entries."""
-    values = {k: v for k, v in os.environ.items() if k.startswith("UV_")}
+    """Write the bootstrap's UV_* env vars into env.sh, replacing existing UV_* entries."""
+    values = {k: v for k, v in os.environ.items() if k in PERSISTED_UV_VARS}
     if not values:
         return
     existing = ENV_SH.read_text() if ENV_SH.exists() else ""
@@ -118,7 +125,9 @@ def _write_env() -> None:
                 continue
         keep.append(line)
     keep.append("")
-    keep.extend(f'export {name}="{value}"' for name, value in sorted(values.items()))
+    # shlex.quote emits shell-safe values (single-quoted, escaping embedded
+    # quotes) so a value cannot break out of or inject into the assignment.
+    keep.extend(f"export {name}={shlex.quote(value)}" for name, value in sorted(values.items()))
     # Write LF bytes directly: on Windows text mode translates \n to \r\n, which
     # breaks bash sourcing env.sh, and `newline=` isn't available on all Pythons.
     ENV_SH.write_bytes(("\n".join(keep) + "\n").encode())
