@@ -131,9 +131,12 @@ class TestSubinterpreters(AsyncIntegrationTest):
             if errors:
                 self.fail(f"subinterpreter errors: {errors!r}")
         finally:
-            # Unblock any interpreter still waiting, then destroy them all.
+            # Unblock any interpreter still waiting, join its worker, then
+            # destroy them all.
             for _ in range(n_interpreters):
                 release.put(True)
+            for thread in threads:
+                thread.join(60)
             for interp in interps:
                 # Closing an idle interpreter runs threading._shutdown, which
                 # stops and joins pymongo's monitor threads; skip running ones
