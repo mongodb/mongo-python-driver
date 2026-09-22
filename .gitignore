@@ -46,6 +46,3 @@ xunit-results/
 coverage.xml
 server.log
 .coverage
-
-# uv lockfiles
-uv.lock

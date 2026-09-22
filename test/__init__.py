@@ -247,9 +247,6 @@ class ClientContext:
                 self.cmd_line = self.client.admin.command("getCmdLineOpts")
 
             self.server_status = self.client.admin.command("serverStatus")
-            if self.storage_engine == "mmapv1":
-                # MMAPv1 does not support retryWrites=True.
-                self.default_client_options["retryWrites"] = False
 
             hello = self.hello
             self.sessions_enabled = "logicalSessionTimeoutMinutes" in hello
@@ -361,7 +358,15 @@ class ClientContext:
         if self._fips_enabled is not None:
             return self._fips_enabled
         try:
-            subprocess.run(["fips-mode-setup", "--is-enabled"], check=True)
+            # Python 3.15 warns on fork() in multi-threaded processes, which
+            # gevent's monkey-patched subprocess triggers.
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message=r".*use of fork\(\) may lead to deadlocks.*",
+                    category=DeprecationWarning,
+                )
+                subprocess.run(["fips-mode-setup", "--is-enabled"], check=True)
             self._fips_enabled = True
         except (subprocess.SubprocessError, FileNotFoundError):
             self._fips_enabled = False
@@ -763,14 +768,24 @@ class ClientContext:
             func=func,
         )
 
+    def supports_exhaust_cursors(self):
+        """Whether this deployment supports exhaust cursors."""
+        if self.load_balancer:
+            return True
+        if self.is_mongos:
+            return self.version.at_least(7, 1)
+        return True
+
+    def require_exhaust_cursors(self, func):
+        """Run a test only if the deployment supports exhaust cursors."""
+        return self._require(
+            self.supports_exhaust_cursors,
+            "This server does not support exhaust cursors",
+            func=func,
+        )
+
     def supports_transactions(self):
-        if self.version.at_least(4, 1, 8):
-            return self.is_mongos or self.is_rs
-
-        if self.version.at_least(4, 0):
-            return self.is_rs
-
-        return False
+        return self.is_mongos or self.is_rs
 
     def require_transactions(self, func):
         """Run a test only if the deployment might support transactions.
@@ -809,16 +824,7 @@ class ClientContext:
     @property
     def supports_failCommand_fail_point(self):
         """Does the server support the failCommand fail point?"""
-        if self.is_mongos:
-            return self.version.at_least(4, 1, 5) and self.test_commands_enabled
-        else:
-            return self.version.at_least(4, 0) and self.test_commands_enabled
-
-    @property
-    def requires_hint_with_min_max_queries(self):
-        """Does the server require a hint with min/max queries."""
-        # Changed in SERVER-39567.
-        return self.version.at_least(4, 1, 10)
+        return self.test_commands_enabled
 
     @property
     def max_bson_size(self):
@@ -952,7 +958,17 @@ class PyMongoTestCase(unittest.TestCase):
 
         ctx = multiprocessing.get_context("fork")
         proc = ctx.Process(target=_target)
-        proc.start()
+        # Python 3.12+ warns when os.fork() runs in a multi-threaded process. The
+        # warning is a general thread-count heuristic; benign here because the only
+        # extra threads are pymongo's, whose locks are reset via register_at_fork
+        # in the child. Suppressed only in this helper, not globally (PYTHON-5874).
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*use of fork\(\) may lead to deadlocks.*",
+                category=DeprecationWarning,
+            )
+            proc.start()
         try:
             yield proc  # type: ignore
         finally:

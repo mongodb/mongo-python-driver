@@ -1,13 +1,64 @@
 Changelog
 =========
 
-Changes in Version 4.18.0
--------------------------
+Changes in Version 4.19.0 (2026/XX/XX)
+--------------------------------------
 
+PyMongo 4.19 brings a number of changes including:
+
+- Added support for Python 3.15.
+
+Bug fixes
+.........
+
+- Fixed a bug where the synchronous client could permanently deadlock under
+  gevent when a greenlet was killed while checking a connection back into
+  the pool (`PYTHON-6074`_).
+
+.. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
+
+Changes in Version 4.18.1 (2026/09/10)
+--------------------------------------
+
+Version 4.18.1 is a bug fix release.
+
+- Use an exact match for the file ID in GridFS delete methods
+  (`CVE-2026-88029`_).
+
+.. _CVE-2026-88029: https://www.cve.org/CVERecord?id=CVE-2026-88029
+
+Changes in Version 4.18.0 (2026/09/03)
+--------------------------------------
+
+PyMongo 4.18 brings a number of changes including:
+
+- Added ``srvAllowedHostsSuffix`` as a URI option and keyword argument to
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`. When connecting
+  via ``mongodb+srv://``, this option overrides the default requirement that
+  SRV-returned hosts share the same parent domain as the seed hostname,
+  allowing hosts under a different domain suffix to be accepted. The suffix must
+  not be a public suffix (per the `Public Suffix List
+  <https://publicsuffix.org/list/>`_). See the
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` documentation for
+  security considerations.
+- Dropped support for MongoDB 4.2.
+- Added support for MongoDB 9.0.
+- PyPy support is deprecated and will be removed in a future release.
 - Improved TLS connection performance by reusing TLS sessions across connections
   to the same server, avoiding a full handshake on each new connection.
   Session resumption is supported on all Python versions for synchronous clients
   and on Python 3.11+ for async clients.
+- Improved performance for MongoDB 9.0's Intelligent Workload Management (IWM) by only retrying overload errors when doing so is expected to not worsen server conditions.
+- Added support for exhaust cursors (:attr:`~pymongo.cursor.CursorType.EXHAUST`)
+  against mongos 7.1+. An older mongos still raises
+  :class:`~pymongo.errors.InvalidOperation`, now on the first iteration of the
+  cursor rather than from
+  :meth:`~pymongo.synchronous.collection.Collection.find`, since the requirement
+  is checked against the connection in use. Separately, async cursors combining
+  ``limit`` with :attr:`~pymongo.cursor.CursorType.EXHAUST` now raise at ``find``
+  rather than on first iteration, matching the synchronous API.
 - Redacted potentially sensitive authentication mechanism properties, including
   AWS session tokens, from the representations of
   :class:`~pymongo.synchronous.mongo_client.MongoClient` and
@@ -17,11 +68,60 @@ Changes in Version 4.18.0
   attempts, so consumers can correlate a retried operation's events. As a
   result, ``operation_id`` is no longer equal to the per-attempt ``request_id``
   for these operations.
+- Added validation of OP_COMPRESSED decompressed message size against
+  ``max_message_size`` to prevent memory exhaustion from maliciously crafted
+  compressed server responses.
+- Improved the performance and memory usage of decoding large documents to
+  :class:`~bson.raw_bson.RawBSONDocument`. Documents and subdocuments that are 4KB or greater
+  and decoded from an immutable buffer are now exposed as read-only :class:`memoryview`
+  slices instead of :class:`bytes` copies. Documents decoded from mutable buffers such as a
+  :class:`bytearray` are always :class:`bytes` copies.
+- :func:`bson.get_data_and_view` now returns a view of a private :class:`bytes` copy
+  for buffer-protocol inputs other than :class:`bytes` or :class:`bytearray`.
+- Improved the performance of lazily decoding a
+  :class:`~bson.raw_bson.RawBSONDocument` when the C extension is available.
 - Fixed a potential out-of-bounds read in the C extension when decoding an
   array of BSON documents. An embedded document whose declared length exceeds
   the bytes remaining in the array now raises
   :class:`~bson.errors.InvalidBSON` instead of reading past the end of the
   buffer.
+- Fixed :func:`bson.json_util.loads` to reject ``$timestamp`` values containing
+  fields other than ``t`` and ``i``.
+- Fixed a bug on Windows, and on macOS when using PyOpenSSL, where
+  ``SSL_CERT_FILE``/``SSL_CERT_DIR`` were merged with, rather than replacing,
+  the OS/certifi certificate store.
+- Added general availability support for Queryable Encryption prefix, suffix,
+  and substring queries against MongoDB 9.0+. These queries require
+  libmongocrypt 1.20.0 or later:
+
+  - Added :attr:`~pymongo.encryption.Algorithm.STRING` and
+    :class:`~pymongo.encryption_options.StringOpts`, replacing
+    ``Algorithm.TEXTPREVIEW`` and ``TextOpts``, which are now deprecated.
+  - Added :attr:`~pymongo.encryption.QueryType.PREFIX`,
+    :attr:`~pymongo.encryption.QueryType.SUFFIX`, and
+    :attr:`~pymongo.encryption.QueryType.SUBSTRING`. The corresponding
+    ``PREFIXPREVIEW``, ``SUFFIXPREVIEW``, and ``SUBSTRINGPREVIEW`` query types
+    remain for experimental use with MongoDB versions before 9.0.
+  - Added the ``string_opts`` parameter to
+    :meth:`~pymongo.encryption.ClientEncryption.encrypt` and
+    :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.encrypt`,
+    deprecating ``text_opts``. pymongocrypt added ``text_opts`` in 1.16 and
+    renamed it to ``string_opts`` in 1.19, and accepts only one of the two
+    names per release, so passing ``text_opts`` with pymongocrypt 1.19 or
+    later, ``string_opts`` with pymongocrypt 1.16 through 1.18, or both names
+    at once, raises :exc:`~pymongo.errors.ConfigurationError`.
+- Aggregation helpers now raise :exc:`~pymongo.errors.ConfigurationError` when
+  passed an ``aggregate`` or ``pipeline`` keyword argument. Previously these
+  keys silently replaced the target namespace and pipeline of the generated
+  ``aggregate`` command. This affects
+  :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate` and
+  :meth:`~pymongo.synchronous.collection.Collection.aggregate`,
+  :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate_raw_batches`
+  and :meth:`~pymongo.synchronous.collection.Collection.aggregate_raw_batches`,
+  :meth:`~pymongo.asynchronous.database.AsyncDatabase.aggregate` and
+  :meth:`~pymongo.synchronous.database.Database.aggregate`, and
+  :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_search_indexes`
+  and :meth:`~pymongo.synchronous.collection.Collection.list_search_indexes`.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------

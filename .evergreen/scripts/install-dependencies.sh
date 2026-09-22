@@ -3,6 +3,7 @@
 set -eu
 
 HERE=$(dirname ${BASH_SOURCE:-$0})
+HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
 
 # Source the env files to pick up common variables.

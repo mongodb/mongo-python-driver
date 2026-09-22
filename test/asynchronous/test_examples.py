@@ -862,7 +862,6 @@ class TestSampleShellCommands(AsyncIntegrationTest):
         )
         # End Aggregation Example 4
 
-    @async_client_context.require_version_min(4, 4)
     async def test_aggregate_projection_example(self):
         db = self.db
 

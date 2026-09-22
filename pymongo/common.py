@@ -64,10 +64,13 @@ MAX_WIRE_VERSION = 0
 MAX_WRITE_BATCH_SIZE = 100000
 
 # What this version of PyMongo supports.
-MIN_SUPPORTED_SERVER_VERSION = "4.2"
-MIN_SUPPORTED_WIRE_VERSION = 8
+MIN_SUPPORTED_SERVER_VERSION = "4.4"
+MIN_SUPPORTED_WIRE_VERSION = 9
 # MongoDB 9.0
 MAX_SUPPORTED_WIRE_VERSION = 29
+
+# MongoDB 7.1, the first release whose mongos continues an exhaust getMore stream.
+MONGOS_EXHAUST_WIRE_VERSION = 22
 
 # Frequency to call hello on servers, in seconds.
 HEARTBEAT_FREQUENCY = 10
@@ -745,6 +748,7 @@ URI_OPTIONS_VALIDATOR_MAP: dict[str, Callable[[Any, Any], Any]] = {
     "zlibcompressionlevel": validate_zlib_compression_level,
     "srvservicename": validate_string,
     "srvmaxhosts": validate_non_negative_integer,
+    "srvallowedhostssuffix": validate_string,
     "timeoutms": validate_timeoutms,
     "servermonitoringmode": validate_server_monitoring_mode,
     "maxadaptiveretries": validate_non_negative_integer,
@@ -973,6 +977,15 @@ class BaseObject:
         if session and session.in_transaction:
             return DEFAULT_WRITE_CONCERN
         return self.write_concern
+
+    def _write_concern_for_cmd(
+        self, cmd: Mapping[str, Any], session: Optional[_AgnosticClientSession]
+    ) -> WriteConcern:
+        raw_wc = cmd.get("writeConcern")
+        if raw_wc is not None:
+            return WriteConcern(**raw_wc)
+        else:
+            return self._write_concern_for(session)
 
     @property
     def read_preference(self) -> _ServerMode:

@@ -78,7 +78,8 @@ class TestCSOT(AsyncIntegrationTest):
     @async_client_context.require_change_streams
     @flaky(reason="PYTHON-3522")
     async def test_change_stream_can_resume_after_timeouts(self):
-        coll = self.db.test
+        self.addAsyncCleanup(self.db.coll.drop)
+        coll = self.db.coll
         await coll.insert_one({})
         async with await coll.watch() as stream:
             with pymongo.timeout(0.1):
@@ -90,9 +91,6 @@ class TestCSOT(AsyncIntegrationTest):
                     await stream.try_next()
                 self.assertTrue(ctx.exception.timeout)
                 self.assertTrue(stream.alive)
-            # Resume before the insert on 3.6 because 4.0 is required to avoid skipping documents
-            if async_client_context.version < (4, 0):
-                await stream.try_next()
             await coll.insert_one({})
             with pymongo.timeout(10):
                 self.assertTrue(await stream.next())

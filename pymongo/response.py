@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 
 class Response:
-    __slots__ = ("_address", "_data", "_docs", "_duration", "_from_command", "_request_id")
+    __slots__ = ("_address", "_data", "_docs", "_duration", "_request_id")
 
     def __init__(
         self,
@@ -35,7 +35,6 @@ class Response:
         address: _Address,
         request_id: int,
         duration: Optional[timedelta],
-        from_command: bool,
         docs: Sequence[Mapping[str, Any]],
     ):
         """Represent a response from the server.
@@ -44,13 +43,11 @@ class Response:
         :param address: (host, port) of the source server.
         :param request_id: The request id of this operation.
         :param duration: The duration of the operation.
-        :param from_command: if the response is the result of a db command.
         """
         self._data = data
         self._address = address
         self._request_id = request_id
         self._duration = duration
-        self._from_command = from_command
         self._docs = docs
 
     @property
@@ -74,11 +71,6 @@ class Response:
         return self._duration
 
     @property
-    def from_command(self) -> bool:
-        """If the response is a result from a db command."""
-        return self._from_command
-
-    @property
     def docs(self) -> Sequence[Mapping[str, Any]]:
         """The decoded document(s)."""
         return self._docs
@@ -94,7 +86,6 @@ class PinnedResponse(Response):
         conn: _AgnosticConnection,
         request_id: int,
         duration: Optional[timedelta],
-        from_command: bool,
         docs: list[_DocumentOut],
         more_to_come: bool,
     ):
@@ -105,12 +96,11 @@ class PinnedResponse(Response):
         :param conn: The AsyncConnection/Connection used for the initial query.
         :param request_id: The request id of this operation.
         :param duration: The duration of the operation.
-        :param from_command: If the response is the result of a db command.
         :param docs: List of documents.
         :param more_to_come: Bool indicating whether cursor is ready to be
             exhausted.
         """
-        super().__init__(data, address, request_id, duration, from_command, docs)
+        super().__init__(data, address, request_id, duration, docs)
         self._conn = conn
         self._more_to_come = more_to_come
 

@@ -2,3 +2,10 @@
 # you can also set after_n_builds on comments independently
 comment:
   after_n_builds: 100
+
+coverage:
+  status:
+    patch:
+      default:
+        target: 80%
+        threshold: 0%

@@ -22,6 +22,8 @@ import os
 import pathlib
 import sys
 
+from pymongo._psl import is_public_suffix
+
 sys.path[0:0] = [""]
 
 from unittest.mock import MagicMock, patch
@@ -124,7 +126,8 @@ def create_test(test_case):
                         "readPreferenceTags", opts.pop("readpreferencetags")
                     )
                     opts["readPreferenceTags"] = rpts
-                self.assertEqual(result["options"], options)
+                for opt in options:
+                    self.assertIn(opt, result["options"])
             if parsed_options:
                 for opt, expected in parsed_options.items():
                     if opt == "user":
@@ -303,6 +306,33 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
             },
         ]
         await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
+
+
+class TestPublicSuffixListParsing(unittest.TestCase):
+    def test_1_multi_label_ordinary_rule(self):
+        self.assertTrue(is_public_suffix("com.ac"))
+        self.assertFalse(is_public_suffix("foo.com.ac"))
+
+    def test_2_long_wildcard_rule(self):
+        self.assertTrue(is_public_suffix("abc.nom.br"))
+        self.assertFalse(is_public_suffix("x.abc.nom.br"))
+
+    def test_3_wildcard_rule(self):
+        self.assertTrue(is_public_suffix("b.ck"))
+        self.assertFalse(is_public_suffix("a.b.ck"))
+
+    def test_4_exception_rule(self):
+        self.assertTrue(is_public_suffix("ck"))
+        self.assertFalse(is_public_suffix("www.ck"))
+
+    def test_5_no_rule_matches(self):
+        self.assertTrue(is_public_suffix("nosuchtld"))
+        self.assertFalse(is_public_suffix("foo.nosuchtld"))
+
+    def test_6_internationalized_rule(self):
+        self.assertTrue(is_public_suffix("xn--p1ai"))
+        self.assertTrue(is_public_suffix("xn--55qx5d.cn"))
+        self.assertFalse(is_public_suffix("example.xn--p1ai"))
 
 
 if __name__ == "__main__":

@@ -32,10 +32,8 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo.synchronous.client_session import (
-    ClientSession,
-    _validate_session_write_concern,
-)
+from pymongo._telemetry import _generate_op_id_or_none
+from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.command_runner import (
@@ -51,6 +49,7 @@ from pymongo._client_bulk_shared import (
     _merge_command,
     _throw_client_bulk_write_exception,
 )
+from pymongo.client_session_shared import _validate_session_write_concern
 from pymongo.common import (
     validate_is_document_type,
     validate_ok_for_replace,
@@ -69,7 +68,6 @@ from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
 from pymongo.message import (
     _ClientBulkWriteContext,
     _convert_client_bulk_exception,
-    _randint,
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.results import (
@@ -368,7 +366,7 @@ class _ClientBulk:
         write_concern: WriteConcern,
         session: Optional[ClientSession],
         conn: Connection,
-        op_id: int,
+        op_id: Optional[int],
         retryable: bool,
         full_result: MutableMapping[str, Any],
         final_write_concern: Optional[WriteConcern] = None,
@@ -522,7 +520,7 @@ class _ClientBulk:
             "updateResults": {},
             "deleteResults": {},
         }
-        op_id = _randint()
+        op_id = _generate_op_id_or_none(self.client._event_listeners)
 
         def retryable_bulk(
             session: Optional[ClientSession],
@@ -563,7 +561,7 @@ class _ClientBulk:
         db_name = "admin"
         cmd_name = "bulkWrite"
         listeners = self.client._event_listeners
-        op_id = _randint()
+        op_id = _generate_op_id_or_none(listeners)
 
         bwc = self.bulk_ctx_class(
             db_name,

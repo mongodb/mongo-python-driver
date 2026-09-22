@@ -118,7 +118,7 @@ class AsyncTestComment(AsyncIntegrationTest):
     async def test_collection_helpers(self):
         listener = OvertCommandListener()
         db = (await self.async_rs_or_single_client(event_listeners=[listener]))[self.db.name]
-        coll = db.get_collection("test")
+        coll = db.get_collection("coll")
 
         helpers = [
             (coll.list_indexes, []),

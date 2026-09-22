@@ -129,6 +129,15 @@ for provider_name, provider_data in [
         placeholder = f"/autoEncryptOpts/kmsProviders/{provider_name}/{key}"
         PLACEHOLDER_MAP[placeholder] = value
 
+# accessToken kmsProviders (schema 1.28, DRIVERS-3392).
+for provider_name, token_env in [
+    ("azure", "CSFLE_AZURE_ACCESS_TOKEN"),
+    ("gcp", "CSFLE_GCP_ACCESS_TOKEN"),
+]:
+    token = os.environ.get(token_env, "")
+    for opts_root in ("clientEncryptionOpts", "autoEncryptOpts"):
+        PLACEHOLDER_MAP[f"/{opts_root}/kmsProviders/{provider_name}/accessToken"] = token
+
 OIDC_ENV = os.environ.get("OIDC_ENV", "test")
 if OIDC_ENV == "test":
     PLACEHOLDER_MAP["/uriOptions/authMechanismProperties"] = {"ENVIRONMENT": "test"}

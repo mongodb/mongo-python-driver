@@ -862,7 +862,6 @@ class TestSampleShellCommands(IntegrationTest):
         )
         # End Aggregation Example 4
 
-    @client_context.require_version_min(4, 4)
     def test_aggregate_projection_example(self):
         db = self.db
 

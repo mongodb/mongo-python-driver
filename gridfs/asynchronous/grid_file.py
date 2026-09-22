@@ -284,8 +284,8 @@ class AsyncGridFS:
            ``delete`` no longer ensures indexes.
         """
         _disallow_transactions(session)
-        await self._files.delete_one({"_id": file_id}, session=session)
-        await self._chunks.delete_many({"files_id": file_id}, session=session)
+        await self._files.delete_one({"_id": {"$eq": file_id}}, session=session)
+        await self._chunks.delete_many({"files_id": {"$eq": file_id}}, session=session)
 
     async def list(self, session: Optional[AsyncClientSession] = None) -> list[str]:
         """List the names of all files stored in this instance of
@@ -341,7 +341,7 @@ class AsyncGridFS:
            Added ``session`` parameter.
         """
         if filter is not None and not isinstance(filter, abc.Mapping):
-            filter = {"_id": filter}
+            filter = {"_id": {"$eq": filter}}
 
         _disallow_transactions(session)
         async for f in self.find(filter, *args, session=session, **kwargs):
@@ -455,6 +455,8 @@ class AsyncGridFS:
         if kwargs:
             f = await self._files.find_one(kwargs, ["_id"], session=session)
         else:
+            if document_or_id is not None and not isinstance(document_or_id, abc.Mapping):
+                document_or_id = {"_id": {"$eq": document_or_id}}
             f = await self._files.find_one(document_or_id, ["_id"], session=session)
 
         return f is not None
@@ -831,8 +833,8 @@ class AsyncGridFSBucket:
            Added ``session`` parameter.
         """
         _disallow_transactions(session)
-        res = await self._files.delete_one({"_id": file_id}, session=session)
-        await self._chunks.delete_many({"files_id": file_id}, session=session)
+        res = await self._files.delete_one({"_id": {"$eq": file_id}}, session=session)
+        await self._chunks.delete_many({"files_id": {"$eq": file_id}}, session=session)
         if not res.deleted_count:
             raise NoFile(f"no file could be deleted because none matched {file_id}")
 
@@ -1044,7 +1046,7 @@ class AsyncGridFSBucket:
         """
         _disallow_transactions(session)
         result = await self._files.update_one(
-            {"_id": file_id}, {"$set": {"filename": new_filename}}, session=session
+            {"_id": {"$eq": file_id}}, {"$set": {"filename": new_filename}}, session=session
         )
         if not result.matched_count:
             raise NoFile(
@@ -1198,8 +1200,12 @@ class AsyncGridIn:
 
     async def abort(self) -> None:
         """Remove all chunks/files that may have been uploaded and close."""
-        await self._coll.chunks.delete_many({"files_id": self._file["_id"]}, session=self._session)
-        await self._coll.files.delete_one({"_id": self._file["_id"]}, session=self._session)
+        await self._coll.chunks.delete_many(
+            {"files_id": {"$eq": self._file["_id"]}}, session=self._session
+        )
+        await self._coll.files.delete_one(
+            {"_id": {"$eq": self._file["_id"]}}, session=self._session
+        )
         object.__setattr__(self, "_closed", True)
 
     @property
@@ -1248,7 +1254,9 @@ class AsyncGridIn:
             self._file[name] = value
             if self._closed:
                 if _IS_SYNC:
-                    self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
+                    self._coll.files.update_one(
+                        {"_id": {"$eq": self._file["_id"]}}, {"$set": {name: value}}
+                    )
                 else:
                     raise AttributeError(
                         "AsyncGridIn does not support __setattr__ after being closed(). Set the attribute before closing the file or use AsyncGridIn.set() instead"
@@ -1257,7 +1265,9 @@ class AsyncGridIn:
     async def set(self, name: str, value: Any) -> None:
         self._file[name] = value
         if self._closed:
-            await self._coll.files.update_one({"_id": self._file["_id"]}, {"$set": {name: value}})
+            await self._coll.files.update_one(
+                {"_id": {"$eq": self._file["_id"]}}, {"$set": {name: value}}
+            )
 
     async def _flush_data(self, data: Any, force: bool = False) -> None:
         """Flush `data` to a chunk."""
@@ -1582,7 +1592,9 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
     async def open(self) -> None:
         if not self._file:
             _disallow_transactions(self._session)
-            self._file = await self._files.find_one({"_id": self._file_id}, session=self._session)
+            self._file = await self._files.find_one(
+                {"_id": {"$eq": self._file_id}}, session=self._session
+            )
             if not self._file:
                 raise NoFile(
                     f"no file in gridfs collection {self._files!r} with _id {self._file_id!r}"
@@ -1853,7 +1865,7 @@ class _AsyncGridOutChunkIterator:
         return self
 
     def _create_cursor(self) -> None:
-        filter = {"files_id": self._id}
+        filter = {"files_id": {"$eq": self._id}}
         if self._next_chunk > 0:
             filter["n"] = {"$gte": self._next_chunk}
         _disallow_transactions(self._session)

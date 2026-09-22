@@ -22,8 +22,10 @@ from typing import Any
 
 sys.path[0:0] = [""]
 
+from bson import encode
 from bson.int64 import Int64
 from bson.objectid import ObjectId
+from bson.raw_bson import RawBSONDocument
 from bson.son import SON
 from pymongo import CursorType, DeleteOne, InsertOne, UpdateOne, monitoring
 from pymongo.errors import AutoReconnect, NotPrimaryError, OperationFailure
@@ -59,6 +61,7 @@ class TestCommandMonitoring(IntegrationTest):
         super().setUp()
         self.listener.reset()
         self.client = self.rs_or_single_client(event_listeners=[self.listener], retryWrites=False)
+        self.addCleanup(self.client.pymongo_test.coll.drop)
 
     def test_started_simple(self):
         self.client.pymongo_test.command("ping")
@@ -103,14 +106,14 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertIsInstance(failed.duration_micros, int)
 
     def test_find_one(self):
-        self.client.pymongo_test.test.find_one()
+        self.client.pymongo_test.coll.find_one()
         started = self.listener.started_events[0]
         succeeded = self.listener.succeeded_events[0]
         self.assertEqual(0, len(self.listener.failed_events))
         self.assertIsInstance(succeeded, monitoring.CommandSucceededEvent)
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqualCommand(
-            SON([("find", "test"), ("filter", {}), ("limit", 1), ("singleBatch", True)]),
+            SON([("find", "coll"), ("filter", {}), ("limit", 1), ("singleBatch", True)]),
             started.command,
         )
         self.assertEqual("find", started.command_name)
@@ -119,10 +122,10 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertIsInstance(started.request_id, int)
 
     def test_find_and_get_more(self):
-        self.client.pymongo_test.test.drop()
-        self.client.pymongo_test.test.insert_many([{} for _ in range(10)])
+        self.client.pymongo_test.coll.drop()
+        self.client.pymongo_test.coll.insert_many([{} for _ in range(10)])
         self.listener.reset()
-        cursor = self.client.pymongo_test.test.find(projection={"_id": False}, batch_size=4)
+        cursor = self.client.pymongo_test.coll.find(projection={"_id": False}, batch_size=4)
         for _ in range(4):
             next(cursor)
         cursor_id = cursor.cursor_id
@@ -132,7 +135,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqualCommand(
             SON(
-                [("find", "test"), ("filter", {}), ("projection", {"_id": False}), ("batchSize", 4)]
+                [("find", "coll"), ("filter", {}), ("projection", {"_id": False}), ("batchSize", 4)]
             ),
             started.command,
         )
@@ -147,7 +150,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(cursor.address, succeeded.connection_id)
         csr = succeeded.reply["cursor"]
         self.assertEqual(csr["id"], cursor_id)
-        self.assertEqual(csr["ns"], "pymongo_test.test")
+        self.assertEqual(csr["ns"], "pymongo_test.coll")
         self.assertEqual(csr["firstBatch"], [{} for _ in range(4)])
 
         self.listener.reset()
@@ -160,7 +163,7 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(0, len(self.listener.failed_events))
             self.assertIsInstance(started, monitoring.CommandStartedEvent)
             self.assertEqualCommand(
-                SON([("getMore", cursor_id), ("collection", "test"), ("batchSize", 4)]),
+                SON([("getMore", cursor_id), ("collection", "coll"), ("batchSize", 4)]),
                 started.command,
             )
             self.assertEqual("getMore", started.command_name)
@@ -174,18 +177,18 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(cursor.address, succeeded.connection_id)
             csr = succeeded.reply["cursor"]
             self.assertEqual(csr["id"], cursor_id)
-            self.assertEqual(csr["ns"], "pymongo_test.test")
+            self.assertEqual(csr["ns"], "pymongo_test.coll")
             self.assertEqual(csr["nextBatch"], [{} for _ in range(4)])
         finally:
             # Exhaust the cursor to avoid kill cursors.
             tuple(cursor.to_list())
 
     def test_find_with_explain(self):
-        cmd = SON([("explain", SON([("find", "test"), ("filter", {})]))])
-        self.client.pymongo_test.test.drop()
-        self.client.pymongo_test.test.insert_one({})
+        cmd = SON([("explain", SON([("find", "coll"), ("filter", {})]))])
+        self.client.pymongo_test.coll.drop()
+        self.client.pymongo_test.coll.insert_one({})
         self.listener.reset()
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         # Test that we publish the unwrapped command.
         if self.client.is_mongos:
             coll = coll.with_options(read_preference=ReadPreference.PRIMARY_PREFERRED)
@@ -207,7 +210,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(res, succeeded.reply)
 
     def _test_find_options(self, query, expected_cmd):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         coll.drop()
         coll.create_index("x")
         coll.insert_many([{"x": i} for i in range(5)])
@@ -258,7 +261,7 @@ class TestCommandMonitoring(IntegrationTest):
         }
 
         cmd = {
-            "find": "test",
+            "find": "coll",
             "filter": {},
             "hint": SON([("x", 1)]),
             "comment": "this is a test",
@@ -275,26 +278,13 @@ class TestCommandMonitoring(IntegrationTest):
             "allowPartialResults": True,
         }
 
-        if client_context.version < (4, 1, 0, -1):
-            query["max_scan"] = 10
-            cmd["maxScan"] = 10
-
-        self._test_find_options(query, cmd)
-
-    @client_context.require_version_max(3, 7, 2)
-    def test_find_snapshot(self):
-        # Test "snapshot" parameter separately, can't combine with "sort".
-        query = {"filter": {}, "snapshot": True}
-
-        cmd = {"find": "test", "filter": {}, "snapshot": True}
-
         self._test_find_options(query, cmd)
 
     def test_command_and_get_more(self):
-        self.client.pymongo_test.test.drop()
-        self.client.pymongo_test.test.insert_many([{"x": 1} for _ in range(10)])
+        self.client.pymongo_test.coll.drop()
+        self.client.pymongo_test.coll.insert_many([{"x": 1} for _ in range(10)])
         self.listener.reset()
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         # Test that we publish the unwrapped command.
         if self.client.is_mongos:
             coll = coll.with_options(read_preference=ReadPreference.PRIMARY_PREFERRED)
@@ -309,7 +299,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqualCommand(
             SON(
                 [
-                    ("aggregate", "test"),
+                    ("aggregate", "coll"),
                     ("pipeline", [{"$project": {"_id": False, "x": 1}}]),
                     ("cursor", {"batchSize": 4}),
                 ]
@@ -327,7 +317,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(cursor.address, succeeded.connection_id)
         expected_cursor = {
             "id": cursor_id,
-            "ns": "pymongo_test.test",
+            "ns": "pymongo_test.coll",
             "firstBatch": [{"x": 1} for _ in range(4)],
         }
         self.assertEqualCommand(expected_cursor, succeeded.reply.get("cursor"))
@@ -340,7 +330,7 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertEqual(0, len(self.listener.failed_events))
             self.assertIsInstance(started, monitoring.CommandStartedEvent)
             self.assertEqualCommand(
-                SON([("getMore", cursor_id), ("collection", "test"), ("batchSize", 4)]),
+                SON([("getMore", cursor_id), ("collection", "coll"), ("batchSize", 4)]),
                 started.command,
             )
             self.assertEqual("getMore", started.command_name)
@@ -355,7 +345,7 @@ class TestCommandMonitoring(IntegrationTest):
             expected_result = {
                 "cursor": {
                     "id": cursor_id,
-                    "ns": "pymongo_test.test",
+                    "ns": "pymongo_test.coll",
                     "nextBatch": [{"x": 1} for _ in range(4)],
                 },
                 "ok": 1.0,
@@ -367,7 +357,7 @@ class TestCommandMonitoring(IntegrationTest):
 
     def test_get_more_failure(self):
         address = self.client.address
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         cursor_id = Int64(12345)
         cursor_doc = {"id": cursor_id, "firstBatch": [], "ns": coll.full_name}
         cursor = CommandCursor(coll, cursor_doc, address)
@@ -380,7 +370,7 @@ class TestCommandMonitoring(IntegrationTest):
         failed = self.listener.failed_events[0]
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqualCommand(
-            SON([("getMore", cursor_id), ("collection", "test")]), started.command
+            SON([("getMore", cursor_id), ("collection", "coll")]), started.command
         )
         self.assertEqual("getMore", started.command_name)
         self.assertEqual(self.client.address, started.connection_id)
@@ -403,7 +393,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.listener.reset()
         error = None
         try:
-            client.pymongo_test.test.find_one_and_delete({})
+            client.pymongo_test.coll.find_one_and_delete({})
         except NotPrimaryError as exc:
             error = exc.errors
         started = self.listener.started_events[0]
@@ -418,12 +408,12 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertIsInstance(failed.duration_micros, int)
         self.assertEqual(error, failed.failure)
 
-    @client_context.require_no_mongos
+    @client_context.require_exhaust_cursors
     def test_exhaust(self):
-        self.client.pymongo_test.test.drop()
-        self.client.pymongo_test.test.insert_many([{} for _ in range(11)])
+        self.client.pymongo_test.coll.drop()
+        self.client.pymongo_test.coll.insert_many([{} for _ in range(11)])
         self.listener.reset()
-        cursor = self.client.pymongo_test.test.find(
+        cursor = self.client.pymongo_test.coll.find(
             projection={"_id": False}, batch_size=5, cursor_type=CursorType.EXHAUST
         )
         next(cursor)
@@ -434,7 +424,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
         self.assertEqualCommand(
             SON(
-                [("find", "test"), ("filter", {}), ("projection", {"_id": False}), ("batchSize", 5)]
+                [("find", "coll"), ("filter", {}), ("projection", {"_id": False}), ("batchSize", 5)]
             ),
             started.command,
         )
@@ -450,7 +440,7 @@ class TestCommandMonitoring(IntegrationTest):
         expected_result = {
             "cursor": {
                 "id": cursor_id,
-                "ns": "pymongo_test.test",
+                "ns": "pymongo_test.coll",
                 "firstBatch": [{} for _ in range(5)],
             },
             "ok": 1,
@@ -463,7 +453,7 @@ class TestCommandMonitoring(IntegrationTest):
         for event in self.listener.started_events:
             self.assertIsInstance(event, monitoring.CommandStartedEvent)
             self.assertEqualCommand(
-                SON([("getMore", cursor_id), ("collection", "test"), ("batchSize", 5)]),
+                SON([("getMore", cursor_id), ("collection", "coll"), ("batchSize", 5)]),
                 event.command,
             )
             self.assertEqual("getMore", event.command_name)
@@ -481,9 +471,9 @@ class TestCommandMonitoring(IntegrationTest):
 
     def test_kill_cursors(self):
         with client_knobs(kill_cursor_frequency=0.01):
-            self.client.pymongo_test.test.drop()
-            self.client.pymongo_test.test.insert_many([{} for _ in range(10)])
-            cursor = self.client.pymongo_test.test.find().batch_size(5)
+            self.client.pymongo_test.coll.drop()
+            self.client.pymongo_test.coll.insert_many([{} for _ in range(10)])
+            cursor = self.client.pymongo_test.coll.find().batch_size(5)
             next(cursor)
             cursor_id = cursor.cursor_id
             self.listener.reset()
@@ -514,7 +504,7 @@ class TestCommandMonitoring(IntegrationTest):
             )
 
     def test_non_bulk_writes(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         coll.drop()
         self.listener.reset()
 
@@ -829,7 +819,7 @@ class TestCommandMonitoring(IntegrationTest):
 
     def test_insert_many(self):
         # This always uses the bulk API.
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         coll.drop()
         self.listener.reset()
 
@@ -868,7 +858,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertEqual(6, count)
 
     def test_insert_many_unacknowledged(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         coll.drop()
         unack_coll = coll.with_options(write_concern=WriteConcern(w=0))
         self.listener.reset()
@@ -911,7 +901,7 @@ class TestCommandMonitoring(IntegrationTest):
         wait_until(check, "insert documents with w=0")
 
     def test_bulk_write(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         coll.drop()
         self.listener.reset()
 
@@ -974,7 +964,7 @@ class TestCommandMonitoring(IntegrationTest):
 
     @client_context.require_failCommand_fail_point
     def test_bulk_write_command_network_error(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         self.listener.reset()
 
         insert_network_error = {
@@ -998,7 +988,7 @@ class TestCommandMonitoring(IntegrationTest):
 
     @client_context.require_failCommand_fail_point
     def test_bulk_write_command_error(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         self.listener.reset()
 
         insert_command_error = {
@@ -1022,7 +1012,7 @@ class TestCommandMonitoring(IntegrationTest):
         self.assertTrue(event.failure["errmsg"])
 
     def test_write_errors(self):
-        coll = self.client.pymongo_test.test
+        coll = self.client.pymongo_test.coll
         coll.drop()
         self.listener.reset()
 
@@ -1065,15 +1055,17 @@ class TestCommandMonitoring(IntegrationTest):
             self.assertLessEqual(fields, set(error))
 
     def test_first_batch_helper(self):
+        # Ensure the collection exists so listIndexes works on sharded clusters.
+        self.client.pymongo_test.coll.insert_one({})
         # Regardless of server version and use of helpers._first_batch
         # this test should still pass.
         self.listener.reset()
-        tuple((self.client.pymongo_test.test.list_indexes()).to_list())
+        tuple((self.client.pymongo_test.coll.list_indexes()).to_list())
         started = self.listener.started_events[0]
         succeeded = self.listener.succeeded_events[0]
         self.assertEqual(0, len(self.listener.failed_events))
         self.assertIsInstance(started, monitoring.CommandStartedEvent)
-        expected = SON([("listIndexes", "test"), ("cursor", {})])
+        expected = SON([("listIndexes", "coll"), ("cursor", {})])
         self.assertEqualCommand(expected, started.command)
         self.assertEqual("pymongo_test", started.database_name)
         self.assertEqual("listIndexes", started.command_name)
@@ -1192,6 +1184,23 @@ class TestEventClasses(unittest.TestCase):
             "command: 'ping', operation_id: 2, duration_micros: 100000, "
             "failure: {'ok': 0}, service_id: None, server_connection_id: None>",
         )
+
+    def test_succeeded_event_does_not_inflate_raw_reply(self):
+        # The speculativeAuthenticate redaction check must not decode a lazy
+        # reply document for non-hello commands.
+        delta = datetime.timedelta(milliseconds=100)
+        reply = RawBSONDocument(encode({"ok": 1, "cursor": {"id": Int64(0), "firstBatch": []}}))
+        event = monitoring.CommandSucceededEvent(
+            delta, reply, "find", 1, ("localhost", 27017), 2, database_name="test"
+        )
+        self.assertIsNone(reply._RawBSONDocument__inflated_doc)
+        self.assertIs(event.reply, reply)
+        # Speculative authentication replies are still redacted.
+        speculative = RawBSONDocument(encode({"ok": 1, "speculativeAuthenticate": {}}))
+        event = monitoring.CommandSucceededEvent(
+            delta, speculative, "hello", 1, ("localhost", 27017), 2, database_name="admin"
+        )
+        self.assertEqual(event.reply, {})
 
     def test_server_heartbeat_event_repr(self):
         connection_id = ("localhost", 27017)

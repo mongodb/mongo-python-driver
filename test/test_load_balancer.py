@@ -31,6 +31,7 @@ from test.utils import get_pool
 
 sys.path[0:0] = [""]
 
+from pymongo.cursor_shared import CursorType
 from pymongo.synchronous.helpers import next
 from test import IntegrationTest, client_context, unittest
 from test.unified_format import generate_test_classes, get_test_path
@@ -50,15 +51,26 @@ globals().update(generate_test_classes(get_test_path("load_balancer"), module=__
 class TestLB(IntegrationTest):
     RUN_ON_LOAD_BALANCER = True
 
+    def test_exhaust_cursor(self):
+        coll = self.db.coll
+        coll.drop()
+        coll.insert_many([{} for _ in range(150)])
+        pool = get_pool(self.client)
+        n_conns = len(pool.conns)
+        docs = coll.find(cursor_type=CursorType.EXHAUST, batch_size=10).to_list()
+        self.assertEqual(len(docs), 150)
+        # The pinned connection is returned once the stream is exhausted.
+        wait_until(lambda: len(pool.conns) == n_conns, "return the exhaust connection")
+
     def test_connections_are_only_returned_once(self):
         pool = get_pool(self.client)
         n_conns = len(pool.conns)
-        self.db.test.find_one({})
+        self.db.coll.find_one({})
         # On PyPy it can take a few rounds to collect the cursor.
         for _ in range(3):
             gc.collect()
         self.assertEqual(len(pool.conns), n_conns)
-        (self.db.test.aggregate([{"$limit": 1}])).to_list()
+        (self.db.coll.aggregate([{"$limit": 1}])).to_list()
         # On PyPy it can take a few rounds to collect the cursor.
         for _ in range(3):
             gc.collect()
@@ -68,7 +80,7 @@ class TestLB(IntegrationTest):
     def test_unpin_committed_transaction(self):
         client = self.rs_client()
         pool = get_pool(client)
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         with client.start_session() as session:
             with session.start_transaction():
                 self.assertEqual(pool.active_sockets, 0)
@@ -98,7 +110,7 @@ class TestLB(IntegrationTest):
     def _test_no_gc_deadlock(self, create_resource):
         client = self.rs_client()
         pool = get_pool(client)
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         coll.insert_many([{} for _ in range(10)])
         self.assertEqual(pool.active_sockets, 0)
         # Cause the initial find attempt to fail to induce a reference cycle.
@@ -160,7 +172,7 @@ class TestLB(IntegrationTest):
 
         wait_until(lambda: pool.active_sockets == 0, "return socket")
         # Run another operation to ensure the socket still works.
-        client[self.db.name].test.delete_many({})
+        client[self.db.name].coll.delete_many({})
 
 
 class PoolLocker(ExceptionCatchingTask):

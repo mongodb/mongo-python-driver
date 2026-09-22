@@ -39,7 +39,6 @@ pytestmark = pytest.mark.kms
 
 class TestonDemandGCPCredentials(AsyncIntegrationTest):
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    @async_client_context.require_version_min(4, 2, -1)
     async def asyncSetUp(self):
         await super().asyncSetUp()
         self.master_key = {
@@ -77,7 +76,6 @@ class TestonDemandGCPCredentials(AsyncIntegrationTest):
 
 class TestonDemandAzureCredentials(AsyncIntegrationTest):
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    @async_client_context.require_version_min(4, 2, -1)
     async def asyncSetUp(self):
         await super().asyncSetUp()
         self.master_key = {

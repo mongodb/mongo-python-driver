@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import datetime
+import gc
 import sys
 import tempfile
 from collections import OrderedDict
@@ -427,9 +428,15 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
             type_registry=TypeRegistry([self.B2A()], fallback_encoder=self.fallback_encoder_A2B)
         )
 
-        # Raises max recursion depth exceeded error
-        with self.assertRaises(RuntimeError):
-            encode({"x": self.TypeA(100)}, codec_options=codecopts)
+        # GC while the stack is exhausted may trigger an unraisable RecursionError that causes a failure
+        gc.collect()
+        gc.disable()
+        try:
+            # Raises max recursion depth exceeded error
+            with self.assertRaises(RuntimeError):
+                encode({"x": self.TypeA(100)}, codec_options=codecopts)
+        finally:
+            gc.enable()
 
 
 class TestTypeRegistry(unittest.TestCase):
@@ -625,15 +632,15 @@ class TestTypeRegistry(unittest.TestCase):
 class TestCollectionWCustomType(IntegrationTest):
     def setUp(self):
         super().setUp()
-        self.db.test.drop()
+        self.db.coll.drop()
 
     def tearDown(self):
-        self.db.test.drop()
+        self.db.coll.drop()
 
     def test_overflow_int_w_custom_decoder(self):
         type_registry = TypeRegistry(fallback_encoder=lambda val: str(val))
         codec_options = CodecOptions(type_registry=type_registry)
-        collection = self.db.get_collection("test", codec_options=codec_options)
+        collection = self.db.get_collection("coll", codec_options=codec_options)
 
         collection.insert_one({"_id": 1, "data": 2**520})
         ret = collection.find_one()
@@ -642,7 +649,7 @@ class TestCollectionWCustomType(IntegrationTest):
     def test_command_errors_w_custom_type_decoder(self):
         db = self.db
         test_doc = {"_id": 1, "data": "a"}
-        test = db.get_collection("test", codec_options=UNINT_DECODER_CODECOPTS)
+        test = db.get_collection("coll", codec_options=UNINT_DECODER_CODECOPTS)
 
         result = test.insert_one(test_doc)
         self.assertEqual(result.inserted_id, test_doc["_id"])
@@ -653,9 +660,9 @@ class TestCollectionWCustomType(IntegrationTest):
         db = self.db
         input_docs = [{"x": Int64(k)} for k in [1, 2, 3]]
         for doc in input_docs:
-            db.test.insert_one(doc)
+            db.coll.insert_one(doc)
 
-        test = db.get_collection("test", codec_options=UNINT_DECODER_CODECOPTS)
+        test = db.get_collection("coll", codec_options=UNINT_DECODER_CODECOPTS)
         for doc in test.find({}, batch_size=1):
             self.assertIsInstance(doc["x"], UndecipherableInt64Type)
 
@@ -664,10 +671,10 @@ class TestCollectionWCustomType(IntegrationTest):
             db = self.db
             input_docs = [{"x": Int64(k)} for k in [1, 2, 3]]
             for doc in input_docs:
-                db.test.insert_one(doc)
+                db.coll.insert_one(doc)
 
             test = db.get_collection(
-                "test",
+                "coll",
                 codec_options=CodecOptions(
                     type_registry=TypeRegistry([UndecipherableIntDecoder()]), document_class=doc_cls
                 ),
@@ -681,7 +688,7 @@ class TestCollectionWCustomType(IntegrationTest):
 
     def test_aggregate_w_custom_type_decoder(self):
         db = self.db
-        db.test.insert_many(
+        db.coll.insert_many(
             [
                 {"status": "in progress", "qty": Int64(1)},
                 {"status": "complete", "qty": Int64(10)},
@@ -690,7 +697,7 @@ class TestCollectionWCustomType(IntegrationTest):
                 {"status": "in progress", "qty": Int64(1)},
             ]
         )
-        test = db.get_collection("test", codec_options=UNINT_DECODER_CODECOPTS)
+        test = db.get_collection("coll", codec_options=UNINT_DECODER_CODECOPTS)
 
         pipeline: list = [
             {"$match": {"status": "complete"}},
@@ -704,9 +711,9 @@ class TestCollectionWCustomType(IntegrationTest):
         self.assertEqual(res["total_qty"].value, 20)
 
     def test_distinct_w_custom_type(self):
-        self.db.drop_collection("test")
+        self.db.drop_collection("coll")
 
-        test = self.db.get_collection("test", codec_options=UNINT_CODECOPTS)
+        test = self.db.get_collection("coll", codec_options=UNINT_CODECOPTS)
         values = [
             UndecipherableInt64Type(1),
             UndecipherableInt64Type(2),
@@ -719,7 +726,7 @@ class TestCollectionWCustomType(IntegrationTest):
 
     def test_find_one_and__w_custom_type_decoder(self):
         db = self.db
-        c = db.get_collection("test", codec_options=UNINT_DECODER_CODECOPTS)
+        c = db.get_collection("coll", codec_options=UNINT_DECODER_CODECOPTS)
         c.insert_one({"_id": 1, "x": Int64(1)})
 
         doc = c.find_one_and_update(
@@ -914,13 +921,13 @@ class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCus
     @client_context.require_change_streams
     def setUp(self):
         super().setUp()
-        self.db.test.delete_many({})
+        self.db.coll.delete_many({})
 
     def tearDown(self):
         self.input_target.drop()
 
     def create_targets(self, *args, **kwargs):
-        self.watched_target = self.db.get_collection("test", *args, **kwargs)
+        self.watched_target = self.db.get_collection("coll", *args, **kwargs)
         self.input_target = self.watched_target
         # Ensure the collection exists and is empty.
         self.input_target.insert_one({})
@@ -928,11 +935,10 @@ class TestCollectionChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCus
 
 
 class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
-    @client_context.require_version_min(4, 2, 0)
     @client_context.require_change_streams
     def setUp(self):
         super().setUp()
-        self.db.test.delete_many({})
+        self.db.coll.delete_many({})
 
     def tearDown(self):
         self.input_target.drop()
@@ -940,17 +946,16 @@ class TestDatabaseChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCusto
 
     def create_targets(self, *args, **kwargs):
         self.watched_target = self.client.get_database(self.db.name, *args, **kwargs)
-        self.input_target = self.watched_target.test
+        self.input_target = self.watched_target.coll
         # Insert a record to ensure db, coll are created.
         self.input_target.insert_one({"data": "dummy"})
 
 
 class TestClusterChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustomTypesTestMixin):
-    @client_context.require_version_min(4, 2, 0)
     @client_context.require_change_streams
     def setUp(self):
         super().setUp()
-        self.db.test.delete_many({})
+        self.db.coll.delete_many({})
 
     def tearDown(self):
         self.input_target.drop()
@@ -962,7 +967,7 @@ class TestClusterChangeStreamsWCustomTypes(IntegrationTest, ChangeStreamsWCustom
             kwargs["type_registry"] = codec_options.type_registry
             kwargs["document_class"] = codec_options.document_class
         self.watched_target = self.rs_client(*args, **kwargs)
-        self.input_target = self.watched_target[self.db.name].test
+        self.input_target = self.watched_target[self.db.name].coll
         # Insert a record to ensure db, coll are created.
         self.input_target.insert_one({"data": "dummy"})
 

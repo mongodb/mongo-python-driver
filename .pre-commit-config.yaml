@@ -4,6 +4,7 @@ repos:
   rev: v4.5.0
   hooks:
   - id: check-added-large-files
+    exclude: ^uv\.lock$
   - id: check-case-conflict
   - id: check-toml
   - id: check-json
@@ -115,6 +116,7 @@ repos:
     # - test/versioned-api/crud-api-version-1-strict.json:514: nin ==> inn, min, bin, nine
     # - test/test_client.py:188: te ==> the, be, we, to
     args: ["-L", "fle,fo,infinit,isnt,nin,te,aks"]
+    exclude: ^pymongo/public_suffix_list\.dat$
 
 - repo: local
   hooks:
