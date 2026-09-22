@@ -54,23 +54,10 @@ if [ "$_need_setup" = "1" ]; then
     ensure_uv || exit 1
   fi
 
-  # Prefer a known-good toolchain python3 over the bare system one (e.g.
-  # RHEL8's 3.6 is too old for setup-uv.py): prepend the mongodbtoolchain's
-  # "Current" python dir, the same location configure-env.sh puts on PATH via
-  # env.sh, for hosts that skip or delete env.sh (e.g. auth-aws-ecs).
-  . "$HERE/toolchain-bin.sh"
-  _toolchain_bin="$(mongodb_toolchain_bin)"
-  if [ -d "$_toolchain_bin" ]; then
-    case ":$PATH:" in
-      *":$_toolchain_bin:"*) ;;
-      *) export PATH="$_toolchain_bin:$PATH" ;;
-    esac
-  fi
-
   # Do the uv setup (bin dir, pinning, env.sh). Uses the toolchain python3
-  # (added to PATH by configure-env.sh and above) so no project .venv is
-  # created here, and no required-version check is triggered. On Windows the
-  # script path must be a native Windows path for python3.
+  # (added to PATH by configure-env.sh) so no project .venv is created here,
+  # and no required-version check is triggered. On Windows the script path must
+  # be a native Windows path for python3.
   _uv_setup_script="$HERE/setup-uv.py"
   if [ "Windows_NT" = "${OS:-}" ]; then
     _uv_setup_script="$(cygpath -m "$_uv_setup_script")"

@@ -32,8 +32,13 @@ fi
 # for tool installs like `uv tool install rust-just`. It goes after
 # PYMONGO_BIN_DIR so the pinned uv (installed there by setup-uv.py) takes
 # precedence over the toolchain's uv.
-. "$(dirname "${BASH_SOURCE:-$0}")/toolchain-bin.sh"
-_toolchain_bin="$(mongodb_toolchain_bin)"
+if [ "Windows_NT" = "${OS:-}" ]; then
+  _toolchain_bin="/cygdrive/c/Python/Current/Scripts"
+elif [ "$(uname -s)" == "Darwin" ]; then
+  _toolchain_bin="/Library/Frameworks/Python.Framework/Versions/Current/bin"
+else
+  _toolchain_bin="/opt/python/Current/bin"
+fi
 if [ -d "$_toolchain_bin" ]; then
   PATH_EXT="$MONGODB_BINARIES:$PYMONGO_BIN_DIR:$_toolchain_bin:$DRIVERS_TOOLS_BINARIES:\$PATH"
 else
