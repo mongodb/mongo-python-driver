@@ -30,17 +30,24 @@ case ":$PATH:" in
   *) export PATH="$PYMONGO_BIN_DIR:$PATH" ;;
 esac
 
-# If uv is on PATH, check it via `uv sync`, which fails fast if it is not the
-# pinned version (from pyproject.toml's [tool.uv] required-version). If that
-# succeeds, the environment is already correct and there is nothing to set up;
-# otherwise fall through to the setup below.
+# Compute the setup script path once (native Windows path on cygwin).
+_uv_setup_script="$HERE/setup-uv.py"
+if [ "Windows_NT" = "${OS:-}" ]; then
+  _uv_setup_script="$(cygpath -m "$_uv_setup_script")"
+fi
+
+# Skip setup when the pinned uv is already installed: `setup-uv.py --check`
+# compares the uv on PATH with the required-version pin, without side effects.
+# A full `uv sync` here would download Python and install/build dependencies
+# just to make this decision, and would run before setup-uv-python.sh sets
+# UV_PYTHON, creating the environment twice on local dev.
 #
 # On CI we also require UV_CACHE_DIR to be set: ensure_uv.sh scopes uv's cache
 # to a task-local dir, so an unset UV_CACHE_DIR means the uv setup has not run
 # yet in this task and we must do the setup phase.
 _need_setup=1
-if command -v uv >/dev/null 2>&1 && uv sync >/dev/null 2>&1; then
-  if [ "${CI:-}" != "true" ] || [ -n "${UV_CACHE_DIR:-}" ]; then
+if [ "${CI:-}" != "true" ] || [ -n "${UV_CACHE_DIR:-}" ]; then
+  if python3 "$_uv_setup_script" --check >/dev/null 2>&1; then
     echo "uv is already set up; skipping uv setup."
     _need_setup=0
   fi
@@ -56,12 +63,7 @@ if [ "$_need_setup" = "1" ]; then
 
   # Do the uv setup (bin dir, pinning, env.sh). Uses the toolchain python3
   # (added to PATH by configure-env.sh) so no project .venv is created here,
-  # and no required-version check is triggered. On Windows the script path must
-  # be a native Windows path for python3.
-  _uv_setup_script="$HERE/setup-uv.py"
-  if [ "Windows_NT" = "${OS:-}" ]; then
-    _uv_setup_script="$(cygpath -m "$_uv_setup_script")"
-  fi
+  # and no required-version check is triggered.
   python3 "$_uv_setup_script"
 
   # Re-source env.sh so the values setup-uv.py wrote are available.

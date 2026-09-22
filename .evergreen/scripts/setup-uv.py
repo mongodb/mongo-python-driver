@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Bootstrap the pinned uv/just for the test environment.
 
-install-dependencies.sh bails out if the pinned uv is already on PATH, sources
-ensure-uv.sh (which finds or installs uv), then runs this script for the rest.
-Only the standard library is used.
+install-dependencies.sh probes with `setup-uv.py --check`, sources ensure-uv.sh
+(which finds or installs uv), then runs this script for the rest. Only the
+standard library is used.
 """
 
 from __future__ import annotations
@@ -101,10 +101,11 @@ def _pin_uv(uv_pin: str) -> None:
             shutil.rmtree(tmp_uv.parent, ignore_errors=True)
 
 
-# The UV_* env vars this bootstrap manages and may persist into env.sh.
-# Deliberately narrow: other UV_* vars (e.g. UV_PUBLISH_TOKEN,
-# UV_INDEX_..._PASSWORD) may hold credentials and must never be written out.
-PERSISTED_UV_VARS = ("UV_CACHE_DIR", "UV_TOOL_BIN_DIR", "UV_TOOL_DIR")
+# The UV_* env vars this bootstrap (or its caller, ensure-uv.sh) manages and
+# may persist into env.sh. Deliberately narrow: other UV_* vars (e.g.
+# UV_PUBLISH_TOKEN, UV_INDEX_..._PASSWORD) may hold credentials and must
+# never be written out.
+PERSISTED_UV_VARS = ("UV_CACHE_DIR", "UV_PYTHON_INSTALL_DIR", "UV_TOOL_BIN_DIR", "UV_TOOL_DIR")
 
 
 def _write_env() -> None:
@@ -130,7 +131,29 @@ def _write_env() -> None:
     ENV_SH.write_bytes(("\n".join(keep) + "\n").encode())
 
 
+def _pinned_uv_installed() -> bool:
+    """Return True when the uv on PATH already matches the required-version pin."""
+    pin = required_uv_pin()
+    if not pin.startswith("=="):
+        # Only exact pins are checked here; anything else falls back to setup.
+        return False
+    uv_path = shutil.which("uv")
+    if uv_path is None:
+        return False
+    proc = subprocess.run(  # noqa: S603
+        [uv_path, "--version"], capture_output=True, check=True
+    )
+    # Output looks like "uv 0.12.12 (aarch64-unknown-linux-gnu)".
+    return proc.stdout.decode().split()[1] == pin[len("==") :]
+
+
 def main() -> int:
+    # Side-effect-free probe for install-dependencies.sh: a full `uv sync`
+    # there would download Python and install dependencies just to decide
+    # whether setup is needed.
+    if "--check" in sys.argv[1:]:
+        return 0 if _pinned_uv_installed() else 1
+
     bin_dir = os.environ["UV_TOOL_BIN_DIR"]
     Path(bin_dir).mkdir(parents=True, exist_ok=True)
     _add_path(bin_dir)
