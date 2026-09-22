@@ -198,14 +198,21 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
         # The async executor's open() starts a task, which requires a running
         # event loop; synchro translates the rest of the block for the sync suite.
         run_stmt = "asyncio.run(main())" if not _IS_SYNC else "main()"
+        # The sync monitor signals its thread through the event; the async
+        # monitor yields to its loop instead. Synchro drops the async yield.
+        wait_stmt = "assert started.wait(10)" if _IS_SYNC else ""
         code = textwrap.dedent(
             f"""
             import asyncio
             import sys
+            import threading
             sys.path.insert(0, {root!r})
             from pymongo.periodic_executor import AsyncPeriodicExecutor
 
+            started = threading.Event()
+
             async def target():
+                started.set()
                 return True
 
             async def main():
@@ -213,6 +220,8 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
                     interval=30.0, min_interval=0.05, target=target, name="subinterp"
                 )
                 executor.open()
+                {wait_stmt}
+                await asyncio.sleep(0)
 
             {run_stmt}
             """
