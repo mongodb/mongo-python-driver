@@ -24,6 +24,7 @@ import textwrap
 import threading
 import time
 from typing import Any
+from unittest import mock
 
 _interpreters: Any = None
 if sys.version_info >= (3, 14):
@@ -188,6 +189,26 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
         if not _IS_SYNC and executor._task is not None and executor._task.done():
             executor._task.exception()
         self.assertEqual(call_count, 2, "executor should run again after re-open")
+
+    async def test_open_non_daemon_thread(self):
+        # Subinterpreters disallow daemon threads; PeriodicExecutor.open()
+        # must fall back to starting the monitor thread as a non-daemon thread.
+        from pymongo.periodic_executor import PeriodicExecutor
+
+        def set_daemon(self, value):
+            raise RuntimeError("daemon threads are disallowed in subinterpreters")
+
+        daemon = threading.Thread.daemon
+        executor = PeriodicExecutor(
+            interval=30.0, min_interval=0.01, target=lambda: True, name="non-daemon"
+        )
+        self.addCleanup(executor.join, 2)
+        self.addCleanup(executor.close)
+        with mock.patch.object(threading.Thread, "daemon", property(daemon.fget, set_daemon)):
+            executor.open()
+            thread = executor._thread
+            assert thread is not None
+            self.assertFalse(thread.daemon, "thread must not be a daemon thread")
 
     async def test_subinterpreter_shutdown(self):
         if _interpreters is None:
