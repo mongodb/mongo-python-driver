@@ -81,7 +81,13 @@ from pymongo.errors import (
     WriteConcernError,
 )
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
-from pymongo.pool_options import _MAX_METADATA_SIZE, _METADATA, ENV_VAR_K8S, PoolOptions
+from pymongo.pool_options import (
+    _MAX_AGENT_SIZE,
+    _MAX_METADATA_SIZE,
+    _METADATA,
+    ENV_VAR_K8S,
+    PoolOptions,
+)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import readable_server_selector, writable_server_selector
@@ -127,6 +133,7 @@ from test.utils_shared import (
     gevent_monkey_patched,
     is_greenthread_patched,
     lazy_client_trial,
+    no_ambient_agent,
     one,
     suppress_fork_deprecation,
 )
@@ -374,6 +381,7 @@ class ClientUnitTest(UnitTest):
         )
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
+    @no_ambient_agent()
     def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         if has_c():
@@ -446,6 +454,7 @@ class ClientUnitTest(UnitTest):
             _MAX_METADATA_SIZE,
         )
 
+    @no_ambient_agent()
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
         metadata = copy.deepcopy(_METADATA)
@@ -2173,7 +2182,9 @@ class TestClient(IntegrationTest):
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
     def _test_handshake(self, env_vars, expected_env):
-        with patch.dict("os.environ", env_vars):
+        # Clear ambient agent vars (e.g. AI_AGENT set by the CI runner) so
+        # detection only reflects env_vars.
+        with no_ambient_agent(keep=env_vars), patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
             if has_c():
                 metadata["driver"]["name"] = "PyMongo|c"
@@ -2276,6 +2287,59 @@ class TestClient(IntegrationTest):
                 "region": "us-east-1",
                 "memory_mb": 256,
             },
+        )
+
+    def test_handshake_10_agent_known(self):
+        # A known agent env var maps to its fixed name, regardless of value.
+        self._test_handshake({"CLAUDECODE": "1"}, {"agent": "claude_code"})
+        self._test_handshake({"CURSOR_AGENT": "some-value-42"}, {"agent": "cursor"})
+        self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
+
+    def test_handshake_10b_agent_known_precedence(self):
+        # The first var in _AGENT_ENV_VARS order wins, not the first in the
+        # environment dict.
+        self._test_handshake({"GEMINI_CLI": "1", "CURSOR_AGENT": "1"}, {"agent": "cursor"})
+
+    def test_handshake_11_agent_known_beats_generic(self):
+        # A known agent wins over AI_AGENT, so a versioned AI_AGENT value
+        # cannot mask it.
+        self._test_handshake(
+            {"AI_AGENT": "custom-agent", "CLAUDECODE": "1"}, {"agent": "claude_code"}
+        )
+
+    def test_handshake_12_agent_generic(self):
+        # A descriptive value is used as-is. "1" and "true" map to "ai_agent".
+        self._test_handshake({"AI_AGENT": "custom-agent"}, {"agent": "custom-agent"})
+        self._test_handshake({"AI_AGENT": "1"}, {"agent": "ai_agent"})
+        self._test_handshake({"AI_AGENT": "true"}, {"agent": "ai_agent"})
+
+    def test_handshake_13_agent_generic_normalized(self):
+        # AI_AGENT is trimmed and lowercased.
+        self._test_handshake(
+            {"AI_AGENT": " Claude-Code_2-1-238_Agent "}, {"agent": "claude-code_2-1-238_agent"}
+        )
+
+    def test_handshake_14_agent_generic_truncated(self):
+        # A long value is truncated to _MAX_AGENT_SIZE bytes.
+        self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
+
+    def test_handshake_14b_agent_generic_truncated_on_boundary(self):
+        # The byte limit falls inside the two-byte "é", so the character is
+        # dropped. No part of it, and no U+FFFD, may appear.
+        value = "a" * (_MAX_AGENT_SIZE - 1) + "é"
+        self._test_handshake({"AI_AGENT": value}, {"agent": "a" * (_MAX_AGENT_SIZE - 1)})
+
+    def test_handshake_15_agent_unset(self):
+        # An empty or whitespace-only value counts as unset.
+        self._test_handshake({"AI_AGENT": ""}, None)
+        self._test_handshake({"AI_AGENT": "   "}, None)
+        self._test_handshake({"CLAUDECODE": "   "}, None)
+
+    def test_handshake_16_agent_with_provider(self):
+        # agent is reported alongside a FaaS provider.
+        self._test_handshake(
+            {"FUNCTIONS_WORKER_RUNTIME": "python", "CLAUDECODE": "1"},
+            {"name": "azure.func", "agent": "claude_code"},
         )
 
     def test_dict_hints(self):

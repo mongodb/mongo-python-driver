@@ -7,6 +7,13 @@ Changes in Version 4.19.0 (2026/XX/XX)
 PyMongo 4.19 brings a number of changes including:
 
 - Added support for Python 3.15.
+- The client handshake metadata now reports a detected coding agent in
+  ``client.env.agent``. The driver checks a fixed list of agent environment
+  variables (for example ``CLAUDECODE``, ``CURSOR_AGENT`` and
+  ``CODEX_SANDBOX``) and reports a fixed name for the first one that is set.
+  If none is set, the driver uses the generic ``AI_AGENT`` variable: ``1`` or
+  ``true`` is reported as ``ai_agent``, and any other value is trimmed,
+  lowercased and truncated to 64 bytes.
 
 Bug fixes
 .........
