@@ -22,6 +22,13 @@ Changes in Version 4.18.0
   the bytes remaining in the array now raises
   :class:`~bson.errors.InvalidBSON` instead of reading past the end of the
   buffer.
+- The client handshake metadata now reports a detected coding agent in
+  ``client.env.agent``. The driver checks a fixed list of agent environment
+  variables (for example ``CLAUDECODE``, ``CURSOR_AGENT`` and
+  ``CODEX_SANDBOX``) and reports a fixed name for the first one that is set.
+  If none is set, the driver uses the generic ``AI_AGENT`` variable: ``1`` or
+  ``true`` is reported as ``ai_agent``, and any other value is trimmed,
+  lowercased and truncated to 64 bytes.
 
 Changes in Version 4.17.0 (2026/04/20)
 --------------------------------------
