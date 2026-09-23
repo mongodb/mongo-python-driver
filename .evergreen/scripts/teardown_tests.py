@@ -51,12 +51,6 @@ elif TEST_NAME == "perf":
     shutil.rmtree(ROOT / "specifications", ignore_errors=True)
     Path(os.environ["OUTPUT_FILE"]).unlink(missing_ok=True)
 
-# Tear down mog_wsgi if applicable.
-elif TEST_NAME == "mod_wsgi":
-    from mod_wsgi_tester import teardown_mod_wsgi
-
-    teardown_mod_wsgi()
-
 # Tear down coverage if applicable.
 if os.environ.get("COVERAGE"):
     shutil.rmtree(".pytest_cache", ignore_errors=True)
