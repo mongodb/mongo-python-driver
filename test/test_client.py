@@ -82,7 +82,6 @@ from pymongo.errors import (
 )
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
 from pymongo.pool_options import (
-    _AGENT_ENV_VARS,
     _MAX_AGENT_SIZE,
     _MAX_METADATA_SIZE,
     _METADATA,
@@ -134,6 +133,7 @@ from test.utils_shared import (
     gevent_monkey_patched,
     is_greenthread_patched,
     lazy_client_trial,
+    no_ambient_agent,
     one,
     suppress_fork_deprecation,
 )
@@ -381,6 +381,7 @@ class ClientUnitTest(UnitTest):
         )
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
+    @no_ambient_agent()
     def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         if has_c():
@@ -453,6 +454,7 @@ class ClientUnitTest(UnitTest):
             _MAX_METADATA_SIZE,
         )
 
+    @no_ambient_agent()
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
         metadata = copy.deepcopy(_METADATA)
@@ -2182,9 +2184,7 @@ class TestClient(IntegrationTest):
     def _test_handshake(self, env_vars, expected_env):
         # Clear ambient agent vars (e.g. AI_AGENT set by the CI runner) so
         # detection only reflects env_vars.
-        agent_vars = ["AI_AGENT", *(var for var, _ in _AGENT_ENV_VARS)]
-        cleared = {var: "" for var in agent_vars if var not in env_vars}
-        with patch.dict("os.environ", {**cleared, **env_vars}):
+        with no_ambient_agent(keep=env_vars), patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
             if has_c():
                 metadata["driver"]["name"] = "PyMongo|c"
