@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import sys
+import zlib
 from unittest.mock import patch
 
 sys.path[0:0] = [""]
@@ -29,11 +30,23 @@ from pymongo.compression_support import (
     _have_snappy,
     _have_zlib,
     _have_zstd,
+    _snappy_uncompressed_length,
     decompress,
     validate_compressors,
     validate_zlib_compression_level,
 )
+from pymongo.errors import ProtocolError
 from test import unittest
+
+
+def _have_tracemalloc() -> bool:
+    try:
+        import tracemalloc
+
+        return True
+    except ImportError:
+        # PyPy does not ship the _tracemalloc C extension.
+        return False
 
 
 class TestValidateCompressors(unittest.TestCase):
@@ -163,30 +176,42 @@ class TestZlibContext(unittest.TestCase):
             self.skipTest("zlib not available")
 
     def test_compress_and_decompress_roundtrip(self):
-        import zlib
-
         ctx = ZlibContext(level=-1)
         data = b"hello world" * 100
         compressed = ctx.compress(data)
         self.assertEqual(zlib.decompress(compressed), data)
 
 
+class TestSnappyUncompressedLength(unittest.TestCase):
+    def test_single_byte(self):
+        self.assertEqual(_snappy_uncompressed_length(b"\x03"), 3)
+
+    def test_multi_byte(self):
+        self.assertEqual(_snappy_uncompressed_length(b"\xac\x02"), 300)
+
+    def test_truncated(self):
+        with self.assertRaises(ProtocolError):
+            _snappy_uncompressed_length(b"\xff")
+
+    def test_overlong_varint(self):
+        with self.assertRaises(ProtocolError):
+            _snappy_uncompressed_length(b"\xff" * 5)
+
+
 class TestDecompress(unittest.TestCase):
     def test_unknown_compressor_id_raises(self):
         with self.assertRaises(ValueError) as ctx:
-            decompress(b"data", 99)
+            decompress(b"data", 99, max_message_size=2**20)
         self.assertIn("Unknown compressorId 99", str(ctx.exception))
 
     def _assert_roundtrip(self, compressed, compressor_id, data):
         for payload in (compressed, memoryview(compressed)):
             with self.subTest(type=type(payload).__name__):
-                self.assertEqual(decompress(payload, compressor_id), data)
+                self.assertEqual(decompress(payload, compressor_id, max_message_size=2**20), data)
 
     def test_zlib_roundtrip(self):
         if not _have_zlib():
             self.skipTest("zlib not available")
-        import zlib
-
         data = b"hello world"
         self._assert_roundtrip(zlib.compress(data), ZlibContext.compressor_id, data)
 
@@ -201,8 +226,122 @@ class TestDecompress(unittest.TestCase):
             self.skipTest("zstd not available")
         data = b"hello world" * 50
         compressed = ZstdContext.compress(data)
-        result = decompress(compressed, ZstdContext.compressor_id)
+        result = decompress(compressed, ZstdContext.compressor_id, max_message_size=2**20)
         self.assertEqual(result, data)
+
+
+class TestDecompressSizeLimit(unittest.TestCase):
+    def test_decompression_peak_memory_bounded(self):
+        if not _have_tracemalloc():
+            self.skipTest("tracemalloc not available")
+        import tracemalloc
+
+        # High expansion ratio payload (repeated zeros, ~100000:1 ratio)
+        payload = zlib.compress(b"\x00" * 100_000_000)
+        max_size = 1_000_000
+
+        tracemalloc.start()
+        try:
+            with self.assertRaises(ProtocolError):
+                decompress(payload, ZlibContext.compressor_id, max_message_size=max_size)
+            _current, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        # Peak allocation should stay near the bound rather than the payload size.
+        self.assertLess(peak, 10 * max_size)
+
+    def test_zlib_exact_boundary(self):
+        # Data that decompresses to exactly max_message_size must be accepted.
+        data = b"\x00" * 1000
+        payload = zlib.compress(data)
+        result = decompress(payload, ZlibContext.compressor_id, max_message_size=1000)
+        self.assertEqual(result, data)
+        # One byte over the limit must be rejected.
+        data_over = b"\x00" * 1001
+        payload_over = zlib.compress(data_over)
+
+        with self.assertRaises(ProtocolError):
+            decompress(payload_over, ZlibContext.compressor_id, max_message_size=1000)
+
+    def test_snappy_exceeds_max_rejected(self):
+        if not _have_snappy():
+            self.skipTest("python-snappy not installed")
+
+        data = b"\x00" * 100_000
+        payload = SnappyContext.compress(data)
+        with self.assertRaises(ProtocolError):
+            decompress(payload, SnappyContext.compressor_id, max_message_size=1000)
+
+    def test_snappy_peak_memory_bounded(self):
+        if not _have_snappy():
+            self.skipTest("python-snappy not installed")
+        if not _have_tracemalloc():
+            self.skipTest("tracemalloc not available")
+        import tracemalloc
+
+        payload = SnappyContext.compress(b"\x00" * 100_000_000)
+        max_size = 1_000_000
+        tracemalloc.start()
+        try:
+            with self.assertRaises(ProtocolError):
+                decompress(payload, SnappyContext.compressor_id, max_message_size=max_size)
+            _current, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        # Peak allocation should stay near the bound rather than the payload size.
+        self.assertLess(peak, 10 * max_size)
+
+    def test_zstd_peak_memory_bounded(self):
+        if not _have_zstd():
+            self.skipTest("zstd not available")
+        if not _have_tracemalloc():
+            self.skipTest("tracemalloc not available")
+        import tracemalloc
+
+        payload = ZstdContext.compress(b"\x00" * 100_000_000)
+        max_size = 1_000_000
+        tracemalloc.start()
+        try:
+            with self.assertRaises(ProtocolError):
+                decompress(payload, ZstdContext.compressor_id, max_message_size=max_size)
+            _current, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        # Peak allocation should stay near the bound rather than the payload size.
+        self.assertLess(peak, 10 * max_size)
+
+    def test_snappy_declared_size_exceeds_max_rejected(self):
+        # Varint declaring 2^31 uncompressed bytes; rejected by the declared
+        # size pre-check before python-snappy is imported.
+        payload = b"\x80\x80\x80\x80\x08"
+        with self.assertRaises(ProtocolError):
+            decompress(payload, SnappyContext.compressor_id, max_message_size=1000)
+
+    def test_zlib_truncated_rejected(self):
+        payload = zlib.compress(b"\x00" * 1000)[:-1]
+        with self.assertRaises(ProtocolError):
+            decompress(payload, ZlibContext.compressor_id, max_message_size=10_000)
+
+    def test_zstd_truncated_rejected(self):
+        if not _have_zstd():
+            self.skipTest("zstd not available")
+
+        payload = ZstdContext.compress(b"\x00" * 1000)[:-1]
+        with self.assertRaises(ProtocolError):
+            decompress(payload, ZstdContext.compressor_id, max_message_size=10_000)
+
+    def test_zlib_trailing_data_rejected(self):
+        payload = zlib.compress(b"\x00" * 1000) + b"GARBAGE"
+        with self.assertRaises(ProtocolError):
+            decompress(payload, ZlibContext.compressor_id, max_message_size=10_000)
+
+    def test_zstd_trailing_data_rejected(self):
+        if not _have_zstd():
+            self.skipTest("zstd not available")
+
+        payload = ZstdContext.compress(b"\x00" * 1000) + b"GARBAGE"
+        with self.assertRaises(ProtocolError):
+            decompress(payload, ZstdContext.compressor_id, max_message_size=10_000)
 
 
 if __name__ == "__main__":

@@ -39,10 +39,11 @@ class TestReadConcern(IntegrationTest):
         self.listener = OvertCommandListener()
         self.client = self.rs_or_single_client(event_listeners=[self.listener])
         self.db = self.client.pymongo_test
-        client_context.client.pymongo_test.create_collection("coll")
+        self.db.create_collection("coll")
+        self.listener.reset()
 
     def tearDown(self):
-        client_context.client.pymongo_test.drop_collection("coll")
+        self.db.drop_collection("coll")
 
     def test_read_concern(self):
         rc = ReadConcern()
@@ -109,11 +110,7 @@ class TestReadConcern(IntegrationTest):
         coll = self.db.get_collection("coll", read_concern=ReadConcern("local"))
         (coll.aggregate([{"$match": {"field": "value"}}, {"$out": "output_collection"}])).to_list()
 
-        # Aggregate with $out supports readConcern MongoDB 4.2 onwards.
-        if client_context.version >= (4, 1):
-            self.assertIn("readConcern", self.listener.started_events[0].command)
-        else:
-            self.assertNotIn("readConcern", self.listener.started_events[0].command)
+        self.assertIn("readConcern", self.listener.started_events[0].command)
 
 
 if __name__ == "__main__":

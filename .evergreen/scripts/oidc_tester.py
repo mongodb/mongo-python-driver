@@ -13,6 +13,7 @@ from utils import (
 
 K8S_NAMES = ["aks", "gke", "eks"]
 K8S_REMOTE_NAMES = [f"{n}-remote" for n in K8S_NAMES]
+OIDC_APP_NAME = "auth_oidc"
 
 
 def _get_target_dir(sub_test_name: str) -> str:
@@ -29,7 +30,14 @@ def _get_target_dir(sub_test_name: str) -> str:
     return f"{DRIVERS_TOOLS}/.evergreen/{target_dir}"
 
 
+def _with_appname(uri: str, appname: str) -> str:
+    """Append ``appName`` so the failpoint's ``appName`` filter matches."""
+    separator = "&" if "?" in uri else "?"
+    return f"{uri}{separator}appName={appname}"
+
+
 def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
+    write_env("OIDC_APP_NAME", OIDC_APP_NAME)
     target_dir = _get_target_dir(sub_test_name)
     env = os.environ.copy()
 
@@ -59,12 +67,15 @@ def setup_oidc(sub_test_name: str) -> dict[str, str] | None:
     elif sub_test_name in ["azure-remote", "gcp-remote"]:
         source_file = "./secrets-export.sh"
     if sub_test_name in K8S_REMOTE_NAMES:
+        write_env(
+            "MONGODB_URI_SINGLE", _with_appname(os.environ["MONGODB_URI_SINGLE"], OIDC_APP_NAME)
+        )
         return os.environ.copy()
     if source_file is None:
         return None
 
     config = read_env(source_file)
-    write_env("MONGODB_URI_SINGLE", config["MONGODB_URI_SINGLE"])
+    write_env("MONGODB_URI_SINGLE", _with_appname(config["MONGODB_URI_SINGLE"], OIDC_APP_NAME))
     write_env("MONGODB_URI", config["MONGODB_URI"])
     write_env("DB_IP", config["MONGODB_URI"])
 

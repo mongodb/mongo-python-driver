@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from pymongo import _csot
 from pymongo.cursor_shared import _CURSOR_DOC_FIELDS, _AgnosticCursorBase, _split_message
@@ -78,9 +78,7 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
 
         .. versionadded:: 3.6
         """
-        if self._session and not self._session._implicit:
-            return self._session
-        return None
+        return cast("Optional[ClientSession]", super().session)
 
     @abstractmethod
     def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]
@@ -116,7 +114,7 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
         if more_to_come:
             request_id, data, max_doc_size = 0, b"", 0
         else:
-            message = operation.get_message(read_preference, conn, use_cmd)
+            message = operation.get_message(read_preference, conn)
             request_id, data, max_doc_size = _split_message(message)
         user_fields = _CURSOR_DOC_FIELDS if use_cmd else None
         docs, reply, duration = run_cursor_command(
@@ -154,7 +152,6 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
                 conn=conn,
                 duration=duration,
                 request_id=request_id,
-                from_command=use_cmd,
                 docs=docs,  # type: ignore[arg-type]
                 more_to_come=more_to_come,
             )
@@ -163,7 +160,6 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
             address=conn.address,
             duration=duration,
             request_id=request_id,
-            from_command=use_cmd,
             docs=docs,  # type: ignore[arg-type]
         )
 

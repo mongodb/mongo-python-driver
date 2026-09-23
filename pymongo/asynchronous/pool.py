@@ -16,13 +16,11 @@ from __future__ import annotations
 
 import asyncio
 import collections
-import contextlib
 import os
 import socket
-import sys
 import time
 import weakref
-from collections.abc import AsyncGenerator, Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -34,9 +32,10 @@ from typing import (
 from bson import DEFAULT_CODEC_OPTIONS
 from pymongo import _csot, helpers_shared
 from pymongo._telemetry import _CmapTelemetry
-from pymongo.asynchronous.client_session import _validate_session_write_concern
 from pymongo.asynchronous.command_runner import run_command
 from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.auth_shared import _AuthContext
+from pymongo.client_session_shared import _validate_session_write_concern
 from pymongo.common import (
     MAX_BSON_SIZE,
     MAX_MESSAGE_SIZE,
@@ -53,7 +52,6 @@ from pymongo.errors import (  # type:ignore[attr-defined]
     NetworkTimeout,
     NotPrimaryError,
     OperationFailure,
-    PyMongoError,
     WaitQueueTimeoutError,
     _CertificateError,
 )
@@ -64,6 +62,7 @@ from pymongo.lock import (
     _async_create_condition,
     _async_create_lock,
 )
+from pymongo.logger import _CONNECTION_LOGGER, _is_debug_enabled
 from pymongo.monitoring import (
     ConnectionCheckOutFailedReason,
     ConnectionClosedReason,
@@ -71,10 +70,13 @@ from pymongo.monitoring import (
 from pymongo.network_layer import AsyncNetworkingInterface, async_receive_message, async_sendall
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
+    PoolState,
     SSLErrors,
     _CancellationContext,
     _configured_protocol_interface,
     _ConnectionTelemetryInfo,
+    _PoolClosedError,
+    _PoolGeneration,
     _raise_connection_failure,
 )
 from pymongo.read_preferences import ReadPreference
@@ -84,11 +86,12 @@ from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import SSL_EOF_ERRORS
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from bson import CodecOptions
     from bson.objectid import ObjectId
-    from pymongo.asynchronous.auth import _AuthContext
     from pymongo.asynchronous.client_session import AsyncClientSession
-    from pymongo.asynchronous.mongo_client import AsyncMongoClient, _MongoClientErrorHandler
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient, _ClientCheckout
     from pymongo.compression_support import (
         SnappyContext,
         ZlibContext,
@@ -225,7 +228,7 @@ class AsyncConnection(_ConnectionTelemetryInfo):
 
     def hello_cmd(self) -> dict[str, Any]:
         # As of PYTHON-5713, always use OP_MSG for the handshake since all
-        # supported servers (MongoDB 4.2+, wire version >= 8) support it.
+        # supported servers (MongoDB 4.4+, wire version >= 9) support it.
         if self.opts.server_api or self.hello_ok or self.opts.load_balanced:
             return {HelloCompat.CMD: 1}
         return {HelloCompat.LEGACY_CMD: 1, "helloOk": True}
@@ -241,7 +244,7 @@ class AsyncConnection(_ConnectionTelemetryInfo):
         cmd = self.hello_cmd()
         performing_handshake = not self.performed_handshake
         awaitable = False
-        cmd["backpressure"] = True
+        cmd["backpressure"] = "2"
         if performing_handshake:
             self.performed_handshake = True
             cmd["client"] = self.opts.metadata
@@ -264,7 +267,9 @@ class AsyncConnection(_ConnectionTelemetryInfo):
                 cmd["saslSupportedMechs"] = creds.source + "." + creds.username
             from pymongo.asynchronous import auth
 
-            auth_ctx = auth._AuthContext.from_credentials(creds, self.address)
+            auth_ctx = _AuthContext.from_credentials(
+                creds, self.address, auth._SPECULATIVE_AUTH_MAP
+            )
             if auth_ctx:
                 speculative_authenticate = auth_ctx.speculate_command()
                 if speculative_authenticate is not None:
@@ -582,49 +587,6 @@ class AsyncConnection(_ConnectionTelemetryInfo):
         )
 
 
-class _PoolClosedError(PyMongoError):
-    """Internal error raised when a thread tries to get a connection from a
-    closed pool.
-    """
-
-
-class _PoolGeneration:
-    def __init__(self) -> None:
-        # Maps service_id to generation.
-        self._generations: dict[ObjectId, int] = collections.defaultdict(int)
-        # Overall pool generation.
-        self._generation = 0
-
-    def get(self, service_id: Optional[ObjectId]) -> int:
-        """Get the generation for the given service_id."""
-        if service_id is None:
-            return self._generation
-        return self._generations[service_id]
-
-    def get_overall(self) -> int:
-        """Get the Pool's overall generation."""
-        return self._generation
-
-    def inc(self, service_id: Optional[ObjectId]) -> None:
-        """Increment the generation for the given service_id."""
-        self._generation += 1
-        if service_id is None:
-            for service_id in self._generations:
-                self._generations[service_id] += 1
-        else:
-            self._generations[service_id] += 1
-
-    def stale(self, gen: int, service_id: Optional[ObjectId]) -> bool:
-        """Return if the given generation for a given service_id is stale."""
-        return gen != self.get(service_id)
-
-
-class PoolState:
-    PAUSED = 1
-    READY = 2
-    CLOSED = 3
-
-
 class Pool:
     def __init__(
         self,
@@ -693,7 +655,7 @@ class Pool:
         # Retain references to pinned connections to prevent the CPython GC
         # from thinking that a cursor's pinned connection can be GC'd when the
         # cursor is GC'd (see PYTHON-2751).
-        self.__pinned_sockets: set[AsyncConnection] = set()
+        self._pinned_sockets: set[AsyncConnection] = set()
         self.ncursors = 0
         self.ntxns = 0
 
@@ -892,7 +854,7 @@ class Pool:
         error._add_error_label("SystemOverloadedError")
         error._add_error_label("RetryableError")
 
-    async def connect(self, handler: Optional[_MongoClientErrorHandler] = None) -> AsyncConnection:
+    async def connect(self, handler: Optional[_ClientCheckout] = None) -> AsyncConnection:
         """Connect to Mongo and return a new AsyncConnection.
 
         Can raise ConnectionFailure.
@@ -960,59 +922,18 @@ class Pool:
 
         return conn
 
-    @contextlib.asynccontextmanager
-    async def checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AsyncGenerator[AsyncConnection, None]:
-        """Get a connection from the pool. Use with a "with" statement.
+    def checkout(self, handler: Optional[_ClientCheckout] = None) -> _PoolCheckout:
+        """Get a connection from the pool. Always use in an async with statement::
 
-        Returns a :class:`AsyncConnection` object wrapping a connected
-        :class:`socket.socket`.
-
-        This method should always be used in a with-statement::
-
-            with pool.get_conn() as connection:
+            async with pool.checkout() as connection:
                 connection.send_message(msg)
                 data = connection.receive_message(op_code, request_id)
 
         Can raise ConnectionFailure or OperationFailure.
 
-        :param handler: A _MongoClientErrorHandler.
+        :param handler: A _ClientCheckout error handler.
         """
-        checkout_started_time = self._telemetry.checkout_started()
-
-        conn = await self._get_conn(checkout_started_time, handler=handler)
-
-        self._telemetry.checkout_succeeded(conn.id, checkout_started_time)
-        try:
-            async with self.lock:
-                self.active_contexts.add(conn.cancel_context)
-            yield conn
-        # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
-        except BaseException:
-            # Exception in caller. Ensure the connection gets returned.
-            # Note that when pinned is True, the session owns the
-            # connection and it is responsible for checking the connection
-            # back into the pool.
-            pinned = conn.pinned_txn or conn.pinned_cursor
-            if handler:
-                # Perform SDAM error handling rules while the connection is
-                # still checked out.
-                exc_type, exc_val, _ = sys.exc_info()
-                await handler.handle(exc_type, exc_val)
-            if not pinned and conn.active:
-                await self.checkin(conn)
-            raise
-        if conn.pinned_txn:
-            async with self.lock:
-                self.__pinned_sockets.add(conn)
-                self.ntxns += 1
-        elif conn.pinned_cursor:
-            async with self.lock:
-                self.__pinned_sockets.add(conn)
-                self.ncursors += 1
-        elif conn.active:
-            await self.checkin(conn)
+        return _PoolCheckout(self, handler)
 
     def _raise_if_not_ready(self, checkout_started_time: float, emit_event: bool) -> None:
         if self.state != PoolState.READY:
@@ -1029,7 +950,7 @@ class Pool:
             )
 
     async def _get_conn(
-        self, checkout_started_time: float, handler: Optional[_MongoClientErrorHandler] = None
+        self, checkout_started_time: float, handler: Optional[_ClientCheckout] = None
     ) -> AsyncConnection:
         """Get or create a AsyncConnection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
@@ -1076,6 +997,7 @@ class Pool:
         conn = None
         incremented = False
         emitted_event = False
+        is_new_conn = False
         try:
             async with self.lock:
                 self.active_sockets += 1
@@ -1107,20 +1029,41 @@ class Pool:
                 else:  # We need to create a new connection
                     try:
                         conn = await self.connect(handler=handler)
+                        is_new_conn = True
                     finally:
                         async with self._max_connecting_cond:
                             self._pending -= 1
                             self._max_connecting_cond.notify()
+
+            conn.active = True
+            # connect() already adds cancel_context for new connections; only add
+            # here for reused connections taken from the idle pool.
+            if not is_new_conn:
+                async with self.lock:
+                    self.active_contexts.add(conn.cancel_context)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             if conn:
                 # We checked out a socket but authentication failed.
                 await conn.close_conn(ConnectionClosedReason.ERROR)
-            async with self.size_cond:
-                self.requests -= 1
-                if incremented:
-                    self.active_sockets -= 1
-                self.size_cond.notify()
+            # Re-apply the accounting if a GreenletExit interrupts
+            # during the size_cond acquisition; during unwind gevent
+            # lets the re-acquire complete (PYTHON-6074).
+            accounted = False
+            try:
+                async with self.size_cond:
+                    self.requests -= 1
+                    if incremented:
+                        self.active_sockets -= 1
+                    accounted = True
+                    self.size_cond.notify()
+            finally:
+                if not accounted:
+                    async with self.size_cond:
+                        self.requests -= 1
+                        if incremented:
+                            self.active_sockets -= 1
+                        self.size_cond.notify()
 
             if not emitted_event:
                 self._telemetry.checkout_failed(
@@ -1130,8 +1073,41 @@ class Pool:
                 )
             raise
 
-        conn.active = True
         return conn
+
+    def _checkin_apply(
+        self, conn: AsyncConnection, txn: bool, cursor: bool, forked: bool
+    ) -> tuple[Optional[str], bool, bool]:
+        """Apply checkin accounting; caller holds ``size_cond``.
+
+        No cooperative I/O, so safe while a gevent greenlet unwinds. Returns
+        ``(close_conn_reason, emit_closed, appended)`` for outside the lock.
+        """
+        self.active_contexts.discard(conn.cancel_context)
+        if txn:
+            self.ntxns -= 1
+        elif cursor:
+            self.ncursors -= 1
+        self.requests -= 1
+        self.active_sockets -= 1
+        self.operation_count -= 1
+        close_conn_reason: Optional[str] = None
+        emit_closed = False
+        appended = False
+        if not forked:
+            if self.closed:
+                close_conn_reason = ConnectionClosedReason.POOL_CLOSED
+            elif conn.closed:
+                # CMAP requires the closed event be emitted after the check in.
+                emit_closed = True
+            elif self.stale_generation(conn.generation, conn.service_id):
+                close_conn_reason = ConnectionClosedReason.STALE
+            else:
+                conn.update_last_checkin_time()
+                conn.update_is_writable(bool(self.is_writable))
+                self.conns.appendleft(conn)
+                appended = True
+        return close_conn_reason, emit_closed, appended
 
     async def checkin(self, conn: AsyncConnection) -> None:
         """Return the connection to the pool, or if it's closed discard it.
@@ -1143,43 +1119,42 @@ class Pool:
         conn.active = False
         conn.pinned_txn = False
         conn.pinned_cursor = False
-        self.__pinned_sockets.discard(conn)
-        async with self.lock:
-            self.active_contexts.discard(conn.cancel_context)
-        self._telemetry.checked_in(conn.id)
-        if self.pid != os.getpid():
-            await self.reset_without_pause()
-        else:
-            if self.closed:
-                await conn.close_conn(ConnectionClosedReason.POOL_CLOSED)
-            elif conn.closed:
-                # CMAP requires the closed event be emitted after the check in.
-                self._telemetry.connection_closed(conn.id, ConnectionClosedReason.ERROR)
-            else:
-                close_conn = False
-                async with self.lock:
-                    # Hold the lock to ensure this section does not race with
-                    # Pool.reset().
-                    if self.stale_generation(conn.generation, conn.service_id):
-                        close_conn = True
-                    else:
-                        conn.update_last_checkin_time()
-                        conn.update_is_writable(bool(self.is_writable))
-                        self.conns.appendleft(conn)
-                        # Notify any threads waiting to create a connection.
+        self._pinned_sockets.discard(conn)
+        forked = self.pid != os.getpid()
+        # Re-apply the accounting if a gevent GreenletExit interrupts during
+        # the size_cond acquisition; gevent lets the re-acquire complete while
+        # unwinding (PYTHON-6074).
+        close_conn_reason: Optional[str] = None
+        emit_closed = False
+        accounted = False
+        try:
+            async with self.size_cond:
+                close_conn_reason, emit_closed, appended = self._checkin_apply(
+                    conn, txn, cursor, forked
+                )
+                accounted = True
+                if appended:
+                    # Notify any threads waiting to create a connection.
+                    self._max_connecting_cond.notify()
+                self.size_cond.notify()
+        finally:
+            if not accounted:
+                async with self.size_cond:
+                    close_conn_reason, emit_closed, appended = self._checkin_apply(
+                        conn, txn, cursor, forked
+                    )
+                    if appended:
                         self._max_connecting_cond.notify()
-                if close_conn:
-                    await conn.close_conn(ConnectionClosedReason.STALE)
-
-        async with self.size_cond:
-            if txn:
-                self.ntxns -= 1
-            elif cursor:
-                self.ncursors -= 1
-            self.requests -= 1
-            self.active_sockets -= 1
-            self.operation_count -= 1
-            self.size_cond.notify()
+                    self.size_cond.notify()
+        telemetry = self._telemetry
+        if telemetry._should_publish or (telemetry._log and _is_debug_enabled(_CONNECTION_LOGGER)):
+            telemetry.checked_in(conn.id)
+        if emit_closed:
+            telemetry.connection_closed(conn.id, ConnectionClosedReason.ERROR)
+        if forked:
+            await self.reset_without_pause()
+        elif close_conn_reason is not None:
+            await conn.close_conn(close_conn_reason)
 
     async def _perished(self, conn: AsyncConnection) -> bool:
         """Return True and close the connection if it is "perished".
@@ -1245,3 +1220,71 @@ class Pool:
         if _IS_SYNC:
             for conn in self.conns:
                 conn.close_conn(None)  # type: ignore[unused-coroutine]
+
+
+class _PoolCheckout:
+    """Class-based context manager for pool connection checkout."""
+
+    __slots__ = ("_conn", "_handler", "_pool")
+
+    def __init__(
+        self,
+        pool: Pool,
+        handler: Optional[_ClientCheckout] = None,
+    ) -> None:
+        self._pool = pool
+        self._handler = handler
+        self._conn: Optional[AsyncConnection] = None
+
+    async def __aenter__(self) -> AsyncConnection:
+        pool = self._pool
+        telemetry = pool._telemetry
+        # Fast path: skip telemetry calls when CMAP events/logging are disabled
+        if not telemetry._should_publish and not (
+            telemetry._log and _is_debug_enabled(_CONNECTION_LOGGER)
+        ):
+            conn = await pool._get_conn(time.monotonic(), handler=self._handler)
+            self._conn = conn
+            return conn
+        checkout_started_time = telemetry.checkout_started()
+
+        conn = await pool._get_conn(checkout_started_time, handler=self._handler)
+        self._conn = conn
+        try:
+            telemetry.checkout_succeeded(conn.id, checkout_started_time)
+        except BaseException:
+            await pool.checkin(conn)
+            self._conn = None
+            raise
+        return conn
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        conn = self._conn
+        if conn is None:
+            return
+        pool = self._pool
+        if exc_type is not None:
+            # Exception in caller. Ensure the connection gets returned.
+            # Note that when pinned is True, the session owns the connection
+            # and is responsible for checking it back into the pool.
+            # SDAM error handling is performed by _ClientCheckout.__aexit__
+            # before this method is called.
+            pinned = conn.pinned_txn or conn.pinned_cursor
+            if not pinned and conn.active:
+                await pool.checkin(conn)
+        else:
+            if conn.pinned_txn:
+                async with pool.lock:
+                    pool._pinned_sockets.add(conn)
+                    pool.ntxns += 1
+            elif conn.pinned_cursor:
+                async with pool.lock:
+                    pool._pinned_sockets.add(conn)
+                    pool.ncursors += 1
+            elif conn.active:
+                await pool.checkin(conn)

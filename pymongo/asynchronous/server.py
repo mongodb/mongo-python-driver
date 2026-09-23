@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from contextlib import AbstractAsyncContextManager
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -30,9 +29,8 @@ if TYPE_CHECKING:
     from weakref import ReferenceType
 
     from bson.objectid import ObjectId
-    from pymongo.asynchronous.mongo_client import _MongoClientErrorHandler
     from pymongo.asynchronous.monitor import Monitor
-    from pymongo.asynchronous.pool import AsyncConnection, Pool
+    from pymongo.asynchronous.pool import Pool
     from pymongo.monitoring import _EventListeners
     from pymongo.server_description import ServerDescription
 
@@ -81,11 +79,6 @@ class Server:
     def request_check(self) -> None:
         """Check the server's state soon."""
         self._monitor.request_check()
-
-    async def checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AbstractAsyncContextManager[AsyncConnection]:
-        return self.pool.checkout(handler)
 
     @property
     def description(self) -> ServerDescription:

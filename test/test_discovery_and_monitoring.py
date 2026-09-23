@@ -57,9 +57,10 @@ from pymongo.monitoring import (
 )
 from pymongo.server_description import SERVER_TYPE, ServerDescription
 from pymongo.synchronous.settings import TopologySettings
-from pymongo.synchronous.topology import Topology, _ErrorContext
+from pymongo.synchronous.topology import Topology
 from pymongo.synchronous.uri_parser import parse_uri
 from pymongo.topology_description import TOPOLOGY_TYPE
+from pymongo.topology_shared import _ErrorContext
 from test import (
     IntegrationTest,
     PyMongoTestCase,
@@ -269,6 +270,22 @@ def create_tests():
             test_name = f"test_{dirname}_{os.path.splitext(filename)[0]}"
 
             new_test.__name__ = test_name
+
+            # Skip scenarios where all mock server responses report a wire
+            # version below the minimum supported (server no longer reachable).
+            max_version = max(
+                (
+                    r[1].get("maxWireVersion", 0)
+                    for phase in scenario_def.get("phases", [])
+                    for r in phase.get("responses", [])
+                ),
+                default=common.MIN_SUPPORTED_WIRE_VERSION,
+            )
+            if max_version < common.MIN_SUPPORTED_WIRE_VERSION:
+                new_test = unittest.skip(
+                    f"Server wire version {max_version} is below minimum {common.MIN_SUPPORTED_WIRE_VERSION}"
+                )(new_test)
+
             setattr(TestAllScenarios, new_test.__name__, new_test)
 
 
@@ -360,8 +377,14 @@ class TestPoolManagement(IntegrationTest):
     def test_pool_unpause(self):
         # This test implements the prose test "Connection Pool Management"
         listener = CMAPHeartbeatListener()
+        # Force polling: streaming's RTT monitor sends its own hello calls with the same
+        # appName, which can consume the failCommand's mode.times budget before the SDAM
+        # heartbeat monitor's hello does, so ServerHeartbeatFailedEvent never fires (PYTHON-6003).
         _ = self.single_client(
-            appName="SDAMPoolManagementTest", heartbeatFrequencyMS=500, event_listeners=[listener]
+            appName="SDAMPoolManagementTest",
+            heartbeatFrequencyMS=500,
+            event_listeners=[listener],
+            serverMonitoringMode="poll",
         )
         # Assert that ConnectionPoolReadyEvent occurs after the first
         # ServerHeartbeatSucceededEvent.
@@ -388,7 +411,7 @@ class TestPoolManagement(IntegrationTest):
     @client_context.require_failCommand_appName
     @client_context.require_test_commands
     @client_context.require_async
-    @flaky(reason="PYTHON-5428")
+    @flaky(reason="PyPy is slow")
     def test_connection_close_does_not_block_other_operations(self):
         listener = CMAPHeartbeatListener()
         client = self.single_client(
@@ -403,7 +426,7 @@ class TestPoolManagement(IntegrationTest):
             "pool initialized with 10 connections",
         )
 
-        client.db.test.insert_one({"x": 1})
+        client.db.coll.insert_one({"x": 1})
         close_delay = 0.1
         latencies = []
         should_exit = []
@@ -411,7 +434,7 @@ class TestPoolManagement(IntegrationTest):
         def run_task():
             while True:
                 start_time = time.monotonic()
-                client.db.test.find_one({})
+                client.db.coll.find_one({})
                 elapsed = time.monotonic() - start_time
                 latencies.append(elapsed)
                 if should_exit:
@@ -500,13 +523,13 @@ class TestPoolBackpressure(IntegrationTest):
             )
 
         # Make sure the collection has at least one document.
-        client.test.test.delete_many({})
-        client.test.test.insert_one({})
+        client.db.coll.delete_many({})
+        client.db.coll.insert_one({})
 
         # Run a slow operation to tie up the connection.
         def target():
             try:
-                client.test.test.find_one({"$where": delay(0.1)})
+                client.db.coll.find_one({"$where": delay(0.1)})
             except ConnectionFailure:
                 pass
 

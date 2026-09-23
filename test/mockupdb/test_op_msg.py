@@ -28,6 +28,7 @@ except ImportError:
     _HAVE_MOCKUPDB = False
 
 from pymongo import MongoClient, WriteConcern
+from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
 from pymongo.cursor_shared import CursorType
 from pymongo.operations import DeleteOne, InsertOne, UpdateOne
 
@@ -281,7 +282,7 @@ class TestOpMsg(PyMongoTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.server = MockupDB(auto_ismaster=True, max_wire_version=8)
+        cls.server = MockupDB(auto_ismaster=True, max_wire_version=MIN_SUPPORTED_WIRE_VERSION)
         cls.server.run()
         cls.client = cls.unmanaged_simple_client(cls.server.uri)
 

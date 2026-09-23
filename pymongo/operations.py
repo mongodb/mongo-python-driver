@@ -366,8 +366,7 @@ class ReplaceOne(Generic[_DocumentType]):
             predicate specified either by its string name, or in the same
             format as passed to
             :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
-            ``[('field', ASCENDING)]``). This option is only supported on
-            MongoDB 4.2 and above.
+            ``[('field', ASCENDING)]``).
         :param sort: Specify which document the operation updates if the query matches
             multiple documents. The first document matched by the sort order will be updated.
         :param namespace: (optional) The namespace in which to replace a document.
@@ -566,8 +565,7 @@ class UpdateOne(_UpdateOp):
             predicate specified either by its string name, or in the same
             format as passed to
             :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
-            ``[('field', ASCENDING)]``). This option is only supported on
-            MongoDB 4.2 and above.
+            ``[('field', ASCENDING)]``).
         :param namespace: The namespace in which to update a document.
         :param sort: Specify which document the operation updates if the query matches
             multiple documents. The first document matched by the sort order will be updated.
@@ -651,8 +649,7 @@ class UpdateMany(_UpdateOp):
             predicate specified either by its string name, or in the same
             format as passed to
             :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
-            ``[('field', ASCENDING)]``). This option is only supported on
-            MongoDB 4.2 and above.
+            ``[('field', ASCENDING)]``).
         :param namespace: (optional) The namespace in which to update documents.
 
         .. versionchanged:: 4.9
@@ -742,7 +739,7 @@ class IndexModel:
             that specifies the collation to use.
           - `wildcardProjection`: Allows users to include or exclude specific
             field paths from a `wildcard index`_ using the { "$**" : 1} key
-            pattern. Requires MongoDB >= 4.2.
+            pattern.
           - `hidden`: if ``True``, this index will be hidden from the query
             planner and will not be evaluated as part of query plan
             selection. Requires MongoDB >= 4.4.

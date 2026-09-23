@@ -27,7 +27,7 @@ from unittest.mock import patch
 
 import pymongo
 from gridfs.asynchronous.grid_file import AsyncGridFS, AsyncGridFSBucket
-from pymongo.asynchronous.pool import PoolState
+from pymongo.pool_shared import PoolState
 from pymongo.server_selectors import writable_server_selector
 
 sys.path[0:0] = [""]
@@ -35,8 +35,7 @@ sys.path[0:0] = [""]
 
 from bson import encode
 from bson.raw_bson import RawBSONDocument
-from pymongo import WriteConcern, _csot
-from pymongo.asynchronous import client_session
+from pymongo import WriteConcern, _csot, client_session_shared
 from pymongo.asynchronous.client_session import TransactionOptions
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 from pymongo.asynchronous.cursor import AsyncCursor
@@ -46,10 +45,10 @@ from pymongo.errors import (
     CollectionInvalid,
     ConfigurationError,
     ConnectionFailure,
-    ExecutionTimeout,
     InvalidOperation,
     NetworkTimeout,
     OperationFailure,
+    PyMongoError,
 )
 from pymongo.operations import IndexModel, InsertOne
 from pymongo.read_concern import ReadConcern
@@ -106,7 +105,7 @@ class TestTransactions(AsyncTransactionsBase):
         """Test txn overrides Client/Database/Collection write_concern."""
         client = await self.async_rs_client(w=0)
         db = client.test
-        coll = db.test
+        coll = db.coll
         await coll.insert_one({})
         async with client.start_session() as s:
             async with await s.start_transaction(write_concern=WriteConcern(w=1)):
@@ -139,14 +138,6 @@ class TestTransactions(AsyncTransactionsBase):
             (coll.drop_indexes, [], {}),
             (coll.aggregate, [[{"$out": "aggout"}]], {}),
         ]
-        # Creating a collection in a transaction requires MongoDB 4.4+.
-        if async_client_context.version < (4, 3, 4):
-            unsupported_txn_writes.extend(
-                [
-                    (db.create_collection, ["collection"], {}),
-                ]
-            )
-
         for op in unsupported_txn_writes:
             op, args, kwargs = op
             async with client.start_session() as s:
@@ -165,7 +156,7 @@ class TestTransactions(AsyncTransactionsBase):
             async_client_context.mongos_seeds(), localThresholdMS=1000
         )
         await async_wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
+        coll = client.db.coll
         # Create the collection.
         await coll.insert_one({})
         async with client.start_session() as s:
@@ -194,7 +185,7 @@ class TestTransactions(AsyncTransactionsBase):
             async_client_context.mongos_seeds(), localThresholdMS=1000
         )
         await async_wait_until(lambda: len(client.nodes) > 1, "discover both mongoses")
-        coll = client.test.test
+        coll = client.db.coll
         # Create the collection.
         await coll.insert_one({})
         async with client.start_session() as s:
@@ -214,10 +205,9 @@ class TestTransactions(AsyncTransactionsBase):
             self.assertGreater(len(addresses), 1)
 
     @async_client_context.require_transactions
-    @async_client_context.require_version_min(4, 3, 4)
     async def test_create_collection(self):
         client = async_client_context.client
-        db = client.pymongo_test
+        db = self.db
         coll = db.test_create_collection
         self.addAsyncCleanup(coll.drop)
 
@@ -244,7 +234,7 @@ class TestTransactions(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_gridfs_does_not_support_transactions(self):
         client = async_client_context.client
-        db = client.pymongo_test
+        db = self.db
         gfs = AsyncGridFS(db)
         bucket = AsyncGridFSBucket(db)
 
@@ -315,8 +305,6 @@ class TestTransactions(AsyncTransactionsBase):
                 ):
                     await op(*args, session=s)  # type: ignore
 
-    # Require 4.2+ for large (16MB+) transactions.
-    @async_client_context.require_version_min(4, 2)
     @async_client_context.require_transactions
     @unittest.skipIf(sys.platform == "win32", "Our Windows machines are too slow to pass this test")
     async def test_transaction_starts_with_batched_write(self):
@@ -328,7 +316,7 @@ class TestTransactions(AsyncTransactionsBase):
         # split.
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         await coll.delete_many({})
         listener.reset()
         self.addAsyncCleanup(coll.drop)
@@ -356,7 +344,7 @@ class TestTransactions(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_transaction_direct_connection(self):
         client = await self.async_single_client()
-        coll = client.pymongo_test.test
+        coll = client.pymongo_test.coll
 
         # Make sure the collection exists.
         await coll.insert_one({})
@@ -413,18 +401,18 @@ class TestTransactions(AsyncTransactionsBase):
 
 
 class PatchSessionTimeout:
-    """Patches the client_session's with_transaction timeout for testing."""
+    """Patches the client_session_shared's with_transaction timeout for testing."""
 
     def __init__(self, mock_timeout):
-        self.real_timeout = client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT
+        self.real_timeout = client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT
         self.mock_timeout = mock_timeout
 
     def __enter__(self):
-        client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.mock_timeout
+        client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.mock_timeout
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        client_session._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
+        client_session_shared._WITH_TRANSACTION_RETRY_TIME_LIMIT = self.real_timeout
 
 
 class TestTransactionsConvenientAPI(AsyncTransactionsBase):
@@ -460,10 +448,10 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
         async with self.client.start_session() as s:
             self.assertEqual(await s.with_transaction(callback), "Foo")
 
-        await self.db.test.insert_one({})
+        await self.db.coll.insert_one({})
 
         async def callback2(session):
-            await self.db.test.insert_one({}, session=session)
+            await self.db.coll.insert_one({}, session=session)
             return "Foo"
 
         async with self.client.start_session() as s:
@@ -484,7 +472,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     async def test_3_1_callback_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         async def callback(session):
             await coll.insert_one({}, session=session)
@@ -514,7 +502,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     async def test_3_2_callback_not_retried_after_commit_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         async def callback(session):
             await coll.insert_one({}, session=session)
@@ -550,7 +538,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     async def test_3_3_commit_not_retried_after_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         async def callback(session):
             await coll.insert_one({}, session=session)
@@ -590,7 +578,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     async def test_callback_not_retried_after_csot_timeout(self):
         listener = OvertCommandListener()
         client = await self.async_rs_client(event_listeners=[listener])
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
 
         async def callback(session):
             await coll.insert_one({}, session=session)
@@ -608,8 +596,13 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
         listener.reset()
         async with client.start_session() as s:
             with pymongo.timeout(1.0):
-                with self.assertRaises(ExecutionTimeout):
+                # The server may report MaxTimeMSExpired as an
+                # ExecutionTimeout or a WriteError.
+                # The driver can also time out with a NetworkTimeout while waiting for a response,
+                # so only assert that the error is a CSOT timeout.
+                with self.assertRaises(PyMongoError) as ctx:
                     await s.with_transaction(callback)
+                self.assertTrue(ctx.exception.timeout)
 
         # At least two attempts: the original and one or more retries.
         inserts = len([x for x in listener.started_command_names() if x == "insert"])
@@ -622,7 +615,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_in_transaction_property(self):
         client = async_client_context.client
-        coll = client.test.testcollection
+        coll = client.db.coll
         await coll.insert_one({})
         self.addAsyncCleanup(coll.drop)
 
@@ -659,7 +652,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
     @async_client_context.require_transactions
     async def test_4_retry_backoff_is_enforced(self):
         client = async_client_context.client
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         end = start = no_backoff_time = 0
 
         # Make random.random always return 0 (no backoff)
@@ -710,7 +703,9 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
             async with self.client.start_session() as s:
                 await s.with_transaction(callback)
             end = time.monotonic()
-        self.assertLess(abs(end - start - (no_backoff_time + 2.2)), 1)  # sum of 13 backoffs is 2.2
+        self.assertLess(
+            abs(end - start - (no_backoff_time + 2.3)), 0.5
+        )  # sum of 13 backoffs is ~2.3
 
 
 class TestOptionsInsideTransactionProse(AsyncTransactionsBase):
@@ -720,7 +715,7 @@ class TestOptionsInsideTransactionProse(AsyncTransactionsBase):
         # Write concern not inherited from collection object inside transaction
         # Create a MongoClient running against a configured sharded/replica set/load balanced cluster.
         client = async_client_context.client
-        coll = client[self.db.name].test
+        coll = client[self.db.name].coll
         await coll.delete_many({})
         # Start a new session on the client.
         async with client.start_session() as s:

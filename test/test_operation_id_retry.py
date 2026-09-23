@@ -16,19 +16,25 @@
 
 from __future__ import annotations
 
+import logging
 import sys
+from unittest.mock import patch
 
 sys.path[0:0] = [""]
 
 import pymongo
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
-from pymongo import _op_id
+from pymongo import _op_id, _telemetry
+from pymongo._telemetry import _CommandTelemetry
 from pymongo.errors import OperationFailure
 from pymongo.helpers_shared import _REAUTHENTICATION_REQUIRED_CODE
+from pymongo.logger import _COMMAND_LOGGER, _SERVER_SELECTION_LOGGER
+from pymongo.message import _randint
 from pymongo.operations import InsertOne
 from pymongo.synchronous.encryption import _Encrypter
 from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.synchronous.pool import Connection
+from pymongo.write_concern import WriteConcern
 from test import IntegrationTest, client_context, unittest
 from test.utils_shared import AllowListEventListener
 
@@ -131,6 +137,110 @@ class TestOperationIdRetry(IntegrationTest):
         for i, (name, f) in enumerate(_RETRYABLE_READS):
             with self.subTest(command=name, index=i):
                 self._check_stable_operation_id(name, f, self.RETRIES)
+
+    def test_retry_without_telemetry_creates_no_operation_id(self):
+        appname = _APP_NAME + "noapm"
+        client = self.rs_or_single_client(appname=appname)
+
+        # Make sure APM and logging are disabled
+        for logger in (_COMMAND_LOGGER, _SERVER_SELECTION_LOGGER):
+            self.assertFalse(logger.isEnabledFor(logging.DEBUG))
+        self.assertFalse(client._event_listeners.enabled_for_commands)
+
+        find_op_ids = []
+        original_init = _CommandTelemetry.__init__
+
+        def recording_init(
+            self, topology_id, conn, listeners, cmd, dbname, request_id, op_id, name=None
+        ):
+            if next(iter(cmd)) == "find":
+                find_op_ids.append(op_id)
+            original_init(
+                self, topology_id, conn, listeners, cmd, dbname, request_id, op_id, name=name
+            )
+
+        fail_point = {
+            "mode": {"times": 1},
+            "data": {
+                "failCommands": ["find"],
+                "closeConnection": True,
+                "appName": appname,
+            },
+        }
+        with self.fail_point(fail_point):
+            with (
+                patch.object(_telemetry, "_randint") as randint,
+                patch.object(_CommandTelemetry, "__init__", recording_init),
+            ):
+                self.assertIsNotNone(
+                    client.pymongo_test.test_operation_id_retry.find_one({"_id": 1})
+                )
+
+        self.assertEqual(
+            randint.call_count, 0, "generated an operation id without APM/logging enabled"
+        )
+        self.assertEqual(
+            find_op_ids,
+            [],
+            "expected no _CommandTelemetry construction without APM/logging enabled",
+        )
+
+    def test_bulk_write_without_telemetry_creates_no_operation_id(self):
+        client = self.rs_or_single_client()
+
+        # Make sure APM and logging are disabled
+        for logger in (_COMMAND_LOGGER, _SERVER_SELECTION_LOGGER):
+            self.assertFalse(logger.isEnabledFor(logging.DEBUG))
+        self.assertFalse(client._event_listeners.enabled_for_commands)
+
+        coll = client.pymongo_test.test_operation_id_retry
+        coll_w0 = coll.with_options(write_concern=WriteConcern(w=0))
+        with patch.object(_telemetry, "_randint") as randint:
+            # Acknowledged
+            result = coll.bulk_write([InsertOne({})])
+            self.assertEqual(result.inserted_count, 1)
+            # Unacknowledged ordered
+            self.assertFalse((coll_w0.bulk_write([InsertOne({})])).acknowledged)
+            # Unacknowledged unordered
+            self.assertFalse((coll_w0.bulk_write([InsertOne({})], ordered=False)).acknowledged)
+        self.assertEqual(
+            randint.call_count, 0, "generated an operation id without APM/logging enabled"
+        )
+
+        # Ensure we see randint() calls with APM enabled
+        with patch.object(_telemetry, "_randint", wraps=_randint) as wrapped_randint:
+            self.coll.bulk_write([InsertOne({})])
+        self.assertEqual(wrapped_randint.call_count, 1)
+
+    @client_context.require_version_min(8, 0, 0, -24)
+    def test_client_bulk_write_without_telemetry_creates_no_operation_id(self):
+        client = self.rs_or_single_client()
+
+        # Make sure APM and logging are disabled
+        for logger in (_COMMAND_LOGGER, _SERVER_SELECTION_LOGGER):
+            self.assertFalse(logger.isEnabledFor(logging.DEBUG))
+        self.assertFalse(client._event_listeners.enabled_for_commands)
+
+        ns = "pymongo_test.test_operation_id_retry"
+        with patch.object(_telemetry, "_randint") as randint:
+            # Acknowledged
+            result = client.bulk_write([InsertOne(namespace=ns, document={})])
+            self.assertEqual(result.inserted_count, 1)
+            # Unacknowledged
+            result = client.bulk_write(
+                [InsertOne(namespace=ns, document={})],
+                write_concern=WriteConcern(w=0),
+                ordered=False,
+            )
+            self.assertFalse(result.acknowledged)
+        self.assertEqual(
+            randint.call_count, 0, "generated an operation id without APM/logging enabled"
+        )
+
+        # Ensure we see randint() calls with APM enabled
+        with patch.object(_telemetry, "_randint", wraps=_randint) as wrapped_randint:
+            self.client.bulk_write([InsertOne(namespace=ns, document={})])
+        self.assertEqual(wrapped_randint.call_count, 1)
 
     def test_reauth_does_not_reuse_operation_id(self):
         class FakeConnection(Connection):

@@ -51,10 +51,10 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
+from pymongo.pool_shared import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.server_type import SERVER_TYPE
 from pymongo.synchronous.collection import ReturnDocument
-from pymongo.synchronous.pool import _CancellationContext, _PoolGeneration
 from pymongo.write_concern import WriteConcern
 from test import client_context
 from test.asynchronous.utils import async_wait_until
@@ -410,11 +410,11 @@ def delay(sec):
     .. code-block:: python
 
         db.coll.insert_one({"x": 1})
-        db.test.find_one({"x": 1})
+        db.coll.find_one({"x": 1})
         # {'x': 1, '_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
 
         # The following will wait 2.5 seconds before returning.
-        db.test.find_one({"$where": delay(2.5)})
+        db.coll.find_one({"$where": delay(2.5)})
         # {'x': 1, '_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
 
     Using ``delay`` to provoke a KeyboardInterrupt
@@ -568,13 +568,13 @@ def lazy_client_trial(reset, target, test, get_client):
     `test` takes the lazily-connecting collection and asserts a
     post-condition to prove `target` succeeded.
     """
-    collection = client_context.client.pymongo_test.test
+    collection = client_context.client.pymongo_test.coll
 
     with frequent_thread_switches():
         for _i in range(NTRIALS):
             reset(collection)
             lazy_client = get_client()
-            lazy_collection = lazy_client.pymongo_test.test
+            lazy_collection = lazy_client.pymongo_test.coll
             run_threads(lazy_collection, target)
             test(lazy_collection)
 
@@ -593,6 +593,24 @@ def gevent_monkey_patched():
 
 def is_greenthread_patched():
     return gevent_monkey_patched()
+
+
+@contextlib.contextmanager
+def suppress_fork_deprecation():
+    """Suppress the fork() DeprecationWarning Python 3.15 raises in multi-threaded processes.
+
+    Only gevent's monkey patching makes the process multi-threaded while these
+    subprocesses fork; the warning is a thread-count heuristic and benign for
+    subprocesses, which exec immediately (PYTHON-5874).
+    """
+    with warnings.catch_warnings():
+        if is_greenthread_patched():
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*use of fork\(\) may lead to deadlocks.*",
+                category=DeprecationWarning,
+            )
+        yield
 
 
 def parse_read_preference(pref):

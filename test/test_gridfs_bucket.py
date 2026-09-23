@@ -33,6 +33,7 @@ sys.path[0:0] = [""]
 import gridfs
 from bson.binary import Binary
 from bson.int64 import Int64
+from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from bson.son import SON
 from gridfs.errors import CorruptGridFile, NoFile
@@ -41,6 +42,7 @@ from pymongo.errors import (
     NotPrimaryError,
     ServerSelectionTimeoutError,
     WriteConcernError,
+    WriteError,
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.mongo_client import MongoClient
@@ -444,6 +446,32 @@ class TestGridfs(IntegrationTest):
         with self.assertRaises(ValueError):
             gin.write(b"test4")
         self.assertEqual(0, self.db.fs.chunks.count_documents({"files_id": gin._id}))
+
+    # Server versions older than 5.0 do not support document values with
+    # "$"-prefixed keys.
+    @client_context.require_version_min(5, 0)
+    def test_abort_with_injected_file_id_does_not_delete_other_files(self):
+        bucket = self.fs
+        file1_bytes = b"\x11\x22\x33\x44"
+        bucket.upload_from_stream("file1", file1_bytes)
+
+        upload_stream = bucket.open_upload_stream_with_id(
+            {"$gt": MinKey()}, "file2", chunk_size_bytes=2
+        )
+        upload_stream.write(b"\x55\x66\x77\x88")
+        try:
+            upload_stream.abort()
+        except WriteError:
+            # Newer server versions reject an equality match on "_id" whose
+            # operand itself resembles a query operator, even when the
+            # driver safely wraps it in "$eq". The chunks are still cleaned
+            # up in that case; only the (never created) files document
+            # delete is rejected.
+            pass
+
+        self.assertEqual(file1_bytes, (bucket.open_download_stream_by_name("file1")).read())
+        with self.assertRaises(NoFile):
+            bucket.open_download_stream_by_name("file2")
 
     def test_download_to_stream(self):
         file1 = BytesIO(b"hello world")

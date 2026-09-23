@@ -25,6 +25,7 @@ import socket
 import ssl
 import sys
 import time
+from unittest.mock import patch
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.son import SON
@@ -32,6 +33,7 @@ from pymongo import AsyncMongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _async_create_lock
+from pymongo.monitoring import _EventListeners
 from test.asynchronous.utils import async_get_pool, async_joinall, flaky
 
 sys.path[0:0] = [""]
@@ -40,7 +42,7 @@ from pymongo.asynchronous.pool import Pool, PoolOptions
 from pymongo.socket_checker import SocketChecker
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.helpers import ConcurrentRunner
-from test.utils_shared import delay
+from test.utils_shared import CMAPListener, delay
 
 try:
     import OpenSSL
@@ -168,9 +170,9 @@ class _TestPoolingBase(AsyncIntegrationTest):
         self.c = await self.async_rs_or_single_client()
         db = self.c[DB]
         await db.unique.drop()
-        await db.test.drop()
+        await db.coll.drop()
         await db.unique.insert_one({"_id": "jesse"})
-        await db.test.insert_many([{} for _ in range(10)])
+        await db.coll.insert_many([{} for _ in range(10)])
 
     async def create_pool(self, pair=None, *args, **kwargs):
         if pair is None:
@@ -222,6 +224,123 @@ class TestPooling(_TestPoolingBase):
             self.assertEqual(conn, new_connection)
 
         self.assertEqual(1, len(cx_pool.conns))
+
+    async def test_checkout_event_listener_failure_no_leak(self):
+        # Connection is returned to the pool when publish_connection_checked_out raises.
+        cx_pool = await self.create_pool(
+            max_pool_size=1, event_listeners=_EventListeners([CMAPListener()])
+        )
+
+        with patch.object(
+            cx_pool.opts._event_listeners,
+            "publish_connection_checked_out",
+            side_effect=RuntimeError("simulated failure"),
+        ):
+            with self.assertRaises(RuntimeError):
+                async with cx_pool.checkout():
+                    pass
+
+        # Connection was returned to the pool — not leaked.
+        self.assertEqual(1, len(cx_pool.conns))
+        self.assertEqual(0, cx_pool.active_sockets)
+
+        # Pool is still functional.
+        async with cx_pool.checkout():
+            pass
+
+    async def test_get_conn_reused_connection_rolls_back_on_cancel(self):
+        # _get_conn's reused-connection bookkeeping (registering the
+        # cancel_context for a connection popped from the idle queue) must
+        # roll back pool accounting on failure, the same all-or-nothing
+        # contract _get_conn already provides when connect() fails for a
+        # brand new connection.
+        cx_pool = await self.create_pool(max_pool_size=1)
+
+        async with cx_pool.checkout() as conn:
+            pass
+        self.assertEqual(1, len(cx_pool.conns))
+        reused_context = conn.cancel_context
+
+        class _CancelOnReusedContext(set):
+            def add(self, item):
+                if item is reused_context:
+                    raise asyncio.CancelledError()
+                super().add(item)
+
+        cx_pool.active_contexts = _CancelOnReusedContext(cx_pool.active_contexts)
+
+        with self.assertRaises(asyncio.CancelledError):
+            async with cx_pool.checkout():
+                pass
+
+        # Bookkeeping must be rolled back, not left half-updated.
+        self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool.requests)
+
+    async def test_checkout_error_accounting_no_double_decrement(self):
+        # PYTHON-6074: an exception delivered while the checkout error handler
+        # is inside size_cond.notify() (a yield point under gevent, where a
+        # greenlet can be killed) must not cause the accounting to be applied
+        # a second time by the handler's fallback.
+        cx_pool = await self.create_pool(max_pool_size=1)
+
+        real_notify = cx_pool.size_cond.notify
+        notify_calls = []
+
+        def notify():
+            notify_calls.append(1)
+            if len(notify_calls) == 1:
+                # Simulate a kill delivered at the notify() yield point.
+                raise KeyboardInterrupt()
+            real_notify()
+
+        cx_pool.size_cond.notify = notify
+        try:
+            with patch.object(cx_pool, "connect", side_effect=asyncio.CancelledError()):
+                with self.assertRaises(KeyboardInterrupt):
+                    async with cx_pool.checkout():
+                        pass
+        finally:
+            cx_pool.size_cond.notify = real_notify
+
+        # Accounting was applied exactly once.
+        self.assertEqual(0, cx_pool.requests)
+        self.assertEqual(0, cx_pool.active_sockets)
+
+    async def test_checkout_error_accounting_on_kill_during_acquire(self):
+        # PYTHON-6074: an exception delivered while the checkout error
+        # handler is waiting to acquire size_cond (a yield point under
+        # gevent) must not leak the checkout accounting; the handler's
+        # fallback re-applies it.
+        cx_pool = await self.create_pool(max_pool_size=1)
+
+        class _InterruptOnSecondEnter(type(cx_pool.size_cond)):
+            def __init__(self, lock):
+                super().__init__(lock)
+                self.enters = 0
+
+            async def __aenter__(self):
+                self.enters += 1
+                if self.enters == 2:
+                    # First enter is the checkout semaphore, second is the
+                    # error handler. Simulate a kill delivered while blocked
+                    # on the second.
+                    raise KeyboardInterrupt()
+                return await super().__aenter__()
+
+            async def __aexit__(self, *args):
+                return await super().__aexit__(*args)
+
+        cx_pool.size_cond = _InterruptOnSecondEnter(cx_pool.size_cond._lock)
+
+        with patch.object(cx_pool, "connect", side_effect=asyncio.CancelledError()):
+            with self.assertRaises(KeyboardInterrupt):
+                async with cx_pool.checkout():
+                    pass
+
+        # The fallback applied the accounting exactly once.
+        self.assertEqual(0, cx_pool.requests)
+        self.assertEqual(0, cx_pool.active_sockets)
 
     async def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.
@@ -404,14 +523,14 @@ class TestPooling(_TestPoolingBase):
 
     async def test_maxConnecting(self):
         client = await self.async_rs_or_single_client()
-        await self.client.test.test.insert_one({})
-        self.addAsyncCleanup(self.client.test.test.delete_many, {})
+        await self.client.db.coll.insert_one({})
+        self.addAsyncCleanup(self.client.db.coll.delete_many, {})
         pool = await async_get_pool(client)
         docs = []
 
         # Run 50 short running operations
         async def find_one():
-            docs.append(await client.test.test.find_one({}))
+            docs.append(await client.db.coll.find_one({}))
 
         tasks = [ConcurrentRunner(target=find_one) for _ in range(50)]
         for task in tasks:
@@ -452,12 +571,12 @@ class TestPooling(_TestPoolingBase):
             },
         }
 
-        await client.db.t.insert_one({"x": 1})
+        await client.db.coll.insert_one({"x": 1})
 
         async with self.fail_point(mock_connection_timeout):
             with self.assertRaises(Exception) as error:
                 with timeout(0.5):
-                    await client.db.t.find_one({"$where": delay(2)})
+                    await client.db.coll.find_one({"$where": delay(2)})
 
         self.assertIn("(configured timeouts: timeoutMS: 500.0ms", str(error.exception))
 
@@ -478,11 +597,11 @@ class TestPooling(_TestPoolingBase):
             },
         }
 
-        await client.db.t.insert_one({"x": 1})
+        await client.db.coll.insert_one({"x": 1})
 
         async with self.fail_point(mock_connection_timeout):
             with self.assertRaises(Exception) as error:
-                await client.db.t.find_one({"$where": delay(2)})
+                await client.db.coll.find_one({"$where": delay(2)})
 
         self.assertIn(
             "(configured timeouts: socketTimeoutMS: 500.0ms, connectTimeoutMS: 20000.0ms)",
@@ -563,7 +682,7 @@ class TestPoolMaxSize(_TestPoolingBase):
     async def test_max_pool_size(self):
         max_pool_size = 4
         c = await self.async_rs_or_single_client(maxPoolSize=max_pool_size)
-        collection = c[DB].test
+        collection = c[DB].coll
 
         # Need one document.
         await collection.drop()
@@ -602,7 +721,7 @@ class TestPoolMaxSize(_TestPoolingBase):
     )
     async def test_max_pool_size_none(self):
         c = await self.async_rs_or_single_client(maxPoolSize=None)
-        collection = c[DB].test
+        collection = c[DB].coll
 
         # Need one document.
         await collection.drop()

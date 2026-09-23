@@ -39,7 +39,6 @@ pytestmark = pytest.mark.kms
 
 class TestonDemandGCPCredentials(IntegrationTest):
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    @client_context.require_version_min(4, 2, -1)
     def setUp(self):
         super().setUp()
         self.master_key = {
@@ -77,7 +76,6 @@ class TestonDemandGCPCredentials(IntegrationTest):
 
 class TestonDemandAzureCredentials(IntegrationTest):
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    @client_context.require_version_min(4, 2, -1)
     def setUp(self):
         super().setUp()
         self.master_key = {

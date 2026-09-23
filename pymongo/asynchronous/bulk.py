@@ -32,7 +32,8 @@ from typing import (
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from pymongo import _csot, common
-from pymongo.asynchronous.client_session import AsyncClientSession, _validate_session_write_concern
+from pymongo._telemetry import _generate_op_id_or_none
+from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.command_runner import (
     run_bulk_write_command,
 )
@@ -44,6 +45,7 @@ from pymongo.bulk_shared import (
     _raise_bulk_write_error,
     _Run,
 )
+from pymongo.client_session_shared import _validate_session_write_concern
 from pymongo.common import (
     validate_is_document_type,
     validate_ok_for_replace,
@@ -61,7 +63,6 @@ from pymongo.message import (
     _UPDATE,
     _BulkWriteContext,
     _EncryptedBulkWriteContext,
-    _randint,
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
@@ -102,8 +103,6 @@ class _AsyncBulk:
         self.bypass_doc_val = bypass_document_validation
         self.uses_collation = False
         self.uses_array_filters = False
-        self.uses_hint_update = False
-        self.uses_hint_delete = False
         self.uses_sort = False
         self.is_retryable = True
         self.retrying = False
@@ -154,7 +153,6 @@ class _AsyncBulk:
             self.uses_array_filters = True
             cmd["arrayFilters"] = array_filters
         if hint is not None:
-            self.uses_hint_update = True
             cmd["hint"] = hint
         if sort is not None:
             self.uses_sort = True
@@ -182,7 +180,6 @@ class _AsyncBulk:
             self.uses_collation = True
             cmd["collation"] = collation
         if hint is not None:
-            self.uses_hint_update = True
             cmd["hint"] = hint
         if sort is not None:
             self.uses_sort = True
@@ -202,7 +199,6 @@ class _AsyncBulk:
             self.uses_collation = True
             cmd["collation"] = collation
         if hint is not None:
-            self.uses_hint_delete = True
             cmd["hint"] = hint
         if limit == _DELETE_ALL:
             # A bulk_write containing a delete_many is not retryable.
@@ -339,7 +335,7 @@ class _AsyncBulk:
         write_concern: WriteConcern,
         session: Optional[AsyncClientSession],
         conn: AsyncConnection,
-        op_id: int,
+        op_id: Optional[int],
         retryable: bool,
         full_result: MutableMapping[str, Any],
         final_write_concern: Optional[WriteConcern] = None,
@@ -455,7 +451,8 @@ class _AsyncBulk:
             "nRemoved": 0,
             "upserted": [],
         }
-        op_id = _randint()
+        client = self.collection.database.client
+        op_id = _generate_op_id_or_none(client._event_listeners)
 
         async def retryable_bulk(
             session: Optional[AsyncClientSession], conn: AsyncConnection, retryable: bool
@@ -470,7 +467,6 @@ class _AsyncBulk:
                 full_result,
             )
 
-        client = self.collection.database.client
         _ = await client._retryable_write(
             self.is_retryable,
             retryable_bulk,
@@ -491,7 +487,7 @@ class _AsyncBulk:
         db_name = self.collection.database.name
         client = self.collection.database.client
         listeners = client._event_listeners
-        op_id = _randint()
+        op_id = _generate_op_id_or_none(listeners)
 
         if not self.current_run:
             self.current_run = next(generator)
@@ -544,7 +540,7 @@ class _AsyncBulk:
         # processing at the first error, even when the application
         # specified unacknowledged writeConcern.
         initial_write_concern = WriteConcern()
-        op_id = _randint()
+        op_id = _generate_op_id_or_none(self.collection.database.client._event_listeners)
         try:
             await self._execute_command(
                 generator,
@@ -572,14 +568,6 @@ class _AsyncBulk:
             raise ConfigurationError("arrayFilters is unsupported for unacknowledged writes.")
         # Guard against unsupported unacknowledged writes.
         unack = write_concern and not write_concern.acknowledged
-        if unack and self.uses_hint_delete and conn.max_wire_version < 9:
-            raise ConfigurationError(
-                "Must be connected to MongoDB 4.4+ to use hint on unacknowledged delete commands."
-            )
-        if unack and self.uses_hint_update and conn.max_wire_version < 8:
-            raise ConfigurationError(
-                "Must be connected to MongoDB 4.2+ to use hint on unacknowledged update commands."
-            )
         if unack and self.uses_sort and conn.max_wire_version < 25:
             raise ConfigurationError(
                 "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."

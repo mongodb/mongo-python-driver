@@ -295,7 +295,7 @@ class TestSdamMonitoring(AsyncIntegrationTest):
         self.test_client = await self.async_rs_or_single_client(
             event_listeners=[self.listener], retryWrites=retry_writes
         )
-        self.coll = self.test_client[self.client.db.name].test
+        self.coll = self.test_client[self.client.db.name].coll
         await self.coll.drop()  # necessary for first test run
         await self.coll.database.create_collection(self.coll.name)
         self.listener.reset()
@@ -355,15 +355,6 @@ class TestSdamMonitoring(AsyncIntegrationTest):
 
     async def test_network_error_publishes_events(self):
         await self._test_app_error({"closeConnection": True}, ConnectionFailure)
-
-    # In 4.4+, not primary errors from failCommand don't cause SDAM state
-    # changes because topologyVersion is not incremented.
-    @async_client_context.require_version_max(4, 3)
-    async def test_not_primary_error_publishes_events(self):
-        await self._test_app_error(
-            {"errorCode": 10107, "closeConnection": False, "errorLabels": ["RetryableWriteError"]},
-            NotPrimaryError,
-        )
 
     async def test_shutdown_error_publishes_events(self):
         await self._test_app_error(

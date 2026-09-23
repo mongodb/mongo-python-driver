@@ -60,36 +60,36 @@ class TestBackpressure(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_command(self):
-        await self.db.t.insert_one({"x": 1})
+        await self.db.coll.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         async with self.fail_point(fail_many):
-            await self.db.command("find", "t")
+            await self.db.command("find", "coll")
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         async with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                await self.db.command("find", "t")
+                await self.db.command("find", "coll")
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_find(self):
-        await self.db.t.insert_one({"x": 1})
+        await self.db.coll.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         async with self.fail_point(fail_many):
-            await self.db.t.find_one()
+            await self.db.coll.find_one()
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         async with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                await self.db.t.find_one()
+                await self.db.coll.find_one()
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
@@ -99,13 +99,13 @@ class TestBackpressure(AsyncIntegrationTest):
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         async with self.fail_point(fail_many):
-            await self.db.t.insert_one({"x": 1})
+            await self.db.coll.insert_one({"x": 1})
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         async with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                await self.db.t.insert_one({"x": 1})
+                await self.db.coll.insert_one({"x": 1})
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
@@ -114,25 +114,25 @@ class TestBackpressure(AsyncIntegrationTest):
     async def test_retry_overload_error_update_many(self):
         # Even though update_many is not a retryable write operation, it will
         # still be retried via the "RetryableError" error label.
-        await self.db.t.insert_one({"x": 1})
+        await self.db.coll.insert_one({"x": 1})
 
         # Ensure command is retried on overload error.
         fail_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES)
         async with self.fail_point(fail_many):
-            await self.db.t.update_many({}, {"$set": {"x": 2}})
+            await self.db.coll.update_many({}, {"$set": {"x": 2}})
 
         # Ensure command stops retrying after MAX_ADAPTIVE_RETRIES.
         fail_too_many = get_mock_overload_error(MAX_ADAPTIVE_RETRIES + 1)
         async with self.fail_point(fail_too_many):
             with self.assertRaises(PyMongoError) as error:
-                await self.db.t.update_many({}, {"$set": {"x": 2}})
+                await self.db.coll.update_many({}, {"$set": {"x": 2}})
 
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
     async def test_retry_overload_error_getMore(self):
-        coll = self.db.t
+        coll = self.db.coll
         await coll.insert_many([{"x": 1} for _ in range(10)])
 
         # Ensure command is retried on overload error.
@@ -189,7 +189,7 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
         client = self.client
 
         # 2. let `collection` be a collection
-        collection = client.test.test
+        collection = client.db.coll
 
         # 3. Now, run transactions without backoff:
 
@@ -223,9 +223,9 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
             end1 = perf_counter()
 
             # f. Compare the times between the two runs.
-            # The sum of 2 backoffs is 0.3 seconds. There is a 0.3-second window to account for potential variance between the two
+            # The sum of 2 backoffs is 0.6 seconds. There is a 0.6-second window to account for potential variance between the two
             # runs.
-            self.assertTrue(abs((end1 - start1) - (end0 - start0 + 0.3)) < 0.3)
+            self.assertTrue(abs((end1 - start1) - (end0 - start0 + 0.6)) < 0.6)
 
     @async_client_context.require_failCommand_appName
     async def test_03_overload_retries_limited(self):
@@ -293,6 +293,78 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
 
         # 6. Assert that the total number of started commands is max_retries + 1.
         self.assertEqual(len(self.listener.started_events), max_retries + 1)
+
+    @unittest.skipIf(
+        sys.platform == "darwin",
+        "externalClientBaseBackoffMS is not supported on macOS",
+    )
+    @patch("random.random")
+    @async_client_context.require_version_min(9, 0, 0, -1)
+    @async_client_context.require_failCommand_appName
+    async def test_05_overload_errors_with_basebackoffms_override_backoff(self, random_func):
+        # Drivers should test that overload errors with `baseBackoffMS` override the default backoff duration.
+
+        # 1. Let `client` be a `MongoClient`.
+        client = self.client
+
+        # 2. Let `coll` be a collection.
+        coll = client.db.coll
+
+        # 3. Configure the random number generator used for exponential backoff jitter to always return a number as
+        # close as possible to `1`.
+        random_func.return_value = 1
+
+        # 4. Configure the following failPoint:
+        fail_point = dict(
+            mode="alwaysOn",
+            data=dict(
+                failCommands=["insert"],
+                errorCode=462,
+                errorLabels=["SystemOverloadedError", "RetryableError"],
+                appName=self.app_name,
+            ),
+        )
+        async with self.fail_point(fail_point):
+            # 5. Insert the document `{ a: 1 }`. Expect that the command errors. Measure the duration of the command
+            # execution.
+            start0 = perf_counter()
+            with self.assertRaises(OperationFailure):
+                await coll.insert_one({"a": 1})
+            end0 = perf_counter()
+            exponential_backoff_time = end0 - start0
+
+            # 6. Run the following command to set up `baseBackoffMS` on overload errors.
+            try:
+                await client.admin.command("setParameter", 1, externalClientBaseBackoffMS=50)
+
+                # 7. Execute step 5 again.
+                start1 = perf_counter()
+                with self.assertRaises(OperationFailure) as ctx:
+                    await coll.insert_one({"a": 1})
+                end1 = perf_counter()
+                with_base_backoff_ms_time = end1 - start1
+
+                # 8. Assert the server attached `baseBackoffMS` to the error and the driver parsed it.
+                self.assertEqual(ctx.exception._base_backoff_ms, 50)
+            finally:
+                # 9. Run the following command to disable `baseBackoffMS` on overload errors.
+                await client.admin.command("setParameter", 1, externalClientBaseBackoffMS=0)
+
+        # 10. Assert absolute bounds on each run's duration.
+        # A run can never be faster than the sum of its backoffs.
+        # With jitter pinned to 1, the default backoffs are 0.2 + 0.4 = 0.6s
+        # and the baseBackoffMS=50 backoffs are 0.1 + 0.2 = 0.3s.
+
+        # Allow for slight timing slack on Windows + <= Python 3.12 due to asyncio timing resolution
+        if sys.platform == "win32" and not _IS_SYNC and sys.version_info < (3, 13):
+            exponential_expected = 0.55
+            base_backoff_expected = 0.25
+        else:
+            exponential_expected = 0.6
+            base_backoff_expected = 0.3
+        self.assertGreaterEqual(exponential_backoff_time, exponential_expected)
+        self.assertGreaterEqual(with_base_backoff_ms_time, base_backoff_expected)
+        self.assertLess(with_base_backoff_ms_time, 0.6)
 
 
 # Location of JSON test specifications.

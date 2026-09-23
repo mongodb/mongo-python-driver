@@ -41,6 +41,10 @@ from bson.typings import _DocumentType
 
 _RAW_BSON_DOCUMENT_MARKER = 101
 
+# Raw BSON documents at least this many bytes are exposed as read-only
+# memoryview slices of the decode buffer instead of bytes copies.
+_RAW_BSON_VIEW_THRESHOLD = 4096
+
 
 def _raw_document_class(document_class: Any) -> bool:
     """Determine if a document_class is a RawBSONDocument class."""

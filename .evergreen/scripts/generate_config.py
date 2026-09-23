@@ -67,6 +67,18 @@ def create_ocsp_variants() -> list[BuildVariant]:
             batchtime=BATCHTIME_WEEK,
         )
         variants.append(variant)
+        # Run the stapled OCSP tasks (tagged "pr") on every PR so cryptography-backend
+        # regressions, like the min-deps ML-KEM breakage in PYTHON-6032, are caught before merge
+        # instead of on the next weekly batch run.
+        if host == DEFAULT_HOST:
+            variants.append(
+                create_variant(
+                    [".ocsp-staple .pr"],
+                    get_variant_name("OCSP Staples", host),
+                    tags=["pr"],
+                    host=host,
+                )
+            )
     return variants
 
 
@@ -104,6 +116,7 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
         expansions = dict()
         if host_name == "win32":
             expansions["IS_WIN32"] = "1"
+            tasks = [".test-standard !.pypy !.free-threaded"]
         display_name = get_variant_name(base_display_name, host)
         variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
         variants.append(variant)
@@ -130,13 +143,17 @@ def create_encryption_variants() -> list[BuildVariant]:
     ):
         expansions = get_encryption_expansions(encryption)
         display_name = get_variant_name(encryption, host, **expansions)
-        tasks = [".test-non-standard"]
+        tasks = [".test-non-standard !.python-3.15t", ".test-string-query-preview"]
         if host != "rhel8":
             # Exclude PyPy (not tested with encryption on macOS/win64) and coverage tasks
             # (encryption suites exceed the 60-min timeout with coverage overhead on macOS/win64).
             # Also include the non-coverage companion tasks (test-non-standard-no-cov) which
             # carry the "latest" server tasks without COVERAGE=1.
-            tasks = [".test-non-standard !.pypy !.cov", ".test-non-standard-no-cov !.pypy"]
+            tasks = [
+                ".test-non-standard !.pypy !.cov !.python-3.15t",
+                ".test-non-standard-no-cov !.pypy !.python-3.15t",
+                ".test-string-query-preview",
+            ]
         variant = create_variant(
             tasks,
             display_name,
@@ -153,7 +170,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     expansions = get_encryption_expansions(encryption)
     display_name = get_variant_name(encryption, host, **expansions)
     variant = create_variant(
-        [".test-non-standard"],
+        [".test-non-standard !.python-3.15t"],
         display_name,
         host=host,
         expansions=expansions,
@@ -161,6 +178,37 @@ def create_encryption_variants() -> list[BuildVariant]:
         tags=tags,
     )
     variants.append(variant)
+
+    # The 3.15t encryption tests only run on Ubuntu 22, whose OpenSSL 3.0.2 is
+    # needed to build the cryptography package; only MongoDB 6.0+ runs there.
+    host = HOSTS["ubuntu22"]
+    expansions = get_encryption_expansions("Encryption")
+    display_name = get_variant_name("Encryption", host, **expansions)
+    variants.append(
+        create_variant(
+            [".test-non-standard .python-3.15t !.server-4.4 !.server-5.0"],
+            display_name,
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+            tags=[*tags, "pr"],
+        )
+    )
+
+    # The 3.15t PyOpenSSL tests only run on Ubuntu 22, whose OpenSSL 3.0.2 is
+    # needed to build the cryptography package.
+    expansions = get_encryption_expansions("Encryption PyOpenSSL")
+    display_name = get_variant_name("Encryption PyOpenSSL", host, **expansions)
+    variants.append(
+        create_variant(
+            [".test-non-standard .python-3.15t"],
+            display_name,
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+            tags=[*tags, "pr"],
+        )
+    )
     return variants
 
 
@@ -187,10 +235,7 @@ def create_compression_variants():
     variants = []
     for compressor in "snappy", "zlib", "zstd":
         expansions = dict(COMPRESSOR=compressor)
-        if compressor == "zstd":
-            tasks = [".test-standard !.server-4.2"]
-        else:
-            tasks = [".test-standard"]
+        tasks = [".test-standard"]
         display_name = get_variant_name(f"Compression {compressor}", host)
         variants.append(
             create_variant(
@@ -204,8 +249,10 @@ def create_compression_variants():
     host = HOSTS["ubuntu22"]
     expansions = dict(COMPRESSOR="ztsd")
     tasks = [
-        ".test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14",
-        ".test-standard !.server-4.2 !.server-4.4 !.server-5.0 .python-3.14t",
+        ".test-standard !.server-4.4 !.server-5.0 .python-3.14",
+        ".test-standard !.server-4.4 !.server-5.0 .python-3.14t",
+        ".test-standard !.server-4.4 !.server-5.0 .python-3.15",
+        ".test-standard !.server-4.4 !.server-5.0 .python-3.15t",
     ]
     display_name = get_variant_name(f"Compression {compressor}", host)
     variants.append(
@@ -244,17 +291,40 @@ def create_pyopenssl_variants():
 
     for host in ["rhel8", "macos", "win64"]:
         display_name = get_variant_name(base_name, host)
-        base_task = ".test-standard" if host == "rhel8" else ".test-standard !.pypy"
+        base_task = (
+            ".test-standard !.python-3.15t"
+            if host == "rhel8"
+            else ".test-standard !.pypy !.python-3.15t"
+        )
         # We only need to run a subset on async.
         tasks = [f"{base_task} .sync", f"{base_task} .async .replica_set-noauth-ssl"]
         variants.append(
             create_variant(
                 tasks,
                 display_name,
+                host=host,
                 expansions=expansions,
                 batchtime=batchtime,
             )
         )
+
+    # The 3.15t PyOpenSSL tests only run on Ubuntu 22, whose OpenSSL 3.0.2 is
+    # needed to build the cryptography package; only MongoDB 6.0+ runs there.
+    host = HOSTS["ubuntu22"]
+    tasks = [
+        ".test-standard .python-3.15t !.server-4.4 !.server-5.0 .sync",
+        ".test-standard .python-3.15t !.server-4.4 !.server-5.0 .async .replica_set-noauth-ssl",
+    ]
+    variants.append(
+        create_variant(
+            tasks,
+            get_variant_name(base_name, host),
+            host=host,
+            expansions=expansions,
+            batchtime=batchtime,
+            tags=["pr"],
+        )
+    )
 
     return variants
 
@@ -327,14 +397,6 @@ def create_no_c_ext_variants():
     expansions = dict()
     handle_c_ext(C_EXTS[0], expansions)
     display_name = get_variant_name("No C Ext", host)
-    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
-
-
-def create_mod_wsgi_variants():
-    host = HOSTS["ubuntu22"]
-    tasks = [".mod_wsgi"]
-    expansions = dict(MOD_WSGI_VERSION="4")
-    display_name = get_variant_name("Mod_WSGI", host)
     return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
@@ -718,6 +780,34 @@ def create_test_non_standard_tasks():
     return tasks
 
 
+def create_string_query_preview_tasks():
+    """Tasks for the preview Queryable Encryption string query types.
+
+    The preview query types need a server that is at least 8.2 and older than
+    9.0, and ALL_VERSIONS jumps straight from 8.0 to 9.0, so they have nowhere
+    to run without a dedicated task. setup_tests.py pins the released
+    pymongocrypt for 8.x, which bundles a libmongocrypt still carrying the
+    preview types.
+    """
+    python = CPYTHONS[-1]
+    topology = "replica_set"
+    auth, ssl = get_standard_auth_ssl(topology)
+    expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION="8.2")
+    tags = [
+        "test-string-query-preview",
+        "server-8.2",
+        f"python-{python}",
+        f"{topology}-{auth}-{ssl}",
+        auth,
+    ]
+    name = get_task_name("test-string-query-preview", python=python, **expansions)
+    server_func = FunctionCall(func="run server", vars=expansions)
+    test_vars = expansions.copy()
+    test_vars["TOOLCHAIN_VERSION"] = python
+    test_func = FunctionCall(func="run tests", vars=test_vars)
+    return [EvgTask(name=name, tags=tags, commands=[server_func, test_func])]
+
+
 def create_test_standard_auth_tasks():
     """We only use auth on sharded clusters"""
     tasks = []
@@ -914,31 +1004,6 @@ def create_oidc_tasks():
     return tasks
 
 
-def create_mod_wsgi_tasks():
-    tasks = []
-    for (test, topology), python in zip_cycle(
-        product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
-    ):
-        if "t" in python:
-            continue
-        if test == "standalone":
-            task_name = "mod-wsgi-"
-        else:
-            task_name = "mod-wsgi-embedded-mode-"
-        task_name += topology.replace("_", "-")
-        task_name = get_task_name(task_name, python=python)
-        server_vars = dict(TOPOLOGY=topology, TOOLCHAIN_VERSION=python)
-        server_func = FunctionCall(func="run server", vars=server_vars)
-        vars = dict(
-            TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0], TOOLCHAIN_VERSION=python
-        )
-        test_func = FunctionCall(func="run tests", vars=vars)
-        tags = ["mod_wsgi", "pr"]
-        commands = [server_func, test_func]
-        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
-    return tasks
-
-
 def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
     tasks = []
     file_name = f"{algo}-basic-tls-ocsp-{variant}.json"
@@ -961,7 +1026,20 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         tags = ["ocsp", f"ocsp-{algo}", version]
         if "disableStapling" not in variant:
             tags.append("ocsp-staple")
-        if base_task_name == "valid-cert-server-staples" and version == "latest":
+        # Run exactly one min-deps and one latest-CPython stapled OCSP task on
+        # every PR (ecdsa only, to avoid doubling coverage across algorithms)
+        # so a cryptography-backend regression at either dependency extreme,
+        # like the min-deps ML-KEM breakage in PYTHON-6032, is caught before
+        # merge instead of on the next weekly mainline batch run.
+        if (
+            base_task_name == "valid-cert-server-staples"
+            and algo == "ecdsa"
+            and version
+            in (
+                "latest",
+                "4.4",
+            )
+        ):
             tags.append("pr")
             if "TEST_MIN_DEPS" not in vars:
                 vars["COVERAGE"] = "1"

@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from contextlib import AbstractContextManager
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -32,9 +31,8 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.monitoring import _EventListeners
     from pymongo.server_description import ServerDescription
-    from pymongo.synchronous.mongo_client import _MongoClientErrorHandler
     from pymongo.synchronous.monitor import Monitor
-    from pymongo.synchronous.pool import Connection, Pool
+    from pymongo.synchronous.pool import Pool
 
 _IS_SYNC = True
 
@@ -81,11 +79,6 @@ class Server:
     def request_check(self) -> None:
         """Check the server's state soon."""
         self._monitor.request_check()
-
-    def checkout(
-        self, handler: Optional[_MongoClientErrorHandler] = None
-    ) -> AbstractContextManager[Connection]:
-        return self.pool.checkout(handler)
 
     @property
     def description(self) -> ServerDescription:
