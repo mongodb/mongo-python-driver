@@ -149,10 +149,8 @@ def _is_faas() -> bool:
     return _is_lambda() or _is_azure_func() or _is_gcp_func() or _is_vercel()
 
 
-# Environment variables that indicate a known coding agent, checked in order.
-# The first populated variable determines the value of the client.env.agent
-# metadata field, regardless of the variable's value. This list and the agent
-# names match the detection that mongosh implements.
+# Known coding agents, checked in order. The first populated variable gives
+# client.env.agent, whatever its value. Matches mongosh detection.
 # See DRIVERS-3529 and PYTHON-5929.
 _AGENT_ENV_VARS = [
     ("CLAUDECODE", "claude_code"),
@@ -168,8 +166,7 @@ _AGENT_ENV_VARS = [
     ("GOOSE_AGENT", "goose"),
 ]
 
-# The generic agent variable, evaluated after every known agent so that a
-# known agent is always reported under its fixed name.
+# Generic agent variable, checked last so a known agent keeps its fixed name.
 _GENERIC_AGENT_ENV_VAR = "AI_AGENT"
 
 # Maximum size in bytes of a normalized AI_AGENT value.
@@ -177,13 +174,9 @@ _MAX_AGENT_SIZE = 64
 
 
 def _metadata_agent() -> Optional[str]:
-    """Detect a coding agent from the environment for client.env.agent.
-
-    The first populated known agent variable determines the value. The generic
-    AI_AGENT variable is evaluated last: its value is trimmed, lowercased and
-    truncated, and the boolean values "1" and "true" map to "ai_agent"."""
+    """Detect a coding agent from the environment for client.env.agent."""
     for var, name in _AGENT_ENV_VARS:
-        # A variable that is unset, empty or whitespace-only is not populated.
+        # Unset, empty or whitespace-only is not populated.
         if (os.getenv(var) or "").strip():
             return name
     agent = (os.getenv(_GENERIC_AGENT_ENV_VAR) or "").strip().lower()
@@ -191,9 +184,8 @@ def _metadata_agent() -> Optional[str]:
         return None
     if agent in ("1", "true"):
         return "ai_agent"
-    # Truncate to the largest valid UTF-8 prefix of _MAX_AGENT_SIZE bytes.
-    # "ignore" drops a character split by the limit instead of replacing it
-    # with U+FFFD.
+    # Largest valid UTF-8 prefix of _MAX_AGENT_SIZE bytes. "ignore" drops a
+    # split character instead of replacing it with U+FFFD.
     return agent.encode()[:_MAX_AGENT_SIZE].decode(errors="ignore")
 
 
@@ -265,8 +257,8 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         metadata.pop("env", None)
     if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
         return
-    # 2. Omit env.agent, before trimming os and before sacrificing env.name.
-    # Drivers have reported env.name since before env.agent existed.
+    # 2. Omit env.agent. It goes before env.name, which drivers have reported
+    # for longer.
     if "agent" in trimmed_env:
         del trimmed_env["agent"]
         if trimmed_env:

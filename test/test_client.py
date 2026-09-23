@@ -2063,8 +2063,8 @@ class TestClient(IntegrationTest):
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
     def _test_handshake(self, env_vars, expected_env):
-        # Clear any ambient agent-detection vars (e.g. AI_AGENT or CLAUDECODE set
-        # by the CI runner) so detection only reflects env_vars.
+        # Clear ambient agent vars (e.g. AI_AGENT set by the CI runner) so
+        # detection only reflects env_vars.
         agent_vars = ["AI_AGENT", *(var for var, _ in _AGENT_ENV_VARS)]
         cleared = {var: "" for var in agent_vars if var not in env_vars}
         with patch.dict("os.environ", {**cleared, **env_vars}):
@@ -2179,20 +2179,19 @@ class TestClient(IntegrationTest):
         self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
 
     def test_handshake_10b_agent_known_precedence(self):
-        # When multiple known agent vars are set, the first in _AGENT_ENV_VARS
-        # order wins, regardless of which comes first in the environment dict.
+        # The first var in _AGENT_ENV_VARS order wins, not the first in the
+        # environment dict.
         self._test_handshake({"GEMINI_CLI": "1", "CURSOR_AGENT": "1"}, {"agent": "cursor"})
 
     def test_handshake_11_agent_known_beats_generic(self):
-        # A known agent wins over the generic AI_AGENT variable, so a versioned
-        # AI_AGENT value cannot mask a known agent.
+        # A known agent wins over AI_AGENT, so a versioned AI_AGENT value
+        # cannot mask it.
         self._test_handshake(
             {"AI_AGENT": "custom-agent", "CLAUDECODE": "1"}, {"agent": "claude_code"}
         )
 
     def test_handshake_12_agent_generic(self):
-        # A descriptive AI_AGENT value is used as-is, and the boolean values
-        # "1" and "true" map to the fixed string "ai_agent".
+        # A descriptive value is used as-is. "1" and "true" map to "ai_agent".
         self._test_handshake({"AI_AGENT": "custom-agent"}, {"agent": "custom-agent"})
         self._test_handshake({"AI_AGENT": "1"}, {"agent": "ai_agent"})
         self._test_handshake({"AI_AGENT": "true"}, {"agent": "ai_agent"})
@@ -2204,17 +2203,17 @@ class TestClient(IntegrationTest):
         )
 
     def test_handshake_14_agent_generic_truncated(self):
-        # A long AI_AGENT value is truncated to _MAX_AGENT_SIZE bytes.
+        # A long value is truncated to _MAX_AGENT_SIZE bytes.
         self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
 
     def test_handshake_14b_agent_generic_truncated_on_boundary(self):
-        # The byte limit falls inside the two-byte "é", so the whole character
-        # is dropped. No part of it, and no U+FFFD, may appear.
+        # The byte limit falls inside the two-byte "é", so the character is
+        # dropped. No part of it, and no U+FFFD, may appear.
         value = "a" * (_MAX_AGENT_SIZE - 1) + "é"
         self._test_handshake({"AI_AGENT": value}, {"agent": "a" * (_MAX_AGENT_SIZE - 1)})
 
     def test_handshake_15_agent_unset(self):
-        # An empty or whitespace-only value is treated as unset.
+        # An empty or whitespace-only value counts as unset.
         self._test_handshake({"AI_AGENT": ""}, None)
         self._test_handshake({"AI_AGENT": "   "}, None)
         self._test_handshake({"CLAUDECODE": "   "}, None)
