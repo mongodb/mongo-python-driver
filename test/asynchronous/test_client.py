@@ -2247,8 +2247,14 @@ class TestClient(AsyncIntegrationTest):
         )
 
     async def test_handshake_14_agent_generic_truncated(self):
-        # A long AI_AGENT value is truncated to _MAX_AGENT_SIZE characters.
+        # A long AI_AGENT value is truncated to _MAX_AGENT_SIZE bytes.
         await self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
+
+    async def test_handshake_14b_agent_generic_truncated_on_boundary(self):
+        # The byte limit falls inside the two-byte "é", so the whole character
+        # is dropped. No part of it, and no U+FFFD, may appear.
+        value = "a" * (_MAX_AGENT_SIZE - 1) + "é"
+        await self._test_handshake({"AI_AGENT": value}, {"agent": "a" * (_MAX_AGENT_SIZE - 1)})
 
     async def test_handshake_15_agent_unset(self):
         # An empty or whitespace-only value is treated as unset.

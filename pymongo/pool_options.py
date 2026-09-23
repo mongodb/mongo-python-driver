@@ -172,7 +172,7 @@ _AGENT_ENV_VARS = [
 # known agent is always reported under its fixed name.
 _GENERIC_AGENT_ENV_VAR = "AI_AGENT"
 
-# Maximum length of a normalized AI_AGENT value.
+# Maximum size in bytes of a normalized AI_AGENT value.
 _MAX_AGENT_SIZE = 64
 
 
@@ -191,7 +191,10 @@ def _metadata_agent() -> Optional[str]:
         return None
     if agent in ("1", "true"):
         return "ai_agent"
-    return agent[:_MAX_AGENT_SIZE]
+    # Truncate to the largest valid UTF-8 prefix of _MAX_AGENT_SIZE bytes.
+    # "ignore" drops a character split by the limit instead of replacing it
+    # with U+FFFD.
+    return agent.encode()[:_MAX_AGENT_SIZE].decode(errors="ignore")
 
 
 def _getenv_int(key: str) -> Optional[int]:
