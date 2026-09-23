@@ -34,7 +34,12 @@ try:
 except ImportError:  # pragma: no cover - Python < 3.14
     InterpreterPoolExecutor = None  # type: ignore[assignment,misc]
 
-from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous import (
+    MONGODB_API_VERSION,
+    AsyncIntegrationTest,
+    async_client_context,
+    unittest,
+)
 
 _IS_SYNC = False
 
@@ -86,9 +91,13 @@ class TestSubinterpreters(AsyncIntegrationTest):
             sys.path[:0] = path
 
             from pymongo import AsyncMongoClient
+            from pymongo.server_api import ServerApi
 
             async def main():
-                client = AsyncMongoClient(uri, serverSelectionTimeoutMS=30000)
+                kwargs = {{"serverSelectionTimeoutMS": 30000}}
+                if api_version:
+                    kwargs["server_api"] = ServerApi(api_version)
+                client = AsyncMongoClient(uri, **kwargs)
                 collection = client.get_database(db_name).get_collection(coll_name)
                 await collection.insert_one({{"subinterp": i}})
                 assert await collection.find_one({{"subinterp": i}}) is not None
@@ -122,6 +131,7 @@ class TestSubinterpreters(AsyncIntegrationTest):
                     coll_name=coll_name,
                     i=i,
                     path=tuple(sys.path),
+                    api_version=MONGODB_API_VERSION,
                     ready=ready,
                     release=release,
                     done=done,
@@ -209,9 +219,13 @@ class TestSubinterpreters(AsyncIntegrationTest):
             sys.path[:0] = path
 
             from pymongo import AsyncMongoClient
+            from pymongo.server_api import ServerApi
 
             async def main():
-                client = AsyncMongoClient(uri, serverSelectionTimeoutMS=30000)
+                kwargs = {{"serverSelectionTimeoutMS": 30000}}
+                if api_version:
+                    kwargs["server_api"] = ServerApi(api_version)
+                client = AsyncMongoClient(uri, **kwargs)
                 collection = client.get_database(db_name).get_collection(coll_name)
                 await collection.insert_one({{"interp-pool": i}})
                 assert await collection.find_one({{"interp-pool": i}}) is not None
@@ -232,6 +246,7 @@ class TestSubinterpreters(AsyncIntegrationTest):
                         "uri": uri,
                         "db_name": self.db.name,
                         "coll_name": coll_name,
+                        "api_version": MONGODB_API_VERSION,
                     },
                 )
                 for i in range(n_interpreters)

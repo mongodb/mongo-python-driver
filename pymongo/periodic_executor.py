@@ -121,6 +121,23 @@ class AsyncPeriodicExecutor:
             self._event = False
 
 
+def _daemon_threads_allowed() -> bool:
+    """Whether daemon threads are allowed in the current interpreter.
+
+    Subinterpreters do not allow daemon threads, so a PeriodicExecutor
+    there runs on a non-daemon thread instead: _shutdown_executors stops
+    and joins it during interpreter shutdown.
+    """
+    # Python 3.12+ exposes the same check CPython itself uses to enforce
+    # the restriction (in the Thread daemon setter), which is reliable in
+    # the current interpreter. On older versions daemon threads are
+    # always allowed.
+    check = getattr(threading, "_daemon_threads_allowed", None)
+    if check is not None:
+        return check()
+    return True
+
+
 class PeriodicExecutor:
     def __init__(
         self,
@@ -189,8 +206,10 @@ class PeriodicExecutor:
                 # Subinterpreters do not allow daemon threads, so fall back
                 # to a non-daemon thread: _shutdown_executors stops and
                 # joins it during interpreter shutdown.
-                thread.daemon = True
+                thread.daemon = _daemon_threads_allowed()
             except RuntimeError:
+                # The restriction is enforced when the thread is started,
+                # handled below.
                 pass
             self._thread = weakref.proxy(thread)
             _register_executor(self)
@@ -202,7 +221,13 @@ class PeriodicExecutor:
                 if "interpreter shutdown" in str(e) or sys.is_finalizing():
                     self._thread = None
                     return
-                raise
+                if not thread.daemon:
+                    raise
+                # Some Python versions only enforce the subinterpreter daemon
+                # restriction when the thread is started, so fall back to a
+                # non-daemon thread as above.
+                thread.daemon = False
+                thread.start()
 
     def close(self, dummy: Any = None) -> None:
         """Stop. To restart, call open().

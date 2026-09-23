@@ -34,7 +34,12 @@ try:
 except ImportError:  # pragma: no cover - Python < 3.14
     InterpreterPoolExecutor = None  # type: ignore[assignment,misc]
 
-from test import IntegrationTest, client_context, unittest
+from test import (
+    MONGODB_API_VERSION,
+    IntegrationTest,
+    client_context,
+    unittest,
+)
 
 _IS_SYNC = True
 
@@ -86,9 +91,13 @@ class TestSubinterpreters(IntegrationTest):
             sys.path[:0] = path
 
             from pymongo import MongoClient
+            from pymongo.server_api import ServerApi
 
             def main():
-                client = MongoClient(uri, serverSelectionTimeoutMS=30000)
+                kwargs = {{"serverSelectionTimeoutMS": 30000}}
+                if api_version:
+                    kwargs["server_api"] = ServerApi(api_version)
+                client = MongoClient(uri, **kwargs)
                 collection = client.get_database(db_name).get_collection(coll_name)
                 collection.insert_one({{"subinterp": i}})
                 assert collection.find_one({{"subinterp": i}}) is not None
@@ -122,6 +131,7 @@ class TestSubinterpreters(IntegrationTest):
                     coll_name=coll_name,
                     i=i,
                     path=tuple(sys.path),
+                    api_version=MONGODB_API_VERSION,
                     ready=ready,
                     release=release,
                     done=done,
@@ -209,9 +219,13 @@ class TestSubinterpreters(IntegrationTest):
             sys.path[:0] = path
 
             from pymongo import MongoClient
+            from pymongo.server_api import ServerApi
 
             def main():
-                client = MongoClient(uri, serverSelectionTimeoutMS=30000)
+                kwargs = {{"serverSelectionTimeoutMS": 30000}}
+                if api_version:
+                    kwargs["server_api"] = ServerApi(api_version)
+                client = MongoClient(uri, **kwargs)
                 collection = client.get_database(db_name).get_collection(coll_name)
                 collection.insert_one({{"interp-pool": i}})
                 assert collection.find_one({{"interp-pool": i}}) is not None
@@ -232,6 +246,7 @@ class TestSubinterpreters(IntegrationTest):
                         "uri": uri,
                         "db_name": self.db.name,
                         "coll_name": coll_name,
+                        "api_version": MONGODB_API_VERSION,
                     },
                 )
                 for i in range(n_interpreters)

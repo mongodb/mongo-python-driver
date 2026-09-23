@@ -492,10 +492,7 @@ def _shutdown_resources() -> None:
 if _IS_SYNC:
     atexit.register(_shutdown_resources)
     # In subinterpreters, the executors' threads are non-daemon and are
-    # joined at shutdown, so they must be stopped first. The probe preserves
-    # the normal atexit ordering in the main interpreter.
-    try:
-        threading.Thread().daemon = True
-    except RuntimeError:
-        if hasattr(threading, "_register_atexit"):
-            threading._register_atexit(_shutdown_resources)  # type: ignore[attr-defined]
+    # joined at shutdown, so they must be stopped first. Checking daemon
+    # support preserves the normal atexit ordering in the main interpreter.
+    if not periodic_executor._daemon_threads_allowed() and hasattr(threading, "_register_atexit"):
+        threading._register_atexit(_shutdown_resources)  # type: ignore[attr-defined]
