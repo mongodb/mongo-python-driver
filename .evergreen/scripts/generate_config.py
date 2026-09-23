@@ -400,14 +400,6 @@ def create_no_c_ext_variants():
     return [create_variant(tasks, display_name, host=host, expansions=expansions)]
 
 
-def create_mod_wsgi_variants():
-    host = HOSTS["ubuntu22"]
-    tasks = [".mod_wsgi"]
-    expansions = dict(MOD_WSGI_VERSION="4")
-    display_name = get_variant_name("Mod_WSGI", host)
-    return [create_variant(tasks, display_name, host=host, expansions=expansions)]
-
-
 def create_disable_test_commands_variants():
     host = DEFAULT_HOST
     expansions = dict(AUTH="auth", SSL="ssl", DISABLE_TEST_COMMANDS="1")
@@ -1009,31 +1001,6 @@ def create_oidc_tasks():
         task_name = get_task_name(f"test-auth-oidc-{sub_test}", **vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
 
-    return tasks
-
-
-def create_mod_wsgi_tasks():
-    tasks = []
-    for (test, topology), python in zip_cycle(
-        product(["standalone", "embedded-mode"], ["standalone", "replica_set"]), CPYTHONS
-    ):
-        if "t" in python:
-            continue
-        if test == "standalone":
-            task_name = "mod-wsgi-"
-        else:
-            task_name = "mod-wsgi-embedded-mode-"
-        task_name += topology.replace("_", "-")
-        task_name = get_task_name(task_name, python=python)
-        server_vars = dict(TOPOLOGY=topology, TOOLCHAIN_VERSION=python)
-        server_func = FunctionCall(func="run server", vars=server_vars)
-        vars = dict(
-            TEST_NAME="mod_wsgi", SUB_TEST_NAME=test.split("-")[0], TOOLCHAIN_VERSION=python
-        )
-        test_func = FunctionCall(func="run tests", vars=vars)
-        tags = ["mod_wsgi", "pr"]
-        commands = [server_func, test_func]
-        tasks.append(EvgTask(name=task_name, tags=tags, commands=commands))
     return tasks
 
 
