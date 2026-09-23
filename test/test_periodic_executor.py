@@ -218,7 +218,13 @@ class TestPeriodicExecutor(UnitTest):
         root = _PYMONGO_ROOT
         # The async executor's open() starts a task, which requires a running
         # event loop; synchro translates the rest of the block for the sync suite.
-        run_stmt = "asyncio.run(main())" if not _IS_SYNC else "main()"
+        # Windows proactor loops cannot start in subinterpreters (set_wakeup_fd
+        # is main-interpreter only), so use a selector loop there.
+        run_stmt = (
+            "main()"
+            if _IS_SYNC
+            else 'asyncio.run(main(), loop_factory=asyncio.SelectorEventLoop if sys.platform == "win32" else None)'
+        )
         # The sync monitor signals its thread through the event; the async
         # monitor yields to its loop instead. Synchro drops the async yield.
         wait_stmt = "assert started.wait(10)" if _IS_SYNC else ""
