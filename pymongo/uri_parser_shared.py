@@ -450,10 +450,23 @@ def split_hosts(hosts: str, default_port: Optional[int] = DEFAULT_PORT) -> list[
         if not entity:
             raise ConfigurationError("Empty host (or extra comma in host list)")
         port = default_port
-        # Unix socket entities don't have ports
+        node = entity
+        # Decoding happens per entity, after splitting on ",".
         if entity.endswith(".sock"):
+            # Unix socket entities don't have ports. Socket paths are the
+            # only host identifiers permitted to contain reserved
+            # characters (e.g. "/") that require escaping.
+            node = unquote_plus(entity)
             port = None
-        nodes.append(parse_host(entity, port))
+        elif entity.startswith("["):
+            # An IPv6 zone index is escaped as "%25" (RFC 6874).
+            node = entity.replace("%25", "%")
+        elif "%" in entity:
+            raise InvalidURI(
+                "Percent-encoding is only allowed in Unix domain socket paths "
+                f"and IPv6 zone indexes, not in hostnames: {entity}"
+            )
+        nodes.append(parse_host(node, port))
     return nodes
 
 
@@ -576,7 +589,6 @@ def _validate_uri(
     if "/" in hosts:
         raise InvalidURI(f"Any '/' in a unix domain socket must be percent-encoded: {host_part}")
 
-    hosts = unquote_plus(hosts)
     fqdn = None
     srv_max_hosts = srv_max_hosts or options.get("srvMaxHosts")
     if is_srv:
