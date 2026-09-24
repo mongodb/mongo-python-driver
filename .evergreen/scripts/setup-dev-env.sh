@@ -18,15 +18,24 @@ fi
 
 # The bin dir for the pinned uv/just. setup-system.sh sets it on evergreen hosts;
 # default it here so local dev (without setup-system.sh) also has a usable value.
+# Native (Windows) form on cygwin, like install-dependencies.sh.
 export PYMONGO_BIN_DIR="${PYMONGO_BIN_DIR:-$HOME/.local/bin}"
+if [ "Windows_NT" = "${OS:-}" ]; then
+  _bin_dir="$(cygpath -m "$PYMONGO_BIN_DIR")"
+  export PYMONGO_BIN_DIR="$_bin_dir"
+  _posix_bin_dir="$(cygpath -u "$_bin_dir")"
+  export PYMONGO_BIN_DIR_POSIX="$_posix_bin_dir"
+else
+  export PYMONGO_BIN_DIR_POSIX="$PYMONGO_BIN_DIR"
+fi
 
 # install-dependencies.sh runs as a child process, so its PATH changes do not
 # propagate back here: ensure the bin dir is on this process's PATH too, so a
 # fresh install (first run, bin dir not on PATH yet) is visible to the
 # `uv sync` and pre-commit setup below.
 case ":$PATH:" in
-  *":$PYMONGO_BIN_DIR:"*) ;;
-  *) export PATH="$PYMONGO_BIN_DIR:$PATH" ;;
+  *":$PYMONGO_BIN_DIR_POSIX:"*) ;;
+  *) export PATH="$PYMONGO_BIN_DIR_POSIX:$PATH" ;;
 esac
 
 # Make sure a login shell can find the bin dir by adding it to the rc file, so
@@ -40,8 +49,8 @@ if [ "${CI:-}" != "true" ] && [ "${GITHUB_ACTIONS:-}" != "true" ]; then
     *) _rc="$HOME/.bashrc" ;;
   esac
   touch "$_rc"
-  grep -qF 'export PATH="'"$PYMONGO_BIN_DIR"':$PATH"' "$_rc" 2>/dev/null || \
-    printf 'export PATH="%s:$PATH"\n' "$PYMONGO_BIN_DIR" >> "$_rc"
+  grep -qF 'export PATH="'"$PYMONGO_BIN_DIR_POSIX"':$PATH"' "$_rc" 2>/dev/null || \
+    printf 'export PATH="%s:$PATH"\n' "$PYMONGO_BIN_DIR_POSIX" >> "$_rc"
 fi
 
 # Ensure dependencies are installed.

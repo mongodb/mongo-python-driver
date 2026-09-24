@@ -12,22 +12,27 @@ if [ -f $HERE/env.sh ]; then
 fi
 
 # PYMONGO_BIN_DIR is set by setup-system.sh/env.sh (or setup-dev-env.sh); default
-# it for robustness. UV_TOOL_BIN_DIR is uv's name for the same dir (setup-uv.py
-# reads both). UV_TOOL_DIR is left to ensure_uv.sh.
+# it for robustness. Native (Windows) form on cygwin, for consumers like uv;
+# PYMONGO_BIN_DIR_POSIX is the cygwin form for bash PATH contexts.
 export PYMONGO_BIN_DIR="${PYMONGO_BIN_DIR:-$HOME/.local/bin}"
-export UV_TOOL_BIN_DIR="${UV_TOOL_BIN_DIR:-$PYMONGO_BIN_DIR}"
-# uv is a native Windows binary: give it a Windows path on cygwin.
 if [ "Windows_NT" = "${OS:-}" ]; then
-  _uv_tool_bin="$(cygpath -m "$PYMONGO_BIN_DIR")"
-  export UV_TOOL_BIN_DIR="$_uv_tool_bin"
+  _bin_dir="$(cygpath -m "$PYMONGO_BIN_DIR")"
+  export PYMONGO_BIN_DIR="$_bin_dir"
+  _posix_bin_dir="$(cygpath -u "$_bin_dir")"
+  export PYMONGO_BIN_DIR_POSIX="$_posix_bin_dir"
+else
+  export PYMONGO_BIN_DIR_POSIX="$PYMONGO_BIN_DIR"
 fi
+# UV_TOOL_BIN_DIR is uv's name for the same dir (setup-uv.py reads both).
+# UV_TOOL_DIR is left to ensure_uv.sh.
+export UV_TOOL_BIN_DIR="${UV_TOOL_BIN_DIR:-$PYMONGO_BIN_DIR}"
 
 # Ensure the bin dir is on PATH: hosts without env.sh (e.g. auth-aws-ecs) never
 # export it, so a fresh pinned install there would be invisible to the probe
 # below and to later steps like `uv tool install` and `uv sync`.
 case ":$PATH:" in
-  *":$PYMONGO_BIN_DIR:"*) ;;
-  *) export PATH="$PYMONGO_BIN_DIR:$PATH" ;;
+  *":$PYMONGO_BIN_DIR_POSIX:"*) ;;
+  *) export PATH="$PYMONGO_BIN_DIR_POSIX:$PATH" ;;
 esac
 
 # Compute the setup script path once (native Windows path on cygwin).
