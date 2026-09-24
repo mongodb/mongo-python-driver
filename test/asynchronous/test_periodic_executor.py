@@ -17,16 +17,28 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
+import os
 import sys
+import textwrap
 import threading
 import time
+from typing import Any
+from unittest import mock
+
+_interpreters: Any = None
+if sys.version_info >= (3, 14):
+    _interpreters = importlib.import_module("concurrent.interpreters")
 
 sys.path[0:0] = [""]
 
+import pymongo
 from pymongo.periodic_executor import AsyncPeriodicExecutor
 from test.asynchronous import AsyncUnitTest, unittest
 
 _IS_SYNC = False
+
+_PYMONGO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(pymongo.__file__)))
 
 
 class TestAsyncPeriodicExecutor(AsyncUnitTest):
@@ -177,6 +189,76 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
         if not _IS_SYNC and executor._task is not None and executor._task.done():
             executor._task.exception()
         self.assertEqual(call_count, 2, "executor should run again after re-open")
+
+    async def test_open_non_daemon_thread(self):
+        # Subinterpreters disallow daemon threads; PeriodicExecutor.open()
+        # must fall back to starting the monitor thread as a non-daemon thread.
+        from pymongo.periodic_executor import PeriodicExecutor
+
+        def set_daemon(self, value):
+            raise RuntimeError("daemon threads are disallowed in subinterpreters")
+
+        daemon = threading.Thread.daemon
+        executor = PeriodicExecutor(
+            interval=30.0, min_interval=0.01, target=lambda: True, name="non-daemon"
+        )
+        self.addCleanup(executor.join, 2)
+        self.addCleanup(executor.close)
+        with mock.patch.object(threading.Thread, "daemon", property(daemon.fget, set_daemon)):
+            executor.open()
+            thread = executor._thread
+            assert thread is not None
+            self.assertFalse(thread.daemon, "thread must not be a daemon thread")
+
+    async def test_subinterpreter_shutdown(self):
+        if _interpreters is None:
+            self.skipTest("concurrent.interpreters requires Python 3.14+")
+            return
+
+        root = _PYMONGO_ROOT
+        # The async executor's open() starts a task, which requires a running
+        # event loop; synchro translates the rest of the block for the sync suite.
+        # Windows proactor loops cannot start in subinterpreters (set_wakeup_fd
+        # is main-interpreter only), so use a selector loop there.
+        run_stmt = (
+            "main()"
+            if _IS_SYNC
+            else 'asyncio.run(main(), loop_factory=asyncio.SelectorEventLoop if sys.platform == "win32" else None)'
+        )
+        # The sync monitor signals its thread through the event; the async
+        # monitor yields to its loop instead. Synchro drops the async yield.
+        wait_stmt = "assert started.wait(10)" if _IS_SYNC else ""
+        code = textwrap.dedent(
+            f"""
+            import asyncio
+            import sys
+            import threading
+            sys.path.insert(0, {root!r})
+            from pymongo.periodic_executor import AsyncPeriodicExecutor
+
+            started = threading.Event()
+
+            async def target():
+                started.set()
+                return True
+
+            async def main():
+                executor = AsyncPeriodicExecutor(
+                    interval=30.0, min_interval=0.05, target=target, name="subinterp"
+                )
+                executor.open()
+                {wait_stmt}
+                await asyncio.sleep(0)
+
+            {run_stmt}
+            """
+        )
+        interp = _interpreters.create()
+        try:
+            interp.exec(code)
+        finally:
+            # Destroying the subinterpreter must not crash or hang.
+            interp.close()
 
 
 if __name__ == "__main__":
