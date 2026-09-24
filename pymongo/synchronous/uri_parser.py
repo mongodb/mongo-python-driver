@@ -18,7 +18,6 @@
 from __future__ import annotations
 
 from typing import Any, Optional
-from urllib.parse import unquote_plus
 
 from pymongo.common import SRV_SERVICE_NAME, _CaseInsensitiveDictionary
 from pymongo.errors import ConfigurationError, InvalidURI
@@ -159,7 +158,6 @@ def _parse_srv(
     else:
         hosts = host_part
 
-    hosts = unquote_plus(hosts)
     srv_max_hosts = srv_max_hosts or options.get("srvMaxHosts")
     srv_allowed_hosts_suffix = srv_allowed_hosts_suffix or options.get("srvAllowedHostsSuffix")
     if is_srv:
