@@ -27,7 +27,7 @@ Version 4.18.1 is a bug fix release.
 - Use an exact match for the file ID in GridFS delete methods
   (`CVE-2026-88029`_).
 
-.. CVE-2026-88029: https://www.cve.org/CVERecord?id=CVE-2026-88029
+.. _CVE-2026-88029: https://www.cve.org/CVERecord?id=CVE-2026-88029
 
 Changes in Version 4.18.0 (2026/09/03)
 --------------------------------------
