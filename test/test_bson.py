@@ -691,6 +691,14 @@ class TestBSON(unittest.TestCase):
         self.assertTrue(encode({"x": -9223372036854775808}))
         self.assertRaises(OverflowError, encode, {"x": -9223372036854775809})
 
+    @unittest.skipUnless(bson.has_c(), "This test requires the C extension")
+    def test_encode_size_limit(self):
+        # PYTHON-5996: encoding must raise when a document's encoded size
+        # exceeds the BSON size limit.
+        big_value = "a" * (1 << 30)
+        with self.assertRaises(ValueError):
+            encode({"a": big_value, "b": big_value, "c": big_value})
+
     def test_small_long_encode_decode(self):
         encoded1 = encode({"x": 256})
         decoded1 = decode(encoded1)["x"]

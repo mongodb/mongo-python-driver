@@ -18,6 +18,7 @@
 #define PY_SSIZE_T_CLEAN
 #include "Python.h"
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -105,18 +106,25 @@ static int buffer_grow(buffer_t buffer, int min_length) {
  * Return non-zero and sets MemoryError on allocation failure.
  * Return non-zero and sets ValueError if `size` would exceed 2GiB. */
 static int buffer_assure_space(buffer_t buffer, int size) {
-    int new_size = buffer->position + size;
-    /* Check for overflow. */
-    if (new_size < buffer->position) {
+    long long new_size;
+    if (size < 0) {
         PyErr_SetString(PyExc_ValueError,
                         "Document would overflow BSON size limit");
         return 1;
     }
 
-    if (new_size <= buffer->size) {
+    /* Compute in a wider type so the addition cannot overflow `int`. */
+    new_size = (long long)buffer->position + (long long)size;
+    if (new_size > INT_MAX) {
+        PyErr_SetString(PyExc_ValueError,
+                        "Document would overflow BSON size limit");
+        return 1;
+    }
+
+    if ((int)new_size <= buffer->size) {
         return 0;
     }
-    return buffer_grow(buffer, new_size);
+    return buffer_grow(buffer, (int)new_size);
 }
 
 /* Save `size` bytes from the current position in `buffer` (and grow if needed).
