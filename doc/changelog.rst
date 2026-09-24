@@ -17,6 +17,27 @@ Bug fixes
 
 .. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
 
+Changes in Version 4.18.2 (2026/09/24)
+--------------------------------------
+
+Version 4.18.2 is a bug fix release.
+
+- Hardened the bson buffer size guard against signed integer overflow. (`CVE-2026-96749`_).
+- Fixed connection string parsing to percent-decode each host individually. (`CVE-2026-96748`_).
+- Client-side field level encryption now rejects a KMS endpoint ending in ``.sock``. (`CVE-2026-96747`_).
+
+.. _CVE-2026-96749: https://www.cve.org/CVERecord?id=CVE-2026-96749
+.. _CVE-2026-96748: https://www.cve.org/CVERecord?id=CVE-2026-96748
+.. _CVE-2026-96747: https://www.cve.org/CVERecord?id=CVE-2026-96747
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.18.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.18.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=52896
+
 Changes in Version 4.18.1 (2026/09/10)
 --------------------------------------
 
