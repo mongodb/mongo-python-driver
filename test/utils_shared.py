@@ -595,6 +595,24 @@ def is_greenthread_patched():
     return gevent_monkey_patched()
 
 
+@contextlib.contextmanager
+def suppress_fork_deprecation():
+    """Suppress the fork() DeprecationWarning Python 3.15 raises in multi-threaded processes.
+
+    Only gevent's monkey patching makes the process multi-threaded while these
+    subprocesses fork; the warning is a thread-count heuristic and benign for
+    subprocesses, which exec immediately (PYTHON-5874).
+    """
+    with warnings.catch_warnings():
+        if is_greenthread_patched():
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*use of fork\(\) may lead to deadlocks.*",
+                category=DeprecationWarning,
+            )
+        yield
+
+
 def parse_read_preference(pref):
     # Make first letter lowercase to match read_pref's modes.
     mode_string = pref.get("mode", "primary")

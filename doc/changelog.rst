@@ -17,6 +17,10 @@ Changes in Version 4.19.0 (2026/XX/XX)
 - ``srvAllowedHostsSuffix`` may now be set to a single label reserved for
   private or special use, such as ``localhost``, ``test``, or ``internal``.
 
+PyMongo 4.19 brings a number of changes including:
+
+- Added support for Python 3.15.
+
 Bug fixes
 .........
 - Fixed a bug where the synchronous client could permanently deadlock under

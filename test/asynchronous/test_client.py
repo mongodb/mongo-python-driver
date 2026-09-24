@@ -129,6 +129,7 @@ from test.utils_shared import (
     is_greenthread_patched,
     lazy_client_trial,
     one,
+    suppress_fork_deprecation,
 )
 
 _IS_SYNC = False
@@ -2192,12 +2193,13 @@ class TestClient(AsyncIntegrationTest):
     def test_sigstop_sigcont(self):
         test_dir = os.path.dirname(os.path.realpath(__file__))
         script = os.path.join(test_dir, "sigstop_sigcont.py")
-        p = subprocess.Popen(
-            [sys.executable, script, async_client_context.uri],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
+        with suppress_fork_deprecation():
+            p = subprocess.Popen(
+                [sys.executable, script, async_client_context.uri],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
         self.addCleanup(p.wait, timeout=1)
         self.addCleanup(p.kill)
         time.sleep(1)

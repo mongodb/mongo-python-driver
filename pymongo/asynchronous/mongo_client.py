@@ -2799,8 +2799,10 @@ class _ClientCheckout:
         try:
             await self.handle(exc_type, exc_val)
         finally:
-            if self._pool_checkout is not None:
-                await self._pool_checkout.__aexit__(exc_type, exc_val, exc_tb)
+            pool_checkout = self._pool_checkout
+            self._pool_checkout = None  # to break the reference cycle before cleanup can raise
+            if pool_checkout is not None:
+                await pool_checkout.__aexit__(exc_type, exc_val, exc_tb)
 
     @classmethod
     def for_existing_conn(
