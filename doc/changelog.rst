@@ -3,10 +3,6 @@ Changelog
 
 Changes in Version 4.19.0 (2026/XX/XX)
 --------------------------------------
-
-Bug fixes
-.........
-
 - Added the ``srv_host_validator`` keyword argument to
   :class:`~pymongo.synchronous.mongo_client.MongoClient` and
   :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`, an alternative to
@@ -17,11 +13,17 @@ Bug fixes
   connection string. See the
   :class:`~pymongo.synchronous.mongo_client.MongoClient` and
   :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` documentation for
-  security considerations.
+  security considerations (`PYTHON-5814`_).
+- ``srvAllowedHostsSuffix`` may now be set to a single label reserved for
+  private or special use, such as ``localhost``, ``test``, or ``internal``.
+
+Bug fixes
+.........
 - Fixed a bug where the synchronous client could permanently deadlock under
   gevent when a greenlet was killed while checking a connection back into
   the pool (`PYTHON-6074`_).
 
+.. _PYTHON-5814: https://jira.mongodb.org/browse/PYTHON-5814
 .. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
 
 Changes in Version 4.18.1 (2026/09/10)

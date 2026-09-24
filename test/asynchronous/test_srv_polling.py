@@ -19,7 +19,9 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
+from types import SimpleNamespace
 from typing import Any
+from unittest.mock import patch
 
 from test.utils_shared import FunctionCallRecorder
 
@@ -35,6 +37,16 @@ from test.asynchronous.utils import async_wait_until
 _IS_SYNC = False
 
 WAIT_TIME = 0.1
+
+
+class _FakeSrvAnswer(list):
+    """A minimal stand-in for the dnspython answer to an SRV query."""
+
+    def __init__(self, hosts, ttl=60):
+        import dns.name
+
+        super().__init__(SimpleNamespace(target=dns.name.from_text(h), port=27017) for h in hosts)
+        self.rrset = SimpleNamespace(ttl=ttl)
 
 
 class SrvPollingKnobs:
@@ -66,7 +78,14 @@ class SrvPollingKnobs:
             assert self.old_dns_resolver_response is not None
             nodes, ttl = await self.old_dns_resolver_response(resolver)
             if self.nodelist_callback is not None:
-                nodes = self.nodelist_callback()
+                # Verify the mocked hosts as the resolver would verify real ones.
+                nodes = []
+                for node in self.nodelist_callback():
+                    try:
+                        resolver._validate_host(node[0].rstrip(".").lower())
+                    except ConfigurationError:
+                        continue
+                    nodes.append(node)
             if self.ttl_time is not None:
                 ttl = self.ttl_time
             return nodes, ttl
@@ -417,6 +436,30 @@ class TestSrvPolling(AsyncPyMongoTestCase):
                         await self.assert_nodelist_change(response, client)
 
                     await client.close()
+
+    async def test_rescan_skips_only_the_hosts_that_fail_verification(self):
+        # Per the polling spec, a host that fails verification is left out of
+        # the topology without discarding the other hosts from the same rescan.
+        good_host = "localhost.test.build.10gen.cc"
+        bad_host = "bad.evil.com"
+
+        def raising(host):
+            if host == bad_host:
+                raise RuntimeError("boom")
+            return True
+
+        def rejecting(host):
+            return host != bad_host
+
+        for validator in (rejecting, raising):
+            with self.subTest(validator=validator.__name__):
+                resolver = pymongo.asynchronous.srv_resolver._SrvResolver(
+                    "test1.test.build.10gen.cc", None, "mongodb", srv_host_validator=validator
+                )
+                answer = _FakeSrvAnswer([good_host, bad_host])
+                with patch("dns.asyncresolver.resolve", return_value=answer):
+                    nodes, _ = await resolver.get_hosts_and_min_ttl()
+                self.assertEqual([(good_host, 27017)], nodes)
 
     async def test_srv_waits_to_poll(self):
         modified = [("localhost.test.build.10gen.cc", 27019)]
