@@ -1,6 +1,24 @@
 Changelog
 =========
 
+Changes in Version 4.18.2 (2026/09/24)
+--------------------------------------
+
+Version 4.18.2 is a bug fix release.
+
+- Hardened the bson buffer size guard against signed integer overflow.
+- Fixed connection string parsing to percent-decode each host individually.
+- Client-side field level encryption now rejects a KMS endpoint ending in
+  ``.sock``.
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.18.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.18.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=52896
+
 Changes in Version 4.18.1 (2026/09/10)
 --------------------------------------
 
