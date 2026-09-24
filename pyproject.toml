@@ -48,6 +48,11 @@ Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
 [tool.uv]
+# Pin the uv binary version across local dev, GitHub Actions, and Evergreen.
+# uv enforces this locally, astral-sh/setup-uv reads it on GitHub, and
+# install-dependencies.sh installs it in Evergreen. Bump manually when a newer uv
+# is needed.
+required-version = "==0.12.12"
 # boto3 dropped Python 3.9 support in 1.43, so the universal lock forks at
 # 3.10. Without a floor the pre-3.10 fork back-solves to boto3 1.7.84 (2018),
 # whose vendored six and invalid escape sequences break test collection. No
