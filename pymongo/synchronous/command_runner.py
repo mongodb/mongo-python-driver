@@ -48,7 +48,7 @@ from typing import (
 )
 
 from bson import _decode_all_selective
-from pymongo import _csot, helpers_shared, message
+from pymongo import _csot, _otel, helpers_shared, message
 from pymongo._telemetry import _CommandTelemetry
 from pymongo.compression_support import _NO_COMPRESSION
 from pymongo.errors import NotPrimaryError, OperationFailure
@@ -163,14 +163,28 @@ def _run_command(
     if orig is None:
         orig = cmd
 
-    # Fast path: skip telemetry construction when logging and APM are disabled
-    # Inline enabled check here for performance
+    # Fast path: skip telemetry construction when logging, APM, and tracing are all
+    # disabled. Inline enabled check here for performance; it must stay in sync with
+    # _CommandTelemetry.__init__'s own gate, including its tracing term, or a
+    # tracing-only client would build no telemetry and so emit no command spans.
+    tracing_options = client.options.tracing if client is not None else None
     telemetry: Optional[_CommandTelemetry] = None
-    if (topology_id is not None and _is_debug_enabled(_COMMAND_LOGGER)) or (
-        listeners is not None and listeners.enabled_for_commands
+    if (
+        (topology_id is not None and _is_debug_enabled(_COMMAND_LOGGER))
+        or (listeners is not None and listeners.enabled_for_commands)
+        or _otel._is_tracing_enabled(tracing_options)
     ):
         telemetry = _CommandTelemetry(
-            topology_id, conn, listeners, cmd, dbname, request_id, op_id, name=name
+            topology_id,
+            conn,
+            listeners,
+            cmd,
+            dbname,
+            request_id,
+            op_id,
+            tracing_options=tracing_options,
+            speculative_hello=speculative_hello,
+            name=name,
         )
         telemetry.started(orig, ensure_db)
         start = 0.0
@@ -218,13 +232,16 @@ def _run_command(
                     parse_write_concern_error=parse_write_concern_error,
                     pool_opts=pool_opts,
                 )
-    except Exception as exc:
+    except BaseException as exc:
+        # CancelledError (a BaseException) must also end the span: task
+        # cancellation lands here mid-command, and the span is ended with an
+        # error status before the cancellation propagates unmasked.
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
             failure = _convert_exception(exc)
         if telemetry is not None:
-            telemetry.failed(failure, command_name, isinstance(exc, OperationFailure))
+            telemetry.failed(failure, command_name, exc)
         raise
 
     if telemetry is not None:
