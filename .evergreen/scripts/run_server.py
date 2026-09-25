@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from utils import DRIVERS_TOOLS, ROOT, get_test_options, run_command
+from utils import DRIVERS_TOOLS, ROOT, check_drivers_tools, get_test_options, run_command
 
 
 def set_env(name: str, value: Any = "1") -> None:
@@ -14,11 +14,9 @@ def set_env(name: str, value: Any = "1") -> None:
 
 
 def start_server():
-    run_mongodb_script = (
-        Path(DRIVERS_TOOLS) / ".evergreen" / "run-mongodb.sh" if DRIVERS_TOOLS else None
-    )
+    run_mongodb_script = Path(DRIVERS_TOOLS) / ".evergreen" / "run-mongodb.sh"
     want_help = bool({"-h", "--help"} & set(sys.argv[1:]))
-    if want_help and run_mongodb_script and run_mongodb_script.is_file():
+    if want_help and run_mongodb_script.is_file():
         # Forward straight to run-mongodb.sh's own help, without run_command's
         # "Running command..." logging noise.
         subprocess.run(  # noqa: S603
@@ -28,13 +26,11 @@ def start_server():
         )
         return
 
-    # DRIVERS_TOOLS is only needed to actually start a server. When it's unset and
-    # -h/--help was requested, fall through to get_test_options' own argparse help below.
-    if not want_help and not DRIVERS_TOOLS:
-        raise ValueError(
-            "DRIVERS_TOOLS is not set; run `just run-server` from an Evergreen task "
-            "or set DRIVERS_TOOLS to a drivers-evergreen-tools checkout."
-        )
+    # DRIVERS_TOOLS is only needed to actually start a server. When the
+    # submodule is missing and -h/--help was requested, fall through to
+    # get_test_options' own argparse help below.
+    if not want_help:
+        check_drivers_tools()
 
     opts, extra_opts = get_test_options(
         "Run a MongoDB server.  All given flags will be passed to run-mongodb.sh in DRIVERS_TOOLS.",

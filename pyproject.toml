@@ -94,6 +94,11 @@ validate-bump = false
 [tool.hatch.build.targets.wheel]
 packages = ["bson","gridfs", "pymongo"]
 
+[tool.hatch.build.targets.sdist]
+# The drivers-evergreen-tools submodule must not ship in the sdist; hatchling's
+# walk would otherwise pick it up when the submodule is populated locally.
+exclude = ["drivers-evergreen-tools"]
+
 [tool.hatch.metadata.hooks.requirements_txt]
 files = ["requirements.txt"]
 

@@ -19,3 +19,12 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 0
+  # drivers-evergreen-tools submodule
+  - package-ecosystem: "gitsubmodule"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    allow:
+      - dependency-name: "drivers-evergreen-tools"

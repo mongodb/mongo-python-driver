@@ -17,6 +17,7 @@ from utils import (
     ROOT,
     TEST_SUITE_MAP,
     Distro,
+    check_drivers_tools,
     get_test_options,
     read_env,
     run_command,
@@ -329,8 +330,7 @@ def handle_test_env() -> None:
             MULTI_MONGOS_LB_URI += "&tls=true"
         write_env("SINGLE_MONGOS_LB_URI", SINGLE_MONGOS_LB_URI)
         write_env("MULTI_MONGOS_LB_URI", MULTI_MONGOS_LB_URI)
-        if not DRIVERS_TOOLS:
-            raise RuntimeError("Missing DRIVERS_TOOLS")
+        check_drivers_tools()
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
 
@@ -376,8 +376,7 @@ def handle_test_env() -> None:
         run_command(cmd, cwd=DRIVERS_TOOLS)
 
     if SSL != "nossl":
-        if not DRIVERS_TOOLS:
-            raise RuntimeError("Missing DRIVERS_TOOLS")
+        check_drivers_tools()
         write_env("CLIENT_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/client.pem")
         write_env("CA_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/ca.pem")
 
@@ -429,8 +428,7 @@ def handle_test_env() -> None:
         # PATH is updated by configure-env.sh for access to mongocryptd.
 
     if test_name == "encryption":
-        if not DRIVERS_TOOLS:
-            raise RuntimeError("Missing DRIVERS_TOOLS")
+        check_drivers_tools()
         csfle_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/csfle")
         # Opt in to corporate Azure credentials (DRIVERS-3392)
         os.environ["FLE_AZURE_USE_CORPORATE"] = "YES"
