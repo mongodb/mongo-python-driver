@@ -55,18 +55,25 @@ if TYPE_CHECKING:
 class TracingOptions(TypedDict):
     """The shape of the ``MongoClient`` ``tracing`` option.
 
-    ``query_text_max_length`` is None when the client didn't configure it, so
-    the environment variable can be consulted; any explicit value (including
-    0, to force ``db.query.text`` off) overrides the environment variable.
+    ``enabled`` and ``query_text_max_length`` are None when the client didn't
+    configure them, so the environment variables can be consulted; any explicit
+    value (including ``False``, to force tracing off, or 0, to force
+    ``db.query.text`` off) overrides the environment variable.
     """
 
-    enabled: bool
+    enabled: Optional[bool]
     query_text_max_length: Optional[int]
 
 
 _OTEL_ENABLED_ENV = "OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED"
 _OTEL_QUERY_TEXT_MAX_LENGTH_ENV = "OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH"
 _TRUTHY = frozenset({"1", "true", "yes"})
+
+# Redaction compares command names case-insensitively, mirroring the
+# normalization in command monitoring, so a differently-cased sensitive
+# command still gets no span.
+_SENSITIVE_COMMANDS_LOWER = frozenset(name.lower() for name in _SENSITIVE_COMMANDS)
+_HELLO_COMMANDS_LOWER = frozenset(name.lower() for name in _HELLO_COMMANDS)
 
 # Fields redacted from the db.query.text attribute, mirroring the fields excluded
 # from the equivalent CommandStartedEvent.command per the OpenTelemetry spec.
@@ -86,6 +93,33 @@ _EXPLAIN = "explain"
 # never have a real collection name, even when their command value is a string.
 _ADMIN_DB = "admin"
 
+# Commands whose string command value names a user or role, not a collection
+# (against any database): db.collection.name must be omitted rather than
+# expose the username or role name as a collection.
+_NOT_COLLECTION_COMMANDS = frozenset(
+    {
+        "createUser",
+        "dropAllRolesFromDatabase",
+        "dropAllUsersFromDatabase",
+        "dropRole",
+        "dropUser",
+        "grantPrivilegesToRole",
+        "grantPrivilegesToUser",
+        "grantRolesToRole",
+        "grantRolesToUser",
+        "invalidateUserCache",
+        "revokePrivilegesFromRole",
+        "revokePrivilegesFromUser",
+        "revokeRolesFromRole",
+        "revokeRolesFromUser",
+        "rolesInfo",
+        "createRole",
+        "updateRole",
+        "updateUser",
+        "usersInfo",
+    }
+)
+
 
 def _env_truthy(name: str) -> bool:
     """Return True if the environment variable ``name`` is set to "1", "true", or "yes"."""
@@ -95,14 +129,19 @@ def _env_truthy(name: str) -> bool:
 def _is_tracing_enabled(tracing_options: Optional[TracingOptions]) -> bool:
     """Return True if OTel command spans should be created for this client.
 
-    The ``MongoClient`` ``tracing.enabled`` option and the
-    ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable both
-    gate enablement; either one being truthy is sufficient.
+    An explicit ``MongoClient`` ``tracing.enabled`` value overrides the
+    ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable;
+    when it isn't configured, the environment variable decides. ``None``
+    means there is no client context (connection handshakes, server
+    monitoring), which is never traced.
     """
     if not _HAS_OPENTELEMETRY:
         return False
-    if tracing_options and tracing_options.get("enabled"):
-        return True
+    if tracing_options is None:
+        return False
+    enabled = tracing_options.get("enabled")
+    if enabled is not None:
+        return enabled
     return _env_truthy(_OTEL_ENABLED_ENV)
 
 
@@ -138,8 +177,10 @@ def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
     # not raise for commands containing custom/codec-managed Python types.
     text = json_util.dumps(truncated_cmd, json_options=_JSON_OPTIONS, default=repr)
     if len(text) > max_length:
-        suffix = "..."
-        text = text[: max(0, max_length - len(suffix))] + suffix
+        # A budget smaller than the marker truncates without it so the result
+        # still never exceeds max_length.
+        suffix = "..." if max_length >= 3 else ""
+        text = text[: max_length - len(suffix)] + suffix
     return text
 
 
@@ -153,6 +194,8 @@ def _extract_collection_name(
     namespace rather than a collection.
     """
     if dbname == _ADMIN_DB:
+        return None
+    if command_name in _NOT_COLLECTION_COMMANDS:
         return None
     if command_name == _EXPLAIN:
         inner = cmd.get(_EXPLAIN)
@@ -174,9 +217,10 @@ def _build_query_summary(command_name: str, dbname: str, collection: Optional[st
 
 def _is_sensitive_command(command_name: str, speculative_hello: bool) -> bool:
     """Mirror the redaction rules in ``pymongo.logger.LogMessage._is_sensitive``."""
-    if command_name in _SENSITIVE_COMMANDS:
+    name = command_name.lower()
+    if name in _SENSITIVE_COMMANDS_LOWER:
         return True
-    return command_name in _HELLO_COMMANDS and speculative_hello
+    return name in _HELLO_COMMANDS_LOWER and speculative_hello
 
 
 def _format_lsid(lsid: Mapping[str, Any]) -> Optional[str]:

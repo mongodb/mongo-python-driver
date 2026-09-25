@@ -16,8 +16,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
+import time
 from typing import Optional
 from unittest.mock import patch
 
@@ -28,8 +30,9 @@ import pytest
 import pymongo._otel as _otel
 from pymongo import common
 from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.operations import InsertOne
 from pymongo.typings import _Address
-from test.asynchronous import AsyncIntegrationTest, unittest
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 
 _HAS_OTEL_TEST_DEPS = False
 if _otel._HAS_OPENTELEMETRY:
@@ -140,6 +143,20 @@ class TestOTelSpans(AsyncIntegrationTest):
         attrs = spans[0].attributes
         self.assertEqual(attrs["db.collection.name"], "test_otel")
         self.assertEqual(attrs["db.query.summary"], f"explain {self.db.name}.test_otel")
+
+    async def test_user_management_commands_omit_collection_name(self):
+        # usersInfo's string command value names a user, not a collection:
+        # db.collection.name must be omitted so usernames aren't mislabeled
+        # (and exposed) as collections.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        await client[self.db.name].command("usersInfo", "someuser")
+
+        spans = self.spans("usersInfo")
+        self.assertEqual(len(spans), 1)
+        attrs = spans[0].attributes
+        self.assertNotIn("db.collection.name", attrs)
+        self.assertEqual(attrs["db.query.summary"], f"usersInfo {self.db.name}")
 
     async def test_server_port_omitted_for_unix_socket(self):
         class _FakeUnixConn:
@@ -282,6 +299,27 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(len(spans), 1)
         self.assertNotIn("db.query.text", spans[0].attributes)
 
+    async def test_explicit_enabled_false_overrides_env_var(self):
+        # An explicit client-side disable must win over the environment
+        # variable, unlike unset (which defers to it) - otherwise an app
+        # can't reliably opt out.
+        with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
+            client = await self.async_rs_or_single_client(tracing={"enabled": False})
+            self.exporter.clear()
+            await client.admin.command("ping")
+        # Only the client's own commands are gated by the client option;
+        # connection handshakes consult the environment variable directly.
+        self.assertNotIn("ping", [s.name for s in self.spans()])
+
+    async def test_unset_enabled_defers_to_env_var(self):
+        # ``tracing={}`` leaves enabled unconfigured, so the environment
+        # variable decides.
+        with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
+            client = await self.async_rs_or_single_client(tracing={})
+            self.exporter.clear()
+            await client.admin.command("ping")
+        self.assertIn("ping", [s.name for s in self.spans()])
+
     async def test_query_text_truncation_shrinks_oversized_field_values(self):
         client = await self.async_rs_or_single_client(
             tracing={"enabled": True, "query_text_max_length": 200}
@@ -300,6 +338,81 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertLessEqual(len(query_text), 200)
         self.assertNotIn("a" * 500, query_text)
 
+    def test_query_text_tiny_max_length_truncates_without_suffix(self):
+        # Budgets smaller than the "..." marker must truncate without it so
+        # the result still honors the configured bound.
+        for max_length in (1, 2):
+            text = _otel._build_query_text({"ping": 1}, max_length)
+            self.assertEqual(len(text), max_length)
+
+    def test_is_sensitive_command_case_insensitive(self):
+        # Redaction normalizes the command name, mirroring the comparison in
+        # command monitoring: a differently-cased sensitive command gets no
+        # span, so its payload cannot leak through db.query.text.
+        for name in ("saslStart", "SASLSTART", "saslstart", "CreateUser", "createuser"):
+            self.assertTrue(_otel._is_sensitive_command(name, False))
+        self.assertFalse(_otel._is_sensitive_command("find", False))
+
+    def test_no_client_options_is_never_traced(self):
+        # ``None`` tracing options mean no client context (connection
+        # handshakes, server monitoring): never traced, even when the
+        # environment variable enables driver-level tracing.
+        with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
+            self.assertFalse(_otel._is_tracing_enabled(None))
+
+    # Client-level bulk_write requires MongoDB 8.0+ (wire version 25).
+    @async_client_context.require_version_min(8, 0, 0, -24)
+    async def test_unacknowledged_bulk_write_query_text_includes_documents(self):
+        # db.query.text is built from the document published in
+        # CommandStartedEvent, which carries the write documents that the
+        # wire command omits for unacknowledged bulk writes.
+        client = await self.async_rs_or_single_client(
+            tracing={"enabled": True, "query_text_max_length": 1000}, w=0
+        )
+        self.exporter.clear()
+        await client.bulk_write(
+            [InsertOne(namespace=f"{self.db.name}.test_otel", document={"x": 1})], ordered=False
+        )
+        (span,) = self.spans("bulkWrite")
+        self.assertIn('"x": 1', span.attributes["db.query.text"])
+
+    @async_client_context.require_failCommand_blockConnection
+    @async_client_context.require_async
+    async def test_span_ended_on_task_cancellation(self):
+        # Task cancellation raises CancelledError (a BaseException), which the
+        # command runner's cleanup must handle: the span ends with an error
+        # status and the cancellation still propagates.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name].test_otel
+        await coll.drop()
+        await coll.insert_many([{"x": i} for i in range(5)])
+        self.exporter.clear()
+
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {"failCommands": ["getMore"], "blockConnection": True, "blockTimeMS": 5000},
+        }
+
+        async def task():
+            cursor = coll.find({}, batch_size=1)
+            await cursor.next()
+            async with self.fail_point(fail_command):
+                await cursor.next()
+
+        running = asyncio.create_task(task())
+        await asyncio.sleep(0.1)
+        start = time.monotonic()
+        running.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await running
+        # The cancellation surfaces once the failPoint's block on the
+        # connection releases; it must not hang indefinitely.
+        self.assertLess(time.monotonic() - start, 7)
+
+        (span,) = self.spans("getMore")
+        self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
+
 
 # TODO(PYTHON-5947): superseded once the unified test format's
 # expectTracingMessages/observeTracingMessages tests exercise this validator
@@ -311,8 +424,14 @@ class TestValidateTracingOrNone(unittest.TestCase):
     def test_defaults(self):
         self.assertEqual(
             common.validate_tracing_or_none("tracing", {}),
-            {"enabled": False, "query_text_max_length": None},
+            {"enabled": None, "query_text_max_length": None},
         )
+
+    def test_explicit_enabled_false_preserved(self):
+        # False must stay distinct from "unset" (None) so it can override the
+        # environment variable instead of deferring to it.
+        result = common.validate_tracing_or_none("tracing", {"enabled": False})
+        self.assertIs(result["enabled"], False)
 
     def test_enabled_and_query_text_max_length(self):
         self.assertEqual(
@@ -349,6 +468,12 @@ class TestValidateTracingOrNone(unittest.TestCase):
     def test_rejects_negative_query_text_max_length(self):
         with self.assertRaises(ValueError):
             common.validate_tracing_or_none("tracing", {"query_text_max_length": -1})
+
+    def test_numeric_string_query_text_max_length_converted(self):
+        # The validator's converted value must be kept: a numeric string that
+        # passes validation cannot flow into max(0, value) at command time.
+        result = common.validate_tracing_or_none("tracing", {"query_text_max_length": "100"})
+        self.assertEqual(result["query_text_max_length"], 100)
 
 
 class TestOTelTracerCaching(unittest.TestCase):
