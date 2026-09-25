@@ -47,3 +47,5 @@ xunit-results/
 coverage.xml
 server.log
 .coverage
+access_log
+error_log
