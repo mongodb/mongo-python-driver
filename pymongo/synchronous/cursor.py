@@ -30,6 +30,7 @@ from typing import (
 
 from bson import _convert_raw_document_lists_to_streams
 from pymongo import helpers_shared
+from pymongo._otel import is_internal_cursor_iteration
 from pymongo._telemetry import _operation_telemetry_or_none
 from pymongo.cursor_shared import (
     _CURSOR_CLOSED_ERRORS,
@@ -358,7 +359,11 @@ class Cursor(_AgnosticCursor[_DocumentType], _CursorBase[_DocumentType]):
                 )
                 self._end_operation_telemetry(exc)
                 raise exc
-            self._send_message_in_operation_span(q)
+            # The query's span covers the query alone unless this cursor is
+            # being drained by the public API call that created it, in which
+            # case the span stays open to cover that call's getMores too.
+            own_span = not is_internal_cursor_iteration()
+            self._send_message_in_operation_span(q, own_span)
         elif self._id:  # Get More
             if self._limit:
                 limit = self._limit - self._retrieved
@@ -381,17 +386,23 @@ class Cursor(_AgnosticCursor[_DocumentType], _CursorBase[_DocumentType]):
                 self._exhaust,
                 self._comment,
             )
-            self._send_message(g)
+            own_span = self._start_getmore_operation_telemetry(self._dbname, self._collname)
+            self._send_message_in_operation_span(g, own_span)
 
         return len(self._data)
 
-    def _send_message_in_operation_span(self, operation: Union[_Query, _GetMore]) -> None:
-        """Send ``operation``, ending the operation span once it completes.
+    def _send_message_in_operation_span(
+        self, operation: Union[_Query, _GetMore], own_span: bool
+    ) -> None:
+        """Send ``operation``, ending the operation span after it when we own it.
 
         _send_message ends the span on every failure path and close() ends it
         for an exhausted cursor, so this covers the remaining case of a
         successful send that leaves the cursor open.
         """
+        if not own_span:
+            self._send_message(operation)
+            return
         try:
             self._send_message(operation)
         except BaseException as exc:
