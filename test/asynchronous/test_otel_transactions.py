@@ -1,0 +1,426 @@
+# Copyright 2026-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Test the OpenTelemetry transaction pseudo-span."""
+
+from __future__ import annotations
+
+import sys
+
+sys.path[0:0] = [""]
+
+import pytest
+
+import pymongo._otel as _otel
+from pymongo.errors import InvalidOperation, OperationFailure
+from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.unified_format_shared import _shared_test_provider
+
+_HAS_OTEL_TEST_DEPS = False
+if _otel._HAS_OPENTELEMETRY:
+    try:
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+        _HAS_OTEL_TEST_DEPS = True
+    except ImportError:
+        pass
+
+_IS_SYNC = False
+
+pytestmark = pytest.mark.otel
+
+
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
+class TestOTelTransactionSpans(AsyncIntegrationTest):
+    """Transaction spans and the operations nested under them."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.exporter = InMemorySpanExporter()
+        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    @classmethod
+    def tearDownClass(cls):
+        # The span processor can never be removed from the shared process-wide
+        # TracerProvider, so without this the exporter accumulates every span.
+        cls.exporter.shutdown()
+        super().tearDownClass()
+
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.exporter.clear()
+
+    def spans(self, name: str | None = None):
+        finished = self.exporter.get_finished_spans()
+        if name is None:
+            return list(finished)
+        return [s for s in finished if s.name == name]
+
+    @staticmethod
+    def operation_spans(finished, operation: str):
+        """Return the operation spans for ``operation``, excluding command spans.
+
+        Only command spans carry db.command.name, so its absence separates them.
+        """
+        return [
+            s
+            for s in finished
+            if s.attributes.get("db.operation.name") == operation
+            and "db.command.name" not in s.attributes
+        ]
+
+    @staticmethod
+    def command_spans(finished, command: str):
+        """Return the command spans for ``command``."""
+        return [s for s in finished if s.attributes.get("db.command.name") == command]
+
+    def ping_spans(self):
+        """Return the spans belonging to a ``ping`` run through ``db.command()``.
+
+        For tests asserting tracing produced nothing. An empty-exporter assertion
+        would also catch spans a finalizer flushes at an unpredictable point on
+        interpreters without reference counting.
+        """
+        return [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.command.name") == "ping"
+            or s.attributes.get("db.operation.name") == "runCommand"
+        ]
+
+    def _aggregate_operation_span(self):
+        matching = [
+            s
+            for s in self.exporter.get_finished_spans()
+            if s.attributes.get("db.operation.name") == "aggregate"
+        ]
+        self.assertEqual(len(matching), 1)
+        return matching[0]
+
+    @async_client_context.require_transactions
+    async def test_committing_empty_transaction_ends_span(self):
+        # No operation is ever run against the server, so commit_transaction
+        # takes the STARTING/COMMITTED_EMPTY early-return path rather than
+        # actually sending a commitTransaction command.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+
+        async with client.start_session() as session:
+            await session.start_transaction()
+            await session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_span = next(s for s in finished if s.name == "transaction")
+        self.assertTrue(txn_span.end_time is not None)
+
+    @async_client_context.require_transactions
+    async def test_aborting_empty_transaction_ends_span(self):
+        # No operation is ever run against the server, so abort_transaction
+        # takes the STARTING early-return path rather than actually sending
+        # an abortTransaction command.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+
+        async with client.start_session() as session:
+            await session.start_transaction()
+            await session.abort_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_span = next(s for s in finished if s.name == "transaction")
+        self.assertTrue(txn_span.end_time is not None)
+
+    @async_client_context.require_transactions
+    async def test_direct_commit_retry_gives_each_span_its_own_end(self):
+        # An explicit commit retry moves the state from COMMITTED back to
+        # IN_PROGRESS, and the prior attempt's span was already ended and
+        # cleared, so the retry must get a fresh span and end it exactly once.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name].test
+        await coll.drop()
+        await client[self.db.name].create_collection("test")
+        self.exporter.clear()
+
+        async with client.start_session() as session:
+            async with await session.start_transaction():
+                await coll.insert_one({"x": 5}, session=session)
+            # The context manager already committed on clean exit.
+            await session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 2)
+        self.assertNotEqual(txn_spans[0].context.span_id, txn_spans[1].context.span_id)
+        for txn_span in txn_spans:
+            self.assertTrue(txn_span.end_time is not None)
+
+        commit_op_spans = self.operation_spans(finished, "commitTransaction")
+        self.assertEqual(len(commit_op_spans), 2, [s.name for s in finished])
+        # Each attempt's operation span parents to that attempt's transaction
+        # span, which fails if the spans regress to ambient parenting.
+        self.assertEqual(
+            {s.parent.span_id for s in commit_op_spans},
+            {s.context.span_id for s in txn_spans},
+        )
+        op_span_ids = {s.context.span_id for s in commit_op_spans}
+        for cmd_span in self.command_spans(finished, "commitTransaction"):
+            self.assertIn(cmd_span.parent.span_id, op_span_ids)
+
+    @async_client_context.require_transactions
+    async def test_with_transaction_retry_reuses_one_transaction_span(self):
+        # A retried with_transaction() must produce exactly one "transaction"
+        # span for the whole call, not one per retry and no wrapper span.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.with_txn_spans
+        await coll.drop()
+        await client.pymongo_test.create_collection("with_txn_spans")
+
+        attempts = []
+
+        async def callback(session):
+            attempts.append(1)
+            await coll.insert_one({"n": len(attempts)}, session=session)
+            if len(attempts) == 1:
+                exc = OperationFailure("transient", 251)
+                exc._add_error_label("TransientTransactionError")
+                raise exc
+
+        self.exporter.clear()
+        async with client.start_session() as session:
+            await session.with_transaction(callback)
+
+        self.assertEqual(len(attempts), 2)
+        finished = self.exporter.get_finished_spans()
+        self.assertFalse(
+            [s.name for s in finished if s.name.startswith("withTransaction")],
+            [s.name for s in finished],
+        )
+
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        self.assertTrue(txn_spans[0].end_time is not None)
+
+        insert_op_spans = [s for s in finished if s.attributes.get("db.operation.name") == "insert"]
+        self.assertEqual(len(insert_op_spans), 2)
+        for op_span in insert_op_spans:
+            self.assertEqual(op_span.parent.span_id, txn_spans[0].context.span_id)
+
+    @async_client_context.require_transactions
+    async def test_reentrant_with_transaction_raises_and_does_not_leak_span(self):
+        # Re-entering with_transaction() on the same session must raise, and the
+        # outer call's span must still end exactly once.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.reentrant_with_txn
+        await coll.drop()
+        await client.pymongo_test.create_collection("reentrant_with_txn")
+
+        async def inner_callback(session):
+            await coll.insert_one({"x": 1}, session=session)
+
+        async def outer_callback(session):
+            await coll.insert_one({"x": 2}, session=session)
+            # Illegal: with_transaction() is not reentrant on one session.
+            await session.with_transaction(inner_callback)
+
+        self.exporter.clear()
+        async with client.start_session() as session:
+            with self.assertRaises(InvalidOperation):
+                await session.with_transaction(outer_callback)
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        # The guard rejects the inner call before it creates a span of its own.
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        for txn_span in txn_spans:
+            self.assertIsNotNone(txn_span.end_time)
+
+    @async_client_context.require_transactions
+    async def test_reentrant_with_transaction_raises_with_tracing_disabled(self):
+        # The guard is not part of tracing: it must raise the same
+        # InvalidOperation when spans are disabled.
+        client = await self.async_rs_or_single_client()
+        coll = client.pymongo_test.reentrant_with_txn_no_tracing
+        await coll.drop()
+        await client.pymongo_test.create_collection("reentrant_with_txn_no_tracing")
+
+        async def inner_callback(session):
+            await coll.insert_one({"x": 1}, session=session)
+
+        async def outer_callback(session):
+            # End the outer transaction so the session is free, the one state a
+            # nested call could otherwise slip into.
+            await session.commit_transaction()
+            await session.with_transaction(inner_callback)
+
+        async with client.start_session() as session:
+            with self.assertRaises(InvalidOperation):
+                await session.with_transaction(outer_callback)
+
+    @async_client_context.require_transactions
+    async def test_with_transaction_on_ended_session_emits_no_span(self):
+        # A transaction that never starts emits no span: start_transaction()
+        # creates it only after its preflight checks pass.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        session = client.start_session()
+        await session.end_session()
+        self.exporter.clear()
+
+        async def callback(session):
+            pass
+
+        with self.assertRaises(InvalidOperation):
+            await session.with_transaction(callback)
+
+        finished = self.exporter.get_finished_spans()
+        self.assertEqual([s.name for s in finished if s.name == "transaction"], [])
+
+    @async_client_context.require_test_commands
+    @async_client_context.require_transactions
+    async def test_with_transaction_commit_retry_reuses_one_transaction_span(self):
+        # A commit retried through with_transaction()'s
+        # UnknownTransactionCommitResult path nests under the call's one span.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.with_txn_commit_retry
+        await coll.drop()
+        await client.pymongo_test.create_collection("with_txn_commit_retry")
+        await self.configure_fail_point(
+            client,
+            {
+                "configureFailPoint": "failCommand",
+                "mode": {"times": 1},
+                "data": {
+                    "failCommands": ["commitTransaction"],
+                    # NoSuchTransaction is not itself a retryable error, so the
+                    # label alone drives the commit retry.
+                    "errorCode": 251,
+                    "errorLabels": ["UnknownTransactionCommitResult"],
+                },
+            },
+        )
+        self.addAsyncCleanup(
+            self.configure_fail_point,
+            client,
+            {"configureFailPoint": "failCommand", "mode": "off"},
+        )
+
+        async def callback(session):
+            await coll.insert_one({"x": 1}, session=session)
+
+        self.exporter.clear()
+        async with client.start_session() as session:
+            await session.with_transaction(callback)
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        self.assertIsNotNone(txn_spans[0].end_time)
+
+        commit_op_spans = self.operation_spans(finished, "commitTransaction")
+        self.assertEqual(len(commit_op_spans), 2, [s.name for s in finished])
+        self.assertEqual(
+            {s.parent.span_id for s in commit_op_spans}, {txn_spans[0].context.span_id}
+        )
+
+        commit_cmd_spans = self.command_spans(finished, "commitTransaction")
+        self.assertEqual(len(commit_cmd_spans), 2, [s.name for s in finished])
+        op_span_ids = {s.context.span_id for s in commit_op_spans}
+        for cmd_span in commit_cmd_spans:
+            self.assertIn(cmd_span.parent.span_id, op_span_ids)
+
+    @async_client_context.require_transactions
+    async def test_nested_with_transaction_on_another_session_keeps_spans_separate(self):
+        # Nesting on a different session is legal, and each session's operations
+        # must parent to its own transaction span.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        db = client.pymongo_test
+        outer_coll = db.two_session_outer
+        inner_coll = db.two_session_inner
+        # Creating a collection inside a transaction is illegal before server 4.4.
+        await outer_coll.drop()
+        await inner_coll.drop()
+        await db.create_collection("two_session_outer")
+        await db.create_collection("two_session_inner")
+
+        async def inner_callback(inner_session):
+            await inner_coll.insert_one({"x": 1}, session=inner_session)
+
+        async def outer_callback(outer_session):
+            await outer_coll.insert_one({"x": 1}, session=outer_session)
+            async with client.start_session() as inner_session:
+                await inner_session.with_transaction(inner_callback)
+
+        self.exporter.clear()
+        async with client.start_session() as outer_session:
+            await outer_session.with_transaction(outer_callback)
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 2, [s.name for s in finished])
+        for txn_span in txn_spans:
+            self.assertIsNotNone(txn_span.end_time)
+            # Transaction spans are never made current, so neither nests under the other.
+            self.assertIsNone(txn_span.parent)
+
+        def insert_parent_id(collname: str) -> int:
+            (span,) = [
+                s
+                for s in finished
+                if s.attributes.get("db.operation.name") == "insert"
+                and s.attributes.get("db.collection.name") == collname
+            ]
+            return span.parent.span_id
+
+        outer_parent = insert_parent_id("two_session_outer")
+        inner_parent = insert_parent_id("two_session_inner")
+        self.assertNotEqual(outer_parent, inner_parent)
+        self.assertEqual({outer_parent, inner_parent}, {s.context.span_id for s in txn_spans})
+
+    @async_client_context.require_transactions
+    async def test_with_transaction_while_direct_api_transaction_active_does_not_corrupt_span(
+        self,
+    ):
+        # with_transaction() while a direct-API transaction is active on the same
+        # session raises, and must leave that transaction's span open for later
+        # operations to parent to, with no second span created.
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client.pymongo_test.direct_api_with_txn_conflict
+        await coll.drop()
+        await client.pymongo_test.create_collection("direct_api_with_txn_conflict")
+
+        async def callback(session):
+            raise AssertionError("never reached; start_transaction() raises first")
+
+        self.exporter.clear()
+        async with client.start_session() as session:
+            await session.start_transaction()
+            await coll.insert_one({"x": 1}, session=session)
+
+            with self.assertRaises(InvalidOperation):
+                await session.with_transaction(callback)
+
+            # The original transaction is still active, so this must nest under it.
+            await coll.insert_one({"x": 2}, session=session)
+            await session.commit_transaction()
+
+        finished = self.exporter.get_finished_spans()
+        txn_spans = [s for s in finished if s.name == "transaction"]
+        self.assertEqual(len(txn_spans), 1, [s.name for s in finished])
+        txn_span = txn_spans[0]
+        self.assertIsNotNone(txn_span.end_time)
+
+        insert_op_spans = [s for s in finished if s.attributes.get("db.operation.name") == "insert"]
+        self.assertEqual(len(insert_op_spans), 2)
+        for op_span in insert_op_spans:
+            self.assertEqual(op_span.parent.span_id, txn_span.context.span_id)
