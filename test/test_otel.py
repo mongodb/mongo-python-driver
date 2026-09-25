@@ -16,32 +16,20 @@
 
 from __future__ import annotations
 
-<<<<<<< HEAD
 import asyncio
-||||||| parent of a27b9097a (PYTHON-5947 Add OpenTelemetry operation spans)
-=======
 import gc
->>>>>>> a27b9097a (PYTHON-5947 Add OpenTelemetry operation spans)
 import os
 import subprocess
 import sys
 import time
-from typing import Optional
-from unittest.mock import patch
+from typing import Callable, Optional
+from unittest.mock import MagicMock, patch
 
 sys.path[0:0] = [""]
 
 import pytest
 
 import pymongo._otel as _otel
-<<<<<<< HEAD
-from pymongo import common
-from pymongo.errors import ConfigurationError, OperationFailure
-from pymongo.operations import InsertOne
-||||||| parent of a27b9097a (PYTHON-5947 Add OpenTelemetry operation spans)
-from pymongo import common
-from pymongo.errors import ConfigurationError, OperationFailure
-=======
 from pymongo import _telemetry, common
 from pymongo._telemetry import _OperationTelemetry
 from pymongo.cursor_shared import CursorType
@@ -49,6 +37,7 @@ from pymongo.errors import (
     ClientBulkWriteException,
     ConfigurationError,
     ConnectionFailure,
+    InvalidDocument,
     InvalidOperation,
     NetworkTimeout,
     OperationFailure,
@@ -57,16 +46,10 @@ from pymongo.errors import (
 from pymongo.logger import _HELLO_COMMANDS
 from pymongo.operations import InsertOne
 from pymongo.read_preferences import ReadPreference
->>>>>>> a27b9097a (PYTHON-5947 Add OpenTelemetry operation spans)
 from pymongo.typings import _Address
 from test import IntegrationTest, client_context, unittest
-<<<<<<< HEAD
-||||||| parent of a27b9097a (PYTHON-5947 Add OpenTelemetry operation spans)
-from test import IntegrationTest, unittest
-=======
 from test.unified_format_shared import _shared_test_provider
 from test.utils import wait_until
->>>>>>> a27b9097a (PYTHON-5947 Add OpenTelemetry operation spans)
 
 _HAS_OTEL_TEST_DEPS = False
 if _otel._HAS_OPENTELEMETRY:
@@ -290,6 +273,45 @@ class TestOperationTelemetry(unittest.TestCase):
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
+class TestCommandTelemetryPrecreatedSpan(unittest.TestCase):
+    """A pre-created command span is used as-is, including the "no span" sentinel."""
+
+    def _telemetry(self, **kwargs):
+        return _telemetry._CommandTelemetry(
+            None,
+            MagicMock(),
+            None,
+            {"insert": "coll"},
+            "db",
+            1,
+            None,
+            tracing_options=_tracing_opts(),
+            name="insert",
+            **kwargs,
+        )
+
+    def test_omitted_span_is_created_in_started(self):
+        telemetry = self._telemetry()
+        with patch.object(_otel, "start_command_span", return_value=None) as start:
+            telemetry.started({"insert": "coll"}, False)
+        start.assert_called_once()
+
+    def test_sensitive_sentinel_skips_creation(self):
+        telemetry = self._telemetry(precreated_span=_otel._NO_COMMAND_SPAN)
+        with patch.object(_otel, "start_command_span", return_value=None) as start:
+            telemetry.started({"insert": "coll"}, False)
+        start.assert_not_called()
+
+    def test_precreated_span_is_used(self):
+        span = MagicMock()
+        telemetry = self._telemetry(precreated_span=span)
+        with patch.object(_otel, "start_command_span", return_value=None) as start:
+            telemetry.started({"insert": "coll"}, False)
+        start.assert_not_called()
+        self.assertIs(telemetry._span, span)
+
+
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
 class TestOperationTelemetryContextManager(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -503,6 +525,7 @@ class TestOTelSpans(IntegrationTest):
             server_connection_id: Optional[int] = None
             address: _Address = ("/tmp/fake-otel-test.sock", None)
             service_id = None
+            max_wire_version = 30
 
         self.exporter.clear()
         span = _otel.start_command_span(
@@ -594,7 +617,9 @@ class TestOTelSpans(IntegrationTest):
         self.assertTrue(any(event.name == "exception" for event in span.events))
 
     @client_context.require_failCommand_fail_point
-    def test_operation_span_error_type_is_exception_class_name_for_server_error(self):
+    def test_prose_6_error_type_on_operation_span_is_exception_class_name_for_server_error(
+        self,
+    ):
         # A non-retryable server error names the exception class on the operation
         # span, not the server error code.
         client = self.rs_or_single_client(tracing={"enabled": True}, retryReads=False)
@@ -617,7 +642,7 @@ class TestOTelSpans(IntegrationTest):
         )
 
     @client_context.require_failCommand_fail_point
-    def test_error_type_is_exception_class_name_for_connection_failure(self):
+    def test_prose_5_error_type_is_exception_class_name_for_non_server_error(self):
         # A closed connection produces no server reply, so error.type uses the class name.
         client = self.rs_or_single_client(tracing={"enabled": True}, retryReads=False)
         fail_command = {
@@ -804,7 +829,6 @@ class TestOTelSpans(IntegrationTest):
             text = _otel._build_query_text({"ping": 1}, max_length)
             self.assertEqual(len(text), max_length)
 
-<<<<<<< HEAD
     def test_is_sensitive_command_case_insensitive(self):
         # Redaction normalizes the command name, mirroring the comparison in
         # command monitoring: a differently-cased sensitive command gets no
@@ -870,9 +894,7 @@ class TestOTelSpans(IntegrationTest):
 
         (span,) = self.spans("getMore")
         self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
-||||||| parent of a27b9097a (PYTHON-5947 Add OpenTelemetry operation spans)
-=======
-    @client_context.require_version_min(8, 0, 0, -24)
+
     def test_bulk_write_unacknowledged_gets_operation_span(self):
         client = self.rs_or_single_client(tracing={"enabled": True}, w=0)
         self.exporter.clear()
@@ -903,6 +925,53 @@ class TestOTelSpans(IntegrationTest):
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0].attributes["db.namespace"], self.db.name)
         self.assertEqual(matching[0].attributes["db.collection.name"], "test")
+
+    def test_collection_bulk_write_query_text_includes_documents(self):
+        # The batch is encoded before write_command adds the documents sequence,
+        # so the pre-created span's query text must be refreshed.
+        client = self.rs_or_single_client(tracing={"enabled": True, "query_text_max_length": 1024})
+        coll = client[self.db.name]["test_bulk_query_text"]
+        self.exporter.clear()
+        coll.bulk_write([InsertOne({"x": 1})], ordered=True)
+
+        (span,) = self.command_spans(self.exporter.get_finished_spans(), "insert")
+        self.assertIn("documents", span.attributes["db.query.text"])
+
+    def test_command_span_ended_when_encoding_fails(self):
+        # The command span is created before encoding, so an encoding error that
+        # never reaches the server must still end it rather than leak it.
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        with self.assertRaises(InvalidDocument):
+            client[self.db.name]["test_encoding_failure"].insert_one({"x": object()})
+
+        (span,) = self.command_spans(self.exporter.get_finished_spans(), "insert")
+        self.assertEqual(span.status.status_code, StatusCode.ERROR)
+
+    @client_context.require_auth
+    @client_context.require_failCommand_fail_point
+    def test_bulk_write_reauth_creates_a_new_command_span(self):
+        # Reauthentication resends the batch, so it must re-create the span and
+        # re-encode the traceparent rather than reuse the ended one.
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name]["test_reauth"]
+        coll.delete_many({})
+        client.admin.command(
+            "configureFailPoint",
+            "failCommand",
+            mode={"times": 1},
+            data={"failCommands": ["insert"], "errorCode": 391},
+        )
+        try:
+            self.exporter.clear()
+            coll.bulk_write([InsertOne({"x": 1})], ordered=True)
+        finally:
+            client.admin.command("configureFailPoint", "failCommand", mode="off")
+
+        spans = self.command_spans(self.exporter.get_finished_spans(), "insert")
+        self.assertEqual(len(spans), 2)
+        self.assertEqual(spans[0].status.status_code, StatusCode.ERROR)
+        self.assertNotEqual(spans[0].context.span_id, spans[1].context.span_id)
 
     def test_operation_span_falls_back_to_bare_name_when_no_command_is_sent(self):
         # Failing during server selection builds no command, so the backfill in
@@ -1061,72 +1130,327 @@ class TestOTelSpans(IntegrationTest):
         self.assertEqual(len(cmd_spans), 1)
         self.assertEqual(cmd_spans[0].parent.span_id, op_span.context.span_id)
 
+    @client_context.require_version_min(9, 0)
+    def test_traceparent_injected_when_tracing_enabled(self):
+        """Verify the telemetry section is present in the OP_MSG when tracing is on."""
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        client.admin.command("ping")
+        cmd_spans = self.command_spans(self.exporter.get_finished_spans(), "ping")
+        self.assertEqual(len(cmd_spans), 1)
+        tp = _otel._traceparent_from_span(cmd_spans[0])
+        self.assertIsNotNone(tp)
+        assert tp is not None
+        self.assertEqual(len(tp), 55)
 
-# These unit tests cover the validator's edge cases: the rejection paths and the
-# explicit-zero vs unset distinction for query_text_max_length.
->>>>>>> a27b9097a (PYTHON-5947 Add OpenTelemetry operation spans)
+    def test_no_traceparent_when_tracing_disabled(self):
+        """Verify no telemetry section when tracing is off."""
+        client = self.rs_or_single_client()
+        self.exporter.clear()
+        client.admin.command("ping")
+        # No spans at all when tracing is disabled
+        self.assertEqual(self.ping_spans(), [])
+
+    def test_no_traceparent_for_sensitive_commands(self):
+        """Verify no command span (and thus no traceparent) for saslStart."""
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        self.exporter.clear()
+        with self.assertRaises(OperationFailure):
+            client.admin.command("saslStart", mechanism="SCRAM-SHA-256", payload=b"")
+        command_spans = [s for s in self.spans() if "db.command.name" in s.attributes]
+        self.assertNotIn("saslStart", [s.name for s in command_spans])
 
 
-class TestValidateTracingOrNone(unittest.TestCase):
-    def test_none(self):
-        self.assertIsNone(common.validate_tracing_or_none("tracing", None))
+class TestTraceparent(unittest.TestCase):
+    """Unit tests for traceparent extraction and telemetry section encoding."""
 
-    def test_defaults(self):
+    @unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
+    def test_traceparent_from_span_valid(self):
+        from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
+
+        ctx = SpanContext(
+            trace_id=int("0123456789abcdef0123456789abcdef", 16),
+            span_id=int("0123456789abcdef", 16),
+            is_remote=False,
+            trace_flags=TraceFlags(TraceFlags.SAMPLED),
+        )
+
+        tp = _otel._traceparent_from_span(NonRecordingSpan(context=ctx))
+        self.assertIsNotNone(tp)
+        assert tp is not None
+        self.assertEqual(len(tp), 55)
+        self.assertEqual(tp, "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01")
+
+    @unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
+    def test_traceparent_from_span_unsampled(self):
+        from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
+
+        ctx = SpanContext(
+            trace_id=int("0123456789abcdef0123456789abcdef", 16),
+            span_id=int("0123456789abcdef", 16),
+            is_remote=False,
+            trace_flags=TraceFlags(TraceFlags.DEFAULT),
+        )
+
+        tp = _otel._traceparent_from_span(NonRecordingSpan(context=ctx))
+        self.assertIsNotNone(tp)
+        self.assertEqual(tp, "00-0123456789abcdef0123456789abcdef-0123456789abcdef-00")
+
+    @unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
+    def test_traceparent_from_span_none(self):
+        self.assertIsNone(_otel._traceparent_from_span(None))
+
+    @unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
+    def test_traceparent_from_span_invalid_context(self):
+        from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
+
+        ctx = SpanContext(
+            trace_id=0,
+            span_id=0,
+            is_remote=False,
+            trace_flags=TraceFlags(TraceFlags.DEFAULT),
+        )
+
+        self.assertIsNone(_otel._traceparent_from_span(NonRecordingSpan(context=ctx)))
+
+    @unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
+    def test_traceparent_from_span_flags_above_one_byte(self):
+        from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags
+
+        ctx = SpanContext(
+            trace_id=int("0123456789abcdef0123456789abcdef", 16),
+            span_id=int("0123456789abcdef", 16),
+            is_remote=False,
+            trace_flags=TraceFlags(0x1234),
+        )
+
+        self.assertIsNone(_otel._traceparent_from_span(NonRecordingSpan(context=ctx)))
+
+    def test_telemetry_section_format(self):
+        tp = "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01"
+        section = _otel._telemetry_section(tp)
+        # First byte is payload type 3
+        self.assertEqual(section[0:1], b"\x03")
+        # Rest is a valid BSON document
+        import bson as _bson
+
+        doc = _bson.decode(section[1:])
+        self.assertEqual(doc, {"otel": {"traceparent": tp}})
+
+
+@unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
+class TestServerTraceContext(IntegrationTest):
+    """Prose tests 5-7: server trace context propagation.
+
+    These tests require a MongoDB 9.0+ deployment with the OpenTelemetry
+    file exporter enabled. The OTEL_TRACE_DIR environment variable
+    (set by drivers-evergreen-tools with OTEL=1) points to the directory
+    where the server writes OTLP JSON span files. Skip when unset.
+    """
+
+    OTEL_TRACE_DIR = os.environ.get("OTEL_TRACE_DIR", "")
+
+    @classmethod
+    def setUpClass(cls):
+        if not cls.OTEL_TRACE_DIR:
+            raise unittest.SkipTest("OTEL_TRACE_DIR not set")
+        super().setUpClass()
+        cls.exporter = InMemorySpanExporter()
+        _shared_test_provider().add_span_processor(SimpleSpanProcessor(cls.exporter))
+
+    @classmethod
+    def tearDownClass(cls):
+        if hasattr(cls, "exporter"):
+            cls.exporter.shutdown()
+        super().tearDownClass()
+
+    def setUp(self):
+        super().setUp()
+        self.exporter.clear()
+
+    def spans(self, name: str | None = None):
+        finished = self.exporter.get_finished_spans()
+        if name is None:
+            return list(finished)
+        return [s for s in finished if s.name == name]
+
+    @staticmethod
+    def command_spans(finished, command: str):
+        """Return the command spans for ``command``."""
+        return [s for s in finished if s.attributes.get("db.command.name") == command]
+
+    @staticmethod
+    def _read_server_spans(trace_dir: str) -> list[dict]:
+        """Read all OTLP JSON span files under trace_dir."""
+        import json
+        from pathlib import Path
+
+        def read() -> list[dict]:
+            spans: list[dict] = []
+            for p in Path(trace_dir).rglob("*"):
+                if not p.is_file():
+                    continue
+                for line in p.read_text().splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        batch = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    for rs in batch.get("resourceSpans", []):
+                        for ss in rs.get("scopeSpans", []):
+                            spans.extend(ss.get("spans", []))
+            return spans
+
+        # File reads block, so keep them off the event loop in the async driver.
+        if not _IS_SYNC:
+            return asyncio.get_running_loop().run_in_executor(None, read)  # type: ignore[return-value]
+        return read()
+
+    @staticmethod
+    def _poll_server_spans(
+        trace_dir: str,
+        trace_id: str,
+        predicate: Optional[Callable[[list[dict]], bool]] = None,
+        timeout: float = 30.0,
+    ) -> list[dict]:
+        """Poll trace_dir for server spans matching trace_id.
+
+        Server spans are batched, so return as soon as ``predicate`` holds for
+        the matching spans (or any matching span exists when ``predicate`` is
+        ``None``), or when the timeout elapses.
+        """
+        import time
+
+        deadline = time.monotonic() + timeout
+        matching: list[dict] = []
+        while True:
+            spans = TestServerTraceContext._read_server_spans(trace_dir)
+            matching = [s for s in spans if s.get("traceId") == trace_id]
+            if predicate is not None:
+                if predicate(matching):
+                    return matching
+            elif matching:
+                return matching
+            if time.monotonic() >= deadline:
+                return matching
+            time.sleep(0.5)
+
+    @client_context.require_version_min(9, 0)
+    def test_prose_7_server_spans_join_driver_trace(self):
+        """Prose Test 5: Server spans join the driver's trace."""
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name]["test_prose_5"]
+        coll.delete_many({})
+        coll.insert_one({"x": 1})
+        cmd_spans = self.command_spans(self.exporter.get_finished_spans(), "insert")
+        self.assertEqual(len(cmd_spans), 1)
+        cmd_span = cmd_spans[0]
+        trace_id = f"{cmd_span.context.trace_id:032x}"
+        span_id = f"{cmd_span.context.span_id:016x}"
+
+        # On a sharded cluster the command fans out through mongos to the shard,
+        # and every hop exports its own span named for the command. The ingress
+        # span is the one whose parent is the driver's command span. Poll for it
+        # explicitly: the deeper hops end (and flush) first, so a poll that
+        # stops at the first span of the trace would miss it.
+        def has_ingress_span(spans: list[dict]) -> bool:
+            ingress = [s for s in spans if s.get("parentSpanId") == span_id]
+            return len(ingress) == 1 and ingress[0].get("name") == "insert"
+
+        server_spans = self._poll_server_spans(self.OTEL_TRACE_DIR, trace_id, has_ingress_span)
+        ingress_spans = [s for s in server_spans if s.get("parentSpanId") == span_id]
+        self.assertEqual(len(ingress_spans), 1)
+        self.assertEqual(ingress_spans[0].get("name"), "insert")
+
+    @client_context.require_version_min(9, 0)
+    @client_context.require_failCommand_fail_point
+    def test_prose_8_one_server_span_per_retry_attempt(self):
+        """Prose Test 6: One server span per retry attempt."""
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name]["test_prose_6"]
+        coll.delete_many({})
+        coll.insert_one({"x": 1})
+        # Configure failpoint
+        client.admin.command(
+            "configureFailPoint",
+            "failCommand",
+            mode={"times": 1},
+            data={"failCommands": ["find"], "errorCode": 91},
+        )
+        try:
+            self.exporter.clear()
+            cursor = coll.find({})
+            docs = cursor.to_list()
+            self.assertEqual(len(docs), 1)
+        finally:
+            client.admin.command(
+                "configureFailPoint",
+                "failCommand",
+                mode="off",
+            )
+        find_cmd_spans = self.command_spans(self.exporter.get_finished_spans(), "find")
+        self.assertEqual(len(find_cmd_spans), 2)
         self.assertEqual(
-            common.validate_tracing_or_none("tracing", {}),
-            {"enabled": None, "query_text_max_length": None},
+            f"{find_cmd_spans[0].context.trace_id:032x}",
+            f"{find_cmd_spans[1].context.trace_id:032x}",
         )
+        span_ids = {f"{s.context.span_id:016x}" for s in find_cmd_spans}
+        self.assertEqual(len(span_ids), 2)
+        trace_id = f"{find_cmd_spans[0].context.trace_id:032x}"
 
-    def test_explicit_enabled_false_preserved(self):
-        # False must stay distinct from "unset" (None) so it can override the
-        # environment variable instead of deferring to it.
-        result = common.validate_tracing_or_none("tracing", {"enabled": False})
-        self.assertIs(result["enabled"], False)
+        def _both_attempts_have_child(spans: list[dict]) -> bool:
+            return span_ids <= {s.get("parentSpanId") for s in spans}
 
-    def test_enabled_and_query_text_max_length(self):
-        self.assertEqual(
-            common.validate_tracing_or_none(
-                "tracing", {"enabled": True, "query_text_max_length": 500}
-            ),
-            {"enabled": True, "query_text_max_length": 500},
+        server_spans = self._poll_server_spans(
+            self.OTEL_TRACE_DIR, trace_id, _both_attempts_have_child
         )
+        parented = [s for s in server_spans if s.get("parentSpanId") in span_ids]
+        self.assertEqual(len(parented), 2)
+        for span_id in span_ids:
+            children = [s for s in parented if s.get("parentSpanId") == span_id]
+            self.assertEqual(len(children), 1)
 
-    def test_explicit_zero_query_text_max_length_preserved(self):
-        # 0 must stay distinct from "unset" (None) so it can override the
-        # environment variable instead of being treated as not configured.
-        result = common.validate_tracing_or_none(
-            "tracing", {"enabled": True, "query_text_max_length": 0}
-        )
-        self.assertEqual(result["query_text_max_length"], 0)
+    @client_context.require_version_min(9, 0)
+    @client_context.require_auth
+    def test_prose_9_no_trace_context_for_auth_monitoring(self):
+        """Prose Test 7: No trace context for authentication and monitoring commands."""
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name]["test_prose_7"]
+        # Handshakes and authentication run lazily on the first operation, so
+        # their spans are part of the driver's trace ids and must not be cleared.
+        coll.delete_many({})
+        coll.insert_one({"x": 1})
+        coll.find_one({})
+        finished = self.exporter.get_finished_spans()
+        driver_trace_ids = {f"{s.context.trace_id:032x}" for s in finished}
+        # Wait for the find server span to appear
+        find_cmd_spans = self.command_spans(finished, "find")
+        self.assertTrue(find_cmd_spans)
+        trace_id = f"{find_cmd_spans[0].context.trace_id:032x}"
+        self._poll_server_spans(self.OTEL_TRACE_DIR, trace_id)
+        # Collect all server spans that match any driver trace id
+        all_server_spans = self._read_server_spans(self.OTEL_TRACE_DIR)
+        driver_server_spans = [s for s in all_server_spans if s.get("traceId") in driver_trace_ids]
+        auth_monitor_names = {
+            "hello",
+            "ismaster",
+            "isMaster",
+            "saslStart",
+            "saslContinue",
+            "authenticate",
+        }
+        for s in driver_server_spans:
+            self.assertNotIn(
+                s.get("name"),
+                auth_monitor_names,
+                f"Server span for {s.get('name')} joined a driver trace",
+            )
 
-    def test_rejects_non_mapping(self):
-        with self.assertRaises(TypeError):
-            common.validate_tracing_or_none("tracing", "enabled")
-
-    def test_rejects_unknown_option(self):
-        with self.assertRaisesRegex(ConfigurationError, "Unknown tracing option"):
-            common.validate_tracing_or_none("tracing", {"bogus": True})
-
-    def test_rejects_non_boolean_enabled(self):
-        with self.assertRaises(TypeError):
-            common.validate_tracing_or_none("tracing", {"enabled": "yes"})
-
-    def test_rejects_non_integer_query_text_max_length(self):
-        with self.assertRaises(TypeError):
-            common.validate_tracing_or_none("tracing", {"query_text_max_length": [1]})
-
-    def test_rejects_negative_query_text_max_length(self):
-        with self.assertRaises(ValueError):
-            common.validate_tracing_or_none("tracing", {"query_text_max_length": -1})
-
-<<<<<<< HEAD
-    def test_numeric_string_query_text_max_length_converted(self):
-        # The validator's converted value must be kept: a numeric string that
-        # passes validation cannot flow into max(0, value) at command time.
-||||||| parent of a27b9097a (PYTHON-5947 Add OpenTelemetry operation spans)
-=======
+    # These unit tests cover the validator's edge cases: the rejection paths and the
+    # explicit-zero vs unset distinction for query_text_max_length.
     def test_coerces_numeric_string_query_text_max_length(self):
->>>>>>> a27b9097a (PYTHON-5947 Add OpenTelemetry operation spans)
         result = common.validate_tracing_or_none("tracing", {"query_text_max_length": "100"})
         self.assertEqual(result["query_text_max_length"], 100)
 
@@ -1146,6 +1470,7 @@ class TestOTelTracerCaching(unittest.TestCase):
             server_connection_id: Optional[int] = None
             address: _Address = ("localhost", 27017)
             service_id = None
+            max_wire_version = 30
 
         with patch.object(_otel, "trace") as mock_trace:
             for _ in range(3):
