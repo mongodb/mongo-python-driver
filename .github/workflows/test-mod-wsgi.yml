@@ -1,0 +1,180 @@
+name: Mod WSGI Tests
+
+on:
+  push:
+    branches: ["main", "v**"]
+    paths:
+      - ".evergreen/scripts/mod_wsgi_*"
+      - ".evergreen/scripts/mod_wsgi.sh"
+      - ".evergreen/scripts/dispatch.sh"
+      - ".evergreen/scripts/generate_config_utils.py"
+      - ".evergreen/scripts/setup-system.sh"
+      - ".github/workflows/test-mod-wsgi.yml"
+      - ".github/actions/mod-wsgi-*/**"
+      - "test/mod_wsgi_test/**"
+      - "pymongo/**"
+      - "bson/**"
+      - "justfile"
+      - "pyproject.toml"
+      - "uv.lock"
+  pull_request:
+    paths:
+      - ".evergreen/scripts/mod_wsgi_*"
+      - ".evergreen/scripts/mod_wsgi.sh"
+      - ".evergreen/scripts/dispatch.sh"
+      - ".evergreen/scripts/generate_config_utils.py"
+      - ".evergreen/scripts/setup-system.sh"
+      - ".github/workflows/test-mod-wsgi.yml"
+      - ".github/actions/mod-wsgi-*/**"
+      - "test/mod_wsgi_test/**"
+      - "pymongo/**"
+      - "bson/**"
+      - "justfile"
+      - "pyproject.toml"
+      - "uv.lock"
+  workflow_dispatch:
+
+concurrency:
+  group: mod-wsgi-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash -eux {0}
+
+permissions:
+  contents: read
+
+jobs:
+  mod_wsgi_min_deps:
+    # Exercise the minimum dependency versions against Fedora's httpd, so the
+    # mod_wsgi tests cover httpd in addition to Ubuntu's apache2.
+    runs-on: ubuntu-latest
+    name: Mod WSGI Min Deps
+    container:
+      # fedora:latest, pinned by digest; bump periodically.
+      image: fedora@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+    env:
+      # Install the interpreter where the Apache user can read it.
+      UV_PYTHON_INSTALL_DIR: /opt/uv-python
+      # The test rounds run against the lowest direct dependency versions
+      # installed below; a resync would reconcile them back to the lockfile.
+      JUST_NO_RESYNC: "1"
+    steps:
+      # actions/checkout needs git, which fedora:latest does not include.
+      - name: Install git
+        run: dnf install -y git
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - name: Install just
+        run: |
+          uv tool install rust-just
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Set up the system
+        run: bash .evergreen/scripts/setup-system.sh
+      - name: Install Apache
+        # jq and curl are needed to pick the MongoDB download.
+        run: dnf install -y httpd httpd-devel jq curl
+      - id: versions
+        uses: $/.github/actions/mod-wsgi-versions
+        with:
+          index: 0
+      - name: Install Python
+        env:
+          PYTHON_VERSION: ${{ steps.versions.outputs.python-version }}
+        run: |
+          uv python install "$PYTHON_VERSION"
+          echo "UV_PYTHON=$PYTHON_VERSION" >> "$GITHUB_ENV"
+      - name: Install dependencies
+        run: |
+          export PYMONGO_C_EXT_MUST_BUILD=1
+          just install
+          uv sync --group mod_wsgi --refresh-package pymongo
+          uv run --no-sync python tools/fail_if_no_c.py
+          # Re-resolve at the lowest direct versions, including the mod_wsgi
+          # group: uv sync above installed the locked version, but this job
+          # must exercise the group's mod_wsgi>=4.9.4 lower bound.
+          uv pip install -e ".[test]" --group mod_wsgi --resolution=lowest-direct --force-reinstall
+      - name: Start MongoDB
+        # Fedora is not a supported MongoDB platform, so install the RHEL build
+        # directly instead of using the drivers-evergreen-tools action, which
+        # relies on actions/setup-python and does not run on Fedora.
+        env:
+          MONGODB_VERSION: ${{ steps.versions.outputs.mongodb-version }}
+        run: |
+          ARCH=$(uname -m)
+          URL=$(curl -fsSL https://downloads.mongodb.org/current.json | jq -r --arg v "$MONGODB_VERSION." --arg a "$ARCH" '
+            .versions[] | select(.current and .production_release) | select(.version | startswith($v)) |
+            .downloads[] | select(.target=="rhel90" and .arch==$a) | .archive.url' | grep -v enterprise | head -1)
+          curl -fsSL "$URL" -o /tmp/mongo.tgz
+          tar -xz -C /tmp --strip-components=1 -f /tmp/mongo.tgz
+          mkdir -p /tmp/db
+          /tmp/bin/mongod --replSet rs0 --bind_ip 127.0.0.1 --port 27017 --dbpath /tmp/db --fork --logpath /tmp/mongod.log
+          # --no-sync: a sync would reconcile the lowest-direct dependency
+          # versions installed above back to the lockfile.
+          uv run --no-sync python -c "
+          from pymongo import MongoClient
+          client = MongoClient('127.0.0.1:27017', directConnection=True)
+          client.admin.command('replSetInitiate', {'_id': 'rs0', 'members': [{'_id': 0, 'host': '127.0.0.1:27017'}]})
+          MongoClient().admin.command('hello')
+          "
+      - name: Run standalone tests
+        run: |
+          just setup-tests mod_wsgi standalone
+          just run-tests
+      - name: Teardown standalone
+        if: always()
+        run: just teardown-tests
+      - name: Run embedded tests
+        run: |
+          just setup-tests mod_wsgi embedded
+          just run-tests
+      - name: Teardown embedded
+        if: always()
+        run: just teardown-tests
+
+  mod_wsgi_latest:
+    runs-on: ubuntu-22.04
+    name: Mod WSGI Latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - id: versions
+        uses: $/.github/actions/mod-wsgi-versions
+        with:
+          index: 1
+      - name: Install Python tooling
+        uses: mongodb-labs/drivers-github-tools/python/setup@f137fdd28483af14ebf466ebc5aa789fbf867218  # v3.0.5
+        with:
+          python-version: ${{ steps.versions.outputs.python-version }}
+      - name: Install Apache
+        run: sudo apt-get install -y apache2 apache2-dev
+      - name: Install dependencies
+        run: |
+          export PYMONGO_C_EXT_MUST_BUILD=1
+          just install
+          uv sync --group mod_wsgi --refresh-package pymongo
+          uv run --no-sync python tools/fail_if_no_c.py
+      - id: setup-mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@49da51cebc0060b4d699d57bdef30ee7e071de44
+        with:
+          version: ${{ steps.versions.outputs.mongodb-version }}
+          topology: "replica_set"
+      - name: Run standalone tests
+        run: |
+          just setup-tests mod_wsgi standalone
+          just run-tests
+      - name: Teardown standalone
+        if: always()
+        run: just teardown-tests
+      - name: Run embedded tests
+        run: |
+          just setup-tests mod_wsgi embedded
+          just run-tests
+      - name: Teardown embedded
+        if: always()
+        run: just teardown-tests
