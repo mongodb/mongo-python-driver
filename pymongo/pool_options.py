@@ -24,6 +24,7 @@ import os
 import platform
 import sys
 from collections.abc import MutableMapping
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -37,6 +38,7 @@ from pymongo.common import (
     WAIT_QUEUE_TIMEOUT,
     has_c,
 )
+from pymongo.lock import _create_lock
 
 if TYPE_CHECKING:
     from pymongo.auth_shared import MongoCredential
@@ -200,60 +202,117 @@ def _metadata_env() -> dict[str, Any]:
 _MAX_METADATA_SIZE = 512
 
 
+def _truncate_utf8(content: str, overflow: int) -> str:
+    """Trim `overflow` UTF-8 bytes from the end of content, keeping a valid prefix."""
+    if overflow <= 0:
+        return content
+    data = content.encode("utf-8")
+    if len(data) <= overflow:
+        return ""
+    return data[: len(data) - overflow].decode("utf-8", errors="ignore")
+
+
+def _normalize_driver(driver: DriverInfo) -> DriverInfo:
+    """Treat None and "" as equivalent unset fields for deduplication."""
+    return driver._replace(
+        name=driver.name or "",
+        version=driver.version or "",
+        platform=driver.platform or "",
+    )
+
+
+def _element_size(key: str, value: Any) -> int:
+    """Size in bytes of the BSON element for ``key``, excluding doc overhead."""
+    # bson.encode({key: value}) is 4 bytes of document header plus 1 byte of
+    # document terminator on top of the element itself.
+    return len(bson.encode({key: value})) - 5
+
+
 # See: https://github.com/mongodb/specifications/blob/master/source/mongodb-handshake/handshake.md#limitations
 def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     """Perform metadata truncation."""
-    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
+    # The only full encode is the initial size check; each step then shrinks
+    # the tracked size by the exact bytes its change removes.
+    size = len(bson.encode(metadata))
+    if size <= _MAX_METADATA_SIZE:
         return
     # 1. Omit fields from env except env.name.
     env_name = metadata.get("env", {}).get("name")
     if env_name:
-        metadata["env"] = {"name": env_name}
-    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
+        env = {"name": env_name}
+        size += _element_size("env", env) - _element_size("env", metadata["env"])
+        metadata["env"] = env
+    if size <= _MAX_METADATA_SIZE:
         return
     # 2. Omit fields from os except os.type.
     os_type = metadata.get("os", {}).get("type")
     if os_type:
-        metadata["os"] = {"type": os_type}
-    if len(bson.encode(metadata)) <= _MAX_METADATA_SIZE:
+        old_os = metadata["os"]
+        new_os = {"type": os_type}
+        size += _element_size("os", new_os) - _element_size("os", old_os)
+        metadata["os"] = new_os
+    if size <= _MAX_METADATA_SIZE:
         return
     # 3. Omit the env document entirely.
-    metadata.pop("env", None)
-    encoded_size = len(bson.encode(metadata))
-    if encoded_size <= _MAX_METADATA_SIZE:
+    env = metadata.pop("env", None)
+    if env is not None:
+        size -= _element_size("env", env)
+    if size <= _MAX_METADATA_SIZE:
         return
     # 4. Truncate platform.
-    overflow = encoded_size - _MAX_METADATA_SIZE
+    overflow = size - _MAX_METADATA_SIZE
     plat = metadata.get("platform", "")
     if plat:
-        plat = plat[:-overflow]
-    if plat:
-        metadata["platform"] = plat
+        truncated = _truncate_utf8(plat, overflow)
+        if truncated:
+            size += _element_size("platform", truncated) - _element_size("platform", plat)
+        else:
+            size -= _element_size("platform", plat)
+        if truncated:
+            metadata["platform"] = truncated
+        else:
+            del metadata["platform"]
     else:
-        metadata.pop("platform", None)
-    encoded_size = len(bson.encode(metadata))
-    if encoded_size <= _MAX_METADATA_SIZE:
-        return
-    # 5. Truncate driver info.
-    overflow = encoded_size - _MAX_METADATA_SIZE
+        # The platform field may be present but empty.
+        plat = metadata.pop("platform", None)
+        if plat is not None:
+            size -= _element_size("platform", plat)
+    # 5. Truncate driver info, keeping name and version 1:1 index-aligned.
     driver = metadata.get("driver", {})
     if driver:
-        # Truncate driver version.
-        driver_version = driver.get("version")[:-overflow]
-        if len(driver_version) >= len(_METADATA["driver"]["version"]):
-            metadata["driver"]["version"] = driver_version
-        else:
-            metadata["driver"]["version"] = _METADATA["driver"]["version"]
-        encoded_size = len(bson.encode(metadata))
-        if encoded_size <= _MAX_METADATA_SIZE:
-            return
-        # Truncate driver name.
-        overflow = encoded_size - _MAX_METADATA_SIZE
-        driver_name = driver.get("name")[:-overflow]
-        if len(driver_name) >= len(_METADATA["driver"]["name"]):
-            metadata["driver"]["name"] = driver_name
-        else:
-            metadata["driver"]["name"] = _METADATA["driver"]["name"]
+        # Keep the name and version segments paired so they stay 1:1 aligned,
+        # trimming wrapper content and dropping paired segments only as a
+        # last resort. Blank pairs (for example from a platform-only appended
+        # driver) are dropped first since they cost nothing.
+        name_str = driver.get("name", "")
+        version_str = driver.get("version", "")
+        raw_pairs = list(zip(name_str.split("|"), version_str.split("|")))
+        pairs = [(name, version) for name, version in raw_pairs if name or version]
+        new_name = "|".join(name for name, _ in pairs)
+        new_version = "|".join(version for _, version in pairs)
+        size += (len(new_name.encode("utf-8")) - len(name_str.encode("utf-8"))) + (
+            len(new_version.encode("utf-8")) - len(version_str.encode("utf-8"))
+        )
+        driver["name"] = new_name
+        driver["version"] = new_version
+        overflow = size - _MAX_METADATA_SIZE
+        while overflow > 0 and len(pairs) > 1:
+            # A single remaining pair never exceeds the limit: it is the base
+            # driver pair, which steps 1-4 left small enough to fit.
+            last_name, last_version = pairs[-1]
+            if last_version:
+                new_version = _truncate_utf8(last_version, overflow)
+                overflow -= len(last_version.encode("utf-8")) - len(new_version.encode("utf-8"))
+                pairs[-1] = (last_name, new_version)
+            elif last_name:
+                new_name = _truncate_utf8(last_name, overflow)
+                overflow -= len(last_name.encode("utf-8")) - len(new_name.encode("utf-8"))
+                pairs[-1] = (new_name, last_version)
+            else:
+                pairs.pop()
+                overflow -= len(f"|{last_name}|{last_version}".encode())
+        driver["name"] = "|".join(name for name, _ in pairs)
+        driver["version"] = "|".join(version for _, version in pairs)
 
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
@@ -277,6 +336,7 @@ class PoolOptions:
     """
 
     __slots__ = (
+        "__appended_drivers",
         "__appname",
         "__compression_settings",
         "__connect_timeout",
@@ -288,6 +348,7 @@ class PoolOptions:
         "__max_idle_time_seconds",
         "__max_pool_size",
         "__metadata",
+        "__metadata_lock",
         "__min_pool_size",
         "__pause_enabled",
         "__server_api",
@@ -336,6 +397,11 @@ class PoolOptions:
         self.__load_balanced = load_balanced
         self.__credentials = credentials
         self.__metadata = copy.deepcopy(_METADATA)
+        self.__appended_drivers: set[DriverInfo] = set()
+        # Only the synchronous client can append metadata from multiple threads.
+        self.__metadata_lock: AbstractContextManager[bool | None] = (
+            _create_lock() if is_sync else nullcontext()
+        )
 
         if appname:
             self.__metadata["application"] = {"name": appname}
@@ -353,10 +419,18 @@ class PoolOptions:
                 self.__metadata["driver"]["name"],
                 "c",
             )
+            self.__metadata["driver"]["version"] = "{}|{}".format(
+                self.__metadata["driver"]["version"],
+                "",
+            )
         if not is_sync:
             self.__metadata["driver"]["name"] = "{}|{}".format(
                 self.__metadata["driver"]["name"],
                 "async",
+            )
+            self.__metadata["driver"]["version"] = "{}|{}".format(
+                self.__metadata["driver"]["version"],
+                "",
             )
         if driver:
             self._update_metadata(driver)
@@ -368,28 +442,42 @@ class PoolOptions:
         _truncate_metadata(self.__metadata)
 
     def _update_metadata(self, driver: DriverInfo) -> None:
-        """Updates the client's metadata"""
-        if driver.name and driver.name.lower() in self.__metadata["driver"]["name"].lower().split(
-            "|"
-        ):
-            return
+        """Updates the client's metadata."""
+        with self.__metadata_lock:
+            driver = _normalize_driver(driver)
+            if driver in self.__appended_drivers:
+                return
 
-        metadata = copy.deepcopy(self.__metadata)
+            # Only the top-level keys and the "driver" document are mutated,
+            # so shallow copies of those two are enough.
+            metadata = {**self.__metadata, "driver": dict(self.__metadata["driver"])}
 
-        if driver.name:
-            metadata["driver"]["name"] = "{}|{}".format(
-                metadata["driver"]["name"],
-                driver.name,
-            )
-        if driver.version:
+            metadata["driver"]["name"] = "{}|{}".format(metadata["driver"]["name"], driver.name)
             metadata["driver"]["version"] = "{}|{}".format(
-                metadata["driver"]["version"],
-                driver.version,
+                metadata["driver"]["version"], driver.version
             )
-        if driver.platform:
-            metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+            if driver.platform:
+                if "platform" in metadata:
+                    metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+                else:
+                    metadata["platform"] = driver.platform
 
-        self.__metadata = metadata
+            _truncate_metadata(metadata)
+
+            self.__metadata = metadata
+
+            # Only track drivers whose appended name/version pair survived
+            # truncation, so __appended_drivers stays bounded. Truncation
+            # keeps name and version index-aligned, so strict=True never
+            # raises.
+            names = metadata["driver"]["name"].split("|")
+            versions = metadata["driver"]["version"].split("|")
+            if sys.version_info >= (3, 10):
+                pairs = zip(names, versions, strict=True)
+            else:
+                pairs = zip(names, versions)
+            if (driver.name, driver.version) in pairs:
+                self.__appended_drivers.add(driver)
 
     @property
     def _credentials(self) -> Optional[MongoCredential]:
