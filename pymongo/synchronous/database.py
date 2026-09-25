@@ -714,6 +714,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 s,
                 retryable=not cmd._performs_write,
                 operation=_Op.AGGREGATE,
+                dbname=self.name,
             )
 
     @overload
@@ -1052,7 +1053,14 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                     raise InvalidOperation("Command does not return a cursor.")
 
             return self.client._retryable_read(
-                inner, read_preference, tmp_session, command_name, None, False
+                inner,
+                read_preference,
+                tmp_session,
+                command_name,
+                None,
+                False,
+                dbname=self.name,
+                is_run_command=True,
             )
 
     def _retryable_read_command(
@@ -1148,7 +1156,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             return self._list_collections(conn, session, read_preference=read_preference, **kwargs)
 
         return self._client._retryable_read(
-            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS
+            _cmd, read_pref, session, operation=_Op.LIST_COLLECTIONS, dbname=self.name
         )
 
     def list_collections(

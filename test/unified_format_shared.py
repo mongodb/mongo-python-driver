@@ -29,6 +29,7 @@ from collections import abc
 from collections.abc import MutableMapping
 from typing import Any, Union
 
+import pymongo._otel as _otel
 from bson import (
     RE_TYPE,
     Binary,
@@ -250,6 +251,29 @@ def parse_client_bulk_write_error_result(error):
     if not write_result:
         return None
     return parse_client_bulk_write_result(write_result)
+
+
+if _otel._HAS_OPENTELEMETRY:
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+    except ImportError:
+        pass
+
+
+def _shared_test_provider() -> TracerProvider:
+    """Return a process-wide SDK TracerProvider for tests to attach exporters to.
+
+    ``trace.set_tracer_provider`` only takes effect once per process (later calls
+    are silently ignored), so tests must share one provider and each register
+    their own span processor rather than trying to install a fresh provider.
+    """
+    current = trace.get_tracer_provider()
+    if isinstance(current, TracerProvider):
+        return current
+    provider = TracerProvider()
+    trace.set_tracer_provider(provider)
+    return provider
 
 
 class EventListenerUtil(
