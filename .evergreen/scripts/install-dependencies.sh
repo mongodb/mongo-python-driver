@@ -60,8 +60,11 @@ fi
 
 # Set up uv if needed.
 if [ "$_need_setup" = "1" ]; then
-  # ensure-uv.sh (drivers-evergreen-tools) finds or installs uv and scopes its env.
-  if [ -n "${DRIVERS_TOOLS:-}" ] && [ -f "$DRIVERS_TOOLS/.evergreen/ensure-uv.sh" ]; then
+  # ensure-uv.sh (drivers-evergreen-tools) finds or installs uv and scopes its
+  # env. Default DRIVERS_TOOLS to the drivers-evergreen-tools submodule so it
+  # is used whenever present; an env var override wins.
+  : "${DRIVERS_TOOLS:=$(dirname "$(dirname "$HERE")")/drivers-evergreen-tools}"
+  if [ -f "$DRIVERS_TOOLS/.evergreen/ensure-uv.sh" ]; then
     . "$DRIVERS_TOOLS/.evergreen/ensure-uv.sh"
     ensure_uv || exit 1
   fi

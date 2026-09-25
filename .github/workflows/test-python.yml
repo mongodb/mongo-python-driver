@@ -85,7 +85,7 @@ jobs:
           # The beta Python here relies on the action's prerelease default.
           python-version: ${{ matrix.python-version }}
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        uses: mongodb-labs/drivers-evergreen-tools@ec0b1497b3d351acbfc4fd7579bf3de4de0a1046 # v1.1.0
         with:
           version: "${{ matrix.mongodb-version }}"
       - name: Run tests
@@ -101,12 +101,13 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
+          submodules: true
       - name: Install Python tooling
         uses: mongodb-labs/drivers-github-tools/python/setup@f137fdd28483af14ebf466ebc5aa789fbf867218  # v3.0.5
         with:
           python-version: "3.10"
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        uses: mongodb-labs/drivers-evergreen-tools@ec0b1497b3d351acbfc4fd7579bf3de4de0a1046 # v1.1.0
         with:
           version: "8.0"
       - name: Setup tests
@@ -126,6 +127,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
+          submodules: true
       - name: Install Python tooling
         uses: mongodb-labs/drivers-github-tools/python/setup@f137fdd28483af14ebf466ebc5aa789fbf867218  # v3.0.5
         with:
@@ -133,7 +135,7 @@ jobs:
       - name: Install dependencies
         run: just install
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        uses: mongodb-labs/drivers-evergreen-tools@ec0b1497b3d351acbfc4fd7579bf3de4de0a1046 # v1.1.0
         with:
           version: "8.0"
       - name: Run tests
@@ -184,6 +186,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
+          submodules: true
       - name: Install Python tooling
         uses: mongodb-labs/drivers-github-tools/python/setup@f137fdd28483af14ebf466ebc5aa789fbf867218  # v3.0.5
         with:
@@ -191,12 +194,12 @@ jobs:
       - name: Install dependencies
         run: just install
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        uses: mongodb-labs/drivers-evergreen-tools@ec0b1497b3d351acbfc4fd7579bf3de4de0a1046 # v1.1.0
       - name: Run tests
         run:  |
           just integration-tests
       - id: setup-mongodb-ssl
-        uses: mongodb-labs/drivers-evergreen-tools@master
+        uses: mongodb-labs/drivers-evergreen-tools@ec0b1497b3d351acbfc4fd7579bf3de4de0a1046 # v1.1.0
         with:
           ssl: true
       - name: Run tests
@@ -251,7 +254,7 @@ jobs:
             # Test sdist on lowest supported Python
             python-version: "3.9"
         - id: setup-mongodb
-          uses: mongodb-labs/drivers-evergreen-tools@master
+          uses: mongodb-labs/drivers-evergreen-tools@ec0b1497b3d351acbfc4fd7579bf3de4de0a1046 # v1.1.0
         - name: Run connect test from sdist
           shell: bash
           run: |
@@ -275,7 +278,7 @@ jobs:
           with:
             python-version: "3.9"
         - id: setup-mongodb
-          uses: mongodb-labs/drivers-evergreen-tools@master
+          uses: mongodb-labs/drivers-evergreen-tools@ec0b1497b3d351acbfc4fd7579bf3de4de0a1046 # v1.1.0
           with:
             version: "8.0"
         - name: Run tests

@@ -2,6 +2,13 @@
 # Get the debug data for an evergreen task.
 set -eu
 
+HERE=$(dirname ${BASH_SOURCE:-$0})
+HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
+ROOT=$(dirname "$(dirname $HERE)")
+
+# Default to the drivers-evergreen-tools submodule when unset.
+: "${DRIVERS_TOOLS:=$ROOT/drivers-evergreen-tools}"
+
 . ${DRIVERS_TOOLS}/.evergreen/get-distro.sh || true
 get_distro || true
 echo $DISTRO
