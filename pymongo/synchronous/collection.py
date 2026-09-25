@@ -2565,7 +2565,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
         with self._database.client._tmp_session(session) as s:
             return self._database.client._retryable_read(
-                _cmd, read_pref, s, operation=_Op.LIST_INDEXES
+                _cmd,
+                read_pref,
+                s,
+                operation=_Op.LIST_INDEXES,
+                dbname=self._database.name,
+                collection=self._name,
             )
 
     def index_information(
@@ -2669,6 +2674,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             session,
             retryable=not cmd._performs_write,
             operation=_Op.LIST_SEARCH_INDEX,
+            dbname=self._database.name,
+            collection=self.name,
         )
 
     def create_search_index(
@@ -2917,6 +2924,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             retryable=not cmd._performs_write,
             operation=_Op.AGGREGATE,
             is_aggregate_write=cmd._performs_write,
+            dbname=self._database.name,
+            collection=self._name,
         )
 
     def aggregate(
