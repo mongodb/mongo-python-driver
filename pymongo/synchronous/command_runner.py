@@ -232,7 +232,10 @@ def _run_command(
                     parse_write_concern_error=parse_write_concern_error,
                     pool_opts=pool_opts,
                 )
-    except Exception as exc:
+    except BaseException as exc:
+        # CancelledError (a BaseException) must also end the span: task
+        # cancellation lands here mid-command, and the span is ended with an
+        # error status before the cancellation propagates unmasked.
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:

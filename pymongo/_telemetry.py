@@ -179,7 +179,7 @@ class _CommandTelemetry:
             self._span = _otel.start_command_span(
                 self._tracing_options,
                 self._conn,
-                self._cmd,
+                orig,
                 self._dbname,
                 self._name,
                 self._speculative_hello,

@@ -642,9 +642,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           - `tracing`: (dict) Configuration for OpenTelemetry command spans, with keys:
 
             - ``enabled``: (boolean) Whether to create spans for server commands issued by
-              this client. Defaults to ``False``. Also controlled by the
-              ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable; either
-              being enabled is sufficient.
+              this client. Unset by default, which defers to the
+              ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable. When set
+              explicitly, including to ``False``, it overrides the environment variable, so
+              an application can reliably opt out.
             - ``query_text_max_length``: (int) The maximum length of the ``db.query.text``
               span attribute. Unset by default, which defers to the
               ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH`` environment
