@@ -475,7 +475,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             default parent-domain check for hosts returned by SRV DNS records. It is
             called once per returned host with the lowercased hostname as its only
             argument, and must return ``True`` to accept the host or ``False`` to
-            reject it. Rejecting a host raises
+            reject it. During initial DNS discovery, rejecting a host raises
             :exc:`~pymongo.errors.ConfigurationError`, as does an exception raised by
             the callback itself. Use this when the set of acceptable hosts cannot be
             expressed as a single suffix::

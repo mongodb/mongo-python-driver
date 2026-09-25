@@ -45,7 +45,10 @@ class _FakeSrvAnswer(list):
     def __init__(self, hosts, ttl=60):
         import dns.name
 
-        super().__init__(SimpleNamespace(target=dns.name.from_text(h), port=27017) for h in hosts)
+        hosts = [(h, 27017) if isinstance(h, str) else h for h in hosts]
+        super().__init__(
+            SimpleNamespace(target=dns.name.from_text(h), port=port) for h, port in hosts
+        )
         self.rrset = SimpleNamespace(ttl=ttl)
 
 
@@ -76,16 +79,15 @@ class SrvPollingKnobs:
 
         def mock_get_hosts_and_min_ttl(resolver, *args):
             assert self.old_dns_resolver_response is not None
-            nodes, ttl = self.old_dns_resolver_response(resolver)
-            if self.nodelist_callback is not None:
-                # Verify the mocked hosts as the resolver would verify real ones.
-                nodes = []
-                for node in self.nodelist_callback():
-                    try:
-                        resolver._validate_host(node[0].rstrip(".").lower())
-                    except ConfigurationError:
-                        continue
-                    nodes.append(node)
+            if self.nodelist_callback is None:
+                nodes, ttl = self.old_dns_resolver_response(resolver)
+            else:
+
+                def mock_resolve_uri(is_polling):
+                    return _FakeSrvAnswer(self.nodelist_callback())
+
+                with patch.object(resolver, "_resolve_uri", mock_resolve_uri):
+                    nodes, ttl = self.old_dns_resolver_response(resolver)
             if self.ttl_time is not None:
                 ttl = self.ttl_time
             return nodes, ttl
@@ -376,7 +378,8 @@ class TestSrvPolling(PyMongoTestCase):
             )
             client._connect()
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
-                self.assert_nodelist_change(response, client)
+                expected = [(host.rstrip("."), port) for host, port in response]
+                self.assert_nodelist_change(expected, client)
 
     def test_14_the_validator_is_consulted_when_srv_records_are_rescanned(self):
         seen = []

@@ -48,7 +48,7 @@ def _to_punycode(string: str) -> str:
         return string.encode("idna").decode("ascii")
     except UnicodeError:
         # Not every input is a valid IDNA label (e.g. empty or over-long
-        # labels). Leave it as-is and let the caller reject it.
+        # labels). Return it unchanged -- SRV host will fail verification.
         return string
 
 

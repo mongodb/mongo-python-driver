@@ -13,7 +13,7 @@ Changes in Version 4.19.0 (2026/XX/XX)
   connection string. See the
   :class:`~pymongo.synchronous.mongo_client.MongoClient` and
   :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` documentation for
-  security considerations (`PYTHON-5814`_).
+  security considerations.
 - ``srvAllowedHostsSuffix`` may now be set to a single label reserved for
   private or special use, such as ``localhost``, ``test``, or ``internal``.
 
@@ -36,7 +36,6 @@ Bug fixes
   gevent when a greenlet was killed while checking a connection back into
   the pool (`PYTHON-6074`_).
 
-.. _PYTHON-5814: https://jira.mongodb.org/browse/PYTHON-5814
 .. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
 
 Changes in Version 4.18.2 (2026/09/24)

@@ -72,7 +72,7 @@ class _SrvResolver:
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
         self.__srv_max_hosts = srv_max_hosts or 0
         self.__srv_host_validator = srv_host_validator
-        # parse_uri() can this constructor independently of MongoClient.
+        # parse_uri() can call this constructor independently of MongoClient.
         if srv_host_validator is not None and srv_allowed_hosts_suffix is not None:
             raise ConfigurationError(
                 "Cannot specify both srv_host_validator and srvAllowedHostsSuffix"
