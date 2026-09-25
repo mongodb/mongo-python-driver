@@ -27,9 +27,9 @@ else
 fi
 
 # Start the test runner.
-echo "Running tests with UV_PYTHON=${UV_PYTHON:-}..."
+echo "Running tests with UV_PYTHON=${UV_PYTHON:-} UV_PYTHON_SEARCH_PATH=${UV_PYTHON_SEARCH_PATH:-}..."
 echo "UV_ARGS=${UV_ARGS}"
 uv run ${UV_ARGS} --reinstall-package pymongo .evergreen/scripts/run_tests.py "$@"
-echo "Running tests with UV_PYTHON=${UV_PYTHON:-}... done."
+echo "Running tests with UV_PYTHON=${UV_PYTHON:-} UV_PYTHON_SEARCH_PATH=${UV_PYTHON_SEARCH_PATH:-}... done."
 
 cd $PREV_DIR

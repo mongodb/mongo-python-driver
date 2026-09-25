@@ -403,15 +403,14 @@ To run any of the test suites with minimum supported dependencies, pass `--test-
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
 - Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
 - There are some considerations about the Python version used in the test:
-    - If a specific version of Python is needed in a task that is running on variants with a toolchain, use
-``TOOLCHAIN_VERSION`` (e.g. `TOOLCHAIN_VERSION=3.10`).  The actual path lookup needs to be done on the host, since
-tasks are host-agnostic.
+    - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10`, `UV_PYTHON=3.14t`, or
+`UV_PYTHON=pypy3.11`).  Tasks are host-agnostic, so the interpreter lookup happens on the host: for a plain
+CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at it, and for anything else
+(including PyPy, or a version the toolchain lacks) uv downloads it.
     - If a specific Python binary is needed (for example on the FIPS host), set `UV_PYTHON=/path/to/python`.
-    - If a specific Python version is needed and the toolchain will not be available, use `UV_PYTHON` (e.g. `UV_PYTHON=3.11`).
-    - The default if neither ``TOOLCHAIN_VERSION`` or ``UV_PYTHON`` is set is to use UV to install the minimum
-      supported version of Python and use that.  This ensures a consistent behavior across host types that do not
-      have the Python toolchain (e.g. Azure VMs), by having a known version of Python with the build headers (`Python.h`)
-      needed to build the C extensions.
+    - The default if `UV_PYTHON` is not set is CPython 3.10.  This is deterministic across host types, so a task
+      that does not pin a version always gets the same Python (with the build headers (`Python.h`) needed to build
+      the C extensions).
     - The uv binary version is pinned once in `[tool.uv] required-version` in `pyproject.toml`.
       `.evergreen/scripts/install-dependencies.sh` installs it with `uv tool install`, uv enforces it locally, and
       `astral-sh/setup-uv` reads it on GitHub.  Bump it manually when a newer uv is needed.  If uv cannot find the
