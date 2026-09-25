@@ -3,6 +3,19 @@ Changelog
 
 Changes in Version 4.19.0 (2026/XX/XX)
 --------------------------------------
+- Added the ``srv_host_validator`` keyword argument to
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`, an alternative to
+  ``srvAllowedHostsSuffix`` for deployments whose acceptable SRV hosts cannot be
+  expressed as a single suffix. The callback is invoked once per SRV-returned
+  host and returns ``True`` to accept it. It is mutually exclusive with
+  ``srvAllowedHostsSuffix`` and, because it takes a callable, cannot be set in a
+  connection string. See the
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` documentation for
+  security considerations.
+- ``srvAllowedHostsSuffix`` may now be set to a single label reserved for
+  private or special use, such as ``localhost``, ``test``, or ``internal``.
 
 PyMongo 4.19 brings a number of changes including:
 
@@ -19,7 +32,6 @@ PyMongo 4.19 brings a number of changes including:
 
 Bug fixes
 .........
-
 - Fixed a bug where the synchronous client could permanently deadlock under
   gevent when a greenlet was killed while checking a connection back into
   the pool (`PYTHON-6074`_).

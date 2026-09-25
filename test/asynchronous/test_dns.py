@@ -209,30 +209,40 @@ class IsolatedAsyncioTestCaseInsensitive(AsyncIntegrationTest):
 class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
     """
     Initial DNS Seedlist Discovery prose tests
-    https://github.com/mongodb/specifications/blob/0a7a8b5/source/initial-dns-seedlist-discovery/tests/README.md#prose-tests
+    https://github.com/mongodb/specifications/blob/5036f26/source/initial-dns-seedlist-discovery/tests/README.md#prose-tests
+
+    Numbered tests correspond to the numbered prose tests in the spec. The
+    unnumbered tests are PyMongo-specific additions with no spec counterpart.
     """
+
+    async def _parse(self, srv_hostname, mock_target, **kwargs):
+        """Resolve mongodb+srv://<srv_hostname> with SRV records naming mock_target."""
+        with patch("dns.asyncresolver.resolve") as mock_resolver:
+
+            async def mock_resolve(query, record_type, *args, **kwargs):
+                mock_srv = MagicMock()
+                # Mirror dnspython: the wire form keeps the root label, and the
+                # caller strips it via omit_final_dot.
+                mock_srv.target.to_text.side_effect = lambda omit_final_dot=False: (
+                    mock_target.rstrip(".") if omit_final_dot else mock_target
+                )
+                return [mock_srv]
+
+            mock_resolver.side_effect = mock_resolve
+            return await parse_uri(f"mongodb+srv://{srv_hostname}", **kwargs)
 
     async def run_initial_dns_seedlist_discovery_prose_tests(self, test_cases):
         for case in test_cases:
-            with patch("dns.asyncresolver.resolve") as mock_resolver:
-
-                async def mock_resolve(query, record_type, *args, **kwargs):
-                    mock_srv = MagicMock()
-                    mock_srv.target.to_text.return_value = case["mock_target"]
-                    return [mock_srv]
-
-                mock_resolver.side_effect = mock_resolve
-                domain = case["query"].split("._tcp.")[1]
-                connection_string = f"mongodb+srv://{domain}"
-                if "expected_error" not in case:
-                    await parse_uri(connection_string)
+            domain = case["query"].split("._tcp.")[1]
+            if "expected_error" not in case:
+                await self._parse(domain, case["mock_target"])
+            else:
+                try:
+                    await self._parse(domain, case["mock_target"])
+                except ConfigurationError as e:
+                    self.assertIn(case["expected_error"], str(e))
                 else:
-                    try:
-                        await parse_uri(connection_string)
-                    except ConfigurationError as e:
-                        self.assertIn(case["expected_error"], str(e))
-                    else:
-                        self.fail(f"ConfigurationError was not raised for query: {case['query']}")
+                    self.fail(f"ConfigurationError was not raised for query: {case['query']}")
 
     async def test_1_allow_srv_hosts_with_fewer_than_three_dot_separated_parts(self):
         with patch("dns.asyncresolver.resolve"):
@@ -252,8 +262,8 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
                 "expected_error": "Invalid SRV host",
             },
             {
-                "query": "_mongodb._tcp.blogs.mongo.local",
-                "mock_target": "test_1.evil.com",
+                "query": "_mongodb._tcp.mongo.local",
+                "mock_target": "test_1.evil.local",
                 "expected_error": "Invalid SRV host",
             },
         ]
@@ -296,7 +306,103 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
         ]
         await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
-    async def test_5_when_srv_hostname_has_three_or_more_dot_separated_parts_it_is_valid_for_the_returned_hostname_to_be_identical(
+    async def test_5_srv_host_validator_accepts_a_host_the_default_verification_would_reject(self):
+        # "blogs.evil.com" does not share a parent domain with the seed, so the
+        # default check rejects it; the callback overrides that decision.
+        res = await self._parse(
+            "blogs.mongodb.com", "blogs.evil.com", srv_host_validator=lambda host: True
+        )
+        self.assertEqual(["blogs.evil.com"], [node[0] for node in res["nodelist"]])
+
+        # "mongo.local" does not add a domain level to an SRV hostname with fewer
+        # than three "." separated parts, which the default check also rejects.
+        res = await self._parse("mongo.local", "mongo.local", srv_host_validator=lambda host: True)
+        self.assertEqual(["mongo.local"], [node[0] for node in res["nodelist"]])
+
+    async def test_6_reject_a_host_the_default_verification_would_accept(self):
+        with self.assertRaisesRegex(ConfigurationError, "rejected by srv_host_validator"):
+            await self._parse(
+                "blogs.mongodb.com", "cluster.mongodb.com", srv_host_validator=lambda host: False
+            )
+
+    async def test_7_the_validator_receives_the_normalized_host_name(self):
+        seen = []
+
+        def validator(host):
+            seen.append(host)
+            return True
+
+        await self._parse("blogs.mongodb.com", "CLUSTER.MONGODB.COM.", srv_host_validator=validator)
+        self.assertEqual(["cluster.mongodb.com"], seen)
+
+    async def test_8_wrap_an_error_raised_by_the_validator(self):
+        original_exc = Exception("validator_error")
+
+        def validator(host):
+            raise original_exc
+
+        with self.assertRaisesRegex(
+            ConfigurationError, "srv_host_validator raised an exception"
+        ) as ctx:
+            await self._parse(
+                "blogs.mongodb.com", "cluster.mongodb.com", srv_host_validator=validator
+            )
+        # The wrapping error must retain the error raised by the validator.
+        self.assertIs(original_exc, ctx.exception.__cause__)
+        self.assertIn("validator_error", str(ctx.exception))
+
+    async def test_9_throw_when_both_srv_allowed_hosts_suffix_and_srv_host_validator_are_configured(
+        self,
+    ):
+        # Rejected by the client
+        with self.assertRaisesRegex(ConfigurationError, "Cannot specify both"):
+            self.simple_client(
+                "mongodb+srv://blogs.mongodb.com",
+                srv_host_validator=lambda host: True,
+                srvAllowedHostsSuffix=".mongodb.com",
+                connect=False,
+            )
+
+        # Rejected by the resolver
+        with self.assertRaisesRegex(ConfigurationError, "Cannot specify both"):
+            await self._parse(
+                "blogs.mongodb.com",
+                "cluster.mongodb.com",
+                srv_host_validator=lambda host: True,
+                srv_allowed_hosts_suffix=".mongodb.com",
+            )
+
+    async def test_10_accept_a_mixed_case_returned_address_with_srv_allowed_hosts_suffix(self):
+        # Returned addresses are normalized before the suffix comparison, so
+        # the case DNS happens to use must not affect the result.
+        res = await self._parse(
+            "blogs.mongodb.com", "CLUSTER.MONGODB.COM.", srv_allowed_hosts_suffix=".mongodb.com"
+        )
+        self.assertEqual(["cluster.mongodb.com"], [node[0] for node in res["nodelist"]])
+
+    async def test_11_throw_when_srv_host_validator_is_not_callable(self):
+        with self.assertRaisesRegex(ValueError, "must be a callable"):
+            self.simple_client("mongodb+srv://blogs.mongodb.com", srv_host_validator="notacallable")
+
+    async def test_12_accept_a_reserved_single_label_as_srv_allowed_hosts_suffix(self):
+        # A single label is a public suffix under the Public Suffix List's "*"
+        # rule, but the reserved names are accepted despite that.
+        res = await self._parse(
+            "cluster.localhost", "db.cluster.localhost", srv_allowed_hosts_suffix="localhost"
+        )
+        self.assertEqual(["db.cluster.localhost"], [node[0] for node in res["nodelist"]])
+
+    async def test_13_throw_when_srv_host_validator_is_used_with_a_non_srv_uri(self):
+        with self.assertRaisesRegex(
+            ConfigurationError, "only allowed with 'mongodb\\+srv://' URIs"
+        ):
+            self.simple_client(
+                "mongodb://localhost:27017",
+                srv_host_validator=lambda host: True,
+                connect=False,
+            )
+
+    async def test_srv_hostname_with_three_or_more_parts_may_equal_the_returned_hostname(
         self,
     ):
         test_cases = [

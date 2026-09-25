@@ -746,6 +746,17 @@ def log_srv_monitor_failure(failure: Exception) -> None:
         _debug_log(_SDAM_LOGGER, message="SRV monitor check failed", failure=repr(failure))
 
 
+def log_srv_monitor_invalid_host(host: str, failure: Exception) -> None:
+    """Emit a log entry when the SRV monitor skips a host that failed verification."""
+    if _is_debug_enabled(_SDAM_LOGGER):
+        _debug_log(
+            _SDAM_LOGGER,
+            message="SRV monitor skipped invalid host",
+            serverHost=host,
+            failure=repr(failure),
+        )
+
+
 def log_command_retry(
     topology_id: Optional[ObjectId],
     command_name: str,

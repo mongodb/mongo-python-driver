@@ -19,7 +19,7 @@ from __future__ import annotations
 import threading
 import traceback
 from collections.abc import Collection
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Any, Callable, Generic, Optional, TypeVar, Union
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -52,6 +52,7 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
         srv_service_name: str = common.SRV_SERVICE_NAME,
         srv_max_hosts: int = 0,
         srv_allowed_hosts_suffix: Optional[str] = None,
+        srv_host_validator: Optional[Callable[[str], bool]] = None,
         server_monitoring_mode: str = common.SERVER_MONITORING_MODE,
         topology_id: Optional[ObjectId] = None,
     ):
@@ -79,6 +80,7 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
         self._srv_service_name = srv_service_name
         self._srv_max_hosts = srv_max_hosts or 0
         self._srv_allowed_hosts_suffix = srv_allowed_hosts_suffix
+        self._srv_host_validator = srv_host_validator
         self._server_monitoring_mode = server_monitoring_mode
         if topology_id is not None:
             self._topology_id = topology_id
@@ -160,6 +162,11 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
     def srv_allowed_hosts_suffix(self) -> Optional[str]:
         """The srvAllowedHostsSuffix."""
         return self._srv_allowed_hosts_suffix
+
+    @property
+    def srv_host_validator(self) -> Optional[Callable[[str], bool]]:
+        """The srv_host_validator callback."""
+        return self._srv_host_validator
 
     @property
     def server_monitoring_mode(self) -> str:

@@ -18,9 +18,10 @@ from __future__ import annotations
 
 import ipaddress
 import random
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
-from pymongo._psl import is_public_suffix
+from pymongo._psl import SPECIAL_USE_LABELS, _to_punycode, is_public_suffix
+from pymongo._telemetry import log_srv_monitor_invalid_host
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
@@ -64,21 +65,40 @@ class _SrvResolver:
         srv_service_name: str,
         srv_max_hosts: int = 0,
         srv_allowed_hosts_suffix: Optional[str] = None,
+        srv_host_validator: Optional[Callable[[str], bool]] = None,
     ):
         self.__fqdn = fqdn.lower()
         self.__srv = srv_service_name
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
         self.__srv_max_hosts = srv_max_hosts or 0
-        self.__srv_allowed_hosts_suffix = (
-            "." + srv_allowed_hosts_suffix.lower().strip(".") if srv_allowed_hosts_suffix else None
-        )  # ensure there's a . at the beginning of the domain
-        if self.__srv_allowed_hosts_suffix is not None and is_public_suffix(
-            self.__srv_allowed_hosts_suffix
-        ):
+        self.__srv_host_validator = srv_host_validator
+        # parse_uri() can call this constructor independently of AsyncMongoClient.
+        if srv_host_validator is not None and srv_allowed_hosts_suffix is not None:
             raise ConfigurationError(
-                f"srvAllowedHostsSuffix must not be a public suffix, got: {srv_allowed_hosts_suffix}"
+                "Cannot specify both srv_host_validator and srvAllowedHostsSuffix"
             )
-        # Validate the fully qualified domain name.
+        self.__srv_allowed_hosts_suffix = None
+        if srv_allowed_hosts_suffix is not None:
+            suffix = srv_allowed_hosts_suffix.strip(".")
+            if not suffix:
+                raise ConfigurationError(
+                    f"srvAllowedHostsSuffix must not be empty, got: {srv_allowed_hosts_suffix!r}"
+                )
+            suffix = _to_punycode(suffix).lower()
+
+            is_special_use = suffix in SPECIAL_USE_LABELS
+            if len(suffix.split(".")) < 2 and not is_special_use:
+                raise ConfigurationError(
+                    "srvAllowedHostsSuffix must contain at least two '.' separated labels, "
+                    f"got: {srv_allowed_hosts_suffix}"
+                )
+
+            if not is_special_use and is_public_suffix(suffix):
+                raise ConfigurationError(
+                    f"srvAllowedHostsSuffix must not be a public suffix, got: {srv_allowed_hosts_suffix}"
+                )
+            self.__srv_allowed_hosts_suffix = "." + suffix
+
         try:
             ipaddress.ip_address(fqdn)
             raise ConfigurationError(_INVALID_HOST_MSG % ("an IP address",))
@@ -106,23 +126,51 @@ class _SrvResolver:
             raise ConfigurationError("Only one TXT record is supported")
         return (b"&".join([b"".join(res.strings) for res in results])).decode("utf-8")  # type: ignore[attr-defined]
 
-    async def _resolve_uri(self, encapsulate_errors: bool) -> resolver.Answer:
+    async def _resolve_uri(self, is_polling: bool) -> resolver.Answer:
         try:
             results = await _resolve(
                 "_" + self.__srv + "._tcp." + self.__fqdn, "SRV", lifetime=self.__connect_timeout
             )
         except Exception as exc:
-            if not encapsulate_errors:
+            if is_polling:
                 # Raise the original error.
                 raise
             # Else, raise all errors as ConfigurationError.
             raise ConfigurationError(str(exc)) from exc
         return results
 
+    def _validate_host(self, srv_host: str) -> None:
+        """Raise ConfigurationError if an SRV-returned host fails verification."""
+        if self.__srv_host_validator is not None:
+            try:
+                allowed = self.__srv_host_validator(srv_host)
+            except Exception as exc:
+                raise ConfigurationError(
+                    f"srv_host_validator raised an exception for SRV host {srv_host}: {exc}"
+                ) from exc
+            if not allowed:
+                raise ConfigurationError(
+                    f"Invalid SRV host: {srv_host} was rejected by srv_host_validator"
+                )
+        elif self.__srv_allowed_hosts_suffix is not None:
+            if not srv_host.endswith(self.__srv_allowed_hosts_suffix):
+                raise ConfigurationError(f"Invalid SRV host: {srv_host}")
+        else:
+            if self.__fqdn == srv_host and self.nparts < 3:
+                raise ConfigurationError(
+                    "Invalid SRV host: return address is identical to SRV hostname"
+                )
+            try:
+                nlist = srv_host.split(".")[1:][-self.__slen :]
+            except Exception as exc:
+                raise ConfigurationError(f"Invalid SRV host: {srv_host}") from exc
+            if self.__plist != nlist:
+                raise ConfigurationError(f"Invalid SRV host: {srv_host}")
+
     async def _get_srv_response_and_hosts(
-        self, encapsulate_errors: bool
+        self, is_polling: bool
     ) -> tuple[resolver.Answer, list[tuple[str, Any]]]:
-        results = await self._resolve_uri(encapsulate_errors)
+        results = await self._resolve_uri(is_polling)
 
         # Construct address tuples
         nodes = [
@@ -130,33 +178,28 @@ class _SrvResolver:
             for res in results
         ]
 
-        # Validate hosts
+        # Validate hosts.
+        valid_nodes = []
         for node in nodes:
-            srv_host = node[0].lower()
-            if self.__fqdn == srv_host and self.nparts < 3:
-                raise ConfigurationError(
-                    "Invalid SRV host: return address is identical to SRV hostname"
-                )
-            if self.__srv_allowed_hosts_suffix is not None:
-                if not srv_host.endswith(self.__srv_allowed_hosts_suffix):
-                    raise ConfigurationError(f"Invalid SRV host: {node[0]}")
+            try:
+                self._validate_host(node[0])
+            except ConfigurationError as exc:
+                if not is_polling:
+                    raise
+                log_srv_monitor_invalid_host(node[0], exc)
             else:
-                try:
-                    nlist = srv_host.split(".")[1:][-self.__slen :]
-                except Exception as exc:
-                    raise ConfigurationError(f"Invalid SRV host: {node[0]}") from exc
-                if self.__plist != nlist:
-                    raise ConfigurationError(f"Invalid SRV host: {node[0]}")
+                valid_nodes.append(node)
+        nodes = valid_nodes
         if self.__srv_max_hosts:
             nodes = random.sample(nodes, min(self.__srv_max_hosts, len(nodes)))
         return results, nodes
 
     async def get_hosts(self) -> list[tuple[str, Any]]:
-        _, nodes = await self._get_srv_response_and_hosts(True)
+        _, nodes = await self._get_srv_response_and_hosts(is_polling=False)
         return nodes
 
     async def get_hosts_and_min_ttl(self) -> tuple[list[tuple[str, Any]], int]:
-        results, nodes = await self._get_srv_response_and_hosts(False)
+        results, nodes = await self._get_srv_response_and_hosts(is_polling=True)
         rrset = results.rrset
         ttl = rrset.ttl if rrset else 0
         return nodes, ttl
