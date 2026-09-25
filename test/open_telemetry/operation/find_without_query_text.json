@@ -1,0 +1,119 @@
+{
+  "description": "operation find without db.query.text",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": false
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-find"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-find",
+      "documents": []
+    }
+  ],
+  "tests": [
+    {
+      "description": "find an element",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "x": 1
+            }
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "find operation-find.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-find",
+                "db.collection.name": "test",
+                "db.operation.name": "find",
+                "db.operation.summary": "find operation-find.test"
+              },
+              "nested": [
+                {
+                  "name": "find",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-find",
+                    "db.collection.name": "test",
+                    "db.command.name": "find",
+                    "network.transport": "tcp",
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "find operation-find.test",
+                    "db.query.text": {
+                      "$$exists": false
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

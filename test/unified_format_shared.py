@@ -25,8 +25,9 @@ import datetime
 import os
 import time
 import types
+import uuid
 from collections import abc
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from typing import Any, Union
 
 import pymongo._otel as _otel
@@ -584,6 +585,32 @@ class MatchEvaluatorUtil:
             else:
                 return isinstance(actual, type(expectation)) and expectation == actual
         return True
+
+    @staticmethod
+    def _normalize_span_attribute(key: str, value: Any) -> Any:
+        """Adapt one span attribute value to what the generic match evaluator expects.
+
+        Span attributes are plain Python primitives, not the BSON-decoded documents
+        the evaluator matches against. Ints widen to ``Int64`` for the ``$$type``
+        "long" alias, and ``db.mongodb.lsid`` is rebuilt from its UUID string into
+        the document shape :meth:`_operation_sessionLsid` expects.
+        """
+        if key == "db.mongodb.lsid" and isinstance(value, str):
+            try:
+                return {"id": Binary.from_uuid(uuid.UUID(value))}
+            except ValueError:
+                return value
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, int):
+            return Int64(value)
+        return value
+
+    def match_span_attributes(self, expected: Mapping[str, Any], actual: Mapping[str, Any]) -> None:
+        """Match one span's attributes against an ``expectTracingMessages`` entry."""
+        self.match_result(
+            expected, {k: self._normalize_span_attribute(k, v) for k, v in actual.items()}
+        )
 
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
         for field, expected in spec.items():
