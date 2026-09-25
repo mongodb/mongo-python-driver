@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-tools="$(realpath -s "../drivers-tools")"
+# Default to the drivers-evergreen-tools submodule when unset; a
+# caller-provided DRIVERS_TOOLS wins, as in the other consumers.
+tools="$(realpath -s "${DRIVERS_TOOLS:-./drivers-evergreen-tools}")"
 pushd $tools/.evergreen/github_app || exit
 
 owner="mongodb"
@@ -46,5 +48,3 @@ resp=$(curl -L \
     --url https://api.github.com/repos/$owner/$repo/pulls)
 echo $resp | jq '.html_url'
 echo "Creating the PR... done."
-
-rm -rf $tools
