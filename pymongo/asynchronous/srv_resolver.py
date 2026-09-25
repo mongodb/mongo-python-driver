@@ -72,9 +72,7 @@ class _SrvResolver:
         self.__connect_timeout = connect_timeout or CONNECT_TIMEOUT
         self.__srv_max_hosts = srv_max_hosts or 0
         self.__srv_host_validator = srv_host_validator
-        # AsyncMongoClient rejects this combination earlier and with a better
-        # error, but parse_uri() reaches this constructor directly. Checking
-        # here too ensures srvAllowedHostsSuffix is never silently discarded.
+        # parse_uri() can this constructor independently of AsyncMongoClient.
         if srv_host_validator is not None and srv_allowed_hosts_suffix is not None:
             raise ConfigurationError(
                 "Cannot specify both srv_host_validator and srvAllowedHostsSuffix"
@@ -135,7 +133,7 @@ class _SrvResolver:
             )
         except Exception as exc:
             if is_polling:
-                # Raise the original error; the SRV monitor logs and ignores it.
+                # Raise the original error.
                 raise
             # Else, raise all errors as ConfigurationError.
             raise ConfigurationError(str(exc)) from exc
@@ -180,8 +178,7 @@ class _SrvResolver:
             for res in results
         ]
 
-        # Validate hosts. During SRV polling, per the spec, a host that fails
-        # verification is logged and left out rather than failing the rescan.
+        # Validate hosts.
         valid_nodes = []
         for node in nodes:
             try:

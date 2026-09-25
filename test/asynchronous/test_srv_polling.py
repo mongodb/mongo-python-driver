@@ -445,7 +445,7 @@ class TestSrvPolling(AsyncPyMongoTestCase):
 
         def raising(host):
             if host == bad_host:
-                raise RuntimeError("boom")
+                raise RuntimeError("some error")
             return True
 
         def rejecting(host):
