@@ -12,9 +12,12 @@ mypy_args := "--install-types --non-interactive"
 default:
   @just --list
 
+# Restore the default development environment. Set JUST_NO_RESYNC to skip the
+# sync when a caller resolves dependencies differently, such as the
+# minimum-dependencies job in test-mod-wsgi.yml.
 [private]
 resync:
- @uv sync --quiet
+ @if [ -z "${JUST_NO_RESYNC:-}" ]; then uv sync --quiet; fi
 
 # Set up the development environment
 install:
@@ -85,17 +88,17 @@ test-numpy *args="": && resync
 # Run tests via the Evergreen test runner script
 [group('test')]
 run-tests *args: && resync
-    bash ./.evergreen/run-tests.sh {{args}}
+    bash .evergreen/scripts/dispatch.sh run-tests {{args}}
 
 # Set up the test environment (auth, TLS, etc.)
 [group('test')]
 setup-tests *args="":
-    bash .evergreen/scripts/setup-tests.sh {{args}}
+    bash .evergreen/scripts/dispatch.sh setup-tests {{args}}
 
 # Tear down resources created by setup-tests
 [group('test')]
-teardown-tests:
-    bash .evergreen/scripts/teardown-tests.sh
+teardown-tests *args="":
+    bash .evergreen/scripts/dispatch.sh teardown-tests {{args}}
 
 [group('test')]
 integration-tests:
@@ -123,6 +126,29 @@ coverage-html:
 coverage-xml:
     uv tool run --with "coverage[toml]" coverage xml
     @echo "Coverage report generated in coverage.xml"
+
+# Run the mod_wsgi tests (natively on Linux, else in an ubuntu container)
+[group('test')]
+smoke-mod-wsgi:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    STATUS=0
+    # Tear down on an early exit (a failed setup or teardown), so a partially
+    # started Apache or container and the dispatch marker never outlive the
+    # recipe; the per-mode teardown below clears the guard.
+    CLEANED=1
+    cleanup() {
+      [ "$CLEANED" -eq 1 ] || just teardown-tests || true
+    }
+    trap cleanup EXIT
+    for mode in standalone embedded; do
+      CLEANED=0
+      just setup-tests mod_wsgi $mode
+      just run-tests || STATUS=$?
+      just teardown-tests
+      CLEANED=1
+      [ "$STATUS" -eq 0 ] || exit "$STATUS"
+    done
 
 # Start a MongoDB server via drivers-evergreen-tools
 [group('server')]

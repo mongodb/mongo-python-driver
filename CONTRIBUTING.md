@@ -353,6 +353,24 @@ You will need to set up access to the `drivers-test-secrets-role`, see the [Wiki
 - Run `just setup-tests aws_lambda`.
 - Run `just run-tests`.
 
+### mod_wsgi tests
+
+Continuous integration runs the tests on pull requests that change
+mod_wsgi-relevant files, in the `test-mod-wsgi.yml` workflow.
+
+To run the tests by hand, install Apache and mod_wsgi (`sudo apt-get install -y apache2
+apache2-dev` and `uv sync --group mod_wsgi` on Ubuntu), then:
+
+- On Linux, run `TOPOLOGY=replica_set just run-server`.
+- Run `just setup-tests mod_wsgi <mode>`.
+- Run `just run-tests`.
+- Run `just teardown-tests`.
+
+The `mode` can be `standalone` or `embedded`.  On non-Linux hosts the same
+commands run inside an ubuntu container, which bootstraps its own replica
+set (so the `run-server` step does not apply), or use `just smoke-mod-wsgi`
+to run both modes.
+
 ### OCSP tests
 
 - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.

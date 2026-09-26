@@ -70,6 +70,9 @@ unasync = [
 ]
 pip = ["pip>=20.2"]
 gevent = ["gevent>=21.12"]
+# mod_wsgi is built against the interpreter it is installed with and is used
+# only by the mod_wsgi test suite.
+mod_wsgi = ["mod_wsgi>=4.9.4"]
 coverage = [
     "coverage[toml]>=5,<=7.15.0"
 ]
