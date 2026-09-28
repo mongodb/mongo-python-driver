@@ -72,6 +72,8 @@ replacements = {
     "_a_grid_out_property": "_grid_out_property",
     "AsyncClientEncryption": "ClientEncryption",
     "AsyncMongoCryptCallback": "MongoCryptCallback",
+    "AsyncKMSConnectCallback": "KMSConnectCallback",
+    "AsyncHTTPProxyKMSConnect": "HTTPProxyKMSConnect",
     "AsyncExplicitEncrypter": "ExplicitEncrypter",
     "AsyncAutoEncrypter": "AutoEncrypter",
     "AsyncContextManager": "ContextManager",
@@ -127,6 +129,7 @@ replacements = {
     "AsyncNetworkingInterface": "NetworkingInterface",
     "_configured_protocol_interface": "_configured_socket_interface",
     "_async_configured_socket": "_configured_socket",
+    "_async_wrap_socket_tls": "_wrap_socket_tls",
     "SpecRunnerTask": "SpecRunnerThread",
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",
@@ -297,6 +300,18 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                     lines[i] = lines[i].replace("an asynchronous", "a")
                 if "An asynchronous" in lines[i]:
                     lines[i] = lines[i].replace("An asynchronous", "A")
+                # This sentence states the callback contract, whose meaning
+                # would invert under the async -> sync word replacements.
+                if (
+                    "must be a coroutine function for the asynchronous API; a plain callable is rejected before it can block the event loop"
+                    in lines[i]
+                ):
+                    lines[i] = lines[i].replace(
+                        "must be a coroutine function for the asynchronous API; a plain callable is rejected before it can block the event loop",
+                        "must be a regular function; the async API requires a "
+                        "coroutine function and rejects plain callables before "
+                        "they can block the event loop",
+                    )
                 # This ensures docstring links are for `pymongo.X` instead of `pymongo.synchronous.X`
                 if "pymongo.asynchronous" in lines[i] and "import" not in lines[i]:
                     lines[i] = lines[i].replace("pymongo.asynchronous", "pymongo")

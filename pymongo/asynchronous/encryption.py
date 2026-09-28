@@ -17,8 +17,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import functools
+import inspect
 import socket
+import ssl
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
@@ -60,7 +63,9 @@ from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import (
+    AsyncKMSConnectCallback,
     AutoEncryptionOpts,
+    KMSConnectContext,
     RangeOpts,
     StringOpts,
     # Re-exported for backwards compatibility: TextOpts is deprecated but must
@@ -90,6 +95,8 @@ from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
     _async_configured_socket,
+    _async_wrap_socket_tls,
+    _close_late_socket,
     _raise_connection_failure,
 )
 from pymongo.read_concern import ReadConcern
@@ -120,11 +127,108 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
-async def _connect_kms(address: _Address, opts: PoolOptions) -> Union[socket.socket, _sslConn]:
+def _close_rejected_kms_socket(obj: Any) -> None:
+    """Close a rejected kms_connect_callback return value, best effort.
+
+    Nothing else will close it: _connect_kms raises before the result reaches
+    the caller's ``finally``.
+    """
+    close = getattr(obj, "close", None)
+    if callable(close):
+        with contextlib.suppress(Exception):
+            close()
+
+
+async def _connect_kms(
+    address: _Address,
+    opts: PoolOptions,
+    kms_connect_callback: Optional[AsyncKMSConnectCallback],
+    timeout: float,
+) -> Union[socket.socket, _sslConn]:
+    """Connect to a KMS host and perform the TLS handshake over the socket.
+
+    Uses ``kms_connect_callback`` when one is provided, otherwise connects
+    directly, and always verifies against ``address`` (the KMS host).
+    """
+    if kms_connect_callback is None:
+        try:
+            return await _async_configured_socket(address, opts)
+        except Exception as exc:
+            _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
+
+    # TLS targets address, not the peer, so verification follows the KMS host.
+    # A plain callable would block the event loop before we could reject it,
+    # so check the callback first.
+    if not _IS_SYNC:
+        callback_any: Any = kms_connect_callback
+        is_coro = inspect.iscoroutinefunction(callback_any)
+        if not is_coro and callable(callback_any):
+            is_coro = inspect.iscoroutinefunction(callback_any.__call__)
+        if not is_coro:
+            raise ConfigurationError(
+                "kms_connect_callback must be a coroutine function for the async API."
+            )
+    # Typed as Any so the generated synchronous flavor type-checks: the sync
+    # callback returns a plain socket, which is not awaitable.
+    result: Any = kms_connect_callback(
+        KMSConnectContext(host=address[0], port=cast(int, address[1]), timeout=timeout)
+    )
+    remaining = _csot.remaining()
+    if remaining is None or _IS_SYNC:
+        # The synchronous API cannot interrupt a callback that has started
+        # running; honoring the deadline is the callback's contract there.
+        sock = await result
+    else:
+        # CSOT is cooperative: a callback that ignores the timeout could block
+        # past the deadline. Shield the task so stopping the wait does not
+        # cancel it mid-flight, and close any socket it yields later.
+        task = asyncio.ensure_future(result)
+        try:
+            sock = await asyncio.wait_for(asyncio.shield(task), remaining)
+        except asyncio.CancelledError:
+            task.add_done_callback(_close_late_socket)
+            raise
+        except asyncio.TimeoutError:
+            task.add_done_callback(_close_late_socket)
+            _raise_connection_failure(
+                address,
+                socket.timeout("timed out"),
+                timeout_details=_get_timeout_details(opts),
+            )
+    if not isinstance(sock, socket.socket) or isinstance(sock, ssl.SSLSocket):
+        _close_rejected_kms_socket(sock)
+        raise ConfigurationError(
+            "kms_connect_callback must return a connected, unwrapped "
+            f"socket.socket, not {type(sock)}; consider AsyncHTTPProxyKMSConnect."
+        )
+    # wrap_socket refuses a non-blocking socket, so normalize the mode here.
     try:
-        return await _async_configured_socket(address, opts)
+        sock.getpeername()
+    except OSError:
+        _close_rejected_kms_socket(sock)
+        raise ConfigurationError(
+            "kms_connect_callback must return an already connected socket."
+        ) from None
+    if sock.getsockopt(socket.SOL_SOCKET, socket.SO_TYPE) != socket.SOCK_STREAM:
+        _close_rejected_kms_socket(sock)
+        raise ConfigurationError(
+            "kms_connect_callback must return a stream socket, not a datagram one."
+        )
+    # The callback may have consumed much of the CSOT budget, and wrapping
+    # resets the socket timeout, so recompute the remaining time here and for
+    # the KMS request that follows.
+    sock.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001))
+    try:
+        conn = await _async_wrap_socket_tls(sock, address, opts)
+    except asyncio.CancelledError:
+        # The executor may still be wrapping the socket; close it so a TLS
+        # proxy's relay threads wind down instead of leaking.
+        sock.close()
+        raise
     except Exception as exc:
         _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
+    conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001))
+    return conn
 
 
 class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
@@ -179,13 +283,6 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 False,  # disable_ocsp_endpoint_check
                 _IS_SYNC,
             )
-        # CSOT: set timeout for socket creation.
-        connect_timeout = max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
-        opts = PoolOptions(
-            connect_timeout=connect_timeout,
-            socket_timeout=connect_timeout,
-            ssl_context=ctx,
-        )
         address = parse_host(endpoint, _HTTPS_PORT)
         if address[0].endswith(".sock"):
             raise ConfigurationError(f"Invalid KMS endpoint {endpoint!r}")
@@ -193,8 +290,21 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         if sleep_u:
             sleep_sec = float(sleep_u) / 1e6
             await asyncio.sleep(sleep_sec)
+        # Set the connect timeout after the retry backoff so the budget
+        # reflects the sleep.
+        connect_timeout = max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001)
+        opts = PoolOptions(
+            connect_timeout=connect_timeout,
+            socket_timeout=connect_timeout,
+            ssl_context=ctx,
+        )
         try:
-            conn = await _connect_kms(address, opts)
+            conn = await _connect_kms(
+                address,
+                opts,
+                self.opts._kms_connect_callback,
+                connect_timeout,
+            )
             try:
                 await async_socket_sendall(conn, message)
                 while kms_context.bytes_needed > 0:
@@ -230,6 +340,8 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 conn.close()
         except MongoCryptError:
             raise  # Propagate MongoCryptError errors directly.
+        except ConfigurationError:
+            raise  # A callback contract violation is not transient.
         except Exception as exc:
             remaining = _csot.remaining()
             if isinstance(exc, NetworkTimeout) or (remaining is not None and remaining <= 0):
@@ -526,6 +638,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         codec_options: CodecOptions[_DocumentTypeArg],
         kms_tls_options: Optional[Mapping[str, Any]] = None,
         key_expiration_ms: Optional[int] = None,
+        kms_connect_callback: Optional[AsyncKMSConnectCallback] = None,
     ) -> None:
         """Explicit client-side field level encryption.
 
@@ -595,7 +708,21 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         :param key_expiration_ms: The cache expiration time for data encryption keys.
             Defaults to ``None`` which defers to libmongocrypt's default which is currently 60000.
             Set to 0 to disable key expiration.
+        :param kms_connect_callback: A callable that opens the connection to a
+            KMS host, used to route KMS requests through an HTTP proxy. It
+            receives a :class:`~pymongo.encryption_options.KMSConnectContext`
+            and returns a connected, unwrapped :class:`socket.socket`, over
+            which the driver performs the KMS TLS handshake. The callback
+            must be a coroutine function for the asynchronous API; a plain callable is rejected before it can block the event loop.
+            When a CSOT timeout is active, the driver stops waiting at the
+            deadline and closes any socket the callback yields later. For an
+            ordinary HTTP proxy, pass
+            :class:`~pymongo.encryption_options.AsyncHTTPProxyKMSConnect`.
+            Defaults to ``None``, meaning the driver connects to KMS hosts
+            directly.
 
+        .. versionchanged:: 4.19
+           Added the `kms_connect_callback` parameter.
         .. versionchanged:: 4.12
            Added the `key_expiration_ms` parameter.
         .. versionchanged:: 4.0
@@ -639,6 +766,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             key_vault_namespace,
             kms_tls_options=kms_tls_options,
             key_expiration_ms=key_expiration_ms,
+            kms_connect_callback=kms_connect_callback,
         )
         self._kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
         self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
