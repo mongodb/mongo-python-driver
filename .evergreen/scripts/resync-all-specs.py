@@ -116,7 +116,7 @@ def write_summary(errored: dict[str, str], new: list[str], filename: str | None)
     if len(errored) > 0:
         pr_body += "\n\nThe following spec syncs encountered errors:"
         for k, v in errored.items():
-            pr_body += f"\n -{k}\n```{v}\n```"
+            pr_body += f"\n -{k}\n```\n{v}\n```"
         pr_body += "\n"
     if len(new) > 0:
         pr_body += "\n\nThe following directories are in the specification repository and not in our test directory:\n -"
@@ -128,8 +128,7 @@ def write_summary(errored: dict[str, str], new: list[str], filename: str | None)
             print(f"\n{pr_body}")
         else:
             with open(filename, "w") as f:
-                # replacements made for proper json
-                f.write(pr_body.replace("\n", "\\n").replace("\t", "\\t"))
+                f.write(pr_body)
 
 
 def main(args: Namespace):
