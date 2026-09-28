@@ -130,9 +130,20 @@ ensure_mongod() {
 bootstrap() {
   if ! container_exists; then
     docker run --name "$CONTAINER" -d ubuntu:24.04 sleep infinity
-    docker exec "$CONTAINER" apt-get update -qq
-    docker exec "$CONTAINER" apt-get install -y -qq apache2 apache2-dev build-essential curl jq git tar gzip ca-certificates
-    docker exec "$CONTAINER" useradd -m smoke
+    # A transient failure during initialization (for example in apt-get)
+    # would leave the half-created container behind, and later bootstraps
+    # would skip initialization and fail when sync_source expects the
+    # missing smoke user. Remove the container on failure, so the next
+    # attempt initializes a fresh one.
+    initialize() {
+      docker exec "$CONTAINER" apt-get update -qq
+      docker exec "$CONTAINER" apt-get install -y -qq apache2 apache2-dev build-essential curl jq git tar gzip ca-certificates
+      docker exec "$CONTAINER" useradd -m smoke
+    }
+    if ! initialize; then
+      docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+      exit 1
+    fi
   fi
   if ! container_running; then
     docker start "$CONTAINER"

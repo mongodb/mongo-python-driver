@@ -78,7 +78,7 @@ jobs:
         # jq and curl are needed to pick the MongoDB download.
         run: dnf install -y httpd httpd-devel jq curl
       - id: versions
-        uses: $/.github/actions/mod-wsgi-versions
+        uses: ./.github/actions/mod-wsgi-versions
         with:
           index: 0
       - name: Install Python
@@ -144,7 +144,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - id: versions
-        uses: $/.github/actions/mod-wsgi-versions
+        uses: ./.github/actions/mod-wsgi-versions
         with:
           index: 1
       - name: Install Python tooling
