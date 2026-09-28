@@ -662,6 +662,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
+        .. versionchanged:: 4.19
+           Added the ``srv_host_validator`` keyword argument.
+
+        .. versionchanged:: 4.18
+           Added the ``srvAllowedHostsSuffix`` URI and keyword argument.
+
         .. versionchanged:: 4.17
            Added the ``max_adaptive_retries`` and ``enable_overload_retargeting`` URI and keyword arguments.
 
