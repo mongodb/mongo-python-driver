@@ -360,7 +360,9 @@ def handle_test_env() -> None:
 
         # The mock OCSP responder MUST BE started before the mongod as the mongod expects that
         # a responder will be available upon startup.
-        version = os.environ.get("VERSION", "latest")
+        # Default to the newest stable release; the "latest" nightly build is
+        # downloaded from a private S3 bucket and needs AWS credentials.
+        version = os.environ.get("VERSION", "latest-stable")
         cmd = [
             "bash",
             f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh",

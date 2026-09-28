@@ -110,6 +110,9 @@ functions:
           - LOAD_BALANCER
           - LOCAL_ATLAS
           - NO_EXT
+          - AWS_ACCESS_KEY_ID
+          - AWS_SECRET_ACCESS_KEY
+          - AWS_SESSION_TOKEN
       type: test
     - command: expansions.update
       params:
