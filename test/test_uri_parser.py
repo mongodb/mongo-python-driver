@@ -41,6 +41,7 @@ from pymongo.uri_parser_shared import (
     split_options,
 )
 from test import unittest
+from test.utils_shared import suppress_fork_deprecation
 
 
 class TestURI(unittest.TestCase):
@@ -85,6 +86,17 @@ class TestURI(unittest.TestCase):
         self.assertRaises(ValueError, split_hosts, "::1]:27017")
         self.assertEqual([("::1", 27017)], split_hosts("[::1]:27017"))
         self.assertEqual([("::1", 27017)], split_hosts("[::1]"))
+
+    def test_split_hosts_percent_encoded_host(self):
+        # PYTHON-5986: percent-encoding in a hostname is rejected rather than
+        # decoded. Only socket paths and IPv6 zone indexes are decoded.
+        self.assertRaises(InvalidURI, split_hosts, "example.com%2Cexample.org%3A27017")
+        self.assertRaises(InvalidURI, split_hosts, "example.com%2F27017")
+
+    def test_split_hosts_ipv6_zone_index(self):
+        # An IPv6 zone index is escaped as "%25" (RFC 6874) and must still
+        # decode, unlike percent-encoding in a plain hostname.
+        self.assertEqual([("fe80::1%eth0", 27017)], split_hosts("[fe80::1%25eth0]:27017"))
 
     def test_split_options(self):
         self.assertRaises(ConfigurationError, split_options, "foo")
@@ -672,6 +684,10 @@ class TestURI(unittest.TestCase):
         self.assertRaises(InvalidURI, parse_uri, "mongodb://localhost/%24db")
         self.assertRaises(InvalidURI, parse_uri, "mongodb://localhost/my%20db")
 
+    def test_validate_uri_percent_encoded_host(self):
+        # PYTHON-5986: a percent-encoded hostname is rejected by parse_uri too.
+        self.assertRaises(InvalidURI, parse_uri, "mongodb://example.com%2Cexample.org%3A27017/")
+
     def test_validate_uri_srv_structure(self):
         with patch("pymongo.uri_parser_shared._have_dnspython", return_value=True):
             self.assertRaises(
@@ -700,12 +716,13 @@ class TestURI(unittest.TestCase):
 class TestMainBlock(unittest.TestCase):
     def test_valid_uri_prints_parsed_dict(self):
         # Run uri_parser.py as a script; a valid URI is pretty-printed.
-        result = subprocess.run(
-            [sys.executable, "-m", "pymongo.uri_parser", "mongodb://localhost:27017/mydb"],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
+        with suppress_fork_deprecation():
+            result = subprocess.run(
+                [sys.executable, "-m", "pymongo.uri_parser", "mongodb://localhost:27017/mydb"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
         self.assertEqual(0, result.returncode)
         # The output is a valid Python literal; parse it and assert on values
         # rather than the formatting of the pretty-printed text.
@@ -715,12 +732,13 @@ class TestMainBlock(unittest.TestCase):
 
     def test_invalid_uri_prints_error(self):
         # An invalid URI is caught and its message printed, still exiting 0.
-        result = subprocess.run(
-            [sys.executable, "-m", "pymongo.uri_parser", "not-a-valid-uri"],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
+        with suppress_fork_deprecation():
+            result = subprocess.run(
+                [sys.executable, "-m", "pymongo.uri_parser", "not-a-valid-uri"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
         self.assertEqual(0, result.returncode)
         self.assertIn("Invalid URI scheme", result.stdout)
 

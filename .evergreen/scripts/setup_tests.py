@@ -30,6 +30,8 @@ PASS_THROUGH_ENV = [
     "MONGODB_API_VERSION",
     "DEBUG_LOG",
     "UV_PYTHON",
+    "UV_PYTHON_SEARCH_PATH",
+    "UV_PYTHON_PREFERENCE",
     "REQUIRE_FIPS",
     "IS_WIN32",
 ]
@@ -290,7 +292,13 @@ def handle_test_env() -> None:
             krb_conf.touch()
             write_env("KRB5_CONFIG", krb_conf)
             LOGGER.info("Writing keytab")
-            keytab = base64.b64decode(config["KEYTAB_BASE64"])
+            # Python 3.15 rejects unpadded base64 by default; padded=False
+            # accepts it, and older Pythons need the padding added explicitly.
+            keytab_b64 = "".join(config["KEYTAB_BASE64"].split())
+            try:
+                keytab = base64.b64decode(keytab_b64, padded=False)
+            except TypeError:
+                keytab = base64.b64decode(keytab_b64 + "=" * (-len(keytab_b64) % 4))
             keytab_file = ROOT / ".evergreen/drivers.keytab"
             with keytab_file.open("wb") as fid:
                 fid.write(keytab)
@@ -325,11 +333,6 @@ def handle_test_env() -> None:
             raise RuntimeError("Missing DRIVERS_TOOLS")
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
-
-    if test_name == "mod_wsgi":
-        from mod_wsgi_tester import setup_mod_wsgi
-
-        setup_mod_wsgi(sub_test_name)
 
     if test_name == "ocsp":
         if sub_test_name:
@@ -510,8 +513,13 @@ def handle_test_env() -> None:
             run_command("tar xf single_and_multi_document.tgz", cwd=data_dir)
         write_env("TEST_PATH", str(data_dir))
         write_env("OUTPUT_FILE", str(ROOT / "results.json"))
-        # Overwrite the UV_PYTHON from the env.sh file.
+        # Overwrite the UV_PYTHON value from env.sh, and unset the toolchain
+        # search-path variables: an empty value would make uv reject the request,
+        # and a toolchain path would miss the exact patch version requested.
         write_env("UV_PYTHON", "")
+        with ENV_FILE.open("a", newline="\n") as fid:
+            fid.write("unset UV_PYTHON_SEARCH_PATH\n")
+            fid.write("unset UV_PYTHON_PREFERENCE\n")
 
         UV_ARGS.append(f"--python={PERF_PYTHON_VERSION}")
 

@@ -20,6 +20,7 @@ mongocryptd.pid
 .nova/
 .temp/
 venv/
+.local/
 secrets-export.sh
 libmongocrypt.tar.gz
 libmongocrypt/

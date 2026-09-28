@@ -63,7 +63,6 @@ SUB_TEST_NAME_MAP: dict[str, list[str] | None] = {
         "ecs-remote",
     ],
     "kms": ["azure", "azure-remote", "azure-fail", "gcp", "gcp-remote", "gcp-fail"],
-    "mod_wsgi": ["standalone", "embedded"],
     "perf": ["sync", "async"],
     "auth_oidc": [
         "default",
@@ -80,7 +79,7 @@ SUB_TEST_NAME_MAP: dict[str, list[str] | None] = {
     ],
 }
 
-EXTRA_TESTS = ["mod_wsgi", "aws_lambda", "doctest"]
+EXTRA_TESTS = ["aws_lambda", "doctest"]
 
 # Tests that do not use run-mongodb directly.
 NO_RUN_ORCHESTRATION = [
@@ -298,8 +297,8 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
     kwargs.setdefault("check", True)
     # Prevent overriding the python used by other tools.
     env = kwargs.pop("env", os.environ).copy()
-    if "UV_PYTHON" in env:
-        del env["UV_PYTHON"]
+    for var in ["UV_PYTHON", "UV_PYTHON_SEARCH_PATH", "UV_PYTHON_PREFERENCE"]:
+        env.pop(var, None)
     kwargs["env"] = env
     try:
         subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
