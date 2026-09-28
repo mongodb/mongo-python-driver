@@ -146,9 +146,12 @@ def pid_is_our_apache(pid: int, apache_config: str) -> bool:
 def stop_apache(apache: str, apache_config: str, env: dict[str, str] | None = None) -> None:
     # Idempotent: safe to call when Apache is not running.
     # Prefer the pid file: -k stop re-parses the config, which fails when the
-    # mod_wsgi .so or the config's env vars are unavailable. Fall back to
-    # pkill for a server whose pid file was removed under it. The commands run
-    # as argument lists, so state-derived values never reach a shell.
+    # mod_wsgi .so or the config's env vars are unavailable. Fall back to a
+    # validated pgrep for a server whose pid file was removed under it. The
+    # commands run as argument lists, so state-derived values never reach a
+    # shell.
+    from shutil import which
+
     pid = pid_file(apache_config)
     if pid.exists():
         try:
@@ -172,7 +175,26 @@ def stop_apache(apache: str, apache_config: str, env: dict[str, str] | None = No
             check=False,
         )
     if port_is_open():
-        run_command(["pkill", "-f", f"test/mod_wsgi_test/{apache_config}"], check=False)
+        # Last resort: find pids whose full command line mentions this
+        # checkout's absolute config path, then signal only the ones whose
+        # command line carries it as an exact argument, so a server from
+        # another checkout (or an unrelated process) is never killed.
+        config_path = f"{ROOT}/test/mod_wsgi_test/{apache_config}"
+        pgrep = which("pgrep")
+        if pgrep:
+            result = subprocess.run(  # noqa: S603
+                [pgrep, "-f", config_path], capture_output=True, text=True, check=False
+            )
+            for line in result.stdout.split():
+                try:
+                    victim = int(line)
+                except ValueError:
+                    continue
+                if pid_is_our_apache(victim, apache_config):
+                    try:
+                        os.kill(victim, signal.SIGTERM)
+                    except (ProcessLookupError, PermissionError):
+                        LOGGER.warning(f"Could not stop Apache pid {victim}")
 
     # Stopping returns before the port is released, which the next mode needs
     # to rebind.
