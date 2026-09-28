@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -eu
 
 tools="$(realpath -s "../drivers-tools")"
 pushd $tools/.evergreen/github_app || exit
@@ -37,14 +38,32 @@ git commit -am "resyncing specs $(date '+%m-%d-%Y')"
 echo "Creating the git checkout... done."
 
 git push origin $branch
+
+# Build the payload as a file so the body content is always properly
+# JSON-escaped, rather than interpolated into the command line as text.
+payload_file=$(mktemp)
+trap 'rm -f "$payload_file"' EXIT
+jq -n \
+    --arg title "[Spec Resync] $(date '+%m-%d-%Y')" \
+    --arg head "${branch}" \
+    --rawfile body "$1" \
+    '{title: $title, body: $body, head: $head, base: "main"}' > "$payload_file"
+
 resp=$(curl -L \
     -X POST \
     -H "Accept: application/vnd.github+json" \
     -H "Authorization: Bearer $token" \
     -H "X-GitHub-Api-Version: 2022-11-28" \
-    -d "{\"title\":\"[Spec Resync] $(date '+%m-%d-%Y')\",\"body\":\"$(cat "$1")\",\"head\":\"${branch}\",\"base\":\"main\"}" \
+    -d "@${payload_file}" \
     --url https://api.github.com/repos/$owner/$repo/pulls)
-echo $resp | jq '.html_url'
+
+pr_url=$(echo "$resp" | jq -r '.html_url // empty')
+if [ -z "$pr_url" ]; then
+    echo "Failed to create PR! API response:"
+    echo "$resp" | jq .
+    exit 1
+fi
+echo "$pr_url"
 echo "Creating the PR... done."
 
 rm -rf $tools
