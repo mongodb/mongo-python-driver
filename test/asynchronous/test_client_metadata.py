@@ -249,7 +249,7 @@ class TestClientMetadataProse(AsyncIntegrationTest):
                 "|{driver_name}",
                 "|1.0",
             ),
-            ("Duplicates still deduplicate", [("F1", "1.0"), ("F1", "1.0")], "|F1", "|1.0"),
+            ("Duplicates deduplicate", [("F1", "1.0"), ("F1", "1.0")], "|F1", "|1.0"),
             ("All versions absent", [("F1", None), ("F2", None)], "|F1|F2", "||"),
             ("All names absent", [(None, "1.0"), (None, "2.0")], "||", "|1.0|2.0"),
             (
@@ -269,6 +269,12 @@ class TestClientMetadataProse(AsyncIntegrationTest):
                 [("{driver_name}", "{driver_version}")],
                 "|{driver_name}",
                 "|{driver_version}",
+            ),
+            (
+                "Duplicates with an unset field deduplicate",
+                [("F1", None), ("F1", None)],
+                "|F1",
+                "|",
             ),
         ]
         for (
