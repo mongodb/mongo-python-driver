@@ -196,7 +196,18 @@ bootstrap() {
   docker exec --user smoke -w "$HOME_SRC" "$CONTAINER" bash -c 'set -euo pipefail
     export PATH="$HOME/.local/bin:$PATH"
     export UV_PROJECT_ENVIRONMENT="'"$VENV"'"
-    if ! uv run --no-sync python -c "from pymongo import MongoClient; MongoClient().admin.command(\"hello\")" 2>/dev/null; then
+    # Probe replSetGetStatus over a direct connection: it returns immediately
+    # for an uninitialized replica set, while the default hello-based server
+    # selection would block for the full server selection timeout first.
+    if ! uv run --no-sync python -c "
+from pymongo import MongoClient
+client = MongoClient(\"127.0.0.1:27017\", directConnection=True)
+try:
+    client.admin.command(\"replSetGetStatus\")
+except Exception:
+    # NotYetInitialized (or a transient failure): initiation is still needed.
+    raise SystemExit(1)
+" 2>/dev/null; then
       uv run --no-sync python -c "
 from pymongo import MongoClient
 client = MongoClient(\"127.0.0.1:27017\", directConnection=True)

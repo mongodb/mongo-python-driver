@@ -25,7 +25,9 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 LOGGER = logging.getLogger("mod_wsgi_tester")
 
-ROOT = Path(__file__).parents[2]
+# Resolve __file__, so ROOT is correct when the script is invoked with a
+# relative path, as mod_wsgi.sh does.
+ROOT = Path(__file__).resolve().parents[2]
 # State lives in a user-owned cache directory rather than shared /tmp: another
 # local user must not be able to read or plant it, since teardown feeds its
 # values into the commands that stop Apache.

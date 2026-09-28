@@ -8,7 +8,6 @@ on:
       - ".evergreen/scripts/mod_wsgi.sh"
       - ".evergreen/scripts/dispatch.sh"
       - ".evergreen/scripts/generate_config_utils.py"
-      - ".evergreen/scripts/setup-system.sh"
       - ".github/workflows/test-mod-wsgi.yml"
       - ".github/actions/mod-wsgi-*/**"
       - "test/mod_wsgi_test/**"
@@ -23,7 +22,6 @@ on:
       - ".evergreen/scripts/mod_wsgi.sh"
       - ".evergreen/scripts/dispatch.sh"
       - ".evergreen/scripts/generate_config_utils.py"
-      - ".evergreen/scripts/setup-system.sh"
       - ".github/workflows/test-mod-wsgi.yml"
       - ".github/actions/mod-wsgi-*/**"
       - "test/mod_wsgi_test/**"
@@ -72,8 +70,6 @@ jobs:
         run: |
           uv tool install rust-just
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Set up the system
-        run: bash .evergreen/scripts/setup-system.sh
       - name: Install Apache
         # jq and curl are needed to pick the MongoDB download.
         run: dnf install -y httpd httpd-devel jq curl
