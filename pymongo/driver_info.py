@@ -29,8 +29,14 @@ class DriverInfo(namedtuple("DriverInfo", ["name", "version", "platform"])):
     The MongoDB server logs PyMongo's name, version, and platform whenever
     PyMongo establishes a connection. A driver implemented on top of PyMongo
     can add its own info to this log message. Initialize with three strings
-    like 'MyDriver', '1.2.3', 'some platform info'. Any of these strings may be
-    None to accept PyMongo's default.
+    like 'MyDriver', '1.2.3', 'some platform info'. Any of these strings may
+    be None. A None or empty name or version appends an empty metadata
+    segment, keeping the ``driver.name`` and ``driver.version`` segment
+    counts aligned. A None or empty platform omits the platform.
+
+    The ``|`` character is the reserved delimiter used to join appended
+    metadata, so it must not appear in any of the fields. A
+    :class:`ValueError` is raised if it does.
     """
 
     def __new__(
@@ -42,5 +48,7 @@ class DriverInfo(namedtuple("DriverInfo", ["name", "version", "platform"])):
                 raise TypeError(
                     f"Wrong type for DriverInfo {key} option, value must be an instance of str, not {type(value)}"
                 )
+            if value and "|" in value:
+                raise ValueError(f"DriverInfo {key} must not contain the '|' delimiter")
 
         return self

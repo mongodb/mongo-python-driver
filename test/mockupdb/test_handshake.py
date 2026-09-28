@@ -49,9 +49,11 @@ def _check_handshake_data(request):
     assert data["application"] == {"name": "my app"}
     if has_c():
         name = "PyMongo|c"
+        version = pymongo_version + "|"
     else:
         name = "PyMongo"
-    assert data["driver"] == {"name": name, "version": pymongo_version}
+        version = pymongo_version
+    assert data["driver"] == {"name": name, "version": version}
 
     # Keep it simple, just check these fields exist.
     assert "os" in data
