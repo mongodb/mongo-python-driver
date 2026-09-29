@@ -50,6 +50,8 @@ Bug fixes
   delimiters (`PYTHON-6040`_).
 - :class:`~pymongo.driver_info.DriverInfo` now raises :class:`ValueError` when
   any field contains the reserved ``|`` delimiter (`PYTHON-6040`_).
+- Fixed a bug in SRV polling where invalid hosts where topology would not be
+  updated if one returned host was invalid.
 
 .. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
 .. _PYTHON-6040: https://jira.mongodb.org/browse/PYTHON-6040
