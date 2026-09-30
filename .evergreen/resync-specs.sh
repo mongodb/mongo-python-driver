@@ -85,12 +85,9 @@ cp_psl () {
       echo "Could not find the public suffix list at $src" >&2
       return 1
     fi
-    # Prefer the CI toolchain interpreter; the default python3 may be 3.6 on RHEL8.
-    if [ -x /opt/devtools/bin/python3.11 ]; then
-        PY=/opt/devtools/bin/python3.11
-    else
-        PY=python3
-    fi
+    # Use the newest mongodbtoolchain python on CI hosts; python3 fallback locally.
+    PY=$(ls -1d /opt/mongodbtoolchain/v*/bin/python3 2>/dev/null | sort -V | tail -1)
+    [ -n "$PY" ] || PY=python3
     "$PY" - "$src" "$PYMONGO"/pymongo/public_suffix_list.dat <<'EOF'
 import os
 import sys
