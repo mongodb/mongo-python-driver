@@ -402,6 +402,12 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
                 connect=False,
             )
 
+    async def test_14_throw_when_srv_host_validator_returns_a_non_boolean_value(self):
+        with self.assertRaisesRegex(ConfigurationError, "srv_host_validator must return a bool"):
+            await self._parse(
+                "blogs.mongodb.com", "cluster.mongodb.com", srv_host_validator=lambda host: "true"
+            )
+
     async def test_srv_hostname_with_three_or_more_parts_may_equal_the_returned_hostname(
         self,
     ):
