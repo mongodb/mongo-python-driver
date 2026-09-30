@@ -28,6 +28,8 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
             )
         except CalledProcessError as exc:
             errored[spec.name] = exc.stderr
+            # The PR-body summary is lost if PR creation fails.
+            print(f"Spec sync failed for {spec.name}:\n{exc.stderr}", flush=True)
     print("Done syncing specs")
 
 
@@ -57,9 +59,11 @@ def apply_patches(errored):
                     ],
                     check=True,
                     stderr=subprocess.PIPE,
+                    text=True,
                 )
             except CalledProcessError as exc:
                 errored[f"{patch}"] = exc.stderr
+                print(f"Patch application failed for {patch}:\n{exc.stderr}", flush=True)
 
 
 def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
@@ -127,9 +131,10 @@ def write_summary(errored: dict[str, str], new: list[str], filename: str | None)
         if filename is None:
             print(f"\n{pr_body}")
         else:
+            # Plain text: the consumer embeds this file via jq --rawfile,
+            # which handles the JSON escaping itself.
             with open(filename, "w") as f:
-                # replacements made for proper json
-                f.write(pr_body.replace("\n", "\\n").replace("\t", "\\t"))
+                f.write(pr_body)
 
 
 def main(args: Namespace):

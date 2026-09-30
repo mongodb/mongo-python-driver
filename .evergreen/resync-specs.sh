@@ -85,28 +85,59 @@ cp_psl () {
       echo "Could not find the public suffix list at $src" >&2
       return 1
     fi
-    python - "$src" "$PYMONGO"/pymongo/public_suffix_list.dat <<'EOF'
+    # Use the newest mongodbtoolchain python on CI hosts; python3 fallback locally.
+    PY=$(ls -1d /opt/mongodbtoolchain/v*/bin/python3 2>/dev/null | sort -V | tail -1)
+    [ -n "$PY" ] || PY=python3
+    [ "$("$PY" -c 'import sys; print(sys.version_info >= (3, 7))' 2>/dev/null)" = True ] \
+        || { echo "Error: $PY is not Python 3.7+, which this conversion requires." >&2; return 1; }
+    "$PY" - "$src" "$PYMONGO"/pymongo/public_suffix_list.dat <<'EOF'
+import os
 import sys
 
 src, dst = sys.argv[1], sys.argv[2]
-with open(src, encoding="utf-8") as f, open(dst, "w", encoding="utf-8") as out:
-    for line in f:
-        rule = line.strip()
-        if rule and not rule.startswith("//") and not rule.isascii():
-            # "!" and "*." prefixes are not valid IDNA, so encode only the
-            # domain part and re-attach the prefix afterwards.
-            prefix = ""
-            for p in ("!", "*."):
-                if rule.startswith(p):
-                    prefix, rule = p, rule[len(p) :]
-                    break
-            try:
-                rule = rule.encode("idna").decode("ascii")
-            except UnicodeError:
-                print(f"Could not convert rule to Punycode: {prefix}{rule}", file=sys.stderr)
-                sys.exit(1)
-            line = f"{prefix}{rule.lower()}\n"
-        out.write(line)
+
+# Convert in memory and write atomically so failures can't truncate the list.
+with open(src, encoding="utf-8") as f:
+    lines = f.readlines()
+if not lines:
+    print(f"Source public suffix list is empty: {src}", file=sys.stderr)
+    sys.exit(1)
+
+converted = []
+for line in lines:
+    rule = line.strip()
+    if rule and not rule.startswith("//") and not rule.isascii():
+        # "!" and "*." prefixes are not valid IDNA, so encode only the
+        # domain part and re-attach the prefix afterwards.
+        prefix = ""
+        for p in ("!", "*."):
+            if rule.startswith(p):
+                prefix, rule = p, rule[len(p) :]
+                break
+        try:
+            rule = rule.encode("idna").decode("ascii")
+        except UnicodeError:
+            print(f"Could not convert rule to Punycode: {prefix}{rule}", file=sys.stderr)
+            sys.exit(1)
+        line = f"{prefix}{rule.lower()}\n"
+    converted.append(line)
+
+if len(converted) != len(lines):
+    print(
+        f"Conversion lost lines: {len(lines)} in, {len(converted)} out",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+# A blank or comment-only source must not replace the real list.
+if not any(ln.strip() and not ln.strip().startswith("//") for ln in converted):
+    print(f"Source public suffix list has no rules: {src}", file=sys.stderr)
+    sys.exit(1)
+
+tmp = dst + ".tmp"
+with open(tmp, "w", encoding="utf-8") as out:
+    out.writelines(converted)
+os.replace(tmp, dst)
 EOF
 }
 
