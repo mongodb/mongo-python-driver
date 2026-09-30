@@ -28,9 +28,7 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
             )
         except CalledProcessError as exc:
             errored[spec.name] = exc.stderr
-            # Surface the failure in the task log too: the PR-body summary is
-            # only written at the end, and is lost entirely if PR creation
-            # fails.
+            # The PR-body summary is lost if PR creation fails.
             print(f"Spec sync failed for {spec.name}:\n{exc.stderr}", flush=True)
     print("Done syncing specs")
 

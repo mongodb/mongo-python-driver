@@ -85,10 +85,7 @@ cp_psl () {
       echo "Could not find the public suffix list at $src" >&2
       return 1
     fi
-    # Prefer the toolchain interpreter on Evergreen hosts: bare python may
-    # resolve to Python 2, and the default python3 there may be RHEL8's
-    # platform-python 3.6, which predates the APIs used below. Fall back to
-    # python3 locally.
+    # Prefer the CI toolchain interpreter; the default python3 may be 3.6 on RHEL8.
     if [ -x /opt/devtools/bin/python3.11 ]; then
         PY=/opt/devtools/bin/python3.11
     else
@@ -100,8 +97,7 @@ import sys
 
 src, dst = sys.argv[1], sys.argv[2]
 
-# Read and convert everything in memory first, then write atomically: a
-# truncated or failed conversion must never clobber the vendored list.
+# Convert in memory and write atomically so failures can't truncate the list.
 with open(src, encoding="utf-8") as f:
     lines = f.readlines()
 if not lines:
@@ -111,7 +107,7 @@ if not lines:
 converted = []
 for line in lines:
     rule = line.strip()
-    # str.isascii() is 3.7+; keep this 3.6-compatible via ord().
+    # ord() instead of str.isascii() for 3.6 compat.
     if rule and not rule.startswith("//") and any(ord(ch) > 127 for ch in rule):
         # "!" and "*." prefixes are not valid IDNA, so encode only the
         # domain part and re-attach the prefix afterwards.
@@ -128,8 +124,6 @@ for line in lines:
         line = f"{prefix}{rule.lower()}\n"
     converted.append(line)
 
-# The conversion is line-for-line, so the output must have exactly as many
-# lines as the input.
 if len(converted) != len(lines):
     print(
         f"Conversion lost lines: {len(lines)} in, {len(converted)} out",

@@ -34,10 +34,7 @@ branch="spec-resync-"$(date '+%m-%d-%Y')
 git remote set-url origin https://x-access-token:${token}@github.com/$owner/$repo.git
 git checkout -b $branch "origin/main"
 
-# Attribute the commit to the bot user instead of the Evergreen host user.
-# The noreply email follows GitHub's standard <id>+<login> form so the commit
-# is linked to the bot account on GitHub. Cosmetic: fall back silently to the
-# host identity if the lookup fails.
+# Attribute the commit to the bot user; fall back to the host identity.
 bot_login="mongodb-drivers-pr-bot[bot]"
 bot_id=$(curl -gsm 10 "https://api.github.com/users/${bot_login}" | jq -r '.id // empty' || true)
 if [ -n "$bot_id" ]; then
@@ -49,12 +46,8 @@ git add ./test
 git commit -am "resyncing specs $(date '+%m-%d-%Y')"
 echo "Creating the git checkout... done."
 
-# Force-push: the branch name is date-stamped, so any existing remote branch
-# is an artifact of an earlier same-day attempt and is always reproducible
-# from origin/main plus a fresh commit. This makes same-day retries idempotent.
-# GitHub intermittently rejects automated pushes with a 403 (e.g. secondary
-# rate limiting on the receive-pack endpoint), which self-heals after a short
-# wait, so retry a few times before giving up.
+# Date-stamped branch: force-push makes same-day reruns idempotent; retry
+# absorbs GitHub's intermittent 403s on the receive-pack endpoint.
 push_ok=false
 for _attempt in 1 2 3; do
     if git push --force origin $branch; then
@@ -79,9 +72,7 @@ jq -n \
     --rawfile body "$1" \
     '{title: $title, body: $body, head: $head, base: "main"}' > "$payload_file"
 
-# If a PR for this branch already exists (e.g. an earlier same-day attempt),
-# reuse it rather than failing to create a duplicate. Refresh its title and
-# body so the summary reflects this run.
+# Reuse an open PR for this branch (same-day rerun) instead of duplicating it.
 existing_pr_json=$(curl -gs \
     -H "Accept: application/vnd.github+json" \
     -H "Authorization: Bearer $token" \
