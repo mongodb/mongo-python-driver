@@ -33,6 +33,18 @@ branch="spec-resync-"$(date '+%m-%d-%Y')
 
 git remote set-url origin https://x-access-token:${token}@github.com/$owner/$repo.git
 git checkout -b $branch "origin/main"
+
+# Attribute the commit to the bot user instead of the Evergreen host user.
+# The noreply email follows GitHub's standard <id>+<login> form so the commit
+# is linked to the bot account on GitHub. Cosmetic: fall back silently to the
+# host identity if the lookup fails.
+bot_login="mongodb-drivers-pr-bot[bot]"
+bot_id=$(curl -gsm 10 "https://api.github.com/users/${bot_login}" | jq -r '.id // empty' || true)
+if [ -n "$bot_id" ]; then
+    git config user.name "$bot_login"
+    git config user.email "${bot_id}+${bot_login}@users.noreply.github.com"
+fi
+
 git add ./test
 git commit -am "resyncing specs $(date '+%m-%d-%Y')"
 echo "Creating the git checkout... done."
