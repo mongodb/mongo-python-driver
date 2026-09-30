@@ -37,6 +37,8 @@ else
   # Use the newest mongodbtoolchain python; the default python3 may be too old.
   PY=$(ls -1d /opt/mongodbtoolchain/v*/bin/python3 2>/dev/null | sort -V | tail -1)
   [ -n "$PY" ] || PY=python3
+  [ "$("$PY" -c 'import sys; print(sys.version_info >= (3, 7))' 2>/dev/null)" = True ] \
+      || { echo "Error: $PY is not Python 3.7+, which resync-all-specs.py requires." >&2; exit 1; }
   "$PY" ./.evergreen/scripts/resync-all-specs.py --filename "$PR_DESC"
   if [[ -f $PR_DESC ]]; then
     # changes were made -> call scrypt to create PR for us

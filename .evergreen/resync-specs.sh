@@ -88,6 +88,8 @@ cp_psl () {
     # Use the newest mongodbtoolchain python on CI hosts; python3 fallback locally.
     PY=$(ls -1d /opt/mongodbtoolchain/v*/bin/python3 2>/dev/null | sort -V | tail -1)
     [ -n "$PY" ] || PY=python3
+    [ "$("$PY" -c 'import sys; print(sys.version_info >= (3, 7))' 2>/dev/null)" = True ] \
+        || { echo "Error: $PY is not Python 3.7+, which this conversion requires." >&2; return 1; }
     "$PY" - "$src" "$PYMONGO"/pymongo/public_suffix_list.dat <<'EOF'
 import os
 import sys
@@ -125,6 +127,11 @@ if len(converted) != len(lines):
         f"Conversion lost lines: {len(lines)} in, {len(converted)} out",
         file=sys.stderr,
     )
+    sys.exit(1)
+
+# A blank or comment-only source must not replace the real list.
+if not any(ln.strip() and not ln.strip().startswith("//") for ln in converted):
+    print(f"Source public suffix list has no rules: {src}", file=sys.stderr)
     sys.exit(1)
 
 tmp = dst + ".tmp"
