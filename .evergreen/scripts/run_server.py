@@ -26,9 +26,8 @@ def start_server():
         )
         return
 
-    # DRIVERS_TOOLS is only needed to actually start a server. When the
-    # submodule is missing and -h/--help was requested, fall through to
-    # get_test_options' own argparse help below.
+    # DRIVERS_TOOLS is only needed to start a server; allow -h/--help to fall
+    # through to argparse when the submodule is missing.
     if not want_help:
         check_drivers_tools()
 

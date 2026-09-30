@@ -12,8 +12,7 @@ else
 fi
 
 PROJECT_DIRECTORY="$(pwd)"
-# Default to the submodule checkout; an env var override wins, mirroring
-# install-dependencies.sh, run-getdata.sh, stop-server.sh, and utils.py.
+# Default to the submodule; an env var override wins.
 DRIVERS_TOOLS="${DRIVERS_TOOLS:-$PROJECT_DIRECTORY/drivers-evergreen-tools}"
 CARGO_HOME=${CARGO_HOME:-${DRIVERS_TOOLS}/.cargo}
 DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
@@ -95,44 +94,26 @@ export PROJECT="${project:-mongo-python-driver}"
 export PIP_QUIET=1
 EOT
 
-# Initialize the drivers-evergreen-tools submodule (Evergreen's
-# git.get_project does not init submodules). Checks out the gitlink recorded
-# in this checkout. Tolerate non-git contexts (rsync'd spawn hosts) with a
-# warning; the checkout contents are still present there.
+# Initialize the submodule (Evergreen's git.get_project does not); tolerate
+# non-git hosts with a warning.
 if ! git -C "$PROJECT_DIRECTORY" submodule update --init --recursive; then
   echo "WARNING: could not initialize the drivers-evergreen-tools submodule;" \
     "using the existing checkout contents instead."
 fi
 
-# Write a uv configuration boundary into the drivers-evergreen-tools checkout.
-#
-# The submodule is vendored INSIDE the project directory, so uv's config
-# discovery from the tools' own scripts (uv venv and uv export in
-# install-cli.sh, invoked via setup.sh and run-mongodb.sh) would otherwise
-# walk up out of the submodule into pyproject.toml and enforce this project's
-# [tool.uv] required-version pin against whatever uv those scripts happen to
-# run (the host image's uv, or the "uv~=0.8.0" shim install-cli.sh installs),
-# failing on any mismatch. A uv.toml here stops that discovery at the
-# submodule boundary, leaving the pin to apply only to this project's own uv
-# invocations.
-#
-# The file is untracked in the submodule and only written when absent, so a
-# submodule checkout that gains its own uv.toml makes "git submodule update"
-# fail loudly rather than being silently clobbered.
+# Write a uv config boundary into the submodule: it is vendored inside this
+# project, so uv run by the tools' own scripts would otherwise walk up to
+# pyproject.toml and enforce our required-version pin. Write-if-absent, so an
+# upstream uv.toml fails the submodule update loudly instead of being clobbered.
 if [ -d "${DRIVERS_TOOLS}" ] && [ ! -f "${DRIVERS_TOOLS}/uv.toml" ]; then
   cat <<EOT > "${DRIVERS_TOOLS}/uv.toml"
-# Configuration boundary written by the mongo-python-driver scripts; see
-# .evergreen/scripts/configure-env.sh. Keeps uv's config discovery from
-# reaching the vendoring project's pyproject.toml and its required-version pin.
+# Written by mongo-python-driver to stop uv's config discovery here; see
+# .evergreen/scripts/configure-env.sh.
 EOT
 fi
 
-# Keep the boundary out of git status: an untracked uv.toml marks the parent
-# checkout dirty with modified submodule content after every setup. Add it to
-# the submodule's local exclude (.git/modules/.../info/exclude) rather than
-# its tracked .gitignore, so the pinned checkout stays untouched. No-op
-# without git (uninitialized submodule, rsync'd spawn hosts), where there is
-# no status to keep clean.
+# Keep the boundary out of git status via the submodule's local exclude;
+# no-op without git.
 if _git_dir=$(git -C "${DRIVERS_TOOLS}" rev-parse --absolute-git-dir 2>/dev/null); then
   mkdir -p "${_git_dir}/info"
   grep -qxF "uv.toml" "${_git_dir}/info/exclude" 2>/dev/null ||

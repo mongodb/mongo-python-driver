@@ -209,7 +209,9 @@ the pages will re-render and the browser will automatically refresh.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
     [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `${DRIVERS_TOOLS:-drivers-evergreen-tools}/.evergreen/run-mongodb.sh start -h`
-    for a full list of options.
+    for a full list of options.  By default the newest stable server release is used.  To test against the
+    nightly build instead, pass `--version latest`, which is downloaded from a private S3 bucket and requires
+    an `AWS_PROFILE` with [Drivers test secrets](https://github.com/mongodb-labs/drivers-evergreen-tools/tree/master/.evergreen/secrets_handling#secrets-handling) credentials.
 -   Run `just test` or `pytest` to run all of the tests.
 -   Append `test/<mod_name>.py::<class_name>::<test_name>` to run
     specific tests. You can omit the `<test_name>` to test a full class
@@ -356,6 +358,24 @@ You will need to set up access to the `drivers-test-secrets-role`, see the [Wiki
 - Run `just setup-tests aws_lambda`.
 - Run `just run-tests`.
 
+### mod_wsgi tests
+
+Continuous integration runs the tests on pull requests that change
+mod_wsgi-relevant files, in the `test-mod-wsgi.yml` workflow.
+
+To run the tests by hand, install Apache and mod_wsgi (`sudo apt-get install -y apache2
+apache2-dev` and `uv sync --group mod_wsgi` on Ubuntu), then:
+
+- On Linux, run `TOPOLOGY=replica_set just run-server`.
+- Run `just setup-tests mod_wsgi <mode>`.
+- Run `just run-tests`.
+- Run `just teardown-tests`.
+
+The `mode` can be `standalone` or `embedded`.  On non-Linux hosts the same
+commands run inside an ubuntu container, which bootstraps its own replica
+set (so the `run-server` step does not apply), or use `just smoke-mod-wsgi`
+to run both modes.
+
 ### OCSP tests
 
 - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
@@ -444,15 +464,14 @@ To run any of the test suites with minimum supported dependencies, pass `--test-
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
 - Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
 - There are some considerations about the Python version used in the test:
-    - If a specific version of Python is needed in a task that is running on variants with a toolchain, use
-``TOOLCHAIN_VERSION`` (e.g. `TOOLCHAIN_VERSION=3.10`).  The actual path lookup needs to be done on the host, since
-tasks are host-agnostic.
+    - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10`, `UV_PYTHON=3.14t`, or
+`UV_PYTHON=pypy3.11`).  Tasks are host-agnostic, so the interpreter lookup happens on the host: for a plain
+CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at it, and for anything else
+(including PyPy, or a version the toolchain lacks) uv downloads it.
     - If a specific Python binary is needed (for example on the FIPS host), set `UV_PYTHON=/path/to/python`.
-    - If a specific Python version is needed and the toolchain will not be available, use `UV_PYTHON` (e.g. `UV_PYTHON=3.11`).
-    - The default if neither ``TOOLCHAIN_VERSION`` or ``UV_PYTHON`` is set is to use UV to install the minimum
-      supported version of Python and use that.  This ensures a consistent behavior across host types that do not
-      have the Python toolchain (e.g. Azure VMs), by having a known version of Python with the build headers (`Python.h`)
-      needed to build the C extensions.
+    - The default if `UV_PYTHON` is not set is CPython 3.10.  This is deterministic across host types, so a task
+      that does not pin a version always gets the same Python (with the build headers (`Python.h`) needed to build
+      the C extensions).
     - The uv binary version is pinned once in `[tool.uv] required-version` in `pyproject.toml`.
       `.evergreen/scripts/install-dependencies.sh` installs it with `uv tool install`, uv enforces it locally, and
       `astral-sh/setup-uv` reads it on GitHub.  Bump it manually when a newer uv is needed.  If uv cannot find the

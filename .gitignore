@@ -47,6 +47,8 @@ coverage.xml
 server.log
 .coverage
 test-results.json
+access_log
+error_log
 
 # AI-assistant review workflow logs (kept untracked)
 /REVIEW_STATE.md

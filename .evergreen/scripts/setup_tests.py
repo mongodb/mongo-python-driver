@@ -31,6 +31,8 @@ PASS_THROUGH_ENV = [
     "MONGODB_API_VERSION",
     "DEBUG_LOG",
     "UV_PYTHON",
+    "UV_PYTHON_SEARCH_PATH",
+    "UV_PYTHON_PREFERENCE",
     "REQUIRE_FIPS",
     "IS_WIN32",
 ]
@@ -358,7 +360,9 @@ def handle_test_env() -> None:
 
         # The mock OCSP responder MUST BE started before the mongod as the mongod expects that
         # a responder will be available upon startup.
-        version = os.environ.get("VERSION", "latest")
+        # Default to the newest stable release; the "latest" nightly build is
+        # downloaded from a private S3 bucket and needs AWS credentials.
+        version = os.environ.get("VERSION", "latest-stable")
         cmd = [
             "bash",
             f"{DRIVERS_TOOLS}/.evergreen/run-mongodb.sh",
@@ -509,8 +513,13 @@ def handle_test_env() -> None:
             run_command("tar xf single_and_multi_document.tgz", cwd=data_dir)
         write_env("TEST_PATH", str(data_dir))
         write_env("OUTPUT_FILE", str(ROOT / "results.json"))
-        # Overwrite the UV_PYTHON from the env.sh file.
+        # Overwrite the UV_PYTHON value from env.sh, and unset the toolchain
+        # search-path variables: an empty value would make uv reject the request,
+        # and a toolchain path would miss the exact patch version requested.
         write_env("UV_PYTHON", "")
+        with ENV_FILE.open("a", newline="\n") as fid:
+            fid.write("unset UV_PYTHON_SEARCH_PATH\n")
+            fid.write("unset UV_PYTHON_PREFERENCE\n")
 
         UV_ARGS.append(f"--python={PERF_PYTHON_VERSION}")
 
