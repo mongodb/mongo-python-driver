@@ -52,7 +52,22 @@ echo "Creating the git checkout... done."
 # Force-push: the branch name is date-stamped, so any existing remote branch
 # is an artifact of an earlier same-day attempt and is always reproducible
 # from origin/main plus a fresh commit. This makes same-day retries idempotent.
-git push --force origin $branch
+# GitHub intermittently rejects automated pushes with a 403 (e.g. secondary
+# rate limiting on the receive-pack endpoint), which self-heals after a short
+# wait, so retry a few times before giving up.
+push_ok=false
+for _attempt in 1 2 3; do
+    if git push --force origin $branch; then
+        push_ok=true
+        break
+    fi
+    echo "Push attempt ${_attempt} failed; retrying in 30s..."
+    sleep 30
+done
+if [ "$push_ok" != true ]; then
+    echo "Failed to push $branch after 3 attempts!" >&2
+    exit 1
+fi
 
 # Build the payload as a file so the body content is always properly
 # JSON-escaped, rather than interpolated into the command line as text.
