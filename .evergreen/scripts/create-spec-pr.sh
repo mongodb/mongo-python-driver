@@ -54,8 +54,10 @@ for _attempt in 1 2 3; do
         push_ok=true
         break
     fi
-    echo "Push attempt ${_attempt} failed; retrying in 30s..."
-    sleep 30
+    if [ "$_attempt" -lt 3 ]; then
+        echo "Push attempt ${_attempt} failed; retrying in 30s..."
+        sleep 30
+    fi
 done
 if [ "$push_ok" != true ]; then
     echo "Failed to push $branch after 3 attempts!" >&2
@@ -81,12 +83,16 @@ existing_pr_json=$(curl -gs \
 existing_pr_url=$(echo "$existing_pr_json" | jq -r '.[0].html_url // empty')
 if [ -n "$existing_pr_url" ]; then
     existing_pr_number=$(echo "$existing_pr_json" | jq -r '.[0].number // empty')
-    curl -sgX PATCH \
+    if ! curl -sfX PATCH \
         -H "Accept: application/vnd.github+json" \
         -H "Authorization: Bearer $token" \
         -H "X-GitHub-Api-Version: 2022-11-28" \
         -d "{\"title\": \"[Spec Resync] $(date '+%m-%d-%Y')\", \"body\": $(jq -Rs . < "$1")}" \
         --url "https://api.github.com/repos/$owner/$repo/pulls/${existing_pr_number}" > /dev/null
+    then
+        echo "Failed to update PR summary!" >&2
+        exit 1
+    fi
     echo "$existing_pr_url"
     echo "Creating the PR... done. (PR already existed; branch and summary were updated)"
     rm -rf $tools
