@@ -88,27 +88,51 @@ cp_psl () {
     # Use python3 explicitly: bare python may resolve to Python 2 on CI hosts,
     # which cannot parse the f-strings below.
     python3 - "$src" "$PYMONGO"/pymongo/public_suffix_list.dat <<'EOF'
+import os
 import sys
 
 src, dst = sys.argv[1], sys.argv[2]
-with open(src, encoding="utf-8") as f, open(dst, "w", encoding="utf-8") as out:
-    for line in f:
-        rule = line.strip()
-        if rule and not rule.startswith("//") and not rule.isascii():
-            # "!" and "*." prefixes are not valid IDNA, so encode only the
-            # domain part and re-attach the prefix afterwards.
-            prefix = ""
-            for p in ("!", "*."):
-                if rule.startswith(p):
-                    prefix, rule = p, rule[len(p) :]
-                    break
-            try:
-                rule = rule.encode("idna").decode("ascii")
-            except UnicodeError:
-                print(f"Could not convert rule to Punycode: {prefix}{rule}", file=sys.stderr)
-                sys.exit(1)
-            line = f"{prefix}{rule.lower()}\n"
-        out.write(line)
+
+# Read and convert everything in memory first, then write atomically: a
+# truncated or failed conversion must never clobber the vendored list.
+with open(src, encoding="utf-8") as f:
+    lines = f.readlines()
+if not lines:
+    print(f"Source public suffix list is empty: {src}", file=sys.stderr)
+    sys.exit(1)
+
+converted = []
+for line in lines:
+    rule = line.strip()
+    if rule and not rule.startswith("//") and not rule.isascii():
+        # "!" and "*." prefixes are not valid IDNA, so encode only the
+        # domain part and re-attach the prefix afterwards.
+        prefix = ""
+        for p in ("!", "*."):
+            if rule.startswith(p):
+                prefix, rule = p, rule[len(p) :]
+                break
+        try:
+            rule = rule.encode("idna").decode("ascii")
+        except UnicodeError:
+            print(f"Could not convert rule to Punycode: {prefix}{rule}", file=sys.stderr)
+            sys.exit(1)
+        line = f"{prefix}{rule.lower()}\n"
+    converted.append(line)
+
+# The conversion is line-for-line, so the output must have exactly as many
+# lines as the input.
+if len(converted) != len(lines):
+    print(
+        f"Conversion lost lines: {len(lines)} in, {len(converted)} out",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+tmp = dst + ".tmp"
+with open(tmp, "w", encoding="utf-8") as out:
+    out.writelines(converted)
+os.replace(tmp, dst)
 EOF
 }
 
