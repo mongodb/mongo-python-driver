@@ -54,21 +54,6 @@ echo "Creating the git checkout... done."
 # from origin/main plus a fresh commit. This makes same-day retries idempotent.
 git push --force origin $branch
 
-# If a PR for this branch already exists (e.g. an earlier same-day attempt),
-# reuse it rather than failing to create a duplicate.
-existing_pr_url=$(curl -gs \
-    -H "Accept: application/vnd.github+json" \
-    -H "Authorization: Bearer $token" \
-    -H "X-GitHub-Api-Version: 2022-11-28" \
-    --url "https://api.github.com/repos/$owner/$repo/pulls?head=$owner:$branch&state=open" \
-    | jq -r '.[0].html_url // empty')
-if [ -n "$existing_pr_url" ]; then
-    echo "$existing_pr_url"
-    echo "Creating the PR... done. (PR already existed; branch was force-pushed)"
-    rm -rf $tools
-    exit 0
-fi
-
 # Build the payload as a file so the body content is always properly
 # JSON-escaped, rather than interpolated into the command line as text.
 payload_file=$(mktemp)
@@ -78,6 +63,29 @@ jq -n \
     --arg head "${branch}" \
     --rawfile body "$1" \
     '{title: $title, body: $body, head: $head, base: "main"}' > "$payload_file"
+
+# If a PR for this branch already exists (e.g. an earlier same-day attempt),
+# reuse it rather than failing to create a duplicate. Refresh its title and
+# body so the summary reflects this run.
+existing_pr_json=$(curl -gs \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer $token" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    --url "https://api.github.com/repos/$owner/$repo/pulls?head=$owner:$branch&state=open")
+existing_pr_url=$(echo "$existing_pr_json" | jq -r '.[0].html_url // empty')
+if [ -n "$existing_pr_url" ]; then
+    existing_pr_number=$(echo "$existing_pr_json" | jq -r '.[0].number // empty')
+    curl -sgX PATCH \
+        -H "Accept: application/vnd.github+json" \
+        -H "Authorization: Bearer $token" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        -d "{\"title\": \"[Spec Resync] $(date '+%m-%d-%Y')\", \"body\": $(jq -Rs . < "$1")}" \
+        --url "https://api.github.com/repos/$owner/$repo/pulls/${existing_pr_number}" > /dev/null
+    echo "$existing_pr_url"
+    echo "Creating the PR... done. (PR already existed; branch and summary were updated)"
+    rm -rf $tools
+    exit 0
+fi
 
 resp=$(curl -L \
     -X POST \
