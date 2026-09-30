@@ -49,7 +49,25 @@ git add ./test
 git commit -am "resyncing specs $(date '+%m-%d-%Y')"
 echo "Creating the git checkout... done."
 
-git push origin $branch
+# Force-push: the branch name is date-stamped, so any existing remote branch
+# is an artifact of an earlier same-day attempt and is always reproducible
+# from origin/main plus a fresh commit. This makes same-day retries idempotent.
+git push --force origin $branch
+
+# If a PR for this branch already exists (e.g. an earlier same-day attempt),
+# reuse it rather than failing to create a duplicate.
+existing_pr_url=$(curl -gs \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer $token" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    --url "https://api.github.com/repos/$owner/$repo/pulls?head=$owner:$branch&state=open" \
+    | jq -r '.[0].html_url // empty')
+if [ -n "$existing_pr_url" ]; then
+    echo "$existing_pr_url"
+    echo "Creating the PR... done. (PR already existed; branch was force-pushed)"
+    rm -rf $tools
+    exit 0
+fi
 
 # Build the payload as a file so the body content is always properly
 # JSON-escaped, rather than interpolated into the command line as text.
