@@ -85,7 +85,9 @@ cp_psl () {
       echo "Could not find the public suffix list at $src" >&2
       return 1
     fi
-    python - "$src" "$PYMONGO"/pymongo/public_suffix_list.dat <<'EOF'
+    # Use python3 explicitly: bare python may resolve to Python 2 on CI hosts,
+    # which cannot parse the f-strings below.
+    python3 - "$src" "$PYMONGO"/pymongo/public_suffix_list.dat <<'EOF'
 import sys
 
 src, dst = sys.argv[1], sys.argv[2]
