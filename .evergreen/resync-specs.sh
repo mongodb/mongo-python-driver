@@ -104,8 +104,7 @@ if not lines:
 converted = []
 for line in lines:
     rule = line.strip()
-    # ord() instead of str.isascii() for 3.6 compat.
-    if rule and not rule.startswith("//") and any(ord(ch) > 127 for ch in rule):
+    if rule and not rule.startswith("//") and not rule.isascii():
         # "!" and "*." prefixes are not valid IDNA, so encode only the
         # domain part and re-attach the prefix afterwards.
         prefix = ""
