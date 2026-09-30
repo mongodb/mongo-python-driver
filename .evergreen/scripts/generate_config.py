@@ -1300,6 +1300,11 @@ def create_run_server_func():
         "LOAD_BALANCER",
         "LOCAL_ATLAS",
         "NO_EXT",
+        # The AWS credentials are needed to download the "latest" nightly
+        # build from the private S3 bucket, see DRIVERS-3628.
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
     ]
     args = [".evergreen/just.sh", "run-server", "${TEST_NAME}"]
     sub_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)

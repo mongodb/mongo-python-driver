@@ -202,7 +202,9 @@ the pages will re-render and the browser will automatically refresh.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
     [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `$DRIVERS_TOOLS/.evergreen/run-mongodb.sh start -h`
-    for a full list of options.
+    for a full list of options.  By default the newest stable server release is used.  To test against the
+    nightly build instead, pass `--version latest`, which is downloaded from a private S3 bucket and requires
+    an `AWS_PROFILE` with [Drivers test secrets](https://github.com/mongodb-labs/drivers-evergreen-tools/tree/master/.evergreen/secrets_handling#secrets-handling) credentials.
 -   Run `just test` or `pytest` to run all of the tests.
 -   Append `test/<mod_name>.py::<class_name>::<test_name>` to run
     specific tests. You can omit the `<test_name>` to test a full class
