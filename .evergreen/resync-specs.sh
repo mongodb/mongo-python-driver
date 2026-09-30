@@ -85,9 +85,16 @@ cp_psl () {
       echo "Could not find the public suffix list at $src" >&2
       return 1
     fi
-    # Use python3 explicitly: bare python may resolve to Python 2 on CI hosts,
-    # which cannot parse the f-strings below.
-    python3 - "$src" "$PYMONGO"/pymongo/public_suffix_list.dat <<'EOF'
+    # Prefer the toolchain interpreter on Evergreen hosts: bare python may
+    # resolve to Python 2, and the default python3 there may be RHEL8's
+    # platform-python 3.6, which predates the APIs used below. Fall back to
+    # python3 locally.
+    if [ -x /opt/devtools/bin/python3.11 ]; then
+        PY=/opt/devtools/bin/python3.11
+    else
+        PY=python3
+    fi
+    "$PY" - "$src" "$PYMONGO"/pymongo/public_suffix_list.dat <<'EOF'
 import os
 import sys
 
@@ -104,7 +111,8 @@ if not lines:
 converted = []
 for line in lines:
     rule = line.strip()
-    if rule and not rule.startswith("//") and not rule.isascii():
+    # str.isascii() is 3.7+; keep this 3.6-compatible via ord().
+    if rule and not rule.startswith("//") and any(ord(ch) > 127 for ch in rule):
         # "!" and "*." prefixes are not valid IDNA, so encode only the
         # domain part and re-attach the prefix afterwards.
         prefix = ""
