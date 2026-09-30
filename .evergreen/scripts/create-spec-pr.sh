@@ -32,7 +32,8 @@ echo "Creating the git checkout..."
 branch="spec-resync-"$(date '+%m-%d-%Y')
 
 git remote set-url origin https://x-access-token:${token}@github.com/$owner/$repo.git
-git checkout -b $branch "origin/main"
+# -B resets the branch if a reused checkout already has it, keeping reruns idempotent.
+git checkout -B "$branch" "origin/main"
 
 # Attribute the commit to the bot user; fall back to the host identity.
 bot_login="mongodb-drivers-pr-bot[bot]"

@@ -59,6 +59,7 @@ def apply_patches(errored):
                     ],
                     check=True,
                     stderr=subprocess.PIPE,
+                    text=True,
                 )
             except CalledProcessError as exc:
                 errored[f"{patch}"] = exc.stderr
