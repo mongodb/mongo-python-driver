@@ -976,24 +976,44 @@ class Pool:
         else:
             deadline = None
 
-        with self.size_cond:
-            self._raise_if_not_ready(checkout_started_time, emit_event=True)
-            while not (self.requests < self.max_pool_size):
-                timeout = deadline - time.monotonic() if deadline else None
-                if not _cond_wait(self.size_cond, timeout):
-                    # Timed out, notify the next thread to ensure a
-                    # timeout doesn't consume the condition.
-                    if self.requests < self.max_pool_size:
-                        self.size_cond.notify()
-                    self._raise_wait_queue_timeout(checkout_started_time)
+        # Roll back the size gate if a BaseException lands here (PYTHON-6136).
+        requests_incremented = False
+        try:
+            with self.size_cond:
                 self._raise_if_not_ready(checkout_started_time, emit_event=True)
-            self.requests += 1
+                while not (self.requests < self.max_pool_size):
+                    timeout = deadline - time.monotonic() if deadline else None
+                    if not _cond_wait(self.size_cond, timeout):
+                        # Timed out, notify the next thread to ensure a
+                        # timeout doesn't consume the condition.
+                        if self.requests < self.max_pool_size:
+                            self.size_cond.notify()
+                        self._raise_wait_queue_timeout(checkout_started_time)
+                    self._raise_if_not_ready(checkout_started_time, emit_event=True)
+                self.requests += 1
+                requests_incremented = True
+        except BaseException:
+            if requests_incremented:
+                # Gevent grants the re-acquire during unwind (PYTHON-6074).
+                accounted = False
+                try:
+                    with self.size_cond:
+                        self.requests -= 1
+                        accounted = True
+                        self.size_cond.notify()
+                finally:
+                    if not accounted:
+                        with self.size_cond:
+                            self.requests -= 1
+                            self.size_cond.notify()
+            raise
 
         # We've now acquired the semaphore and must release it on error.
         conn = None
         incremented = False
         emitted_event = False
         is_new_conn = False
+        pending_incremented = False
         try:
             with self.lock:
                 self.active_sockets += 1
@@ -1018,6 +1038,7 @@ class Pool:
                         conn = self.conns.popleft()
                     except IndexError:
                         self._pending += 1
+                        pending_incremented = True
                 if conn:  # We got a socket from the pool
                     if self._perished(conn):
                         conn = None
@@ -1029,6 +1050,7 @@ class Pool:
                     finally:
                         with self._max_connecting_cond:
                             self._pending -= 1
+                            pending_incremented = False
                             self._max_connecting_cond.notify()
 
             conn.active = True
@@ -1039,12 +1061,24 @@ class Pool:
                     self.active_contexts.add(conn.cancel_context)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
+            if pending_incremented:
+                # Gevent grants the re-acquire during unwind (PYTHON-6074).
+                pending_accounted = False
+                try:
+                    with self._max_connecting_cond:
+                        self._pending -= 1
+                        pending_accounted = True
+                        self._max_connecting_cond.notify()
+                finally:
+                    if not pending_accounted:
+                        with self._max_connecting_cond:
+                            self._pending -= 1
+                            self._max_connecting_cond.notify()
+
             if conn:
                 # We checked out a socket but authentication failed.
                 conn.close_conn(ConnectionClosedReason.ERROR)
-            # Re-apply the accounting if a GreenletExit interrupts
-            # during the size_cond acquisition; during unwind gevent
-            # lets the re-acquire complete (PYTHON-6074).
+            # Re-apply the accounting if a BaseException interrupts here (PYTHON-6074).
             accounted = False
             try:
                 with self.size_cond:
@@ -1117,9 +1151,7 @@ class Pool:
         conn.pinned_cursor = False
         self._pinned_sockets.discard(conn)
         forked = self.pid != os.getpid()
-        # Re-apply the accounting if a gevent GreenletExit interrupts during
-        # the size_cond acquisition; gevent lets the re-acquire complete while
-        # unwinding (PYTHON-6074).
+        # Re-apply the accounting if a BaseException interrupts here (PYTHON-6074).
         close_conn_reason: Optional[str] = None
         emit_closed = False
         accounted = False
