@@ -16,6 +16,7 @@ on:
       - "justfile"
       - "pyproject.toml"
       - "uv.lock"
+      - "requirements/mod_wsgi.txt"
   pull_request:
     paths:
       - ".evergreen/scripts/mod_wsgi_*"
@@ -30,6 +31,7 @@ on:
       - "justfile"
       - "pyproject.toml"
       - "uv.lock"
+      - "requirements/mod_wsgi.txt"
   workflow_dispatch:
 
 concurrency:
@@ -87,12 +89,11 @@ jobs:
         run: |
           export PYMONGO_C_EXT_MUST_BUILD=1
           just install
-          uv sync --group mod_wsgi --refresh-package pymongo
+          # just install skips the sync when uv is already set up.
+          uv sync --refresh-package pymongo
           uv run --no-sync python tools/fail_if_no_c.py
-          # Re-resolve at the lowest direct versions, including the mod_wsgi
-          # group: uv sync above installed the locked version, but this job
-          # must exercise the group's mod_wsgi>=4.9.4 lower bound.
-          uv pip install -e ".[test]" --group mod_wsgi --resolution=lowest-direct --force-reinstall
+          # Exercise the mod_wsgi>=4.9.4 lower bound.
+          uv pip install -e ".[test]" -r requirements/mod_wsgi.txt --resolution=lowest-direct --force-reinstall
       - name: Start MongoDB
         # Fedora is not a supported MongoDB platform, so install the RHEL build
         # directly instead of using the drivers-evergreen-tools action, which
@@ -153,7 +154,9 @@ jobs:
         run: |
           export PYMONGO_C_EXT_MUST_BUILD=1
           just install
-          uv sync --group mod_wsgi --refresh-package pymongo
+          # just install skips the sync when uv is already set up.
+          uv sync --refresh-package pymongo
+          uv pip install -r requirements/mod_wsgi.txt
           uv run --no-sync python tools/fail_if_no_c.py
       - id: setup-mongodb
         uses: mongodb-labs/drivers-evergreen-tools@49da51cebc0060b4d699d57bdef30ee7e071de44
