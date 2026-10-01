@@ -1065,39 +1065,42 @@ class Pool:
                     self.active_contexts.add(conn.cancel_context)
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
-            if pending_incremented:
-                # Gevent grants the re-acquire during unwind (PYTHON-6074).
-                pending_accounted = False
-                try:
-                    async with self._max_connecting_cond:
-                        self._pending -= 1
-                        pending_accounted = True
-                        self._max_connecting_cond.notify()
-                finally:
-                    if not pending_accounted:
+            try:
+                if pending_incremented:
+                    # Gevent grants the re-acquire during unwind (PYTHON-6074).
+                    pending_accounted = False
+                    try:
                         async with self._max_connecting_cond:
                             self._pending -= 1
+                            pending_accounted = True
                             self._max_connecting_cond.notify()
+                    finally:
+                        if not pending_accounted:
+                            async with self._max_connecting_cond:
+                                self._pending -= 1
+                                self._max_connecting_cond.notify()
 
-            if conn:
-                # We checked out a socket but authentication failed.
-                await conn.close_conn(ConnectionClosedReason.ERROR)
-            # Re-apply the accounting if a BaseException interrupts here (PYTHON-6074).
-            accounted = False
-            try:
-                async with self.size_cond:
-                    self.requests -= 1
-                    if incremented:
-                        self.active_sockets -= 1
-                    accounted = True
-                    self.size_cond.notify()
+                if conn:
+                    # We checked out a socket but authentication failed.
+                    await conn.close_conn(ConnectionClosedReason.ERROR)
             finally:
-                if not accounted:
+                # Always roll back the size gate, even if the cleanups above
+                # were interrupted (PYTHON-6136).
+                accounted = False
+                try:
                     async with self.size_cond:
                         self.requests -= 1
                         if incremented:
                             self.active_sockets -= 1
+                        accounted = True
                         self.size_cond.notify()
+                finally:
+                    if not accounted:
+                        async with self.size_cond:
+                            self.requests -= 1
+                            if incremented:
+                                self.active_sockets -= 1
+                            self.size_cond.notify()
 
             if not emitted_event:
                 self._telemetry.checkout_failed(
