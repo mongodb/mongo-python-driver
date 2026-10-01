@@ -19,3 +19,20 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 0
+  # Python (pip). Manages requirements/mod_wsgi.txt only; the other
+  # requirements files are resolved in uv.lock.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    exclude-paths:
+      - "/pyproject.toml"
+      - "/requirements.txt"
+      - "/requirements/aws.txt"
+      - "/requirements/docs.txt"
+      - "/requirements/encryption.txt"
+      - "/requirements/gssapi.txt"
+      - "/requirements/ocsp.txt"
+      - "/requirements/snappy.txt"
+      - "/requirements/test.txt"
+      - "/requirements/zstd.txt"
