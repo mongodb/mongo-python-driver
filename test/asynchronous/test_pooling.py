@@ -361,13 +361,14 @@ class TestPooling(_TestPoolingBase):
 
     async def test_checkout_error_accounting_on_kill_during_pending_cleanup(self):
         # PYTHON-6136: an interruption during the pending-gate cleanup must
-        # not skip the size-gate rollback below it.
+        # not skip the counter restore, which must wake maxConnecting waiters.
         cx_pool = await self.create_pool(max_pool_size=1)
 
         class _InterruptOnSecondEnter(type(cx_pool._max_connecting_cond)):
             def __init__(self, lock):
                 super().__init__(lock)
                 self.enters = 0
+                self.notifies = 0
 
             async def __aenter__(self):
                 self.enters += 1
@@ -381,10 +382,13 @@ class TestPooling(_TestPoolingBase):
                 return await super().__aexit__(*args)
 
             def notify(self, n=1):
-                # The handler's pending-gate rollback is itself killed.
+                # The counter restore wakes maxConnecting waiters, then is
+                # itself killed.
+                self.notifies += 1
                 raise KeyboardInterrupt()
 
-        cx_pool._max_connecting_cond = _InterruptOnSecondEnter(cx_pool._max_connecting_cond._lock)
+        cond = _InterruptOnSecondEnter(cx_pool._max_connecting_cond._lock)
+        cx_pool._max_connecting_cond = cond
 
         with patch.object(cx_pool, "connect", side_effect=asyncio.CancelledError()):
             with self.assertRaises(KeyboardInterrupt):
@@ -395,6 +399,8 @@ class TestPooling(_TestPoolingBase):
         self.assertEqual(0, cx_pool.active_sockets)
         self.assertEqual(0, cx_pool._pending)
         self.assertEqual(0, cx_pool.operation_count)
+        # The restore notified the maxConnecting gate before the kill.
+        self.assertEqual(1, cond.notifies)
 
     async def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.

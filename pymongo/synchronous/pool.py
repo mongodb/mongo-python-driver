@@ -1099,12 +1099,17 @@ class Pool:
                 if applied & _UNDO_REQUESTS:
                     # A pool slot was freed; wake the next witer.
                     self.size_cond.notify()
+                if applied & _UNDO_PENDING:
+                    # A maxConnecting slot was freed; wake the next witer.
+                    self._max_connecting_cond.notify()
         finally:
             if not accounted:
                 with self.size_cond:
                     self._restore_applied(applied)
                     if applied & _UNDO_REQUESTS:
                         self.size_cond.notify()
+                    if applied & _UNDO_PENDING:
+                        self._max_connecting_cond.notify()
 
     def _checkin_apply(
         self, conn: Connection, txn: bool, cursor: bool, forked: bool

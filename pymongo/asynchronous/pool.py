@@ -1103,12 +1103,17 @@ class Pool:
                 if applied & _UNDO_REQUESTS:
                     # A pool slot was freed; wake the next waiter.
                     self.size_cond.notify()
+                if applied & _UNDO_PENDING:
+                    # A maxConnecting slot was freed; wake the next waiter.
+                    self._max_connecting_cond.notify()
         finally:
             if not accounted:
                 async with self.size_cond:
                     self._restore_applied(applied)
                     if applied & _UNDO_REQUESTS:
                         self.size_cond.notify()
+                    if applied & _UNDO_PENDING:
+                        self._max_connecting_cond.notify()
 
     def _checkin_apply(
         self, conn: AsyncConnection, txn: bool, cursor: bool, forked: bool
