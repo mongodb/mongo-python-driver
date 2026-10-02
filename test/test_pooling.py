@@ -342,6 +342,56 @@ class TestPooling(_TestPoolingBase):
         self.assertEqual(0, cx_pool.requests)
         self.assertEqual(0, cx_pool.active_sockets)
 
+    def test_checkout_error_accounting_on_connect_keyboard_interrupt(self):
+        # PYTHON-6136: a KeyboardInterrupt from connect() must roll back the
+        # size gate, the maxConnecting gate, and active_sockets.
+        cx_pool = self.create_pool(max_pool_size=1)
+
+        with patch.object(cx_pool, "connect", side_effect=KeyboardInterrupt()):
+            with self.assertRaises(KeyboardInterrupt):
+                with cx_pool.checkout():
+                    pass
+
+        self.assertEqual(0, cx_pool.requests)
+        self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool._pending)
+
+    def test_checkout_error_accounting_on_kill_during_pending_cleanup(self):
+        # PYTHON-6136: an interruption during the pending-gate cleanup must
+        # not skip the size-gate rollback below it.
+        cx_pool = self.create_pool(max_pool_size=1)
+
+        class _InterruptOnSecondEnter(type(cx_pool._max_connecting_cond)):
+            def __init__(self, lock):
+                super().__init__(lock)
+                self.enters = 0
+
+            def __enter__(self):
+                self.enters += 1
+                if self.enters == 2:
+                    # First enter is the checkout wait, second is connect()'s
+                    # cleanup. Simulate a kill delivered while waiting there.
+                    raise KeyboardInterrupt()
+                return super().__enter__()
+
+            def __exit__(self, *args):
+                return super().__exit__(*args)
+
+            def notify(self, n=1):
+                # The handler's pending-gate rollback is itself killed.
+                raise KeyboardInterrupt()
+
+        cx_pool._max_connecting_cond = _InterruptOnSecondEnter(cx_pool._max_connecting_cond._lock)
+
+        with patch.object(cx_pool, "connect", side_effect=asyncio.CancelledError()):
+            with self.assertRaises(KeyboardInterrupt):
+                with cx_pool.checkout():
+                    pass
+
+        self.assertEqual(0, cx_pool.requests)
+        self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool._pending)
+
     def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.
         cx_pool = self.create_pool()
