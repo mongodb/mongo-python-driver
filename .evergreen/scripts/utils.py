@@ -85,6 +85,9 @@ SUB_TEST_NAME_MAP: dict[str, list[str] | None] = {
 
 EXTRA_TESTS = ["aws_lambda", "doctest"]
 
+# The managed Python version used for perf tests (PYTHON-6135).
+PERF_PYTHON_VERSION = "3.10.11"
+
 # Tests that do not use run-mongodb directly.
 NO_RUN_ORCHESTRATION = [
     "auth_oidc",

@@ -3,7 +3,7 @@ Concatenate requirements files into sbom-requirements.txt at repository root.
 
 - Includes repo_root/requirements.txt if present
 - Includes all files matching repo_root/requirements/**/*.txt
-- Excludes docs.txt and test.txt in the requirements folder
+- Excludes docs.txt, test.txt, and mod_wsgi.txt in the requirements folder
 - Writes output to sbom-requirements.txt (overwrites)
 """
 
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-EXCLUDED_NAMES = {"docs.txt", "test.txt"}
+EXCLUDED_NAMES = {"docs.txt", "test.txt", "mod_wsgi.txt"}
 
 
 def collect_files(root: Path) -> list[Path]:

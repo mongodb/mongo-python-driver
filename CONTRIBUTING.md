@@ -364,7 +364,7 @@ Continuous integration runs the tests on pull requests that change
 mod_wsgi-relevant files, in the `test-mod-wsgi.yml` workflow.
 
 To run the tests by hand, install Apache and mod_wsgi (`sudo apt-get install -y apache2
-apache2-dev` and `uv sync --group mod_wsgi` on Ubuntu), then:
+apache2-dev` and `uv pip install -r requirements/mod_wsgi.txt` on Ubuntu), then:
 
 - On Linux, run `TOPOLOGY=replica_set just run-server`.
 - Run `just setup-tests mod_wsgi <mode>`.

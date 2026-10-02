@@ -13,6 +13,7 @@ from utils import (
     ENV_FILE,
     HERE,
     LOGGER,
+    PERF_PYTHON_VERSION,
     PLATFORM,
     ROOT,
     TEST_SUITE_MAP,
@@ -51,9 +52,6 @@ EXTRAS_MAP = {
 
 # Map the test name to test group.
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
-
-# The python version used for perf tests.
-PERF_PYTHON_VERSION = "3.10.11"
 
 # The libmongocrypt release used when LIBMONGOCRYPT_URL is not set. Must be at
 # least 1.20.0 for the GA "substring" query type.
@@ -513,13 +511,12 @@ def handle_test_env() -> None:
             run_command("tar xf single_and_multi_document.tgz", cwd=data_dir)
         write_env("TEST_PATH", str(data_dir))
         write_env("OUTPUT_FILE", str(ROOT / "results.json"))
-        # Overwrite the UV_PYTHON value from env.sh, and unset the toolchain
-        # search-path variables: an empty value would make uv reject the request,
-        # and a toolchain path would miss the exact patch version requested.
-        write_env("UV_PYTHON", "")
+        # The toolchain build may be this same patch version but is not
+        # optimized, which regressed CPU-bound benchmarks (PYTHON-6135).
+        write_env("UV_PYTHON", PERF_PYTHON_VERSION)
+        write_env("UV_PYTHON_PREFERENCE", "only-managed")
         with ENV_FILE.open("a", newline="\n") as fid:
             fid.write("unset UV_PYTHON_SEARCH_PATH\n")
-            fid.write("unset UV_PYTHON_PREFERENCE\n")
 
         UV_ARGS.append(f"--python={PERF_PYTHON_VERSION}")
 

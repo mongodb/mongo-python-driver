@@ -41,10 +41,11 @@ with the matching config file (``apache24ubuntu.conf`` or
 Install mod_wsgi
 ................
 
-The project defines a ``mod_wsgi`` dependency group used for testing. pip
-builds mod_wsgi against the interpreter it is installed with::
+mod_wsgi is only needed by these tests, so it is not a project dependency.
+Its constraint lives in ``requirements/mod_wsgi.txt``. pip builds mod_wsgi
+against the interpreter it is installed with::
 
-    uv sync --group mod_wsgi
+    uv pip install -r requirements/mod_wsgi.txt
 
 Start mongod
 ............

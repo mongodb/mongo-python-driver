@@ -26,6 +26,9 @@ else
   exit 1
 fi
 
+# No-op on Evergreen (just.sh already ran this); needed for direct/local runs (PYTHON-6135).
+. $SCRIPT_DIR/scripts/setup-uv-python.sh
+
 # Start the test runner.
 echo "Running tests with UV_PYTHON=${UV_PYTHON:-} UV_PYTHON_SEARCH_PATH=${UV_PYTHON_SEARCH_PATH:-}..."
 echo "UV_ARGS=${UV_ARGS}"
