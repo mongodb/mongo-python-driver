@@ -43,6 +43,7 @@ from shrub.v3.evg_command import (
     git_get_project,
 )
 from shrub.v3.evg_task import EvgTask, EvgTaskDependency, EvgTaskRef
+from utils import PERF_PYTHON_VERSION
 
 ##############
 # Variants
@@ -1087,10 +1088,6 @@ def create_search_index_tasks():
     tags = ["search_index"]
     commands = [assume_func, server_func, test_func]
     return [EvgTask(name=task_name, tags=tags, commands=commands)]
-
-
-# Keep in sync with PERF_PYTHON_VERSION in setup_tests.py.
-PERF_PYTHON_VERSION = "3.10.11"
 
 
 def create_perf_tasks():

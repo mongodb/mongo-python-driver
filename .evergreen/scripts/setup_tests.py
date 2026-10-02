@@ -13,6 +13,7 @@ from utils import (
     ENV_FILE,
     HERE,
     LOGGER,
+    PERF_PYTHON_VERSION,
     PLATFORM,
     ROOT,
     TEST_SUITE_MAP,
@@ -50,9 +51,6 @@ EXTRAS_MAP = {
 
 # Map the test name to test group.
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
-
-# Keep in sync with PERF_PYTHON_VERSION in generate_config.py.
-PERF_PYTHON_VERSION = "3.10.11"
 
 # The libmongocrypt release used when LIBMONGOCRYPT_URL is not set. Must be at
 # least 1.20.0 for the GA "substring" query type.
