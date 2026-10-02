@@ -722,9 +722,15 @@ class TestBSON(unittest.TestCase):
     def test_encode_size_limit(self):
         # PYTHON-5996: encoding must raise when a document's encoded size
         # exceeds the BSON size limit.
-        big_value = "a" * (1 << 30)
-        with self.assertRaises(ValueError):
-            encode({"a": big_value, "b": big_value, "c": big_value})
+        try:
+            big_value = "a" * (1 << 30)
+            with self.assertRaises(ValueError):
+                encode({"a": big_value, "b": big_value, "c": big_value})
+        except MemoryError:
+            # PYTHON-6140: some hosts report enough installed memory but
+            # cannot actually commit it (pagefile limits, mongod running on
+            # the same host).  Skip rather than fail.
+            self.skipTest("Could not allocate enough memory (PYTHON-6140)")
 
     def test_small_long_encode_decode(self):
         encoded1 = encode({"x": 256})
