@@ -75,6 +75,29 @@ from test.helpers import ExceptionCatchingTask
 _NUMPY_AVAILABLE = importlib.util.find_spec("numpy") is not None
 
 
+def _total_memory():
+    """Return total physical memory in bytes, or None if it cannot be determined."""
+    if sys.platform == "win32":
+        import ctypes
+
+        memory = ctypes.c_ulonglong()
+        if ctypes.windll.kernel32.GetPhysicallyInstalledSystemMemory(ctypes.byref(memory)):
+            return memory.value * 1024
+        return None
+    try:
+        return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+    except (ValueError, OSError, AttributeError):
+        return None
+
+
+# PYTHON-6140: skip if the host cannot allocate the ~4GiB this test needs.
+_TOTAL_MEMORY = _total_memory()
+_ENCODE_SIZE_LIMIT_MIN_MEMORY = 6 << 30
+_SKIP_ENCODE_SIZE_LIMIT = (
+    _TOTAL_MEMORY is not None and _TOTAL_MEMORY < _ENCODE_SIZE_LIMIT_MIN_MEMORY
+)
+
+
 class NotADict(abc.MutableMapping):
     """Non-dict type that implements the mapping protocol."""
 
@@ -692,6 +715,10 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(OverflowError, encode, {"x": -9223372036854775809})
 
     @unittest.skipUnless(bson.has_c(), "This test requires the C extension")
+    @unittest.skipIf(
+        _SKIP_ENCODE_SIZE_LIMIT,
+        "Test requires at least 6GiB of memory (PYTHON-6140)",
+    )
     def test_encode_size_limit(self):
         # PYTHON-5996: encoding must raise when a document's encoded size
         # exceeds the BSON size limit.
