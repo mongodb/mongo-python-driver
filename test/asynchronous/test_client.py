@@ -2866,11 +2866,14 @@ class TestExhaustCursor(AsyncIntegrationTest):
                     client.close()
             except Timeout:
                 pass
-        # Post-settle: the counters must have fully drained.
+        # Post-settle: the counters must have fully drained. Note close()
+        # does not zero operation_count (only a fork does), so a leaked
+        # increment survives and is caught here.
         time.sleep(1.0)
         self.assertEqual(pool.requests, 0)
         self.assertEqual(pool._pending, 0)
         self.assertEqual(pool.active_sockets, 0)
+        self.assertEqual(pool.operation_count, 0)
 
 
 class TestClientLazyConnect(AsyncIntegrationTest):
