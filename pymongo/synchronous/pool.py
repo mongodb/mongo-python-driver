@@ -1117,6 +1117,9 @@ class Pool:
                     self._max_connecting_cond.notify()
                     notified |= _UNDO_PENDING
         finally:
+            # Always reacquired: `applied` keeps restore-only flags
+            # `notified` never tracks, so skipping needs a mask synced
+            # to the notify sites; uncontended acquires don't yield (PYTHON-6136).
             with self.size_cond:
                 if not accounted:
                     self._restore_applied(applied)
