@@ -9,6 +9,7 @@
 #   UV_PYTHON_SEARCH_PATH - the Python toolchain bin dir for the request, so uv
 #                           uses the toolchain Python instead of downloading one.
 #   UV_PYTHON_PREFERENCE  - "system" so the toolchain wins over managed installs.
+#                           A preference set by the task is left alone.
 #   UV_PYTHON             - the Python interpreter uv uses; defaults to CPython
 #                           3.10 when the task does not set one.
 set -euo pipefail
@@ -85,11 +86,11 @@ elif _dir=$(_toolchain_dir "$UV_PYTHON"); then
   _search_path="$_dir"
 fi
 
-# Point uv at the toolchain Python when there is one. On CI the toolchain dir
-# is already first on PATH (configure-env.sh), so this mainly benefits local
-# hosts and later steps, keeping `uv sync` and `uv tool install` on the
-# toolchain interpreter instead of downloading a managed one.
-if [ -n "$_search_path" ]; then
+# Point uv at the toolchain Python when there is one and the task did not set
+# its own preference: a task-level UV_PYTHON_PREFERENCE wins (PYTHON-6135).
+# On CI the toolchain dir is already first on PATH (configure-env.sh), so this
+# mainly benefits local hosts and later steps.
+if [ -n "$_search_path" ] && [ -z "${UV_PYTHON_PREFERENCE:-}" ]; then
   export UV_PYTHON_SEARCH_PATH="$_search_path"
   export UV_PYTHON_PREFERENCE="system"
 fi

@@ -43,6 +43,7 @@ from shrub.v3.evg_command import (
     git_get_project,
 )
 from shrub.v3.evg_task import EvgTask, EvgTaskDependency, EvgTaskRef
+from utils import PERF_PYTHON_VERSION
 
 ##############
 # Variants
@@ -1092,9 +1093,12 @@ def create_search_index_tasks():
 def create_perf_tasks():
     tasks = []
     for version, ssl, sync in product(["8.0"], ["ssl", "nossl"], ["sync", "async"]):
-        vars = dict(VERSION=f"v{version}-perf", SSL=ssl)
+        # The toolchain build may be this same patch version but is not
+        # optimized, which regressed CPU-bound benchmarks (PYTHON-6135).
+        perf_vars = dict(UV_PYTHON=PERF_PYTHON_VERSION, UV_PYTHON_PREFERENCE="only-managed")
+        vars = dict(VERSION=f"v{version}-perf", SSL=ssl, **perf_vars)
         server_func = FunctionCall(func="run server", vars=vars)
-        vars = dict(TEST_NAME="perf", SUB_TEST_NAME=sync)
+        vars = dict(TEST_NAME="perf", SUB_TEST_NAME=sync, **perf_vars)
         test_func = FunctionCall(func="run tests", vars=vars)
         attach_func = FunctionCall(func="attach benchmark test results")
         send_func = FunctionCall(func="send dashboard data")
@@ -1313,6 +1317,7 @@ def create_run_server_func():
         "SSL",
         "ORCHESTRATION_FILE",
         "UV_PYTHON",
+        "UV_PYTHON_PREFERENCE",
         "STORAGE_ENGINE",
         "REQUIRE_API_VERSION",
         "DRIVERS_TOOLS",
@@ -1342,6 +1347,7 @@ def create_run_tests_func():
         "AWS_SESSION_TOKEN",
         "COVERAGE",
         "UV_PYTHON",
+        "UV_PYTHON_PREFERENCE",
         "LIBMONGOCRYPT_URL",
         "MONGODB_URI",
         "DISABLE_TEST_COMMANDS",
