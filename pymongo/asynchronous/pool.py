@@ -1050,7 +1050,16 @@ class Pool:
                         async with self._max_connecting_cond:
                             self._pending -= 1
                             applied &= ~_UNDO_PENDING
-                            self._max_connecting_cond.notify()
+                            notified = False
+                            try:
+                                self._max_connecting_cond.notify()
+                                notified = True
+                            finally:
+                                if not notified:
+                                    # A kill landed inside notify() (a gevent
+                                    # yield point); retry so a waiter is not
+                                    # stranded (PYTHON-6136).
+                                    self._max_connecting_cond.notify()
 
             conn.active = True
             # connect() already adds cancel_context for new connections; only add

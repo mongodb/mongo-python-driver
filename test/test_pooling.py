@@ -404,6 +404,37 @@ class TestPooling(_TestPoolingBase):
         # by the kill was retried.
         self.assertEqual(2, cond.notifies)
 
+    def test_checkout_error_accounting_on_kill_during_pending_notify(self):
+        # PYTHON-6136: a kill landing inside the cleanup notify must not
+        # strand a checkout waiting at the maxConnecting gate.
+        cx_pool = self.create_pool(max_pool_size=1)
+
+        class _InterruptOnFirstNotify(type(cx_pool._max_connecting_cond)):
+            def __init__(self, lock):
+                super().__init__(lock)
+                self.notifies = 0
+
+            def notify(self, n=1):
+                self.notifies += 1
+                if self.notifies == 1:
+                    # Simulate a kill delivered inside notify().
+                    raise KeyboardInterrupt()
+
+        cond = _InterruptOnFirstNotify(cx_pool._max_connecting_cond._lock)
+        cx_pool._max_connecting_cond = cond
+
+        with patch.object(cx_pool, "connect", side_effect=asyncio.CancelledError()):
+            with self.assertRaises(KeyboardInterrupt):
+                with cx_pool.checkout():
+                    pass
+
+        # The cleanup notify was interrupted, then retried.
+        self.assertEqual(2, cond.notifies)
+        self.assertEqual(0, cx_pool.requests)
+        self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool._pending)
+        self.assertEqual(0, cx_pool.operation_count)
+
     def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.
         cx_pool = self.create_pool()
