@@ -108,8 +108,12 @@ The Evergreen configuration no longer runs these tests automatically. They
 can only be run from an Evergreen Linux host that has the Python toolchain::
 
     just run-server  # or: TOPOLOGY=replica_set just run-server
-    just setup-tests mod_wsgi <mode>  # mode is "standalone" or "embedded"
+    just setup-tests mod_wsgi standalone  # or: just setup-tests mod_wsgi embedded
     just run-tests
+    just teardown-tests
+
+Run ``just teardown-tests`` even if the tests fail: it stops the Apache
+instance started by the setup step, which ``just run-tests`` leaves running.
 
 The `mod_wsgi_tester.py <https://github.com/mongodb/mongo-python-driver/blob/main/.evergreen/scripts/mod_wsgi_tester.py>`_
 helper performs the Apache setup, test, and teardown steps that the ``just``
