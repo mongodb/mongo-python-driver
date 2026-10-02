@@ -1057,8 +1057,8 @@ class Pool:
                             finally:
                                 if not notified:
                                     # A kill landed inside notify() (a gevent
-                                    # yield point); retry so a waiter is not
-                                    # stranded (PYTHON-6136).
+                                    # yield point); retry so a waiting
+                                    # checkout is not stranded (PYTHON-6136).
                                     self._max_connecting_cond.notify()
 
             conn.active = True
