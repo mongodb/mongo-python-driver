@@ -104,7 +104,8 @@ the workaround added in `PYTHON-569 <https://jira.mongodb.org/browse/PYTHON-569>
 Automation
 ----------
 
-At MongoDB, Inc. we use a continuous integration job that tests each
-combination in the matrix. The job starts up Apache, starts a single server
-or replica set, and runs ``test_client.py`` with the proper arguments.
-See `run-mod-wsgi-tests.sh <https://github.com/mongodb/mongo-python-driver/blob/master/.evergreen/scripts/run-mod-wsgi-tests.sh>`_
+The Evergreen configuration no longer runs these tests automatically. They
+can be run by hand with the ``mod_wsgi_tester.py`` helper, which starts up
+Apache, starts a single server or replica set, and runs ``test_client.py``
+with the proper arguments.
+See `mod_wsgi_tester.py <https://github.com/mongodb/mongo-python-driver/blob/main/.evergreen/scripts/mod_wsgi_tester.py>`_
