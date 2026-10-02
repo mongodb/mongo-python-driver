@@ -1093,27 +1093,33 @@ class Pool:
     async def _restore_counters(self, applied: int) -> None:
         """Restore the counters a failed checkout incremented (PYTHON-6136).
 
-        Gevent grants the re-acquire during unwind (PYTHON-6074).
+        Gevent grants the re-acquire during unwind (PYTHON-6074). A kill can
+        also land inside notify() (a yield point), so notifications are
+        tracked and retried separately from the counter restore.
         """
         accounted = False
+        notified = 0
         try:
             async with self.size_cond:
                 self._restore_applied(applied)
                 accounted = True
                 if applied & _UNDO_REQUESTS:
-                    # A pool slot was freed; wake the next waiter.
+                    # A pool slot was freed; wake the next waiting thread.
                     self.size_cond.notify()
+                    notified |= _UNDO_REQUESTS
                 if applied & _UNDO_PENDING:
-                    # A maxConnecting slot was freed; wake the next waiter.
+                    # A maxConnecting slot was freed; wake the next waiting thread.
                     self._max_connecting_cond.notify()
+                    notified |= _UNDO_PENDING
         finally:
-            if not accounted:
-                async with self.size_cond:
+            async with self.size_cond:
+                if not accounted:
                     self._restore_applied(applied)
-                    if applied & _UNDO_REQUESTS:
-                        self.size_cond.notify()
-                    if applied & _UNDO_PENDING:
-                        self._max_connecting_cond.notify()
+                missing = applied & ~notified
+                if missing & _UNDO_REQUESTS:
+                    self.size_cond.notify()
+                if missing & _UNDO_PENDING:
+                    self._max_connecting_cond.notify()
 
     def _checkin_apply(
         self, conn: AsyncConnection, txn: bool, cursor: bool, forked: bool

@@ -361,7 +361,8 @@ class TestPooling(_TestPoolingBase):
 
     def test_checkout_error_accounting_on_kill_during_pending_cleanup(self):
         # PYTHON-6136: an interruption during the pending-gate cleanup must
-        # not skip the counter restore, which must wake maxConnecting witers.
+        # not skip the counter restore, which must wake threads waiting at
+        # the maxConnecting gate.
         cx_pool = self.create_pool(max_pool_size=1)
 
         class _InterruptOnSecondEnter(type(cx_pool._max_connecting_cond)):
@@ -382,7 +383,7 @@ class TestPooling(_TestPoolingBase):
                 return super().__exit__(*args)
 
             def notify(self, n=1):
-                # The counter restore wakes maxConnecting witers, then is
+                # The counter restore wakes the maxConnecting gate, then is
                 # itself killed.
                 self.notifies += 1
                 raise KeyboardInterrupt()
@@ -399,8 +400,9 @@ class TestPooling(_TestPoolingBase):
         self.assertEqual(0, cx_pool.active_sockets)
         self.assertEqual(0, cx_pool._pending)
         self.assertEqual(0, cx_pool.operation_count)
-        # The restore notified the maxConnecting gate before the kill.
-        self.assertEqual(1, cond.notifies)
+        # The restore notified the maxConnecting gate; the notify interrupted
+        # by the kill was retried.
+        self.assertEqual(2, cond.notifies)
 
     def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.
