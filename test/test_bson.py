@@ -77,24 +77,20 @@ _NUMPY_AVAILABLE = importlib.util.find_spec("numpy") is not None
 
 def _total_memory():
     """Return total physical memory in bytes, or None if it cannot be determined."""
-    if sys.platform == "win32":
-        import ctypes
-
-        memory = ctypes.c_ulonglong()
-        if ctypes.windll.kernel32.GetPhysicallyInstalledSystemMemory(ctypes.byref(memory)):
-            return memory.value * 1024
-        return None
     try:
         return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
     except (ValueError, OSError, AttributeError):
         return None
 
 
-# PYTHON-6140: skip if the host cannot allocate the ~4GiB this test needs.
+# PYTHON-6140: on Linux, skip if the host cannot allocate the ~4GiB this test
+# needs.  On other platforms, run the test and skip on MemoryError.
 _TOTAL_MEMORY = _total_memory()
 _ENCODE_SIZE_LIMIT_MIN_MEMORY = 6 << 30
 _SKIP_ENCODE_SIZE_LIMIT = (
-    _TOTAL_MEMORY is not None and _TOTAL_MEMORY < _ENCODE_SIZE_LIMIT_MIN_MEMORY
+    sys.platform == "linux"
+    and _TOTAL_MEMORY is not None
+    and _TOTAL_MEMORY < _ENCODE_SIZE_LIMIT_MIN_MEMORY
 )
 
 
