@@ -90,4 +90,6 @@ def teardown_mod_wsgi() -> None:
 
 
 if __name__ == "__main__":
-    setup_mod_wsgi()
+    if len(sys.argv) != 2 or sys.argv[1] not in ("standalone", "embedded"):
+        raise SystemExit("Usage: python mod_wsgi_tester.py <standalone|embedded>")
+    setup_mod_wsgi(sys.argv[1])

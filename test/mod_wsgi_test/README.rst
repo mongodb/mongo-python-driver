@@ -101,11 +101,17 @@ The script also encodes and decodes all BSON types to ensure that
 multiple sub interpreters in the same process are supported. This tests
 the workaround added in `PYTHON-569 <https://jira.mongodb.org/browse/PYTHON-569>`_.
 
-Automation
-----------
+Manual testing
+--------------
 
 The Evergreen configuration no longer runs these tests automatically. They
-can be run by hand with the ``mod_wsgi_tester.py`` helper, which starts up
-Apache, starts a single server or replica set, and runs ``test_client.py``
-with the proper arguments.
-See `mod_wsgi_tester.py <https://github.com/mongodb/mongo-python-driver/blob/main/.evergreen/scripts/mod_wsgi_tester.py>`_
+can only be run from an Evergreen Linux host that has the Python toolchain::
+
+    just run-server  # or: TOPOLOGY=replica_set just run-server
+    just setup-tests mod_wsgi <mode>  # mode is "standalone" or "embedded"
+    just run-tests
+
+The `mod_wsgi_tester.py <https://github.com/mongodb/mongo-python-driver/blob/main/.evergreen/scripts/mod_wsgi_tester.py>`_
+helper performs the Apache setup, test, and teardown steps that the ``just``
+commands dispatch to. It does not start MongoDB; use ``just run-server`` for
+that.
