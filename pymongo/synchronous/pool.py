@@ -106,6 +106,13 @@ if TYPE_CHECKING:
 
 _IS_SYNC = True
 
+# Flags recording the counters a checkout has incremented, so a failed
+# checkout can restore them exactly once (PYTHON-6136).
+_UNDO_OPERATION_COUNT = 1
+_UNDO_REQUESTS = 2
+_UNDO_SOCKETS = 4
+_UNDO_PENDING = 8
+
 
 class Connection(_ConnectionTelemetryInfo):
     """Store a connection with some metadata.
@@ -965,8 +972,12 @@ class Pool:
                 "Attempted to check out a connection from closed connection pool"
             )
 
+        # Every counter increment sets a flag in ``applied`` so a failed
+        # checkout can restore them exactly once (PYTHON-6136).
+        applied = 0
         with self.lock:
             self.operation_count += 1
+            applied |= _UNDO_OPERATION_COUNT
 
         # Get a free socket or create one.
         if _csot.get_timeout():
@@ -976,8 +987,6 @@ class Pool:
         else:
             deadline = None
 
-        # Roll back the size gate if a BaseException lands here (PYTHON-6136).
-        requests_incremented = False
         try:
             with self.size_cond:
                 self._raise_if_not_ready(checkout_started_time, emit_event=True)
@@ -991,46 +1000,19 @@ class Pool:
                         self._raise_wait_queue_timeout(checkout_started_time)
                     self._raise_if_not_ready(checkout_started_time, emit_event=True)
                 self.requests += 1
-                requests_incremented = True
+                applied |= _UNDO_REQUESTS
         except BaseException:
-            if requests_incremented:
-                # Gevent grants the re-acquire during unwind (PYTHON-6074).
-                accounted = False
-                try:
-                    with self.size_cond:
-                        self.requests -= 1
-                        self.operation_count -= 1
-                        accounted = True
-                        self.size_cond.notify()
-                finally:
-                    if not accounted:
-                        with self.size_cond:
-                            self.requests -= 1
-                            self.operation_count -= 1
-                            self.size_cond.notify()
-            else:
-                # The gate never admitted; still undo the load increment above.
-                accounted = False
-                try:
-                    with self.size_cond:
-                        self.operation_count -= 1
-                        accounted = True
-                finally:
-                    if not accounted:
-                        with self.size_cond:
-                            self.operation_count -= 1
+            self._restore_counters(applied)
             raise
 
         # We've now acquired the semaphore and must release it on error.
         conn = None
-        incremented = False
         emitted_event = False
         is_new_conn = False
-        pending_incremented = False
         try:
             with self.lock:
                 self.active_sockets += 1
-                incremented = True
+                applied |= _UNDO_SOCKETS
             while conn is None:
                 # CMAP: we MUST wait for either maxConnecting OR for a socket
                 # to be checked back into the pool.
@@ -1051,7 +1033,7 @@ class Pool:
                         conn = self.conns.popleft()
                     except IndexError:
                         self._pending += 1
-                        pending_incremented = True
+                        applied |= _UNDO_PENDING
                 if conn:  # We got a socket from the pool
                     if self._perished(conn):
                         conn = None
@@ -1063,7 +1045,7 @@ class Pool:
                     finally:
                         with self._max_connecting_cond:
                             self._pending -= 1
-                            pending_incremented = False
+                            applied &= ~_UNDO_PENDING
                             self._max_connecting_cond.notify()
 
             conn.active = True
@@ -1075,43 +1057,13 @@ class Pool:
         # Catch KeyboardInterrupt, CancelledError, etc. and cleanup.
         except BaseException:
             try:
-                if pending_incremented:
-                    # Gevent grants the re-acquire during unwind (PYTHON-6074).
-                    pending_accounted = False
-                    try:
-                        with self._max_connecting_cond:
-                            self._pending -= 1
-                            pending_accounted = True
-                            self._max_connecting_cond.notify()
-                    finally:
-                        if not pending_accounted:
-                            with self._max_connecting_cond:
-                                self._pending -= 1
-                                self._max_connecting_cond.notify()
-
-                if conn:
+                if conn is not None:
                     # We checked out a socket but authentication failed.
                     conn.close_conn(ConnectionClosedReason.ERROR)
             finally:
-                # Always roll back the size gate, even if the cleanups above
-                # were interrupted (PYTHON-6136).
-                accounted = False
-                try:
-                    with self.size_cond:
-                        self.requests -= 1
-                        self.operation_count -= 1
-                        if incremented:
-                            self.active_sockets -= 1
-                        accounted = True
-                        self.size_cond.notify()
-                finally:
-                    if not accounted:
-                        with self.size_cond:
-                            self.requests -= 1
-                            self.operation_count -= 1
-                            if incremented:
-                                self.active_sockets -= 1
-                            self.size_cond.notify()
+                # Restore the counters even if the cleanup above was
+                # interrupted (PYTHON-6136).
+                self._restore_counters(applied)
 
             if not emitted_event:
                 self._telemetry.checkout_failed(
@@ -1122,6 +1074,37 @@ class Pool:
             raise
 
         return conn
+
+    def _restore_applied(self, applied: int) -> None:
+        """Restore the counters flagged in ``applied``. Caller holds ``size_cond``."""
+        if applied & _UNDO_OPERATION_COUNT:
+            self.operation_count -= 1
+        if applied & _UNDO_REQUESTS:
+            self.requests -= 1
+        if applied & _UNDO_SOCKETS:
+            self.active_sockets -= 1
+        if applied & _UNDO_PENDING:
+            self._pending -= 1
+
+    def _restore_counters(self, applied: int) -> None:
+        """Restore the counters a failed checkout incremented (PYTHON-6136).
+
+        Gevent grants the re-acquire during unwind (PYTHON-6074).
+        """
+        accounted = False
+        try:
+            with self.size_cond:
+                self._restore_applied(applied)
+                accounted = True
+                if applied & _UNDO_REQUESTS:
+                    # A pool slot was freed; wake the next witer.
+                    self.size_cond.notify()
+        finally:
+            if not accounted:
+                with self.size_cond:
+                    self._restore_applied(applied)
+                    if applied & _UNDO_REQUESTS:
+                        self.size_cond.notify()
 
     def _checkin_apply(
         self, conn: Connection, txn: bool, cursor: bool, forked: bool
