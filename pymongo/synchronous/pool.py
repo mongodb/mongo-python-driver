@@ -999,13 +999,18 @@ class Pool:
                 try:
                     with self.size_cond:
                         self.requests -= 1
+                        self.operation_count -= 1
                         accounted = True
                         self.size_cond.notify()
                 finally:
                     if not accounted:
                         with self.size_cond:
                             self.requests -= 1
+                            self.operation_count -= 1
                             self.size_cond.notify()
+            else:
+                # The gate never admitted; still undo the load increment above.
+                self.operation_count -= 1
             raise
 
         # We've now acquired the semaphore and must release it on error.
@@ -1086,6 +1091,7 @@ class Pool:
                 try:
                     with self.size_cond:
                         self.requests -= 1
+                        self.operation_count -= 1
                         if incremented:
                             self.active_sockets -= 1
                         accounted = True
@@ -1094,6 +1100,7 @@ class Pool:
                     if not accounted:
                         with self.size_cond:
                             self.requests -= 1
+                            self.operation_count -= 1
                             if incremented:
                                 self.active_sockets -= 1
                             self.size_cond.notify()

@@ -306,6 +306,7 @@ class TestPooling(_TestPoolingBase):
         # Accounting was applied exactly once.
         self.assertEqual(0, cx_pool.requests)
         self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool.operation_count)
 
     def test_checkout_error_accounting_on_kill_during_acquire(self):
         # PYTHON-6074: an exception delivered while the checkout error
@@ -341,6 +342,7 @@ class TestPooling(_TestPoolingBase):
         # The fallback applied the accounting exactly once.
         self.assertEqual(0, cx_pool.requests)
         self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool.operation_count)
 
     def test_checkout_error_accounting_on_connect_keyboard_interrupt(self):
         # PYTHON-6136: a KeyboardInterrupt from connect() must roll back the
@@ -355,6 +357,7 @@ class TestPooling(_TestPoolingBase):
         self.assertEqual(0, cx_pool.requests)
         self.assertEqual(0, cx_pool.active_sockets)
         self.assertEqual(0, cx_pool._pending)
+        self.assertEqual(0, cx_pool.operation_count)
 
     def test_checkout_error_accounting_on_kill_during_pending_cleanup(self):
         # PYTHON-6136: an interruption during the pending-gate cleanup must
@@ -391,6 +394,7 @@ class TestPooling(_TestPoolingBase):
         self.assertEqual(0, cx_pool.requests)
         self.assertEqual(0, cx_pool.active_sockets)
         self.assertEqual(0, cx_pool._pending)
+        self.assertEqual(0, cx_pool.operation_count)
 
     def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.
@@ -513,6 +517,8 @@ class TestPooling(_TestPoolingBase):
             1,
             f"Waited {duration:.2f} seconds for a socket, expected {wait_queue_timeout:f}",
         )
+        # The load metric must not be inflated by the failed checkout.
+        self.assertEqual(0, pool.operation_count)
 
     def test_no_wait_queue_timeout(self):
         # Verify get_socket() with no wait_queue_timeout blocks forever.
