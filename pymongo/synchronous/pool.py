@@ -1010,7 +1010,15 @@ class Pool:
                             self.size_cond.notify()
             else:
                 # The gate never admitted; still undo the load increment above.
-                self.operation_count -= 1
+                accounted = False
+                try:
+                    with self.size_cond:
+                        self.operation_count -= 1
+                        accounted = True
+                finally:
+                    if not accounted:
+                        with self.size_cond:
+                            self.operation_count -= 1
             raise
 
         # We've now acquired the semaphore and must release it on error.
