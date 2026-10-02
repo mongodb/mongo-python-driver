@@ -2716,9 +2716,9 @@ class TestExhaustCursor(IntegrationTest):
         coll = client.pymongo_test.coll
         coll.insert_one({})
 
+        pool = get_pool(client)  # type:ignore
         # Widen the post-gate checkout windows (PYTHON-6136).
         if amplify_seconds:
-            pool = get_pool(client)  # type:ignore
 
             class _AmplifiedCondition:
                 def __init__(self, cond, seconds):
@@ -2801,7 +2801,6 @@ class TestExhaustCursor(IntegrationTest):
             except Timeout:
                 self.fail("Pool gate saturated (PYTHON-6074)")
             self.assertGreater(op_count[0], 0)
-            pool = get_pool(client)  # type:ignore
         finally:
             running[0] = False
             gevent.killall(workers, block=False)
