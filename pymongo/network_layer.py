@@ -167,6 +167,12 @@ else:
             except BLOCKING_IO_ERRORS:
                 await asyncio.sleep(backoff)
                 read = 0
+            except (ConnectionResetError, ConnectionAbortedError) as exc:
+                # On Python 3.14.7+ a peer that closes without TLS close_notify
+                # (e.g. the mock KMS servers) raises this instead of returning
+                # 0 or raising SSLError.  Report the graceful close the KMS
+                # path expects (PYTHON-6143).
+                raise OSError("connection closed") from exc
             if read > 0:
                 backoff = max(backoff / 2, 0.001)
             else:
