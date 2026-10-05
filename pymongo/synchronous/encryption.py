@@ -707,15 +707,14 @@ class ClientEncryption(Generic[_DocumentType]):
             Defaults to ``None`` which defers to libmongocrypt's default which is currently 60000.
             Set to 0 to disable key expiration.
         :param kms_connect_callback: A callable that opens the connection to a
-            KMS host, used to route KMS requests through an HTTP proxy. It
-            receives a :class:`~pymongo.encryption_options.KMSConnectContext`
-            and returns a connected, unwrapped :class:`socket.socket`, over
-            which the driver performs the KMS TLS handshake. The callback
-            must be a regular function; the async API requires a coroutine function and rejects plain callables before they can block the event loop.
-            When a CSOT timeout is active, the driver stops waiting at the
-            deadline and closes any socket the callback yields later.
-            Defaults to ``None``, meaning the driver connects to KMS hosts
-            directly.
+            KMS host, e.g. to route KMS requests through a proxy. It receives
+            a :class:`~pymongo.encryption_options.KMSConnectContext` and
+            returns a connected, unwrapped :class:`socket.socket`, over which
+            the driver performs the KMS TLS handshake.
+            Must be a regular function.
+            On timeout the driver stops waiting and closes any late-yielded
+            socket. Defaults to ``None``, meaning the driver connects to KMS
+            hosts directly.
 
         .. versionchanged:: 4.19
            Added the `kms_connect_callback` parameter.
