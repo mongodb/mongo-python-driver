@@ -54,7 +54,7 @@ def _client_tls_context(verify=False):
 
 
 def _run_blocking(func, *args):
-    """Run a blocking callable off the event loop (inline in the sync flavor)."""
+    """Run a blocking callable off the event loop (inline in the sync version)."""
     if _IS_SYNC:
         return func(*args)
     return asyncio.get_running_loop().run_in_executor(None, func, *args)
@@ -397,8 +397,8 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         def callback(context):
             return _run_blocking(connect)
 
-        # The sync flavor returns a socket instead of a coroutine, so both
-        # error codes are needed depending on the flavor being checked.
+        # The sync version returns a socket instead of a coroutine, so both
+        # error codes are needed depending on the version being checked.
         pending = _connect_kms(listener.getsockname(), options, callback, 10.0)
         task = asyncio.ensure_future(pending)  # type: ignore[type-var,arg-type]
         for _ in range(100):
