@@ -169,8 +169,7 @@ async def _connect_kms(
             raise ConfigurationError(
                 "kms_connect_callback must be a coroutine function for the async API."
             )
-    # Typed as Any so the generated synchronous flavor type-checks: the sync
-    # callback returns a plain socket, which is not awaitable.
+    # Any: the generated sync flavor's callback returns a plain socket.
     result: Any = kms_connect_callback(
         KMSConnectContext(host=address[0], port=cast(int, address[1]), timeout=timeout)
     )
