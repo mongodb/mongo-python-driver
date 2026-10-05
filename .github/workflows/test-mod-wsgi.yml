@@ -159,7 +159,7 @@ jobs:
           uv pip install -r requirements/mod_wsgi.txt
           uv run --no-sync python tools/fail_if_no_c.py
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@49da51cebc0060b4d699d57bdef30ee7e071de44
+        uses: mongodb-labs/drivers-evergreen-tools@354a81692bfd2b654a38277b681d248507d17800 # v1.2.0
         with:
           version: ${{ steps.versions.outputs.mongodb-version }}
           topology: "replica_set"

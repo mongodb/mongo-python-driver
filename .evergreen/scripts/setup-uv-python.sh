@@ -14,17 +14,33 @@
 #                           3.10 when the task does not set one.
 set -euo pipefail
 
-HERE=$(dirname ${BASH_SOURCE:-$0})
+HERE=$(dirname "${BASH_SOURCE:-$0}")
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
+ROOT=$(dirname "$(dirname "$HERE")")
+
+# A .venv whose interpreter was removed breaks every `uv python find` and
+# `uv sync`. It is a build artifact, so remove it and let `uv sync` recreate it.
+# A removed base interpreter leaves a dangling symlink on Linux/macOS and a
+# launcher that will not start on Windows, so probe by running the interpreter.
+for _py in "$ROOT/.venv/bin/python3" "$ROOT/.venv/bin/python" "$ROOT/.venv/Scripts/python.exe"; do
+  if [ -e "$_py" ] || [ -L "$_py" ]; then
+    if ! "$_py" -c 'import sys' > /dev/null 2>&1; then
+      echo "Removing broken .venv (its interpreter will not start); uv sync will recreate it."
+      rm -rf "$ROOT/.venv"
+    fi
+    break
+  fi
+done
+unset _py
 
 # Source the env files to pick up common variables.
-if [ -f $HERE/env.sh ]; then
-  . $HERE/env.sh
+if [ -f "$HERE/env.sh" ]; then
+  . "$HERE/env.sh"
 fi
 
 # Get variables defined in test-env.sh.
-if [ -f $HERE/test-env.sh ]; then
-  . $HERE/test-env.sh
+if [ -f "$HERE/test-env.sh" ]; then
+  . "$HERE/test-env.sh"
 fi
 
 # Default to a known-good Python so behavior is deterministic when a task does
@@ -59,13 +75,28 @@ function _toolchain_dir() {
 }
 
 # Make sure uv can provide the requested Python, downloading it if needed.
+# If that fails, fall back to any available Python on local hosts; on CI, fail.
 function _ensure_python() {
-  local request="$1"
-  if uv python find "$request" > /dev/null 2>&1; then
+  local request="$1" out _fallback
+  if out=$(uv python find "$request" 2>&1); then
     return 0
   fi
-  echo "Python \"$request\" was not found on this host; asking uv to install it..."
+  # Show why find failed: e.g. an interpreter uv cannot run, or none at all.
+  echo "Python \"$request\" was not found on this host:" >&2
+  sed 's/^/  /' <<<"$out" >&2
+  echo "Asking uv to install Python \"$request\"..."
   if uv python install "$request"; then
+    return 0
+  fi
+  echo "uv could not install Python \"$request\"; looking for another interpreter..."
+  # Ignore UV_PYTHON and friends: they would steer the fallback right back to
+  # the broken interpreter. Local setup only: the Evergreen agent exports
+  # CI=true for every task command.
+  if [ "${CI:-}" != "true" ] && \
+    _fallback=$(env -u UV_PYTHON -u UV_PYTHON_SEARCH_PATH -u UV_PYTHON_PREFERENCE \
+      uv python find ">=3.9" 2>/dev/null); then
+    echo "Using fallback interpreter: $_fallback"
+    export UV_PYTHON="$_fallback"
     return 0
   fi
   echo "ERROR: uv could not find or install Python \"$request\"." >&2
