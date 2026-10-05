@@ -199,7 +199,7 @@ def _connect_kms(
         _close_rejected_kms_socket(sock)
         raise ConfigurationError(
             "kms_connect_callback must return a connected, unwrapped "
-            f"socket.socket, not {type(sock)}."
+            f"socket.socket, not {type(sock)}; consider HTTPProxyKMSConnect."
         )
     # wrap_socket refuses a non-blocking socket, so normalize the mode here.
     try:
@@ -713,7 +713,9 @@ class ClientEncryption(Generic[_DocumentType]):
             which the driver performs the KMS TLS handshake. The callback
             must be a regular function; the async API requires a coroutine function and rejects plain callables before they can block the event loop.
             When a CSOT timeout is active, the driver stops waiting at the
-            deadline and closes any socket the callback yields later.
+            deadline and closes any socket the callback yields later. For an
+            ordinary HTTP proxy, pass
+            :class:`~pymongo.encryption_options.HTTPProxyKMSConnect`.
             Defaults to ``None``, meaning the driver connects to KMS hosts
             directly.
 

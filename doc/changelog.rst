@@ -16,14 +16,18 @@ PyMongo 4.19 brings a number of changes including:
   interpreter remain daemon threads and shutdown behavior is unchanged.
   Note that because these threads are non-daemon, a subinterpreter may block
   on teardown until any in-flight monitor work completes.
-- Added the ``kms_connect_callback`` option on
+- Added support for routing Key Management Service (KMS) requests for
+  Client-Side Field Level Encryption and Queryable Encryption through an HTTP
+  proxy, using the new ``kms_connect_callback`` option on
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
   :class:`~pymongo.encryption.ClientEncryption`, and
-  :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`: a callable
-  that opens the connection to a Key Management Service (KMS) host for
-  Client-Side Field Level Encryption and Queryable Encryption, e.g. to route
-  KMS requests through a proxy. The driver performs the KMS TLS handshake over
-  the callback's connection, so verification still targets the KMS host.
+  :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`. The callback
+  opens the connection and the driver performs the KMS TLS handshake over it, so
+  verification still targets the KMS host rather than the proxy. For an ordinary
+  HTTP proxy, pass :class:`~pymongo.encryption_options.HTTPProxyKMSConnect` or
+  :class:`~pymongo.encryption_options.AsyncHTTPProxyKMSConnect` instead of
+  writing a callback. Both helpers accept custom ``CONNECT`` headers, e.g.
+  ``Proxy-Authorization`` for proxies that require authentication.
 - Added the ``srv_host_validator`` keyword argument to
   :class:`~pymongo.synchronous.mongo_client.MongoClient` and
   :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`, an alternative to

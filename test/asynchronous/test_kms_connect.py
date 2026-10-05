@@ -1,20 +1,23 @@
-"""Tests for the KMS connect callback."""
+"""Tests for the KMS connect callback and HTTP proxy support."""
 
 from __future__ import annotations
 
 import asyncio
 import dataclasses
+import http.client
 import socket
 import ssl
 import threading
 import time
 import unittest
 from asyncio.trsock import TransportSocket
+from typing import Any
 from unittest import mock
 
 import pytest
 
 import pymongo
+from bson.binary import Binary
 from pymongo.asynchronous.encryption import (
     AsyncClientEncryption,
     _connect_kms,
@@ -22,19 +25,30 @@ from pymongo.asynchronous.encryption import (
     _wrap_encryption_errors,
 )
 from pymongo.encryption_options import (
+    AsyncHTTPProxyKMSConnect,
     AutoEncryptionOpts,
+    HTTPProxyKMSConnect,
     KMSConnectContext,
 )
 from pymongo.errors import ConfigurationError, EncryptionError, NetworkTimeout
 from pymongo.pool_options import PoolOptions
 from pymongo.ssl_support import get_ssl_context
 from test.asynchronous import AsyncPyMongoTestCase
-from test.asynchronous.test_encryption import OPTS
-from test.helpers_shared import CLIENT_PEM
+from test.asynchronous.test_encryption import OPTS, AsyncEncryptionIntegrationTest
+from test.helpers_shared import AWS_CREDS, CA_PEM, CLIENT_PEM
 
 _IS_SYNC = False
 
 pytestmark = pytest.mark.encryption
+
+KMS_PROXY_HOST = "127.0.0.1"
+KMS_PROXY_PORT = 9004
+KMS_TLS_PROXY_PORT = 9005
+
+AWS_MASTER_KEY = {
+    "region": "us-east-1",
+    "key": "arn:aws:kms:us-east-1:579766882180:key/89fcc2c4-08b0-4bd9-9f25-e30687b580d0",
+}
 
 
 class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
@@ -156,6 +170,158 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
         with self.assertRaisesRegex(ConfigurationError, "TransportSocket"):
             await _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
 
+    async def test_http_proxy_helper_tunnels_and_reports_refusal(self):
+        # Covers the CONNECT handshake without KMS credentials.
+        accepted = []
+
+        def stub(listener, reply):
+            try:
+                conn, _ = listener.accept()
+            except OSError:
+                return
+            accepted.append(conn.recv(4096))
+            conn.sendall(reply)
+            conn.close()
+
+        def run_stub(reply):
+            listener = socket.socket()
+            listener.bind(("127.0.0.1", 0))
+            listener.listen(1)
+            self.addCleanup(listener.close)
+            threading.Thread(target=stub, args=(listener, reply), daemon=True).start()
+            return listener.getsockname()
+
+        host, port = run_stub(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+        callback = AsyncHTTPProxyKMSConnect(host, port)
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+        sock = await callback(context)
+        self.addCleanup(sock.close)
+        self.assertIsInstance(sock, socket.socket)
+        self.assertEqual(accepted[0].split(b"\r\n")[0], b"CONNECT kms.example.com:443 HTTP/1.1")
+
+        host, port = run_stub(b"HTTP/1.1 407 Proxy Authentication Required\r\n\r\n")
+        with self.assertRaisesRegex(OSError, "refused CONNECT"):
+            await AsyncHTTPProxyKMSConnect(host, port)(context)
+
+        # Any 2xx status is a successful tunnel, not just HTTP/1.1 200.
+        host, port = run_stub(b"HTTP/1.0 200 Connection Established\r\n\r\n")
+        sock = await AsyncHTTPProxyKMSConnect(host, port)(context)
+        self.addCleanup(sock.close)
+        self.assertIsInstance(sock, socket.socket)
+
+        # A status code must be exactly three digits, with no zero padding.
+        for reply in (b"HTTP/1.1 2000 Evil\r\n\r\n", b"HTTP/1.1 00200 Evil\r\n\r\n"):
+            host, port = run_stub(reply)
+            with self.assertRaisesRegex(OSError, "refused CONNECT"):
+                await AsyncHTTPProxyKMSConnect(host, port)(context)
+
+    async def test_control_characters_in_kms_host_are_rejected(self):
+        # Reject CR/LF in the configurable host before it reaches CONNECT.
+        callback = AsyncHTTPProxyKMSConnect("proxy.example.com", 8080)
+        context = KMSConnectContext(host="kms.example.com\r\nX-Injected: 1", port=443, timeout=10)
+        with self.assertRaisesRegex(ConfigurationError, "control characters"):
+            await callback(context)
+
+    async def test_http_proxy_helper_sends_custom_headers(self):
+        # Extra CONNECT headers reach the proxy verbatim.
+        accepted = []
+
+        def stub(listener):
+            try:
+                conn, _ = listener.accept()
+            except OSError:
+                return
+            request = b""
+            while b"\r\n\r\n" not in request:
+                chunk = conn.recv(4096)
+                if not chunk:
+                    return
+                request += chunk
+            accepted.append(request)
+            conn.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+            conn.close()
+
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+        threading.Thread(target=stub, args=(listener,), daemon=True).start()
+
+        host, port = listener.getsockname()
+        headers = {"Proxy-Authorization": "Basic dXNlcjpwYXNz", "X-Trace-Id": "abc123"}
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+        sock = await AsyncHTTPProxyKMSConnect(host, port, headers=headers)(context)
+        self.addCleanup(sock.close)
+        request = accepted[0]
+        self.assertEqual(request.split(b"\r\n")[0], b"CONNECT kms.example.com:443 HTTP/1.1")
+        self.assertIn(b"\r\nProxy-Authorization: Basic dXNlcjpwYXNz\r\n", request)
+        self.assertIn(b"\r\nX-Trace-Id: abc123\r\n", request)
+        self.assertEqual(request.count(b"\r\nHost: "), 1)
+
+    async def test_http_proxy_helper_authenticates_to_the_proxy(self):
+        # The motivating case: 407 without credentials, 200 with them.
+        def stub(listener):
+            for _ in range(2):
+                try:
+                    conn, _ = listener.accept()
+                except OSError:
+                    return
+                request = b""
+                while b"\r\n\r\n" not in request:
+                    chunk = conn.recv(4096)
+                    if not chunk:
+                        return
+                    request += chunk
+                if b"\r\nProxy-Authorization: Basic dXNlcjpwYXNz\r\n" in request:
+                    conn.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                else:
+                    conn.sendall(b"HTTP/1.1 407 Proxy Authentication Required\r\n\r\n")
+                conn.close()
+
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(2)
+        self.addCleanup(listener.close)
+        threading.Thread(target=stub, args=(listener,), daemon=True).start()
+
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+        with self.assertRaisesRegex(OSError, "refused CONNECT"):
+            await AsyncHTTPProxyKMSConnect(host, port)(context)
+        headers = {"Proxy-Authorization": "Basic dXNlcjpwYXNz"}
+        sock = await AsyncHTTPProxyKMSConnect(host, port, headers=headers)(context)
+        self.addCleanup(sock.close)
+        self.assertIsInstance(sock, socket.socket)
+
+    async def test_http_proxy_helper_rejects_bad_headers(self):
+        for headers in [
+            {"Bad\r\nName": "x"},
+            {"X-Ok": "ok\r\nInjected: 1"},
+            {"Host": "evil.example.com"},
+            {"host": "evil.example.com"},
+            {"": "x"},
+            {"Bad:Name": "x"},
+        ]:
+            with self.assertRaisesRegex(ConfigurationError, "proxy header|Host CONNECT header"):
+                AsyncHTTPProxyKMSConnect("proxy.example.com", 8080, headers=headers)
+
+        for headers in [{1: "x"}, {"X-Ok": 1}, {None: "x"}, {"X-Ok": None}]:
+            with self.assertRaisesRegex(TypeError, "must be strings"):
+                AsyncHTTPProxyKMSConnect("proxy.example.com", 8080, headers=headers)
+
+    async def test_http_proxy_helper_accepts_legal_header_values(self):
+        # Colons and spaces are legal in values (e.g. auth schemes); only
+        # CR/LF would let a value inject a request line.
+        callback = AsyncHTTPProxyKMSConnect(
+            "proxy.example.com",
+            8080,
+            headers={"Proxy-Authorization": "Basic dXNlcjpwYXNz", "X-Token": "a: b"},
+        )
+        self.assertEqual(
+            callback.headers,
+            {"Proxy-Authorization": "Basic dXNlcjpwYXNz", "X-Token": "a: b"},
+        )
+
     async def test_cancelled_tls_wrap_closes_late_socket(self):
         # A cancelled wrap can leave the executor producing an SSLSocket; the
         # done callback must close it.
@@ -170,6 +336,105 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
         _close_late_socket(future)
         self.assertEqual(left.fileno(), -1)
         self.addCleanup(right.close)
+
+    async def test_tls_proxy_helper_bridges_the_tunnel(self):
+        # Covers the TLS-proxy path and the socketpair relay without KMS creds.
+        server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        server_ctx.load_cert_chain(CLIENT_PEM)
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def stub_proxy():
+            conn = None
+            try:
+                conn, _ = listener.accept()
+                tls = server_ctx.wrap_socket(conn, server_side=True)
+                request = b""
+                while b"\r\n\r\n" not in request:
+                    chunk = tls.recv(4096)
+                    if not chunk:
+                        return
+                    request += chunk
+                tls.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                # The tunneled peer speaks only after the client does, as a TLS server would.
+                tls.sendall(b"echo:" + tls.recv(64))
+                tls.close()
+            except OSError:
+                pass
+            finally:
+                if conn is not None:
+                    conn.close()
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        client_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        client_ctx.check_hostname = False
+        client_ctx.verify_mode = ssl.CERT_NONE
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+
+        sock = await AsyncHTTPProxyKMSConnect(host, port, client_ctx)(context)
+        self.addCleanup(sock.close)
+        sock.settimeout(10)
+        if _IS_SYNC:
+            sock.sendall(b"ping")
+            self.assertEqual(sock.recv(64), b"echo:ping")
+        else:
+            await asyncio.get_running_loop().run_in_executor(None, sock.sendall, b"ping")
+            data = await asyncio.get_running_loop().run_in_executor(None, sock.recv, 64)
+            self.assertEqual(data, b"echo:ping")
+
+    async def test_bridge_does_not_inherit_the_connect_deadline(self):
+        # The relay must outlast the much shorter CONNECT deadline.
+        server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        server_ctx.load_cert_chain(CLIENT_PEM)
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def stub_proxy():
+            conn = None
+            try:
+                conn, _ = listener.accept()
+                tls = server_ctx.wrap_socket(conn, server_side=True)
+                request = b""
+                while b"\r\n\r\n" not in request:
+                    chunk = tls.recv(4096)
+                    if not chunk:
+                        return
+                    request += chunk
+                tls.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                # Outlast the connect-phase deadline before the KMS side speaks.
+                time.sleep(2.0)
+                tls.sendall(b"echo:" + tls.recv(64))
+                tls.close()
+            except OSError:
+                pass
+            finally:
+                if conn is not None:
+                    conn.close()
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        client_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        client_ctx.check_hostname = False
+        client_ctx.verify_mode = ssl.CERT_NONE
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=1.0)
+
+        sock = await AsyncHTTPProxyKMSConnect(host, port, client_ctx)(context)
+        self.addCleanup(sock.close)
+        sock.settimeout(10)
+        if _IS_SYNC:
+            sock.sendall(b"ping")
+            self.assertEqual(sock.recv(64), b"echo:ping")
+        else:
+            await asyncio.get_running_loop().run_in_executor(None, sock.sendall, b"ping")
+            data = await asyncio.get_running_loop().run_in_executor(None, sock.recv, 64)
+            self.assertEqual(data, b"echo:ping")
 
     async def test_non_coroutine_callback_is_rejected(self):
         # A plain def must be rejected before it blocks the event loop.
@@ -186,6 +451,57 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
             await _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
         self.assertEqual(entered, [], "invalid callback must not be entered")
 
+    async def test_proxy_closing_before_connect_reply_raises(self):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def stub_proxy():
+            try:
+                conn, _ = listener.accept()
+                # Read the CONNECT request, then hang up without replying.
+                conn.recv(4096)
+                conn.close()
+            except OSError:
+                pass
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+        with self.assertRaisesRegex(OSError, "proxy closed the connection"):
+            await AsyncHTTPProxyKMSConnect(host, port)(context)
+
+    async def test_tunnel_keeps_bytes_sent_with_the_connect_reply(self):
+        # A proxy may coalesce its 200 with tunneled bytes; reading past the header would drop them.
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def stub_proxy():
+            try:
+                conn, _ = listener.accept()
+                conn.recv(4096)
+                conn.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\nearly-bytes")
+                conn.close()
+            except OSError:
+                pass
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+        sock = await AsyncHTTPProxyKMSConnect(host, port)(context)
+        self.addCleanup(sock.close)
+        sock.settimeout(10)
+        if _IS_SYNC:
+            data = sock.recv(64)
+        else:
+            data = await asyncio.get_running_loop().run_in_executor(None, sock.recv, 64)
+        self.assertEqual(data, b"early-bytes")
+
     async def test_unconnected_socket_from_callback_is_rejected(self):
         # An unconnected socket would fail later as a transient error and be retried.
         bare = socket.socket()
@@ -196,6 +512,64 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
 
         with self.assertRaisesRegex(ConfigurationError, "already connected"):
             await _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+
+    async def test_ipv6_host_is_bracketed_in_connect(self):
+        accepted = []
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def stub_proxy():
+            try:
+                conn, _ = listener.accept()
+                accepted.append(conn.recv(4096))
+                conn.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                conn.close()
+            except OSError:
+                pass
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="::1", port=443, timeout=10)
+        sock = await AsyncHTTPProxyKMSConnect(host, port)(context)
+        self.addCleanup(sock.close)
+        self.assertEqual(accepted[0].split(b"\r\n")[0], b"CONNECT [::1]:443 HTTP/1.1")
+
+    async def test_oversized_connect_response_is_rejected(self):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        def stub_proxy():
+            conn = None
+            try:
+                conn, _ = listener.accept()
+                conn.recv(4096)
+                # Never sends the terminator.
+                while True:
+                    conn.sendall(b"x" * 1024)
+            except OSError:
+                pass
+            finally:
+                if conn is not None:
+                    conn.close()
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        host, port = listener.getsockname()
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+        with self.assertRaisesRegex(OSError, "oversized CONNECT response"):
+            await AsyncHTTPProxyKMSConnect(host, port)(context)
+
+    async def test_remaining_raises_once_the_deadline_passes(self):
+        from pymongo.encryption_options import _remaining
+
+        self.assertGreater(_remaining(time.monotonic() + 5), 0)
+        with self.assertRaises(socket.timeout):
+            _remaining(time.monotonic() - 1)
 
     async def test_datagram_socket_from_callback_is_rejected(self):
         # TLS on a connected UDP socket raises NotImplementedError, which would be retried.
@@ -247,6 +621,50 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
             with _wrap_encryption_errors():
                 raise ConfigurationError("kms_connect_callback must return ...")
         self.assertIsInstance(caught.exception.__cause__, ConfigurationError)
+
+    async def test_bridge_failure_closes_the_proxy_socket(self):
+        # A failure inside _bridge must not strand the connected proxy socket.
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        self.addCleanup(listener.close)
+
+        server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        server_ctx.load_cert_chain(CLIENT_PEM)
+
+        def stub_proxy():
+            conn = None
+            try:
+                conn, _ = listener.accept()
+                tls = server_ctx.wrap_socket(conn, server_side=True)
+                tls.recv(4096)
+                tls.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+                tls.close()
+            except OSError:
+                pass
+            finally:
+                if conn is not None:
+                    conn.close()
+
+        threading.Thread(target=stub_proxy, daemon=True).start()
+
+        captured = []
+
+        def failing_bridge(self, proxy):
+            captured.append(proxy)
+            raise OSError("no file descriptors")
+
+        host, port = listener.getsockname()
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        context = KMSConnectContext(host="kms.example.com", port=443, timeout=10)
+
+        with mock.patch.object(HTTPProxyKMSConnect, "_bridge", failing_bridge):
+            with self.assertRaisesRegex(OSError, "no file descriptors"):
+                await AsyncHTTPProxyKMSConnect(host, port, ctx)(context)
+
+        self.assertEqual(captured[0].fileno(), -1, "proxy socket was left open")
 
     async def test_network_error_from_callback_propagates(self):
         async def callback(context):
@@ -391,3 +809,183 @@ class TestKmsConnectCallbackUnit(AsyncPyMongoTestCase):
                 OPTS,
                 kms_connect_callback="not-callable",  # type: ignore[arg-type]
             )
+
+
+class TestKmsConnectCallbackProse(AsyncEncryptionIntegrationTest):
+    @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
+    async def asyncSetUp(self):
+        await super().asyncSetUp()
+        self.callback_calls: list[Any] = []
+
+    async def plain_callback(self, context):
+        self.callback_calls.append(context)
+        return await AsyncHTTPProxyKMSConnect(KMS_PROXY_HOST, KMS_PROXY_PORT)(context)
+
+    async def tls_callback(self, context):
+        self.callback_calls.append(context)
+        ctx = ssl.create_default_context(cafile=CA_PEM)
+        ctx.check_hostname = False
+        # PYTHON-5040 tracks re-enabling verification: the evergreen-tools CA
+        # lacks an Authority Key Identifier newer OpenSSL requires.
+        ctx.verify_mode = ssl.CERT_NONE
+        callback = AsyncHTTPProxyKMSConnect(KMS_PROXY_HOST, KMS_TLS_PROXY_PORT, ctx)
+        return await callback(context)
+
+    async def proxy_request(self, method, path, tls=False):
+        """Call the proxy's control endpoints and return the body."""
+        if _IS_SYNC:
+            return self._proxy_request(method, path, tls)
+        return await asyncio.get_running_loop().run_in_executor(
+            None, self._proxy_request, method, path, tls
+        )
+
+    def _proxy_request(self, method, path, tls=False):
+        if tls:
+            ctx = ssl.create_default_context(cafile=CA_PEM)
+            ctx.check_hostname = False
+            # PYTHON-5040 tracks re-enabling verification once the test CA cert
+            # is fixed; the evergreen-tools CA lacks an Authority Key Identifier
+            # that newer OpenSSL requires, so verification fails on Windows 3.14.
+            ctx.verify_mode = ssl.CERT_NONE
+            conn = http.client.HTTPSConnection(
+                f"{KMS_PROXY_HOST}:{KMS_TLS_PROXY_PORT}", context=ctx
+            )
+        else:
+            conn = http.client.HTTPConnection(f"{KMS_PROXY_HOST}:{KMS_PROXY_PORT}")
+        try:
+            conn.request(method, path)
+            return conn.getresponse().read().decode()
+        finally:
+            conn.close()
+
+    async def connect_count(self, tls=False):
+        body = await self.proxy_request("GET", "/metrics", tls=tls)
+        # One "key value" per line; the server also emits connect_target.
+        for line in body.splitlines():
+            key, _, value = line.partition(" ")
+            if key == "connect_count":
+                return int(value)
+        raise AssertionError(f"no connect_count in metrics body: {body!r}")
+
+    async def test_01_plain_http_proxy(self):
+        await self.proxy_request("POST", "/reset")
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            self.client,
+            OPTS,
+            kms_connect_callback=self.plain_callback,
+        )
+        await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
+        self.assertGreaterEqual(await self.connect_count(), 1)
+
+    async def test_02_https_proxy(self):
+        await self.proxy_request("POST", "/reset", tls=True)
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            self.client,
+            OPTS,
+            kms_connect_callback=self.tls_callback,
+        )
+        await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
+        self.assertGreaterEqual(await self.connect_count(tls=True), 1)
+
+    async def test_03_auto_encryption_through_proxy(self):
+        await self.client.keyvault.datakeys.drop()
+        await self.client.db.coll.drop()
+
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            self.client,
+            OPTS,
+            kms_connect_callback=self.plain_callback,
+        )
+        data_key_id = await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
+        schema = {
+            "bsonType": "object",
+            "properties": {
+                "encrypted_string": {
+                    "encrypt": {
+                        "keyId": [data_key_id],
+                        "bsonType": "string",
+                        "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
+                    }
+                }
+            },
+        }
+
+        await self.proxy_request("POST", "/reset")
+        opts = AutoEncryptionOpts(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            schema_map={"db.coll": schema},
+            kms_connect_callback=self.plain_callback,
+        )
+        client_encrypted = await self.async_rs_or_single_client(auto_encryption_opts=opts)
+
+        await client_encrypted.db.coll.insert_one({"_id": 1, "encrypted_string": "hello"})
+        decrypted = await client_encrypted.db.coll.find_one({"_id": 1})
+        self.assertEqual(decrypted["encrypted_string"], "hello")
+
+        raw = await self.client.db.coll.find_one({"_id": 1})
+        self.assertIsInstance(raw["encrypted_string"], Binary)
+
+        # The decrypt reuses the cached key, so exactly one KMS request follows
+        # the reset.
+        self.assertEqual(await self.connect_count(), 1)
+
+    async def test_04_callback_error(self):
+        async def failing_callback(context):
+            raise OSError("proxy is on fire")
+
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            self.client,
+            OPTS,
+            kms_connect_callback=failing_callback,
+        )
+        with self.assertRaisesRegex(EncryptionError, "proxy is on fire"):
+            await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
+
+    @unittest.skip(
+        "PYTHON-6037 ClientEncryption does not support timeoutMS, so the "
+        "callback always receives the default KMS connect timeout"
+    )
+    async def test_05_callback_receives_timeout(self):
+        key_vault_client = await self.async_rs_or_single_client(timeoutMS=1000)
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            key_vault_client,
+            OPTS,
+            kms_connect_callback=self.plain_callback,
+        )
+        await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
+
+        self.assertTrue(self.callback_calls, "callback was never invoked")
+        for context in self.callback_calls:
+            # Checks only the spec's non-zero requirement, which cannot fail.
+            self.assertIsNotNone(context.timeout)
+            self.assertGreater(context.timeout, 0)
+
+    async def test_06_retry_after_network_error(self):
+        state = {"calls": 0}
+
+        async def flaky_callback(context):
+            state["calls"] += 1
+            if state["calls"] == 1:
+                raise OSError("first attempt fails")
+            return await AsyncHTTPProxyKMSConnect(KMS_PROXY_HOST, KMS_PROXY_PORT)(context)
+
+        encryption = self.create_client_encryption(
+            {"aws": AWS_CREDS},
+            "keyvault.datakeys",
+            self.client,
+            OPTS,
+            kms_connect_callback=flaky_callback,
+        )
+        await encryption.create_data_key("aws", master_key=AWS_MASTER_KEY)
+        self.assertGreaterEqual(state["calls"], 2)
