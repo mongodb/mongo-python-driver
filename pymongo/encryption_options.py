@@ -67,8 +67,9 @@ class KMSConnectContext:
 
     :param host: Hostname of the KMS server, and the TLS verification target.
     :param port: Port of the KMS server.
-    :param timeout: Seconds left in the timeout budget, or the default KMS
-        connect timeout when no timeout is active.
+    :param timeout: Seconds allowed for the connection: the default KMS
+        connect timeout, capped by the remaining time of an active operation
+        timeout (``timeoutMS``).
 
     .. note:: ``timeoutMS`` does not constrain KMS requests for explicit
        encryption, so ``timeout`` is always the default there. Automatic

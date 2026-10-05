@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import os
 import socket
 import ssl
 import threading
@@ -19,7 +20,7 @@ from pymongo.encryption_options import (
     AutoEncryptionOpts,
     KMSConnectContext,
 )
-from pymongo.errors import ConfigurationError, EncryptionError, NetworkTimeout
+from pymongo.errors import ConfigurationError, ConnectionFailure, EncryptionError, NetworkTimeout
 from pymongo.pool_options import PoolOptions
 from pymongo.ssl_support import get_ssl_context
 from pymongo.synchronous.encryption import (
@@ -29,7 +30,7 @@ from pymongo.synchronous.encryption import (
     _wrap_encryption_errors,
 )
 from test import PyMongoTestCase
-from test.helpers_shared import CLIENT_PEM
+from test.helpers_shared import CA_PEM, CERT_PATH, CLIENT_PEM
 from test.test_encryption import OPTS
 
 _IS_SYNC = True
@@ -143,6 +144,56 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         conn = _connect_kms(listener.getsockname(), options, callback, 10.0)
         self.addCleanup(conn.close)
         self.assertIsNotNone(conn.gettimeout())
+
+    def test_tls_verification_targets_the_kms_host(self):
+        # The handshake must verify against the KMS address, not the peer the
+        # callback connected to. The server cert covers 127.0.0.1 (the peer)
+        # and localhost, but not the KMS hostname used below, so only
+        # address-based verification produces this outcome.
+        server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        server_ctx.load_cert_chain(os.path.join(CERT_PATH, "server.pem"))
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(2)
+        self.addCleanup(listener.close)
+
+        def serve():
+            for _ in range(2):
+                try:
+                    conn, _ = listener.accept()
+                    server_ctx.wrap_socket(conn, server_side=True).close()
+                except (OSError, ssl.SSLError):
+                    # The mismatched-name attempt fails mid-handshake.
+                    pass
+
+        threading.Thread(target=serve, daemon=True).start()
+
+        # Full verification: trusted CA, invalid certs and hostnames rejected.
+        client_ctx = get_ssl_context(None, None, CA_PEM, None, False, False, False, _IS_SYNC)
+        options = PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=client_ctx)
+
+        created = []
+
+        def connect():
+            sock = socket.create_connection(listener.getsockname(), timeout=10)
+            created.append(sock)
+            return sock
+
+        def callback(context):
+            if _IS_SYNC:
+                return connect()
+            return asyncio.get_running_loop().run_in_executor(None, connect)
+
+        port = listener.getsockname()[1]
+        # The cert covers localhost: verifying against the KMS address succeeds.
+        conn = _connect_kms(("localhost", port), options, callback, 10.0)
+        self.addCleanup(conn.close)
+        # TLS-wrapped in either SSL flavor: a new object, not the plain socket.
+        self.assertIsNot(conn, created[0])
+        # The cert does not cover this name: verification must fail even
+        # though the peer (127.0.0.1) presents a cert valid for itself.
+        with self.assertRaises(ConnectionFailure):
+            _connect_kms(("kms.example.com", port), options, callback, 10.0)
 
     def test_asyncio_transport_socket_is_rejected(self):
         # get_extra_info("socket") is a TransportSocket, not a socket.socket.
