@@ -128,10 +128,11 @@ _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 
 
 def _close_rejected_kms_socket(obj: Any) -> None:
-    """Close a rejected kms_connect_callback return value, best effort.
+    """Close a callback return value that failed validation, best effort.
 
-    Nothing else will close it: _connect_kms raises before the result reaches
-    the caller's ``finally``.
+    ``_connect_kms`` raises on a contract violation instead of returning the
+    value, so no caller ever takes ownership of it. Close it here, tolerating
+    non-socket values and ``close()`` failures.
     """
     close = getattr(obj, "close", None)
     if callable(close):
