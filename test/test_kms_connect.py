@@ -37,13 +37,57 @@ _IS_SYNC = True
 
 pytestmark = pytest.mark.encryption
 
+_KMS_ADDRESS = ("kms.example.com", 443)
+
+
+def _tls_server_context(cert=CLIENT_PEM):
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(cert)
+    return ctx
+
+
+def _client_tls_context(verify=False):
+    # verify=False matches the driver's test mode: the local certs don't verify.
+    if verify:
+        return get_ssl_context(None, None, CA_PEM, None, False, False, False, _IS_SYNC)
+    return get_ssl_context(None, None, None, None, True, True, False, _IS_SYNC)
+
+
+def _run_blocking(func, *args):
+    """Run a blocking callable off the event loop (inline in the sync flavor)."""
+    if _IS_SYNC:
+        return func(*args)
+    return asyncio.get_running_loop().run_in_executor(None, func, *args)
+
+
+def _callback_returning(value):
+    """A kms_connect_callback that always produces ``value``."""
+
+    def callback(context):
+        return value
+
+    return callback
+
 
 class TestKmsConnectCallbackUnit(PyMongoTestCase):
     """Contract checks for kms_connect_callback that need no KMS server."""
 
     @staticmethod
-    def _pool_options():
-        return PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=None)
+    def _pool_options(ssl_context=None):
+        return PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=ssl_context)
+
+    def _listen(self, backlog=1):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(backlog)
+        self.addCleanup(listener.close)
+        return listener
+
+    def _socketpair(self):
+        left, right = socket.socketpair()
+        self.addCleanup(left.close)
+        self.addCleanup(right.close)
+        return left, right
 
     def test_init_kms_connect_callback(self):
         opts = AutoEncryptionOpts({}, "k.d")
@@ -67,41 +111,34 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
             context.host = "evil.example.com"  # type: ignore[misc]
 
     def test_non_socket_return_raises_configuration_error(self):
-        def callback(context):
-            return "not-a-socket"
-
         with self.assertRaisesRegex(ConfigurationError, "must return a connected"):
-            _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+            _connect_kms(
+                _KMS_ADDRESS, self._pool_options(), _callback_returning("not-a-socket"), 10.0
+            )
 
     def test_already_wrapped_socket_is_rejected(self):
         # ssl.SSLSocket passes isinstance but cannot be TLS-wrapped again.
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
-        left, right = socket.socketpair()
-        self.addCleanup(right.close)
+        left, _right = self._socketpair()
         # No peer needed to produce a genuine ssl.SSLSocket.
         wrapped = ctx.wrap_socket(left, do_handshake_on_connect=False, server_hostname="x")
         self.addCleanup(wrapped.close)
 
-        def callback(context):
-            return wrapped
-
         with self.assertRaisesRegex(ConfigurationError, "unwrapped"):
-            _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+            _connect_kms(_KMS_ADDRESS, self._pool_options(), _callback_returning(wrapped), 10.0)
 
     def test_context_receives_host_port_and_timeout(self):
         received = []
-        left, right = socket.socketpair()
-        self.addCleanup(left.close)
-        self.addCleanup(right.close)
+        left, _right = self._socketpair()
 
         def callback(context):
             received.append(context)
             return left
 
         # ssl_context=None returns the socket unchanged, so a plain socket is accepted.
-        conn = _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 12.5)
+        conn = _connect_kms(_KMS_ADDRESS, self._pool_options(), callback, 12.5)
         self.assertIs(conn, left)
 
         self.assertEqual(len(received), 1)
@@ -111,12 +148,8 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
 
     def test_non_blocking_socket_from_callback_is_accepted(self):
         # Without the driver normalizing the mode, this raises ValueError.
-        server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        server_ctx.load_cert_chain(CLIENT_PEM)
-        listener = socket.socket()
-        listener.bind(("127.0.0.1", 0))
-        listener.listen(1)
-        self.addCleanup(listener.close)
+        server_ctx = _tls_server_context()
+        listener = self._listen()
 
         def serve():
             try:
@@ -127,9 +160,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
 
         threading.Thread(target=serve, daemon=True).start()
 
-        # Built as the driver does, for the flavor-correct type; the local cert won't verify.
-        client_ctx = get_ssl_context(None, None, None, None, True, True, False, _IS_SYNC)
-        options = PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=client_ctx)
+        options = self._pool_options(_client_tls_context())
 
         def connect():
             sock = socket.create_connection(listener.getsockname(), timeout=10)
@@ -137,9 +168,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
             return sock
 
         def callback(context):
-            if _IS_SYNC:
-                return connect()
-            return asyncio.get_running_loop().run_in_executor(None, connect)
+            return _run_blocking(connect)
 
         conn = _connect_kms(listener.getsockname(), options, callback, 10.0)
         self.addCleanup(conn.close)
@@ -150,12 +179,8 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         # callback connected to. The server cert covers 127.0.0.1 (the peer)
         # and localhost, but not the KMS hostname used below, so only
         # address-based verification produces this outcome.
-        server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        server_ctx.load_cert_chain(os.path.join(CERT_PATH, "server.pem"))
-        listener = socket.socket()
-        listener.bind(("127.0.0.1", 0))
-        listener.listen(2)
-        self.addCleanup(listener.close)
+        server_ctx = _tls_server_context(os.path.join(CERT_PATH, "server.pem"))
+        listener = self._listen(2)
 
         def serve():
             for _ in range(2):
@@ -169,8 +194,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         threading.Thread(target=serve, daemon=True).start()
 
         # Full verification: trusted CA, invalid certs and hostnames rejected.
-        client_ctx = get_ssl_context(None, None, CA_PEM, None, False, False, False, _IS_SYNC)
-        options = PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=client_ctx)
+        options = self._pool_options(_client_tls_context(verify=True))
 
         created = []
 
@@ -180,9 +204,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
             return sock
 
         def callback(context):
-            if _IS_SYNC:
-                return connect()
-            return asyncio.get_running_loop().run_in_executor(None, connect)
+            return _run_blocking(connect)
 
         port = listener.getsockname()[1]
         # The cert covers localhost: verifying against the KMS address succeeds.
@@ -197,15 +219,12 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
 
     def test_asyncio_transport_socket_is_rejected(self):
         # get_extra_info("socket") is a TransportSocket, not a socket.socket.
-        left, right = socket.socketpair()
-        self.addCleanup(left.close)
-        self.addCleanup(right.close)
-
-        def callback(context):
-            return TransportSocket(left)
+        left, _right = self._socketpair()
 
         with self.assertRaisesRegex(ConfigurationError, "TransportSocket"):
-            _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+            _connect_kms(
+                _KMS_ADDRESS, self._pool_options(), _callback_returning(TransportSocket(left)), 10.0
+            )
 
     def test_cancelled_tls_wrap_closes_late_socket(self):
         # A cancelled wrap can leave the executor producing an SSLSocket; the
@@ -214,13 +233,12 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
             raise unittest.SkipTest("the cancel-safe wrap is an async path")
         from pymongo.pool_shared import _close_late_socket
 
-        left, right = socket.socketpair()
+        left, _right = self._socketpair()
         future = asyncio.get_running_loop().create_future()
         future.set_result(left)
         self.assertNotEqual(left.fileno(), -1)
         _close_late_socket(future)
         self.assertEqual(left.fileno(), -1)
-        self.addCleanup(right.close)
 
     def test_non_coroutine_callback_is_rejected(self):
         # A plain def must be rejected before it blocks the event loop.
@@ -234,7 +252,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
             return None
 
         with self.assertRaisesRegex(ConfigurationError, "coroutine function"):
-            _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+            _connect_kms(_KMS_ADDRESS, self._pool_options(), callback, 10.0)
         self.assertEqual(entered, [], "invalid callback must not be entered")
 
     def test_unconnected_socket_from_callback_is_rejected(self):
@@ -242,11 +260,8 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         bare = socket.socket()
         self.addCleanup(bare.close)
 
-        def callback(context):
-            return bare
-
         with self.assertRaisesRegex(ConfigurationError, "already connected"):
-            _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+            _connect_kms(_KMS_ADDRESS, self._pool_options(), _callback_returning(bare), 10.0)
 
     def test_datagram_socket_from_callback_is_rejected(self):
         # TLS on a connected UDP socket raises NotImplementedError, which would be retried.
@@ -257,11 +272,8 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         right.bind(("127.0.0.1", 0))
         left.connect(right.getsockname())
 
-        def callback(context):
-            return left
-
         with self.assertRaisesRegex(ConfigurationError, "stream socket"):
-            _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+            _connect_kms(_KMS_ADDRESS, self._pool_options(), _callback_returning(left), 10.0)
 
     def test_kms_request_does_not_retry_a_contract_violation(self):
         # _connect_kms has no retry loop; the no-retry guarantee is in
@@ -305,7 +317,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
 
         # Not a ConfigurationError, so kms_request retries it.
         with self.assertRaises(OSError):
-            _connect_kms(("kms.example.com", 443), self._pool_options(), callback, 10.0)
+            _connect_kms(_KMS_ADDRESS, self._pool_options(), callback, 10.0)
 
     def test_csot_deadline_stops_a_hung_callback(self):
         # A callback that ignores the timeout cannot block past the CSOT
@@ -313,9 +325,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         if _IS_SYNC:
             raise unittest.SkipTest("the sync API cannot interrupt a callback")
 
-        left, right = socket.socketpair()
-        self.addCleanup(left.close)
-        self.addCleanup(right.close)
+        left, _right = self._socketpair()
 
         def hung_callback(context):
             time.sleep(0.5)
@@ -323,7 +333,7 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
 
         with self.assertRaises(NetworkTimeout):
             with pymongo.timeout(0.1):
-                _connect_kms(("kms.example.com", 443), self._pool_options(), hung_callback, 10.0)
+                _connect_kms(_KMS_ADDRESS, self._pool_options(), hung_callback, 10.0)
         self.assertNotEqual(left.fileno(), -1)
         # Let the shielded callback finish; the driver closes the late result.
         time.sleep(0.75)
@@ -335,12 +345,8 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
         if _IS_SYNC:
             raise unittest.SkipTest("cancellation is an async-only behavior")
 
-        server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        server_ctx.load_cert_chain(CLIENT_PEM)
-        listener = socket.socket()
-        listener.bind(("127.0.0.1", 0))
-        listener.listen(1)
-        self.addCleanup(listener.close)
+        server_ctx = _tls_server_context()
+        listener = self._listen()
         gate = threading.Event()
         eof = threading.Event()
 
@@ -380,22 +386,21 @@ class TestKmsConnectCallbackUnit(PyMongoTestCase):
 
         threading.Thread(target=stub_server, daemon=True).start()
 
-        client_ctx = get_ssl_context(None, None, None, None, True, True, False, _IS_SYNC)
-        options = PoolOptions(connect_timeout=10, socket_timeout=10, ssl_context=client_ctx)
+        options = self._pool_options(_client_tls_context())
         socks = []
 
-        def callback(context):
-            sock = asyncio.get_running_loop().run_in_executor(
-                None,
-                lambda: socket.create_connection(listener.getsockname(), timeout=10),
-            )
+        def connect():
+            sock = socket.create_connection(listener.getsockname(), timeout=10)
             socks.append(sock)
             return sock
 
+        def callback(context):
+            return _run_blocking(connect)
+
         # The sync flavor returns a socket instead of a coroutine, so both
         # error codes are needed depending on the flavor being checked.
-        connect = _connect_kms(listener.getsockname(), options, callback, 10.0)
-        task = asyncio.ensure_future(connect)  # type: ignore[type-var,arg-type]
+        pending = _connect_kms(listener.getsockname(), options, callback, 10.0)
+        task = asyncio.ensure_future(pending)  # type: ignore[type-var,arg-type]
         for _ in range(100):
             if socks:
                 break
