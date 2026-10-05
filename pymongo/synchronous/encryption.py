@@ -712,9 +712,9 @@ class ClientEncryption(Generic[_DocumentType]):
             returns a connected, unwrapped :class:`socket.socket`, over which
             the driver performs the KMS TLS handshake.
             Must be a regular function.
-            On timeout the driver stops waiting and closes any late-yielded
-            socket. Defaults to ``None``, meaning the driver connects to KMS
-            hosts directly.
+            The callback is responsible for honoring ``context.timeout``.
+            Defaults to ``None``, meaning the driver connects to KMS hosts
+            directly.
 
         .. versionchanged:: 4.19
            Added the `kms_connect_callback` parameter.
