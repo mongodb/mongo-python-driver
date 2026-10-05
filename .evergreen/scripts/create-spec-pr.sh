@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -eu
 
-tools="$(realpath -s "../drivers-tools")"
+# Default to the drivers-evergreen-tools submodule when unset; a
+# caller-provided DRIVERS_TOOLS wins, as in the other consumers.
+tools="$(realpath -s "${DRIVERS_TOOLS:-./drivers-evergreen-tools}")"
 pushd $tools/.evergreen/github_app || exit
 
 owner="mongodb"
@@ -116,5 +118,3 @@ if [ -z "$pr_url" ]; then
 fi
 echo "$pr_url"
 echo "Creating the PR... done."
-
-rm -rf $tools
