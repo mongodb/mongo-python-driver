@@ -14,29 +14,33 @@
 #                           3.10 when the task does not set one.
 set -euo pipefail
 
-HERE=$(dirname ${BASH_SOURCE:-$0})
+HERE=$(dirname "${BASH_SOURCE:-$0}")
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
-ROOT=$(dirname "$(dirname $HERE)")
+ROOT=$(dirname "$(dirname "$HERE")")
 
 # A .venv whose interpreter was removed breaks every `uv python find` and
 # `uv sync`. It is a build artifact, so remove it and let `uv sync` recreate it.
+# A removed base interpreter leaves a dangling symlink on Linux/macOS and a
+# launcher that will not start on Windows, so probe by running the interpreter.
 for _py in "$ROOT/.venv/bin/python3" "$ROOT/.venv/bin/python" "$ROOT/.venv/Scripts/python.exe"; do
-  if [ -L "$_py" ] && [ ! -e "$_py" ]; then
-    echo "Removing broken .venv (its interpreter is gone); uv sync will recreate it."
-    rm -rf "$ROOT/.venv"
+  if [ -e "$_py" ] || [ -L "$_py" ]; then
+    if ! "$_py" -c 'import sys' > /dev/null 2>&1; then
+      echo "Removing broken .venv (its interpreter will not start); uv sync will recreate it."
+      rm -rf "$ROOT/.venv"
+    fi
     break
   fi
 done
 unset _py
 
 # Source the env files to pick up common variables.
-if [ -f $HERE/env.sh ]; then
-  . $HERE/env.sh
+if [ -f "$HERE/env.sh" ]; then
+  . "$HERE/env.sh"
 fi
 
 # Get variables defined in test-env.sh.
-if [ -f $HERE/test-env.sh ]; then
-  . $HERE/test-env.sh
+if [ -f "$HERE/test-env.sh" ]; then
+  . "$HERE/test-env.sh"
 fi
 
 # Default to a known-good Python so behavior is deterministic when a task does
@@ -85,10 +89,11 @@ function _ensure_python() {
     return 0
   fi
   echo "uv could not install Python \"$request\"; looking for another interpreter..."
-  # Ignore UV_PYTHON_SEARCH_PATH/UV_PYTHON_PREFERENCE: they would steer the
-  # fallback right back to the broken interpreter. Local setup only.
+  # Ignore UV_PYTHON and friends: they would steer the fallback right back to
+  # the broken interpreter. Local setup only: the Evergreen agent exports
+  # CI=true for every task command.
   if [ "${CI:-}" != "true" ] && \
-    _fallback=$(env -u UV_PYTHON_SEARCH_PATH -u UV_PYTHON_PREFERENCE \
+    _fallback=$(env -u UV_PYTHON -u UV_PYTHON_SEARCH_PATH -u UV_PYTHON_PREFERENCE \
       uv python find ">=3.9" 2>/dev/null); then
     echo "Using fallback interpreter: $_fallback"
     export UV_PYTHON="$_fallback"
