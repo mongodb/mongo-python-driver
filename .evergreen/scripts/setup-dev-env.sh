@@ -53,6 +53,29 @@ if [ "${CI:-}" != "true" ] && [ "${GITHUB_ACTIONS:-}" != "true" ]; then
     printf 'export PATH="%s:$PATH"\n' "$PYMONGO_BIN_DIR_POSIX" >> "$_rc"
 fi
 
+# Initialize the submodule (Evergreen's git.get_project does not); tolerate
+# non-git hosts with a warning.
+if ! git -C "$ROOT" submodule update --init --recursive; then
+  echo "WARNING: could not initialize the drivers-evergreen-tools submodule;" \
+    "set DRIVERS_TOOLS to a drivers-evergreen-tools checkout instead."
+fi
+
+# Mirror configure-env.sh's uv config boundary; see it for the full explanation.
+if [ -d "$ROOT/drivers-evergreen-tools" ] && [ ! -f "$ROOT/drivers-evergreen-tools/uv.toml" ]; then
+  cat <<EOT > "$ROOT/drivers-evergreen-tools/uv.toml"
+# Written by mongo-python-driver to stop uv's config discovery here; see
+# .evergreen/scripts/configure-env.sh.
+EOT
+fi
+
+# Keep the boundary out of git status via the submodule's local exclude;
+# no-op without git.
+if _git_dir=$(git -C "$ROOT/drivers-evergreen-tools" rev-parse --absolute-git-dir 2>/dev/null); then
+  mkdir -p "${_git_dir}/info"
+  grep -qxF "uv.toml" "${_git_dir}/info/exclude" 2>/dev/null ||
+    printf "uv.toml\n" >> "${_git_dir}/info/exclude"
+fi
+
 # Ensure dependencies are installed.
 bash $HERE/install-dependencies.sh
 
