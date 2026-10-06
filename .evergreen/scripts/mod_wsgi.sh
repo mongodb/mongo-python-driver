@@ -73,12 +73,11 @@ if [ "$(uname -s)" = "Linux" ] && [ -z "${MOD_WSGI_DOCKER:-}" ]; then
   # "just run-server" or the CI workflow. Set MOD_WSGI_DOCKER to force the
   # container path on Linux.
   if [ "$CMD" != "teardown" ]; then
-    # Other recipes' exact uv syncs — including run-tests' resync — prune the
-    # mod_wsgi group; restore it before setup or test when missing. Checking
-    # first keeps the sync from reconciling dependencies that a caller
-    # resolved differently, like the min-deps job's lowest-direct install.
+    # Other recipes' exact uv syncs prune the on-demand mod_wsgi install;
+    # restore it when missing. Checking first avoids reconciling a caller's
+    # differently-resolved dependencies.
     if ! uv run --no-sync python -c "import mod_wsgi" 2>/dev/null; then
-      uv sync --group mod_wsgi --quiet
+      uv pip install -r requirements/mod_wsgi.txt --quiet
     fi
   fi
   if [ "$CMD" = "setup" ]; then
@@ -190,7 +189,9 @@ bootstrap() {
     # Rebuild the in-place C extensions on every bootstrap; the source
     # refresh may carry artifacts built by a different interpreter.
     export PYMONGO_C_EXT_MUST_BUILD=1
-    uv sync --group mod_wsgi --refresh-package pymongo
+    uv sync --refresh-package pymongo
+    # The sync above prunes mod_wsgi, so install it after.
+    VIRTUAL_ENV="$VENV" uv pip install -r requirements/mod_wsgi.txt --quiet
   '
   ensure_mongod
   docker exec --user smoke -w "$HOME_SRC" "$CONTAINER" bash -c 'set -euo pipefail

@@ -34,13 +34,19 @@ from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _async_create_lock
 from pymongo.monitoring import _EventListeners
+from pymongo.pool_shared import _async_wrap_socket_tls
 from test.asynchronous.utils import async_get_pool, async_joinall, flaky
 
 sys.path[0:0] = [""]
 
 from pymongo.asynchronous.pool import Pool, PoolOptions
 from pymongo.socket_checker import SocketChecker
-from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    async_client_context,
+    unittest,
+)
 from test.asynchronous.helpers import ConcurrentRunner
 from test.utils_shared import CMAPListener, delay
 
@@ -306,6 +312,7 @@ class TestPooling(_TestPoolingBase):
         # Accounting was applied exactly once.
         self.assertEqual(0, cx_pool.requests)
         self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool.operation_count)
 
     async def test_checkout_error_accounting_on_kill_during_acquire(self):
         # PYTHON-6074: an exception delivered while the checkout error
@@ -341,6 +348,98 @@ class TestPooling(_TestPoolingBase):
         # The fallback applied the accounting exactly once.
         self.assertEqual(0, cx_pool.requests)
         self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool.operation_count)
+
+    async def test_checkout_error_accounting_on_connect_keyboard_interrupt(self):
+        # PYTHON-6136: a KeyboardInterrupt from connect() must roll back the
+        # size gate, the maxConnecting gate, and active_sockets.
+        cx_pool = await self.create_pool(max_pool_size=1)
+
+        with patch.object(cx_pool, "connect", side_effect=KeyboardInterrupt()):
+            with self.assertRaises(KeyboardInterrupt):
+                async with cx_pool.checkout():
+                    pass
+
+        self.assertEqual(0, cx_pool.requests)
+        self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool._pending)
+        self.assertEqual(0, cx_pool.operation_count)
+
+    async def test_checkout_error_accounting_on_kill_during_pending_cleanup(self):
+        # PYTHON-6136: an interruption during the pending-gate cleanup must
+        # not skip the counter restore, which must wake threads waiting at
+        # the maxConnecting gate.
+        cx_pool = await self.create_pool(max_pool_size=1)
+
+        class _InterruptOnSecondEnter(type(cx_pool._max_connecting_cond)):
+            def __init__(self, lock):
+                super().__init__(lock)
+                self.enters = 0
+                self.notifies = 0
+
+            async def __aenter__(self):
+                self.enters += 1
+                if self.enters == 2:
+                    # First enter is the checkout wait, second is connect()'s
+                    # cleanup. Simulate a kill delivered while waiting there.
+                    raise KeyboardInterrupt()
+                return await super().__aenter__()
+
+            async def __aexit__(self, *args):
+                return await super().__aexit__(*args)
+
+            def notify(self, n=1):
+                # The counter restore wakes the maxConnecting gate, then is
+                # itself killed.
+                self.notifies += 1
+                raise KeyboardInterrupt()
+
+        cond = _InterruptOnSecondEnter(cx_pool._max_connecting_cond._lock)
+        cx_pool._max_connecting_cond = cond
+
+        with patch.object(cx_pool, "connect", side_effect=asyncio.CancelledError()):
+            with self.assertRaises(KeyboardInterrupt):
+                async with cx_pool.checkout():
+                    pass
+
+        self.assertEqual(0, cx_pool.requests)
+        self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool._pending)
+        self.assertEqual(0, cx_pool.operation_count)
+        # The restore notified the maxConnecting gate; the notify interrupted
+        # by the kill was retried.
+        self.assertEqual(2, cond.notifies)
+
+    async def test_checkout_error_accounting_on_kill_during_pending_notify(self):
+        # PYTHON-6136: a kill landing inside the cleanup notify must not
+        # strand a checkout waiting at the maxConnecting gate.
+        cx_pool = await self.create_pool(max_pool_size=1)
+
+        class _InterruptOnFirstNotify(type(cx_pool._max_connecting_cond)):
+            def __init__(self, lock):
+                super().__init__(lock)
+                self.notifies = 0
+
+            def notify(self, n=1):
+                self.notifies += 1
+                if self.notifies == 1:
+                    # Simulate a kill delivered inside notify().
+                    raise KeyboardInterrupt()
+
+        cond = _InterruptOnFirstNotify(cx_pool._max_connecting_cond._lock)
+        cx_pool._max_connecting_cond = cond
+
+        with patch.object(cx_pool, "connect", side_effect=asyncio.CancelledError()):
+            with self.assertRaises(KeyboardInterrupt):
+                async with cx_pool.checkout():
+                    pass
+
+        # The cleanup notify was interrupted, then retried.
+        self.assertEqual(2, cond.notifies)
+        self.assertEqual(0, cx_pool.requests)
+        self.assertEqual(0, cx_pool.active_sockets)
+        self.assertEqual(0, cx_pool._pending)
+        self.assertEqual(0, cx_pool.operation_count)
 
     async def test_pool_removes_closed_socket(self):
         # Test that Pool removes explicitly closed socket.
@@ -463,6 +562,8 @@ class TestPooling(_TestPoolingBase):
             1,
             f"Waited {duration:.2f} seconds for a socket, expected {wait_queue_timeout:f}",
         )
+        # The load metric must not be inflated by the failed checkout.
+        self.assertEqual(0, pool.operation_count)
 
     async def test_no_wait_queue_timeout(self):
         # Verify get_socket() with no wait_queue_timeout blocks forever.
@@ -822,6 +923,19 @@ class TestPoolHandleConnectionError(unittest.TestCase):
         err.__cause__ = ssl.SSLCertVerificationError("certificate verify failed")
         pool._handle_connection_error(err)
         self.assertFalse(err.has_error_label("SystemOverloadedError"))
+
+
+class TestWrapSocketTLS(AsyncPyMongoTestCase):
+    async def test_wrap_socket_tls_without_ssl_context_returns_same_socket(self):
+        options = PoolOptions(socket_timeout=7.5)
+        left, right = socket.socketpair()
+        self.addCleanup(left.close)
+        self.addCleanup(right.close)
+
+        result = await _async_wrap_socket_tls(left, ("kms.example.com", 443), options)
+
+        self.assertIs(result, left)
+        self.assertEqual(result.gettimeout(), 7.5)
 
 
 if __name__ == "__main__":

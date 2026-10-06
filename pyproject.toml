@@ -70,9 +70,6 @@ unasync = [
 ]
 pip = ["pip>=20.2"]
 gevent = ["gevent>=21.12"]
-# mod_wsgi is built against the interpreter it is installed with and is used
-# only by the mod_wsgi test suite.
-mod_wsgi = ["mod_wsgi>=4.9.4"]
 coverage = [
     "coverage[toml]>=5,<=7.15.0"
 ]
@@ -96,6 +93,11 @@ validate-bump = false
 
 [tool.hatch.build.targets.wheel]
 packages = ["bson","gridfs", "pymongo"]
+
+[tool.hatch.build.targets.sdist]
+# The drivers-evergreen-tools submodule must not ship in the sdist; hatchling's
+# walk would otherwise pick it up when the submodule is populated locally.
+exclude = ["drivers-evergreen-tools"]
 
 [tool.hatch.metadata.hooks.requirements_txt]
 files = ["requirements.txt"]

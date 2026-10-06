@@ -9,7 +9,6 @@ build/
 doc/_build/
 dist/
 tools/settings.py
-drivers-evergreen-tools
 pymongo.egg-info/
 *.so
 *.egg*
@@ -47,5 +46,10 @@ xunit-results/
 coverage.xml
 server.log
 .coverage
+test-results.json
 access_log
 error_log
+
+# AI-assistant review workflow logs (kept untracked)
+/REVIEW_STATE.md
+/REVIEW.md

@@ -4,4 +4,4 @@ rules:
       policies:
         actions/*: ref-pin
         mongodb-labs/drivers-github-tools/*: hash-pin
-        mongodb-labs/drivers-evergreen-tools: ref-pin
+        mongodb-labs/drivers-evergreen-tools: hash-pin

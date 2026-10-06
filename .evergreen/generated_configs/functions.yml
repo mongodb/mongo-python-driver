@@ -102,6 +102,7 @@ functions:
           - SSL
           - ORCHESTRATION_FILE
           - UV_PYTHON
+          - UV_PYTHON_PREFERENCE
           - STORAGE_ENGINE
           - REQUIRE_API_VERSION
           - DRIVERS_TOOLS
@@ -137,6 +138,7 @@ functions:
           - AWS_SESSION_TOKEN
           - COVERAGE
           - UV_PYTHON
+          - UV_PYTHON_PREFERENCE
           - LIBMONGOCRYPT_URL
           - MONGODB_URI
           - DISABLE_TEST_COMMANDS
