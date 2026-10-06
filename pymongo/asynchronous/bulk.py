@@ -29,9 +29,7 @@ from typing import (
     Union,
 )
 
-from bson.objectid import ObjectId
-from bson.raw_bson import RawBSONDocument
-from pymongo import _csot, common
+from pymongo import _csot
 from pymongo._telemetry import _generate_op_id_or_none
 from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.command_runner import (
@@ -40,17 +38,11 @@ from pymongo.asynchronous.command_runner import (
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.bulk_shared import (
     _COMMANDS,
-    _DELETE_ALL,
+    _AgnosticBulkBase,
     _merge_command,
     _raise_bulk_write_error,
-    _Run,
 )
 from pymongo.client_session_shared import _validate_session_write_concern
-from pymongo.common import (
-    validate_is_document_type,
-    validate_ok_for_replace,
-    validate_ok_for_update,
-)
 from pymongo.errors import (
     ConfigurationError,
     InvalidOperation,
@@ -59,7 +51,6 @@ from pymongo.errors import (
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
 from pymongo.message import (
     _DELETE,
-    _INSERT,
     _UPDATE,
     _BulkWriteContext,
     _EncryptedBulkWriteContext,
@@ -71,165 +62,14 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
-    from pymongo.typings import _DocumentOut, _DocumentType, _Pipeline
 
 _IS_SYNC = False
 
 
-class _AsyncBulk:
+class _AsyncBulk(_AgnosticBulkBase):
     """The private guts of the bulk write API."""
 
-    def __init__(
-        self,
-        collection: AsyncCollection[_DocumentType],
-        ordered: bool,
-        bypass_document_validation: Optional[bool],
-        comment: Optional[str] = None,
-        let: Optional[Any] = None,
-    ) -> None:
-        """Initialize a _AsyncBulk instance."""
-        self.collection = collection.with_options(
-            codec_options=collection.codec_options._replace(
-                unicode_decode_error_handler="replace", document_class=dict
-            )
-        )
-        self.let = let
-        if self.let is not None:
-            common.validate_is_document_type("let", self.let)
-        self.comment: Optional[str] = comment
-        self.ordered = ordered
-        self.ops: list[tuple[int, Mapping[str, Any]]] = []
-        self.executed = False
-        self.bypass_doc_val = bypass_document_validation
-        self.uses_collation = False
-        self.uses_array_filters = False
-        self.uses_sort = False
-        self.is_retryable = True
-        self.retrying = False
-        self.started_retryable_write = False
-        # Extra state so that we know where to pick up on a retry attempt.
-        self.current_run = None
-        self.next_run = None
-        self.is_encrypted = False
-
-    @property
-    def bulk_ctx_class(self) -> type[_BulkWriteContext]:
-        encrypter = self.collection.database.client._encrypter
-        if encrypter and not encrypter._bypass_auto_encryption:
-            self.is_encrypted = True
-            return _EncryptedBulkWriteContext
-        else:
-            self.is_encrypted = False
-            return _BulkWriteContext
-
-    def add_insert(self, document: _DocumentOut) -> None:
-        """Add an insert document to the list of ops."""
-        validate_is_document_type("document", document)
-        # Generate ObjectId client side.
-        if not (isinstance(document, RawBSONDocument) or "_id" in document):
-            document["_id"] = ObjectId()
-        self.ops.append((_INSERT, document))
-
-    def add_update(
-        self,
-        selector: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
-        multi: bool,
-        upsert: Optional[bool],
-        collation: Optional[Mapping[str, Any]] = None,
-        array_filters: Optional[list[Mapping[str, Any]]] = None,
-        hint: Union[str, dict[str, Any], None] = None,
-        sort: Optional[Mapping[str, Any]] = None,
-    ) -> None:
-        """Create an update document and add it to the list of ops."""
-        validate_ok_for_update(update)
-        cmd: dict[str, Any] = {"q": selector, "u": update, "multi": multi}
-        if upsert is not None:
-            cmd["upsert"] = upsert
-        if collation is not None:
-            self.uses_collation = True
-            cmd["collation"] = collation
-        if array_filters is not None:
-            self.uses_array_filters = True
-            cmd["arrayFilters"] = array_filters
-        if hint is not None:
-            cmd["hint"] = hint
-        if sort is not None:
-            self.uses_sort = True
-            cmd["sort"] = sort
-        if multi:
-            # A bulk_write containing an update_many is not retryable.
-            self.is_retryable = False
-        self.ops.append((_UPDATE, cmd))
-
-    def add_replace(
-        self,
-        selector: Mapping[str, Any],
-        replacement: Mapping[str, Any],
-        upsert: Optional[bool],
-        collation: Optional[Mapping[str, Any]] = None,
-        hint: Union[str, dict[str, Any], None] = None,
-        sort: Optional[Mapping[str, Any]] = None,
-    ) -> None:
-        """Create a replace document and add it to the list of ops."""
-        validate_ok_for_replace(replacement)
-        cmd: dict[str, Any] = {"q": selector, "u": replacement}
-        if upsert is not None:
-            cmd["upsert"] = upsert
-        if collation is not None:
-            self.uses_collation = True
-            cmd["collation"] = collation
-        if hint is not None:
-            cmd["hint"] = hint
-        if sort is not None:
-            self.uses_sort = True
-            cmd["sort"] = sort
-        self.ops.append((_UPDATE, cmd))
-
-    def add_delete(
-        self,
-        selector: Mapping[str, Any],
-        limit: int,
-        collation: Optional[Mapping[str, Any]] = None,
-        hint: Union[str, dict[str, Any], None] = None,
-    ) -> None:
-        """Create a delete document and add it to the list of ops."""
-        cmd: dict[str, Any] = {"q": selector, "limit": limit}
-        if collation is not None:
-            self.uses_collation = True
-            cmd["collation"] = collation
-        if hint is not None:
-            cmd["hint"] = hint
-        if limit == _DELETE_ALL:
-            # A bulk_write containing a delete_many is not retryable.
-            self.is_retryable = False
-        self.ops.append((_DELETE, cmd))
-
-    def gen_ordered(self) -> Iterator[Optional[_Run]]:
-        """Generate batches of operations, batched by type of
-        operation, in the order **provided**.
-        """
-        run = None
-        for idx, (op_type, operation) in enumerate(self.ops):
-            if run is None:
-                run = _Run(op_type)
-            elif run.op_type != op_type:
-                yield run
-                run = _Run(op_type)
-            run.add(idx, operation)
-        yield run
-
-    def gen_unordered(self) -> Iterator[_Run]:
-        """Generate batches of operations, batched by type of
-        operation, in arbitrary order.
-        """
-        operations = [_Run(_INSERT), _Run(_UPDATE), _Run(_DELETE)]
-        for idx, (op_type, operation) in enumerate(self.ops):
-            operations[op_type].add(idx, operation)
-
-        for run in operations:
-            if run.ops:
-                yield run
+    collection: AsyncCollection[Any]
 
     @_handle_reauth
     async def write_command(

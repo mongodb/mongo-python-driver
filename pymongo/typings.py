@@ -73,7 +73,6 @@ def strip_optional(elem: Optional[_T]) -> _T:
 
 __all__ = [
     "_Address",
-    "_AgnosticMongoClient",
     "_CollationIn",
     "_DocumentOut",
     "_DocumentType",

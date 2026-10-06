@@ -13,10 +13,12 @@ from utils import (
     ENV_FILE,
     HERE,
     LOGGER,
+    PERF_PYTHON_VERSION,
     PLATFORM,
     ROOT,
     TEST_SUITE_MAP,
     Distro,
+    check_drivers_tools,
     get_test_options,
     read_env,
     run_command,
@@ -50,9 +52,6 @@ EXTRAS_MAP = {
 
 # Map the test name to test group.
 GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
-
-# The python version used for perf tests.
-PERF_PYTHON_VERSION = "3.10.11"
 
 # The libmongocrypt release used when LIBMONGOCRYPT_URL is not set. Must be at
 # least 1.20.0 for the GA "substring" query type.
@@ -329,8 +328,7 @@ def handle_test_env() -> None:
             MULTI_MONGOS_LB_URI += "&tls=true"
         write_env("SINGLE_MONGOS_LB_URI", SINGLE_MONGOS_LB_URI)
         write_env("MULTI_MONGOS_LB_URI", MULTI_MONGOS_LB_URI)
-        if not DRIVERS_TOOLS:
-            raise RuntimeError("Missing DRIVERS_TOOLS")
+        check_drivers_tools()
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
 
@@ -378,8 +376,7 @@ def handle_test_env() -> None:
         run_command(cmd, cwd=DRIVERS_TOOLS)
 
     if SSL != "nossl":
-        if not DRIVERS_TOOLS:
-            raise RuntimeError("Missing DRIVERS_TOOLS")
+        check_drivers_tools()
         write_env("CLIENT_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/client.pem")
         write_env("CA_PEM", f"{DRIVERS_TOOLS}/.evergreen/x509gen/ca.pem")
 
@@ -431,8 +428,7 @@ def handle_test_env() -> None:
         # PATH is updated by configure-env.sh for access to mongocryptd.
 
     if test_name == "encryption":
-        if not DRIVERS_TOOLS:
-            raise RuntimeError("Missing DRIVERS_TOOLS")
+        check_drivers_tools()
         csfle_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/csfle")
         # Opt in to corporate Azure credentials (DRIVERS-3392)
         os.environ["FLE_AZURE_USE_CORPORATE"] = "YES"
@@ -515,13 +511,12 @@ def handle_test_env() -> None:
             run_command("tar xf single_and_multi_document.tgz", cwd=data_dir)
         write_env("TEST_PATH", str(data_dir))
         write_env("OUTPUT_FILE", str(ROOT / "results.json"))
-        # Overwrite the UV_PYTHON value from env.sh, and unset the toolchain
-        # search-path variables: an empty value would make uv reject the request,
-        # and a toolchain path would miss the exact patch version requested.
-        write_env("UV_PYTHON", "")
+        # The toolchain build may be this same patch version but is not
+        # optimized, which regressed CPU-bound benchmarks (PYTHON-6135).
+        write_env("UV_PYTHON", PERF_PYTHON_VERSION)
+        write_env("UV_PYTHON_PREFERENCE", "only-managed")
         with ENV_FILE.open("a", newline="\n") as fid:
             fid.write("unset UV_PYTHON_SEARCH_PATH\n")
-            fid.write("unset UV_PYTHON_PREFERENCE\n")
 
         UV_ARGS.append(f"--python={PERF_PYTHON_VERSION}")
 

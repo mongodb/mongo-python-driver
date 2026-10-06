@@ -2695,20 +2695,18 @@ class TestExhaustCursor(IntegrationTest):
         import gevent.thread as _gthread
         from gevent import Timeout, spawn
 
-        # AMPLIFY_RACE=1 widens gevent's brief sleep on a contended lock
-        # so a kill lands there reliably. Only the bare sleep() is
-        # widened; timed sleeps pass through. The unfixed test then
-        # deadlocks within seconds.
+        # AMPLIFY_RACE=1 widens the kill windows below; keep AMPLIFY_SECONDS
+        # small or ops starve.
+        amplify_seconds = 0.0
         if os.environ.get("AMPLIFY_RACE", "0") == "1":
-            _AMPLIFY_SECONDS = float(os.environ.get("AMPLIFY_SECONDS", "0.02"))
+            amplify_seconds = float(os.environ.get("AMPLIFY_SECONDS", "0.002"))
 
             _orig_thread_sleep = _gthread.sleep
 
             def _amplified_sleep(*args):
-                if not args:  # bare sleep(): the courtesy yield on a failed
-                    # non-blocking acquire (Condition.notify -> _is_owned -> acquire(False))
-                    _orig_thread_sleep(_AMPLIFY_SECONDS)
-                else:  # sleep(0.001), sleep(2), etc.: passthrough
+                if not args:  # bare sleep(): checkin courtesy yield
+                    _orig_thread_sleep(amplify_seconds)
+                else:  # timed sleeps pass through
                     _orig_thread_sleep(*args)
 
             _gthread.sleep = _amplified_sleep
@@ -2717,6 +2715,31 @@ class TestExhaustCursor(IntegrationTest):
         client = self.rs_or_single_client(maxPoolSize=2)
         coll = client.pymongo_test.coll
         coll.insert_one({})
+
+        pool = get_pool(client)  # type:ignore
+        # Widen the post-gate checkout windows (PYTHON-6136).
+        if amplify_seconds:
+
+            class _AmplifiedCondition:
+                def __init__(self, cond, seconds):
+                    self._cond = cond
+                    self._seconds = seconds
+
+                def __enter__(self):
+                    self._cond.__enter__()
+                    return self
+
+                def __exit__(self, *args):
+                    self._cond.__exit__(*args)
+                    time.sleep(self._seconds)
+
+                def __getattr__(self, name):
+                    return getattr(self._cond, name)
+
+            pool.size_cond = _AmplifiedCondition(pool.size_cond, amplify_seconds)
+            pool._max_connecting_cond = _AmplifiedCondition(
+                pool._max_connecting_cond, amplify_seconds
+            )
 
         op_count = [0]
         running = [True]
@@ -2731,9 +2754,12 @@ class TestExhaustCursor(IntegrationTest):
                 except Exception:
                     return
 
+        # Scale the kill cadence or ops starve.
+        reaper_interval = max(0.003, amplify_seconds * 8)
+
         def reaper():
             while running[0]:
-                time.sleep(0.003)
+                time.sleep(reaper_interval)
                 if not workers:
                     continue
                 idx = random.randrange(len(workers))
@@ -2774,11 +2800,6 @@ class TestExhaustCursor(IntegrationTest):
                     coll.find_one({})
             except Timeout:
                 self.fail("Pool gate saturated (PYTHON-6074)")
-            # Deterministic check: a saturated size gate pins the pool's
-            # checkout counters at maxPoolSize (PYTHON-6074).
-            pool = get_pool(client)  # type:ignore
-            self.assertLess(pool.requests, pool.max_pool_size)
-            self.assertLess(pool.active_sockets, pool.max_pool_size)
             self.assertGreater(op_count[0], 0)
         finally:
             running[0] = False
@@ -2796,6 +2817,14 @@ class TestExhaustCursor(IntegrationTest):
                     client.close()
             except Timeout:
                 pass
+        # Post-settle: the counters must have fully drained. Note close()
+        # does not zero operation_count (only a fork does), so a leaked
+        # increment survives and is caught here.
+        time.sleep(1.0)
+        self.assertEqual(pool.requests, 0)
+        self.assertEqual(pool._pending, 0)
+        self.assertEqual(pool.active_sockets, 0)
+        self.assertEqual(pool.operation_count, 0)
 
 
 class TestClientLazyConnect(IntegrationTest):
