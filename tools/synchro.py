@@ -72,6 +72,7 @@ replacements = {
     "_a_grid_out_property": "_grid_out_property",
     "AsyncClientEncryption": "ClientEncryption",
     "AsyncMongoCryptCallback": "MongoCryptCallback",
+    "AsyncKMSConnectCallback": "KMSConnectCallback",
     "AsyncExplicitEncrypter": "ExplicitEncrypter",
     "AsyncAutoEncrypter": "AutoEncrypter",
     "AsyncContextManager": "ContextManager",
@@ -127,6 +128,7 @@ replacements = {
     "AsyncNetworkingInterface": "NetworkingInterface",
     "_configured_protocol_interface": "_configured_socket_interface",
     "_async_configured_socket": "_configured_socket",
+    "_async_wrap_socket_tls": "_wrap_socket_tls",
     "SpecRunnerTask": "SpecRunnerThread",
     "AsyncMockConnection": "MockConnection",
     "AsyncMockPool": "MockPool",
@@ -297,6 +299,13 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                     lines[i] = lines[i].replace("an asynchronous", "a")
                 if "An asynchronous" in lines[i]:
                     lines[i] = lines[i].replace("An asynchronous", "A")
+                # This sentence states the callback contract, whose meaning
+                # would invert under the async -> sync word replacements.
+                if "Must be a coroutine function for the asynchronous API." in lines[i]:
+                    lines[i] = lines[i].replace(
+                        "Must be a coroutine function for the asynchronous API.",
+                        "Must be a regular function.",
+                    )
                 # This ensures docstring links are for `pymongo.X` instead of `pymongo.synchronous.X`
                 if "pymongo.asynchronous" in lines[i] and "import" not in lines[i]:
                     lines[i] = lines[i].replace("pymongo.asynchronous", "pymongo")
