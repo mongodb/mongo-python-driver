@@ -19,9 +19,11 @@
 
 from __future__ import annotations
 
+import socket
 import warnings
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Optional, TypedDict
+from collections.abc import Awaitable, Mapping
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict
 
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 
@@ -55,6 +57,38 @@ def check_min_pymongocrypt() -> None:
         )
 
 
+@dataclass(frozen=True)
+class KMSConnectContext:
+    """Information about a pending KMS connection.
+
+    Passed to ``kms_connect_callback``, which must return a plain, unwrapped
+    :class:`socket.socket`. The driver performs the KMS TLS handshake over it,
+    verifying against ``host`` rather than the peer actually reached.
+
+    :param host: Hostname of the KMS server, and the TLS verification target.
+    :param port: Port of the KMS server.
+    :param timeout: Seconds allowed for the connection: the default KMS
+        connect timeout, capped by the remaining time of an active operation
+        timeout (``timeoutMS``).
+
+    .. note:: ``timeoutMS`` does not constrain KMS requests for explicit
+       encryption, so ``timeout`` is always the default there. Automatic
+       encryption passes the remaining budget. This deviates from the Client
+       Side Operations Timeout specification; see PYTHON-6037.
+
+    .. versionadded:: 4.19
+    """
+
+    host: str
+    port: int
+    timeout: float
+
+
+# A callback that opens a connection to a KMS host.
+AsyncKMSConnectCallback = Callable[[KMSConnectContext], Awaitable[socket.socket]]
+KMSConnectCallback = Callable[[KMSConnectContext], socket.socket]
+
+
 class AutoEncryptionOpts:
     """Options to configure automatic client-side field level encryption."""
 
@@ -75,6 +109,7 @@ class AutoEncryptionOpts:
         bypass_query_analysis: bool = False,
         encrypted_fields_map: Optional[Mapping[str, Any]] = None,
         key_expiration_ms: Optional[int] = None,
+        kms_connect_callback: Optional[Callable[[KMSConnectContext], Any]] = None,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -212,7 +247,18 @@ class AutoEncryptionOpts:
         :param key_expiration_ms: The cache expiration time for data encryption keys.
             Defaults to ``None`` which defers to libmongocrypt's default which is currently 60000.
             Set to 0 to disable key expiration.
+        :param kms_connect_callback: A callable that opens the connection to a
+            KMS host, used to route KMS requests through an HTTP proxy. It
+            receives a :class:`KMSConnectContext` and returns a connected,
+            unwrapped :class:`socket.socket`, over which the driver performs
+            the KMS TLS handshake. Must be a coroutine function for
+            :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` and a
+            regular function for
+            :class:`~pymongo.synchronous.mongo_client.MongoClient`. Defaults
+            to ``None``, meaning the driver connects to KMS hosts directly.
 
+        .. versionchanged:: 4.19
+           Added the `kms_connect_callback` parameter.
         .. versionchanged:: 4.12
            Added the `key_expiration_ms` parameter.
         .. versionchanged:: 4.2
@@ -259,6 +305,11 @@ class AutoEncryptionOpts:
         self._async_kms_ssl_contexts: Optional[dict[str, SSLContext]] = None
         self._bypass_query_analysis = bypass_query_analysis
         self._key_expiration_ms = key_expiration_ms
+        if kms_connect_callback is not None and not callable(kms_connect_callback):
+            raise TypeError(
+                f"kms_connect_callback must be callable, not {type(kms_connect_callback)}"
+            )
+        self._kms_connect_callback = kms_connect_callback
 
     def _kms_ssl_contexts(self, is_sync: bool) -> dict[str, SSLContext]:
         if is_sync:
