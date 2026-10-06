@@ -187,6 +187,8 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             ssl_context=ctx,
         )
         address = parse_host(endpoint, _HTTPS_PORT)
+        if address[0].endswith(".sock"):
+            raise ConfigurationError(f"Invalid KMS endpoint {endpoint!r}")
         sleep_u = kms_context.usleep
         if sleep_u:
             sleep_sec = float(sleep_u) / 1e6

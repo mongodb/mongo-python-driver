@@ -38,16 +38,16 @@ jobs:
     outputs:
       version: ${{ steps.pre-publish.outputs.version }}
     steps:
-      - uses: mongodb-labs/drivers-github-tools/secure-checkout@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
+      - uses: mongodb-labs/drivers-github-tools/secure-checkout@f137fdd28483af14ebf466ebc5aa789fbf867218  # v3.0.5
         with:
           app_id: ${{ vars.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
-      - uses: mongodb-labs/drivers-github-tools/setup@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
+      - uses: mongodb-labs/drivers-github-tools/setup@f137fdd28483af14ebf466ebc5aa789fbf867218  # v3.0.5
         with:
           aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
           aws_region_name: ${{ vars.AWS_REGION_NAME }}
           aws_secret_id: ${{ secrets.AWS_SECRET_ID }}
-      - uses: mongodb-labs/drivers-github-tools/python/pre-publish@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
+      - uses: mongodb-labs/drivers-github-tools/python/pre-publish@f137fdd28483af14ebf466ebc5aa789fbf867218  # v3.0.5
         id: pre-publish
         with:
           dry_run: ${{ env.DRY_RUN }}
@@ -93,16 +93,16 @@ jobs:
       attestations: write
       security-events: write
     steps:
-      - uses: mongodb-labs/drivers-github-tools/secure-checkout@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
+      - uses: mongodb-labs/drivers-github-tools/secure-checkout@f137fdd28483af14ebf466ebc5aa789fbf867218  # v3.0.5
         with:
           app_id: ${{ vars.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
-      - uses: mongodb-labs/drivers-github-tools/setup@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
+      - uses: mongodb-labs/drivers-github-tools/setup@f137fdd28483af14ebf466ebc5aa789fbf867218  # v3.0.5
         with:
           aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
           aws_region_name: ${{ vars.AWS_REGION_NAME }}
           aws_secret_id: ${{ secrets.AWS_SECRET_ID }}
-      - uses: mongodb-labs/drivers-github-tools/python/post-publish@1a2d86bd5fed4b0090453bcd510e4c2ba3b92356  # v3.0.4
+      - uses: mongodb-labs/drivers-github-tools/python/post-publish@f137fdd28483af14ebf466ebc5aa789fbf867218  # v3.0.5
         with:
           following_version: ${{ env.FOLLOWING_VERSION }}
           product_name: ${{ env.PRODUCT_NAME }}

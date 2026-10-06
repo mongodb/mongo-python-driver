@@ -784,6 +784,7 @@ KW_VALIDATORS: dict[str, Callable[[Any, Any], Any]] = {
     "username": validate_string_or_none,
     "password": validate_string_or_none,
     "server_selector": validate_is_callable_or_none,
+    "srv_host_validator": validate_is_callable_or_none,
     "auto_encryption_opts": validate_auto_encryption_opts_or_none,
     "authoidcallowedhosts": validate_list,
     "max_adaptive_retries": validate_non_negative_integer,

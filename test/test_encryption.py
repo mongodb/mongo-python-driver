@@ -1293,6 +1293,14 @@ class TestCustomEndpoint(EncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, "localhost:12345"):
             self.client_encryption.create_data_key("kmip", master_key=master_key)
 
+    def test_kmip_endpoint_unix_socket_rejected(self):
+        # PYTHON-5990: a masterKey.endpoint ending in ".sock" must not be
+        # treated as a Unix domain socket path. KMS endpoints must be a TCP
+        # host[:port].
+        master_key = {"keyId": "1", "endpoint": "example.sock"}
+        with self.assertRaisesRegex(EncryptionError, "Invalid KMS endpoint"):
+            self.client_encryption.create_data_key("kmip", master_key=master_key)
+
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     def test_05_aws_endpoint_wrong_region(self):
         master_key = {
