@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.client_bulk import _AsyncClientBulk
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
+    from pymongo.asynchronous.database import AsyncDatabase
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.collation import Collation
@@ -39,6 +40,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.client_bulk import _ClientBulk
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.collection import Collection
+    from pymongo.synchronous.database import Database
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
 
@@ -52,8 +54,9 @@ ClusterTime = Mapping[str, Any]
 _T = TypeVar("_T")
 
 # Type hinting types for compatibility between async and sync classes
-_AgnosticMongoClient = Union["AsyncMongoClient", "MongoClient"]  # type: ignore[type-arg]
+_AgnosticMongoClient = Union["AsyncMongoClient[Any]", "MongoClient[Any]"]
 _AgnosticCollection = Union["AsyncCollection[_DocumentType]", "Collection[_DocumentType]"]
+_AgnosticDatabase = Union["AsyncDatabase[_DocumentType]", "Database[_DocumentType]"]
 _AgnosticConnection = Union["AsyncConnection", "Connection"]
 _AgnosticClientSession = Union["AsyncClientSession", "ClientSession"]
 _AgnosticBulk = Union["_AsyncBulk", "_Bulk"]
