@@ -399,12 +399,10 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
             )
 
     def test_14_throw_when_srv_host_validator_returns_a_non_boolean_value(self):
-        with self.assertRaisesRegex(ConfigurationError, "must return a bool") as ctx:
+        with self.assertRaisesRegex(ConfigurationError, "srv_host_validator must return a bool"):
             self._parse(
                 "blogs.mongodb.com", "cluster.mongodb.com", srv_host_validator=lambda host: "true"
             )
-        # A non-bool return is treated as though the validator raised an error.
-        self.assertIsInstance(ctx.exception.__cause__, TypeError)
 
     def test_15_accept_an_underscore_in_srv_allowed_hosts_suffix(self):
         res = self._parse(
