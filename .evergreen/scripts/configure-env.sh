@@ -12,7 +12,8 @@ else
 fi
 
 PROJECT_DIRECTORY="$(pwd)"
-DRIVERS_TOOLS="$(dirname $PROJECT_DIRECTORY)/drivers-tools"
+# Default to the submodule; an env var override wins.
+DRIVERS_TOOLS="${DRIVERS_TOOLS:-$PROJECT_DIRECTORY/drivers-evergreen-tools}"
 CARGO_HOME=${CARGO_HOME:-${DRIVERS_TOOLS}/.cargo}
 DRIVERS_TOOLS_BINARIES="$DRIVERS_TOOLS/.bin"
 MONGODB_BINARIES="$DRIVERS_TOOLS/mongodb/bin"
@@ -93,12 +94,40 @@ export PROJECT="${project:-mongo-python-driver}"
 export PIP_QUIET=1
 EOT
 
-# Write the .env file for drivers-tools.
-rm -rf $DRIVERS_TOOLS
-BRANCH=master
-ORG=mongodb-labs
-git clone --branch $BRANCH https://github.com/$ORG/drivers-evergreen-tools.git $DRIVERS_TOOLS
+# Only touch the in-tree submodule when it is the checkout actually in use;
+# an overridden DRIVERS_TOOLS is a checkout we do not own.
+if [ "$DRIVERS_TOOLS" = "$PROJECT_DIRECTORY/drivers-evergreen-tools" ]; then
+  # Initialize the submodule (Evergreen's git.get_project does not); tolerate
+  # non-git hosts with a warning.
+  if ! git -C "$PROJECT_DIRECTORY" submodule update --init --recursive; then
+    echo "WARNING: could not initialize the drivers-evergreen-tools submodule;" \
+      "using the existing checkout contents instead."
+  fi
 
+  # Write a uv config boundary into the submodule: it is vendored inside this
+  # project, so uv run by the tools' own scripts would otherwise walk up to
+  # pyproject.toml and enforce our required-version pin. Write-if-absent, so an
+  # upstream uv.toml fails the submodule update loudly instead of being clobbered.
+  if [ -d "${DRIVERS_TOOLS}" ] && [ ! -f "${DRIVERS_TOOLS}/uv.toml" ]; then
+    cat <<EOT > "${DRIVERS_TOOLS}/uv.toml"
+# Written by mongo-python-driver to stop uv's config discovery here; see
+# .evergreen/scripts/configure-env.sh.
+EOT
+  fi
+
+  # Keep the boundary out of git status via the submodule's local exclude;
+  # no-op without git.
+  if _git_dir=$(git -C "${DRIVERS_TOOLS}" rev-parse --absolute-git-dir 2>/dev/null); then
+    mkdir -p "${_git_dir}/info"
+    grep -qxF "uv.toml" "${_git_dir}/info/exclude" 2>/dev/null ||
+      printf "uv.toml\n" >> "${_git_dir}/info/exclude"
+  fi
+fi
+
+# Write the .env file for drivers-tools. Create the checkout if it is missing so
+# a failed submodule init does not stop this script before setup-tests.py can
+# reach check_drivers_tools() and report the problem actionably.
+mkdir -p "${DRIVERS_TOOLS}"
 cat <<EOT > ${DRIVERS_TOOLS}/.env
 SKIP_LEGACY_SHELL=1
 DRIVERS_TOOLS="$DRIVERS_TOOLS"

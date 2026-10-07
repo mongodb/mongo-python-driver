@@ -12,7 +12,11 @@ from typing import Any
 
 HERE = Path(__file__).absolute().parent
 ROOT = HERE.parent.parent
-DRIVERS_TOOLS = os.environ.get("DRIVERS_TOOLS", "").replace(os.sep, "/")
+# DRIVERS_TOOLS defaults to the drivers-evergreen-tools submodule; an env var
+# override wins.
+DRIVERS_TOOLS = (os.environ.get("DRIVERS_TOOLS") or str(ROOT / "drivers-evergreen-tools")).replace(
+    os.sep, "/"
+)
 TMP_DRIVER_FILE = "/tmp/mongo-python-driver.tgz"  # noqa: S108
 
 LOGGER = logging.getLogger("test")
@@ -81,6 +85,9 @@ SUB_TEST_NAME_MAP: dict[str, list[str] | None] = {
 }
 
 EXTRA_TESTS = ["aws_lambda", "doctest"]
+
+# The managed Python version used for perf tests (PYTHON-6135).
+PERF_PYTHON_VERSION = "3.10.11"
 
 # Tests that do not use run-mongodb directly.
 NO_RUN_ORCHESTRATION = [
@@ -298,8 +305,8 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
     kwargs.setdefault("check", True)
     # Prevent overriding the python used by other tools.
     env = kwargs.pop("env", os.environ).copy()
-    if "UV_PYTHON" in env:
-        del env["UV_PYTHON"]
+    for var in ["UV_PYTHON", "UV_PYTHON_SEARCH_PATH", "UV_PYTHON_PREFERENCE"]:
+        env.pop(var, None)
     kwargs["env"] = env
     try:
         subprocess.run(shlex.split(cmd), **kwargs)  # noqa: PLW1510, S603
@@ -308,6 +315,18 @@ def run_command(cmd: str | list[str], **kwargs: Any) -> None:
         LOGGER.error(str(e))
         sys.exit(e.returncode)
     LOGGER.info("Running command '%s'... done.", cmd)
+
+
+def check_drivers_tools() -> None:
+    """Raise a clear error when the drivers-evergreen-tools checkout is missing."""
+    # An uninitialized submodule can exist as an empty directory, so a bare
+    # is_dir() check passes. Require a script every consumer needs instead.
+    if not (Path(DRIVERS_TOOLS) / ".evergreen" / "run-mongodb.sh").is_file():
+        raise RuntimeError(
+            "The drivers-evergreen-tools checkout is missing or empty; run `just "
+            "install` to initialize the submodule, or set DRIVERS_TOOLS to a "
+            "drivers-evergreen-tools checkout."
+        )
 
 
 def create_archive() -> str:

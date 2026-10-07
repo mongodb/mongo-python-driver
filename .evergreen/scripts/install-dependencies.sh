@@ -2,6 +2,13 @@
 # Install the necessary dependencies.
 set -euo pipefail
 
+# The uv tool installs below (pinning uv, rust-just) just need a working
+# interpreter, so drop the task's Python selection: it may not exist on this
+# host (e.g. 3.15 with a 3.14 toolchain), and uv would fail on a too-old
+# interpreter found in the search path (e.g. /usr/bin/python3 on RHEL) rather
+# than skip it. Later steps re-source env.sh, restoring the selection.
+unset UV_PYTHON UV_PYTHON_SEARCH_PATH UV_PYTHON_PREFERENCE
+
 HERE=$(dirname ${BASH_SOURCE:-$0})
 HERE="$( cd -- "$HERE" > /dev/null 2>&1 && pwd )"
 pushd "$(dirname "$(dirname $HERE)")" > /dev/null
@@ -60,8 +67,9 @@ fi
 
 # Set up uv if needed.
 if [ "$_need_setup" = "1" ]; then
-  # ensure-uv.sh (drivers-evergreen-tools) finds or installs uv and scopes its env.
-  if [ -n "${DRIVERS_TOOLS:-}" ] && [ -f "$DRIVERS_TOOLS/.evergreen/ensure-uv.sh" ]; then
+  # Default DRIVERS_TOOLS to the submodule; an env var override wins.
+  : "${DRIVERS_TOOLS:=$(dirname "$(dirname "$HERE")")/drivers-evergreen-tools}"
+  if [ -f "$DRIVERS_TOOLS/.evergreen/ensure-uv.sh" ]; then
     . "$DRIVERS_TOOLS/.evergreen/ensure-uv.sh"
     ensure_uv || exit 1
   fi
