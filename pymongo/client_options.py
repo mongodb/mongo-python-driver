@@ -23,7 +23,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 from bson.codec_options import _parse_codec_options
-from pymongo import common
+from pymongo import _otel, common
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListener, _EventListeners
@@ -40,7 +40,6 @@ from pymongo.write_concern import WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
     from bson.codec_options import CodecOptions
-    from pymongo import _otel
     from pymongo.auth_shared import MongoCredential
     from pymongo.encryption_options import AutoEncryptionOpts
     from pymongo.pyopenssl_context import SSLContext
@@ -248,10 +247,10 @@ class ClientOptions:
             if "enable_overload_retargeting" in options
             else options.get("enableoverloadretargeting", common.ENABLE_OVERLOAD_RETARGETING)
         )
-        self.__tracing = cast(
-            "_otel.TracingOptions",
-            options.get("tracing") or {"enabled": None, "query_text_max_length": None},
-        )
+        # Resolve the tracing option against the environment variables once:
+        # tracing cannot be changed after the client is constructed, so no
+        # command needs to consult the environment again.
+        self.__tracing = _otel._resolve_tracing_options(options.get("tracing"))
 
     @property
     def _options(self) -> Mapping[str, Any]:
@@ -383,6 +382,11 @@ class ClientOptions:
     @property
     def tracing(self) -> _otel.TracingOptions:
         """The configured ``tracing`` option for OpenTelemetry command spans.
+
+        The values are resolved when the client is constructed: an explicit
+        value wins over the ``OTEL_PYTHON_INSTRUMENTATION_*`` environment
+        variables, and the environment variables decide when the client
+        didn't configure the value.
 
         .. versionadded:: 4.18
         """

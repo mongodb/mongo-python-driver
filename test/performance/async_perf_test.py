@@ -87,6 +87,11 @@ TEST_PATH = os.environ.get(
 
 OUTPUT_FILE = os.environ.get("OUTPUT_FILE")
 
+# When set to a truthy value, also record the median process CPU time per
+# iteration in the results. Off by default so the standard results.json
+# schema is unchanged.
+RECORD_CPU_TIME = os.environ.get("PERF_CPU_TIME", "").lower() in ("1", "true", "yes")
+
 result_data: list = []
 
 
@@ -102,11 +107,13 @@ def tearDownModule():
 class Timer:
     def __enter__(self):
         self.start = time.monotonic()
+        self.cpu_start = time.process_time()
         return self
 
     def __exit__(self, *args):
         self.end = time.monotonic()
         self.interval = self.end - self.start
+        self.cpu_interval = time.process_time() - self.cpu_start
 
 
 async def concurrent(n_tasks, func):
@@ -135,6 +142,29 @@ class PerformanceTest:
             f"Completed {self.__class__.__name__} {megabytes_per_sec:.3f} MB/s, MEDIAN={self.percentile(50):.3f}s, "
             f"total time={duration:.3f}s, iterations={len(self.results)}"
         )
+        metrics = [
+            {
+                "name": "megabytes_per_sec",
+                "type": "MEDIAN",
+                "value": megabytes_per_sec,
+                "metadata": {
+                    "improvement_direction": "up",
+                    "measurement_unit": "megabytes_per_second",
+                },
+            }
+        ]
+        if RECORD_CPU_TIME:
+            metrics.append(
+                {
+                    "name": "cpu_time_median",
+                    "type": "MEDIAN",
+                    "value": self.percentile(50, self.cpu_results),
+                    "metadata": {
+                        "improvement_direction": "down",
+                        "measurement_unit": "cpu_seconds_per_iteration",
+                    },
+                }
+            )
         result_data.append(
             {
                 "info": {
@@ -143,17 +173,7 @@ class PerformanceTest:
                         "tasks": self.n_tasks,
                     },
                 },
-                "metrics": [
-                    {
-                        "name": "megabytes_per_sec",
-                        "type": "MEDIAN",
-                        "value": megabytes_per_sec,
-                        "metadata": {
-                            "improvement_direction": "up",
-                            "measurement_unit": "megabytes_per_second",
-                        },
-                    },
-                ],
+                "metrics": metrics,
             }
         )
 
@@ -166,9 +186,11 @@ class PerformanceTest:
     async def after(self):
         pass
 
-    def percentile(self, percentile):
-        if hasattr(self, "results"):
-            sorted_results = sorted(self.results)
+    def percentile(self, percentile, values=None):
+        if values is None:
+            values = getattr(self, "results", None)
+        if values:
+            sorted_results = sorted(values)
             percentile_index = int(len(sorted_results) * percentile / 100) - 1
             return sorted_results[percentile_index]
         else:
@@ -177,6 +199,7 @@ class PerformanceTest:
 
     async def runTest(self):
         results = []
+        cpu_results = []
         start = time.monotonic()
         i = 0
         while True:
@@ -189,6 +212,7 @@ class PerformanceTest:
                     await concurrent(self.n_tasks, self.do_task)
             await self.after()
             results.append(timer.interval)
+            cpu_results.append(timer.cpu_interval)
             duration = time.monotonic() - start
             if duration > MIN_ITERATION_TIME and i >= NUM_ITERATIONS:
                 break
@@ -204,6 +228,7 @@ class PerformanceTest:
                 break
 
         self.results = results
+        self.cpu_results = cpu_results
 
 
 # SINGLE-DOC BENCHMARKS

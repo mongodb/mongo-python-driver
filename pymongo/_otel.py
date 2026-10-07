@@ -41,6 +41,9 @@ try:
     # calls trace.set_tracer_provider() later, so this doesn't bind us to a
     # permanently-inert no-op tracer.
     _TRACER: Optional[Tracer] = trace.get_tracer("PyMongo", __version__)
+    # Command spans are always CLIENT kind; hoisted to avoid an attribute
+    # lookup on every span creation.
+    _SPAN_KIND_CLIENT = SpanKind.CLIENT
 except ImportError:
     _HAS_OPENTELEMETRY = False
     _TRACER = None
@@ -104,8 +107,8 @@ _NOT_COLLECTION_COMMANDS = frozenset(
         "dropRole",
         "dropUser",
         "grantPrivilegesToRole",
-        "grantPrivilegesToUser",
         "grantRolesToRole",
+        "grantPrivilegesToUser",
         "grantRolesToUser",
         "invalidateUserCache",
         "revokePrivilegesFromRole",
@@ -126,38 +129,80 @@ def _env_truthy(name: str) -> bool:
     return os.getenv(name, "").strip().lower() in _TRUTHY
 
 
+def _resolve_tracing_options(tracing: Optional[TracingOptions]) -> TracingOptions:
+    """Resolve a client's raw ``tracing`` option against the environment, once.
+
+    Called once per ``MongoClient`` construction: an explicit value (including
+    ``False``, to force tracing off, or ``0``, to force ``db.query.text`` off)
+    wins over the environment variable; otherwise the environment variable
+    decides. When opentelemetry isn't installed, tracing is always disabled.
+    The resolved values are then consulted on every command without touching
+    the environment again.
+    """
+    if not _HAS_OPENTELEMETRY:
+        return {"enabled": False, "query_text_max_length": 0}
+    enabled = tracing.get("enabled") if tracing is not None else None
+    if enabled is None:
+        enabled = _env_truthy(_OTEL_ENABLED_ENV)
+    max_length = tracing.get("query_text_max_length") if tracing is not None else None
+    if max_length is None:
+        try:
+            max_length = int(os.getenv(_OTEL_QUERY_TEXT_MAX_LENGTH_ENV, "0"))
+        except ValueError:
+            max_length = 0
+    return {"enabled": bool(enabled), "query_text_max_length": max(0, max_length)}
+
+
 def _is_tracing_enabled(tracing_options: Optional[TracingOptions]) -> bool:
     """Return True if OTel command spans should be created for this client.
 
-    An explicit ``MongoClient`` ``tracing.enabled`` value overrides the
-    ``OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED`` environment variable;
-    when it isn't configured, the environment variable decides. ``None``
-    means there is no client context (connection handshakes, server
-    monitoring), which is never traced.
+    ``tracing_options`` is the client's resolved ``tracing`` option (see
+    :func:`_resolve_tracing_options`); ``None`` means there is no client
+    context (connection handshakes, server monitoring), which is never traced.
+    This runs on every command and must be cheap: no environment lookups.
     """
-    if not _HAS_OPENTELEMETRY:
-        return False
     if tracing_options is None:
         return False
-    enabled = tracing_options.get("enabled")
-    if enabled is not None:
-        return enabled
-    return _env_truthy(_OTEL_ENABLED_ENV)
+    return bool(tracing_options.get("enabled"))
 
 
 def _get_query_text_max_length(tracing_options: Optional[TracingOptions]) -> int:
-    """Return the configured db.query.text truncation length, or 0 to omit the attribute.
-
-    An explicit client value (including 0) always wins; the environment
-    variable is only consulted when the client didn't configure it at all.
-    """
-    client_value = tracing_options.get("query_text_max_length") if tracing_options else None
-    if client_value is not None:
-        return max(0, client_value)
-    try:
-        return max(0, int(os.getenv(_OTEL_QUERY_TEXT_MAX_LENGTH_ENV, "0")))
-    except ValueError:
+    """Return the resolved ``db.query.text`` truncation length, or 0 to omit the attribute."""
+    if tracing_options is None:
         return 0
+    return tracing_options.get("query_text_max_length") or 0
+
+
+def _connection_attributes(conn: _ConnectionTelemetryInfo) -> dict[str, Any]:
+    """Return the connection-static span attributes as a fresh dict.
+
+    The values are derived from the connection's address and ids, which do not
+    change during the life of a connection, so they are computed once and
+    cached on the connection (keyed by the server connection id, which changes
+    when the underlying socket is re-established, invalidating the cache). A
+    checked-out connection is owned by one caller at a time, so reading and
+    updating the cache needs no lock.
+    """
+    server_connection_id = conn.server_connection_id
+    cached = getattr(conn, "_otel_connection_attributes", None)
+    if cached is not None and cached[0] == server_connection_id and cached[1]:
+        return cached[1].copy()
+    address = conn.address
+    attrs: dict[str, Any] = {
+        "db.system.name": "mongodb",
+        "server.address": address[0],
+        "network.transport": "unix" if address[1] is None else "tcp",
+        "db.mongodb.driver_connection_id": conn.id,
+    }
+    if address[1] is not None:
+        attrs["server.port"] = address[1]
+    if server_connection_id is not None:
+        attrs["db.mongodb.server_connection_id"] = server_connection_id
+    if cached is not None:
+        # Duck-typed fakes without the attribute (test doubles for the
+        # Protocol) skip caching rather than growing a new attribute.
+        conn._otel_connection_attributes = (server_connection_id, attrs)
+    return attrs.copy()
 
 
 def _build_query_text(cmd: Mapping[str, Any], max_length: int) -> str:
@@ -246,6 +291,12 @@ def start_command_span(
 
     Returns None when tracing is disabled/unavailable or the command is
     sensitive (mirroring the redaction applied to logs).
+
+    Only cheap attributes (constants and values already held by the
+    connection) are provided at span creation, so they are visible to the
+    sampler. The expensive ones are added only when the span is being
+    recorded, per the OpenTelemetry spec's performance guidelines, so
+    unsampled configurations pay little more than the span creation itself.
     """
     if not _is_tracing_enabled(tracing_options):
         return None
@@ -253,37 +304,34 @@ def start_command_span(
         return None
 
     collection = _extract_collection_name(command_name, dbname, cmd)
-    address = conn.address
-    transport = "unix" if address[1] is None else "tcp"
-    attributes: dict[str, Any] = {
-        "db.system.name": "mongodb",
-        "db.namespace": dbname,
-        "db.command.name": command_name,
-        "db.query.summary": _build_query_summary(command_name, dbname, collection),
-        "server.address": address[0],
-        "network.transport": transport,
-        "db.mongodb.driver_connection_id": conn.id,
-    }
-    if address[1] is not None:
-        attributes["server.port"] = address[1]
+    attributes = _connection_attributes(conn)
+    attributes["db.namespace"] = dbname
+    attributes["db.command.name"] = command_name
     if collection:
         attributes["db.collection.name"] = collection
-    if conn.server_connection_id is not None:
-        attributes["db.mongodb.server_connection_id"] = conn.server_connection_id
+
+    assert _TRACER is not None  # _is_tracing_enabled already checked _HAS_OPENTELEMETRY
+    span = _TRACER.start_span(command_name, kind=_SPAN_KIND_CLIENT, attributes=attributes)
+    if not span.is_recording():
+        # The span was dropped by the sampler (or tracing is a no-op): the
+        # spec says no further attributes are added to it.
+        return span
+
+    # Expensive attributes, added after the sampling decision; they are not
+    # visible to samplers.
+    span.set_attribute("db.query.summary", _build_query_summary(command_name, dbname, collection))
     lsid = cmd.get("lsid")
     if isinstance(lsid, Mapping):
         formatted_lsid = _format_lsid(lsid)
         if formatted_lsid is not None:
-            attributes["db.mongodb.lsid"] = formatted_lsid
+            span.set_attribute("db.mongodb.lsid", formatted_lsid)
     txn_number = cmd.get("txnNumber")
     if txn_number is not None:
-        attributes["db.mongodb.txn_number"] = txn_number
+        span.set_attribute("db.mongodb.txn_number", txn_number)
     max_query_text_length = _get_query_text_max_length(tracing_options)
     if max_query_text_length > 0:
-        attributes["db.query.text"] = _build_query_text(cmd, max_query_text_length)
-
-    assert _TRACER is not None  # _is_tracing_enabled already checked _HAS_OPENTELEMETRY
-    return _TRACER.start_span(command_name, kind=SpanKind.CLIENT, attributes=attributes)
+        span.set_attribute("db.query.text", _build_query_text(cmd, max_query_text_length))
+    return span
 
 
 def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:

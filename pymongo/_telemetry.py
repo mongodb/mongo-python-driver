@@ -200,28 +200,31 @@ class _CommandTelemetry:
         self._duration_s = _monotonic_duration(self._start)
         if not self._active:
             return
-        duration = datetime.timedelta(seconds=self._duration_s)
-        if self._should_log:
-            self._emit_log(
-                _CommandStatusMessage.SUCCEEDED,
-                durationMS=duration,
-                reply=reply,
-                speculative_authenticate=speculative_hello,
-            )
-        if self._publish:
-            assert self._listeners is not None
-            self._listeners.publish_command_success(
-                duration,
-                reply,
-                command_name,
-                self._request_id,
-                self._conn.address,
-                self._conn.server_connection_id,
-                self._op_id,
-                service_id=self._conn.service_id,
-                speculative_hello=speculative_hello,
-                database_name=self._dbname,
-            )
+        if self._should_log or self._publish:
+            # Only logging and APM events format the duration; a tracing-only
+            # client doesn't pay for the timedelta.
+            duration = datetime.timedelta(seconds=self._duration_s)
+            if self._should_log:
+                self._emit_log(
+                    _CommandStatusMessage.SUCCEEDED,
+                    durationMS=duration,
+                    reply=reply,
+                    speculative_authenticate=speculative_hello,
+                )
+            if self._publish:
+                assert self._listeners is not None
+                self._listeners.publish_command_success(
+                    duration,
+                    reply,
+                    command_name,
+                    self._request_id,
+                    self._conn.address,
+                    self._conn.server_connection_id,
+                    self._op_id,
+                    service_id=self._conn.service_id,
+                    speculative_hello=speculative_hello,
+                    database_name=self._dbname,
+                )
         if self._span is not None:
             _otel.end_command_span_success(self._span, reply)
 
@@ -235,27 +238,30 @@ class _CommandTelemetry:
         self._duration_s = _monotonic_duration(self._start)
         if not self._active:
             return
-        duration = datetime.timedelta(seconds=self._duration_s)
-        if self._should_log:
-            self._emit_log(
-                _CommandStatusMessage.FAILED,
-                durationMS=duration,
-                failure=failure,
-                isServerSideError=isinstance(exc, OperationFailure),
-            )
-        if self._publish:
-            assert self._listeners is not None
-            self._listeners.publish_command_failure(
-                duration,
-                failure,
-                command_name,
-                self._request_id,
-                self._conn.address,
-                self._conn.server_connection_id,
-                self._op_id,
-                service_id=self._conn.service_id,
-                database_name=self._dbname,
-            )
+        if self._should_log or self._publish:
+            # Only logging and APM events format the duration; a tracing-only
+            # client doesn't pay for the timedelta.
+            duration = datetime.timedelta(seconds=self._duration_s)
+            if self._should_log:
+                self._emit_log(
+                    _CommandStatusMessage.FAILED,
+                    durationMS=duration,
+                    failure=failure,
+                    isServerSideError=isinstance(exc, OperationFailure),
+                )
+            if self._publish:
+                assert self._listeners is not None
+                self._listeners.publish_command_failure(
+                    duration,
+                    failure,
+                    command_name,
+                    self._request_id,
+                    self._conn.address,
+                    self._conn.server_connection_id,
+                    self._op_id,
+                    service_id=self._conn.service_id,
+                    database_name=self._dbname,
+                )
         if self._span is not None:
             _otel.end_command_span_failure(self._span, failure, exc)
 

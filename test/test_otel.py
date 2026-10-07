@@ -20,7 +20,7 @@ import asyncio
 import os
 import sys
 import time
-from typing import Optional
+from typing import Any, Optional
 from unittest.mock import patch
 
 sys.path[0:0] = [""]
@@ -106,6 +106,8 @@ class TestOTelSpans(IntegrationTest):
         self.assertIn("server.port", attrs)
         self.assertIn(attrs["network.transport"], ("tcp", "unix"))
         self.assertIn("db.mongodb.driver_connection_id", attrs)
+        self.assertIn("db.mongodb.server_connection_id", attrs)
+        self.assertIn("db.mongodb.lsid", attrs)
         self.assertNotIn("db.query.text", attrs)
 
         self.exporter.clear()
@@ -164,6 +166,7 @@ class TestOTelSpans(IntegrationTest):
             server_connection_id: Optional[int] = None
             address: _Address = ("/tmp/fake-otel-test.sock", None)
             service_id = None
+            _otel_connection_attributes: tuple[Optional[int], dict[str, Any]] = (None, {})
 
         self.exporter.clear()
         span = _otel.start_command_span(
@@ -470,6 +473,83 @@ class TestValidateTracingOrNone(unittest.TestCase):
         self.assertEqual(result["query_text_max_length"], 100)
 
 
+class TestResolveTracingOptions(unittest.TestCase):
+    """The client's ``tracing`` option is resolved against the environment once, at construction."""
+
+    def _without_otel_env(self):
+        env = os.environ.copy()
+        env.pop("OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED", None)
+        env.pop("OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH", None)
+        return env
+
+    def test_none_without_env(self):
+        with patch.dict(os.environ, self._without_otel_env(), clear=True):
+            self.assertEqual(
+                _otel._resolve_tracing_options(None),
+                {"enabled": False, "query_text_max_length": 0},
+            )
+
+    def test_unset_defers_to_env(self):
+        with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
+            self.assertTrue(
+                _otel._resolve_tracing_options({"enabled": None, "query_text_max_length": None})[
+                    "enabled"
+                ]
+            )
+
+    def test_env_false(self):
+        with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "false"}):
+            self.assertFalse(
+                _otel._resolve_tracing_options({"enabled": None, "query_text_max_length": None})[
+                    "enabled"
+                ]
+            )
+
+    def test_explicit_enabled_overrides_env(self):
+        env = {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}
+        with patch.dict(os.environ, env):
+            resolved = _otel._resolve_tracing_options(
+                {"enabled": False, "query_text_max_length": None}
+            )
+            self.assertIs(resolved["enabled"], False)
+            resolved = _otel._resolve_tracing_options(
+                {"enabled": True, "query_text_max_length": None}
+            )
+            self.assertIs(resolved["enabled"], True)
+
+    def test_query_text_max_length_from_env(self):
+        with patch.dict(
+            os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH": "1024"}
+        ):
+            self.assertEqual(
+                _otel._resolve_tracing_options({"enabled": None, "query_text_max_length": None})[
+                    "query_text_max_length"
+                ],
+                1024,
+            )
+
+    def test_explicit_zero_query_text_overrides_env(self):
+        env = {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH": "1024"}
+        with patch.dict(os.environ, env):
+            resolved = _otel._resolve_tracing_options({"enabled": None, "query_text_max_length": 0})
+            self.assertEqual(resolved["query_text_max_length"], 0)
+
+    def test_invalid_env_query_text_is_zero(self):
+        with patch.dict(
+            os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH": "bogus"}
+        ):
+            self.assertEqual(
+                _otel._resolve_tracing_options({"enabled": None, "query_text_max_length": None})[
+                    "query_text_max_length"
+                ],
+                0,
+            )
+
+    def test_negative_query_text_clamped(self):
+        resolved = _otel._resolve_tracing_options({"enabled": None, "query_text_max_length": -5})
+        self.assertEqual(resolved["query_text_max_length"], 0)
+
+
 class TestOTelTracerCaching(unittest.TestCase):
     """Regression test for the tracer-caching implementation in ``pymongo/_otel.py``.
 
@@ -486,6 +566,7 @@ class TestOTelTracerCaching(unittest.TestCase):
             server_connection_id: Optional[int] = None
             address: _Address = ("localhost", 27017)
             service_id = None
+            _otel_connection_attributes: tuple[Optional[int], dict[str, Any]] = (None, {})
 
         with patch.object(_otel, "trace") as mock_trace:
             for _ in range(3):
