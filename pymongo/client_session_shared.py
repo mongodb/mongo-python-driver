@@ -480,7 +480,9 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
                    await client.db.collection.insert_one({"x": 1})
 
         :param end_session: Whether to end the session on exiting the returned context. Defaults to True.
-            If set to False, ``end_session()`` must be called once the session is no longer used.
+            If set to False, :meth:`~pymongo.client_session.ClientSession.end_session()` or
+            :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.end_session()` must be
+            called once the session is no longer used.
 
         .. versionadded:: 4.17
         """
@@ -488,7 +490,10 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
 
     @property
     def client(self) -> _ClientT:
-        """The client this session was created from."""
+        """The :class:`~pymongo.mongo_client.MongoClient` or
+        :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` this session was
+        created from.
+        """
         return self._client
 
     @property
@@ -544,7 +549,10 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
     def advance_cluster_time(self, cluster_time: Mapping[str, Any]) -> None:
         """Update the cluster time for this session.
 
-        :param cluster_time: The ``cluster_time`` from another session.
+        :param cluster_time: The
+            :data:`~pymongo.client_session.ClientSession.cluster_time` or
+            :data:`~pymongo.asynchronous.client_session.AsyncClientSession.cluster_time` from
+            another session.
         """
         if not isinstance(cluster_time, Mapping):
             raise TypeError(
@@ -565,7 +573,10 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
     def advance_operation_time(self, operation_time: Timestamp) -> None:
         """Update the operation time for this session.
 
-        :param operation_time: The ``operation_time`` from another session.
+        :param operation_time: The
+            :data:`~pymongo.client_session.ClientSession.operation_time` or
+            :data:`~pymongo.asynchronous.client_session.AsyncClientSession.operation_time` from
+            another session.
         """
         if not isinstance(operation_time, Timestamp):
             raise TypeError(
