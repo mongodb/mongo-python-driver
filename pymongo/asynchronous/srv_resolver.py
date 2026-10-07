@@ -148,6 +148,11 @@ class _SrvResolver:
                 raise ConfigurationError(
                     f"srv_host_validator raised an exception for SRV host {srv_host}: {exc}"
                 ) from exc
+            if not isinstance(allowed, bool):
+                raise ConfigurationError(
+                    f"srv_host_validator must return a bool for SRV host {srv_host}, "
+                    f"not {type(allowed).__name__}"
+                )
             if not allowed:
                 raise ConfigurationError(
                     f"Invalid SRV host: {srv_host} was rejected by srv_host_validator"
