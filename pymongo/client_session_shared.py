@@ -19,33 +19,53 @@ from __future__ import annotations
 import collections
 import time
 import uuid
+from collections.abc import Mapping, MutableMapping
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
+    Generic,
     NoReturn,
     Optional,
+    Protocol,
     TypeVar,
+    cast,
 )
 
 from bson.binary import Binary
 from bson.int64 import Int64
+from bson.timestamp import Timestamp
 from pymongo import _csot
 from pymongo.errors import (
     ConfigurationError,
     ExecutionTimeout,
+    InvalidOperation,
     NetworkTimeout,
     OperationFailure,
     PyMongoError,
 )
 from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
+from pymongo.operations import _WRITES_WITH_CLUSTER_TIME
 from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import _ServerMode
+from pymongo.read_preferences import ReadPreference, _ServerMode
+from pymongo.server_type import SERVER_TYPE
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
-    from pymongo.typings import _AgnosticClientSession
+    from pymongo.typings import (
+        ClusterTime,
+        _Address,
+        _AgnosticClientSession,
+        _AgnosticConnection,
+        _AgnosticMongoClient,
+        _AgnosticServer,
+    )
 
 _ClientSessionT = TypeVar("_ClientSessionT", bound="_AgnosticClientSession")
+_T = TypeVar("_T")
+_ClientT = TypeVar("_ClientT", bound="_AgnosticMongoClient")
+_ConnectionT = TypeVar("_ConnectionT", bound="_AgnosticConnection")
+_BoundSessionContextT = TypeVar("_BoundSessionContextT")
 
 
 class SessionOptions:
@@ -393,3 +413,368 @@ class _ServerSessionPool(collections.deque):  # type: ignore[type-arg]
                 self.append(s)
                 # The remaining sessions also haven't timed out.
                 break
+
+
+class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionContextT]):
+    """A session for ordering sequential operations.
+
+    Session instances are **not thread-safe or fork-safe**. They can only be used
+    by one thread or process at a time. A single session cannot be used to run
+    multiple operations concurrently.
+
+    Should not be initialized directly by application developers - to create a
+    session, call the client's ``start_session`` method.
+    """
+
+    # Set by the async/sync subclasses to the IO-specific classes.
+    _transaction_cls: type[_TransactionBase[Any]]
+    _bound_session_context_cls: Callable[[Any, bool], _BoundSessionContextT]
+
+    def __init__(
+        self,
+        client: _ClientT,
+        server_session: Any,
+        options: SessionOptions,
+        implicit: bool,
+    ) -> None:
+        # An _AgnosticMongoClient, a _ServerSession, a SessionOptions, and a set.
+        self._client: _ClientT = client
+        self._server_session = server_session
+        self._options = options
+        self._cluster_time: Optional[Mapping[str, Any]] = None
+        self._operation_time: Optional[Timestamp] = None
+        self._snapshot_time = None
+        # Is this an implicitly created session?
+        self._implicit = implicit
+        self._transaction: _TransactionBase[_ConnectionT] = self._transaction_cls(None, client)
+        # Is this session attached to a cursor?
+        self._attached_to_cursor = False
+        # Should we leave the session alive when the cursor is closed?
+        self._leave_alive = False
+
+    def _end_implicit_session(self) -> None:
+        # Implicit sessions can't be part of transactions or pinned connections
+        if not self._leave_alive and self._server_session is not None:
+            self._client._return_server_session(self._server_session)
+            self._server_session = None
+
+    def _check_ended(self) -> None:
+        if self._server_session is None:
+            raise InvalidOperation("Cannot use ended session")
+
+    def bind(self, end_session: bool = True) -> _BoundSessionContextT:
+        """Bind this session so it is implicitly passed to all database operations within the returned context.
+
+        .. code-block:: python
+
+           # Synchronous
+           with client.start_session() as s:
+               with s.bind():
+                   # session=s is passed implicitly
+                   client.db.collection.insert_one({"x": 1})
+
+           # Asynchronous
+           async with client.start_session() as s:
+               async with s.bind():
+                   # session=s is passed implicitly
+                   await client.db.collection.insert_one({"x": 1})
+
+        :param end_session: Whether to end the session on exiting the returned context. Defaults to True.
+            If set to False, :meth:`~pymongo.client_session.ClientSession.end_session()` or
+            :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.end_session()` must be
+            called once the session is no longer used.
+
+        .. versionadded:: 4.17
+        """
+        return self._bound_session_context_cls(self, end_session)
+
+    @property
+    def client(self) -> _ClientT:
+        """The :class:`~pymongo.mongo_client.MongoClient` or
+        :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` this session was
+        created from.
+        """
+        return self._client
+
+    @property
+    def options(self) -> SessionOptions:
+        """The :class:`SessionOptions` this session was created with."""
+        return self._options
+
+    @property
+    def session_id(self) -> Mapping[str, Any]:
+        """A BSON document, the opaque server session identifier."""
+        self._check_ended()
+        self._materialize(self._client.topology_description.logical_session_timeout_minutes)
+        return self._server_session.session_id
+
+    @property
+    def _transaction_id(self) -> Int64:
+        """The current transaction id for the underlying server session."""
+        self._materialize(self._client.topology_description.logical_session_timeout_minutes)
+        return self._server_session.transaction_id
+
+    @property
+    def cluster_time(self) -> Optional[ClusterTime]:
+        """The cluster time returned by the last operation executed
+        in this session.
+        """
+        return self._cluster_time
+
+    @property
+    def operation_time(self) -> Optional[Timestamp]:
+        """The operation time returned by the last operation executed
+        in this session.
+        """
+        return self._operation_time
+
+    def _inherit_option(self, name: str, val: _T) -> _T:
+        """Return the inherited TransactionOption value."""
+        if val:
+            return val
+        txn_opts = self.options.default_transaction_options
+        parent_val = txn_opts and getattr(txn_opts, name)
+        if parent_val:
+            return parent_val
+        return getattr(self.client, name)
+
+    def _advance_cluster_time(self, cluster_time: Optional[Mapping[str, Any]]) -> None:
+        """Internal cluster time helper."""
+        if self._cluster_time is None:
+            self._cluster_time = cluster_time
+        elif cluster_time is not None:
+            if cluster_time["clusterTime"] > self._cluster_time["clusterTime"]:
+                self._cluster_time = cluster_time
+
+    def advance_cluster_time(self, cluster_time: Mapping[str, Any]) -> None:
+        """Update the cluster time for this session.
+
+        :param cluster_time: The
+            :data:`~pymongo.client_session.ClientSession.cluster_time` or
+            :data:`~pymongo.asynchronous.client_session.AsyncClientSession.cluster_time` from
+            another session.
+        """
+        if not isinstance(cluster_time, Mapping):
+            raise TypeError(
+                f"cluster_time must be a subclass of collections.Mapping, not {type(cluster_time)}"
+            )
+        if not isinstance(cluster_time.get("clusterTime"), Timestamp):
+            raise ValueError("Invalid cluster_time")
+        self._advance_cluster_time(cluster_time)
+
+    def _advance_operation_time(self, operation_time: Optional[Timestamp]) -> None:
+        """Internal operation time helper."""
+        if self._operation_time is None:
+            self._operation_time = operation_time
+        elif operation_time is not None:
+            if operation_time > self._operation_time:
+                self._operation_time = operation_time
+
+    def advance_operation_time(self, operation_time: Timestamp) -> None:
+        """Update the operation time for this session.
+
+        :param operation_time: The
+            :data:`~pymongo.client_session.ClientSession.operation_time` or
+            :data:`~pymongo.asynchronous.client_session.AsyncClientSession.operation_time` from
+            another session.
+        """
+        if not isinstance(operation_time, Timestamp):
+            raise TypeError(
+                f"operation_time must be an instance of bson.timestamp.Timestamp, not {type(operation_time)}"
+            )
+        self._advance_operation_time(operation_time)
+
+    def _process_response(self, reply: Mapping[str, Any]) -> None:
+        """Process a response to a command that was run with this session."""
+        self._advance_cluster_time(reply.get("$clusterTime"))
+        self._advance_operation_time(reply.get("operationTime"))
+        if self._options.snapshot and self._snapshot_time is None:
+            if "cursor" in reply:
+                ct = reply["cursor"].get("atClusterTime")
+            else:
+                ct = reply.get("atClusterTime")
+            self._snapshot_time = ct
+        if self.in_transaction and self._transaction.sharded:
+            recovery_token = reply.get("recoveryToken")
+            if recovery_token:
+                self._transaction.recovery_token = recovery_token
+
+    @property
+    def has_ended(self) -> bool:
+        """True if this session is finished."""
+        return self._server_session is None
+
+    @property
+    def in_transaction(self) -> bool:
+        """True if this session has an active multi-statement transaction.
+
+        .. versionadded:: 3.10
+        """
+        return self._transaction.active()
+
+    @property
+    def _starting_transaction(self) -> bool:
+        """True if this session is starting a multi-statement transaction."""
+        return self._transaction.starting()
+
+    @property
+    def _pinned_address(self) -> Optional[_Address]:
+        """The mongos address this transaction was created on."""
+        if self._transaction.active():
+            return self._transaction.pinned_address
+        return None
+
+    @property
+    def _pinned_connection(self) -> Optional[_ConnectionT]:
+        """The connection this transaction was started on."""
+        return self._transaction.pinned_conn
+
+    def _pin(self, server: _AgnosticServer, conn: _ConnectionT) -> None:
+        """Pin this session to the given Server or to the given connection."""
+        self._transaction.pin(server, conn)
+
+    def _txn_read_preference(self) -> Optional[_ServerMode]:
+        """Return read preference of this transaction or None."""
+        if self.in_transaction:
+            assert self._transaction.opts
+            return self._transaction.opts.read_preference
+        return None
+
+    def _materialize(self, logical_session_timeout_minutes: Optional[int] = None) -> None:
+        if isinstance(self._server_session, _EmptyServerSession):
+            old = self._server_session
+            self._server_session = self._client._topology.get_server_session(
+                logical_session_timeout_minutes
+            )
+            if old.started_retryable_write:
+                self._server_session.inc_transaction_id()
+
+    def _apply_to(
+        self,
+        command: MutableMapping[str, Any],
+        is_retryable: bool,
+        read_preference: _ServerMode,
+        conn: _AgnosticConnection,
+    ) -> None:
+        # getMores must be sent with a session if the cursor was opened with one
+        operation = next(iter(command))
+        if not conn.supports_sessions and (
+            isinstance(self._server_session, _EmptyServerSession) or operation != "getMore"
+        ):
+            if not self._implicit:
+                raise ConfigurationError("Sessions are not supported by this MongoDB deployment")
+            return
+        self._check_ended()
+        self._materialize(conn.logical_session_timeout_minutes)
+        # Add afterClusterTime on snapshot reads or writes in causally-consistent sessions
+        if self.options.snapshot or (
+            self.options.causal_consistency
+            and not self.in_transaction
+            and operation in _WRITES_WITH_CLUSTER_TIME
+        ):
+            self._update_read_concern(command, conn)
+
+        self._server_session.last_use = time.monotonic()
+        command["lsid"] = self._server_session.session_id
+
+        if is_retryable:
+            command["txnNumber"] = self._server_session.transaction_id
+            return
+
+        if self.in_transaction:
+            if read_preference != ReadPreference.PRIMARY:
+                raise InvalidOperation(
+                    f"read preference in a transaction must be primary, not: {read_preference!r}"
+                )
+
+            if self._transaction.state == _TxnState.STARTING:
+                # First command begins a new transaction.
+                command["startTransaction"] = True
+
+                assert self._transaction.opts
+                if self._transaction.opts.read_concern:
+                    rc = self._transaction.opts.read_concern.document
+                    if rc:
+                        command["readConcern"] = rc
+                self._update_read_concern(command, conn)
+
+            command["txnNumber"] = self._server_session.transaction_id
+            command["autocommit"] = False
+
+    def _start_retryable_write(self) -> None:
+        self._check_ended()
+        self._server_session.inc_transaction_id()
+
+    def _update_read_concern(
+        self, cmd: MutableMapping[str, Any], conn: _AgnosticConnection
+    ) -> None:
+        if self.options.causal_consistency and self.operation_time is not None:
+            cmd.setdefault("readConcern", {})["afterClusterTime"] = self.operation_time
+        if self.options.snapshot:
+            if conn.max_wire_version < 13:
+                raise ConfigurationError("Snapshot reads require MongoDB 5.0 or later")
+            rc = cmd.setdefault("readConcern", {})
+            rc["level"] = "snapshot"
+            if self._snapshot_time is not None:
+                rc["atClusterTime"] = self._snapshot_time
+
+    def __copy__(self) -> NoReturn:
+        raise TypeError(f"A {type(self).__name__} cannot be copied, create a new session instead")
+
+
+class _ConnectionManagerProtocol(Protocol[_ConnectionT]):
+    """Protocol for the connection manager used to pin a connection to a transaction."""
+
+    conn: Optional[_ConnectionT]
+
+
+class _TransactionBase(Generic[_ConnectionT]):
+    """Internal class to hold transaction information in a ClientSession."""
+
+    # Set by the async/sync subclasses to the correct _ConnectionManager class.
+    _conn_mgr_cls: Callable[[_ConnectionT, bool], _ConnectionManagerProtocol[_ConnectionT]]
+
+    def __init__(self, opts: Optional[TransactionOptions], client: _AgnosticMongoClient):
+        self.opts = opts
+        self.state = _TxnState.NONE
+        self.sharded = False
+        self.pinned_address: Optional[_Address] = None
+        self.conn_mgr: Optional[_ConnectionManagerProtocol[_ConnectionT]] = None
+        self.recovery_token = None
+        self.attempt = 0
+        self.client = client
+        self.has_completed_command = False
+
+    def active(self) -> bool:
+        return self.state in (_TxnState.STARTING, _TxnState.IN_PROGRESS)
+
+    def starting(self) -> bool:
+        return self.state == _TxnState.STARTING
+
+    def set_starting(self) -> None:
+        self.state = _TxnState.STARTING
+
+    def set_in_progress(self) -> None:
+        if self.state == _TxnState.STARTING:
+            self.state = _TxnState.IN_PROGRESS
+
+    @property
+    def pinned_conn(self) -> Optional[_ConnectionT]:
+        if self.active() and self.conn_mgr:
+            return self.conn_mgr.conn
+        return None
+
+    def pin(self, server: _AgnosticServer, conn: _ConnectionT) -> None:
+        self.sharded = True
+        self.pinned_address = server.description.address
+        if server.description.server_type == SERVER_TYPE.LoadBalancer:
+            conn.pin_txn()
+            self.conn_mgr = self._conn_mgr_cls(conn, False)
+
+    def __del__(self) -> None:
+        if self.conn_mgr:
+            # Reuse the cursor closing machinery to return the socket to the
+            # pool soon. _close_cursor_soon expects the IO-specific
+            # _ConnectionManager, which conn_mgr is at runtime.
+            self.client._close_cursor_soon(0, None, cast(Any, self.conn_mgr))
+            self.conn_mgr = None

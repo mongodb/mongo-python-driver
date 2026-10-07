@@ -398,6 +398,20 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
                 connect=False,
             )
 
+    def test_14_throw_when_srv_host_validator_returns_a_non_boolean_value(self):
+        with self.assertRaisesRegex(ConfigurationError, "srv_host_validator must return a bool"):
+            self._parse(
+                "blogs.mongodb.com", "cluster.mongodb.com", srv_host_validator=lambda host: "true"
+            )
+
+    def test_15_accept_an_underscore_in_srv_allowed_hosts_suffix(self):
+        res = self._parse(
+            "blogs.my_domain.net",
+            "cluster.my_domain.net",
+            srv_allowed_hosts_suffix=".my_domain.net",
+        )
+        self.assertEqual(["cluster.my_domain.net"], [node[0] for node in res["nodelist"]])
+
     def test_srv_hostname_with_three_or_more_parts_may_equal_the_returned_hostname(
         self,
     ):

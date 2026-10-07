@@ -29,7 +29,9 @@ PyMongo 4.19 brings a number of changes including:
   :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`, an alternative to
   ``srvAllowedHostsSuffix`` for deployments whose acceptable SRV hosts cannot be
   expressed as a single suffix. The callback is invoked once per SRV-returned
-  host and returns ``True`` to accept it. It is mutually exclusive with
+  host and must return a boolean: ``True`` to accept the host and ``False`` to
+  reject it. During initial DNS discovery a non-boolean return raises an error;
+  during SRV polling it is treated as a rejection. It is mutually exclusive with
   ``srvAllowedHostsSuffix`` and, because it takes a callable, cannot be set in a
   connection string. See the
   :class:`~pymongo.synchronous.mongo_client.MongoClient` and
@@ -203,7 +205,7 @@ PyMongo 4.17 brings a number of changes including:
 - Added the :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.bind` and :meth:`~pymongo.client_session.ClientSession.bind` methods
   that allow users to bind a session to all database operations within the scope of a context manager instead of having to explicitly pass the session to each individual operation.
   See the `Transactions docs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/transactions/#methods>`_ for examples and more information.
-- Added support for MongoDB's Intelligent Workload Management (IWM) and ingress connection rate limiting features in MongoDB server version 9.0.
+- Added support for MongoDB's `Intelligent Workload Management <https://www.mongodb.com/docs/atlas/intelligent-workload-management/>`_ (IWM) and ingress connection rate limiting features in MongoDB server version 9.0.
   The driver will gracefully handle write-blocking scenarios and optimizes connection establishment during high-load conditions to maintain application availability.
 
 Changes in Version 4.16.0 (2026/01/07)
