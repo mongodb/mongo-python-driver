@@ -29,7 +29,9 @@ PyMongo 4.19 brings a number of changes including:
   :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`, an alternative to
   ``srvAllowedHostsSuffix`` for deployments whose acceptable SRV hosts cannot be
   expressed as a single suffix. The callback is invoked once per SRV-returned
-  host and returns ``True`` to accept it. It is mutually exclusive with
+  host and must return a boolean: ``True`` to accept the host and ``False`` to
+  reject it. During initial DNS discovery a non-boolean return raises an error;
+  during SRV polling it is treated as a rejection. It is mutually exclusive with
   ``srvAllowedHostsSuffix`` and, because it takes a callable, cannot be set in a
   connection string. See the
   :class:`~pymongo.synchronous.mongo_client.MongoClient` and
