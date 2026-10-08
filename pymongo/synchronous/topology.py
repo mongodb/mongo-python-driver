@@ -55,7 +55,7 @@ from pymongo.server_selectors import (
     secondary_server_selector,
     writable_server_selector,
 )
-from pymongo.synchronous.monitor import SrvMonitor
+from pymongo.synchronous.monitor import MonitorBase, SrvMonitor
 from pymongo.synchronous.pool import Pool
 from pymongo.synchronous.server import Server
 from pymongo.topology_description import (
@@ -85,6 +85,9 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
     """Monitor a topology of one or more servers."""
 
     _settings: TopologySettings
+    _events_executor: periodic_executor.PeriodicExecutor
+    _srv_monitor: Optional[SrvMonitor]
+    _monitor_tasks: list[MonitorBase]
 
     def __init__(self, topology_settings: TopologySettings):
         super().__init__(topology_settings)

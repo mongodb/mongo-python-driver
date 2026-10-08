@@ -33,7 +33,7 @@ from pymongo._telemetry import (
     _ServerSelectionTelemetry,
     log_server_selection_succeeded,
 )
-from pymongo.asynchronous.monitor import SrvMonitor
+from pymongo.asynchronous.monitor import MonitorBase, SrvMonitor
 from pymongo.asynchronous.pool import Pool
 from pymongo.asynchronous.server import Server
 from pymongo.errors import (
@@ -85,6 +85,9 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
     """Monitor a topology of one or more servers."""
 
     _settings: TopologySettings
+    _events_executor: periodic_executor.AsyncPeriodicExecutor
+    _srv_monitor: Optional[SrvMonitor]
+    _monitor_tasks: list[MonitorBase]
 
     def __init__(self, topology_settings: TopologySettings):
         super().__init__(topology_settings)
