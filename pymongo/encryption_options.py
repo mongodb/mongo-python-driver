@@ -35,7 +35,7 @@ try:
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
 from bson import int64
-from pymongo._kms_connect import (  # noqa: F401
+from pymongo._kms_connect_shared import (  # noqa: F401
     AsyncKMSConnectCallback,
     KMSConnectCallback,
     KMSConnectContext,

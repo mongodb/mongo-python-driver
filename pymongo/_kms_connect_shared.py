@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""KMS connection helpers, shared by both the synchronous and asynchronous APIs.
+"""KMS connection support shared by the synchronous and asynchronous APIs.
 
-Holds the ``KMSConnectContext`` passed to ``kms_connect_callback`` and the
-callback type aliases. The per-API ``_connect_kms`` that connects to the KMS
-host and performs the TLS handshake lives in
-``pymongo.asynchronous._kms_connect`` and its generated synchronous mirror.
+The per-API connection logic lives in ``pymongo.asynchronous._kms_connect``
+and its generated synchronous mirror.
 """
 
 from __future__ import annotations

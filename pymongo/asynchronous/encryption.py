@@ -53,7 +53,7 @@ from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot, _op_id
-from pymongo._kms_connect import AsyncKMSConnectCallback
+from pymongo._kms_connect_shared import AsyncKMSConnectCallback
 from pymongo.asynchronous._kms_connect import _KMS_CONNECT_TIMEOUT, _connect_kms
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
