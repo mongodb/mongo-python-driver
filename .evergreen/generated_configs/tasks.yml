@@ -2725,13 +2725,13 @@ tasks:
         vars:
           VERSION: v8.0-perf
           SSL: ssl
-          UV_PYTHON: 3.10.11
+          UV_PYTHON: 3.11.9
           UV_PYTHON_PREFERENCE: only-managed
       - func: run tests
         vars:
           TEST_NAME: perf
           SUB_TEST_NAME: sync
-          UV_PYTHON: 3.10.11
+          UV_PYTHON: 3.11.9
           UV_PYTHON_PREFERENCE: only-managed
       - func: attach benchmark test results
       - func: send dashboard data
@@ -2742,13 +2742,13 @@ tasks:
         vars:
           VERSION: v8.0-perf
           SSL: ssl
-          UV_PYTHON: 3.10.11
+          UV_PYTHON: 3.11.9
           UV_PYTHON_PREFERENCE: only-managed
       - func: run tests
         vars:
           TEST_NAME: perf
           SUB_TEST_NAME: async
-          UV_PYTHON: 3.10.11
+          UV_PYTHON: 3.11.9
           UV_PYTHON_PREFERENCE: only-managed
       - func: attach benchmark test results
       - func: send dashboard data
@@ -2759,13 +2759,13 @@ tasks:
         vars:
           VERSION: v8.0-perf
           SSL: nossl
-          UV_PYTHON: 3.10.11
+          UV_PYTHON: 3.11.9
           UV_PYTHON_PREFERENCE: only-managed
       - func: run tests
         vars:
           TEST_NAME: perf
           SUB_TEST_NAME: sync
-          UV_PYTHON: 3.10.11
+          UV_PYTHON: 3.11.9
           UV_PYTHON_PREFERENCE: only-managed
       - func: attach benchmark test results
       - func: send dashboard data
@@ -2776,13 +2776,13 @@ tasks:
         vars:
           VERSION: v8.0-perf
           SSL: nossl
-          UV_PYTHON: 3.10.11
+          UV_PYTHON: 3.11.9
           UV_PYTHON_PREFERENCE: only-managed
       - func: run tests
         vars:
           TEST_NAME: perf
           SUB_TEST_NAME: async
-          UV_PYTHON: 3.10.11
+          UV_PYTHON: 3.11.9
           UV_PYTHON_PREFERENCE: only-managed
       - func: attach benchmark test results
       - func: send dashboard data
