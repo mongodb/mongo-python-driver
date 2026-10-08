@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.asynchronous.pool import Pool as AsyncPool
     from pymongo.asynchronous.server import Server as AsyncServer
     from pymongo.collation import Collation
     from pymongo.synchronous.bulk import _Bulk
@@ -41,7 +42,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.mongo_client import MongoClient
-    from pymongo.synchronous.pool import Connection
+    from pymongo.synchronous.pool import Connection, Pool
     from pymongo.synchronous.server import Server
 
 
@@ -58,6 +59,7 @@ _AgnosticMongoClient = Union["AsyncMongoClient", "MongoClient"]  # type: ignore[
 _AgnosticCollection = Union["AsyncCollection[_DocumentType]", "Collection[_DocumentType]"]
 _AgnosticConnection = Union["AsyncConnection", "Connection"]
 _AgnosticServer = Union["AsyncServer", "Server"]
+_AgnosticPool = Union["AsyncPool", "Pool"]
 _AgnosticClientSession = Union["AsyncClientSession", "ClientSession"]
 _AgnosticBulk = Union["_AsyncBulk", "_Bulk"]
 _AgnosticClientBulk = Union["_AsyncClientBulk", "_ClientBulk"]
