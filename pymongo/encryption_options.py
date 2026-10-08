@@ -19,10 +19,8 @@
 
 from __future__ import annotations
 
-import socket
 import warnings
-from collections.abc import Awaitable, Mapping
-from dataclasses import dataclass
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict
 
 from pymongo.uri_parser_shared import _parse_kms_tls_options
@@ -37,6 +35,11 @@ try:
 except ImportError:
     _HAVE_PYMONGOCRYPT = False
 from bson import int64
+from pymongo._kms_connect import (  # noqa: F401
+    AsyncKMSConnectCallback,
+    KMSConnectCallback,
+    KMSConnectContext,
+)
 from pymongo.common import check_for_min_version, validate_is_mapping
 from pymongo.errors import ConfigurationError
 
@@ -55,38 +58,6 @@ def check_min_pymongocrypt() -> None:
             "Install a compatible version with: "
             "python -m pip install 'pymongo[encryption]'"
         )
-
-
-@dataclass(frozen=True)
-class KMSConnectContext:
-    """Information about a pending KMS connection.
-
-    Passed to ``kms_connect_callback``, which must return a plain, unwrapped
-    :class:`socket.socket`. The driver performs the KMS TLS handshake over it,
-    verifying against ``host`` rather than the peer actually reached.
-
-    :param host: Hostname of the KMS server, and the TLS verification target.
-    :param port: Port of the KMS server.
-    :param timeout: Seconds allowed for the connection: the default KMS
-        connect timeout, capped by the remaining time of an active operation
-        timeout (``timeoutMS``).
-
-    .. note:: ``timeoutMS`` does not constrain KMS requests for explicit
-       encryption, so ``timeout`` is always the default there. Automatic
-       encryption passes the remaining budget. This deviates from the Client
-       Side Operations Timeout specification; see PYTHON-6037.
-
-    .. versionadded:: 4.19
-    """
-
-    host: str
-    port: int
-    timeout: float
-
-
-# A callback that opens a connection to a KMS host.
-AsyncKMSConnectCallback = Callable[[KMSConnectContext], Awaitable[socket.socket]]
-KMSConnectCallback = Callable[[KMSConnectContext], socket.socket]
 
 
 class AutoEncryptionOpts:

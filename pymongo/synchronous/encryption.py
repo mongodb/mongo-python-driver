@@ -16,12 +16,8 @@
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import functools
-import inspect
 import socket
-import ssl
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
@@ -56,12 +52,10 @@ from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot, _op_id
-from pymongo.common import CONNECT_TIMEOUT
+from pymongo._kms_connect import KMSConnectCallback
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import (
     AutoEncryptionOpts,
-    KMSConnectCallback,
-    KMSConnectContext,
     RangeOpts,
     StringOpts,
     # Re-exported for backwards compatibility: TextOpts is deprecated but must
@@ -90,14 +84,12 @@ from pymongo.network_layer import sendall
 from pymongo.operations import UpdateOne
 from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
-    _close_late_socket,
-    _configured_socket,
     _raise_connection_failure,
-    _wrap_socket_tls,
 )
 from pymongo.read_concern import ReadConcern
 from pymongo.results import DeleteResult
 from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
+from pymongo.synchronous._kms_connect import _KMS_CONNECT_TIMEOUT, _connect_kms
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
@@ -109,14 +101,10 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
-    from pymongo.pyopenssl_context import _sslConn
-    from pymongo.typings import _Address
-
 
 _IS_SYNC = True
 
 _HTTPS_PORT = 443
-_KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to CONNECT_TIMEOUT
 _MONGOCRYPTD_TIMEOUT_MS = 10000
 
 _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
@@ -125,110 +113,6 @@ _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
 # Use RawBSONDocument codec options to avoid needlessly decoding
 # documents from the key vault.
 _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
-
-
-def _close_rejected_kms_socket(obj: Any) -> None:
-    """Close a callback return value that failed validation, best effort.
-
-    ``_connect_kms`` raises on a contract violation instead of returning the
-    value, so no caller ever takes ownership of it. Close it here, tolerating
-    non-socket values and ``close()`` failures.
-    """
-    close = getattr(obj, "close", None)
-    if callable(close):
-        with contextlib.suppress(Exception):
-            close()
-
-
-def _connect_kms(
-    address: _Address,
-    opts: PoolOptions,
-    kms_connect_callback: Optional[KMSConnectCallback],
-    timeout: float,
-) -> Union[socket.socket, _sslConn]:
-    """Connect to a KMS host and perform the TLS handshake over the socket.
-
-    Uses ``kms_connect_callback`` when one is provided, otherwise connects
-    directly, and always verifies against ``address`` (the KMS host).
-    """
-    if kms_connect_callback is None:
-        try:
-            return _configured_socket(address, opts)
-        except Exception as exc:
-            _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
-
-    # TLS targets address, not the peer, so verification follows the KMS host.
-    # A plain callable would block the event loop before we could reject it,
-    # so check the callback first.
-    if not _IS_SYNC:
-        callback_any: Any = kms_connect_callback
-        is_coro = inspect.iscoroutinefunction(callback_any)
-        if not is_coro and callable(callback_any):
-            is_coro = inspect.iscoroutinefunction(callback_any.__call__)
-        if not is_coro:
-            raise ConfigurationError(
-                "kms_connect_callback must be a coroutine function for the async API."
-            )
-    # Any: the sync version's callback returns a plain socket.
-    result: Any = kms_connect_callback(
-        KMSConnectContext(host=address[0], port=cast(int, address[1]), timeout=timeout)
-    )
-    remaining = _csot.remaining()
-    if remaining is None or _IS_SYNC:
-        # The synchronous API cannot interrupt a callback that has started
-        # running; honoring the deadline is the callback's contract there.
-        sock = result
-    else:
-        # CSOT is cooperative: a callback that ignores the timeout could block
-        # past the deadline. Shield the task so stopping the wait does not
-        # cancel it mid-flight, and close any socket it yields later.
-        task = asyncio.ensure_future(result)
-        try:
-            sock = asyncio.wait_for(asyncio.shield(task), remaining)
-        except asyncio.CancelledError:
-            task.add_done_callback(_close_late_socket)
-            raise
-        except asyncio.TimeoutError:
-            task.add_done_callback(_close_late_socket)
-            _raise_connection_failure(
-                address,
-                socket.timeout("timed out"),
-                timeout_details=_get_timeout_details(opts),
-            )
-    if not isinstance(sock, socket.socket) or isinstance(sock, ssl.SSLSocket):
-        _close_rejected_kms_socket(sock)
-        raise ConfigurationError(
-            "kms_connect_callback must return a connected, unwrapped "
-            f"socket.socket, not {type(sock)}."
-        )
-    # wrap_socket refuses a non-blocking socket, so normalize the mode here.
-    try:
-        sock.getpeername()
-    except OSError:
-        _close_rejected_kms_socket(sock)
-        raise ConfigurationError(
-            "kms_connect_callback must return an already connected socket."
-        ) from None
-    if sock.getsockopt(socket.SOL_SOCKET, socket.SO_TYPE) != socket.SOCK_STREAM:
-        _close_rejected_kms_socket(sock)
-        raise ConfigurationError(
-            "kms_connect_callback must return a stream socket, not a datagram one."
-        )
-    # The callback may have consumed much of the CSOT budget, and wrapping
-    # resets the socket timeout, so recompute the remaining time here and for
-    # the KMS request that follows.
-    sock.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001))
-    try:
-        conn = _wrap_socket_tls(sock, address, opts)
-    except asyncio.CancelledError:
-        # The executor may still be wrapping the socket; close it so a TLS
-        # proxy's relay threads wind down instead of leaking.
-        sock.close()
-        raise
-    except Exception as exc:
-        _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
-    conn.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001))
-    return conn
 
 
 class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
