@@ -1,6 +1,23 @@
 Changelog
 =========
 
+Changes in Version 4.18.3 (2026/10/08)
+--------------------------------------
+
+Version 4.18.3 is a bug fix release.
+
+- Hardened BSON regex decoding against malformed documents (`PYTHON-6110`_).
+
+.. _PYTHON-6110: https://jira.mongodb.org/browse/PYTHON-6110
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.18.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.18.3 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=52955
+
 Changes in Version 4.18.2 (2026/09/24)
 --------------------------------------
 
