@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.asynchronous.server import Server as AsyncServer
     from pymongo.collation import Collation
     from pymongo.synchronous.bulk import _Bulk
     from pymongo.synchronous.client_bulk import _ClientBulk
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
+    from pymongo.synchronous.server import Server
 
 
 # Common Shared Types.
@@ -55,6 +57,7 @@ _T = TypeVar("_T")
 _AgnosticMongoClient = Union["AsyncMongoClient", "MongoClient"]  # type: ignore[type-arg]
 _AgnosticCollection = Union["AsyncCollection[_DocumentType]", "Collection[_DocumentType]"]
 _AgnosticConnection = Union["AsyncConnection", "Connection"]
+_AgnosticServer = Union["AsyncServer", "Server"]
 _AgnosticClientSession = Union["AsyncClientSession", "ClientSession"]
 _AgnosticBulk = Union["_AsyncBulk", "_Bulk"]
 _AgnosticClientBulk = Union["_AsyncClientBulk", "_ClientBulk"]
