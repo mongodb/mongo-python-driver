@@ -6,8 +6,9 @@ Changes in Version 4.18.3 (2026/10/08)
 
 Version 4.18.3 is a bug fix release.
 
-This release contains no user-facing changes. It fixes build and test
-infrastructure only.
+- Hardened BSON regex decoding against malformed documents (`PYTHON-6110`_).
+
+.. _PYTHON-6110: https://jira.mongodb.org/browse/PYTHON-6110
 
 Issues Resolved
 ...............
