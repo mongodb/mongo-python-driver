@@ -64,6 +64,7 @@ from pymongo.monitoring import (
     CommandStartedEvent,
 )
 from pymongo.operations import (
+    IndexModel,
     SearchIndexModel,
 )
 from pymongo.read_concern import ReadConcern
@@ -960,6 +961,24 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
 
     def _collectionOperation_count(self, target, *args, **kwargs):
         self.skipTest("PyMongo does not support collection.count()")
+
+    def _collectionOperation_renameCollection(self, target, *args, **kwargs):
+        # PyMongo exposes the renameCollection command as Collection.rename().
+        kwargs["new_name"] = kwargs.pop("to")
+        return target.rename(*args, **kwargs)
+
+    def _collectionOperation_createIndexes(self, target, *args, **kwargs):
+        models = [IndexModel(**i) for i in kwargs.pop("indexes")]
+        return target.create_indexes(models, *args, **kwargs)
+
+    def _collectionOperation_dropIndexes(self, target, *args, **kwargs):
+        index = kwargs.pop("index", None) or kwargs.pop("indexes", None)
+        if index is None:
+            # No argument drops all indexes.
+            return target.drop_indexes(*args, **kwargs)
+        if isinstance(index, str):
+            index = [index]
+        return target.drop_index(index[0], *args, **kwargs)
 
     def _collectionOperation_listIndexes(self, target, *args, **kwargs):
         if "batch_size" in kwargs:

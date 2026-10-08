@@ -1,0 +1,156 @@
+{
+  "description": "operation rename_collection",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-rename-collection"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-rename-collection",
+      "documents": []
+    }
+  ],
+  "tests": [
+    {
+      "description": "renameCollection",
+      "operations": [
+        {
+          "name": "dropCollection",
+          "object": "database0",
+          "arguments": {
+            "collection": "test1"
+          }
+        },
+        {
+          "name": "renameCollection",
+          "object": "collection0",
+          "arguments": {
+            "to": "test1"
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "dropCollection operation-rename-collection.test1",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-rename-collection",
+                "db.collection.name": "test1",
+                "db.operation.name": "dropCollection",
+                "db.operation.summary": "dropCollection operation-rename-collection.test1"
+              },
+              "nested": [
+                {
+                  "name": "drop",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-rename-collection",
+                    "db.collection.name": "test1",
+                    "db.command.name": "drop",
+                    "db.query.summary": "drop operation-rename-collection.test1"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "renameCollection operation-rename-collection.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-rename-collection",
+                "db.collection.name": "test",
+                "db.operation.name": "renameCollection",
+                "db.operation.summary": "renameCollection operation-rename-collection.test"
+              },
+              "nested": [
+                {
+                  "name": "renameCollection",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "admin",
+                    "db.collection.name": {
+                      "$$exists": false
+                    },
+                    "db.command.name": "renameCollection",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "renameCollection admin",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "renameCollection": "operation-rename-collection.test",
+                          "to": "operation-rename-collection.test1"
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

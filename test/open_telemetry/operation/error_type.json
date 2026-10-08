@@ -111,7 +111,9 @@
                     "db.command.name": "find",
                     "network.transport": "tcp",
                     "db.response.status_code": "8",
-                    "error.type": "8",
+                    "error.type": {
+                      "$$type": "string"
+                    },
                     "exception.message": {
                       "$$type": "string"
                     },
@@ -447,7 +449,9 @@
                     "db.command.name": "find",
                     "network.transport": "tcp",
                     "db.response.status_code": "89",
-                    "error.type": "89",
+                    "error.type": {
+                      "$$type": "string"
+                    },
                     "exception.message": {
                       "$$type": "string"
                     },

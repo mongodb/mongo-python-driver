@@ -223,7 +223,7 @@ class AsyncChangeStream(Generic[_DocumentType]):
             cmd.get_cursor,
             self._target._read_preference_for(session),
             session,
-            operation=_Op.AGGREGATE,
+            operation=_Op.WATCH,
         )
 
     async def _create_cursor(self) -> AsyncCommandCursor:  # type: ignore[type-arg]

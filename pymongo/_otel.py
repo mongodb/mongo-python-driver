@@ -289,17 +289,8 @@ def _build_query_summary(command_name: str, dbname: str, collection: Optional[st
     return f"{command_name} {dbname}"
 
 
-# LUT of db.operation.name where the spec's name differs from our `_Op` value;
-# the nested command span still reports the wire name in db.command.name.
-# DRIVERS-3625 and PYTHON-6054 cover the table's gaps and inconsistencies.
-_OPERATION_NAME_OVERRIDES = {
-    "drop": "dropCollection",
-    "create": "createCollection",
-    "dropSearchIndexes": "dropSearchIndex",
-}
-
-# The spec names anything sent through the generic `Database.command()` API "runCommand",
-# not after the command it carries.
+# The spec names anything sent through the generic `Database.command()` API
+# (and its cursor-returning sibling) "runCommand", not after the command it carries.
 _RUN_COMMAND_OPERATION_NAME = "runCommand"
 
 
@@ -320,8 +311,7 @@ def _build_operation_name(operation: Any, is_run_command: bool = False) -> str:
     """Return the ``db.operation.name`` the spec wants for this operation."""
     if is_run_command:
         return _RUN_COMMAND_OPERATION_NAME
-    name = _normalize_operation_name(operation)
-    return _OPERATION_NAME_OVERRIDES.get(name, name)
+    return _normalize_operation_name(operation)
 
 
 def _is_sensitive_command(command_name: str, speculative_hello: bool) -> bool:
@@ -376,12 +366,17 @@ def start_command_span(
     if current_operation is not None:
         current_span = trace.get_current_span()
         if current_span.is_recording():
-            summary = _build_query_summary(current_operation, dbname, collection)
-            current_span.update_name(summary)
-            current_span.set_attribute("db.namespace", dbname)
-            current_span.set_attribute("db.operation.summary", summary)
-            if collection:
-                current_span.set_attribute("db.collection.name", collection)
+            # Call sites that know the operation's namespace up front already set it
+            # (e.g. a rename targets a collection while its command runs against
+            # admin), so only backfill what the span has not learned yet.
+            existing = getattr(current_span, "attributes", None) or {}
+            if "db.namespace" not in existing:
+                summary = _build_query_summary(current_operation, dbname, collection)
+                current_span.update_name(summary)
+                current_span.set_attribute("db.namespace", dbname)
+                current_span.set_attribute("db.operation.summary", summary)
+                if collection:
+                    current_span.set_attribute("db.collection.name", collection)
             if sent_cursor_id:
                 current_span.set_attribute("db.mongodb.cursor_id", sent_cursor_id)
 

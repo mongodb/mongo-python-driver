@@ -1,0 +1,117 @@
+{
+  "description": "operation run_command",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-run-command"
+      }
+    }
+  ],
+  "tests": [
+    {
+      "description": "runCommand reports runCommand regardless of the command sent",
+      "operations": [
+        {
+          "name": "runCommand",
+          "object": "database0",
+          "arguments": {
+            "command": {
+              "ping": 1
+            },
+            "commandName": "ping"
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "runCommand operation-run-command",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-run-command",
+                "db.collection.name": {
+                  "$$exists": false
+                },
+                "db.operation.name": "runCommand",
+                "db.operation.summary": "runCommand operation-run-command"
+              },
+              "nested": [
+                {
+                  "name": "ping",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-run-command",
+                    "db.collection.name": {
+                      "$$exists": false
+                    },
+                    "db.command.name": "ping",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "ping operation-run-command",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "ping": 1
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

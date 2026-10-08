@@ -1,0 +1,441 @@
+{
+  "description": "operation collection_bulk_write",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-collection-bulk-write"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-collection-bulk-write",
+      "documents": []
+    }
+  ],
+  "tests": [
+    {
+      "description": "mixed write models report bulkWrite",
+      "operations": [
+        {
+          "name": "bulkWrite",
+          "object": "collection0",
+          "arguments": {
+            "requests": [
+              {
+                "insertOne": {
+                  "document": {
+                    "_id": 1,
+                    "x": 1
+                  }
+                }
+              },
+              {
+                "updateOne": {
+                  "filter": {
+                    "_id": 2
+                  },
+                  "update": {
+                    "$set": {
+                      "x": 2
+                    }
+                  }
+                }
+              },
+              {
+                "deleteOne": {
+                  "filter": {
+                    "_id": 3
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "bulkWrite operation-collection-bulk-write.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-collection-bulk-write",
+                "db.collection.name": "test",
+                "db.operation.name": "bulkWrite",
+                "db.operation.summary": "bulkWrite operation-collection-bulk-write.test"
+              },
+              "nested": [
+                {
+                  "name": "insert",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-collection-bulk-write",
+                    "db.collection.name": "test",
+                    "db.command.name": "insert",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "insert operation-collection-bulk-write.test",
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "name": "update",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-collection-bulk-write",
+                    "db.collection.name": "test",
+                    "db.command.name": "update",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "update operation-collection-bulk-write.test",
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "name": "delete",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-collection-bulk-write",
+                    "db.collection.name": "test",
+                    "db.command.name": "delete",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "delete operation-collection-bulk-write.test",
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "uniform insert write models report insert",
+      "operations": [
+        {
+          "name": "bulkWrite",
+          "object": "collection0",
+          "arguments": {
+            "requests": [
+              {
+                "insertOne": {
+                  "document": {
+                    "_id": 1,
+                    "x": 1
+                  }
+                }
+              },
+              {
+                "insertOne": {
+                  "document": {
+                    "_id": 2,
+                    "x": 2
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "insert operation-collection-bulk-write.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-collection-bulk-write",
+                "db.collection.name": "test",
+                "db.operation.name": "insert",
+                "db.operation.summary": "insert operation-collection-bulk-write.test"
+              },
+              "nested": [
+                {
+                  "name": "insert",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-collection-bulk-write",
+                    "db.collection.name": "test",
+                    "db.command.name": "insert",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "insert operation-collection-bulk-write.test",
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "uniform update write models report update",
+      "operations": [
+        {
+          "name": "bulkWrite",
+          "object": "collection0",
+          "arguments": {
+            "requests": [
+              {
+                "updateOne": {
+                  "filter": {
+                    "_id": 1
+                  },
+                  "update": {
+                    "$set": {
+                      "x": 1
+                    }
+                  }
+                }
+              },
+              {
+                "updateMany": {
+                  "filter": {
+                    "_id": {
+                      "$gt": 1
+                    }
+                  },
+                  "update": {
+                    "$inc": {
+                      "x": 1
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "update operation-collection-bulk-write.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-collection-bulk-write",
+                "db.collection.name": "test",
+                "db.operation.name": "update",
+                "db.operation.summary": "update operation-collection-bulk-write.test"
+              },
+              "nested": [
+                {
+                  "name": "update",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-collection-bulk-write",
+                    "db.collection.name": "test",
+                    "db.command.name": "update",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "update operation-collection-bulk-write.test",
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

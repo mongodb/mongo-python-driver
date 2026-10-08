@@ -1,0 +1,132 @@
+{
+  "description": "operation count_documents",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-count-documents"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-count-documents",
+      "documents": [
+        {
+          "_id": 1,
+          "x": 1
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "countDocuments",
+      "operations": [
+        {
+          "name": "countDocuments",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            }
+          },
+          "expectResult": 1
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "countDocuments operation-count-documents.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-count-documents",
+                "db.collection.name": "test",
+                "db.operation.name": "countDocuments",
+                "db.operation.summary": "countDocuments operation-count-documents.test"
+              },
+              "nested": [
+                {
+                  "name": "aggregate",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-count-documents",
+                    "db.collection.name": "test",
+                    "db.command.name": "aggregate",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "aggregate operation-count-documents.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "aggregate": "test"
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

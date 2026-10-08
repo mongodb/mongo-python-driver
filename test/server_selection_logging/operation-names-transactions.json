@@ -1,0 +1,521 @@
+{
+  "description": "operation-names-transactions",
+  "schemaVersion": "1.14",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4",
+      "topologies": [
+        "replicaset"
+      ],
+      "serverless": "forbid"
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "client",
+        "uriOptions": {
+          "retryWrites": false,
+          "heartbeatFrequencyMS": 500,
+          "appName": "loggingClient",
+          "serverSelectionTimeoutMS": 2000
+        },
+        "observeLogMessages": {
+          "serverSelection": "debug"
+        },
+        "observeEvents": [
+          "serverDescriptionChangedEvent",
+          "topologyDescriptionChangedEvent"
+        ]
+      }
+    },
+    {
+      "database": {
+        "id": "database",
+        "client": "client",
+        "databaseName": "logging-tests"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection",
+        "database": "database",
+        "collectionName": "server-selection"
+      }
+    },
+    {
+      "session": {
+        "id": "session",
+        "client": "client"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "server-selection",
+      "databaseName": "logging-tests",
+      "documents": [
+        {
+          "_id": 1,
+          "x": 1
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "withTransaction logs the callback's operations and commitTransaction",
+      "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 4
+          }
+        },
+        {
+          "name": "withTransaction",
+          "object": "session",
+          "arguments": {
+            "callback": [
+              {
+                "name": "insertOne",
+                "object": "collection",
+                "arguments": {
+                  "document": {
+                    "_id": 2
+                  },
+                  "session": "session"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expectLogMessages": [
+        {
+          "client": "client",
+          "messages": [
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "insert",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "insert",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "commitTransaction",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "commitTransaction",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "core transaction API logs the callback's operations and commitTransaction",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "object": "session"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "document": {
+              "_id": 3
+            },
+            "session": "session"
+          }
+        },
+        {
+          "name": "commitTransaction",
+          "object": "session"
+        }
+      ],
+      "expectLogMessages": [
+        {
+          "client": "client",
+          "messages": [
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "insert",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "insert",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "commitTransaction",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "commitTransaction",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "abortTransaction",
+      "operations": [
+        {
+          "name": "startTransaction",
+          "object": "session"
+        },
+        {
+          "name": "insertOne",
+          "object": "collection",
+          "arguments": {
+            "document": {
+              "_id": 4
+            },
+            "session": "session"
+          }
+        },
+        {
+          "name": "abortTransaction",
+          "object": "session"
+        }
+      ],
+      "expectLogMessages": [
+        {
+          "client": "client",
+          "messages": [
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "insert",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "insert",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "abortTransaction",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "abortTransaction",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "watch reports watch",
+      "operations": [
+        {
+          "name": "createChangeStream",
+          "object": "collection",
+          "arguments": {
+            "pipeline": []
+          }
+        }
+      ],
+      "expectLogMessages": [
+        {
+          "client": "client",
+          "messages": [
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "watch",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "watch",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "client bulkWrite reports bulkWrite",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "8.0",
+          "topologies": [
+            "replicaset"
+          ],
+          "serverless": "forbid"
+        }
+      ],
+      "operations": [
+        {
+          "name": "clientBulkWrite",
+          "object": "client",
+          "arguments": {
+            "models": [
+              {
+                "insertOne": {
+                  "namespace": "logging-tests.server-selection",
+                  "document": {
+                    "_id": 5,
+                    "x": 5
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expectLogMessages": [
+        {
+          "client": "client",
+          "messages": [
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "bulkWrite",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "bulkWrite",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

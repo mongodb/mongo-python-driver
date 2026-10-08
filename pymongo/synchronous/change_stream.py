@@ -221,7 +221,7 @@ class ChangeStream(Generic[_DocumentType]):
             cmd.get_cursor,
             self._target._read_preference_for(session),
             session,
-            operation=_Op.AGGREGATE,
+            operation=_Op.WATCH,
         )
 
     def _create_cursor(self) -> CommandCursor:  # type: ignore[type-arg]

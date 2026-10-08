@@ -766,14 +766,29 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         common.validate_list("requests", requests)
 
         blk = _AsyncBulk(self, ordered, bypass_document_validation, comment=comment, let=let)
+        # Derive the operation name from the write models: the write type's name
+        # when every request is of the same type, ``bulkWrite`` when mixed.
+        operation: Optional[_Op] = None
         for request in requests:
             try:
                 request._add_to_bulk(blk)
             except AttributeError:
                 raise TypeError(f"{request!r} is not a valid request") from None
+            if isinstance(request, InsertOne):
+                current = _Op.INSERT
+            elif isinstance(request, (UpdateOne, UpdateMany, ReplaceOne)):
+                current = _Op.UPDATE
+            elif isinstance(request, (DeleteOne, DeleteMany)):
+                current = _Op.DELETE
+            else:
+                current = _Op.BULK_WRITE
+            if operation is None:
+                operation = current
+            elif operation != current:
+                operation = _Op.BULK_WRITE
 
         write_concern = self._write_concern_for(session)
-        bulk_api_result = await blk.execute(write_concern, session, _Op.INSERT)
+        bulk_api_result = await blk.execute(write_concern, session, operation or _Op.BULK_WRITE)
         if bulk_api_result is not None:
             return BulkWriteResult(bulk_api_result, True)
         return BulkWriteResult({}, False)
@@ -2148,7 +2163,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 return 0
             return result["n"]
 
-        return await self._retryable_non_cursor_read(_cmd, session, _Op.COUNT)
+        return await self._retryable_non_cursor_read(_cmd, session, _Op.COUNT_DOCUMENTS)
 
     async def _retryable_non_cursor_read(
         self,
@@ -3157,7 +3172,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 client=client,
             )
 
-        return await client._retryable_write(False, inner, session, _Op.RENAME)
+        return await client._retryable_write(
+            False,
+            inner,
+            session,
+            _Op.RENAME,
+            dbname=self._database.name,
+            collection=self._name,
+        )
 
     async def distinct(
         self,

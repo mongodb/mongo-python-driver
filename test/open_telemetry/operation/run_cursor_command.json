@@ -1,0 +1,236 @@
+{
+  "description": "operation run_cursor_command",
+  "schemaVersion": "1.27",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-run-cursor-command"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-run-cursor-command",
+      "documents": [
+        {
+          "_id": 1
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "cursor-returning runCommand on a database-level command",
+      "operations": [
+        {
+          "name": "runCursorCommand",
+          "object": "database0",
+          "arguments": {
+            "command": {
+              "listCollections": 1,
+              "nameOnly": true
+            },
+            "commandName": "listCollections"
+          },
+          "expectResult": [
+            {
+              "name": "test"
+            }
+          ]
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "runCommand operation-run-cursor-command",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-run-cursor-command",
+                "db.collection.name": {
+                  "$$exists": false
+                },
+                "db.operation.name": "runCommand",
+                "db.operation.summary": "runCommand operation-run-cursor-command"
+              },
+              "nested": [
+                {
+                  "name": "listCollections",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-run-cursor-command",
+                    "db.collection.name": {
+                      "$$exists": false
+                    },
+                    "db.command.name": "listCollections",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "listCollections operation-run-cursor-command",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "listCollections": 1
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "cursor-returning runCommand on a collection-targeting command",
+      "operations": [
+        {
+          "name": "runCursorCommand",
+          "object": "database0",
+          "arguments": {
+            "command": {
+              "find": "test",
+              "filter": {}
+            },
+            "commandName": "find"
+          },
+          "expectResult": [
+            {
+              "_id": 1
+            }
+          ]
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "runCommand operation-run-cursor-command.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-run-cursor-command",
+                "db.collection.name": "test",
+                "db.operation.name": "runCommand",
+                "db.operation.summary": "runCommand operation-run-cursor-command.test"
+              },
+              "nested": [
+                {
+                  "name": "find",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-run-cursor-command",
+                    "db.collection.name": "test",
+                    "db.command.name": "find",
+                    "network.transport": "tcp",
+                    "db.mongodb.cursor_id": {
+                      "$$exists": false
+                    },
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "find operation-run-cursor-command.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "find": "test"
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

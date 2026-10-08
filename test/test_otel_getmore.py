@@ -121,11 +121,11 @@ class TestOTelGetMoreSpans(IntegrationTest):
             or s.attributes.get("db.operation.name") == "runCommand"
         ]
 
-    def _aggregate_operation_span(self):
+    def _watch_operation_span(self):
         matching = [
             s
             for s in self.exporter.get_finished_spans()
-            if s.attributes.get("db.operation.name") == "aggregate"
+            if s.attributes.get("db.operation.name") == "watch"
         ]
         self.assertEqual(len(matching), 1)
         return matching[0]
@@ -474,7 +474,7 @@ class TestOTelGetMoreSpans(IntegrationTest):
         self.exporter.clear()
         with coll.watch():
             pass
-        span = self._aggregate_operation_span()
+        span = self._watch_operation_span()
         self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
         self.assertEqual(span.attributes["db.collection.name"], "test_otel_change_stream_coll")
 
@@ -486,7 +486,7 @@ class TestOTelGetMoreSpans(IntegrationTest):
         self.exporter.clear()
         with db.watch():
             pass
-        span = self._aggregate_operation_span()
+        span = self._watch_operation_span()
         self.assertEqual(span.attributes["db.namespace"], "pymongo_test")
         self.assertNotIn("db.collection.name", span.attributes)
 
@@ -497,6 +497,6 @@ class TestOTelGetMoreSpans(IntegrationTest):
         self.exporter.clear()
         with client.watch():
             pass
-        span = self._aggregate_operation_span()
+        span = self._watch_operation_span()
         self.assertEqual(span.attributes["db.namespace"], "admin")
         self.assertNotIn("db.collection.name", span.attributes)

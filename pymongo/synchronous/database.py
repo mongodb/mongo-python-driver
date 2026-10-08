@@ -33,7 +33,7 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
 from bson.timestamp import Timestamp
 from pymongo import _csot, common
-from pymongo._otel import internal_cursor_iteration
+from pymongo._otel import _extract_collection_name, internal_cursor_iteration
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.database_shared import _check_name, _CodecDocumentType
 from pymongo.errors import CollectionInvalid, InvalidOperation
@@ -1054,6 +1054,10 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 else:
                     raise InvalidOperation("Command does not return a cursor.")
 
+            # A cursor-returning generic command usually targets a collection; the
+            # operation span reports it when it does (DRIVERS-3625).
+            cmd_doc = {command_name: value} if isinstance(command, str) else command
+            collection_name = _extract_collection_name(command_name, self.name, cmd_doc)
             return self.client._retryable_read(
                 inner,
                 read_preference,
@@ -1062,6 +1066,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 None,
                 False,
                 dbname=self.name,
+                collection=collection_name,
                 is_run_command=True,
                 attach_operation_telemetry=True,
             )

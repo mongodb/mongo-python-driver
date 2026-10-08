@@ -522,22 +522,23 @@ def create_otel_variants():
     return [
         create_variant(
             [
-                # All three topologies, one task each to keep the task count small.
-                #
-                # OTEL=1 enables the server's OpenTelemetry file exporter, which
-                # requires MongoDB 9.0+ and a binary that accepts every OTel
-                # setParameter; only the latest nightly qualifies (the v9.0
-                # nightly rejects openTelemetryTracingFileFlushCount), so only
-                # latest tasks are selected.
+                # One task per topology, using the standard auth/ssl pairing for
+                # each (see get_standard_auth_ssl). OTEL=1 enables the server's
+                # OpenTelemetry file exporter, which requires MongoDB 9.0+ and a
+                # binary that accepts every OTel setParameter; only the latest
+                # nightly qualifies (the v9.0 nightly rejects
+                # openTelemetryTracingFileFlushCount), so only latest tasks are
+                # selected. Note this drops the min-deps coverage the old
+                # python-3.10 pin provided: the rotated min-deps tasks run on
+                # v4.4 standalone and v9.0 replica_set, both incompatible with
+                # OTEL=1.
                 ".test-non-standard .replica_set-noauth-ssl .server-latest",
                 # Sharded adds mongos, which rewrites commands and reports a
                 # different server.address, plus auth and ssl, which exercise
-                # sensitive-command redaction and prose 9. PyPy covers the
-                # alternate implementation.
-                ".test-non-standard .sharded_cluster-auth-ssl .server-latest .python-pypy3.11",
-                # Standalone for its min-deps task, which resolves
-                # opentelemetry-api down to the floor in requirements/.
-                ".test-non-standard .standalone-noauth-nossl .server-latest .python-3.10",
+                # sensitive-command redaction and prose 9. PyPy is covered by
+                # the replica set task.
+                ".test-non-standard .sharded_cluster-auth-ssl .server-latest",
+                ".test-non-standard .standalone-noauth-nossl .server-latest",
             ],
             get_variant_name("OTel", host),
             host=host,

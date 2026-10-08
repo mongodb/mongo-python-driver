@@ -1,0 +1,132 @@
+{
+  "description": "operation watch",
+  "schemaVersion": "1.27",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.0.0",
+      "topologies": [
+        "replicaset",
+        "sharded",
+        "load-balanced"
+      ],
+      "serverless": "forbid"
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "useMultipleMongoses": false,
+        "observeTracingMessages": {
+          "enableCommandPayload": true
+        }
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "operation-watch"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "test"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "test",
+      "databaseName": "operation-watch",
+      "documents": []
+    }
+  ],
+  "tests": [
+    {
+      "description": "watch",
+      "operations": [
+        {
+          "name": "createChangeStream",
+          "object": "collection0",
+          "arguments": {
+            "pipeline": []
+          }
+        }
+      ],
+      "expectTracingMessages": [
+        {
+          "client": "client0",
+          "ignoreExtraSpans": false,
+          "spans": [
+            {
+              "name": "watch operation-watch.test",
+              "attributes": {
+                "db.system.name": "mongodb",
+                "db.namespace": "operation-watch",
+                "db.collection.name": "test",
+                "db.operation.name": "watch",
+                "db.operation.summary": "watch operation-watch.test"
+              },
+              "nested": [
+                {
+                  "name": "aggregate",
+                  "attributes": {
+                    "db.system.name": "mongodb",
+                    "db.namespace": "operation-watch",
+                    "db.collection.name": "test",
+                    "db.command.name": "aggregate",
+                    "network.transport": "tcp",
+                    "db.response.status_code": {
+                      "$$exists": false
+                    },
+                    "exception.message": {
+                      "$$exists": false
+                    },
+                    "exception.type": {
+                      "$$exists": false
+                    },
+                    "exception.stacktrace": {
+                      "$$exists": false
+                    },
+                    "server.address": {
+                      "$$type": "string"
+                    },
+                    "server.port": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.query.summary": "aggregate operation-watch.test",
+                    "db.query.text": {
+                      "$$matchAsDocument": {
+                        "$$matchAsRoot": {
+                          "aggregate": "test"
+                        }
+                      }
+                    },
+                    "db.mongodb.server_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    },
+                    "db.mongodb.driver_connection_id": {
+                      "$$type": [
+                        "int",
+                        "long"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

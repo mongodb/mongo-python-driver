@@ -55,15 +55,19 @@ class _Op(str, enum.Enum):
     BULK_WRITE = "bulkWrite"
     COMMIT = "commitTransaction"
     COUNT = "count"
-    CREATE = "create"
+    COUNT_DOCUMENTS = "countDocuments"
+    # Values MUST match the covered operations table of the OpenTelemetry
+    # specification (DRIVERS-3625), which is the definitive list of operation
+    # names for both tracing and server selection logging.
+    CREATE = "createCollection"
     CREATE_INDEXES = "createIndexes"
     CREATE_SEARCH_INDEXES = "createSearchIndexes"
     DELETE = "delete"
     DISTINCT = "distinct"
-    DROP = "drop"
+    DROP = "dropCollection"
     DROP_DATABASE = "dropDatabase"
     DROP_INDEXES = "dropIndexes"
-    DROP_SEARCH_INDEXES = "dropSearchIndexes"
+    DROP_SEARCH_INDEXES = "dropSearchIndex"
     END_SESSIONS = "endSessions"
     FIND_AND_MODIFY = "findAndModify"
     FIND = "find"
@@ -75,24 +79,27 @@ class _Op(str, enum.Enum):
     UPDATE = "update"
     UPDATE_INDEX = "updateIndex"
     UPDATE_SEARCH_INDEX = "updateSearchIndex"
-    RENAME = "rename"
+    RENAME = "renameCollection"
+    WATCH = "watch"
     GETMORE = "getMore"
     KILL_CURSORS = "killCursors"
     TEST = "testOperation"
 
 
+# Literal wire command names, not _Op values: the consumer matches against
+# next(iter(command)), so _Op renames must never change this set (PYTHON-5809).
 _WRITES_WITH_CLUSTER_TIME = frozenset(
     {
-        _Op.INSERT.value,
-        _Op.UPDATE.value,
-        _Op.FIND_AND_MODIFY.value,
-        _Op.DELETE.value,
-        _Op.BULK_WRITE.value,
-        _Op.CREATE.value,
-        _Op.CREATE_INDEXES.value,
-        _Op.DROP.value,
-        _Op.DROP_DATABASE.value,
-        _Op.DROP_INDEXES.value,
+        "insert",
+        "update",
+        "findAndModify",
+        "delete",
+        "bulkWrite",
+        "create",
+        "createIndexes",
+        "drop",
+        "dropDatabase",
+        "dropIndexes",
     }
 )
 

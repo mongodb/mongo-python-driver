@@ -1001,7 +1001,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
 
     async def test_operation_span_name_can_differ_from_command_name(self):
-        # count_documents' operation span is named "count" but sends an
+        # count_documents' operation span is named "countDocuments" but sends an
         # aggregate, so an operation span name is not the command beneath it.
         # count.json covers estimated_document_count, where the two coincide.
         client = await self.async_rs_or_single_client(tracing={"enabled": True})
@@ -1010,8 +1010,8 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.exporter.clear()
         await db.mycoll.count_documents({})
 
-        (op_span,) = self.spans("count pymongo_test.mycoll")
-        self.assertEqual(op_span.attributes["db.operation.name"], "count")
+        (op_span,) = self.spans("countDocuments pymongo_test.mycoll")
+        self.assertEqual(op_span.attributes["db.operation.name"], "countDocuments")
         self.assertEqual(op_span.attributes["db.namespace"], "pymongo_test")
         (cmd_span,) = self.spans("aggregate")
         self.assertEqual(cmd_span.attributes["db.command.name"], "aggregate")

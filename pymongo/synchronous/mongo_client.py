@@ -56,7 +56,7 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
-from pymongo._otel import is_internal_cursor_iteration
+from pymongo._otel import _build_operation_name, is_internal_cursor_iteration
 from pymongo._telemetry import (
     _generate_op_id_or_none,
     _operation_telemetry_or_none,
@@ -2008,6 +2008,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         bulk: Optional[Union[_Bulk, _ClientBulk]],
         operation: str,
         operation_id: Optional[int] = None,
+        dbname: Optional[str] = None,
+        collection: Optional[str] = None,
     ) -> T:
         """Execute an operation with at most one consecutive retries
 
@@ -2028,6 +2030,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             operation=operation,
             retryable=retryable,
             operation_id=operation_id,
+            dbname=dbname,
+            collection=collection,
         )
 
     @_csot.apply
@@ -2203,6 +2207,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         operation: str,
         bulk: Optional[Union[_Bulk, _ClientBulk]] = None,
         operation_id: Optional[int] = None,
+        dbname: Optional[str] = None,
+        collection: Optional[str] = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -2219,7 +2225,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation_id: Stable operation id shared across retries, defaults to None
         """
         with self._tmp_session(session) as s:
-            return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+            return self._retry_with_session(
+                retryable, func, s, bulk, operation, operation_id, dbname, collection
+            )
 
     def _cleanup_cursor_no_lock(
         self,
@@ -2996,7 +3004,9 @@ class _ClientConnectionRetryable(Generic[T]):
         self._address = address
         self._server: Server = None  # type: ignore
         self._deprioritized_servers: Optional[list[Server]] = None
-        self._operation = operation
+        # Normalize once so server selection logging and the operation span
+        # report the same operation name (DRIVERS-3625).
+        self._operation = _build_operation_name(operation, is_run_command)
         # Only generate an operation id when APM/logging is enabled.
         if operation_id is None:
             operation_id = _generate_op_id_or_none(self._client._event_listeners)
