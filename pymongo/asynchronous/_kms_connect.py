@@ -72,9 +72,9 @@ async def _connect_kms(
         except Exception as exc:
             _raise_connection_failure(address, exc, timeout_details=_get_timeout_details(opts))
 
-    # TLS targets address, not the peer, so verification follows the KMS host.
-    # A plain callable would block the event loop before we could reject it,
-    # so check the callback first.
+    # TLS targets ``address``, not the peer, so verification follows the KMS
+    # host. Reject plain callables up front: invoking one would block the
+    # event loop.
     if not _IS_SYNC:
         callback_any: Any = kms_connect_callback
         is_coro = inspect.iscoroutinefunction(callback_any)
@@ -90,13 +90,13 @@ async def _connect_kms(
     )
     remaining = _csot.remaining()
     if remaining is None or _IS_SYNC:
-        # The synchronous API cannot interrupt a callback that has started
-        # running; honoring the deadline is the callback's contract there.
+        # The synchronous API cannot interrupt a running callback; honoring
+        # the deadline is the callback's contract there.
         sock = await result
     else:
-        # CSOT is cooperative: a callback that ignores the timeout could block
-        # past the deadline. Shield the task so stopping the wait does not
-        # cancel it mid-flight, and close any socket it yields later.
+        # CSOT is cooperative: a callback that ignores the timeout can
+        # outlive the deadline. Shield the task so cancelling the wait does
+        # not cancel it mid-flight, and close the socket it yields later.
         task = asyncio.ensure_future(result)
         try:
             sock = await asyncio.wait_for(asyncio.shield(task), remaining)
@@ -130,8 +130,8 @@ async def _connect_kms(
             "kms_connect_callback must return a stream socket, not a datagram one."
         )
     # The callback may have consumed much of the CSOT budget, and wrapping
-    # resets the socket timeout, so recompute the remaining time here and for
-    # the KMS request that follows.
+    # resets the socket timeout, so recompute the remaining time for the KMS
+    # request that follows.
     sock.settimeout(max(_csot.clamp_remaining(_KMS_CONNECT_TIMEOUT), 0.001))
     try:
         conn = await _async_wrap_socket_tls(sock, address, opts)

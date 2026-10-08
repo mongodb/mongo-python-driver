@@ -14,17 +14,16 @@
 
 """Unit tests for the KMS connect callback.
 
-This file is not processed by synchro: the tests are written once and
-parameterized over both the asynchronous and synchronous APIs, selected with
-the ``[async]``/``[sync]`` parametrize ids. Every test runs as a coroutine on
-a pytest-asyncio loop. The ``[sync]`` variants call the blocking synchronous
-APIs from within the coroutine, which is harmless for these self-contained
-tests. The ``flavor`` parameter provides the per-API seams.
+Not processed by synchro: the tests are written once and parameterized over
+the asynchronous and synchronous APIs with the ``[async]``/``[sync]`` ids.
+Every test runs as a coroutine on a pytest-asyncio loop; the ``[sync]``
+variants call the blocking synchronous APIs inline, which is harmless for
+these self-contained tests. The ``api`` parameter provides the per-API
+accessors.
 
-The tests must run single threaded under thread based parallelization such as
-pytest-run-parallel. pytest-asyncio does not support the plugin's concurrent
-replicas of one test, and the tests spin up real sockets and threads that
-every replica would race on.
+The tests must run single threaded under thread based parallelization such
+as pytest-run-parallel: pytest-asyncio does not support concurrent replicas,
+and the tests spin up real sockets and threads that replicas would race on.
 """
 
 from __future__ import annotations
@@ -58,14 +57,14 @@ _KMS_ADDRESS = ("kms.example.com", 443)
 OPTS = CodecOptions()
 
 
-class Flavor:
-    """The per-API seams, shared by the tests through the ``flavor`` parameter."""
+class Facade:
+    """The per-API accessors, shared by the tests through the ``api`` parameter."""
 
     def __init__(self, is_async: bool) -> None:
         self.is_async = is_async
 
     async def maybe_await(self, result: Any) -> Any:
-        """Await ``result`` in the asynchronous flavor (a no-op otherwise)."""
+        """Await ``result`` in the asynchronous API (a no-op otherwise)."""
         if self.is_async:
             return await result
         return result
@@ -77,7 +76,7 @@ class Flavor:
         return func(*args)
 
     def encryption(self):
-        """The flavor's ``encryption`` module."""
+        """The API's ``encryption`` module."""
         if self.is_async:
             from pymongo.asynchronous import encryption
         else:
@@ -85,7 +84,7 @@ class Flavor:
         return encryption
 
     def kms_connect(self):
-        """The flavor's ``_kms_connect`` module."""
+        """The API's ``_kms_connect`` module."""
         if self.is_async:
             from pymongo.asynchronous import _kms_connect
         else:
@@ -93,14 +92,14 @@ class Flavor:
         return _kms_connect
 
     async def connect(self, address, pool_options, callback, timeout):
-        """``_connect_kms`` for this flavor."""
+        """``_connect_kms`` for this API."""
         module = self.kms_connect()
         if self.is_async:
             return await module._connect_kms(address, pool_options, callback, timeout)
         return module._connect_kms(address, pool_options, callback, timeout)
 
     def callback(self, func):
-        """Adapt a non-blocking ``func(context)`` to the flavor's callback form."""
+        """Adapt a non-blocking ``func(context)`` to the API's callback form."""
         if self.is_async:
 
             async def callback(context):
@@ -111,7 +110,7 @@ class Flavor:
         return func
 
     def blocking_callback(self, func):
-        """Adapt a blocking ``func(context)``, offloaded in the async flavor."""
+        """Adapt a blocking ``func(context)``, offloaded in the async API."""
         if self.is_async:
 
             async def callback(context):
@@ -132,7 +131,7 @@ class Flavor:
         return get_ssl_context(None, None, None, None, True, True, False, not self.is_async)
 
     def client_encryption(self, kms_providers, key_vault_namespace, client, kms_connect_callback):
-        """A ClientEncryption for this flavor using a local key provider."""
+        """A ClientEncryption for this API using a local key provider."""
         if self.is_async:
             from pymongo.asynchronous.encryption import AsyncClientEncryption
 
@@ -154,7 +153,7 @@ class Flavor:
         )
 
     def simple_client(self):
-        """A lazily-connecting client for this flavor."""
+        """A lazily-connecting client for this API."""
         if self.is_async:
             from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
@@ -164,11 +163,11 @@ class Flavor:
         return MongoClient()
 
 
-ASYNC = Flavor(is_async=True)
-SYNC = Flavor(is_async=False)
+ASYNC = Facade(is_async=True)
+SYNC = Facade(is_async=False)
 
-both_flavors = pytest.mark.parametrize("flavor", [ASYNC, SYNC], ids=["async", "sync"])
-async_only = pytest.mark.parametrize("flavor", [ASYNC], ids=["async"])
+both_apis = pytest.mark.parametrize("api", [ASYNC, SYNC], ids=["async", "sync"])
+async_only = pytest.mark.parametrize("api", [ASYNC], ids=["async"])
 
 
 def _pool_options(ssl_context=None):
@@ -202,15 +201,15 @@ def _socketpair():
         right.close()
 
 
-@both_flavors
-async def test_init_kms_connect_callback(flavor):
+@both_apis
+async def test_init_kms_connect_callback(api):
     opts = AutoEncryptionOpts({}, "k.d")
     assert opts._kms_connect_callback is None
 
     def action(context):
         raise AssertionError("not called")
 
-    callback = flavor.callback(action)
+    callback = api.callback(action)
     opts = AutoEncryptionOpts({}, "k.d", kms_connect_callback=callback)
     assert opts._kms_connect_callback is callback
 
@@ -226,32 +225,29 @@ async def test_init_kms_connect_callback(flavor):
         context.host = "evil.example.com"  # type: ignore[misc]
 
 
-@both_flavors
-async def test_non_socket_return_raises_configuration_error(flavor):
+@both_apis
+async def test_non_socket_return_raises_configuration_error(api):
     with pytest.raises(ConfigurationError, match="must return a connected"):
-        await flavor.connect(
-            _KMS_ADDRESS, _pool_options(), flavor.callback_returning("not-a-socket"), 10.0
+        await api.connect(
+            _KMS_ADDRESS, _pool_options(), api.callback_returning("not-a-socket"), 10.0
         )
 
 
-@both_flavors
-async def test_already_wrapped_socket_is_rejected(flavor):
+@both_apis
+async def test_already_wrapped_socket_is_rejected(api):
     # ssl.SSLSocket passes isinstance but cannot be TLS-wrapped again.
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     with _socketpair() as (left, _right):
-        # No peer needed to produce a genuine ssl.SSLSocket. The driver closes
-        # the wrapped socket when rejecting it.
+        # No peer is needed to produce a genuine ssl.SSLSocket.
         wrapped = ctx.wrap_socket(left, do_handshake_on_connect=False, server_hostname="x")
         with pytest.raises(ConfigurationError, match="unwrapped"):
-            await flavor.connect(
-                _KMS_ADDRESS, _pool_options(), flavor.callback_returning(wrapped), 10.0
-            )
+            await api.connect(_KMS_ADDRESS, _pool_options(), api.callback_returning(wrapped), 10.0)
 
 
-@both_flavors
-async def test_context_receives_host_port_and_timeout(flavor):
+@both_apis
+async def test_context_receives_host_port_and_timeout(api):
     received = []
     with _socketpair() as (left, _right):
 
@@ -260,7 +256,7 @@ async def test_context_receives_host_port_and_timeout(flavor):
             return left
 
         # ssl_context=None returns the socket unchanged, so a plain socket is accepted.
-        conn = await flavor.connect(_KMS_ADDRESS, _pool_options(), flavor.callback(action), 12.5)
+        conn = await api.connect(_KMS_ADDRESS, _pool_options(), api.callback(action), 12.5)
         assert conn is left
 
         assert len(received) == 1
@@ -269,8 +265,8 @@ async def test_context_receives_host_port_and_timeout(flavor):
         assert received[0].timeout == 12.5
 
 
-@both_flavors
-async def test_non_blocking_socket_from_callback_is_accepted(flavor):
+@both_apis
+async def test_non_blocking_socket_from_callback_is_accepted(api):
     # Without the driver normalizing the mode, this raises ValueError.
     server_ctx = _tls_server_context()
     with _listen() as listener:
@@ -284,17 +280,17 @@ async def test_non_blocking_socket_from_callback_is_accepted(flavor):
 
         threading.Thread(target=serve, daemon=True).start()
 
-        options = _pool_options(flavor.client_tls_context())
+        options = _pool_options(api.client_tls_context())
 
         def connect():
             sock = socket.create_connection(listener.getsockname(), timeout=10)
             sock.setblocking(False)
             return sock
 
-        conn = await flavor.connect(
+        conn = await api.connect(
             listener.getsockname(),
             options,
-            flavor.blocking_callback(lambda context: connect()),
+            api.blocking_callback(lambda context: connect()),
             10.0,
         )
         try:
@@ -303,12 +299,11 @@ async def test_non_blocking_socket_from_callback_is_accepted(flavor):
             conn.close()
 
 
-@both_flavors
-async def test_tls_verification_targets_the_kms_host(flavor):
+@both_apis
+async def test_tls_verification_targets_the_kms_host(api):
     # The handshake must verify against the KMS address, not the peer the
-    # callback connected to. The server cert covers 127.0.0.1 (the peer)
-    # and localhost, but not the KMS hostname used below, so only
-    # address-based verification produces this outcome.
+    # callback connected to: the cert covers 127.0.0.1 and localhost, but
+    # not the KMS hostname used below.
     server_ctx = _tls_server_context(os.path.join(CERT_PATH, "server.pem"))
     with _listen(2) as listener:
 
@@ -324,7 +319,7 @@ async def test_tls_verification_targets_the_kms_host(flavor):
         threading.Thread(target=serve, daemon=True).start()
 
         # Full verification: trusted CA, invalid certs and hostnames rejected.
-        options = _pool_options(flavor.client_tls_context(verify=True))
+        options = _pool_options(api.client_tls_context(verify=True))
 
         created = []
 
@@ -335,43 +330,43 @@ async def test_tls_verification_targets_the_kms_host(flavor):
 
         port = listener.getsockname()[1]
         # The cert covers localhost: verifying against the KMS address succeeds.
-        conn = await flavor.connect(
+        conn = await api.connect(
             ("localhost", port),
             options,
-            flavor.blocking_callback(lambda context: connect()),
+            api.blocking_callback(lambda context: connect()),
             10.0,
         )
         try:
-            # TLS-wrapped in either SSL flavor: a new object, not the plain socket.
+            # TLS-wrapped in either API: a new object, not the plain socket.
             assert conn is not created[0]
         finally:
             conn.close()
-        # The cert does not cover this name: verification must fail even
-        # though the peer (127.0.0.1) presents a cert valid for itself.
+        # The cert does not cover this name, so verification fails even
+        # though the peer's cert is valid for itself.
         with pytest.raises(ConnectionFailure):
-            await flavor.connect(
+            await api.connect(
                 ("kms.example.com", port),
                 options,
-                flavor.blocking_callback(lambda context: connect()),
+                api.blocking_callback(lambda context: connect()),
                 10.0,
             )
 
 
-@both_flavors
-async def test_asyncio_transport_socket_is_rejected(flavor):
+@both_apis
+async def test_asyncio_transport_socket_is_rejected(api):
     # get_extra_info("socket") is a TransportSocket, not a socket.socket.
     with _socketpair() as (left, _right):
         with pytest.raises(ConfigurationError, match="TransportSocket"):
-            await flavor.connect(
+            await api.connect(
                 _KMS_ADDRESS,
                 _pool_options(),
-                flavor.callback_returning(TransportSocket(left)),
+                api.callback_returning(TransportSocket(left)),
                 10.0,
             )
 
 
 @async_only
-async def test_cancelled_tls_wrap_closes_late_socket(flavor):
+async def test_cancelled_tls_wrap_closes_late_socket(api):
     # A cancelled wrap can leave the executor producing an SSLSocket. The
     # done callback must close it.
     from pymongo.pool_shared import _close_late_socket
@@ -385,7 +380,7 @@ async def test_cancelled_tls_wrap_closes_late_socket(flavor):
 
 
 @async_only
-async def test_non_coroutine_callback_is_rejected(flavor):
+async def test_non_coroutine_callback_is_rejected(api):
     # A plain def must be rejected before it blocks the event loop.
     entered = []
 
@@ -394,22 +389,20 @@ async def test_non_coroutine_callback_is_rejected(flavor):
         return None
 
     with pytest.raises(ConfigurationError, match="coroutine function"):
-        await flavor.connect(_KMS_ADDRESS, _pool_options(), callback, 10.0)
+        await api.connect(_KMS_ADDRESS, _pool_options(), callback, 10.0)
     assert entered == [], "invalid callback must not be entered"
 
 
-@both_flavors
-async def test_unconnected_socket_from_callback_is_rejected(flavor):
+@both_apis
+async def test_unconnected_socket_from_callback_is_rejected(api):
     # An unconnected socket would fail later as a transient error and be retried.
     with socket.socket() as bare:
         with pytest.raises(ConfigurationError, match="already connected"):
-            await flavor.connect(
-                _KMS_ADDRESS, _pool_options(), flavor.callback_returning(bare), 10.0
-            )
+            await api.connect(_KMS_ADDRESS, _pool_options(), api.callback_returning(bare), 10.0)
 
 
-@both_flavors
-async def test_datagram_socket_from_callback_is_rejected(flavor):
+@both_apis
+async def test_datagram_socket_from_callback_is_rejected(api):
     # TLS on a connected UDP socket raises NotImplementedError, which would be retried.
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as left:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as right:
@@ -417,14 +410,12 @@ async def test_datagram_socket_from_callback_is_rejected(flavor):
             left.connect(right.getsockname())
 
             with pytest.raises(ConfigurationError, match="stream socket"):
-                await flavor.connect(
-                    _KMS_ADDRESS, _pool_options(), flavor.callback_returning(left), 10.0
-                )
+                await api.connect(_KMS_ADDRESS, _pool_options(), api.callback_returning(left), 10.0)
 
 
-@both_flavors
-async def test_kms_request_does_not_retry_a_contract_violation(flavor):
-    # _connect_kms has no retry loop. The no-retry guarantee is in
+@both_apis
+async def test_kms_request_does_not_retry_a_contract_violation(api):
+    # _connect_kms has no retry loop; the no-retry guarantee is in
     # kms_request, so exercise that instead.
     calls = []
 
@@ -432,8 +423,8 @@ async def test_kms_request_does_not_retry_a_contract_violation(flavor):
         calls.append(context)
         return "not-a-socket"
 
-    opts = AutoEncryptionOpts({}, "k.d", kms_connect_callback=flavor.callback(action))
-    io = flavor.encryption()._EncryptionIO(None, mock.MagicMock(), None, opts)
+    opts = AutoEncryptionOpts({}, "k.d", kms_connect_callback=api.callback(action))
+    io = api.encryption()._EncryptionIO(None, mock.MagicMock(), None, opts)
 
     class StubKmsContext:
         endpoint = "kms.example.com:443"
@@ -449,31 +440,31 @@ async def test_kms_request_does_not_retry_a_contract_violation(flavor):
             raise AssertionError("a contract violation must not be retried")
 
     with pytest.raises(ConfigurationError):
-        await flavor.maybe_await(io.kms_request(StubKmsContext()))
+        await api.maybe_await(io.kms_request(StubKmsContext()))
     assert len(calls) == 1
 
 
-@both_flavors
-async def test_contract_violation_surfaces_as_encryption_error(flavor):
+@both_apis
+async def test_contract_violation_surfaces_as_encryption_error(api):
     # Callers see EncryptionError with ConfigurationError as its cause.
     with pytest.raises(EncryptionError) as exc_info:
-        with flavor.encryption()._wrap_encryption_errors():
+        with api.encryption()._wrap_encryption_errors():
             raise ConfigurationError("kms_connect_callback must return ...")
     assert isinstance(exc_info.value.__cause__, ConfigurationError)
 
 
-@both_flavors
-async def test_network_error_from_callback_propagates(flavor):
+@both_apis
+async def test_network_error_from_callback_propagates(api):
     def action(context):
         raise OSError("proxy unreachable")
 
     # Not a ConfigurationError, so kms_request retries it.
     with pytest.raises(OSError):
-        await flavor.connect(_KMS_ADDRESS, _pool_options(), flavor.callback(action), 10.0)
+        await api.connect(_KMS_ADDRESS, _pool_options(), api.callback(action), 10.0)
 
 
 @async_only
-async def test_csot_deadline_stops_a_hung_callback(flavor):
+async def test_csot_deadline_stops_a_hung_callback(api):
     # A callback that ignores the timeout cannot block past the CSOT
     # deadline, and a socket it yields later must be closed.
     with _socketpair() as (left, _right):
@@ -484,7 +475,7 @@ async def test_csot_deadline_stops_a_hung_callback(flavor):
 
         with pytest.raises(NetworkTimeout):
             with pymongo.timeout(0.1):
-                await flavor.connect(_KMS_ADDRESS, _pool_options(), hung_callback, 10.0)
+                await api.connect(_KMS_ADDRESS, _pool_options(), hung_callback, 10.0)
         assert left.fileno() != -1
         # Let the shielded callback finish. The driver closes the late result.
         await asyncio.sleep(0.75)
@@ -492,7 +483,7 @@ async def test_csot_deadline_stops_a_hung_callback(flavor):
 
 
 @async_only
-async def test_cancelling_kms_connect_closes_the_callback_socket(flavor):
+async def test_cancelling_kms_connect_closes_the_callback_socket(api):
     # Cancelling during the TLS handshake must close the callback's socket,
     # so a TLS proxy's relay threads wind down.
     server_ctx = _tls_server_context()
@@ -504,8 +495,9 @@ async def test_cancelling_kms_connect_closes_the_callback_socket(flavor):
         try:
             conn, _ = listener.accept()
             # The cancel may land before or after the executor starts the
-            # handshake. Peek for the ClientHello without consuming it, or
-            # for EOF if the driver closed it, before wrap_socket detaches conn.
+            # handshake: peek for a ClientHello without consuming it, or for
+            # EOF if the driver closed the socket, before wrap_socket
+            # detaches conn.
             while True:
                 data = conn.recv(4096, socket.MSG_PEEK)
                 if not data:
@@ -519,8 +511,8 @@ async def test_cancelling_kms_connect_closes_the_callback_socket(flavor):
             tls = server_ctx.wrap_socket(conn, server_side=True, do_handshake_on_connect=False)
             try:
                 tls.do_handshake()
-                # A discarded connection may end in a reset rather than a
-                # clean EOF. Either outcome proves the driver closed it.
+                # A discarded connection may reset instead of reaching clean
+                # EOF; either proves the driver closed it.
                 while tls.recv(4096):
                     pass
             except OSError:
@@ -536,7 +528,7 @@ async def test_cancelling_kms_connect_closes_the_callback_socket(flavor):
     with _listen() as listener:
         threading.Thread(target=stub_server, args=(listener,), daemon=True).start()
 
-        options = _pool_options(flavor.client_tls_context())
+        options = _pool_options(api.client_tls_context())
         socks = []
 
         def connect():
@@ -547,10 +539,10 @@ async def test_cancelling_kms_connect_closes_the_callback_socket(flavor):
         # Schedule the connect now and cancel it once the callback socket
         # exists, so the cancellation lands mid-handshake.
         task = asyncio.ensure_future(
-            flavor.connect(
+            api.connect(
                 listener.getsockname(),
                 options,
-                flavor.blocking_callback(lambda context: connect()),
+                api.blocking_callback(lambda context: connect()),
                 10.0,
             )
         )
@@ -575,32 +567,32 @@ async def test_cancelling_kms_connect_closes_the_callback_socket(flavor):
 
 
 @pytest.mark.skipif(not _HAVE_PYMONGOCRYPT, reason="pymongocrypt is not installed")
-@both_flavors
-async def test_client_encryption_accepts_callback(flavor):
+@both_apis
+async def test_client_encryption_accepts_callback(api):
     def action(context):
         raise AssertionError("not called")
 
-    callback = flavor.callback(action)
-    client = flavor.simple_client()
-    encryption = flavor.client_encryption(
+    callback = api.callback(action)
+    client = api.simple_client()
+    encryption = api.client_encryption(
         {"local": {"key": b"\x00" * 96}}, "keyvault.datakeys", client, callback
     )
     try:
         assert encryption._io_callbacks.opts._kms_connect_callback is callback
     finally:
-        await flavor.maybe_await(encryption.close())
-        await flavor.maybe_await(client.close())
+        await api.maybe_await(encryption.close())
+        await api.maybe_await(client.close())
 
 
 @pytest.mark.skipif(not _HAVE_PYMONGOCRYPT, reason="pymongocrypt is not installed")
-@both_flavors
-async def test_client_encryption_rejects_non_callable(flavor):
-    client = flavor.simple_client()
+@both_apis
+async def test_client_encryption_rejects_non_callable(api):
+    client = api.simple_client()
     with pytest.raises(TypeError, match="kms_connect_callback must be callable"):
-        flavor.client_encryption(
+        api.client_encryption(
             {"local": {"key": b"\x00" * 96}},
             "keyvault.datakeys",
             client,
             "not-callable",
         )
-    await flavor.maybe_await(client.close())
+    await api.maybe_await(client.close())

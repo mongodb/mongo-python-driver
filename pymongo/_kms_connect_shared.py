@@ -38,8 +38,7 @@ class KMSConnectContext:
     :param host: Hostname of the KMS server, and the TLS verification target.
     :param port: Port of the KMS server.
     :param timeout: Seconds allowed for the connection: the default KMS
-        connect timeout, capped by the remaining time of an active operation
-        timeout (``timeoutMS``).
+        connect timeout, capped by the remaining ``timeoutMS`` budget.
 
     .. note:: ``timeoutMS`` does not constrain KMS requests for explicit
        encryption, so ``timeout`` is always the default there. Automatic
@@ -62,9 +61,8 @@ KMSConnectCallback = Callable[[KMSConnectContext], socket.socket]
 def _close_rejected_kms_socket(obj: Any) -> None:
     """Close a callback return value that failed validation, best effort.
 
-    ``_connect_kms`` raises on a contract violation instead of returning the
-    value, so no caller ever takes ownership of it. Close it here, tolerating
-    non-socket values and ``close()`` failures.
+    ``_connect_kms`` raises on a contract violation, so no caller takes
+    ownership. Tolerates non-socket values and ``close()`` failures.
     """
     close = getattr(obj, "close", None)
     if callable(close):
@@ -72,6 +70,6 @@ def _close_rejected_kms_socket(obj: Any) -> None:
             close()
 
 
-# Sphinx documents this class under pymongo.encryption_options, the public
-# import path, so the definition must claim that module name.
+# Sphinx documents this class under pymongo.encryption_options, so the
+# definition must claim that module name.
 KMSConnectContext.__module__ = "pymongo.encryption_options"
