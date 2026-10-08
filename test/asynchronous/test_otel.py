@@ -848,6 +848,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
             self.assertFalse(_otel._is_tracing_enabled(None))
 
+    @async_client_context.require_version_min(8, 0, 0, -24)
     async def test_unacknowledged_bulk_write_query_text_includes_documents(self):
         # db.query.text is built from the document published in
         # CommandStartedEvent, which carries the write documents that the
@@ -899,6 +900,7 @@ class TestOTelSpans(AsyncIntegrationTest):
         (span,) = self.spans("getMore")
         self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
 
+    @async_client_context.require_version_min(8, 0, 0, -24)
     async def test_bulk_write_unacknowledged_gets_operation_span(self):
         client = await self.async_rs_or_single_client(tracing={"enabled": True}, w=0)
         self.exporter.clear()

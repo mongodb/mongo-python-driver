@@ -516,35 +516,35 @@ def create_doctests_variants():
 def create_otel_variants():
     host = DEFAULT_HOST
     # Merge otel's coverage into the combined report; see setup_tests.py's COVERAGE handling.
-    # OTEL=1 makes drivers-evergreen-tools enable the server's OpenTelemetry file exporter
-    # and export OTEL_TRACE_DIR, which TestServerTraceContext requires.
-    expansions = dict(TEST_NAME="otel", COVERAGE="1", OTEL="1")
+    # One task per supported server version: rotate the main three topology/auth/ssl combos
+    # and the CPython versions across them. The free-threaded tasks are excluded because
+    # coverage tasks exclude them. OTEL=1 (the server's OpenTelemetry file exporter) is not
+    # set: it requires MongoDB 9.0+ and this variant must also run on older versions, and
+    # without OTEL_TRACE_DIR TestServerTraceContext skips itself while the client-side
+    # tracing tests still run.
+    version_matrix = {
+        "4.4": (".replica_set-noauth-ssl", ".python-3.11"),
+        "5.0": (".standalone-noauth-nossl", ".python-3.13"),
+        "6.0": (".sharded_cluster-auth-ssl", ".python-pypy3.11"),
+        "7.0": (".replica_set-noauth-ssl", ".python-3.12"),
+        "8.0": (".replica_set-noauth-ssl", ".python-3.14"),
+        "9.0": (".standalone-noauth-nossl", ".python-3.15"),
+        "rapid": (".standalone-noauth-nossl", ".python-3.12"),
+        "latest": (".sharded_cluster-auth-ssl", ".python-3.15"),
+    }
+
+    def task_for(version):
+        combo, python = version_matrix[version]
+        return f".test-non-standard {combo} .server-{version} {python}"
+
     return [
         create_variant(
-            [
-                # One task per topology, using the standard auth/ssl pairing for
-                # each (see get_standard_auth_ssl). OTEL=1 enables the server's
-                # OpenTelemetry file exporter, which requires MongoDB 9.0+ and a
-                # binary that accepts every OTel setParameter; only the latest
-                # nightly qualifies (the v9.0 nightly rejects
-                # openTelemetryTracingFileFlushCount), so only latest tasks are
-                # selected. Note this drops the min-deps coverage the old
-                # python-3.10 pin provided: the rotated min-deps tasks run on
-                # v4.4 standalone and v9.0 replica_set, both incompatible with
-                # OTEL=1.
-                ".test-non-standard .replica_set-noauth-ssl .server-latest",
-                # Sharded adds mongos, which rewrites commands and reports a
-                # different server.address, plus auth and ssl, which exercise
-                # sensitive-command redaction and prose 9. PyPy is covered by
-                # the replica set task.
-                ".test-non-standard .sharded_cluster-auth-ssl .server-latest",
-                ".test-non-standard .standalone-noauth-nossl .server-latest",
-            ],
+            [task_for(version) for version in version_matrix],
             get_variant_name("OTel", host),
             host=host,
             tags=["pr"],
-            expansions=expansions,
-        )
+            expansions=dict(TEST_NAME="otel", COVERAGE="1"),
+        ),
     ]
 
 
