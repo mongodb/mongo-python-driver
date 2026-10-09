@@ -2,7 +2,7 @@
 # Choose the Python that uv uses, and make sure uv can provide it.
 #
 # Input:
-#   UV_PYTHON - a version ("3.10", "3.14t"), an implementation ("pypy3.11"),
+#   UV_PYTHON - a version ("3.11", "3.14t"), an implementation ("pypy3.11"),
 #               or an interpreter path ("/usr/bin/python3.11").
 #
 # Exports:
@@ -11,7 +11,7 @@
 #   UV_PYTHON_PREFERENCE  - "system" so the toolchain wins over managed installs.
 #                           A preference set by the task is left alone.
 #   UV_PYTHON             - the Python interpreter uv uses; defaults to CPython
-#                           3.10 when the task does not set one.
+#                           3.11 when the task does not set one.
 set -euo pipefail
 
 HERE=$(dirname "${BASH_SOURCE:-$0}")
@@ -46,9 +46,9 @@ fi
 # Default to a known-good Python so behavior is deterministic when a task does
 # not pin one. Selecting the uv binary is separate and driven by the required
 # uv version in pyproject.toml.
-export UV_PYTHON="${UV_PYTHON:-3.10}"
+export UV_PYTHON="${UV_PYTHON:-3.11}"
 
-# Print the Python toolchain bin dir for a version like "3.10" or "3.14t".
+# Print the Python toolchain bin dir for a version like "3.11" or "3.14t".
 function _toolchain_dir() {
   local version="$1" dir
   # Only plain CPython versions live in the toolchain.

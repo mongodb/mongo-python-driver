@@ -1296,10 +1296,10 @@ class _Query:
             cmd = {"explain": cmd}
         conn.add_server_api(cmd)
         if self.session:
-            self.session._apply_to(cmd, False, self.read_preference, conn)  # type: ignore[arg-type]
+            self.session._apply_to(cmd, False, self.read_preference, conn)
             # Explain does not support readConcern.
             if not explain and not self.session.in_transaction:
-                self.session._update_read_concern(cmd, conn)  # type: ignore[arg-type]
+                self.session._update_read_concern(cmd, conn)
         conn.send_cluster_time(cmd, self.session, self.client)  # type: ignore[arg-type]
         # Support CSOT
         if apply_timeout:
@@ -1408,7 +1408,7 @@ class _GetMore:
             self.comment,
         )
         if self.session:
-            self.session._apply_to(cmd, False, self.read_preference, conn)  # type: ignore[arg-type]
+            self.session._apply_to(cmd, False, self.read_preference, conn)
         conn.add_server_api(cmd)
         conn.send_cluster_time(cmd, self.session, self.client)  # type: ignore[arg-type]
         # Support CSOT
