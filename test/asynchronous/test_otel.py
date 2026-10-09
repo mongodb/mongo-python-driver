@@ -22,7 +22,8 @@ import os
 import subprocess
 import sys
 import time
-from typing import Callable, Optional
+from collections.abc import Mapping
+from typing import Any, Callable, Optional
 from unittest.mock import MagicMock, patch
 
 sys.path[0:0] = [""]
@@ -30,6 +31,7 @@ sys.path[0:0] = [""]
 import pytest
 
 import pymongo._otel as _otel
+from bson.objectid import ObjectId
 from pymongo import _telemetry, common
 from pymongo._telemetry import _OperationTelemetry
 from pymongo.cursor_shared import CursorType
@@ -59,6 +61,7 @@ if _otel._HAS_OPENTELEMETRY:
         from opentelemetry.sdk.trace.export import SimpleSpanProcessor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
         from opentelemetry.trace import Span, SpanContext, StatusCode
+        from opentelemetry.util import types as otel_types
 
         _HAS_OTEL_TEST_DEPS = True
     except ImportError:
@@ -93,43 +96,56 @@ if _HAS_OTEL_TEST_DEPS:
         """A recording span implementing the OpenTelemetry Span interface without exposing an
         ``attributes`` property, like a non-SDK span implementation may."""
 
-        def __init__(self, attributes=None):
-            self._attributes = dict(attributes or {})
+        def __init__(self, attributes: Optional[otel_types.Attributes] = None) -> None:
+            self._attributes: dict[str, otel_types.AttributeValue] = dict(attributes or {})
             self._name = ""
 
-        def get_span_context(self):
+        def get_span_context(self) -> SpanContext:
             return SpanContext(trace_id=1, span_id=1, is_remote=False)
 
-        def is_recording(self):
+        def is_recording(self) -> bool:
             return True
 
-        def set_attribute(self, key, value):
-            self._attributes[key] = value
+        def end(self, end_time: Optional[int] = None) -> None:
+            pass
 
-        def set_attributes(self, attributes):
+        def set_attributes(self, attributes: Mapping[str, otel_types.AttributeValue]) -> None:
             self._attributes.update(attributes)
 
-        def add_event(self, name, attributes=None, timestamp=None):
+        def set_attribute(self, key: str, value: otel_types.AttributeValue) -> None:
+            self._attributes[key] = value
+
+        def add_event(
+            self,
+            name: str,
+            attributes: otel_types.Attributes = None,
+            timestamp: Optional[int] = None,
+        ) -> None:
             pass
 
-        def record_exception(self, exception, attributes=None, timestamp=None):
+        def record_exception(
+            self,
+            exception: BaseException,
+            attributes: otel_types.Attributes = None,
+            timestamp: Optional[int] = None,
+            escaped: bool = False,
+        ) -> None:
             pass
 
-        def update_name(self, name):
+        def update_name(self, name: str) -> None:
             self._name = name
 
-        def set_status(self, status):
-            pass
-
-        def end(self):
+        def set_status(self, status: Any, description: Optional[str] = None) -> None:
             pass
 
     class _FakeConnInfo:
         """Minimal stand-in for ``_ConnectionTelemetryInfo`` as read by ``start_command_span``."""
 
-        id = 1
-        address = ("localhost", 27017)
-        server_connection_id = 1
+        id: int = 1
+        address: tuple[str, Optional[int]] = ("localhost", 27017)
+        server_connection_id: Optional[int] = 1
+        service_id: Optional[ObjectId] = None
+        max_wire_version: int = 0
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")

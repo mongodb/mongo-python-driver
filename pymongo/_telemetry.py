@@ -68,7 +68,6 @@ def _generate_op_id_or_none(listeners: Optional[_EventListeners]) -> Optional[in
             (listeners is not None and listeners.enabled_for_commands)
             or _is_debug_enabled(_COMMAND_LOGGER)
             or _is_debug_enabled(_SERVER_SELECTION_LOGGER)
-            or _is_info_enabled(_SERVER_SELECTION_LOGGER)
         )
         else None
     )

@@ -13,12 +13,17 @@
 # limitations under the License.
 from __future__ import annotations
 
+import logging
 import os
 from unittest.mock import patch
 
 from bson import json_util
-from pymongo.errors import OperationFailure
-from pymongo.logger import _DEFAULT_DOCUMENT_LENGTH, _CommandStatusMessage
+from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
+from pymongo.logger import (
+    _DEFAULT_DOCUMENT_LENGTH,
+    _CommandStatusMessage,
+    _ServerSelectionStatusMessage,
+)
 from test import unittest
 from test.asynchronous import AsyncIntegrationTest, async_client_context
 
@@ -123,6 +128,25 @@ class TestLogger(AsyncIntegrationTest):
         with self.assertLogs("pymongo.serverSelection", level="DEBUG") as cm:
             await c.db.coll.insert_one({"x": "1"})
             self.assertGreater(len(cm.records), 0)
+
+    async def test_server_selection_waiting_message_info_level(self):
+        # The "Waiting for suitable server to become available" message MUST be logged at
+        # info level, unlike the other server selection messages, which are debug level.
+        # A user observing server selection logs at INFO (only) must still receive the
+        # waiting message, which is only possible if the telemetry object is created for
+        # info-enabled users too.
+        client = await self.async_single_client(p=27999, serverSelectionTimeoutMS=500)
+        try:
+            with self.assertLogs("pymongo.serverSelection", level="INFO") as cm:
+                with self.assertRaises(ServerSelectionTimeoutError):
+                    await client.pymongo_test.command("ping")
+        finally:
+            await client.close()
+        self.assertEqual(len(cm.records), 1)
+        for record in cm.records:
+            self.assertEqual(record.levelname, "INFO")
+            log = json_util.loads(record.getMessage())
+            self.assertEqual(log["message"], _ServerSelectionStatusMessage.WAITING)
 
     @async_client_context.require_failCommand_fail_point
     async def test_logging_retry_read_attempts(self):

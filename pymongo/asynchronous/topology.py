@@ -55,7 +55,11 @@ from pymongo.lock import (
     _async_create_condition,
     _async_create_lock,
 )
-from pymongo.logger import _SERVER_SELECTION_LOGGER, _is_debug_enabled
+from pymongo.logger import (
+    _SERVER_SELECTION_LOGGER,
+    _is_debug_enabled,
+    _is_info_enabled,
+)
 from pymongo.pool_options import PoolOptions
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (
@@ -272,9 +276,14 @@ class Topology:
         now = time.monotonic()
         end_time = now + timeout
         logged_waiting = False
-        # Server selection does not have APM events, gate only on logging
+        # Server selection does not have APM events, gate only on logging. The
+        # WAITING message is info level while the others are debug level, so the
+        # telemetry object is created for users of either level; each method
+        # checks the level it needs.
         ss: Optional[_ServerSelectionTelemetry] = None
-        if _is_debug_enabled(_SERVER_SELECTION_LOGGER):
+        if _is_debug_enabled(_SERVER_SELECTION_LOGGER) or _is_info_enabled(
+            _SERVER_SELECTION_LOGGER
+        ):
             ss = _ServerSelectionTelemetry(
                 self._topology_id, selector, operation, operation_id, self.description
             )

@@ -129,6 +129,17 @@
       "description": "update",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
           "name": "updateOne",
           "object": "collection",
           "arguments": {
@@ -192,6 +203,17 @@
       "description": "delete",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
           "name": "deleteOne",
           "object": "collection",
           "arguments": {
@@ -250,6 +272,17 @@
       "description": "find",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
           "name": "find",
           "object": "collection",
           "arguments": {
@@ -305,6 +338,17 @@
     {
       "description": "aggregate",
       "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
         {
           "name": "aggregate",
           "object": "collection",
@@ -368,6 +412,17 @@
       "description": "distinct",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
           "name": "distinct",
           "object": "collection",
           "arguments": {
@@ -424,6 +479,17 @@
       "description": "estimatedDocumentCount reports count",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
           "name": "estimatedDocumentCount",
           "object": "collection"
         }
@@ -476,6 +542,17 @@
     {
       "description": "countDocuments",
       "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
         {
           "name": "countDocuments",
           "object": "collection",
@@ -536,6 +613,17 @@
       "description": "createCollection",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
           "name": "createCollection",
           "object": "database",
           "arguments": {
@@ -592,6 +680,17 @@
       "description": "dropCollection",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
           "name": "dropCollection",
           "object": "database",
           "arguments": {
@@ -647,6 +746,17 @@
     {
       "description": "renameCollection",
       "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
         {
           "name": "dropCollection",
           "object": "database",
@@ -747,6 +857,17 @@
     {
       "description": "createIndexes and dropIndexes",
       "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
         {
           "name": "createIndexes",
           "object": "collection",
@@ -855,6 +976,17 @@
       "description": "listCollections",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
           "name": "listCollections",
           "object": "database"
         }
@@ -907,6 +1039,17 @@
     {
       "description": "listDatabases",
       "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
         {
           "name": "listDatabases",
           "object": "client"
@@ -961,6 +1104,17 @@
       "description": "listIndexes",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
           "name": "listIndexes",
           "object": "collection"
         }
@@ -1013,6 +1167,17 @@
     {
       "description": "findOneAndUpdate reports findAndModify",
       "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
         {
           "name": "findOneAndUpdate",
           "object": "collection",
@@ -1076,6 +1241,17 @@
     {
       "description": "collection bulkWrite with mixed write models reports bulkWrite",
       "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
         {
           "name": "bulkWrite",
           "object": "collection",
@@ -1161,6 +1337,17 @@
       "description": "collection bulkWrite with uniform insert write models reports insert",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
           "name": "bulkWrite",
           "object": "collection",
           "arguments": {
@@ -1231,8 +1418,197 @@
       ]
     },
     {
+      "description": "collection bulkWrite with uniform update write models reports update",
+      "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
+          "name": "bulkWrite",
+          "object": "collection",
+          "arguments": {
+            "requests": [
+              {
+                "updateOne": {
+                  "filter": {
+                    "_id": 4
+                  },
+                  "update": {
+                    "$set": {
+                      "x": 6
+                    }
+                  }
+                }
+              },
+              {
+                "updateMany": {
+                  "filter": {
+                    "_id": {
+                      "$gt": 1
+                    }
+                  },
+                  "update": {
+                    "$inc": {
+                      "x": 1
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expectLogMessages": [
+        {
+          "client": "client",
+          "messages": [
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "update",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "update",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "collection bulkWrite with uniform delete write models reports delete",
+      "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
+        {
+          "name": "bulkWrite",
+          "object": "collection",
+          "arguments": {
+            "requests": [
+              {
+                "deleteOne": {
+                  "filter": {
+                    "_id": 5
+                  }
+                }
+              },
+              {
+                "deleteMany": {
+                  "filter": {
+                    "_id": {
+                      "$gt": 100
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expectLogMessages": [
+        {
+          "client": "client",
+          "messages": [
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "delete",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "delete",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "description": "runCommand",
       "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
         {
           "name": "runCommand",
           "object": "database",
@@ -1292,6 +1668,17 @@
     {
       "description": "cursor-returning runCommand",
       "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 2
+          }
+        },
         {
           "name": "runCursorCommand",
           "object": "database",

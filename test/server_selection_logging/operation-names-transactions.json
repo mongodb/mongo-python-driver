@@ -182,6 +182,17 @@
       "description": "core transaction API logs the callback's operations and commitTransaction",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 4
+          }
+        },
+        {
           "name": "startTransaction",
           "object": "session"
         },
@@ -285,6 +296,17 @@
     {
       "description": "abortTransaction",
       "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 4
+          }
+        },
         {
           "name": "startTransaction",
           "object": "session"
@@ -390,6 +412,17 @@
       "description": "watch reports watch",
       "operations": [
         {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 4
+          }
+        },
+        {
           "name": "createChangeStream",
           "object": "collection",
           "arguments": {
@@ -454,6 +487,17 @@
         }
       ],
       "operations": [
+        {
+          "name": "waitForEvent",
+          "object": "testRunner",
+          "arguments": {
+            "client": "client",
+            "event": {
+              "topologyDescriptionChangedEvent": {}
+            },
+            "count": 4
+          }
+        },
         {
           "name": "clientBulkWrite",
           "object": "client",
