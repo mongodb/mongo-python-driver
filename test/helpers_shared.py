@@ -212,7 +212,7 @@ def _get_executors(topology):
             executors.append(server._monitor._executor)
         if hasattr(server._monitor, "_rtt_monitor"):
             executors.append(server._monitor._rtt_monitor._executor)
-    executors.append(topology._Topology__events_executor)
+    executors.append(topology._events_executor)
     if topology._srv_monitor:
         executors.append(topology._srv_monitor._executor)
 

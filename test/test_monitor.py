@@ -50,7 +50,7 @@ def get_executors(client):
         executors.append(server._monitor._executor)
         executors.append(server._monitor._rtt_monitor._executor)
     executors.append(client._kill_cursors_executor)
-    executors.append(client._topology._Topology__events_executor)
+    executors.append(client._topology._events_executor)
     return [e for e in executors if e is not None]
 
 
