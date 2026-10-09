@@ -186,8 +186,9 @@ class HTTPProxyKMSConnect:
                 raise TypeError("proxy header names and values must be strings")
             # Header fields become CONNECT request lines; a name outside the
             # RFC 7230 token grammar, or CR/LF in a value, would corrupt or
-            # inject request lines.
-            if not _TOKEN_RE.match(name):
+            # inject request lines. Use fullmatch: a match() of an anchored
+            # pattern accepts a trailing newline ($ matches just before it).
+            if not _TOKEN_RE.fullmatch(name):
                 raise ConfigurationError(f"invalid proxy header name: {name!r}")
             if name.lower() == "host":
                 raise ConfigurationError("the Host CONNECT header is set from the KMS address")
@@ -317,6 +318,9 @@ class HTTPProxyKMSConnect:
     def _connect_proxy(self, deadline: float) -> socket.socket:
         # Recompute the budget per address, rather than socket.create_connection,
         # which applies the timeout to every address.
+        #
+        # DNS resolution is not bounded by the deadline; a slow lookup can
+        # exceed the budget, as in the driver's own connect path.
         last_error: Optional[OSError] = None
         for family, socktype, proto, _, sockaddr in socket.getaddrinfo(
             self.host, self.port, type=socket.SOCK_STREAM

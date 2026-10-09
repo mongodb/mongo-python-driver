@@ -583,6 +583,9 @@ async def test_http_proxy_helper_rejects_bad_headers(api):
         {"Bad\r\nName": "x"},
         {"Bad Name": "x"},
         {"Bad\tName": "x"},
+        # A legal token followed by a newline: re's $ can match just before
+        # a trailing newline, so validation must require a full match.
+        {"X-Ok\n": "x"},
         {"X-Ok": "ok\r\nInjected: 1"},
         {"Host": "evil.example.com"},
         {"host": "evil.example.com"},
