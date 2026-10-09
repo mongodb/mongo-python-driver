@@ -56,16 +56,7 @@ def _resumable(exc: PyMongoError) -> bool:
 
 
 class _AgnosticChangeStream(Generic[_DocumentType, _ClientT]):
-    """The internal abstract base class for change stream cursors.
-
-    Should not be called directly by application developers. Use
-    :meth:`pymongo.collection.Collection.watch`,
-    :meth:`pymongo.database.Database.watch`, or
-    :meth:`pymongo.mongo_client.MongoClient.watch` instead.
-
-    .. versionadded:: 3.6
-    .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
-    """
+    """Shared base for the sync and async ChangeStream classes."""
 
     def __init__(
         self,
@@ -122,6 +113,7 @@ class _AgnosticChangeStream(Generic[_DocumentType, _ClientT]):
         self._timeout = self._target._timeout
         self._show_expanded_events = show_expanded_events
 
+    # Any: the async/sync _AggregationCommand classes are unrelated, so no common return type.
     @property
     def _aggregation_command_class(self) -> type[Any]:
         """The aggregation command class to be used."""
@@ -208,7 +200,8 @@ class _AgnosticChangeStream(Generic[_DocumentType, _ClientT]):
         """Does this cursor have the potential to return more data?
 
         .. note:: Even if :attr:`alive` is ``True``, :meth:`next` can raise
-            :exc:`StopIteration` and :meth:`try_next` can return ``None``.
+            :exc:`StopIteration` (sync) or :exc:`StopAsyncIteration` (async),
+            and :meth:`try_next` can return ``None``.
 
         .. versionadded:: 3.8
         """
