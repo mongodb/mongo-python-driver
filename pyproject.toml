@@ -9,7 +9,7 @@ description = "PyMongo - the Official MongoDB Python driver"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 authors = [
     { name = "The MongoDB Python Team" },
 ]
@@ -30,8 +30,6 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -56,11 +54,6 @@ required-version = "==0.12.12"
 # Skip dependency releases newer than 7 days. Defining it here keeps every uv
 # invocation on the same cutoff.
 exclude-newer = "7 days"
-# boto3 dropped Python 3.9 support in 1.43, so the universal lock forks at
-# 3.10. Without a floor the pre-3.10 fork back-solves to boto3 1.7.84 (2018),
-# whose vendored six and invalid escape sequences break test collection. No
-# AWS task runs on 3.9; this keeps both forks on current releases.
-constraint-dependencies = ["boto3>=1.34"]
 
 [dependency-groups]
 dev = []
