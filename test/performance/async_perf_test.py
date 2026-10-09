@@ -107,13 +107,15 @@ def tearDownModule():
 class Timer:
     def __enter__(self):
         self.start = time.monotonic()
-        self.cpu_start = time.process_time()
+        if RECORD_CPU_TIME:
+            self.cpu_start = time.process_time()
         return self
 
     def __exit__(self, *args):
         self.end = time.monotonic()
         self.interval = self.end - self.start
-        self.cpu_interval = time.process_time() - self.cpu_start
+        if RECORD_CPU_TIME:
+            self.cpu_interval = time.process_time() - self.cpu_start
 
 
 async def concurrent(n_tasks, func):
@@ -212,7 +214,8 @@ class PerformanceTest:
                     await concurrent(self.n_tasks, self.do_task)
             await self.after()
             results.append(timer.interval)
-            cpu_results.append(timer.cpu_interval)
+            if RECORD_CPU_TIME:
+                cpu_results.append(timer.cpu_interval)
             duration = time.monotonic() - start
             if duration > MIN_ITERATION_TIME and i >= NUM_ITERATIONS:
                 break

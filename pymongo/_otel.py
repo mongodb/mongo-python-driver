@@ -367,12 +367,21 @@ def end_command_span_failure(
     failure: _DocumentOut,
     exc: BaseException,
 ) -> None:
-    """Record the exception, set the error status, and end the span."""
+    """Record the exception, set the error status, and end the span.
+
+    ``error.type`` (OpenTelemetry convention): the server response code when
+    the failure came from a server response, otherwise the exception class
+    name, so server and transport failures are distinguishable.
+    """
     if span is None:
         return
     span.record_exception(exc)
     code = failure.get("code")
     if code is not None:
-        span.set_attribute("db.response.status_code", str(code))
+        code = str(code)
+        span.set_attribute("db.response.status_code", code)
+        span.set_attribute("error.type", code)
+    else:
+        span.set_attribute("error.type", type(exc).__name__)
     span.set_status(Status(StatusCode.ERROR, description=failure.get("errmsg")))
     span.end()

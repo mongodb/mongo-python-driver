@@ -278,7 +278,44 @@ class TestOTelSpans(IntegrationTest):
         span = spans[0]
         self.assertEqual(span.status.status_code, trace.StatusCode.ERROR)
         self.assertIn("db.response.status_code", span.attributes)
+        # error.type mirrors the server response code for server failures.
+        self.assertEqual(span.attributes["error.type"], span.attributes["db.response.status_code"])
         self.assertTrue(any(event.name == "exception" for event in span.events))
+
+    def test_transport_failure_records_exception_class_as_error_type(self):
+        class _FakeConn:
+            id = 1
+            server_connection_id: Optional[int] = None
+            address: _Address = ("localhost", 27017)
+            service_id = None
+            _otel_connection_attributes: tuple[Optional[int], dict[str, Any]] = (None, {})
+
+        options = {"enabled": True, "query_text_max_length": None}
+        self.exporter.clear()
+
+        # Transport failure: no server response, error.type is the exception
+        # class name and db.response.status_code is absent.
+        span = _otel.start_command_span(options, _FakeConn(), {"ping": 1}, "admin", "ping", False)
+        _otel.end_command_span_failure(span, {}, TimeoutError("timed out"))
+        spans = self.spans()
+        self.assertEqual(len(spans), 1)
+        attrs = spans[0].attributes
+        self.assertEqual(spans[0].status.status_code, trace.StatusCode.ERROR)
+        self.assertNotIn("db.response.status_code", attrs)
+        self.assertEqual(attrs["error.type"], "TimeoutError")
+
+        # Server failure: error.type mirrors db.response.status_code.
+        self.exporter.clear()
+        span = _otel.start_command_span(options, _FakeConn(), {"ping": 1}, "admin", "ping", False)
+        _otel.end_command_span_failure(
+            span, {"code": 26, "errmsg": "not found"}, OperationFailure("")
+        )
+        spans = self.spans()
+        self.assertEqual(len(spans), 1)
+        attrs = spans[0].attributes
+        self.assertEqual(spans[0].status.status_code, trace.StatusCode.ERROR)
+        self.assertEqual(attrs["db.response.status_code"], "26")
+        self.assertEqual(attrs["error.type"], "26")
 
     def test_tracing_disabled_by_default(self):
         client = self.rs_or_single_client()
