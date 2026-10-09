@@ -64,7 +64,7 @@ class AsyncPeriodicExecutor:
         self._stopped = False
 
         if self._task is None or (
-            self._task.done() and not self._task.cancelled() and not self._task.cancelling()  # type: ignore[unused-ignore, attr-defined]
+            self._task.done() and not self._task.cancelled() and not self._task.cancelling()
         ):
             self._task = asyncio.create_task(self._run(), name=self._name)
 
@@ -97,7 +97,7 @@ class AsyncPeriodicExecutor:
         _csot.reset_all()
         _op_id.reset()
         while not self._stopped:
-            if self._task and self._task.cancelling():  # type: ignore[unused-ignore, attr-defined]
+            if self._task and self._task.cancelling():
                 raise asyncio.CancelledError
             try:
                 if not await self._target():
