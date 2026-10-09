@@ -2432,6 +2432,9 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
         }
     case 8:
         {
+            if (max < 1) {
+                goto invalid;
+            }
             char boolean_raw = buffer[(*position)++];
             if (0 == boolean_raw) {
                 value = Py_False;
@@ -2485,7 +2488,9 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             }
             *position += (unsigned)pattern_length + 1;
             start += pattern_length + 1;
-            const char* flags_nul = memchr(start, 0, max - pattern_length);
+            /* PYTHON-6111: account for the pattern NUL consumed above so
+             * the flags terminator cannot overlap the document terminator. */
+            const char* flags_nul = memchr(start, 0, max - pattern_length - 1);
             if (!flags_nul) {
                 Py_DECREF(pattern);
                 goto invalid;
