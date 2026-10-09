@@ -663,6 +663,8 @@ async def test_proxy_url_is_validated(api):
         "http://proxy.example.com#frag",
         "http://proxy.example.com:notaport",
         "http://proxy.example.com:99999",
+        "http://[::1",  # Unmatched IPv6 bracket.
+        "http://[example.com]",  # Invalid bracketed host.
     ]:
         with pytest.raises(ConfigurationError, match="proxy_url"):
             api.proxy(url)

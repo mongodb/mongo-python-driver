@@ -150,7 +150,12 @@ class HTTPProxyKMSConnect:
     ):
         if not isinstance(proxy_url, str):
             raise TypeError(f"proxy_url must be a string, not {type(proxy_url)}")
-        split = urllib.parse.urlsplit(proxy_url)
+        try:
+            split = urllib.parse.urlsplit(proxy_url)
+        except ValueError as exc:
+            # Malformed URLs, e.g. an unmatched IPv6 bracket, raise here
+            # rather than surfacing lazily from the parsed parts below.
+            raise ConfigurationError(f"invalid proxy_url: {proxy_url!r}") from exc
         if split.scheme not in ("http", "https"):
             raise ConfigurationError(
                 f"proxy_url must have an http or https scheme, not {proxy_url!r}"
