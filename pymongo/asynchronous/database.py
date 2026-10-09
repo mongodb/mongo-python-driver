@@ -1268,7 +1268,9 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return await self.client._retryable_write(False, inner, session, _Op.DROP)
+        return await self.client._retryable_write(
+            False, inner, session, _Op.DROP, db_name=self.name
+        )
 
     @_csot.apply
     async def drop_collection(

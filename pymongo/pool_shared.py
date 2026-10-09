@@ -58,8 +58,12 @@ class _ConnectionTelemetryInfo(Protocol):
 
     id: int
     server_connection_id: Optional[int]
-    address: tuple[str, int]
+    address: _Address
     service_id: Optional[ObjectId]
+    # Cache of (server_connection_id, connection-static span attributes)
+    # consulted by pymongo._otel._connection_attributes; (None, {}) until the
+    # first span is created.
+    _otel_connection_attributes: tuple[Optional[int], dict[str, Any]]
 
 
 def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:

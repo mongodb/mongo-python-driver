@@ -404,6 +404,9 @@ class _AsyncClientBulk(_AgnosticClientBulkBase):
             retryable_bulk,
             session,
             operation,
+            # The spec's client bulkWrite spans run against admin with no
+            # single collection.
+            db_name="admin",
             bulk=self,
             operation_id=op_id,
         )

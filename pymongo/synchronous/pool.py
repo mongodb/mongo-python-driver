@@ -170,6 +170,9 @@ class Connection(_ConnectionTelemetryInfo):
         # For load balancer support.
         self.service_id: Optional[ObjectId] = None
         self.server_connection_id: Optional[int] = None
+        # Cache of connection-static span attributes for OpenTelemetry
+        # command spans; see pymongo._otel._connection_attributes.
+        self._otel_connection_attributes: tuple[Optional[int], dict[str, Any]] = (None, {})
         # When executing a transaction in load balancing mode, this flag is
         # set to true to indicate that the session now owns the connection.
         self.pinned_txn = False

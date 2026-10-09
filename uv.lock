@@ -1247,6 +1247,18 @@ wheels = [
 ]
 
 [[package]]
+name = "opentelemetry-api"
+version = "1.45.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1f/dc/e12c1fe1ed8a7b7149777127b1a0e12ce5bd5a81d97408bedc2128c260f5/opentelemetry_api-1.45.0.tar.gz", hash = "sha256:711ede81773c8025c2c03dac0450bc89f3d30aea6eabcc815c570d4e35a963f7", size = 72115, upload-time = "2026-09-25T12:32:28.399Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/b9/040d1a1c7836922828e6480cd2366bb8fe0ebf75b413d2bb51a9b0e7f78f/opentelemetry_api-1.45.0-py3-none-any.whl", hash = "sha256:80e068aba7cd56c8b58512d6a36f8d25cb1dfaa0c0a4cc1c938ccf9f362d9cb3", size = 60020, upload-time = "2026-09-25T12:32:03.192Z" },
+]
+
+[[package]]
 name = "packaging"
 version = "26.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1341,6 +1353,9 @@ ocsp = [
     { name = "requests" },
     { name = "service-identity" },
 ]
+opentelemetry = [
+    { name = "opentelemetry-api" },
+]
 snappy = [
     { name = "python-snappy" },
 ]
@@ -1392,6 +1407,7 @@ requires-dist = [
     { name = "dnspython", specifier = ">=2.7.0,<3.0.0" },
     { name = "furo", marker = "extra == 'docs'", specifier = "==2025.12.19" },
     { name = "importlib-metadata", marker = "python_full_version < '3.13' and extra == 'test'", specifier = ">=7.0" },
+    { name = "opentelemetry-api", marker = "extra == 'opentelemetry'", specifier = ">=1.20.0" },
     { name = "pykerberos", marker = "os_name != 'nt' and extra == 'gssapi'", specifier = ">=1.2.4" },
     { name = "pymongo-auth-aws", marker = "extra == 'aws'", specifier = ">=1.3.0,<2.0.0" },
     { name = "pymongo-auth-aws", marker = "extra == 'encryption'", specifier = ">=1.3.0,<2.0.0" },
@@ -1409,7 +1425,7 @@ requires-dist = [
     { name = "sphinxcontrib-shellcheck", marker = "extra == 'docs'", specifier = ">=1.1.2,<2" },
     { name = "winkerberos", marker = "os_name == 'nt' and extra == 'gssapi'", specifier = ">=0.12.2" },
 ]
-provides-extras = ["aws", "docs", "encryption", "gssapi", "ocsp", "snappy", "test", "zstd"]
+provides-extras = ["aws", "docs", "encryption", "gssapi", "ocsp", "opentelemetry", "snappy", "test", "zstd"]
 
 [package.metadata.requires-dev]
 coverage = [{ name = "coverage", extras = ["toml"], specifier = ">=5,<=7.15.0" }]

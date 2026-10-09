@@ -1265,7 +1265,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
                 session=session,
             )
 
-        return self.client._retryable_write(False, inner, session, _Op.DROP)
+        return self.client._retryable_write(False, inner, session, _Op.DROP, db_name=self.name)
 
     @_csot.apply
     def drop_collection(

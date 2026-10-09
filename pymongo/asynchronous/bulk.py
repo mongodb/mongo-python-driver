@@ -312,6 +312,8 @@ class _AsyncBulk(_AgnosticBulkBase):
             retryable_bulk,
             session,
             operation,
+            db_name=self.collection.database.name,
+            coll_name=self.collection.name,
             bulk=self,  # type: ignore[arg-type]
             operation_id=op_id,
         )
