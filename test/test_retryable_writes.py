@@ -23,7 +23,6 @@ import sys
 import threading
 from unittest import mock
 
-from pymongo._asyncio_task import create_task
 from pymongo.common import MAX_ADAPTIVE_RETRIES
 from test.utils import flaky, set_fail_point
 
@@ -104,7 +103,7 @@ class InsertEventListener(EventListener):
             else:
                 # succeeded() cannot await, so the fail point may be configured after
                 # the driver dispatches the retry it is meant to fail.
-                self._task = create_task(client_context.client.admin.command(cmd))  # type: ignore[arg-type]
+                self._task = asyncio.create_task(client_context.client.admin.command(cmd))  # type: ignore[arg-type]
                 self._task.add_done_callback(self._store_fail_point_exc)
 
 

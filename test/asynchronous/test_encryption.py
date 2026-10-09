@@ -2057,10 +2057,9 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
             "certificate required|SSL handshake failed|"
             "KMS connection closed|Connection reset by peer|ECONNRESET|EPIPE"
         )
-        # On Python 3.10+ this error might be:
+        # This error might be:
         # EOF occurred in violation of protocol (_ssl.c:2384)
-        if sys.version_info[:2] >= (3, 10):
-            self.cert_error += "|EOF"
+        self.cert_error += "|EOF"
         # On Windows this error might be:
         # [WinError 10054] An existing connection was forcibly closed by the remote host
         if sys.platform == "win32":

@@ -24,7 +24,6 @@ from typing import Optional, no_type_check
 
 from bson import SON
 from pymongo import common
-from pymongo._asyncio_task import create_task
 from pymongo.read_preferences import ReadPreference
 
 _IS_SYNC = True
@@ -140,7 +139,7 @@ class ConcurrentRunner(PARENT):
     if not _IS_SYNC:
 
         def start(self):
-            self.task = create_task(self.run(), name=self.name)
+            self.task = asyncio.create_task(self.run(), name=self.name)
 
         def join(self, timeout: Optional[float] = None):  # type: ignore[override]
             if self.task is not None:
