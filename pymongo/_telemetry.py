@@ -71,6 +71,21 @@ def _generate_op_id_or_none(listeners: Optional[_EventListeners]) -> Optional[in
     )
 
 
+def operation_span(
+    tracing_options: Optional[_otel.TracingOptions],
+    operation_name: str,
+    dbname: Optional[str],
+    collection: Optional[str],
+) -> Any:
+    """Start the spec's operation span for one driver operation, as a context manager.
+
+    Thin wrapper over :func:`pymongo._otel.operation_span`, kept here so
+    callers already importing :mod:`pymongo._telemetry` need no new import
+    edges. See the ``_otel`` function for the span's shape.
+    """
+    return _otel.operation_span(tracing_options, operation_name, dbname, collection)
+
+
 class _CommandTelemetry:
     """Combines structured logging and APM event publishing for a single command.
 

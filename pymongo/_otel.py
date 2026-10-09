@@ -31,6 +31,7 @@ from pymongo._version import __version__
 from pymongo.logger import _HELLO_COMMANDS, _JSON_OPTIONS, _SENSITIVE_COMMANDS
 
 try:
+    from opentelemetry import context as otel_context
     from opentelemetry import trace
     from opentelemetry.trace import SpanKind, Status, StatusCode
 
@@ -385,3 +386,90 @@ def end_command_span_failure(
         span.set_attribute("error.type", type(exc).__name__)
     span.set_status(Status(StatusCode.ERROR, description=failure.get("errmsg")))
     span.end()
+
+
+class _NoOperationSpan:
+    """No-op context manager used by :func:`operation_span` when tracing is off.
+
+    A module-level singleton: the operation funnels enter it unconditionally,
+    so the disabled-tracing path pays only the ``with`` statement itself.
+    """
+
+    __slots__ = ()
+
+    def __enter__(self) -> None:
+        return None
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        return None
+
+
+_NO_OPERATION_SPAN = _NoOperationSpan()
+
+
+class _OperationSpanContext:
+    """Context manager for one operation span.
+
+    Makes the span current while the operation runs, so the operation's
+    command spans (created with ``Tracer.start_span``, which parents from the
+    current context) nest beneath it. Ends the span on exit; on exception,
+    records the exception and sets the spec's ``error.type`` attribute first.
+    """
+
+    __slots__ = ("_span", "_token")
+
+    def __init__(self, span: Span) -> None:
+        self._span = span
+        self._token: Optional[object] = None
+
+    def __enter__(self) -> Span:
+        self._token = otel_context.attach(trace.set_span_in_context(self._span))
+        return self._span
+
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        otel_context.detach(self._token)
+        span = self._span
+        if exc_value is not None:
+            span.record_exception(exc_value)
+            # The spec's operation-span error.type: the name of the exception
+            # class raised to the application (a failed command does not carry
+            # its server code over: a retry of the same operation may succeed).
+            span.set_attribute("error.type", type(exc_value).__name__)
+            span.set_status(Status(StatusCode.ERROR, description=str(exc_value)))
+        span.end()
+
+
+def operation_span(
+    tracing_options: Optional[TracingOptions],
+    operation_name: str,
+    dbname: Optional[str],
+    collection: Optional[str],
+) -> _OperationSpanContext | _NoOperationSpan:
+    """Start an operation span and return a context manager that ends it.
+
+    Per the spec ("Instrumenting Driver Operations"): one CLIENT-kind span per
+    driver operation, started before server selection so its duration reflects
+    all of the driver's activities, named ``operation_name db.collection_name``
+    (or ``operation_name db`` when there is no collection) and carrying the
+    spec's required attributes. Returns the :data:`_NO_OPERATION_SPAN`
+    singleton when tracing is disabled so the disabled path stays at parity.
+    """
+    if not _is_tracing_enabled(tracing_options):
+        return _NO_OPERATION_SPAN
+    if collection:
+        summary = f"{operation_name} {dbname}.{collection}"
+    else:
+        summary = f"{operation_name} {dbname}"
+    attributes: dict[str, Any] = {
+        "db.system.name": "mongodb",
+        "db.operation.name": operation_name,
+        "db.operation.summary": summary,
+    }
+    if dbname:
+        attributes["db.namespace"] = dbname
+    if collection:
+        attributes["db.collection.name"] = collection
+    assert _TRACER is not None  # _is_tracing_enabled already checked _HAS_OPENTELEMETRY
+    return _OperationSpanContext(
+        _TRACER.start_span(summary, kind=_SPAN_KIND_CLIENT, attributes=attributes)
+    )

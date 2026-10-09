@@ -292,7 +292,7 @@ class TestOTelSpans(AsyncIntegrationTest):
             service_id = None
             _otel_connection_attributes: tuple[Optional[int], dict[str, Any]] = (None, {})
 
-        options = {"enabled": True, "query_text_max_length": None}
+        options: _otel.TracingOptions = {"enabled": True, "query_text_max_length": None}
         self.exporter.clear()
 
         # Transport failure: no server response, error.type is the exception
@@ -318,6 +318,63 @@ class TestOTelSpans(AsyncIntegrationTest):
         self.assertEqual(spans[0].status.status_code, trace.StatusCode.ERROR)
         self.assertEqual(attrs["db.response.status_code"], "26")
         self.assertEqual(attrs["error.type"], "26")
+
+    async def test_operation_span_wraps_command_span(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name].test_otel_operation
+        await coll.drop()
+        await coll.insert_one({"x": 1})
+        self.exporter.clear()
+
+        await coll.insert_one({"x": 2})
+
+        # One operation span per public-API call, named and attributed per the
+        # spec, with the operation's command span nested beneath it.
+        op_name = f"insert {self.db.name}.test_otel_operation"
+        op_spans = self.spans(op_name)
+        self.assertEqual(len(op_spans), 1)
+        op_span = op_spans[0]
+        attrs = op_span.attributes
+        self.assertEqual(attrs["db.system.name"], "mongodb")
+        self.assertEqual(attrs["db.namespace"], self.db.name)
+        self.assertEqual(attrs["db.collection.name"], "test_otel_operation")
+        self.assertEqual(attrs["db.operation.name"], "insert")
+        self.assertEqual(attrs["db.operation.summary"], op_name)
+
+        cmd_spans = self.spans("insert")
+        self.assertEqual(len(cmd_spans), 1)
+        self.assertEqual(cmd_spans[0].parent.span_id, op_span.context.span_id)
+
+    async def test_operation_failure_records_exception_class_as_error_type(self):
+        client = await self.async_rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name].test_otel_operation
+        await coll.drop()
+        await coll.create_index("x", unique=True)
+        await coll.insert_one({"x": 1})
+        self.exporter.clear()
+
+        with self.assertRaises(OperationFailure):
+            await coll.insert_one({"x": 1})
+
+        # The operation span's error.type is the exception class raised to the
+        # application (the specific subclass pymongo raises); the failed
+        # command span keeps the server response code.
+        op_span = self.spans(f"insert {self.db.name}.test_otel_operation")[0]
+        self.assertEqual(op_span.status.status_code, trace.StatusCode.ERROR)
+        self.assertEqual(op_span.attributes["error.type"], "DuplicateKeyError")
+        # The duplicate key arrived as writeErrors in an ok:1 reply: the
+        # command succeeded at the protocol level, so its span carries no
+        # error; the failure belongs to the operation span alone.
+        cmd_spans = self.spans("insert")
+        self.assertEqual(len(cmd_spans), 1)
+        self.assertEqual(cmd_spans[0].status.status_code, trace.StatusCode.UNSET)
+
+    async def test_operation_span_absent_when_tracing_disabled(self):
+        client = await self.async_rs_or_single_client()
+        coll = client[self.db.name].test_otel_operation
+        await coll.drop()
+        await coll.insert_one({"x": 1})
+        self.assertEqual(self.spans(), [])
 
     async def test_tracing_disabled_by_default(self):
         client = await self.async_rs_or_single_client()

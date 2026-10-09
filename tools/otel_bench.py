@@ -235,6 +235,11 @@ def verify() -> None:
     attrs = dict(span.attributes or {})
     assert attrs.get("db.system.name") == "mongodb", attrs
     assert attrs.get("db.command.name") == "insert", attrs
+    # The operation span nests the command span beneath it.
+    op_span = next(s for s in spans if s.name == "insert perftest_otel_verify.coll")
+    assert span.parent is not None
+    assert span.parent.span_id == op_span.context.span_id, names
+    assert op_span.attributes.get("db.operation.name") == "insert", dict(op_span.attributes or {})
     print(f"OK: {len(names)} span(s) recorded: {names}")
 
 

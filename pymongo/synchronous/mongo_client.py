@@ -56,7 +56,7 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
-from pymongo._telemetry import _generate_op_id_or_none, log_command_retry
+from pymongo._telemetry import _generate_op_id_or_none, log_command_retry, operation_span
 from pymongo.client_options import ClientOptions
 from pymongo.client_session_shared import SessionOptions, TransactionOptions, _EmptyServerSession
 from pymongo.driver_info import DriverInfo
@@ -1987,42 +1987,50 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
         """
-        if operation.conn_mgr:
-            server = self._select_server(
+        # The spec's operation span: one span per driver operation, started
+        # before server selection, with the operation's command spans nested
+        # beneath it. getMores are cursor territory (PYTHON-5947): no
+        # operation span yet.
+        # getMores are cursor territory (PYTHON-5947): no operation span yet.
+        tracing = self.options.tracing if not isinstance(operation, _GetMore) else None
+        op_span = operation_span(tracing, operation.name, operation.db, operation.coll)
+        with op_span:
+            if operation.conn_mgr:
+                server = self._select_server(
+                    operation.read_preference,
+                    operation.session,  # type: ignore[arg-type]
+                    operation.name,
+                    address=address,
+                )
+
+                with operation.conn_mgr._lock:
+                    with _ClientCheckout.for_existing_conn(
+                        self,
+                        server,
+                        operation.session,  # type: ignore[arg-type]
+                        operation.conn_mgr.conn,
+                    ):
+                        return run_with_conn(
+                            operation.conn_mgr.conn, operation, operation.read_preference
+                        )
+
+            def _cmd(
+                _session: Optional[ClientSession],
+                _server: Server,
+                conn: Connection,
+                read_preference: _ServerMode,
+            ) -> Response:
+                operation.reset()  # Reset op in case of retry.
+                return run_with_conn(conn, operation, read_preference)
+
+            return self._retryable_read(
+                _cmd,
                 operation.read_preference,
                 operation.session,  # type: ignore[arg-type]
-                operation.name,
                 address=address,
+                retryable=isinstance(operation, _Query),
+                operation=operation.name,
             )
-
-            with operation.conn_mgr._lock:
-                with _ClientCheckout.for_existing_conn(
-                    self,
-                    server,
-                    operation.session,  # type: ignore[arg-type]
-                    operation.conn_mgr.conn,
-                ):
-                    return run_with_conn(
-                        operation.conn_mgr.conn, operation, operation.read_preference
-                    )
-
-        def _cmd(
-            _session: Optional[ClientSession],
-            _server: Server,
-            conn: Connection,
-            read_preference: _ServerMode,
-        ) -> Response:
-            operation.reset()  # Reset op in case of retry.
-            return run_with_conn(conn, operation, read_preference)
-
-        return self._retryable_read(
-            _cmd,
-            operation.read_preference,
-            operation.session,  # type: ignore[arg-type]
-            address=address,
-            retryable=isinstance(operation, _Query),
-            operation=operation.name,
-        )
 
     def _retry_with_session(
         self,
@@ -2159,6 +2167,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         operation: str,
         bulk: Optional[Union[_Bulk, _ClientBulk]] = None,
         operation_id: Optional[int] = None,
+        db_name: Optional[str] = None,
+        coll_name: Optional[str] = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -2173,9 +2183,19 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param operation: The name of the operation that the server is being selected for
         :param bulk: bulk abstraction to execute operations in bulk, defaults to None
         :param operation_id: Stable operation id shared across retries, defaults to None
+        :param db_name: The database the operation targets, for the spec's
+            operation span. Defaults to None (attribute omitted).
+        :param coll_name: The collection the operation targets, for the spec's
+            operation span. Defaults to None (attribute omitted).
         """
         with self._tmp_session(session) as s:
-            return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
+            with operation_span(
+                self.options.tracing,
+                getattr(operation, "value", operation),
+                db_name,
+                coll_name,
+            ):
+                return self._retry_with_session(retryable, func, s, bulk, operation, operation_id)
 
     def _cleanup_cursor_no_lock(
         self,
