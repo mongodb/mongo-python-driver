@@ -486,6 +486,19 @@ buildvariants:
       TEST_NAME: otel
       COVERAGE: "1"
     tags: [pr]
+  - name: otel-server-trace-rhel8
+    tasks:
+      - name: .test-non-standard .replica_set-noauth-ssl .server-latest
+      - name: .test-non-standard .sharded_cluster-auth-ssl .server-latest .python-pypy3.11
+      - name: .test-non-standard .standalone-noauth-nossl .server-latest .python-3.10
+    display_name: OTel server trace RHEL8
+    run_on:
+      - rhel8.10-small
+    expansions:
+      TEST_NAME: otel
+      COVERAGE: "1"
+      OTEL: "1"
+    tags: [pr]
 
   # Perf tests
   - name: performance-benchmarks

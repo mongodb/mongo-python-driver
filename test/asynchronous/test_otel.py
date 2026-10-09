@@ -54,10 +54,11 @@ from test.unified_format_shared import _shared_test_provider
 _HAS_OTEL_TEST_DEPS = False
 if _otel._HAS_OPENTELEMETRY:
     try:
+        from opentelemetry import context as otel_context
         from opentelemetry import trace
         from opentelemetry.sdk.trace.export import SimpleSpanProcessor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-        from opentelemetry.trace import StatusCode
+        from opentelemetry.trace import Span, SpanContext, StatusCode
 
         _HAS_OTEL_TEST_DEPS = True
     except ImportError:
@@ -84,6 +85,51 @@ class TestBuildQueryText(unittest.TestCase):
 def _qualified_name(exc_type: type) -> str:
     """Format an exception class the way the spans do: ``module.QualName``."""
     return f"{exc_type.__module__}.{exc_type.__qualname__}"
+
+
+if _HAS_OTEL_TEST_DEPS:
+
+    class _ApiOnlySpan(Span):
+        """A recording span implementing the OpenTelemetry Span interface without exposing an
+        ``attributes`` property, like a non-SDK span implementation may."""
+
+        def __init__(self, attributes=None):
+            self._attributes = dict(attributes or {})
+            self._name = ""
+
+        def get_span_context(self):
+            return SpanContext(trace_id=1, span_id=1, is_remote=False)
+
+        def is_recording(self):
+            return True
+
+        def set_attribute(self, key, value):
+            self._attributes[key] = value
+
+        def set_attributes(self, attributes):
+            self._attributes.update(attributes)
+
+        def add_event(self, name, attributes=None, timestamp=None):
+            pass
+
+        def record_exception(self, exception, attributes=None, timestamp=None):
+            pass
+
+        def update_name(self, name):
+            self._name = name
+
+        def set_status(self, status):
+            pass
+
+        def end(self):
+            pass
+
+    class _FakeConnInfo:
+        """Minimal stand-in for ``_ConnectionTelemetryInfo`` as read by ``start_command_span``."""
+
+        id = 1
+        address = ("localhost", 27017)
+        server_connection_id = 1
 
 
 @unittest.skipUnless(_HAS_OTEL_TEST_DEPS, "opentelemetry-sdk is not installed")
@@ -127,6 +173,61 @@ class TestOTelOperationSpanPrimitives(unittest.TestCase):
         self.assertEqual(span.status.status_code, StatusCode.ERROR)
         self.assertEqual(len(span.events), 1)
         self.assertEqual(span.events[0].name, "exception")
+
+    def test_start_command_span_backfill_skips_initialized_namespace(self):
+        """A rename targets a collection while its command runs against admin. The
+        operation span's namespace is set eagerly, and the command backfill must not
+        overwrite it, even when the span implementation does not expose its attributes
+        (the OpenTelemetry Span API does not require an ``attributes`` getter)."""
+        handle = _otel.start_operation_span(
+            _tracing_opts(), "renameCollection", None, dbname="db", collection="coll"
+        )
+        fake = _ApiOnlySpan(
+            {
+                "db.system.name": "mongodb",
+                "db.operation.name": "renameCollection",
+                "db.namespace": "db",
+                "db.collection.name": "coll",
+                "db.operation.summary": "renameCollection db.coll",
+            }
+        )
+        token = otel_context.attach(trace.set_span_in_context(fake))
+        try:
+            _otel.start_command_span(
+                _tracing_opts(),
+                _FakeConnInfo(),
+                {"renameCollection": "coll"},
+                "admin",
+                "renameCollection",
+                False,
+            )
+        finally:
+            otel_context.detach(token)
+        _otel.end_operation_span_success(handle)
+        self.assertEqual(fake._attributes["db.namespace"], "db")
+        self.assertEqual(fake._attributes["db.collection.name"], "coll")
+        self.assertEqual(fake._name, "")
+
+    def test_start_command_span_backfills_unknown_namespace(self):
+        """An operation that started without a namespace learns it from the first command."""
+        handle = _otel.start_operation_span(_tracing_opts(), "runCommand", None)
+        fake = _ApiOnlySpan(
+            {
+                "db.system.name": "mongodb",
+                "db.operation.name": "runCommand",
+                "db.operation.summary": "runCommand",
+            }
+        )
+        token = otel_context.attach(trace.set_span_in_context(fake))
+        try:
+            _otel.start_command_span(
+                _tracing_opts(), _FakeConnInfo(), {"ping": 1}, "admin", "ping", False
+            )
+        finally:
+            otel_context.detach(token)
+        _otel.end_operation_span_success(handle)
+        self.assertEqual(fake._attributes["db.namespace"], "admin")
+        self.assertNotIn("db.collection.name", fake._attributes)
 
     def test_start_operation_span_with_parent(self):
         parent_handle = _otel.start_operation_span(_tracing_opts(), "transaction", None)

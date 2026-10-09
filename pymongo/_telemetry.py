@@ -32,7 +32,9 @@ from pymongo.logger import (
     _CommandStatusMessage,
     _ConnectionStatusMessage,
     _debug_log,
+    _info_log,
     _is_debug_enabled,
+    _is_info_enabled,
     _SDAMStatusMessage,
     _ServerSelectionStatusMessage,
     _verbose_connection_error_reason,
@@ -66,6 +68,7 @@ def _generate_op_id_or_none(listeners: Optional[_EventListeners]) -> Optional[in
             (listeners is not None and listeners.enabled_for_commands)
             or _is_debug_enabled(_COMMAND_LOGGER)
             or _is_debug_enabled(_SERVER_SELECTION_LOGGER)
+            or _is_info_enabled(_SERVER_SELECTION_LOGGER)
         )
         else None
     )
@@ -808,9 +811,11 @@ class _ServerSelectionTelemetry:
         self,
         message: _ServerSelectionStatusMessage,
         topology_description: TopologyDescription,
+        info: bool = False,
         **extra: Any,
     ) -> None:
-        _debug_log(
+        log_fn = _info_log if info else _debug_log
+        log_fn(
             _SERVER_SELECTION_LOGGER,
             message=message,
             clientId=self._topology_id,
@@ -828,10 +833,14 @@ class _ServerSelectionTelemetry:
 
     def waiting(self, remaining_time_ms: int) -> None:
         """Emit the server selection WAITING log entry."""
-        if self._should_log:
+        # Unlike the other server selection messages, which are debug level, the
+        # WAITING message MUST be logged at info level per the server selection
+        # logging specification.
+        if _is_info_enabled(_SERVER_SELECTION_LOGGER):
             self._emit_log(
                 _ServerSelectionStatusMessage.WAITING,
                 self._topology_description,
+                info=True,
                 remainingTimeMS=remaining_time_ms,
             )
 

@@ -517,11 +517,10 @@ def create_otel_variants():
     host = DEFAULT_HOST
     # Merge otel's coverage into the combined report; see setup_tests.py's COVERAGE handling.
     # One task per supported server version: rotate the main three topology/auth/ssl combos
-    # and the CPython versions across them. The free-threaded tasks are excluded because
-    # coverage tasks exclude them. OTEL=1 (the server's OpenTelemetry file exporter) is not
-    # set: it requires MongoDB 9.0+ and this variant must also run on older versions, and
-    # without OTEL_TRACE_DIR TestServerTraceContext skips itself while the client-side
-    # tracing tests still run.
+    # and the CPython versions across them. OTEL=1 (the server's OpenTelemetry file exporter)
+    # is not set here: it requires MongoDB 9.0+ and this variant must also run on older
+    # versions. The client-side tracing tests still run without it; the server
+    # trace-context tests run in the dedicated variant below.
     version_matrix = {
         "4.4": (".replica_set-noauth-ssl", ".python-3.11"),
         "5.0": (".standalone-noauth-nossl", ".python-3.13"),
@@ -544,6 +543,30 @@ def create_otel_variants():
             host=host,
             tags=["pr"],
             expansions=dict(TEST_NAME="otel", COVERAGE="1"),
+        ),
+        # OTEL=1 makes drivers-evergreen-tools enable the server's OpenTelemetry file
+        # exporter and export OTEL_TRACE_DIR, which TestServerTraceContext requires. The
+        # exporter requires MongoDB 9.0+ and a binary that accepts every OTel setParameter;
+        # only the latest nightly qualifies (the v9.0 nightly rejects
+        # openTelemetryTracingFileFlushCount), so only latest tasks are selected. Keep the
+        # same three tasks the single-variant config ran before the version sweep was added.
+        create_variant(
+            [
+                # All three topologies, one task each to keep the task count small.
+                ".test-non-standard .replica_set-noauth-ssl .server-latest",
+                # Sharded adds mongos, which rewrites commands and reports a
+                # different server.address, plus auth and ssl, which exercise
+                # sensitive-command redaction and prose 9. PyPy covers the
+                # alternate implementation.
+                ".test-non-standard .sharded_cluster-auth-ssl .server-latest .python-pypy3.11",
+                # Standalone for its min-deps task, which resolves
+                # opentelemetry-api down to the floor in requirements/.
+                ".test-non-standard .standalone-noauth-nossl .server-latest .python-3.10",
+            ],
+            get_variant_name("OTel server trace", host),
+            host=host,
+            tags=["pr"],
+            expansions=dict(TEST_NAME="otel", COVERAGE="1", OTEL="1"),
         ),
     ]
 

@@ -64,6 +64,14 @@ _CURRENT_OPERATION_NAME: ContextVar[Optional[str]] = ContextVar(
     "_CURRENT_OPERATION_NAME", default=None
 )
 
+# Whether the active operation span already carries its namespace attributes,
+# set eagerly by start_operation_span. Sibling to _CURRENT_OPERATION_NAME: set
+# and reset at the same sites, so start_command_span knows the namespace is
+# already initialized without inspecting the span. The OpenTelemetry Span API
+# does not expose the span's attributes, so an implementation-specific property
+# cannot be relied on here.
+_NAMESPACE_INITIALIZED: ContextVar[bool] = ContextVar("_NAMESPACE_INITIALIZED", default=False)
+
 # True while the driver is draining a cursor of its own to build one public API
 # call's return value. See internal_cursor_iteration.
 _INTERNAL_CURSOR_ITERATION: ContextVar[bool] = ContextVar(
@@ -369,8 +377,7 @@ def start_command_span(
             # Call sites that know the operation's namespace up front already set it
             # (e.g. a rename targets a collection while its command runs against
             # admin), so only backfill what the span has not learned yet.
-            existing = getattr(current_span, "attributes", None) or {}
-            if "db.namespace" not in existing:
+            if not _NAMESPACE_INITIALIZED.get():
                 summary = _build_query_summary(current_operation, dbname, collection)
                 current_span.update_name(summary)
                 current_span.set_attribute("db.namespace", dbname)
@@ -586,9 +593,21 @@ class _OperationSpanHandle:
 
     ``_cm`` is the ``start_as_current_span`` context manager, or ``None`` in
     detached mode, where ``use_operation_span`` makes the span current per use.
+    ``namespace_initialized`` records whether the span was created with eager
+    namespace attributes, so ``start_command_span`` skips its backfill without
+    inspecting the span (the OpenTelemetry Span API does not expose attributes).
+    ``_ns_token`` is the ``_NAMESPACE_INITIALIZED`` token to reset when the
+    span stops being current, ``None`` in detached mode.
     """
 
-    __slots__ = ("_cm", "_name_token", "operation_name", "span")
+    __slots__ = (
+        "_cm",
+        "_name_token",
+        "_ns_token",
+        "namespace_initialized",
+        "operation_name",
+        "span",
+    )
 
     def __init__(
         self,
@@ -596,11 +615,15 @@ class _OperationSpanHandle:
         cm: Any,
         name_token: Any,
         operation_name: str,
+        namespace_initialized: bool = False,
+        ns_token: Any = None,
     ) -> None:
         self.span = span
         self._cm = cm
         self._name_token = name_token
         self.operation_name = operation_name
+        self.namespace_initialized = namespace_initialized
+        self._ns_token = ns_token
 
 
 def start_operation_span(
@@ -651,7 +674,9 @@ def start_operation_span(
         span = _TRACER.start_span(
             name, kind=SpanKind.CLIENT, context=context, attributes=attributes
         )
-        return _OperationSpanHandle(span, None, None, operation)
+        return _OperationSpanHandle(
+            span, None, None, operation, namespace_initialized=dbname is not None
+        )
     cm = _TRACER.start_as_current_span(
         name,
         kind=SpanKind.CLIENT,
@@ -660,7 +685,10 @@ def start_operation_span(
     )
     span = cm.__enter__()
     name_token = _CURRENT_OPERATION_NAME.set(operation)
-    return _OperationSpanHandle(span, cm, name_token, operation)
+    ns_token = _NAMESPACE_INITIALIZED.set(dbname is not None)
+    return _OperationSpanHandle(
+        span, cm, name_token, operation, namespace_initialized=dbname is not None, ns_token=ns_token
+    )
 
 
 @contextlib.contextmanager
@@ -674,6 +702,7 @@ def use_operation_span(handle: Optional[_OperationSpanHandle]) -> Iterator[None]
         yield
         return
     token = _CURRENT_OPERATION_NAME.set(handle.operation_name)
+    ns_token = _NAMESPACE_INITIALIZED.set(handle.namespace_initialized)
     try:
         # Left on, these would auto-record any exception leaving the block and
         # set ERROR status, duplicating the caller's end_operation_span_failure
@@ -686,6 +715,7 @@ def use_operation_span(handle: Optional[_OperationSpanHandle]) -> Iterator[None]
         ):
             yield
     finally:
+        _NAMESPACE_INITIALIZED.reset(ns_token)
         _CURRENT_OPERATION_NAME.reset(token)
 
 
@@ -701,6 +731,7 @@ def reset_context() -> None:
     if not _HAS_OPENTELEMETRY:
         return
     _CURRENT_OPERATION_NAME.set(None)
+    _NAMESPACE_INITIALIZED.set(False)
     context.attach(context.Context())
 
 
@@ -712,6 +743,7 @@ def end_operation_span_success(handle: Optional[_OperationSpanHandle]) -> None:
         handle.span.end()
         return
     _CURRENT_OPERATION_NAME.reset(handle._name_token)
+    _NAMESPACE_INITIALIZED.reset(handle._ns_token)
     handle._cm.__exit__(None, None, None)
 
 
@@ -731,6 +763,7 @@ def end_operation_span_failure(handle: Optional[_OperationSpanHandle], exc: Base
             handle.span.end()
         else:
             _CURRENT_OPERATION_NAME.reset(handle._name_token)
+            _NAMESPACE_INITIALIZED.reset(handle._ns_token)
             handle._cm.__exit__(None, None, None)
 
 
