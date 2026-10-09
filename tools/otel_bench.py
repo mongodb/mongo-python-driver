@@ -249,7 +249,7 @@ def report(
         "reps": args.reps,
         "fast": args.fast,
         "configs": {},
-        "pre_otel_compare": None,
+        "pre_otel_compare": {},
     }
 
     for api in ("sync", "async"):
@@ -288,7 +288,8 @@ def report(
                     "off_median_mb_s": off_median,
                     "overhead_pct": (1 - off_median / main_median) * 100,
                 }
-            summary["pre_otel_compare"] = {"api": api, **row}
+            # Key by api: both rows must survive into the persisted results.
+            summary["pre_otel_compare"][api] = row
             overheads = ", ".join(f"{task}: {row[task]['overhead_pct']:+.1f}%" for task in TASKS)
             print(f"\nPre-OTel comparison (off on this branch vs main, {api}): {overheads}")
 
@@ -342,6 +343,12 @@ def main() -> None:
 
     if args.reps < 1:
         raise SystemExit("--reps must be at least 1")
+    # Children run with a different working directory (the repo root, or the
+    # main worktree); interpret user-supplied relative paths against the
+    # harness's cwd once, so the harness's own file operations and the paths
+    # passed to children in the environment agree.
+    args.data_dir = args.data_dir.absolute()
+    args.output_dir = args.output_dir.absolute()
     if not args.data_dir.exists():
         raise SystemExit(
             f"Dataset directory not found: {args.data_dir}\n"

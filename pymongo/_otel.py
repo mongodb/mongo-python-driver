@@ -334,13 +334,31 @@ def start_command_span(
     return span
 
 
-def end_command_span_success(span: Optional[Span], reply: _DocumentOut) -> None:
-    """Set the cursor id (if any) and end the span."""
+def end_command_span_success(
+    span: Optional[Span],
+    cmd: Mapping[str, Any],
+    command_name: str,
+    reply: _DocumentOut,
+) -> None:
+    """Set the cursor id (if any) and end the span.
+
+    The ``db.mongodb.cursor_id`` rules (spec: "db.mongodb.cursor_id"): a
+    non-zero reply cursor id is recorded as-is; a zero reply id means the
+    cursor is exhausted, so the attribute is omitted unless the command
+    operated on an existing cursor (getMore), in which case the cursor id the
+    command sent is recorded; a literal zero is never recorded.
+    """
     if span is None:
         return
     cursor = reply.get("cursor")
     if isinstance(cursor, Mapping) and "id" in cursor:
-        span.set_attribute("db.mongodb.cursor_id", cursor["id"])
+        cursor_id = cursor["id"]
+        if cursor_id:
+            span.set_attribute("db.mongodb.cursor_id", cursor_id)
+        elif command_name == _GET_MORE:
+            sent_id = cmd.get(_GET_MORE)
+            if sent_id:
+                span.set_attribute("db.mongodb.cursor_id", sent_id)
     span.end()
 
 

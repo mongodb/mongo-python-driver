@@ -1053,6 +1053,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             # Username and password passed as kwargs override user info in URI.
             username = opts.get("username", self._resolve_srv_info["username"])
             password = opts.get("password", self._resolve_srv_info["password"])
+            # The tracing option was resolved against the environment when the
+            # client was constructed; carry that snapshot into the rebuilt
+            # options rather than re-reading the (possibly changed) environment.
+            opts["tracing"] = self._options.tracing
             self._options = ClientOptions(
                 username, password, self._resolve_srv_info["dbase"], opts, _IS_SYNC
             )

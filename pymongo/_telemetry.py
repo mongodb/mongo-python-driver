@@ -226,7 +226,7 @@ class _CommandTelemetry:
                     database_name=self._dbname,
                 )
         if self._span is not None:
-            _otel.end_command_span_success(self._span, reply)
+            _otel.end_command_span_success(self._span, self._cmd, self._name, reply)
 
     def failed(
         self,

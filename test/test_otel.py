@@ -30,6 +30,7 @@ import pytest
 import pymongo._otel as _otel
 from pymongo import common
 from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.monitoring import CommandListener
 from pymongo.operations import InsertOne
 from pymongo.typings import _Address
 from test import IntegrationTest, client_context, unittest
@@ -133,6 +134,64 @@ class TestOTelSpans(IntegrationTest):
             self.assertEqual(span.attributes["db.collection.name"], "test_otel_getmore")
             self.assertEqual(span.attributes["db.command.name"], "getMore")
 
+    def test_cursor_id_omitted_when_first_batch_exhausts_cursor(self):
+        # A find whose reply carries a cursor id of 0 (everything fit in the
+        # first batch) must not record db.mongodb.cursor_id: the spec forbids
+        # a literal 0 (spec: "db.mongodb.cursor_id").
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name].test_otel_cursor_id
+        coll.drop()
+        coll.insert_one({"x": 1})
+        self.exporter.clear()
+
+        docs = coll.find({}).to_list()
+        self.assertEqual(len(docs), 1)
+
+        find_spans = self.spans("find")
+        self.assertEqual(len(find_spans), 1)
+        self.assertNotIn("db.mongodb.cursor_id", find_spans[0].attributes)
+
+    def test_get_more_records_sent_cursor_id_when_reply_exhausts(self):
+        # The final getMore's reply carries a cursor id of 0 (cursor exhausted);
+        # its span must record the nonzero cursor id the command sent instead
+        # (spec: "db.mongodb.cursor_id").
+        class StartedListener(CommandListener):
+            def __init__(self):
+                self.sent_ids: list = []
+
+            def started(self, event):
+                if event.command_name == "getMore":
+                    self.sent_ids.append(event.command["getMore"])
+
+            def succeeded(self, event):
+                pass
+
+            def failed(self, event):
+                pass
+
+        listener = StartedListener()
+        client = self.rs_or_single_client(tracing={"enabled": True}, event_listeners=[listener])
+        coll = client[self.db.name].test_otel_cursor_id
+        coll.drop()
+        coll.insert_many([{"x": i} for i in range(5)])
+        self.exporter.clear()
+
+        docs = coll.find({}, batch_size=2).to_list()
+        self.assertEqual(len(docs), 5)
+
+        get_more_spans = self.spans("getMore")
+        self.assertGreater(len(get_more_spans), 0)
+        self.assertEqual(len(get_more_spans), len(listener.sent_ids))
+        # Every getMore span records the cursor id the command sent; the final
+        # one exhausts the cursor (reply id 0) but must not record 0.
+        for span, sent_id in zip(get_more_spans, listener.sent_ids):
+            self.assertEqual(span.attributes["db.mongodb.cursor_id"], sent_id)
+        self.assertNotEqual(listener.sent_ids[-1], 0)
+        # The find's reply carried a nonzero cursor id, which its span records.
+        find_spans = self.spans("find")
+        self.assertEqual(len(find_spans), 1)
+        self.assertEqual(find_spans[0].attributes["db.mongodb.cursor_id"], listener.sent_ids[0])
+
     def test_explain_retains_collection_name(self):
         # explain wraps the real command ({"explain": {"find": "coll", ...}}), the
         # same shape as getMore's indirection, so it needs the same handling.
@@ -177,7 +236,7 @@ class TestOTelSpans(IntegrationTest):
             "ping",
             False,
         )
-        _otel.end_command_span_success(span, {"ok": 1})
+        _otel.end_command_span_success(span, {"ping": 1}, "ping", {"ok": 1})
 
         spans = self.spans("ping")
         self.assertEqual(len(spans), 1)
@@ -318,6 +377,26 @@ class TestOTelSpans(IntegrationTest):
             self.exporter.clear()
             client.admin.command("ping")
         self.assertIn("ping", [s.name for s in self.spans()])
+
+    def test_srv_resolution_preserves_construction_time_snapshot(self):
+        # An SRV client rebuilds its ClientOptions at first use (_resolve_srv);
+        # the rebuilt options must keep the tracing values resolved at
+        # construction rather than re-reading the (possibly changed) environment.
+        with (
+            patch("pymongo.synchronous.srv_resolver._SrvResolver.get_hosts") as mock_hosts,
+            patch("pymongo.synchronous.srv_resolver._SrvResolver.get_options", return_value=None),
+        ):
+            mock_hosts.return_value = [("localhost", 27017)]
+            with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
+                client = self.unmanaged_simple_client(
+                    "mongodb+srv://test.example.com", connect=False
+                )
+                self.addCleanup(client.close)
+                self.assertEqual(client.options.tracing["enabled"], True)
+                # The environment changes after construction; the snapshot must not.
+                os.environ["OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED"] = "false"
+                client._get_topology()
+                self.assertEqual(client.options.tracing["enabled"], True)
 
     def test_query_text_truncation_shrinks_oversized_field_values(self):
         client = self.rs_or_single_client(tracing={"enabled": True, "query_text_max_length": 200})
@@ -489,6 +568,9 @@ class TestResolveTracingOptions(unittest.TestCase):
                 {"enabled": False, "query_text_max_length": 0},
             )
 
+    # The environment-deferral semantics only exist when opentelemetry is
+    # importable; without it _resolve_tracing_options always disables tracing.
+    @unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
     def test_unset_defers_to_env(self):
         with patch.dict(os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}):
             self.assertTrue(
@@ -505,6 +587,8 @@ class TestResolveTracingOptions(unittest.TestCase):
                 ]
             )
 
+    # Explicit values only win over the environment when tracing is available.
+    @unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
     def test_explicit_enabled_overrides_env(self):
         env = {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_ENABLED": "true"}
         with patch.dict(os.environ, env):
@@ -517,6 +601,9 @@ class TestResolveTracingOptions(unittest.TestCase):
             )
             self.assertIs(resolved["enabled"], True)
 
+    # The environment-deferral semantics only exist when opentelemetry is
+    # importable; without it _resolve_tracing_options always omits query text.
+    @unittest.skipUnless(_otel._HAS_OPENTELEMETRY, "opentelemetry is not installed")
     def test_query_text_max_length_from_env(self):
         with patch.dict(
             os.environ, {"OTEL_PYTHON_INSTRUMENTATION_MONGODB_QUERY_TEXT_MAX_LENGTH": "1024"}

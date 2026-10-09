@@ -140,6 +140,7 @@ replacements = {
     "async_simple_test_client": "simple_test_client",
     "_async_create_connection": "_create_connection",
     "pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts": "pymongo.synchronous.srv_resolver._SrvResolver.get_hosts",
+    "pymongo.asynchronous.srv_resolver._SrvResolver.get_options": "pymongo.synchronous.srv_resolver._SrvResolver.get_options",
     "dns.asyncresolver.resolve": "dns.resolver.resolve",
     "__aenter__": "__enter__",
     "__aexit__": "__exit__",
