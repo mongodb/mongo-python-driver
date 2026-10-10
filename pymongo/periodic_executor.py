@@ -24,7 +24,6 @@ import weakref
 from typing import Any, Optional
 
 from pymongo import _csot, _op_id
-from pymongo._asyncio_task import create_task
 from pymongo.lock import _create_lock
 
 _IS_SYNC = False
@@ -65,9 +64,9 @@ class AsyncPeriodicExecutor:
         self._stopped = False
 
         if self._task is None or (
-            self._task.done() and not self._task.cancelled() and not self._task.cancelling()  # type: ignore[unused-ignore, attr-defined]
+            self._task.done() and not self._task.cancelled() and not self._task.cancelling()
         ):
-            self._task = create_task(self._run(), name=self._name)
+            self._task = asyncio.create_task(self._run(), name=self._name)
 
     def close(self, dummy: Any = None) -> None:
         """Stop. To restart, call open().
@@ -98,7 +97,7 @@ class AsyncPeriodicExecutor:
         _csot.reset_all()
         _op_id.reset()
         while not self._stopped:
-            if self._task and self._task.cancelling():  # type: ignore[unused-ignore, attr-defined]
+            if self._task and self._task.cancelling():
                 raise asyncio.CancelledError
             try:
                 if not await self._target():

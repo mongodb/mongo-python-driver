@@ -2053,14 +2053,11 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
         )
         # Errors when client has no cert, some examples:
         # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
+        # EOF occurred in violation of protocol (_ssl.c:2384)
         self.cert_error = (
             "certificate required|SSL handshake failed|"
-            "KMS connection closed|Connection reset by peer|ECONNRESET|EPIPE"
+            "KMS connection closed|Connection reset by peer|ECONNRESET|EPIPE|EOF"
         )
-        # On Python 3.10+ this error might be:
-        # EOF occurred in violation of protocol (_ssl.c:2384)
-        if sys.version_info[:2] >= (3, 10):
-            self.cert_error += "|EOF"
         # On Windows this error might be:
         # [WinError 10054] An existing connection was forcibly closed by the remote host
         if sys.platform == "win32":
