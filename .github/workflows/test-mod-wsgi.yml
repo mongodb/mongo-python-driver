@@ -149,7 +149,9 @@ jobs:
         with:
           python-version: ${{ steps.versions.outputs.python-version }}
       - name: Install Apache
-        run: sudo apt-get install -y apache2 apache2-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apache2 apache2-dev
       - name: Install dependencies
         run: |
           export PYMONGO_C_EXT_MUST_BUILD=1
