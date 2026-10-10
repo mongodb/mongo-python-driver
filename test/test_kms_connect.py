@@ -715,6 +715,35 @@ async def test_bridge_does_not_inherit_the_connect_deadline(api):
 
 
 @both_apis
+async def test_bridge_half_close_does_not_lose_the_reply(api):
+    # A half-close is a write-side event: the relay propagates it as a
+    # write-half shutdown, and the reverse direction still delivers a reply.
+    listener = socket.create_server(("127.0.0.1", 0))
+    proxy = socket.create_connection(listener.getsockname(), timeout=10)
+    peer, _ = listener.accept()
+    listener.close()
+    driver_side = HTTPProxyKMSConnect("http://proxy.example.com:8080")._bridge(proxy)
+    try:
+        driver_side.sendall(b"ping")
+        driver_side.shutdown(socket.SHUT_WR)
+        # The EOF reaches the tunnel peer, whose reply must still get through.
+        assert peer.recv(4096) == b"ping"
+        assert peer.recv(4096) == b""
+        peer.sendall(b"echo:ping")
+        assert driver_side.recv(4096) == b"echo:ping"
+    finally:
+        driver_side.close()
+        peer.close()
+
+    # Both relay directions have ended, so the relay closed the proxy socket.
+    for _ in range(50):
+        if proxy.fileno() == -1:
+            return
+        await asyncio.sleep(0.1)
+    assert proxy.fileno() == -1, "relay never closed the proxy socket"
+
+
+@both_apis
 async def test_proxy_closing_before_connect_reply_raises(api):
     def handler(conn):
         # Read the CONNECT request, then hang up without replying.

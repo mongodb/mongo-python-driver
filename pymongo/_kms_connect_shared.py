@@ -248,6 +248,12 @@ class HTTPProxyKMSConnect:
         # by the driver's own timeout, not the elapsed connect budget.
         proxy.settimeout(None)
         driver_side, relay_side = socket.socketpair()
+        # Each socket is read by one relay and written by the other, and it
+        # closes only when both of those have ended: EOF propagates as a
+        # write-half shutdown, and the reverse direction may still carry
+        # a reply.
+        finished: dict[socket.socket, set[str]] = {relay_side: set(), proxy: set()}
+        phases_lock = threading.Lock()
 
         def relay(src: socket.socket, dst: socket.socket) -> None:
             # Daemon threads: any error, including the ValueError an
@@ -261,12 +267,26 @@ class HTTPProxyKMSConnect:
             except (OSError, ValueError):
                 pass
             finally:
-                # Send EOF to the peer instead of closing a socket it may be reading.
-                try:
-                    dst.shutdown(socket.SHUT_RDWR)
-                except (OSError, ValueError):
-                    pass
-                src.close()
+                with phases_lock:
+                    finished[src].add("read")
+                    finished[dst].add("write")
+                    done = [s for s, marks in finished.items() if len(marks) == 2]
+                    for s in done:
+                        del finished[s]
+                for sock in done:
+                    # Both directions over this socket have ended.
+                    try:
+                        sock.shutdown(socket.SHUT_RDWR)
+                    except (OSError, ValueError):
+                        pass
+                    sock.close()
+                if dst not in done:
+                    # Send EOF downstream without cutting the reverse
+                    # direction, which may still deliver a reply.
+                    try:
+                        dst.shutdown(socket.SHUT_WR)
+                    except (OSError, ValueError):
+                        pass
 
         try:
             for pair in ((relay_side, proxy), (proxy, relay_side)):
