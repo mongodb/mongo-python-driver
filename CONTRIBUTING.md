@@ -16,7 +16,7 @@ be of interest or that has already been addressed.
 
 ## Supported Interpreters
 
-PyMongo supports CPython 3.9+ and PyPy3.9+. Language features not
+PyMongo supports CPython 3.11+ and PyPy 3.11+. Language features not
 supported by all interpreters can not be used.
 
 ## Style Guide
@@ -199,10 +199,19 @@ the pages will re-render and the browser will automatically refresh.
 -   Run `just install` to set a local virtual environment, or you can manually
     create a virtual environment and run `pytest` directly.  If you want to use a specific
     version of Python, set `UV_PYTHON` before running `just install`.
+
+    `just install` installs the pinned version of `uv` (from `[tool.uv] required-version`) into `$HOME/.local/bin`,
+    and adds that directory to your shell rc file when missing, so the pinned `uv` takes effect in new shells.  If a
+    project `uv` command (e.g. `just test`) runs with a different `uv` version, `uv` fails fast and tells you how to update.
+    Scripts inside the vendored `drivers-evergreen-tools` submodule are exempt: the setup scripts write a `uv.toml`
+    boundary file into that checkout (see `.evergreen/scripts/configure-env.sh`), which stops uv's config discovery
+    there, since the tools' scripts run uv versions this project does not pin.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
-    [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `$DRIVERS_TOOLS/.evergreen/run-mongodb.sh start -h`
-    for a full list of options.
+    [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `${DRIVERS_TOOLS:-drivers-evergreen-tools}/.evergreen/run-mongodb.sh start -h`
+    for a full list of options.  By default the newest stable server release is used.  To test against the
+    nightly build instead, pass `--version latest`, which is downloaded from a private S3 bucket and requires
+    an `AWS_PROFILE` with [Drivers test secrets](https://github.com/mongodb-labs/drivers-evergreen-tools/tree/master/.evergreen/secrets_handling#secrets-handling) credentials.
 -   Run `just test` or `pytest` to run all of the tests.
 -   Append `test/<mod_name>.py::<class_name>::<test_name>` to run
     specific tests. You can omit the `<test_name>` to test a full class
@@ -216,10 +225,10 @@ the pages will re-render and the browser will automatically refresh.
 
 ### Prerequisites
 
-- Clone `drivers-evergreen-tools`:
-    `git clone git@github.com:mongodb-labs/drivers-evergreen-tools.git`.
-- Run `export DRIVERS_TOOLS=$PWD/drivers-evergreen-tools`.  This can be put into a `.bashrc` file
-  for convenience.
+- The `drivers-evergreen-tools` submodule (see
+  [The drivers-evergreen-tools submodule](#the-drivers-evergreen-tools-submodule)).
+  `just install` initializes it; no manual clone or `export DRIVERS_TOOLS` is needed.
+  `DRIVERS_TOOLS` remains an optional override for an existing local checkout.
 - Some tests require access to [Drivers test secrets](https://github.com/mongodb-labs/drivers-evergreen-tools/tree/master/.evergreen/secrets_handling#secrets-handling).
 
 ### Usage
@@ -349,10 +358,28 @@ You will need to set up access to the `drivers-test-secrets-role`, see the [Wiki
 - Run `just setup-tests aws_lambda`.
 - Run `just run-tests`.
 
+### mod_wsgi tests
+
+Continuous integration runs the tests on pull requests that change
+mod_wsgi-relevant files, in the `test-mod-wsgi.yml` workflow.
+
+To run the tests by hand, install Apache and mod_wsgi (`sudo apt-get install -y apache2
+apache2-dev` and `uv pip install -r requirements/mod_wsgi.txt` on Ubuntu), then:
+
+- On Linux, run `TOPOLOGY=replica_set just run-server`.
+- Run `just setup-tests mod_wsgi <mode>`.
+- Run `just run-tests`.
+- Run `just teardown-tests`.
+
+The `mode` can be `standalone` or `embedded`.  On non-Linux hosts the same
+commands run inside an ubuntu container, which bootstraps its own replica
+set (so the `run-server` step does not apply), or use `just smoke-mod-wsgi`
+to run both modes.
+
 ### OCSP tests
 
 - Export the orchestration file, e.g. `export ORCHESTRATION_FILE=rsa-basic-tls-ocsp-disableStapling.json`.
-This corresponds to a config file in `$DRIVERS_TOOLS/.evergreen/orchestration/configs/servers`.
+This corresponds to a config file in `${DRIVERS_TOOLS:-drivers-evergreen-tools}/.evergreen/orchestration/configs/servers`.
 MongoDB servers on MacOS and Windows do not staple OCSP responses and only support RSA.
 NOTE: because the mock ocsp responder MUST be started prior to the server starting, the ocsp tests start the server
 as part of `setup-tests`.
@@ -367,6 +394,44 @@ If you are running one of the `no-responder` tests, omit the `run-server` step.
 - Start the appropriate server, e.g. `just run-server --version=v8.0-perf --ssl`.
 - Set up the tests with `sync` or `async`: `just setup-tests perf sync`.
 - Run the tests: `just run-tests`.
+
+## The drivers-evergreen-tools submodule
+
+The `drivers-evergreen-tools` repository is consumed as a git submodule at the repo root,
+pinned to a specific commit. Dependabot bumps the pin weekly.
+
+### Daily flow
+
+Nothing to do: `just install` initializes the submodule, and Dependabot keeps it fresh.
+
+### Manually bumping the submodule
+
+```bash
+git -C drivers-evergreen-tools fetch --tags
+git -C drivers-evergreen-tools checkout vX.Y.Z
+git add drivers-evergreen-tools
+```
+
+### Evergreen patches that need tools changes
+
+Point the submodule at the needed commit and commit the new gitlink in the patch branch;
+`configure-env.sh` checks out the recorded SHA on Evergreen hosts (`setup-dev-env.sh` does
+the same for local checkouts with `just install`).
+
+### Using a local checkout instead
+
+Set `DRIVERS_TOOLS` to the path of a local clone — the environment variable wins over the
+submodule default:
+
+```bash
+export DRIVERS_TOOLS=/path/to/drivers-evergreen-tools
+```
+
+Alternatively, keep a local pin from being reset by `git submodule update`:
+
+```bash
+git config submodule.drivers-evergreen-tools.update none
+```
 
 ## Enable Debug Logs
 
@@ -399,15 +464,21 @@ To run any of the test suites with minimum supported dependencies, pass `--test-
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
 - Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
 - There are some considerations about the Python version used in the test:
-    - If a specific version of Python is needed in a task that is running on variants with a toolchain, use
-``TOOLCHAIN_VERSION`` (e.g. `TOOLCHAIN_VERSION=3.10`).  The actual path lookup needs to be done on the host, since
-tasks are host-agnostic.
+    - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10`, `UV_PYTHON=3.14t`, or
+`UV_PYTHON=pypy3.11`).  Tasks are host-agnostic, so the interpreter lookup happens on the host: for a plain
+CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at it, and for anything else
+(including PyPy, or a version the toolchain lacks) uv downloads it.
     - If a specific Python binary is needed (for example on the FIPS host), set `UV_PYTHON=/path/to/python`.
-    - If a specific Python version is needed and the toolchain will not be available, use `UV_PYTHON` (e.g. `UV_PYTHON=3.11`).
-    - The default if neither ``TOOLCHAIN_VERSION`` or ``UV_PYTHON`` is set is to use UV to install the minimum
-      supported version of Python and use that.  This ensures a consistent behavior across host types that do not
-      have the Python toolchain (e.g. Azure VMs), by having a known version of Python with the build headers (`Python.h`)
-      needed to build the C extensions.
+    - The default if `UV_PYTHON` is not set is CPython 3.10.  This is deterministic across host types, so a task
+      that does not pin a version always gets the same Python (with the build headers (`Python.h`) needed to build
+      the C extensions).
+    - The uv binary version is pinned once in `[tool.uv] required-version` in `pyproject.toml`.
+      `.evergreen/scripts/install-dependencies.sh` installs it with `uv tool install`, uv enforces it locally, and
+      `astral-sh/setup-uv` reads it on GitHub.  Bump it manually when a newer uv is needed.  If uv cannot find the
+      requested Python, it installs it; if that fails, the task fails.  The pin is not enforced for scripts inside
+      the vendored `drivers-evergreen-tools` submodule: those scripts run uv versions this project does not pin, so
+      the setup scripts write a `uv.toml` boundary into the submodule checkout that stops uv's config discovery
+      (and with it the required-version check) at the submodule boundary.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
@@ -568,15 +639,11 @@ and in CI. Continuous integration runs `uv lock --check`, which fails when the l
 no longer matches `pyproject.toml`.
 
 If that check fails on your pull request, regenerate the lock file and commit the result.
-The scheduled workflow's `uv-lock-update` action applies a 7 day cutoff
-(`exclude_newer: 7 days`, passed to uv as `UV_EXCLUDE_NEWER`) so a package version
-yanked shortly after release is less likely to land in the lock file. That cutoff
-lives in the action, not in `pyproject.toml`, so it does not apply automatically
-when you run `uv lock` locally — set `UV_EXCLUDE_NEWER` yourself so a freshly
-published (and possibly still-to-be-yanked) release doesn't end up in the lock file:
+A 7 day cutoff (`exclude-newer` in `pyproject.toml`) applies automatically, so a package
+version yanked shortly after release is less likely to land in the lock file:
 
 ```bash
-UV_EXCLUDE_NEWER="7 days" uv lock
+uv lock
 ```
 
 To resolve a `uv.lock` conflict when rebasing, check out either side and regenerate
@@ -586,6 +653,6 @@ rather than editing the file by hand. Which side you pick does not matter, becau
 
 ```bash
 git checkout --ours uv.lock
-UV_EXCLUDE_NEWER="7 days" uv lock
+uv lock
 git add uv.lock
 ```

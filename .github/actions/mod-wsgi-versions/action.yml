@@ -1,0 +1,23 @@
+name: Compute Mod WSGI versions
+description: Compute the CPython and MongoDB versions for a Mod WSGI job.
+inputs:
+  index:
+    description: Row of the version matrix to use.
+    required: true
+outputs:
+  python-version:
+    description: The CPython version to test with.
+    value: ${{ steps.versions.outputs.python-version }}
+  mongodb-version:
+    description: The MongoDB version to test against.
+    value: ${{ steps.versions.outputs.mongodb-version }}
+runs:
+  using: composite
+  steps:
+    - id: versions
+      # The versions come from the Evergreen config's version lists.
+      shell: bash
+      env:
+        INDEX: ${{ inputs.index }}
+      run: |
+        uv run --no-project --with 'shrub.py>=3.10.0' python .evergreen/scripts/mod_wsgi_matrix.py --index "$INDEX" >> "$GITHUB_OUTPUT"

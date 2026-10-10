@@ -96,6 +96,7 @@ from pymongo.pool_options import (
     _METADATA,
     ENV_VAR_K8S,
     PoolOptions,
+    _truncate_metadata,
 )
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
@@ -130,6 +131,8 @@ from test.utils_shared import (
     NTHREADS,
     CMAPListener,
     FunctionCallRecorder,
+    _driver_version,
+    _metadata_with_appended_driver,
     delay,
     gevent_monkey_patched,
     is_greenthread_patched,
@@ -395,6 +398,9 @@ class AsyncClientUnitTest(AsyncUnitTest):
             metadata["driver"]["name"] = "PyMongo|c|async"
         else:
             metadata["driver"]["name"] = "PyMongo|async"
+        metadata["driver"]["version"] = _driver_version(
+            _METADATA["driver"]["version"], metadata["driver"]["name"]
+        )
         metadata["application"] = {"name": "foobar"}
         client = self.simple_client("mongodb://foo:27017/?appname=foobar&connect=false")
         options = client.options
@@ -406,6 +412,8 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.simple_client(appname="x" * 128)
         with self.assertRaises(ValueError):
             self.simple_client(appname="x" * 129)
+
+    async def test_metadata_bad_driver_options(self):
         # Bad "driver" options.
         self.assertRaises(TypeError, DriverInfo, "Foo", 1, "a")
         self.assertRaises(TypeError, DriverInfo, version="1", platform="a")
@@ -416,12 +424,9 @@ class AsyncClientUnitTest(AsyncUnitTest):
             self.simple_client(driver="abc")
         with self.assertRaises(TypeError):
             self.simple_client(driver=("Foo", "1", "a"))
-        # Test appending to driver info.
-        if has_c():
-            metadata["driver"]["name"] = "PyMongo|c|async|FooDriver"
-        else:
-            metadata["driver"]["name"] = "PyMongo|async|FooDriver"
-        metadata["driver"]["version"] = "{}|1.2.3".format(_METADATA["driver"]["version"])
+
+    async def test_metadata_appends_driver_info(self):
+        metadata = _metadata_with_appended_driver(_IS_SYNC, "FooDriver", "1.2.3")
         client = self.simple_client(
             "foo",
             27017,
@@ -429,9 +434,9 @@ class AsyncClientUnitTest(AsyncUnitTest):
             driver=DriverInfo("FooDriver", "1.2.3", None),
             connect=False,
         )
-        options = client.options
-        self.assertEqual(options.pool_options.metadata, metadata)
-        metadata["platform"] = "{}|FooPlatform".format(_METADATA["platform"])
+        self.assertEqual(client.options.pool_options.metadata, metadata)
+
+        metadata = _metadata_with_appended_driver(_IS_SYNC, "FooDriver", "1.2.3", "FooPlatform")
         client = self.simple_client(
             "foo",
             27017,
@@ -439,27 +444,131 @@ class AsyncClientUnitTest(AsyncUnitTest):
             driver=DriverInfo("FooDriver", "1.2.3", "FooPlatform"),
             connect=False,
         )
-        options = client.options
-        self.assertEqual(options.pool_options.metadata, metadata)
-        # Test truncating driver info metadata.
+        self.assertEqual(client.options.pool_options.metadata, metadata)
+
+    async def test_metadata_truncates_driver_info(self):
+        # Truncated driver info must stay within the limit and keep name and
+        # version index-aligned.
         client = self.simple_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE),
             connect=False,
         )
         options = client.options
+        truncated = options.pool_options.metadata["driver"]
         self.assertLessEqual(
             len(bson.encode(options.pool_options.metadata)),
             _MAX_METADATA_SIZE,
+        )
+        self.assertEqual(
+            truncated["name"].count("|"),
+            truncated["version"].count("|"),
         )
         client = self.simple_client(
             driver=DriverInfo(name="s" * _MAX_METADATA_SIZE, version="s" * _MAX_METADATA_SIZE),
             connect=False,
         )
         options = client.options
+        truncated = options.pool_options.metadata["driver"]
         self.assertLessEqual(
             len(bson.encode(options.pool_options.metadata)),
             _MAX_METADATA_SIZE,
         )
+        self.assertEqual(
+            truncated["name"].count("|"),
+            truncated["version"].count("|"),
+        )
+        # An oversized wrapper name with no version must retain a truncated
+        # name rather than collapse to the base entry.
+        client = self.simple_client(
+            driver=DriverInfo(name="x" * (_MAX_METADATA_SIZE * 2), version=None),
+            connect=False,
+        )
+        truncated = client.options.pool_options.metadata["driver"]
+        self.assertLessEqual(
+            len(bson.encode(client.options.pool_options.metadata)),
+            _MAX_METADATA_SIZE,
+        )
+        self.assertIn("xxxx", truncated["name"])
+        self.assertEqual(
+            truncated["name"].count("|"),
+            truncated["version"].count("|"),
+        )
+
+    async def test_metadata_truncation_drops_blank_pairs_first(self):
+        # A platform-only driver appends a blank name/version pair. Truncation
+        # must drop that pair before trimming a real driver's content.
+        def metadata_for(name_len: int) -> dict[str, Any]:
+            name = "PyMongo||" + "W" * name_len  # blank pair in the middle
+            return {"driver": {"name": name, "version": "1.0||1.0"}}
+
+        # Size the name so the document is exactly two bytes over the limit:
+        # dropping the blank pair alone must make it fit.
+        name_len = next(
+            n
+            for n in range(1, 2 * _MAX_METADATA_SIZE)
+            if len(bson.encode(metadata_for(n))) == _MAX_METADATA_SIZE + 2
+        )
+        metadata = metadata_for(name_len)
+        _truncate_metadata(metadata)
+        self.assertEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(
+            metadata["driver"],
+            {"name": "PyMongo|" + "W" * name_len, "version": "1.0|1.0"},
+        )
+
+    async def test_metadata_append_is_bounded(self):
+        # Successive appends must stay within the limit and keep name and
+        # version index-aligned after truncation. Once the metadata saturates,
+        # further appends must not grow the dedup tracking list.
+        client = self.simple_client(connect=False)
+        for i in range(300):
+            client.append_metadata(DriverInfo(name=f"D{i}", version=f"1.{i}"))
+        pool = client.options.pool_options
+        self.assertLessEqual(len(bson.encode(pool.metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(
+            pool.metadata["driver"]["name"].count("|"),
+            pool.metadata["driver"]["version"].count("|"),
+        )
+        count = len(pool._PoolOptions__appended_drivers)
+        for i in range(300, 600):
+            client.append_metadata(DriverInfo(name=f"D{i}", version=f"1.{i}"))
+        self.assertEqual(len(pool._PoolOptions__appended_drivers), count)
+        # Platform-only appends (empty name/version) stay bounded the same way.
+        client = self.simple_client(connect=False)
+        for i in range(300):
+            client.append_metadata(DriverInfo(name="", version="", platform=f"P{i}"))
+        pool = client.options.pool_options
+        self.assertLessEqual(len(bson.encode(pool.metadata)), _MAX_METADATA_SIZE)
+        count = len(pool._PoolOptions__appended_drivers)
+        for i in range(300, 600):
+            client.append_metadata(DriverInfo(name="", version="", platform=f"P{i}"))
+        self.assertEqual(len(pool._PoolOptions__appended_drivers), count)
+
+    async def test_metadata_recreates_platform_after_truncation(self):
+        # Appending a platform after truncation has dropped it recreates the field.
+        client = self.simple_client(connect=False)
+        for i in range(300):
+            client.append_metadata(DriverInfo(name="", version="", platform=f"Q{i}"))
+        pool = client.options.pool_options
+        self.assertLess(len(pool._PoolOptions__appended_drivers), 300)
+        client.append_metadata(DriverInfo(name="Wrapper", version="1.0", platform="Recreated"))
+        self.assertLessEqual(len(bson.encode(pool.metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(
+            pool.metadata["driver"]["name"].count("|"),
+            pool.metadata["driver"]["version"].count("|"),
+        )
+
+    async def test_metadata_deduplicates_none_and_empty(self):
+        # Empty strings are treated as unset, so a duplicate differing only in
+        # None vs "" is a no-op.
+        client = self.simple_client(connect=False)
+        client.append_metadata(DriverInfo("library", None, "Library Platform"))
+        names = client.options.pool_options.metadata["driver"]["name"]
+        vers = client.options.pool_options.metadata["driver"]["version"]
+        client.append_metadata(DriverInfo("library", "", "Library Platform"))
+        metadata = client.options.pool_options.metadata
+        self.assertEqual(metadata["driver"]["name"], names)
+        self.assertEqual(metadata["driver"]["version"], vers)
 
     @no_ambient_agent()
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
@@ -2237,6 +2346,9 @@ class TestClient(AsyncIntegrationTest):
                 metadata["driver"]["name"] = "PyMongo|c|async"
             else:
                 metadata["driver"]["name"] = "PyMongo|async"
+            metadata["driver"]["version"] = _driver_version(
+                _METADATA["driver"]["version"], metadata["driver"]["name"]
+            )
             if expected_env is not None:
                 metadata["env"] = expected_env
 
@@ -2691,20 +2803,18 @@ class TestExhaustCursor(AsyncIntegrationTest):
         import gevent.thread as _gthread
         from gevent import Timeout, spawn
 
-        # AMPLIFY_RACE=1 widens gevent's brief sleep on a contended lock
-        # so a kill lands there reliably. Only the bare sleep() is
-        # widened; timed sleeps pass through. The unfixed test then
-        # deadlocks within seconds.
+        # AMPLIFY_RACE=1 widens the kill windows below; keep AMPLIFY_SECONDS
+        # small or ops starve.
+        amplify_seconds = 0.0
         if os.environ.get("AMPLIFY_RACE", "0") == "1":
-            _AMPLIFY_SECONDS = float(os.environ.get("AMPLIFY_SECONDS", "0.02"))
+            amplify_seconds = float(os.environ.get("AMPLIFY_SECONDS", "0.002"))
 
             _orig_thread_sleep = _gthread.sleep
 
             def _amplified_sleep(*args):
-                if not args:  # bare sleep(): the courtesy yield on a failed
-                    # non-blocking acquire (Condition.notify -> _is_owned -> acquire(False))
-                    _orig_thread_sleep(_AMPLIFY_SECONDS)
-                else:  # sleep(0.001), sleep(2), etc.: passthrough
+                if not args:  # bare sleep(): checkin courtesy yield
+                    _orig_thread_sleep(amplify_seconds)
+                else:  # timed sleeps pass through
                     _orig_thread_sleep(*args)
 
             _gthread.sleep = _amplified_sleep
@@ -2713,6 +2823,31 @@ class TestExhaustCursor(AsyncIntegrationTest):
         client = self.async_rs_or_single_client(maxPoolSize=2)
         coll = client.pymongo_test.coll
         coll.insert_one({})
+
+        pool = async_get_pool(client)  # type:ignore
+        # Widen the post-gate checkout windows (PYTHON-6136).
+        if amplify_seconds:
+
+            class _AmplifiedCondition:
+                def __init__(self, cond, seconds):
+                    self._cond = cond
+                    self._seconds = seconds
+
+                def __enter__(self):
+                    self._cond.__enter__()
+                    return self
+
+                def __exit__(self, *args):
+                    self._cond.__exit__(*args)
+                    time.sleep(self._seconds)
+
+                def __getattr__(self, name):
+                    return getattr(self._cond, name)
+
+            pool.size_cond = _AmplifiedCondition(pool.size_cond, amplify_seconds)
+            pool._max_connecting_cond = _AmplifiedCondition(
+                pool._max_connecting_cond, amplify_seconds
+            )
 
         op_count = [0]
         running = [True]
@@ -2727,9 +2862,12 @@ class TestExhaustCursor(AsyncIntegrationTest):
                 except Exception:
                     return
 
+        # Scale the kill cadence or ops starve.
+        reaper_interval = max(0.003, amplify_seconds * 8)
+
         def reaper():
             while running[0]:
-                time.sleep(0.003)
+                time.sleep(reaper_interval)
                 if not workers:
                     continue
                 idx = random.randrange(len(workers))
@@ -2770,11 +2908,6 @@ class TestExhaustCursor(AsyncIntegrationTest):
                     coll.find_one({})
             except Timeout:
                 self.fail("Pool gate saturated (PYTHON-6074)")
-            # Deterministic check: a saturated size gate pins the pool's
-            # checkout counters at maxPoolSize (PYTHON-6074).
-            pool = async_get_pool(client)  # type:ignore
-            self.assertLess(pool.requests, pool.max_pool_size)
-            self.assertLess(pool.active_sockets, pool.max_pool_size)
             self.assertGreater(op_count[0], 0)
         finally:
             running[0] = False
@@ -2792,6 +2925,14 @@ class TestExhaustCursor(AsyncIntegrationTest):
                     client.close()
             except Timeout:
                 pass
+        # Post-settle: the counters must have fully drained. Note close()
+        # does not zero operation_count (only a fork does), so a leaked
+        # increment survives and is caught here.
+        time.sleep(1.0)
+        self.assertEqual(pool.requests, 0)
+        self.assertEqual(pool._pending, 0)
+        self.assertEqual(pool.active_sockets, 0)
+        self.assertEqual(pool.operation_count, 0)
 
 
 class TestClientLazyConnect(AsyncIntegrationTest):

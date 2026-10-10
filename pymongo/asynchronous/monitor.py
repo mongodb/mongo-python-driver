@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import threading
 import time
 import weakref
 from typing import TYPE_CHECKING, Any, Optional
@@ -367,6 +368,7 @@ class SrvMonitor(MonitorBase):
                 self._settings.pool_options.connect_timeout,
                 self._settings.srv_service_name,
                 srv_allowed_hosts_suffix=self._settings.srv_allowed_hosts_suffix,
+                srv_host_validator=self._settings.srv_host_validator,
             )
             seedlist, ttl = await resolver.get_hosts_and_min_ttl()
             if len(seedlist) == 0:
@@ -492,3 +494,8 @@ def _shutdown_resources() -> None:
 
 if _IS_SYNC:
     atexit.register(_shutdown_resources)
+    # In subinterpreters, the executors' threads are non-daemon and are
+    # joined at shutdown, so they must be stopped first. Checking daemon
+    # support preserves the normal atexit ordering in the main interpreter.
+    if not periodic_executor._daemon_threads_allowed() and hasattr(threading, "_register_atexit"):
+        threading._register_atexit(_shutdown_resources)  # type: ignore[attr-defined]

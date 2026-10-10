@@ -75,6 +75,25 @@ from test.helpers import ExceptionCatchingTask
 _NUMPY_AVAILABLE = importlib.util.find_spec("numpy") is not None
 
 
+def _total_memory():
+    """Return total physical memory in bytes, or None if it cannot be determined."""
+    try:
+        return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+    except (ValueError, OSError, AttributeError):
+        return None
+
+
+# PYTHON-6140: on Linux, skip if the host cannot allocate the ~4GiB this test
+# needs.  On other platforms, run the test and skip on MemoryError.
+_TOTAL_MEMORY = _total_memory()
+_ENCODE_SIZE_LIMIT_MIN_MEMORY = 6 << 30
+_SKIP_ENCODE_SIZE_LIMIT = (
+    sys.platform == "linux"
+    and _TOTAL_MEMORY is not None
+    and _TOTAL_MEMORY < _ENCODE_SIZE_LIMIT_MIN_MEMORY
+)
+
+
 class NotADict(abc.MutableMapping):
     """Non-dict type that implements the mapping protocol."""
 
@@ -397,6 +416,51 @@ class TestBSON(unittest.TestCase):
         # Assert that the InvalidBSON error message is not empty.
         self.assertTrue(str(ctx.exception))
 
+    def test_malformed_regex(self):
+        # PYTHON-6110: decoding a malformed Regex element must raise
+        # InvalidBSON on every accepted buffer type.
+        malformed = []
+        for pattern in ("", "x", "xx"):
+            doc = bytearray(encode({"a": Regex(pattern, "")}))
+            # Drop the trailing flags NUL and document EOO bytes, leaving
+            # the flags string unterminated after the pattern's NUL.
+            del doc[-2:]
+            # Keep the length prefix consistent with the shorter document.
+            doc[:4] = struct.pack("<i", len(doc))
+            malformed.append(bytes(doc))
+        for data in malformed:
+            with self.assertRaises(InvalidBSON):
+                decode(data)
+            with self.assertRaises(InvalidBSON):
+                decode(bytearray(data))
+            with self.assertRaises(InvalidBSON):
+                decode(memoryview(data))
+            with self.assertRaises(InvalidBSON):
+                decode(array.array("B", data))
+            with self.assertRaises(InvalidBSON):
+                list(decode_iter(data))
+            with self.assertRaises(InvalidBSON):
+                decode_all(data)
+            with mmap.mmap(-1, len(data)) as mm:
+                mm.write(data)
+                mm.seek(0)
+                with self.assertRaises(InvalidBSON):
+                    decode(mm)
+                with self.assertRaises(InvalidBSON):
+                    decode_all(mm)
+
+    def test_regex_empty_flags(self):
+        # PYTHON-6110: a valid regex with an empty flags string must
+        # continue to decode.
+        valid = encode({"a": Regex("b", "")})
+        expected = {"a": Regex("b", 0)}
+        self.assertEqual(decode(valid), expected)
+        with mmap.mmap(-1, len(valid)) as mm:
+            mm.write(valid)
+            mm.seek(0)
+            self.assertEqual(decode(mm), expected)
+            self.assertEqual(decode_all(mm), [expected])
+
     def test_data_timestamp(self):
         self.assertEqual(
             {"test": Timestamp(4, 20)},
@@ -690,6 +754,24 @@ class TestBSON(unittest.TestCase):
 
         self.assertTrue(encode({"x": -9223372036854775808}))
         self.assertRaises(OverflowError, encode, {"x": -9223372036854775809})
+
+    @unittest.skipUnless(bson.has_c(), "This test requires the C extension")
+    @unittest.skipIf(
+        _SKIP_ENCODE_SIZE_LIMIT,
+        "Test requires at least 6GiB of memory (PYTHON-6140)",
+    )
+    def test_encode_size_limit(self):
+        # PYTHON-5996: encoding must raise when a document's encoded size
+        # exceeds the BSON size limit.
+        try:
+            big_value = "a" * (1 << 30)
+            with self.assertRaises(ValueError):
+                encode({"a": big_value, "b": big_value, "c": big_value})
+        except MemoryError:
+            # PYTHON-6140: some hosts report enough installed memory but
+            # cannot actually commit it (pagefile limits, mongod running on
+            # the same host).  Skip rather than fail.
+            self.skipTest("Could not allocate enough memory (PYTHON-6140)")
 
     def test_small_long_encode_decode(self):
         encoded1 = encode({"x": 256})

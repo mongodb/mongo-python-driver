@@ -6,7 +6,43 @@ Changes in Version 4.19.0 (2026/XX/XX)
 
 PyMongo 4.19 brings a number of changes including:
 
+.. warning:: PyMongo 4.19 drops support for Python 3.9 and 3.10 and PyPy 3.9
+  and 3.10: Python 3.11+ or PyPy 3.11+ is now required.
+
 - Added support for Python 3.15.
+- Dropped support for Python 3.9 and 3.10 and PyPy 3.9 and 3.10 (PYTHON-6138).
+- Added support for running the synchronous and asynchronous clients in
+  subinterpreters, including inside
+  ``concurrent.futures.InterpreterPoolExecutor`` (Python 3.14+). Only in
+  subinterpreters, which do not allow daemon threads, the synchronous
+  client's monitor threads now start as non-daemon threads and are stopped
+  and joined when the interpreter is torn down. Monitor threads in the main
+  interpreter remain daemon threads and shutdown behavior is unchanged.
+  Note that because these threads are non-daemon, a subinterpreter may block
+  on teardown until any in-flight monitor work completes.
+- Added the ``kms_connect_callback`` option on
+  :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
+  :class:`~pymongo.encryption.ClientEncryption`, and
+  :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`: a callable
+  that opens the connection to a Key Management Service (KMS) host for
+  Client-Side Field Level Encryption and Queryable Encryption, e.g. to route
+  KMS requests through a proxy. The driver performs the KMS TLS handshake over
+  the callback's connection, so verification still targets the KMS host.
+- Added the ``srv_host_validator`` keyword argument to
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`, an alternative to
+  ``srvAllowedHostsSuffix`` for deployments whose acceptable SRV hosts cannot be
+  expressed as a single suffix. The callback is invoked once per SRV-returned
+  host and must return a boolean: ``True`` to accept the host and ``False`` to
+  reject it. During initial DNS discovery a non-boolean return raises an error;
+  during SRV polling it is treated as a rejection. It is mutually exclusive with
+  ``srvAllowedHostsSuffix`` and, because it takes a callable, cannot be set in a
+  connection string. See the
+  :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` documentation for
+  security considerations.
+- ``srvAllowedHostsSuffix`` may now be set to a single label reserved for
+  private or special use, such as ``localhost``, ``test``, or ``internal``.
 - The client handshake metadata now reports a detected coding agent in
   ``client.env.agent``. The driver checks a fixed list of agent environment
   variables (for example ``CLAUDECODE``, ``CURSOR_AGENT`` and
@@ -21,8 +57,46 @@ Bug fixes
 - Fixed a bug where the synchronous client could permanently deadlock under
   gevent when a greenlet was killed while checking a connection back into
   the pool (`PYTHON-6074`_).
+- ``MongoClient.append_metadata()`` and ``AsyncMongoClient.append_metadata()``
+  now detect duplicates by comparing the whole
+  :class:`~pymongo.driver_info.DriverInfo` instead of only its name. The
+  comparison is exact, so drivers that differ in name case or platform are no
+  longer treated as duplicates (`PYTHON-6040`_).
+- ``driver.name`` and ``driver.version`` in the handshake metadata are now
+  ``|``-delimited lists with 1:1 index correspondence, including empty version
+  entries for the built-in ``|c`` and ``|async`` name segments
+  (`PYTHON-6040`_).
+- Fixed a bug where truncating the handshake metadata to 512 bytes could leave
+  ``driver.name`` and ``driver.version`` with different numbers of ``|``
+  delimiters (`PYTHON-6040`_).
+- :class:`~pymongo.driver_info.DriverInfo` now raises :class:`ValueError` when
+  any field contains the reserved ``|`` delimiter (`PYTHON-6040`_).
+- Fixed a bug in SRV polling where invalid hosts where topology would not be
+  updated if one returned host was invalid.
 
 .. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
+.. _PYTHON-6040: https://jira.mongodb.org/browse/PYTHON-6040
+
+Changes in Version 4.18.2 (2026/09/24)
+--------------------------------------
+
+Version 4.18.2 is a bug fix release.
+
+- Hardened the bson buffer size guard against signed integer overflow. (`CVE-2026-96749`_).
+- Fixed connection string parsing to percent-decode each host individually. (`CVE-2026-96748`_).
+- Client-side field level encryption now rejects a KMS endpoint ending in ``.sock``. (`CVE-2026-96747`_).
+
+.. _CVE-2026-96749: https://www.cve.org/CVERecord?id=CVE-2026-96749
+.. _CVE-2026-96748: https://www.cve.org/CVERecord?id=CVE-2026-96748
+.. _CVE-2026-96747: https://www.cve.org/CVERecord?id=CVE-2026-96747
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.18.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.18.2 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=52896
 
 Changes in Version 4.18.1 (2026/09/10)
 --------------------------------------
@@ -142,7 +216,7 @@ PyMongo 4.17 brings a number of changes including:
 - Added the :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.bind` and :meth:`~pymongo.client_session.ClientSession.bind` methods
   that allow users to bind a session to all database operations within the scope of a context manager instead of having to explicitly pass the session to each individual operation.
   See the `Transactions docs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/transactions/#methods>`_ for examples and more information.
-- Added support for MongoDB's Intelligent Workload Management (IWM) and ingress connection rate limiting features in MongoDB server version 9.0.
+- Added support for MongoDB's `Intelligent Workload Management <https://www.mongodb.com/docs/atlas/intelligent-workload-management/>`_ (IWM) and ingress connection rate limiting features in MongoDB server version 9.0.
   The driver will gracefully handle write-blocking scenarios and optimizes connection establishment during high-load conditions to maintain application availability.
 
 Changes in Version 4.16.0 (2026/01/07)

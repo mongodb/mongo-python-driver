@@ -19,7 +19,9 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
+from types import SimpleNamespace
 from typing import Any
+from unittest.mock import patch
 
 from test.utils_shared import FunctionCallRecorder
 
@@ -35,6 +37,19 @@ from test.asynchronous.utils import async_wait_until
 _IS_SYNC = False
 
 WAIT_TIME = 0.1
+
+
+class _FakeSrvAnswer(list):
+    """A minimal stand-in for the dnspython answer to an SRV query."""
+
+    def __init__(self, hosts, ttl=60):
+        import dns.name
+
+        hosts = [(h, 27017) if isinstance(h, str) else h for h in hosts]
+        super().__init__(
+            SimpleNamespace(target=dns.name.from_text(h), port=port) for h, port in hosts
+        )
+        self.rrset = SimpleNamespace(ttl=ttl)
 
 
 class SrvPollingKnobs:
@@ -64,9 +79,15 @@ class SrvPollingKnobs:
 
         async def mock_get_hosts_and_min_ttl(resolver, *args):
             assert self.old_dns_resolver_response is not None
-            nodes, ttl = await self.old_dns_resolver_response(resolver)
-            if self.nodelist_callback is not None:
-                nodes = self.nodelist_callback()
+            if self.nodelist_callback is None:
+                nodes, ttl = await self.old_dns_resolver_response(resolver)
+            else:
+
+                async def mock_resolve_uri(is_polling):
+                    return _FakeSrvAnswer(self.nodelist_callback())
+
+                with patch.object(resolver, "_resolve_uri", mock_resolve_uri):
+                    nodes, ttl = await self.old_dns_resolver_response(resolver)
             if self.ttl_time is not None:
                 ttl = self.ttl_time
             return nodes, ttl
@@ -357,7 +378,91 @@ class TestSrvPolling(AsyncPyMongoTestCase):
             )
             await client.aconnect()
             with SrvPollingKnobs(nodelist_callback=nodelist_callback):
+                expected = [(host.rstrip("."), port) for host, port in response]
+                await self.assert_nodelist_change(expected, client)
+
+    async def test_14_the_validator_is_consulted_when_srv_records_are_rescanned(self):
+        seen = []
+
+        def validator(host):
+            seen.append(host)
+            return True
+
+        response = self.BASE_SRV_RESPONSE[:]
+        response.append(("localhost.test.build.10gen.cc", 27019))
+
+        with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
+            client = self.simple_client(self.CONNECTION_STRING, srv_host_validator=validator)
+            await client.aconnect()
+            await self.assert_nodelist_change(self.BASE_SRV_RESPONSE, client)
+            seen.clear()
+            with SrvPollingKnobs(nodelist_callback=lambda: response):
                 await self.assert_nodelist_change(response, client)
+
+        self.assertIn("localhost.test.build.10gen.cc", seen)
+
+    async def test_15_a_rejecting_or_raising_validator_does_not_raise_or_stop_polling(self):
+        def rejecting(host):
+            return False
+
+        def raising(host):
+            raise RuntimeError("boom")
+
+        response = self.BASE_SRV_RESPONSE[:]
+        response.append(("localhost.test.build.10gen.cc", 27019))
+
+        for failing in (rejecting, raising):
+            with self.subTest(validator=failing.__name__):
+                # Accept everything until the client is connected, then start failing.
+                state = {"validator": lambda host: True}
+
+                with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
+                    client = self.simple_client(
+                        self.CONNECTION_STRING,
+                        srv_host_validator=lambda host: state["validator"](host),
+                    )
+                    await client.aconnect()
+                    await self.assert_nodelist_change(self.BASE_SRV_RESPONSE, client)
+
+                    # The rescan sees the new record but the validator fails: no
+                    # error reaches the application and the topology is unchanged.
+                    state["validator"] = failing
+                    with SrvPollingKnobs(
+                        nodelist_callback=lambda: response, count_resolver_calls=True
+                    ):
+                        await self.assert_nodelist_nochange(self.BASE_SRV_RESPONSE, client)
+
+                    # Polling was not stopped by the failures: once the validator
+                    # accepts again, the new host is picked up.
+                    state["validator"] = lambda host: True
+                    with SrvPollingKnobs(nodelist_callback=lambda: response):
+                        await self.assert_nodelist_change(response, client)
+
+                    await client.close()
+
+    async def test_rescan_skips_only_the_hosts_that_fail_verification(self):
+        # Per the polling spec, a host that fails verification is left out of
+        # the topology without discarding the other hosts from the same rescan.
+        good_host = "localhost.test.build.10gen.cc"
+        bad_host = "bad.evil.com"
+
+        def raising(host):
+            if host == bad_host:
+                raise RuntimeError("some error")
+            return True
+
+        def rejecting(host):
+            return host != bad_host
+
+        for validator in (rejecting, raising):
+            with self.subTest(validator=validator.__name__):
+                resolver = pymongo.asynchronous.srv_resolver._SrvResolver(
+                    "test1.test.build.10gen.cc", None, "mongodb", srv_host_validator=validator
+                )
+                answer = _FakeSrvAnswer([good_host, bad_host])
+                with patch("dns.asyncresolver.resolve", return_value=answer):
+                    nodes, _ = await resolver.get_hosts_and_min_ttl()
+                self.assertEqual([(good_host, 27017)], nodes)
 
     async def test_srv_waits_to_poll(self):
         modified = [("localhost.test.build.10gen.cc", 27019)]

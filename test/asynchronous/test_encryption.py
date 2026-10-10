@@ -60,7 +60,11 @@ from bson.json_util import JSONOptions
 from bson.son import SON
 from pymongo import ReadPreference
 from pymongo.asynchronous import encryption
-from pymongo.asynchronous.encryption import Algorithm, AsyncClientEncryption, QueryType
+from pymongo.asynchronous.encryption import (
+    Algorithm,
+    AsyncClientEncryption,
+    QueryType,
+)
 from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.cursor_shared import CursorType
@@ -222,6 +226,9 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
 
 
+# KMS connect callback tests live in test_kms_connect.py.
+
+
 class TestClientOptions(AsyncPyMongoTestCase):
     async def test_default(self):
         client = self.simple_client(connect=False)
@@ -316,9 +323,15 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
         key_vault_client: AsyncMongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        kms_connect_callback: Optional[Any] = None,
     ):
         client_encryption = AsyncClientEncryption(
-            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+            kms_providers,
+            key_vault_namespace,
+            key_vault_client,
+            codec_options,
+            kms_tls_options,
+            kms_connect_callback=kms_connect_callback,
         )
         self.addAsyncCleanup(client_encryption.close)
         return client_encryption
@@ -331,9 +344,15 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
         key_vault_client: AsyncMongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        kms_connect_callback: Optional[Any] = None,
     ):
         client_encryption = AsyncClientEncryption(
-            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+            kms_providers,
+            key_vault_namespace,
+            key_vault_client,
+            codec_options,
+            kms_tls_options,
+            kms_connect_callback=kms_connect_callback,
         )
         return client_encryption
 
@@ -1299,6 +1318,14 @@ class TestCustomEndpoint(AsyncEncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, "localhost:12345"):
             await self.client_encryption.create_data_key("kmip", master_key=master_key)
 
+    async def test_kmip_endpoint_unix_socket_rejected(self):
+        # PYTHON-5990: a masterKey.endpoint ending in ".sock" must not be
+        # treated as a Unix domain socket path. KMS endpoints must be a TCP
+        # host[:port].
+        master_key = {"keyId": "1", "endpoint": "example.sock"}
+        with self.assertRaisesRegex(EncryptionError, "Invalid KMS endpoint"):
+            await self.client_encryption.create_data_key("kmip", master_key=master_key)
+
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
     async def test_05_aws_endpoint_wrong_region(self):
         master_key = {
@@ -1978,6 +2005,9 @@ class TestKmsTLSProse(AsyncEncryptionIntegrationTest):
             EncryptionError, "IP address mismatch|wronghost|IPAddressMismatch|Certificate"
         ):
             await self.client_encrypted.create_data_key("aws", master_key=key)
+
+
+# KMS connect callback tests live in test_kms_connect.py.
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#kms-tls-options-tests

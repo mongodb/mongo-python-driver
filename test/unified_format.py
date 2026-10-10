@@ -23,6 +23,7 @@ import asyncio
 import binascii
 import copy
 import functools
+import gc
 import os
 import platform
 import re
@@ -538,6 +539,11 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.knobs.disable()
+        # Workaround for sockets leaked by tests (PYTHON-3923): force garbage
+        # collection so they are closed here, rather than during a later test
+        # where their ResourceWarnings could cause failures. Remove once the
+        # leaks are fixed.
+        gc.collect()
 
     def setUp(self):
         # super call creates internal client cls.client
