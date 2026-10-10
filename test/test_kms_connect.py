@@ -38,6 +38,7 @@ import threading
 import time
 from asyncio.trsock import TransportSocket
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from typing import Any
 from unittest import mock
@@ -666,6 +667,10 @@ async def test_proxy_url_is_validated(api):
         "http://proxy.example.com#frag",
         "http://proxy.example.com:notaport",
         "http://proxy.example.com:99999",
+        # An explicit port zero is never a valid proxy destination; it must
+        # not fall back to the scheme's default port.
+        "http://proxy.example.com:0",
+        "https://proxy.example.com:0",
         "http://[::1",  # Unmatched IPv6 bracket.
         "http://[example.com]",  # Invalid bracketed host.
     ]:
@@ -792,6 +797,35 @@ async def test_cancelled_proxy_connect_closes_the_late_socket(api):
 
         assert len(tunneled) == 1
         assert tunneled[0].fileno() == -1, "late socket was left open"
+
+
+@async_only
+async def test_async_proxy_connect_wait_is_bounded_by_the_deadline(api):
+    # Time spent queued behind other executor work counts against the KMS
+    # budget: the await gives up at the deadline instead of waiting out the
+    # stall, and the thread's late socket, if any, is closed.
+    release = threading.Event()
+
+    def blocker():
+        release.wait(4.0)
+
+    loop = asyncio.get_running_loop()
+    executor = ThreadPoolExecutor(max_workers=1)
+    loop.set_default_executor(executor)
+    try:
+        loop.run_in_executor(None, blocker)
+        callback = api.proxy("http://127.0.0.1:9")
+        start = time.monotonic()
+        task = asyncio.create_task(callback(_kms_context(timeout=1.0)))
+        await asyncio.sleep(0.2)  # Let the coroutine queue its connect.
+        assert not task.done(), "connect finished before the deadline"
+        with pytest.raises(socket.timeout, match="timed out connecting through the proxy"):
+            await task
+        elapsed = time.monotonic() - start
+        assert elapsed < 2.5, f"the wait outlived the deadline: {elapsed:.1f}s"
+    finally:
+        release.set()
+        executor.shutdown(wait=False)
 
 
 @both_apis

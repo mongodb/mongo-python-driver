@@ -171,7 +171,12 @@ class HTTPProxyKMSConnect:
         except ValueError as exc:
             raise ConfigurationError(f"invalid proxy_url: {proxy_url!r}") from exc
         self.host = split.hostname
-        self.port = port or (443 if split.scheme == "https" else 80)
+        if port is None:
+            port = 443 if split.scheme == "https" else 80
+        elif port == 0:
+            # An explicit port zero is never a valid proxy destination.
+            raise ConfigurationError(f"invalid proxy_url: {proxy_url!r}")
+        self.port = port
         if split.scheme == "https":
             self.ssl_context: Optional[ssl.SSLContext] = (
                 ssl.create_default_context() if ssl_context is None else ssl_context
@@ -390,11 +395,20 @@ class AsyncHTTPProxyKMSConnect(HTTPProxyKMSConnect):
         connect = functools.partial(super().__call__, context, deadline=deadline)
         future = asyncio.get_running_loop().run_in_executor(None, connect)
         try:
-            return await asyncio.shield(future)
+            return await asyncio.wait_for(asyncio.shield(future), _remaining(deadline))
         except asyncio.CancelledError:
             # The thread runs on regardless, so close the socket it returns.
             future.add_done_callback(_close_late_socket)
             raise
+        except TimeoutError:
+            if future.done():
+                # The executor task timed out itself; report it directly.
+                raise
+            # The budget ran out with the thread still busy. The thread
+            # runs on regardless, so close the socket it returns, and
+            # report the deadline.
+            future.add_done_callback(_close_late_socket)
+            raise socket.timeout("timed out connecting through the proxy") from None
 
 
 # Sphinx documents these classes under pymongo.encryption_options, the public
