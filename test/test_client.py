@@ -509,6 +509,42 @@ class ClientUnitTest(UnitTest):
             {"name": "PyMongo|" + "W" * name_len, "version": "1.0|1.0"},
         )
 
+    def test_metadata_truncation_omits_agent_before_name(self):
+        # Truncation keeps env.name and env.agent first, then omits env.agent
+        # alone. An env holding only agent has no remaining field, so the env
+        # document is omitted entirely.
+
+        def metadata_for(plat_len: int, with_name: bool) -> dict[str, Any]:
+            env: dict[str, Any] = {"agent": "claude_code"}
+            if with_name:
+                env["name"] = "azure.func"
+            return {"env": env, "platform": "p" * plat_len}
+
+        # Size platform so the document is one byte over the limit, less than
+        # the bytes the agent element costs: dropping agent alone must make it
+        # fit without touching platform.
+        plat_len = next(
+            n
+            for n in range(1, 2 * _MAX_METADATA_SIZE)
+            if len(bson.encode(metadata_for(n, True))) == _MAX_METADATA_SIZE + 1
+        )
+        metadata = metadata_for(plat_len, True)
+        _truncate_metadata(metadata)
+        self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(metadata["env"], {"name": "azure.func"})
+        self.assertEqual(metadata["platform"], "p" * plat_len)
+
+        plat_len = next(
+            n
+            for n in range(1, 2 * _MAX_METADATA_SIZE)
+            if len(bson.encode(metadata_for(n, False))) == _MAX_METADATA_SIZE + 1
+        )
+        metadata = metadata_for(plat_len, False)
+        _truncate_metadata(metadata)
+        self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertNotIn("env", metadata)
+        self.assertEqual(metadata["platform"], "p" * plat_len)
+
     def test_metadata_append_is_bounded(self):
         # Successive appends must stay within the limit and keep name and
         # version index-aligned after truncation. Once the metadata saturates,

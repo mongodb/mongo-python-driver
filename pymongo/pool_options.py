@@ -288,12 +288,15 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     if size <= _MAX_METADATA_SIZE:
         return
     # 2. Omit env.agent. It goes before env.name, which drivers have reported
-    # for longer.
-    env_name = metadata.get("env", {}).get("name")
-    if env_name:
-        env = {"name": env_name}
-        size += _element_size("env", env) - _element_size("env", metadata["env"])
-        metadata["env"] = env
+    # for longer. If env has no remaining fields, omit env entirely.
+    env = metadata.get("env")
+    if env is not None and "agent" in env:
+        new_env = {k: v for k, v in env.items() if k != "agent"}
+        size += _element_size("env", new_env) - _element_size("env", env)
+        if new_env:
+            metadata["env"] = new_env
+        else:
+            del metadata["env"]
     if size <= _MAX_METADATA_SIZE:
         return
     # 3. Omit fields from os except os.type.
