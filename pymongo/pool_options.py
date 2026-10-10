@@ -151,6 +151,46 @@ def _is_faas() -> bool:
     return _is_lambda() or _is_azure_func() or _is_gcp_func() or _is_vercel()
 
 
+# Known coding agents, checked in order. The first populated variable gives
+# client.env.agent, whatever its value. Matches mongosh detection.
+# See DRIVERS-3529 and PYTHON-5929.
+_AGENT_ENV_VARS = [
+    ("CLAUDECODE", "claude_code"),
+    ("CLAUDE_CODE_ENTRYPOINT", "claude_code"),
+    ("CURSOR_AGENT", "cursor"),
+    ("CODEX_SANDBOX", "codex_cli"),
+    ("CLINE_ACTIVE", "cline"),
+    ("GEMINI_CLI", "gemini_cli"),
+    ("AUGMENT_AGENT", "auggie_cli"),
+    ("OPENCODE_CLIENT", "opencode_client"),
+    ("TRAE_AI_SHELL_ID", "trae_ai"),
+    ("GOOSE_TERMINAL", "goose"),
+    ("GOOSE_AGENT", "goose"),
+]
+
+# Generic agent variable, checked last so a known agent keeps its fixed name.
+_GENERIC_AGENT_ENV_VAR = "AI_AGENT"
+
+# Maximum size in bytes of a normalized AI_AGENT value.
+_MAX_AGENT_SIZE = 64
+
+
+def _metadata_agent() -> Optional[str]:
+    """Detect a coding agent from the environment for client.env.agent."""
+    for var, name in _AGENT_ENV_VARS:
+        # Unset, empty or whitespace-only is not populated.
+        if (os.getenv(var) or "").strip():
+            return name
+    agent = (os.getenv(_GENERIC_AGENT_ENV_VAR) or "").strip().lower()
+    if not agent:
+        return None
+    if agent in ("1", "true"):
+        return "ai_agent"
+    # Largest valid UTF-8 prefix of _MAX_AGENT_SIZE bytes. "ignore" drops a
+    # split character instead of replacing it with U+FFFD.
+    return agent.encode()[:_MAX_AGENT_SIZE].decode(errors="ignore")
+
+
 def _getenv_int(key: str) -> Optional[int]:
     """Like os.getenv but returns an int, or None if the value is missing/malformed."""
     val = os.getenv(key)
@@ -167,6 +207,9 @@ def _metadata_env() -> dict[str, Any]:
     container = get_container_env_info()
     if container:
         env["container"] = container
+    agent = _metadata_agent()
+    if agent:
+        env["agent"] = agent
     # Skip if multiple (or no) envs are matched.
     if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
         return env
@@ -236,15 +279,27 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     size = len(bson.encode(metadata))
     if size <= _MAX_METADATA_SIZE:
         return
-    # 1. Omit fields from env except env.name.
-    env_name = metadata.get("env", {}).get("name")
-    if env_name:
-        env = {"name": env_name}
-        size += _element_size("env", env) - _element_size("env", metadata["env"])
-        metadata["env"] = env
+    # 1. Omit fields from env except env.name and env.agent.
+    env = metadata.get("env", {})
+    trimmed_env = {k: env[k] for k in ("name", "agent") if k in env}
+    if trimmed_env:
+        size += _element_size("env", trimmed_env) - _element_size("env", env)
+        metadata["env"] = trimmed_env
     if size <= _MAX_METADATA_SIZE:
         return
-    # 2. Omit fields from os except os.type.
+    # 2. Omit env.agent. It goes before env.name, which drivers have reported
+    # for longer. If env has no remaining fields, omit env entirely.
+    env = metadata.get("env")
+    if env is not None and "agent" in env:
+        new_env = {k: v for k, v in env.items() if k != "agent"}
+        size += _element_size("env", new_env) - _element_size("env", env)
+        if new_env:
+            metadata["env"] = new_env
+        else:
+            del metadata["env"]
+    if size <= _MAX_METADATA_SIZE:
+        return
+    # 3. Omit fields from os except os.type.
     os_type = metadata.get("os", {}).get("type")
     if os_type:
         old_os = metadata["os"]
@@ -253,13 +308,13 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         metadata["os"] = new_os
     if size <= _MAX_METADATA_SIZE:
         return
-    # 3. Omit the env document entirely.
+    # 4. Omit the env document entirely.
     env = metadata.pop("env", None)
     if env is not None:
         size -= _element_size("env", env)
     if size <= _MAX_METADATA_SIZE:
         return
-    # 4. Truncate platform.
+    # 5. Truncate platform.
     overflow = size - _MAX_METADATA_SIZE
     plat = metadata.get("platform", "")
     if plat:
@@ -277,7 +332,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         plat = metadata.pop("platform", None)
         if plat is not None:
             size -= _element_size("platform", plat)
-    # 5. Truncate driver info, keeping name and version 1:1 index-aligned.
+    # 6. Truncate driver info, keeping name and version 1:1 index-aligned.
     driver = metadata.get("driver", {})
     if driver:
         # Keep the name and version segments paired so they stay 1:1 aligned,
@@ -298,7 +353,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         overflow = size - _MAX_METADATA_SIZE
         while overflow > 0 and len(pairs) > 1:
             # A single remaining pair never exceeds the limit: it is the base
-            # driver pair, which steps 1-4 left small enough to fit.
+            # driver pair, which steps 1-5 left small enough to fit.
             last_name, last_version = pairs[-1]
             if last_version:
                 new_version = _truncate_utf8(last_version, overflow)

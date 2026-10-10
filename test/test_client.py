@@ -82,6 +82,7 @@ from pymongo.errors import (
 )
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
 from pymongo.pool_options import (
+    _MAX_AGENT_SIZE,
     _MAX_METADATA_SIZE,
     _METADATA,
     ENV_VAR_K8S,
@@ -135,6 +136,7 @@ from test.utils_shared import (
     gevent_monkey_patched,
     is_greenthread_patched,
     lazy_client_trial,
+    no_ambient_agent,
     one,
     suppress_fork_deprecation,
 )
@@ -382,6 +384,7 @@ class ClientUnitTest(UnitTest):
         )
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
+    @no_ambient_agent()
     def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         if has_c():
@@ -506,6 +509,42 @@ class ClientUnitTest(UnitTest):
             {"name": "PyMongo|" + "W" * name_len, "version": "1.0|1.0"},
         )
 
+    def test_metadata_truncation_omits_agent_before_name(self):
+        # Truncation keeps env.name and env.agent first, then omits env.agent
+        # alone. An env holding only agent has no remaining field, so the env
+        # document is omitted entirely.
+
+        def metadata_for(plat_len: int, with_name: bool) -> dict[str, Any]:
+            env: dict[str, Any] = {"agent": "claude_code"}
+            if with_name:
+                env["name"] = "azure.func"
+            return {"env": env, "platform": "p" * plat_len}
+
+        # Size platform so the document is one byte over the limit, less than
+        # the bytes the agent element costs: dropping agent alone must make it
+        # fit without touching platform.
+        plat_len = next(
+            n
+            for n in range(1, 2 * _MAX_METADATA_SIZE)
+            if len(bson.encode(metadata_for(n, True))) == _MAX_METADATA_SIZE + 1
+        )
+        metadata = metadata_for(plat_len, True)
+        _truncate_metadata(metadata)
+        self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(metadata["env"], {"name": "azure.func"})
+        self.assertEqual(metadata["platform"], "p" * plat_len)
+
+        plat_len = next(
+            n
+            for n in range(1, 2 * _MAX_METADATA_SIZE)
+            if len(bson.encode(metadata_for(n, False))) == _MAX_METADATA_SIZE + 1
+        )
+        metadata = metadata_for(plat_len, False)
+        _truncate_metadata(metadata)
+        self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertNotIn("env", metadata)
+        self.assertEqual(metadata["platform"], "p" * plat_len)
+
     def test_metadata_append_is_bounded(self):
         # Successive appends must stay within the limit and keep name and
         # version index-aligned after truncation. Once the metadata saturates,
@@ -560,6 +599,7 @@ class ClientUnitTest(UnitTest):
         self.assertEqual(metadata["driver"]["name"], names)
         self.assertEqual(metadata["driver"]["version"], vers)
 
+    @no_ambient_agent()
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
         metadata = copy.deepcopy(_METADATA)
@@ -2285,7 +2325,9 @@ class TestClient(IntegrationTest):
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
     def _test_handshake(self, env_vars, expected_env):
-        with patch.dict("os.environ", env_vars):
+        # Clear ambient agent vars (e.g. AI_AGENT set by the CI runner) so
+        # detection only reflects env_vars.
+        with no_ambient_agent(keep=env_vars), patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
             if has_c():
                 metadata["driver"]["name"] = "PyMongo|c"
@@ -2391,6 +2433,59 @@ class TestClient(IntegrationTest):
                 "region": "us-east-1",
                 "memory_mb": 256,
             },
+        )
+
+    def test_handshake_10_agent_known(self):
+        # A known agent env var maps to its fixed name, regardless of value.
+        self._test_handshake({"CLAUDECODE": "1"}, {"agent": "claude_code"})
+        self._test_handshake({"CURSOR_AGENT": "some-value-42"}, {"agent": "cursor"})
+        self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
+
+    def test_handshake_10b_agent_known_precedence(self):
+        # The first var in _AGENT_ENV_VARS order wins, not the first in the
+        # environment dict.
+        self._test_handshake({"GEMINI_CLI": "1", "CURSOR_AGENT": "1"}, {"agent": "cursor"})
+
+    def test_handshake_11_agent_known_beats_generic(self):
+        # A known agent wins over AI_AGENT, so a versioned AI_AGENT value
+        # cannot mask it.
+        self._test_handshake(
+            {"AI_AGENT": "custom-agent", "CLAUDECODE": "1"}, {"agent": "claude_code"}
+        )
+
+    def test_handshake_12_agent_generic(self):
+        # A descriptive value is used as-is. "1" and "true" map to "ai_agent".
+        self._test_handshake({"AI_AGENT": "custom-agent"}, {"agent": "custom-agent"})
+        self._test_handshake({"AI_AGENT": "1"}, {"agent": "ai_agent"})
+        self._test_handshake({"AI_AGENT": "true"}, {"agent": "ai_agent"})
+
+    def test_handshake_13_agent_generic_normalized(self):
+        # AI_AGENT is trimmed and lowercased.
+        self._test_handshake(
+            {"AI_AGENT": " Claude-Code_2-1-238_Agent "}, {"agent": "claude-code_2-1-238_agent"}
+        )
+
+    def test_handshake_14_agent_generic_truncated(self):
+        # A long value is truncated to _MAX_AGENT_SIZE bytes.
+        self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
+
+    def test_handshake_14b_agent_generic_truncated_on_boundary(self):
+        # The byte limit falls inside the two-byte "é", so the character is
+        # dropped. No part of it, and no U+FFFD, may appear.
+        value = "a" * (_MAX_AGENT_SIZE - 1) + "é"
+        self._test_handshake({"AI_AGENT": value}, {"agent": "a" * (_MAX_AGENT_SIZE - 1)})
+
+    def test_handshake_15_agent_unset(self):
+        # An empty or whitespace-only value counts as unset.
+        self._test_handshake({"AI_AGENT": ""}, None)
+        self._test_handshake({"AI_AGENT": "   "}, None)
+        self._test_handshake({"CLAUDECODE": "   "}, None)
+
+    def test_handshake_16_agent_with_provider(self):
+        # agent is reported alongside a FaaS provider.
+        self._test_handshake(
+            {"FUNCTIONS_WORKER_RUNTIME": "python", "CLAUDECODE": "1"},
+            {"name": "azure.func", "agent": "claude_code"},
         )
 
     def test_dict_hints(self):
