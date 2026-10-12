@@ -17,6 +17,9 @@
       "client": {
         "id": "client",
         "useMultipleMongoses": false,
+        "uriOptions": {
+          "appname": "retryableReadHandshakeTest"
+        },
         "observeEvents": [
           "connectionCheckOutStartedEvent",
           "commandStartedEvent",
@@ -79,6 +82,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -172,6 +176,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -265,6 +270,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -355,6 +361,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -450,6 +457,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -549,6 +557,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -648,6 +657,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -753,6 +763,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -853,6 +864,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -946,6 +958,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -1039,6 +1052,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -1132,6 +1146,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -1230,6 +1245,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -1329,6 +1345,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -1423,6 +1440,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -1516,6 +1534,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -1609,6 +1628,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -1702,6 +1722,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -1795,6 +1816,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -1885,6 +1907,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -1975,6 +1998,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -2069,6 +2093,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -2163,6 +2188,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -2256,6 +2282,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -2349,6 +2376,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -2442,6 +2470,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -2535,6 +2564,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -2625,6 +2655,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -2715,6 +2746,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -2805,6 +2837,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -2900,6 +2933,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
@@ -2999,6 +3033,7 @@
                   "ping",
                   "saslContinue"
                 ],
+                "appName": "retryableReadHandshakeTest",
                 "closeConnection": true
               }
             }
