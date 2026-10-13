@@ -624,6 +624,13 @@
           }
         },
         {
+          "name": "dropCollection",
+          "object": "database",
+          "arguments": {
+            "collection": "created-collection"
+          }
+        },
+        {
           "name": "createCollection",
           "object": "database",
           "arguments": {
@@ -635,6 +642,43 @@
         {
           "client": "client",
           "messages": [
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection started",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "dropCollection",
+                "topologyDescription": {
+                  "$$exists": true
+                }
+              }
+            },
+            {
+              "level": "debug",
+              "component": "serverSelection",
+              "data": {
+                "message": "Server selection succeeded",
+                "selector": {
+                  "$$exists": true
+                },
+                "operation": "dropCollection",
+                "topologyDescription": {
+                  "$$exists": true
+                },
+                "serverHost": {
+                  "$$type": "string"
+                },
+                "serverPort": {
+                  "$$type": [
+                    "int",
+                    "long"
+                  ]
+                }
+              }
+            },
             {
               "level": "debug",
               "component": "serverSelection",
