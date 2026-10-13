@@ -352,11 +352,16 @@ class HTTPProxyKMSConnect:
         late_sockets: Optional[list[socket.socket]] = None,
     ) -> socket.socket:
         # A configurable KMS host could inject CR/LF into, or split the
-        # request line of, the CONNECT request.
+        # request line of, the CONNECT request. The port reaches the same
+        # request line, so it must be a real TCP port.
         if any(not c.isprintable() or c.isspace() for c in context.host):
             raise ConfigurationError(
                 f"KMS host must not contain control characters or whitespace: {context.host!r}"
             )
+        if not isinstance(context.port, int) or isinstance(context.port, bool):
+            raise TypeError(f"KMS port must be an integer: {context.port!r}")
+        if not 1 <= context.port <= 65535:
+            raise ConfigurationError(f"KMS port is out of range: {context.port!r}")
         sock = self._connect_proxy(deadline)
         try:
             if self.ssl_context is not None:
