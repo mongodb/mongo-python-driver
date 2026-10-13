@@ -667,6 +667,24 @@ async def test_proxy_url_is_validated(api):
     with pytest.raises(ConfigurationError, match="https"):
         api.proxy("http://proxy.example.com", _insecure_client_context())
 
+
+@both_apis
+async def test_proxy_url_error_redacts_userinfo(api):
+    # The raised errors must not echo userinfo credentials.
+    for url in [
+        "https://user:secret@proxy:notaport",
+        "https://user:secret@[::1",
+        "ftp://user:secret@proxy.example.com",
+        "http://user:secret@:8080",
+        "http://user:secret@proxy.example.com/path",
+        "https://user:secret@proxy.example.com:0",
+    ]:
+        with pytest.raises(ConfigurationError, match="proxy_url") as exc_info:
+            api.proxy(url)
+        message = str(exc_info.value)
+        assert "secret" not in message
+        assert "***@" in message
+
     # Userinfo and an explicit Proxy-Authorization header conflict.
     with pytest.raises(ConfigurationError, match="Proxy-Authorization"):
         api.proxy(

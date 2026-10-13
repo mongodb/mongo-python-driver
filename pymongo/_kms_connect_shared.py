@@ -98,6 +98,11 @@ def _remaining(deadline: float) -> float:
     return left
 
 
+def _redact_proxy_url(proxy_url: str) -> str:
+    """Redact userinfo from a proxy URL for safe display in errors."""
+    return re.sub(r"(://)[^@/?#]*@", r"\1***@", proxy_url)
+
+
 def _close_late_bridge_sockets(
     late_sockets: list[socket.socket], future: asyncio.Future[Any]
 ) -> None:
@@ -176,27 +181,33 @@ class HTTPProxyKMSConnect:
         except ValueError as exc:
             # Malformed URLs, e.g. an unmatched IPv6 bracket, raise here
             # rather than surfacing lazily from the parsed parts below.
-            raise ConfigurationError(f"invalid proxy_url: {proxy_url!r}") from exc
+            raise ConfigurationError(
+                f"invalid proxy_url: {_redact_proxy_url(proxy_url)!r}"
+            ) from exc
         if split.scheme not in ("http", "https"):
             raise ConfigurationError(
-                f"proxy_url must have an http or https scheme, not {proxy_url!r}"
+                f"proxy_url must have an http or https scheme, not {_redact_proxy_url(proxy_url)!r}"
             )
         if not split.hostname:
-            raise ConfigurationError(f"proxy_url must include a host, not {proxy_url!r}")
+            raise ConfigurationError(
+                f"proxy_url must include a host, not {_redact_proxy_url(proxy_url)!r}"
+            )
         if split.path not in ("", "/") or split.query or split.fragment:
             raise ConfigurationError(
-                f"proxy_url must not include a path, query, or fragment: {proxy_url!r}"
+                f"proxy_url must not include a path, query, or fragment: {_redact_proxy_url(proxy_url)!r}"
             )
         try:
             port = split.port
         except ValueError as exc:
-            raise ConfigurationError(f"invalid proxy_url: {proxy_url!r}") from exc
+            raise ConfigurationError(
+                f"invalid proxy_url: {_redact_proxy_url(proxy_url)!r}"
+            ) from exc
         self.host = split.hostname
         if port is None:
             port = 443 if split.scheme == "https" else 80
         elif port == 0:
             # Port zero is never a valid proxy destination.
-            raise ConfigurationError(f"invalid proxy_url: {proxy_url!r}")
+            raise ConfigurationError(f"invalid proxy_url: {_redact_proxy_url(proxy_url)!r}")
         self.port = port
         if split.scheme == "https":
             self.ssl_context: Optional[ssl.SSLContext] = (
