@@ -3,6 +3,7 @@
   "schemaVersion": "1.14",
   "runOnRequirements": [
     {
+      "minServerVersion": "4.4",
       "topologies": [
         "single"
       ]

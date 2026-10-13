@@ -1,6 +1,11 @@
 {
   "description": "operation run_cursor_command",
   "schemaVersion": "1.27",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4"
+    }
+  ],
   "createEntities": [
     {
       "client": {
@@ -53,7 +58,8 @@
           },
           "expectResult": [
             {
-              "name": "test"
+              "name": "test",
+              "type": "collection"
             }
           ]
         }

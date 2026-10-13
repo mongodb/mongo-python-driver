@@ -1,6 +1,11 @@
 {
   "description": "operation count_documents",
   "schemaVersion": "1.27",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4"
+    }
+  ],
   "createEntities": [
     {
       "client": {

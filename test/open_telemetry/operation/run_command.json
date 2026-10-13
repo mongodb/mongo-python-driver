@@ -1,6 +1,11 @@
 {
   "description": "operation run_command",
   "schemaVersion": "1.27",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4"
+    }
+  ],
   "createEntities": [
     {
       "client": {

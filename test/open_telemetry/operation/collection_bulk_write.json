@@ -1,6 +1,11 @@
 {
   "description": "operation collection_bulk_write",
   "schemaVersion": "1.27",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.4"
+    }
+  ],
   "createEntities": [
     {
       "client": {
