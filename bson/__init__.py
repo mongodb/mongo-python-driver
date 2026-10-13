@@ -1133,11 +1133,15 @@ def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> lis
     data_len = len(data)
     docs: list[_DocumentType] = []
     position = 0
-    end = data_len - 1
     use_raw = _raw_document_class(opts.document_class)
     try:
-        while position < end:
+        while position < data_len:
+            # A document is at minimum 5 bytes: the 4-byte size and the EOO.
+            if data_len - position < 5:
+                raise InvalidBSON("not enough data for a BSON document")
             obj_size = _UNPACK_INT_FROM(data, position)[0]
+            if obj_size < 5:
+                raise InvalidBSON("invalid message size")
             if data_len - position < obj_size:
                 raise InvalidBSON(
                     f"invalid object size: expected {obj_size}, got {data_len - position}"
