@@ -68,7 +68,10 @@
                 "db.namespace": "operation-watch",
                 "db.collection.name": "test",
                 "db.operation.name": "watch",
-                "db.operation.summary": "watch operation-watch.test"
+                "db.operation.summary": "watch operation-watch.test",
+                "db.mongodb.cursor_id": {
+                  "$$gte": 1
+                }
               },
               "nested": [
                 {
@@ -107,6 +110,9 @@
                           "aggregate": "test"
                         }
                       }
+                    },
+                    "db.mongodb.cursor_id": {
+                      "$$gte": 1
                     },
                     "db.mongodb.server_connection_id": {
                       "$$type": [
