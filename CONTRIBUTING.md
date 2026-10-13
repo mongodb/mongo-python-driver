@@ -16,8 +16,7 @@ be of interest or that has already been addressed.
 
 ## Supported Interpreters
 
-PyMongo supports CPython 3.11+ and PyPy 3.11+. Language features not
-supported by all interpreters can not be used.
+PyMongo supports CPython 3.11+.
 
 ## Style Guide
 
