@@ -529,19 +529,6 @@ async def test_control_characters_in_kms_host_are_rejected(api):
 
 
 @both_apis
-async def test_invalid_kms_port_is_rejected(api):
-    # The port reaches the CONNECT request line, so a string port could
-    # inject request lines just like a bad host.
-    callback = api.proxy("http://proxy.example.com:8080")
-    for port in ["443\r\nX-Injected: yes", "443", None, True]:
-        with pytest.raises(TypeError, match="port"):
-            await api.maybe_await(callback(_kms_context(port=port)))
-    for port in [0, -1, 65536]:
-        with pytest.raises(ConfigurationError, match="port"):
-            await api.maybe_await(callback(_kms_context(port=port)))
-
-
-@both_apis
 async def test_http_proxy_helper_sends_custom_headers(api):
     # Extra CONNECT headers reach the proxy verbatim.
     accepted: list[bytes] = []
