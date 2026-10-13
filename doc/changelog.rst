@@ -73,9 +73,17 @@ Bug fixes
   any field contains the reserved ``|`` delimiter (`PYTHON-6040`_).
 - Fixed a bug in SRV polling where invalid hosts where topology would not be
   updated if one returned host was invalid.
+- Fixed a bug where the C extension's BSON decoder accepted documents whose
+  element data overlaps the document terminator instead of raising
+  ``InvalidBSON`` (`PYTHON-6111`_).
+- Fixed a bug where the pure-Python ``decode_all()`` accepted buffers ending
+  in a partial document instead of raising ``InvalidBSON``, now matching the
+  C extension (`PYTHON-6163`_).
 
 .. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
 .. _PYTHON-6040: https://jira.mongodb.org/browse/PYTHON-6040
+.. _PYTHON-6111: https://jira.mongodb.org/browse/PYTHON-6111
+.. _PYTHON-6163: https://jira.mongodb.org/browse/PYTHON-6163
 
 Changes in Version 4.18.2 (2026/09/24)
 --------------------------------------
