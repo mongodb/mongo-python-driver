@@ -593,6 +593,21 @@ async def test_http_proxy_helper_rejects_bad_headers(api):
 
 
 @both_apis
+async def test_headers_are_revalidated_at_connect_time(api):
+    # The headers mapping is public and mutable: the constructor's
+    # validation does not cover later changes.
+    callback = api.proxy("http://proxy.example.com:8080")
+    callback.headers["X-Injected"] = "ok\r\nInjected: 1"
+    with pytest.raises(ConfigurationError, match="invalid proxy header value"):
+        await api.maybe_await(callback(_kms_context()))
+
+    callback = api.proxy("http://proxy.example.com:8080")
+    callback.headers = {"Host": "evil.example.com"}
+    with pytest.raises(ConfigurationError, match="Host CONNECT header"):
+        await api.maybe_await(callback(_kms_context()))
+
+
+@both_apis
 async def test_http_proxy_helper_accepts_legal_header_values(api):
     # Colons and spaces are legal in values; only CR/LF injects a request line.
     callback = api.proxy(
@@ -680,6 +695,11 @@ async def test_proxy_url_error_redacts_userinfo(api):
         "https://user:secret@proxy.example.com:0",
         # Userinfo extends to the last @, not the first.
         "http://user@leaked:secret@proxy.example.com:0",
+        # A malformed ?, #, or / inside the userinfo still hides it.
+        "http://user:secret?x@proxy.example.com:0",
+        "http://user:secret/host@x",
+        "user:secret@host:8080",
+        "secret@host",
     ]:
         with pytest.raises(ConfigurationError, match="proxy_url") as exc_info:
             api.proxy(url)

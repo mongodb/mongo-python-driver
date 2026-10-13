@@ -101,9 +101,22 @@ def _remaining(deadline: float) -> float:
 def _redact_proxy_url(proxy_url: str) -> str:
     """Redact userinfo from a proxy URL for safe display in errors.
 
-    Userinfo extends to the last ``@`` before any ``/``, ``?``, or ``#``.
+    Everything between the scheme and the last ``@`` goes: a malformed
+    URL may place credentials anywhere before that ``@``. URLs without
+    an ``@`` pass through unscathed.
     """
-    return re.sub(r"(://)[^/?#]*@", r"\1***@", proxy_url)
+    scheme, sep, tail = proxy_url.partition("://")
+    if sep:
+        prefix = f"{scheme}://"
+    elif ":" in proxy_url:
+        # A scheme without ://, e.g. "user:secret@host:8080".
+        scheme, _, tail = proxy_url.partition(":")
+        prefix = f"{scheme}:"
+    else:
+        prefix, tail = "", proxy_url
+    if "@" not in tail:
+        return proxy_url
+    return f"{prefix}***@{tail.rpartition('@')[2]}"
 
 
 def _close_late_bridge_sockets(
@@ -221,6 +234,19 @@ class HTTPProxyKMSConnect:
                 raise ConfigurationError("ssl_context requires an https proxy_url")
             self.ssl_context = None
         self.headers = dict(headers) if headers else {}
+        self._validate_headers()
+        if split.username is not None:
+            if any(name.lower() == "proxy-authorization" for name in self.headers):
+                raise ConfigurationError(
+                    "proxy_url must not include userinfo when headers includes Proxy-Authorization"
+                )
+            password = urllib.parse.unquote(split.password) if split.password else ""
+            creds = f"{urllib.parse.unquote(split.username)}:{password}".encode()
+            token = base64.b64encode(creds).decode("ascii")
+            self.headers["Proxy-Authorization"] = f"Basic {token}"
+
+    def _validate_headers(self) -> None:
+        """Validate the headers mapping: it is public and mutable."""
         for name, value in self.headers.items():
             if not isinstance(name, str) or not isinstance(value, str):
                 raise TypeError("proxy header names and values must be strings")
@@ -234,15 +260,6 @@ class HTTPProxyKMSConnect:
                 raise ConfigurationError("the Host CONNECT header is set from the KMS address")
             if "\r" in value or "\n" in value:
                 raise ConfigurationError(f"invalid proxy header value for {name!r}")
-        if split.username is not None:
-            if any(name.lower() == "proxy-authorization" for name in self.headers):
-                raise ConfigurationError(
-                    "proxy_url must not include userinfo when headers includes Proxy-Authorization"
-                )
-            password = urllib.parse.unquote(split.password) if split.password else ""
-            creds = f"{urllib.parse.unquote(split.username)}:{password}".encode()
-            token = base64.b64encode(creds).decode("ascii")
-            self.headers["Proxy-Authorization"] = f"Basic {token}"
 
     def _tunnel(self, sock: socket.socket, context: KMSConnectContext, deadline: float) -> None:
         # An IPv6 literal needs brackets to be a valid HTTP authority.
@@ -371,6 +388,8 @@ class HTTPProxyKMSConnect:
             raise ConfigurationError(
                 f"KMS host must not contain control characters or whitespace: {context.host!r}"
             )
+        # The headers mapping is public: validate whatever it holds now.
+        self._validate_headers()
         sock = self._connect_proxy(deadline)
         try:
             if self.ssl_context is not None:
