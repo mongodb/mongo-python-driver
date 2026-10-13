@@ -56,9 +56,7 @@ class _Op(str, enum.Enum):
     COMMIT = "commitTransaction"
     COUNT = "count"
     COUNT_DOCUMENTS = "countDocuments"
-    # Values MUST match the covered operations table of the OpenTelemetry
-    # specification (DRIVERS-3625), which is the definitive list of operation
-    # names for both tracing and server selection logging.
+    # Values MUST match the OpenTelemetry spec's covered-operations table (DRIVERS-3625).
     CREATE = "createCollection"
     CREATE_INDEXES = "createIndexes"
     CREATE_SEARCH_INDEXES = "createSearchIndexes"

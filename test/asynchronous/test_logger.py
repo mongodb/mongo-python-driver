@@ -129,11 +129,8 @@ class TestLogger(AsyncIntegrationTest):
             self.assertGreater(len(cm.records), 0)
 
     async def test_server_selection_waiting_message_info_level(self):
-        # The "Waiting for suitable server to become available" message MUST be logged at
-        # info level, unlike the other server selection messages, which are debug level.
-        # A user observing server selection logs at INFO (only) must still receive the
-        # waiting message, which is only possible if the telemetry object is created for
-        # info-enabled users too.
+        # WAITING logs at info level while the other server selection messages are
+        # debug, so an info-level listener still receives the waiting message.
         client = await self.async_single_client(p=27999, serverSelectionTimeoutMS=500)
         try:
             with self.assertLogs("pymongo.serverSelection", level="INFO") as cm:

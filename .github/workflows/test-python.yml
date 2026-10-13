@@ -319,9 +319,8 @@ jobs:
       - name: Run tests
         run: just run-tests
 
-  # The otel tests above run without authentication; this variant runs the same
-  # suite against an authenticated replica set, exercising sensitive-command
-  # redaction and authentication-related spans and log messages.
+  # Runs the otel suite against an authenticated replica set, exercising
+  # sensitive-command redaction and authentication-related spans and log messages.
   otel-auth:
     runs-on: ubuntu-latest
     name: OTel Tests (auth replica set)

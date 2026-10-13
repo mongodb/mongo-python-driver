@@ -832,9 +832,7 @@ class _ServerSelectionTelemetry:
 
     def waiting(self, remaining_time_ms: int) -> None:
         """Emit the server selection WAITING log entry."""
-        # Unlike the other server selection messages, which are debug level, the
-        # WAITING message MUST be logged at info level per the server selection
-        # logging specification.
+        # WAITING logs at info level per the server selection logging spec; the others are debug.
         if _is_info_enabled(_SERVER_SELECTION_LOGGER):
             self._emit_log(
                 _ServerSelectionStatusMessage.WAITING,

@@ -64,12 +64,8 @@ _CURRENT_OPERATION_NAME: ContextVar[Optional[str]] = ContextVar(
     "_CURRENT_OPERATION_NAME", default=None
 )
 
-# Whether the active operation span already carries its namespace attributes,
-# set eagerly by start_operation_span. Sibling to _CURRENT_OPERATION_NAME: set
-# and reset at the same sites, so start_command_span knows the namespace is
-# already initialized without inspecting the span. The OpenTelemetry Span API
-# does not expose the span's attributes, so an implementation-specific property
-# cannot be relied on here.
+# Whether the active operation span already has its namespace attributes. The
+# OpenTelemetry Span API does not expose attributes, so this tracks it instead.
 _NAMESPACE_INITIALIZED: ContextVar[bool] = ContextVar("_NAMESPACE_INITIALIZED", default=False)
 
 # True while the driver is draining a cursor of its own to build one public API
@@ -374,9 +370,9 @@ def start_command_span(
     if current_operation is not None:
         current_span = trace.get_current_span()
         if current_span.is_recording():
-            # Call sites that know the operation's namespace up front already set it
-            # (e.g. a rename targets a collection while its command runs against
-            # admin), so only backfill what the span has not learned yet.
+            # Call sites that know the namespace up front already set it (a rename
+            # targets a collection while its command runs against admin), so only
+            # backfill what the span has not learned yet.
             if not _NAMESPACE_INITIALIZED.get():
                 summary = _build_query_summary(current_operation, dbname, collection)
                 current_span.update_name(summary)
@@ -593,11 +589,10 @@ class _OperationSpanHandle:
 
     ``_cm`` is the ``start_as_current_span`` context manager, or ``None`` in
     detached mode, where ``use_operation_span`` makes the span current per use.
-    ``namespace_initialized`` records whether the span was created with eager
-    namespace attributes, so ``start_command_span`` skips its backfill without
-    inspecting the span (the OpenTelemetry Span API does not expose attributes).
-    ``_ns_token`` is the ``_NAMESPACE_INITIALIZED`` token to reset when the
-    span stops being current, ``None`` in detached mode.
+    ``namespace_initialized`` records whether the span was created with namespace
+    attributes, so ``start_command_span`` skips its backfill (the OpenTelemetry
+    Span API does not expose attributes). ``_ns_token`` is the
+    ``_NAMESPACE_INITIALIZED`` token to reset, ``None`` in detached mode.
     """
 
     __slots__ = (

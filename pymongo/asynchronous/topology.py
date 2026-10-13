@@ -276,10 +276,8 @@ class Topology:
         now = time.monotonic()
         end_time = now + timeout
         logged_waiting = False
-        # Server selection does not have APM events, gate only on logging. The
-        # WAITING message is info level while the others are debug level, so the
-        # telemetry object is created for users of either level; each method
-        # checks the level it needs.
+        # Server selection does not have APM events, gate only on logging. WAITING
+        # logs at info level while the others are debug, so create it for either.
         ss: Optional[_ServerSelectionTelemetry] = None
         if _is_debug_enabled(_SERVER_SELECTION_LOGGER) or _is_info_enabled(
             _SERVER_SELECTION_LOGGER

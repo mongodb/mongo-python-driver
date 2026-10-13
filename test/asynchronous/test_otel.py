@@ -93,8 +93,7 @@ def _qualified_name(exc_type: type) -> str:
 if _HAS_OTEL_TEST_DEPS:
 
     class _ApiOnlySpan(Span):
-        """A recording span implementing the OpenTelemetry Span interface without exposing an
-        ``attributes`` property, like a non-SDK span implementation may."""
+        """A recording span without an ``attributes`` property, like a non-SDK span."""
 
         def __init__(self, attributes: Optional[otel_types.Attributes] = None) -> None:
             self._attributes: dict[str, otel_types.AttributeValue] = dict(attributes or {})
@@ -191,10 +190,8 @@ class TestOTelOperationSpanPrimitives(unittest.TestCase):
         self.assertEqual(span.events[0].name, "exception")
 
     def test_start_command_span_backfill_skips_initialized_namespace(self):
-        """A rename targets a collection while its command runs against admin. The
-        operation span's namespace is set eagerly, and the command backfill must not
-        overwrite it, even when the span implementation does not expose its attributes
-        (the OpenTelemetry Span API does not require an ``attributes`` getter)."""
+        """The backfill must not overwrite a namespace set eagerly on the operation
+        span, even when the span exposes no ``attributes`` getter."""
         handle = _otel.start_operation_span(
             _tracing_opts(), "renameCollection", None, dbname="db", collection="coll"
         )
