@@ -466,34 +466,34 @@ class TestBSON(unittest.TestCase):
         # terminator byte must be rejected, matching the pure-Python decoder.
         bad_bsons = [
             # Boolean value byte is the document terminator.
-            b"\x08\x00\x00\x00\x08a\x00\x00",
+            ("boolean value", b"\x08\x00\x00\x00\x08a\x00\x00"),
             # Regex pattern terminator is the document terminator.
-            b"\x08\x00\x00\x00\x0ba\x00\x00",
+            ("regex pattern", b"\x08\x00\x00\x00\x0ba\x00\x00"),
             # Regex flags terminator is the document terminator.
-            b"\x0a\x00\x00\x00\x0ba\x00b\x00\x00",
+            ("regex flags", b"\x0a\x00\x00\x00\x0ba\x00b\x00\x00"),
         ]
-        for data in bad_bsons:
-            msg = f"bad_bson={data!r}"
-            self.assertFalse(is_valid(data), msg=msg)
-            with self.assertRaises(InvalidBSON, msg=msg):
-                decode(data)
-            with self.assertRaises(InvalidBSON, msg=msg):
-                decode(bytearray(data))
-            with self.assertRaises(InvalidBSON, msg=msg):
-                decode(memoryview(data))
-            with self.assertRaises(InvalidBSON, msg=msg):
-                decode(array.array("B", data))
-            with self.assertRaises(InvalidBSON, msg=msg):
-                list(decode_iter(data))
-            with self.assertRaises(InvalidBSON, msg=msg):
-                decode_all(data)
-            with mmap.mmap(-1, len(data)) as mm:
-                mm.write(data)
-                mm.seek(0)
-                with self.assertRaises(InvalidBSON, msg=msg):
-                    decode(mm)
-                with self.assertRaises(InvalidBSON, msg=msg):
-                    decode_all(mm)
+        for description, data in bad_bsons:
+            with self.subTest(description, bad_bson=data):
+                self.assertFalse(is_valid(data))
+                with self.assertRaises(InvalidBSON):
+                    decode(data)
+                with self.assertRaises(InvalidBSON):
+                    decode(bytearray(data))
+                with self.assertRaises(InvalidBSON):
+                    decode(memoryview(data))
+                with self.assertRaises(InvalidBSON):
+                    decode(array.array("B", data))
+                with self.assertRaises(InvalidBSON):
+                    list(decode_iter(data))
+                with self.assertRaises(InvalidBSON):
+                    decode_all(data)
+                with mmap.mmap(-1, len(data)) as mm:
+                    mm.write(data)
+                    mm.seek(0)
+                    with self.assertRaises(InvalidBSON):
+                        decode(mm)
+                    with self.assertRaises(InvalidBSON):
+                        decode_all(mm)
 
     def test_data_timestamp(self):
         self.assertEqual(
