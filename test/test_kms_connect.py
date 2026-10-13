@@ -678,6 +678,8 @@ async def test_proxy_url_error_redacts_userinfo(api):
         "http://user:secret@:8080",
         "http://user:secret@proxy.example.com/path",
         "https://user:secret@proxy.example.com:0",
+        # Userinfo extends to the last @, not the first.
+        "http://user@leaked:secret@proxy.example.com:0",
     ]:
         with pytest.raises(ConfigurationError, match="proxy_url") as exc_info:
             api.proxy(url)

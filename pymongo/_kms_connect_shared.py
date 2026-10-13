@@ -99,8 +99,11 @@ def _remaining(deadline: float) -> float:
 
 
 def _redact_proxy_url(proxy_url: str) -> str:
-    """Redact userinfo from a proxy URL for safe display in errors."""
-    return re.sub(r"(://)[^@/?#]*@", r"\1***@", proxy_url)
+    """Redact userinfo from a proxy URL for safe display in errors.
+
+    Userinfo extends to the last ``@`` before any ``/``, ``?``, or ``#``.
+    """
+    return re.sub(r"(://)[^/?#]*@", r"\1***@", proxy_url)
 
 
 def _close_late_bridge_sockets(
