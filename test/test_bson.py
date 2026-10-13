@@ -521,6 +521,33 @@ class TestBSON(unittest.TestCase):
         # Empty input is not an error.
         self.assertEqual(decode_all(b""), [])
 
+    def test_decode_all_truncated_document(self):
+        # PYTHON-6163: decode_all() must reject documents declaring more
+        # bytes than remain, matching the C extension, which raises
+        # InvalidBSON("objsize too large").
+        doc = encode({"a": 1})
+        truncated_bsons = [
+            # Declares 12 bytes, only 7 present.
+            ("truncated first document", b"\x0c\x00\x00\x00\x10a\x00"),
+            # A valid document followed by a truncated one.
+            ("truncated second document", doc + b"\x0c\x00\x00\x00\x10a\x00"),
+        ]
+        for description, data in truncated_bsons:
+            for buffer in (data, bytearray(data), memoryview(data)):
+                with self.subTest(description, buffer_type=type(buffer).__name__):
+                    with self.assertRaisesRegex(InvalidBSON, "objsize too large"):
+                        decode_all(buffer)
+
+    def test_decode_all_invalid_message_size(self):
+        # PYTHON-6163: a 5-byte buffer whose declared size is below the
+        # minimum must raise InvalidBSON("invalid message size"), matching
+        # the C extension.
+        data = b"\x04\x00\x00\x00\x00"
+        for buffer in (data, bytearray(data), memoryview(data)):
+            with self.subTest(buffer_type=type(buffer).__name__):
+                with self.assertRaisesRegex(InvalidBSON, "invalid message size"):
+                    decode_all(buffer)
+
     def test_data_timestamp(self):
         self.assertEqual(
             {"test": Timestamp(4, 20)},

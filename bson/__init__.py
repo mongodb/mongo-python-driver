@@ -1143,9 +1143,7 @@ def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> lis
             if obj_size < 5:
                 raise InvalidBSON("invalid message size")
             if data_len - position < obj_size:
-                raise InvalidBSON(
-                    f"invalid object size: expected {obj_size}, got {data_len - position}"
-                )
+                raise InvalidBSON("objsize too large")
             obj_end = position + obj_size - 1
             if data[obj_end] != 0:
                 raise InvalidBSON("bad eoo")
