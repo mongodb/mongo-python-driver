@@ -35,7 +35,6 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 from pymongo.errors import ConfigurationError
-from pymongo.pool_shared import _close_late_socket
 
 
 @dataclass(frozen=True)
@@ -97,6 +96,28 @@ def _remaining(deadline: float) -> float:
     if left <= 0:
         raise socket.timeout("timed out connecting through the proxy")
     return left
+
+
+def _close_late_bridge_sockets(
+    late_sockets: list[socket.socket], future: asyncio.Future[Any]
+) -> None:
+    """Close a late proxy-connect result: the driver end and the bridge.
+
+    The bridge returns one end of a socketpair while its relay threads hold
+    the proxy connection; closing only the driver end leaves those threads
+    blocked in recv until the proxy closes the tunnel.
+    """
+    if not future.cancelled() and future.exception() is None:
+        # The task may have succeeded after the awaiter gave up.
+        late_sockets.append(future.result())
+    for sock in late_sockets:
+        # shutdown can raise the ValueError an SSLSocket shows in the
+        # teardown race; tolerate it here exactly as relay does.
+        try:
+            sock.shutdown(socket.SHUT_RDWR)
+        except (OSError, ValueError):
+            pass
+        sock.close()
 
 
 class HTTPProxyKMSConnect:
@@ -174,7 +195,7 @@ class HTTPProxyKMSConnect:
         if port is None:
             port = 443 if split.scheme == "https" else 80
         elif port == 0:
-            # An explicit port zero is never a valid proxy destination.
+            # Port zero is never a valid proxy destination.
             raise ConfigurationError(f"invalid proxy_url: {proxy_url!r}")
         self.port = port
         if split.scheme == "https":
@@ -241,7 +262,9 @@ class HTTPProxyKMSConnect:
         if not valid or not 200 <= int(parts[1]) < 300:
             raise OSError(f"proxy refused CONNECT to {target}: {status!r}")
 
-    def _bridge(self, proxy: socket.socket) -> socket.socket:
+    def _bridge(
+        self, proxy: socket.socket, late_sockets: Optional[list[socket.socket]] = None
+    ) -> socket.socket:
         """Relay a TLS proxy connection through a socketpair.
 
         Python cannot layer TLS over an :class:`ssl.SSLSocket`, so return the
@@ -307,10 +330,26 @@ class HTTPProxyKMSConnect:
                     pass
                 sock.close()
             raise
+        if late_sockets is not None:
+            # Late cleanup must stop the relay threads, which hold proxy and
+            # relay_side even after the driver end is closed.
+            late_sockets.extend((proxy, relay_side))
         return driver_side
 
     def __call__(
         self, context: KMSConnectContext, *, deadline: Optional[float] = None
+    ) -> socket.socket:
+        # One deadline for all three phases; per-phase timeouts would multiply
+        # the caller's budget.
+        if deadline is None:
+            deadline = time.monotonic() + context.timeout
+        return self._connect_via(context, deadline)
+
+    def _connect_via(
+        self,
+        context: KMSConnectContext,
+        deadline: float,
+        late_sockets: Optional[list[socket.socket]] = None,
     ) -> socket.socket:
         # A configurable KMS host could inject CR/LF into, or split the
         # request line of, the CONNECT request.
@@ -318,10 +357,6 @@ class HTTPProxyKMSConnect:
             raise ConfigurationError(
                 f"KMS host must not contain control characters or whitespace: {context.host!r}"
             )
-        # One deadline for all three phases; per-phase timeouts would multiply
-        # the caller's budget.
-        if deadline is None:
-            deadline = time.monotonic() + context.timeout
         sock = self._connect_proxy(deadline)
         try:
             if self.ssl_context is not None:
@@ -335,7 +370,7 @@ class HTTPProxyKMSConnect:
         if self.ssl_context is None:
             return sock
         try:
-            return self._bridge(sock)
+            return self._bridge(sock, late_sockets)
         except BaseException:
             sock.close()
             raise
@@ -389,25 +424,31 @@ class AsyncHTTPProxyKMSConnect(HTTPProxyKMSConnect):
     """
 
     async def __call__(self, context: KMSConnectContext) -> socket.socket:  # type: ignore[override]
-        # Capture the deadline before scheduling so time spent queued behind
-        # other executor work counts against the KMS budget.
+        # Executor queue time counts against the budget.
         deadline = time.monotonic() + context.timeout
-        connect = functools.partial(super().__call__, context, deadline=deadline)
+        late_sockets: list[socket.socket] = []
+        connect = functools.partial(super()._connect_via, context, deadline, late_sockets)
         future = asyncio.get_running_loop().run_in_executor(None, connect)
         try:
             return await asyncio.wait_for(asyncio.shield(future), _remaining(deadline))
         except asyncio.CancelledError:
-            # The thread runs on regardless, so close the socket it returns.
-            future.add_done_callback(_close_late_socket)
+            # The thread runs on regardless; close its late sockets.
+            future.add_done_callback(functools.partial(_close_late_bridge_sockets, late_sockets))
             raise
         except TimeoutError:
-            if future.done():
-                # The executor task timed out itself; report it directly.
-                raise
-            # The budget ran out with the thread still busy. The thread
-            # runs on regardless, so close the socket it returns, and
-            # report the deadline.
-            future.add_done_callback(_close_late_socket)
+            if future.done() and not future.cancelled():
+                exc = future.exception()
+                if exc is not None:
+                    # Report the executor's own error.
+                    raise exc from None
+                # The task succeeded right at the deadline.
+                _close_late_bridge_sockets(late_sockets, future)
+                raise socket.timeout("timed out connecting through the proxy") from None
+            if not future.done():
+                # The thread runs on regardless; close its late sockets.
+                future.add_done_callback(
+                    functools.partial(_close_late_bridge_sockets, late_sockets)
+                )
             raise socket.timeout("timed out connecting through the proxy") from None
 
 

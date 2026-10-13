@@ -196,8 +196,7 @@ def _tls_server_context(cert=CLIENT_PEM):
 
 
 def _insecure_client_context():
-    # PYTHON-5040 tracks re-enabling verification: the evergreen-tools CA
-    # lacks an Authority Key Identifier newer OpenSSL requires.
+    # PYTHON-5040 tracks re-enabling verification.
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
@@ -289,8 +288,7 @@ def _tls_echo_proxy(delay=0):
         if request is None:
             return
         tls.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
-        # The tunneled peer speaks only after the client does, as a TLS
-        # server would. The ``delay`` lets the reply outlast the CONNECT deadline.
+        # The tunneled peer speaks only after the client does, as a TLS server would.
         if delay:
             time.sleep(delay)
         tls.sendall(b"echo:" + tls.recv(64))
@@ -407,9 +405,7 @@ async def test_non_blocking_socket_from_callback_is_accepted(api):
 
 @both_apis
 async def test_tls_verification_targets_the_kms_host(api):
-    # The handshake must verify against the KMS address, not the peer the
-    # callback connected to: the cert covers 127.0.0.1 and localhost, but
-    # not the KMS hostname used below.
+    # The cert covers 127.0.0.1 and localhost but not the KMS hostname.
     server_ctx = _tls_server_context(os.path.join(CERT_PATH, "server.pem"))
     with _listen(2) as listener:
 
@@ -423,8 +419,6 @@ async def test_tls_verification_targets_the_kms_host(api):
                     pass
 
         threading.Thread(target=serve, daemon=True).start()
-
-        # Full verification: trusted CA, invalid certs and hostnames rejected.
         options = _pool_options(api.client_tls_context(verify=True))
 
         created = []
@@ -447,8 +441,7 @@ async def test_tls_verification_targets_the_kms_host(api):
             assert conn is not created[0]
         finally:
             conn.close()
-        # The cert does not cover this name, so verification fails even
-        # though the peer's cert is valid for itself.
+        # The cert does not cover this name.
         with pytest.raises(ConnectionFailure):
             await api.connect(
                 ("kms.example.com", port),
@@ -473,8 +466,7 @@ async def test_asyncio_transport_socket_is_rejected(api):
 
 @async_only
 async def test_cancelled_tls_wrap_closes_late_socket(api):
-    # A cancelled wrap can leave the executor producing an SSLSocket. The
-    # done callback must close it.
+    # A cancelled wrap can leave the executor holding an SSLSocket.
     from pymongo.pool_shared import _close_late_socket
 
     with _socketpair() as (left, _right):
@@ -584,8 +576,7 @@ async def test_http_proxy_helper_rejects_bad_headers(api):
         {"Bad\r\nName": "x"},
         {"Bad Name": "x"},
         {"Bad\tName": "x"},
-        # A legal token followed by a newline: re's $ can match just before
-        # a trailing newline, so validation must require a full match.
+        # re's $ can match just before a trailing newline.
         {"X-Ok\n": "x"},
         {"X-Ok": "ok\r\nInjected: 1"},
         {"Host": "evil.example.com"},
@@ -603,8 +594,7 @@ async def test_http_proxy_helper_rejects_bad_headers(api):
 
 @both_apis
 async def test_http_proxy_helper_accepts_legal_header_values(api):
-    # Colons and spaces are legal in values (e.g. auth schemes). Only
-    # CR/LF would let a value inject a request line.
+    # Colons and spaces are legal in values; only CR/LF injects a request line.
     callback = api.proxy(
         "http://proxy.example.com:8080",
         headers={"Proxy-Authorization": "Basic dXNlcjpwYXNz", "X-Token": "a: b"},
@@ -617,8 +607,7 @@ async def test_http_proxy_helper_accepts_legal_header_values(api):
 
 @both_apis
 async def test_proxy_url_is_parsed(api):
-    # The proxy URL has the same form as a proxy configured for urllib:
-    # scheme, optional userinfo, host, and optional port with defaults.
+    # Parses like a urllib proxy: scheme, optional userinfo, host, port defaults.
     for url, host, port, tls in [
         ("http://proxy.example.com:8080", "proxy.example.com", 8080, False),
         ("http://proxy.example.com", "proxy.example.com", 80, False),
@@ -640,8 +629,7 @@ async def test_proxy_url_is_parsed(api):
 
 @both_apis
 async def test_https_proxy_url_defaults_to_the_default_context(api):
-    # An https proxy URL implies TLS, like urllib, using the default
-    # context unless one is passed.
+    # An https proxy URL implies TLS, like urllib.
     assert api.proxy("https://proxy.example.com").ssl_context is not None
     ctx = _insecure_client_context()
     assert api.proxy("https://proxy.example.com", ctx).ssl_context is ctx
@@ -649,8 +637,7 @@ async def test_https_proxy_url_defaults_to_the_default_context(api):
 
 @both_apis
 async def test_proxy_url_userinfo_authenticates_to_the_proxy(api):
-    # Userinfo becomes a Proxy-Authorization basic auth header,
-    # percent-decoded like urllib decodes it.
+    # Userinfo becomes a percent-decoded basic auth header, like urllib.
     callback = api.proxy("http://user:p%40ss@proxy.example.com:8080")
     expected = base64.b64encode(b"user:p@ss").decode()
     assert callback.headers == {"Proxy-Authorization": f"Basic {expected}"}
@@ -667,8 +654,7 @@ async def test_proxy_url_is_validated(api):
         "http://proxy.example.com#frag",
         "http://proxy.example.com:notaport",
         "http://proxy.example.com:99999",
-        # An explicit port zero is never a valid proxy destination; it must
-        # not fall back to the scheme's default port.
+        # Port zero is never a valid proxy destination.
         "http://proxy.example.com:0",
         "https://proxy.example.com:0",
         "http://[::1",  # Unmatched IPv6 bracket.
@@ -687,8 +673,7 @@ async def test_proxy_url_is_validated(api):
             "http://user:pass@proxy.example.com",
             headers={"Proxy-Authorization": "Basic dXNlcjpwYXNz"},
         )
-    # Header validation runs before the userinfo handling, so a non-string
-    # name is a TypeError even when userinfo would also add a header.
+    # Header validation runs before the userinfo handling.
     with pytest.raises(TypeError, match="must be strings"):
         api.proxy("http://user:pass@proxy.example.com", headers={1: "x"})  # type: ignore[dict-item]
     with pytest.raises(TypeError, match="proxy_url"):
@@ -721,8 +706,7 @@ async def test_bridge_does_not_inherit_the_connect_deadline(api):
 
 @both_apis
 async def test_bridge_half_close_does_not_lose_the_reply(api):
-    # A half-close is a write-side event: the relay propagates it as a
-    # write-half shutdown, and the reverse direction still delivers a reply.
+    # A half-close propagates as a write-half shutdown, not a full close.
     listener = socket.create_server(("127.0.0.1", 0))
     proxy = socket.create_connection(listener.getsockname(), timeout=10)
     peer, _ = listener.accept()
@@ -751,7 +735,6 @@ async def test_bridge_half_close_does_not_lose_the_reply(api):
 @both_apis
 async def test_proxy_closing_before_connect_reply_raises(api):
     def handler(conn):
-        # Read the CONNECT request, then hang up without replying.
         conn.recv(4096)
 
     with _start_proxy(handler) as (host, port):
@@ -761,8 +744,7 @@ async def test_proxy_closing_before_connect_reply_raises(api):
 
 @async_only
 async def test_cancelled_proxy_connect_closes_the_late_socket(api):
-    # A cancelled connect must close the socket the executor thread
-    # produces after the cancellation.
+    # A cancelled connect must close the executor's late socket.
     requested = threading.Event()
     reply = threading.Event()
 
@@ -801,9 +783,7 @@ async def test_cancelled_proxy_connect_closes_the_late_socket(api):
 
 @async_only
 async def test_async_proxy_connect_wait_is_bounded_by_the_deadline(api):
-    # Time spent queued behind other executor work counts against the KMS
-    # budget: the await gives up at the deadline instead of waiting out the
-    # stall, and the thread's late socket, if any, is closed.
+    # The await gives up at the deadline and closes the thread's late socket.
     release = threading.Event()
 
     def blocker():
@@ -828,10 +808,96 @@ async def test_async_proxy_connect_wait_is_bounded_by_the_deadline(api):
         executor.shutdown(wait=False)
 
 
+@async_only
+async def test_cancelled_proxy_connect_closes_the_late_bridge(api):
+    # The whole late bridge must close, not just the driver end.
+    accepted = threading.Event()
+    handshake = threading.Event()
+    server_ctx = _tls_server_context()
+
+    def handler(conn):
+        accepted.set()
+        if not handshake.wait(10):
+            return
+        tls = server_ctx.wrap_socket(conn, server_side=True)
+        try:
+            if _read_http_request(tls) is None:
+                return
+            tls.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+            # Hold the tunnel open: the driver's cleanup must do the teardown.
+            time.sleep(2)
+        finally:
+            tls.close()
+
+    with _start_proxy(handler) as (host, port):
+        tunneled: list[socket.socket] = []
+        original_tunnel = HTTPProxyKMSConnect._tunnel
+
+        def spy_tunnel(self, sock, context, deadline):
+            tunneled.append(sock)
+            original_tunnel(self, sock, context, deadline)
+
+        with mock.patch.object(HTTPProxyKMSConnect, "_tunnel", spy_tunnel):
+            callback = api.proxy(f"https://{host}:{port}", _insecure_client_context())
+            task = asyncio.create_task(callback(_kms_context()))  # type: ignore[arg-type]
+            assert await api.offload(accepted.wait, 10), "proxy never accepted"
+            task.cancel("no longer needed")
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            # Let the stub complete the executor's future late.
+            handshake.set()
+            await asyncio.sleep(0.5)
+
+        assert len(tunneled) == 1
+        assert tunneled[0].fileno() == -1, "late bridge socket was left open"
+
+
+@async_only
+async def test_async_proxy_connect_closes_a_socket_returned_at_the_deadline(api):
+    # wait_for can time out after the future has already resolved successfully.
+    server_ctx = _tls_server_context()
+
+    def handler(conn):
+        tls = server_ctx.wrap_socket(conn, server_side=True)
+        try:
+            if _read_http_request(tls) is None:
+                return
+            tls.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+            # Hold the tunnel open so the driver's cleanup must close it.
+            time.sleep(2)
+        finally:
+            tls.close()
+
+    with _start_proxy(handler) as (host, port):
+        tunneled: list[socket.socket] = []
+        original_tunnel = HTTPProxyKMSConnect._tunnel
+
+        def spy_tunnel(self, sock, context, deadline):
+            tunneled.append(sock)
+            original_tunnel(self, sock, context, deadline)
+
+        async def raced_wait_for(awaitable, timeout=None):
+            # The deadline expires just as the future resolves.
+            if isinstance(awaitable, asyncio.Future):
+                awaitable.cancel()  # The shield is abandoned, as on a real timeout.
+            else:
+                awaitable.close()
+            await asyncio.sleep(0.5)  # Let the connect complete meanwhile.
+            raise TimeoutError
+
+        with mock.patch.object(HTTPProxyKMSConnect, "_tunnel", spy_tunnel):
+            with mock.patch("asyncio.wait_for", raced_wait_for):
+                callback = api.proxy(f"https://{host}:{port}", _insecure_client_context())
+                with pytest.raises(socket.timeout, match="timed out connecting through the proxy"):
+                    await callback(_kms_context())
+
+        assert len(tunneled) == 1
+        assert tunneled[0].fileno() == -1, "completed socket was left open"
+
+
 @both_apis
 async def test_connect_timeout_is_not_reclassified(api):
-    # A connect that times out keeps its socket.timeout type instead of
-    # being reported as a generic connect error.
+    # A timed-out connect keeps its socket.timeout type.
     def timeout_connect(self, address):
         raise socket.timeout("timed out")
 
@@ -842,7 +908,7 @@ async def test_connect_timeout_is_not_reclassified(api):
 
 @both_apis
 async def test_tunnel_keeps_bytes_sent_with_the_connect_reply(api):
-    # A proxy may coalesce its 200 with tunneled bytes. Reading past the header would drop them.
+    # A proxy may coalesce its 200 with tunneled bytes.
     def handler(conn):
         conn.recv(4096)
         conn.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\nearly-bytes")
@@ -902,7 +968,7 @@ async def test_bridge_failure_closes_the_proxy_socket(api):
 
     captured = []
 
-    def failing_bridge(self, proxy):
+    def failing_bridge(self, proxy, late_sockets=None):
         captured.append(proxy)
         raise OSError("no file descriptors")
 
@@ -954,8 +1020,7 @@ async def test_datagram_socket_from_callback_is_rejected(api):
 
 @both_apis
 async def test_kms_request_does_not_retry_a_contract_violation(api):
-    # _connect_kms has no retry loop; the no-retry guarantee is in
-    # kms_request, so exercise that instead.
+    # The no-retry guarantee lives in kms_request, not _connect_kms.
     calls = []
 
     def action(context):
@@ -1004,8 +1069,7 @@ async def test_network_error_from_callback_propagates(api):
 
 @async_only
 async def test_csot_deadline_stops_a_hung_callback(api):
-    # A callback that ignores the timeout cannot block past the CSOT
-    # deadline, and a socket it yields later must be closed.
+    # A hung callback cannot block past the CSOT deadline; its late socket closes.
     with _socketpair() as (left, _right):
 
         async def hung_callback(context):
@@ -1023,8 +1087,7 @@ async def test_csot_deadline_stops_a_hung_callback(api):
 
 @async_only
 async def test_cancelling_kms_connect_closes_the_callback_socket(api):
-    # Cancelling during the TLS handshake must close the callback's socket,
-    # so a TLS proxy's relay threads wind down.
+    # Cancelling mid-handshake must close the callback's socket.
     server_ctx = _tls_server_context()
     gate = threading.Event()
     eof = threading.Event()
@@ -1033,10 +1096,8 @@ async def test_cancelling_kms_connect_closes_the_callback_socket(api):
         conn = None
         try:
             conn, _ = listener.accept()
-            # The cancel may land before or after the executor starts the
-            # handshake: peek for a ClientHello without consuming it, or for
-            # EOF if the driver closed the socket, before wrap_socket
-            # detaches conn.
+            # The cancel may land before or after the handshake starts:
+            # peek without consuming, or read EOF, before wrap_socket detaches conn.
             while True:
                 data = conn.recv(4096, socket.MSG_PEEK)
                 if not data:
@@ -1050,8 +1111,7 @@ async def test_cancelling_kms_connect_closes_the_callback_socket(api):
             tls = server_ctx.wrap_socket(conn, server_side=True, do_handshake_on_connect=False)
             try:
                 tls.do_handshake()
-                # A discarded connection may reset instead of reaching clean
-                # EOF; either proves the driver closed it.
+                # A discarded connection may reset instead of EOF; either proves the close.
                 while tls.recv(4096):
                     pass
             except OSError:
@@ -1075,8 +1135,7 @@ async def test_cancelling_kms_connect_closes_the_callback_socket(api):
             socks.append(sock)
             return sock
 
-        # Schedule the connect now and cancel it once the callback socket
-        # exists, so the cancellation lands mid-handshake.
+        # Cancel once the callback socket exists, landing mid-handshake.
         task = asyncio.ensure_future(
             api.connect(
                 listener.getsockname(),
@@ -1090,13 +1149,12 @@ async def test_cancelling_kms_connect_closes_the_callback_socket(api):
                 break
             await asyncio.sleep(0.01)
         assert socks, "callback was never invoked"
-        # Bias the cancel to land mid-handshake. The stub handles the earlier
-        # window too.
+        # Bias the cancel to land mid-handshake.
         await asyncio.sleep(0.1)
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
-        # The late SSLSocket (or raw socket) must be closed. The stub sees EOF.
+        # The late socket must be closed; the stub sees EOF.
         gate.set()
         for _ in range(50):
             if eof.is_set():
