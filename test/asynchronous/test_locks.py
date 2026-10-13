@@ -299,9 +299,6 @@ if sys.version_info < (3, 13):
                 with self.assertRaises(asyncio.TimeoutError):
                     await asyncio.wait_for(condition.wait(), timeout=0.5)
 
-        @unittest.skipIf(
-            sys.version_info < (3, 11), "raising the same cancelled error requires Python>=3.11"
-        )
         async def test_cancelled_error_wakeup(self):
             # Test that a cancelled error, received when awaiting wakeup,
             # will be re-raised un-modified.
@@ -328,9 +325,6 @@ if sys.version_info < (3, 13):
             # originally raised.
             self.assertIs(err.exception, raised)
 
-        @unittest.skipIf(
-            sys.version_info < (3, 11), "raising the same cancelled error requires Python>=3.11"
-        )
         async def test_cancelled_error_re_aquire(self):
             # Test that a cancelled error, received when re-aquiring lock,
             # will be re-raised un-modified.
@@ -363,7 +357,6 @@ if sys.version_info < (3, 13):
             # originally raised.
             self.assertIs(err.exception, raised)
 
-        @unittest.skipIf(sys.version_info < (3, 11), "asyncio.timeout requires Python>=3.11")
         async def test_cancelled_wakeup(self):
             # Test that a task cancelled at the "same" time as it is woken
             # up as part of a Condition.notify() does not result in a lost wakeup.
@@ -409,7 +402,6 @@ if sys.version_info < (3, 13):
                 condition.notify_all()
             await c[1]
 
-        @unittest.skipIf(sys.version_info < (3, 11), "asyncio.timeout requires Python>=3.11")
         async def test_cancelled_wakeup_relock(self):
             # Test that a task cancelled at the "same" time as it is woken
             # up as part of a Condition.notify() does not result in a lost wakeup.

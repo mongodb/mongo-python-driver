@@ -1633,17 +1633,15 @@ class TestClient(IntegrationTest):
         # pool
         self.assertEqual(1, len((get_pool(client)).conns))
 
-        # contextlib async support was added in Python 3.10
-        if _IS_SYNC or sys.version_info >= (3, 10):
-            with contextlib.closing(client):
-                self.assertEqual("bar", (client.pymongo_test.coll.find_one())["foo"])
-            with self.assertRaises(InvalidOperation):
-                client.pymongo_test.coll.find_one()
-            client = self.rs_or_single_client()
-            with client as client:
-                self.assertEqual("bar", (client.pymongo_test.coll.find_one())["foo"])
-            with self.assertRaises(InvalidOperation):
-                client.pymongo_test.coll.find_one()
+        with contextlib.closing(client):
+            self.assertEqual("bar", (client.pymongo_test.coll.find_one())["foo"])
+        with self.assertRaises(InvalidOperation):
+            client.pymongo_test.coll.find_one()
+        client = self.rs_or_single_client()
+        with client as client:
+            self.assertEqual("bar", (client.pymongo_test.coll.find_one())["foo"])
+        with self.assertRaises(InvalidOperation):
+            client.pymongo_test.coll.find_one()
 
     @client_context.require_sync
     def test_interrupt_signal(self):
