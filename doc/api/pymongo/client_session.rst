@@ -3,3 +3,4 @@
 
 .. automodule:: pymongo.client_session
    :members:
+   :inherited-members:

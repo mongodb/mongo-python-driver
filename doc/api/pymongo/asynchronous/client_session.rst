@@ -4,3 +4,4 @@
 
 .. automodule:: pymongo.asynchronous.client_session
    :members:
+   :inherited-members:

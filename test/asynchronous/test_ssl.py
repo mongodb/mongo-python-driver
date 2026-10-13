@@ -189,10 +189,7 @@ class TestClientSSL(AsyncPyMongoTestCase):
 
         self.assertIs(_get_ssl_session(FakeSSLSock()), fake_session)
 
-    @unittest.skipUnless(
-        not _IS_SYNC and sys.version_info >= (3, 11),
-        "Tests async sslobject_class injection (Python 3.11+ only)",
-    )
+    @unittest.skipUnless(not _IS_SYNC, "Tests async sslobject_class injection only")
     def test_async_tls_session_injected_via_sslobject_class(self):
         """On Python 3.11+, a cached session is injected by setting sslobject_class."""
         fake_session = object()
@@ -260,10 +257,7 @@ class TestClientSSL(AsyncPyMongoTestCase):
         asyncio.run(run())
         self.assertIs(cache[0], fake_session)
 
-    @unittest.skipUnless(
-        not _IS_SYNC and sys.version_info >= (3, 11),
-        "Tests async session injection on Python 3.11+",
-    )
+    @unittest.skipUnless(not _IS_SYNC, "Tests async session injection only")
     def test_async_configured_protocol_injects_session_via_sslobject_class(self):
         """When the cache has a session, sslobject_class is set and its __init__ body runs."""
         initial_session = object()

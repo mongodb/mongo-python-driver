@@ -6,7 +6,11 @@ Changes in Version 4.19.0 (2026/XX/XX)
 
 PyMongo 4.19 brings a number of changes including:
 
+.. warning:: PyMongo 4.19 drops support for Python 3.9 and 3.10 and PyPy 3.9
+  and 3.10: Python 3.11+ or PyPy 3.11+ is now required.
+
 - Added support for Python 3.15.
+- Dropped support for Python 3.9 and 3.10 and PyPy 3.9 and 3.10 (PYTHON-6138).
 - Added support for running the synchronous and asynchronous clients in
   subinterpreters, including inside
   ``concurrent.futures.InterpreterPoolExecutor`` (Python 3.14+). Only in
@@ -62,9 +66,17 @@ Bug fixes
   any field contains the reserved ``|`` delimiter (`PYTHON-6040`_).
 - Fixed a bug in SRV polling where invalid hosts where topology would not be
   updated if one returned host was invalid.
+- Fixed a bug where the C extension's BSON decoder accepted documents whose
+  element data overlaps the document terminator instead of raising
+  ``InvalidBSON`` (`PYTHON-6111`_).
+- Fixed a bug where the pure-Python ``decode_all()`` accepted buffers ending
+  in a partial document instead of raising ``InvalidBSON``, now matching the
+  C extension (`PYTHON-6163`_).
 
 .. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
 .. _PYTHON-6040: https://jira.mongodb.org/browse/PYTHON-6040
+.. _PYTHON-6111: https://jira.mongodb.org/browse/PYTHON-6111
+.. _PYTHON-6163: https://jira.mongodb.org/browse/PYTHON-6163
 
 Changes in Version 4.18.2 (2026/09/24)
 --------------------------------------
@@ -205,7 +217,7 @@ PyMongo 4.17 brings a number of changes including:
 - Added the :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.bind` and :meth:`~pymongo.client_session.ClientSession.bind` methods
   that allow users to bind a session to all database operations within the scope of a context manager instead of having to explicitly pass the session to each individual operation.
   See the `Transactions docs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/transactions/#methods>`_ for examples and more information.
-- Added support for MongoDB's Intelligent Workload Management (IWM) and ingress connection rate limiting features in MongoDB server version 9.0.
+- Added support for MongoDB's `Intelligent Workload Management <https://www.mongodb.com/docs/atlas/intelligent-workload-management/>`_ (IWM) and ingress connection rate limiting features in MongoDB server version 9.0.
   The driver will gracefully handle write-blocking scenarios and optimizes connection establishment during high-load conditions to maintain application availability.
 
 Changes in Version 4.16.0 (2026/01/07)

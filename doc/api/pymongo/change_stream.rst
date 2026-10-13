@@ -3,3 +3,4 @@
 
 .. automodule:: pymongo.change_stream
    :members:
+   :inherited-members:

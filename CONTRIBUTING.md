@@ -16,7 +16,7 @@ be of interest or that has already been addressed.
 
 ## Supported Interpreters
 
-PyMongo supports CPython 3.9+ and PyPy3.9+. Language features not
+PyMongo supports CPython 3.11+ and PyPy 3.11+. Language features not
 supported by all interpreters can not be used.
 
 ## Style Guide
@@ -639,15 +639,11 @@ and in CI. Continuous integration runs `uv lock --check`, which fails when the l
 no longer matches `pyproject.toml`.
 
 If that check fails on your pull request, regenerate the lock file and commit the result.
-The scheduled workflow's `uv-lock-update` action applies a 7 day cutoff
-(`exclude_newer: 7 days`, passed to uv as `UV_EXCLUDE_NEWER`) so a package version
-yanked shortly after release is less likely to land in the lock file. That cutoff
-lives in the action, not in `pyproject.toml`, so it does not apply automatically
-when you run `uv lock` locally — set `UV_EXCLUDE_NEWER` yourself so a freshly
-published (and possibly still-to-be-yanked) release doesn't end up in the lock file:
+A 7 day cutoff (`exclude-newer` in `pyproject.toml`) applies automatically, so a package
+version yanked shortly after release is less likely to land in the lock file:
 
 ```bash
-UV_EXCLUDE_NEWER="7 days" uv lock
+uv lock
 ```
 
 To resolve a `uv.lock` conflict when rebasing, check out either side and regenerate
@@ -657,6 +653,6 @@ rather than editing the file by hand. Which side you pick does not matter, becau
 
 ```bash
 git checkout --ours uv.lock
-UV_EXCLUDE_NEWER="7 days" uv lock
+uv lock
 git add uv.lock
 ```
