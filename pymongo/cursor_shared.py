@@ -43,18 +43,13 @@ from pymongo.typings import (
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
-    import sys
+    from typing import Self
 
     from _typeshed import SupportsItems
 
     from bson.codec_options import CodecOptions
     from pymongo.message import _OpMsg
     from pymongo.read_preferences import _ServerMode
-
-    if sys.version_info >= (3, 11):
-        from typing import Self
-    else:
-        from typing_extensions import Self
 
 _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 

@@ -33,7 +33,6 @@ from typing import (
 )
 
 from pymongo import _csot, ssl_support
-from pymongo._asyncio_task import create_task
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import decompress
 from pymongo.errors import ProtocolError, _OperationCancelled
@@ -711,8 +710,8 @@ async def async_receive_message(
         # timeouts on AWS Lambda and other FaaS environments.
         timeout = max(deadline - time.monotonic(), 0)
 
-    cancellation_task = create_task(_poll_cancellation(conn))
-    read_task = create_task(conn.conn.get_conn.read(request_id, max_message_size))
+    cancellation_task = asyncio.create_task(_poll_cancellation(conn))
+    read_task = asyncio.create_task(conn.conn.get_conn.read(request_id, max_message_size))
     tasks = [read_task, cancellation_task]
     try:
         done, pending = await asyncio.wait(

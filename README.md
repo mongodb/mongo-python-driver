@@ -98,7 +98,7 @@ package that is incompatible with PyMongo.
 
 ## Dependencies
 
-PyMongo supports CPython 3.9+ and PyPy3.9+. PyPy support is deprecated and will be removed in a future release.
+PyMongo supports CPython 3.11+ and PyPy3.11+. PyPy support is deprecated and will be removed in a future release.
 
 Required dependencies:
 
