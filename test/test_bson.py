@@ -936,6 +936,14 @@ class TestBSON(unittest.TestCase):
                 decode_all(encode({"x": Binary(b"", UUID_SUBTYPE)}), opts),
                 [{"x": Binary(b"", UUID_SUBTYPE)}],
             )
+        # OLD_UUID_SUBTYPE with STANDARD is also mismatched: decode to
+        # Binary at any payload length, 16 included.
+        for length in (0, 15, 16, 17):
+            doc = {"x": Binary(b"x" * length, OLD_UUID_SUBTYPE)}
+            payload = encode(doc)
+            self.assertTrue(is_valid(payload))
+            self.assertEqual(decode(payload, standard), doc)
+            self.assertEqual(decode_all(payload, standard), [doc])
 
     def test_vector(self):
         """Tests of subtype 9"""
