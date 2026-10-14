@@ -914,10 +914,14 @@ class TestBSON(unittest.TestCase):
             self.assertTrue(is_valid(payload))
         self.assertEqual(decode_all(data), [{"": Binary(b"", UUID_SUBTYPE)}])
 
-        # Conversion to uuid.UUID requested: raise InvalidBSON.
+        # Conversion to uuid.UUID requested: raise InvalidBSON unless the
+        # payload is exactly 16 bytes, overlong included.
         standard = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
-        with self.assertRaisesRegex(InvalidBSON, "16-char"):
-            decode_all(data, standard)
+        for length in (0, 15, 17):
+            payload = encode({"x": Binary(b"x" * length, UUID_SUBTYPE)})
+            self.assertTrue(is_valid(payload))
+            with self.assertRaisesRegex(InvalidBSON, "16-char"):
+                decode_all(payload, standard)
         subtype3_payload = encode({"x": Binary(b"", OLD_UUID_SUBTYPE)})
         for rep in (
             UuidRepresentation.PYTHON_LEGACY,
