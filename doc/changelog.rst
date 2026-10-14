@@ -6,11 +6,12 @@ Changes in Version 4.19.0 (2026/XX/XX)
 
 PyMongo 4.19 brings a number of changes including:
 
-.. warning:: PyMongo 4.19 drops support for Python 3.9 and 3.10 and PyPy 3.9
-  and 3.10: Python 3.11+ or PyPy 3.11+ is now required.
+.. warning:: PyMongo 4.19 drops support for Python 3.9 and 3.10 and removes
+  PyPy support: Python 3.11+ is now required.
 
 - Added support for Python 3.15.
-- Dropped support for Python 3.9 and 3.10 and PyPy 3.9 and 3.10 (PYTHON-6138).
+- Dropped support for Python 3.9 and 3.10.
+- Removed support for PyPy.
 - Removed the deprecated ``Algorithm.RANGEPREVIEW`` and
   ``QueryType.RANGEPREVIEW`` members (`PYTHON-6009`_).
 - Added support for running the synchronous and asynchronous clients in
