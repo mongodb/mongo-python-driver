@@ -412,8 +412,6 @@ class TestSSL(AsyncIntegrationTest):
 
     @async_client_context.require_tls
     async def test_simple_ssl(self):
-        if "PyPy" in sys.version:
-            self.skipTest("Test is flaky on PyPy")
         # Expects the server to be running with ssl and with
         # no --sslPEMKeyFile or with --sslWeakCertificateValidation
         await self.assertClientWorks(self.client)
@@ -550,10 +548,6 @@ class TestSSL(AsyncIntegrationTest):
         client = self.simple_client(uri_fmt % (CLIENT_PEM, "true", CA_PEM))
         await self.assertClientWorks(client)
 
-    @unittest.skipIf(
-        "PyPy" in sys.version and not _IS_SYNC,
-        "https://github.com/pypy/pypy/issues/5131 flaky on async PyPy due to SSL EOF",
-    )
     @async_client_context.require_tlsCertificateKeyFile
     @async_client_context.require_server_resolvable
     @async_client_context.require_no_api_version
@@ -681,10 +675,6 @@ class TestSSL(AsyncIntegrationTest):
                     self.simple_client(uri_fmt % (CRL_PEM, CA_PEM), **self.credentials)  # type: ignore[arg-type]
                 )
 
-    @unittest.skipIf(
-        "PyPy" in sys.version and not _IS_SYNC,
-        "https://github.com/pypy/pypy/issues/5131 flaky on async PyPy due to SSL EOF",
-    )
     @async_client_context.require_tlsCertificateKeyFile
     @async_client_context.require_server_resolvable
     @async_client_context.require_no_api_version

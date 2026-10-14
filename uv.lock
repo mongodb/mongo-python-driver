@@ -1487,7 +1487,7 @@ requires-dist = [
 provides-extras = ["aws", "docs", "encryption", "gssapi", "ocsp", "snappy", "test", "zstd"]
 
 [package.metadata.requires-dev]
-coverage = [{ name = "coverage", extras = ["toml"], specifier = ">=5,<=7.15.0" }]
+coverage = [{ name = "coverage", extras = ["toml"], specifier = ">=6.4,<=7.15.0" }]
 dev = []
 gevent = [{ name = "gevent", specifier = ">=21.12" }]
 lint = [{ name = "ruff", specifier = "==0.15.20" }]

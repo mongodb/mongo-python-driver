@@ -27,7 +27,6 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX",
     "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.11",
@@ -67,7 +66,7 @@ unasync = [
 pip = ["pip>=20.2"]
 gevent = ["gevent>=21.12"]
 coverage = [
-    "coverage[toml]>=5,<=7.15.0"
+    "coverage[toml]>=6.4,<=7.15.0"
 ]
 mockupdb = [
     "mockupdb>=1.8.1"
