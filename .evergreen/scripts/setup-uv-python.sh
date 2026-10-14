@@ -2,8 +2,8 @@
 # Choose the Python that uv uses, and make sure uv can provide it.
 #
 # Input:
-#   UV_PYTHON - a version ("3.11", "3.14t"), an implementation ("pypy3.11"),
-#               or an interpreter path ("/usr/bin/python3.11").
+#   UV_PYTHON - a version ("3.11", "3.14t") or an interpreter path
+#               ("/usr/bin/python3.11").
 #
 # Exports:
 #   UV_PYTHON_SEARCH_PATH - the Python toolchain bin dir for the request, so uv

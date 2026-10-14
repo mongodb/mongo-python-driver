@@ -43,7 +43,7 @@ if HAVE_SSL:
     import ssl
 
 
-# Enable debug output for uncollectable objects. PyPy does not have set_debug.
+# Enable debug output for uncollectable objects.
 if hasattr(gc, "set_debug"):
     gc.set_debug(
         gc.DEBUG_UNCOLLECTABLE | getattr(gc, "DEBUG_OBJECTS", 0) | getattr(gc, "DEBUG_INSTANCES", 0)
