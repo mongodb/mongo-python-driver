@@ -196,8 +196,8 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-macos
     tasks:
-      - name: .test-non-standard !.pypy !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.pypy !.python-3.15t
+      - name: .test-non-standard !.cov !.python-3.15t
+      - name: .test-non-standard-no-cov !.python-3.15t
       - name: .test-string-query-preview
     display_name: Encryption macOS
     run_on:
@@ -208,8 +208,8 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-win64
     tasks:
-      - name: .test-non-standard !.pypy !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.pypy !.python-3.15t
+      - name: .test-non-standard !.cov !.python-3.15t
+      - name: .test-non-standard-no-cov !.python-3.15t
       - name: .test-string-query-preview
     display_name: Encryption Win64
     run_on:
@@ -232,8 +232,8 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-crypt_shared-macos
     tasks:
-      - name: .test-non-standard !.pypy !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.pypy !.python-3.15t
+      - name: .test-non-standard !.cov !.python-3.15t
+      - name: .test-non-standard-no-cov !.python-3.15t
       - name: .test-string-query-preview
     display_name: Encryption crypt_shared macOS
     run_on:
@@ -245,8 +245,8 @@ buildvariants:
     tags: [encryption_tag]
   - name: encryption-crypt_shared-win64
     tasks:
-      - name: .test-non-standard !.pypy !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.pypy !.python-3.15t
+      - name: .test-non-standard !.cov !.python-3.15t
+      - name: .test-non-standard-no-cov !.python-3.15t
       - name: .test-string-query-preview
     display_name: Encryption crypt_shared Win64
     run_on:
@@ -301,7 +301,7 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-macos
     tasks:
-      - name: .test-standard-auth !.pypy .auth !.free-threaded
+      - name: .test-standard-auth .auth !.free-threaded
     display_name: Auth Enterprise macOS
     run_on:
       - macos-14
@@ -310,7 +310,7 @@ buildvariants:
       AUTH: auth
   - name: auth-enterprise-win64
     tasks:
-      - name: .test-standard-auth !.pypy .auth !.free-threaded
+      - name: .test-standard-auth .auth !.free-threaded
     display_name: Auth Enterprise Win64
     run_on:
       - windows-2022-latest-small
@@ -490,8 +490,8 @@ buildvariants:
       SUB_TEST_NAME: pyopenssl
   - name: pyopenssl-macos
     tasks:
-      - name: .test-standard !.pypy !.python-3.15t .sync
-      - name: .test-standard !.pypy !.python-3.15t .async .replica_set-noauth-ssl
+      - name: .test-standard !.python-3.15t .sync
+      - name: .test-standard !.python-3.15t .async .replica_set-noauth-ssl
     display_name: PyOpenSSL macOS
     run_on:
       - macos-14
@@ -500,8 +500,8 @@ buildvariants:
       SUB_TEST_NAME: pyopenssl
   - name: pyopenssl-win64
     tasks:
-      - name: .test-standard !.pypy !.python-3.15t .sync
-      - name: .test-standard !.pypy !.python-3.15t .async .replica_set-noauth-ssl
+      - name: .test-standard !.python-3.15t .sync
+      - name: .test-standard !.python-3.15t .async .replica_set-noauth-ssl
     display_name: PyOpenSSL Win64
     run_on:
       - windows-2022-latest-small
@@ -651,34 +651,34 @@ buildvariants:
   # Standard nonlinux tests
   - name: test-macos
     tasks:
-      - name: .test-standard !.pypy
+      - name: .test-standard
     display_name: "* Test macOS"
     run_on:
       - macos-14
     tags: [standard-non-linux]
   - name: test-macos-arm64
     tasks:
-      - name: .test-standard !.pypy .server-6.0
-      - name: .test-standard !.pypy .server-7.0
-      - name: .test-standard !.pypy .server-8.0
-      - name: .test-standard !.pypy .server-9.0
-      - name: .test-standard !.pypy .server-rapid
-      - name: .test-standard !.pypy .server-latest
+      - name: .test-standard .server-6.0
+      - name: .test-standard .server-7.0
+      - name: .test-standard .server-8.0
+      - name: .test-standard .server-9.0
+      - name: .test-standard .server-rapid
+      - name: .test-standard .server-latest
     display_name: "* Test macOS Arm64"
     run_on:
       - macos-14-arm64
     tags: [standard-non-linux]
   - name: test-win64
     tasks:
-      - name: .test-standard !.pypy
-      - name: .test-no-orchestration !.pypy
+      - name: .test-standard
+      - name: .test-no-orchestration
     display_name: "* Test Win64"
     run_on:
       - windows-2022-latest-small
     tags: [standard-non-linux]
   - name: test-win32
     tasks:
-      - name: .test-standard !.pypy !.free-threaded
+      - name: .test-standard !.free-threaded
     display_name: "* Test Win32"
     run_on:
       - windows-64-vsMulti-small

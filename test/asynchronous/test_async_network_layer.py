@@ -317,7 +317,7 @@ class TestAsyncBlockingSocketCall(AsyncUnitTest):
 class _FakeSocket:
     """Feeds a byte buffer, simulating a socket.
 
-    On Windows and PyPy, receive_data() calls wait_for_read() before
+    On Windows, receive_data() calls wait_for_read() before
     recv_into(), which reaches through conn.conn.sock, so this also has to
     look like a socket to that code path.
     """
