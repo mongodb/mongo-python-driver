@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 4.20.0 (2026/XX/XX)
+--------------------------------------
+
+Bug fixes
+.........
+
+- Fixed a disagreement between the C extension and pure-Python BSON decoders
+  for binary elements with UUID subtypes (3 and 4) whose payload is not 16
+  bytes. Both now decode them to :class:`~bson.binary.Binary` under the
+  default ``UNSPECIFIED`` UUID representation, and raise
+  :class:`~bson.errors.InvalidBSON` when UUID conversion is requested
+  (`PYTHON-6172`_).
+
+.. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
+
 Changes in Version 4.19.0 (2026/XX/XX)
 --------------------------------------
 
@@ -72,18 +87,11 @@ Bug fixes
 - Fixed a bug where the pure-Python ``decode_all()`` accepted buffers ending
   in a partial document instead of raising ``InvalidBSON``, now matching the
   C extension (`PYTHON-6163`_).
-- Fixed a disagreement between the C extension and pure-Python BSON decoders
-  for binary elements with UUID subtypes (3 and 4) whose payload is not 16
-  bytes. Both now decode them to :class:`~bson.binary.Binary` under the
-  default ``UNSPECIFIED`` UUID representation, and raise
-  :class:`~bson.errors.InvalidBSON` when UUID conversion is requested
-  (`PYTHON-6172`_).
 
 .. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
 .. _PYTHON-6040: https://jira.mongodb.org/browse/PYTHON-6040
 .. _PYTHON-6111: https://jira.mongodb.org/browse/PYTHON-6111
 .. _PYTHON-6163: https://jira.mongodb.org/browse/PYTHON-6163
-.. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
 
 Changes in Version 4.18.2 (2026/09/24)
 --------------------------------------
