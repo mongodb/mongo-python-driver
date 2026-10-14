@@ -226,7 +226,8 @@ class TestAutoEncryptionOpts(PyMongoTestCase):
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
 
 
-# KMS connect callback tests live in test_kms_connect.py.
+# KMS connect callback unit tests live in test_kms_connect.py. The prose
+# tests are in test_kms_connect_prose.py.
 
 
 class TestClientOptions(PyMongoTestCase):
@@ -1999,7 +2000,8 @@ class TestKmsTLSProse(EncryptionIntegrationTest):
             self.client_encrypted.create_data_key("aws", master_key=key)
 
 
-# KMS connect callback tests live in test_kms_connect.py.
+# KMS connect callback unit tests live in test_kms_connect.py. The prose
+# tests are in test_kms_connect_prose.py.
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#kms-tls-options-tests

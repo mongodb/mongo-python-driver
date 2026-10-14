@@ -15,7 +15,6 @@ from generate_config_utils import (
     HOSTS,
     MIN_MAX_PYTHON,
     OTHER_HOSTS,
-    PYPYS,
     SYNCS,
     TOPOLOGIES,
     create_variant,
@@ -104,20 +103,18 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
 
     # Test a subset on each of the other platforms.
     for host_name in ("macos", "macos-arm64", "win64", "win32"):
-        tasks = [".test-standard !.pypy"]
+        tasks = [".test-standard"]
         # MacOS arm64 only works on server versions 6.0+
         if host_name == "macos-arm64":
-            tasks = [
-                f".test-standard !.pypy .server-{version}" for version in get_versions_from("6.0")
-            ]
+            tasks = [f".test-standard .server-{version}" for version in get_versions_from("6.0")]
         if host_name == "win64":
-            tasks.append(".test-no-orchestration !.pypy")
+            tasks.append(".test-no-orchestration")
         host = HOSTS[host_name]
         tags = ["standard-non-linux"]
         expansions = dict()
         if host_name == "win32":
             expansions["IS_WIN32"] = "1"
-            tasks = [".test-standard !.pypy !.free-threaded"]
+            tasks = [".test-standard !.free-threaded"]
         display_name = get_variant_name(base_display_name, host)
         variant = create_variant(tasks, display_name, host=host, tags=tags, expansions=expansions)
         variants.append(variant)
@@ -146,13 +143,13 @@ def create_encryption_variants() -> list[BuildVariant]:
         display_name = get_variant_name(encryption, host, **expansions)
         tasks = [".test-non-standard !.python-3.15t", ".test-string-query-preview"]
         if host != "rhel8":
-            # Exclude PyPy (not tested with encryption on macOS/win64) and coverage tasks
-            # (encryption suites exceed the 60-min timeout with coverage overhead on macOS/win64).
+            # Exclude coverage tasks (encryption suites exceed the 60-min timeout with
+            # coverage overhead on macOS/win64).
             # Also include the non-coverage companion tasks (test-non-standard-no-cov) which
             # carry the "latest" server tasks without COVERAGE=1.
             tasks = [
-                ".test-non-standard !.pypy !.cov !.python-3.15t",
-                ".test-non-standard-no-cov !.pypy !.python-3.15t",
+                ".test-non-standard !.cov !.python-3.15t",
+                ".test-non-standard-no-cov !.python-3.15t",
                 ".test-string-query-preview",
             ]
         variant = create_variant(
@@ -275,10 +272,10 @@ def create_enterprise_auth_variants():
         tasks = [".test-standard-auth .auth !.free-threaded"]
         # https://jira.mongodb.org/browse/PYTHON-5586
         if host == "macos":
-            tasks = [".test-standard-auth !.pypy .auth !.free-threaded"]
+            tasks = [".test-standard-auth .auth !.free-threaded"]
         if host == "win64":
             # https://jira.mongodb.org/browse/PYTHON-5704
-            tasks = [".test-standard-auth !.pypy .auth !.free-threaded"]
+            tasks = [".test-standard-auth .auth !.free-threaded"]
         variant = create_variant(tasks, display_name, host=host, expansions=expansions)
         variants.append(variant)
     return variants
@@ -292,11 +289,7 @@ def create_pyopenssl_variants():
 
     for host in ["rhel8", "macos", "win64"]:
         display_name = get_variant_name(base_name, host)
-        base_task = (
-            ".test-standard !.python-3.15t"
-            if host == "rhel8"
-            else ".test-standard !.pypy !.python-3.15t"
-        )
+        base_task = ".test-standard !.python-3.15t"
         # We only need to run a subset on async.
         tasks = [f"{base_task} .sync", f"{base_task} .async .replica_set-noauth-ssl"]
         variants.append(
@@ -728,9 +721,6 @@ def create_test_non_standard_tasks():
     for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
         pr = version == "latest" and topology == "sharded_cluster"
         task_combos.add((version, topology, python, pr))
-    # For each PyPy and topology, rotate through the MongoDB versions.
-    for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
-        task_combos.add((version, topology, python, False))
     for version, topology, python, pr in sorted(task_combos):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
@@ -742,8 +732,6 @@ def create_test_non_standard_tasks():
         ]
         if "t" in python:
             tags.append("free-threaded")
-        if python in PYPYS:
-            tags.append("pypy")
         if pr:
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
@@ -819,11 +807,6 @@ def create_test_standard_auth_tasks():
     ):
         pr = version == "latest"
         task_combos.add((version, topology, python, pr))
-    # Rotate through each PyPy and MongoDB versions.
-    for (python, topology), version in zip_cycle(
-        list(product(PYPYS, ["sharded_cluster"])), ALL_VERSIONS
-    ):
-        task_combos.add((version, topology, python, False))
     for version, topology, python, pr in sorted(task_combos):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
@@ -835,8 +818,6 @@ def create_test_standard_auth_tasks():
         ]
         if "t" in python:
             tags.append("free-threaded")
-        if python in PYPYS:
-            tags.append("pypy")
         if pr:
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
@@ -859,9 +840,9 @@ def create_standard_tasks():
     task_combos = set()
     # For each python and topology and sync/async, rotate through the the versions.
     for (python, topology, sync), version in zip_cycle(
-        list(product(CPYTHONS + PYPYS, TOPOLOGIES, SYNCS)), ALL_VERSIONS
+        list(product(CPYTHONS, TOPOLOGIES, SYNCS)), ALL_VERSIONS
     ):
-        pr = version == "latest" and python not in PYPYS
+        pr = version == "latest"
         task_combos.add((version, topology, python, sync, pr))
 
     for version, topology, python, sync, pr in sorted(task_combos):
@@ -875,8 +856,6 @@ def create_standard_tasks():
         ]
         if "t" in python:
             tags.append("free-threaded")
-        if python in PYPYS:
-            tags.append("pypy")
         if pr:
             tags.append("pr")
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
@@ -896,7 +875,7 @@ def create_standard_tasks():
 
 def create_no_orchestration_tasks():
     tasks = []
-    for python in [*MIN_MAX_PYTHON, PYPYS[-1]]:
+    for python in MIN_MAX_PYTHON:
         tags = [
             "test-no-orchestration",
             f"python-{python}",

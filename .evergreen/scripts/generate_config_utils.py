@@ -23,9 +23,8 @@ from shrub.v3.shrub_service import ShrubService
 
 ALL_VERSIONS = ["4.4", "5.0", "6.0", "7.0", "8.0", "9.0", "rapid", "latest"]
 CPYTHONS = ["3.11", "3.12", "3.13", "3.14t", "3.14", "3.15t", "3.15"]
-PYPYS = ["pypy3.11"]
 MIN_SUPPORT_VERSIONS = ["3.11"]
-ALL_PYTHONS = CPYTHONS + PYPYS
+ALL_PYTHONS = CPYTHONS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 BATCHTIME_WEEK = 10080
 BATCHTIME_DAY = 1440
@@ -179,10 +178,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
     for key, value in kwargs.items():
         name = value
         if key.lower() in ["python", "uv_python"]:
-            if not value.startswith("pypy"):
-                name = f"Python{value}"
-            else:
-                name = f"PyPy{value.replace('pypy', '')}"
+            name = f"Python{value}"
         elif key.lower() in DISPLAY_LOOKUP and value in DISPLAY_LOOKUP[key.lower()]:
             name = DISPLAY_LOOKUP[key.lower()][value]
         else:
