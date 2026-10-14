@@ -31,7 +31,6 @@ from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
 from pymongo.synchronous.pool import Connection
 from test.helpers import ConcurrentRunner
-from test.utils import flaky
 from test.utils_shared import delay
 
 sys.path[0:0] = [""]
@@ -409,7 +408,6 @@ class TestPoolManagement(IntegrationTest):
     @client_context.require_failCommand_appName
     @client_context.require_test_commands
     @client_context.require_async
-    @flaky(reason="PyPy is slow")
     def test_connection_close_does_not_block_other_operations(self):
         listener = CMAPHeartbeatListener()
         client = self.single_client(

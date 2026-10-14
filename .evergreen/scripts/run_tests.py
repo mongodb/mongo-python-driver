@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 import sys
@@ -25,7 +26,7 @@ SSL = os.environ.get("SSL", "nossl")
 UV_ARGS = os.environ.get("UV_ARGS", "")
 TEST_PERF = os.environ.get("TEST_PERF")
 GREEN_FRAMEWORK = os.environ.get("GREEN_FRAMEWORK")
-TEST_ARGS = os.environ.get("TEST_ARGS", "").split()
+TEST_ARGS = shlex.split(os.environ.get("TEST_ARGS", ""))
 TEST_NAME = os.environ.get("TEST_NAME")
 SUB_TEST_NAME = os.environ.get("SUB_TEST_NAME")
 

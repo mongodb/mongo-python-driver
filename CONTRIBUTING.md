@@ -16,8 +16,7 @@ be of interest or that has already been addressed.
 
 ## Supported Interpreters
 
-PyMongo supports CPython 3.11+ and PyPy 3.11+. Language features not
-supported by all interpreters can not be used.
+PyMongo supports CPython 3.11+.
 
 ## Style Guide
 
@@ -464,10 +463,10 @@ To run any of the test suites with minimum supported dependencies, pass `--test-
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
 - Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
 - There are some considerations about the Python version used in the test:
-    - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10`, `UV_PYTHON=3.14t`, or
-`UV_PYTHON=pypy3.11`).  Tasks are host-agnostic, so the interpreter lookup happens on the host: for a plain
+    - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10` or `UV_PYTHON=3.14t`).
+Tasks are host-agnostic, so the interpreter lookup happens on the host: for a plain
 CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at it, and for anything else
-(including PyPy, or a version the toolchain lacks) uv downloads it.
+(a version the toolchain lacks) uv downloads it.
     - If a specific Python binary is needed (for example on the FIPS host), set `UV_PYTHON=/path/to/python`.
     - The default if `UV_PYTHON` is not set is CPython 3.10.  This is deterministic across host types, so a task
       that does not pin a version always gets the same Python (with the build headers (`Python.h`) needed to build
@@ -481,13 +480,21 @@ CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at
       (and with it the required-version check) at the submodule boundary.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
-- PR tasks are pinned to the Python boundaries (the min Python with `TEST_MIN_DEPS=1`, the max
-  Python with `COVERAGE=1`, and one free-threaded Python) against the latest server, instead of
-  being assigned by rotation; the pins live in the `SERVER_VERSION_PR_PINS` and `AWS_PR_PINS`
-  tables (or the pins in the task creators). Coverage is collected by the pinned max-Python PR
-  tasks (plus the numpy and ocsp tasks), so every topology and MongoDB version has at least one
-  coverage job and every coverage task carries the `cov` tag. Regenerate the config with your
+- PR tasks are pinned to `DEFAULT_PR_PINS` instead of being assigned by rotation, and all of
+  them collect coverage: the min Python with `TEST_MIN_DEPS=1` runs on the oldest supported
+  server (`MIN_VERSION`), the max Python runs async on the middle server (`MIDDLE_VERSION`),
+  and the free-threaded Python runs on the newest (`MAX_VERSION`). Each family's creator maps
+  the pins onto its own dimensions (server-version runs every server version and both sync
+  modes; the sharded families run sharded clusters and let the variant pick the sync mode; the
+  AWS family spreads the pins across its auth test types). Regenerate the config with your
   change so the PR-build effect is visible in review.
+- Both rules are enforced when the config is generated: `generate_config.py` runs
+  `validate_pr_and_coverage()` before writing, so the `generate-config` pre-commit hook fails
+  if a task or variant breaks them. Every task that collects coverage must carry the `cov`
+  tag, and every family (`COVERAGE_FAMILIES`) and distro (`COVERAGE_DISTROS`) must have at
+  least one coverage job. Update `PR_FAMILIES`, `COVERAGE_FAMILIES`, and `COVERAGE_DISTROS`
+  when adding new task families or distros, and run
+  `pytest .evergreen/scripts/test_generate_config.py -m ""` to check the rules.
 
 ## Handling flaky tests
 

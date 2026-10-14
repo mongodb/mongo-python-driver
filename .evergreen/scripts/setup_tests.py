@@ -43,8 +43,8 @@ EXTRAS_MAP = {
     "auth_aws": "aws",
     "auth_oidc": "aws",
     "encryption": "encryption",
-    "sync_default": "encryption",
-    "async_default": "encryption",
+    "encryption_async": "encryption",
+    "encryption_sync": "encryption",
     "enterprise_auth": "gssapi",
     "kms": "encryption",
     "ocsp": "ocsp",
@@ -388,7 +388,7 @@ def handle_test_env() -> None:
     elif compressors == "zstd":
         UV_ARGS.append("--extra zstd")
 
-    if test_name in ["encryption", "sync_default", "async_default", "kms"]:
+    if test_name in ["encryption", "encryption_sync", "encryption_async", "kms"]:
         # The "String" algorithm and the GA prefix/suffix/substring query types
         # need libmongocrypt 1.19.0+, which is only exercised against MongoDB
         # 9.0+. Servers before 9.0 test the preview query types instead, which
@@ -429,7 +429,7 @@ def handle_test_env() -> None:
             write_env("PYMONGOCRYPT_LIB", PYMONGOCRYPT_LIB.as_posix())
         # PATH is updated by configure-env.sh for access to mongocryptd.
 
-    if test_name in ["encryption", "sync_default", "async_default"]:
+    if test_name in ["encryption", "encryption_sync", "encryption_async"]:
         check_drivers_tools()
         csfle_dir = Path(f"{DRIVERS_TOOLS}/.evergreen/csfle")
         # Opt in to corporate Azure credentials (DRIVERS-3392)
@@ -530,8 +530,7 @@ def handle_test_env() -> None:
             TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
 
     # Add coverage if requested.
-    # Only cover CPython. PyPy reports suspiciously low coverage.
-    if opts.cov and platform.python_implementation() == "CPython":
+    if opts.cov:
         # Keep in sync with combine-coverage.sh.
         # coverage >=5 is needed for relative_files=true.
         UV_ARGS.append("--group coverage")
@@ -548,7 +547,8 @@ def handle_test_env() -> None:
         TEST_ARGS = f"-v --durations=5 {TEST_ARGS}"
         TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
-            TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
+            # Quote the expression; run_tests.py splits TEST_ARGS with shlex.
+            TEST_ARGS = f"-m '{TEST_SUITE}' {TEST_ARGS}"
 
     write_env("TEST_ARGS", TEST_ARGS)
     write_env("UV_ARGS", " ".join(UV_ARGS))

@@ -166,8 +166,16 @@ class Facade:
 ASYNC = Facade(is_async=True)
 SYNC = Facade(is_async=False)
 
-both_apis = pytest.mark.parametrize("api", [ASYNC, SYNC], ids=["async", "sync"])
-async_only = pytest.mark.parametrize("api", [ASYNC], ids=["async"])
+both_apis = pytest.mark.parametrize(
+    "api",
+    [
+        pytest.param(ASYNC, id="async", marks=pytest.mark.default_async),
+        pytest.param(SYNC, id="sync", marks=pytest.mark.default),
+    ],
+)
+async_only = pytest.mark.parametrize(
+    "api", [pytest.param(ASYNC, id="async", marks=pytest.mark.default_async)]
+)
 
 
 def _pool_options(ssl_context=None):

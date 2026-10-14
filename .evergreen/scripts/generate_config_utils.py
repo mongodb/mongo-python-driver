@@ -22,10 +22,15 @@ from shrub.v3.shrub_service import ShrubService
 ##############
 
 ALL_VERSIONS = ["4.4", "5.0", "6.0", "7.0", "8.0", "9.0", "rapid", "latest"]
+# The stable server versions; "rapid" and "latest" move with daily builds,
+# so the PR tasks are pinned to these boundaries instead.
+STABLE_VERSIONS = [v for v in ALL_VERSIONS if v not in ("rapid", "latest")]
+MIN_VERSION = STABLE_VERSIONS[0]
+MIDDLE_VERSION = STABLE_VERSIONS[len(STABLE_VERSIONS) // 2]
+MAX_VERSION = STABLE_VERSIONS[-1]
 CPYTHONS = ["3.11", "3.12", "3.13", "3.14t", "3.14", "3.15t", "3.15"]
-PYPYS = ["pypy3.11"]
 MIN_SUPPORT_VERSIONS = ["3.11"]
-ALL_PYTHONS = CPYTHONS + PYPYS
+ALL_PYTHONS = CPYTHONS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 # The Python boundaries that PR tasks are pinned to: adding or removing a
 # CPython re-binds the same pins; it never reshuffles them.
@@ -33,6 +38,56 @@ MIN_PYTHON = CPYTHONS[0]
 MAX_PYTHON = CPYTHONS[-1]
 FREE_THREADED_PYTHON = [p for p in CPYTHONS if "t" in p][-1]
 PR_PYTHONS = (MIN_PYTHON, MAX_PYTHON, FREE_THREADED_PYTHON)
+
+
+# A task combo; the rotation produces most of them and DEFAULT_PR_PINS pins
+# the PR instances. Each family's creator maps the pins onto its own
+# dimensions and ignores the rest.
+@dataclass
+class DefaultTask:
+    auth: str
+    ssl: str
+    topology: str
+    python: str
+    version: str
+    sync: str
+    expansions: dict
+
+
+# The PR task pins (PYTHON-6112), shared by every rotation family: the min
+# Python runs min-deps on the oldest server, the max Python runs async on
+# the middle server, and the free-threaded Python runs on the newest. All
+# three collect coverage.
+DEFAULT_PR_PINS = [
+    DefaultTask(
+        auth="noauth",
+        ssl="nossl",
+        topology="standalone",
+        python=MIN_PYTHON,
+        version=MIN_VERSION,
+        sync="sync",
+        expansions={"COVERAGE": "1", "TEST_MIN_DEPS": "1"},
+    ),
+    DefaultTask(
+        auth="noauth",
+        ssl="ssl",
+        topology="replica_set",
+        python=MAX_PYTHON,
+        version=MIDDLE_VERSION,
+        sync="async",
+        expansions={"COVERAGE": "1"},
+    ),
+    DefaultTask(
+        auth="auth",
+        ssl="ssl",
+        topology="sharded_cluster",
+        python=FREE_THREADED_PYTHON,
+        version=MAX_VERSION,
+        sync="sync",
+        expansions={"COVERAGE": "1"},
+    ),
+]
+
 BATCHTIME_WEEK = 10080
 BATCHTIME_DAY = 1440
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
@@ -185,10 +240,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
     for key, value in kwargs.items():
         name = value
         if key.lower() in ["python", "uv_python"]:
-            if not value.startswith("pypy"):
-                name = f"Python{value}"
-            else:
-                name = f"PyPy{value.replace('pypy', '')}"
+            name = f"Python{value}"
         elif key.lower() in DISPLAY_LOOKUP and value in DISPLAY_LOOKUP[key.lower()]:
             name = DISPLAY_LOOKUP[key.lower()][value]
         else:
