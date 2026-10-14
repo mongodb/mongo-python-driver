@@ -95,7 +95,7 @@ def _is_stale_server_description(current_sd: ServerDescription, new_sd: ServerDe
 
 
 class _AgnosticTopologyBase(Generic[_PoolT, _ServerT]):
-    """Monitor a topology of one or more servers."""
+    """Shared base for the sync and async classes."""
 
     def __init__(self, topology_settings: _BaseTopologySettings[Any, Any]) -> None:
         self._topology_id = topology_settings._topology_id
