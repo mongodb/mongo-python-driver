@@ -191,7 +191,7 @@ buildvariants:
       - rhel8.10-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption_sync
+      TEST_NAME: sync_default
     tags: [encryption_tag]
   - name: encryption-macos
     tasks:
@@ -203,7 +203,7 @@ buildvariants:
       - macos-14
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption_sync
+      TEST_NAME: sync_default
     tags: [encryption_tag]
   - name: encryption-win64
     tasks:
@@ -215,7 +215,7 @@ buildvariants:
       - windows-2022-latest-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption_sync
+      TEST_NAME: sync_default
     tags: [encryption_tag]
   - name: encryption-crypt_shared-rhel8
     tasks:
@@ -226,7 +226,7 @@ buildvariants:
       - rhel8.10-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption_sync
+      TEST_NAME: sync_default
       TEST_CRYPT_SHARED: "true"
     tags: [encryption_tag]
   - name: encryption-crypt_shared-macos
@@ -239,7 +239,7 @@ buildvariants:
       - macos-14
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption_sync
+      TEST_NAME: sync_default
       TEST_CRYPT_SHARED: "true"
     tags: [encryption_tag]
   - name: encryption-crypt_shared-win64
@@ -252,7 +252,7 @@ buildvariants:
       - windows-2022-latest-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption_sync
+      TEST_NAME: sync_default
       TEST_CRYPT_SHARED: "true"
     tags: [encryption_tag]
   - name: encryption-async-rhel8
@@ -263,7 +263,7 @@ buildvariants:
       - rhel8.10-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption_async
+      TEST_NAME: async_default
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8
     tasks:
@@ -273,7 +273,7 @@ buildvariants:
       - rhel8.10-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption_sync
+      TEST_NAME: sync_default
       SUB_TEST_NAME: pyopenssl
     tags: [encryption_tag]
   - name: encryption-ubuntu-22
@@ -284,7 +284,7 @@ buildvariants:
       - ubuntu2204-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption_sync
+      TEST_NAME: sync_default
     tags: [encryption_tag, pr]
   - name: encryption-pyopenssl-ubuntu-22
     tasks:
@@ -294,7 +294,7 @@ buildvariants:
       - ubuntu2204-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption_sync
+      TEST_NAME: sync_default
       SUB_TEST_NAME: pyopenssl
     tags: [encryption_tag, pr]
 

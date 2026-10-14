@@ -12,15 +12,16 @@ from generate_config_utils import (
     C_EXTS,
     CPYTHONS,
     DEFAULT_HOST,
-    DEFAULT_PR_PINS,
+    FREE_THREADED_PYTHON,
     HOSTS,
-    MAX_VERSION,
+    MAX_PYTHON,
     MIN_MAX_PYTHON,
+    MIN_PYTHON,
     OTHER_HOSTS,
+    PR_PYTHONS,
     PYPYS,
     SYNCS,
     TOPOLOGIES,
-    DefaultTask,
     create_variant,
     get_assume_role,
     get_s3_put,
@@ -135,7 +136,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     batchtime = BATCHTIME_DAY
 
     def get_encryption_expansions(encryption):
-        expansions = dict(TEST_NAME="encryption_sync")
+        expansions = dict(TEST_NAME="sync_default")
         if "crypt_shared" in encryption:
             expansions["TEST_CRYPT_SHARED"] = "true"
         if "PyOpenSSL" in encryption:
@@ -169,10 +170,10 @@ def create_encryption_variants() -> list[BuildVariant]:
         )
         variants.append(variant)
 
-    # The async encryption runs, split from the sync runs by the
-    # default_async marker.
+    # The async encryption tests run on their own, split from the sync runs
+    # by the default_async marker.
     host = DEFAULT_HOST
-    expansions = dict(TEST_NAME="encryption_async")
+    expansions = dict(TEST_NAME="async_default")
     display_name = get_variant_name("Encryption Async", host)
     variants.append(
         create_variant(
@@ -671,42 +672,46 @@ def create_aws_lambda_variants():
 ##############
 
 
+# PR task pinning (PYTHON-6112): the min Python runs min-deps on sharded
+# clusters, the max Python collects coverage on replica sets, and the
+# free-threaded Python runs standalone. Each pin applies to both the sync
+# and async variants of the combo.
+SERVER_VERSION_PR_PINS = {
+    ("sharded_cluster", "auth", "ssl"): MIN_PYTHON,
+    ("replica_set", "noauth", "ssl"): MAX_PYTHON,
+    ("standalone", "noauth", "nossl"): FREE_THREADED_PYTHON,
+}
+
+
 def create_server_version_tasks():
     tasks = []
-    # The rotation: every python on sharded-auth-ssl, plus one rotated python
-    # per other combo. The DEFAULT_PR_PINS (PYTHON-6112) come last so a pin
-    # wins on collisions; a pin's version and sync are ignored: every server
-    # version and both sync modes run in this family.
-    combos = (
-        {
-            ("sharded_cluster", "auth", "ssl", sync, python): (False, {})
-            for python, sync in product(ALL_PYTHONS, SYNCS)
-        }
-        | {
-            (topology, auth, ssl, sync, python): (False, {})
-            for (topology, auth, ssl, sync), python in zip_cycle(
-                list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
-            )
-        }
-        | {
-            (pin.topology, pin.auth, pin.ssl, sync, pin.python): (True, pin.expansions)
-            for pin in DEFAULT_PR_PINS
-            for sync in SYNCS
-        }
-    )
+    task_combos = set()
+    # All combinations of topology, auth, ssl, and sync should be tested.
+    # Combos in SERVER_VERSION_PR_PINS use their pinned Python instead of the rotation.
+    for (topology, auth, ssl, sync), rotated_python in zip_cycle(
+        list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
+    ):
+        python = SERVER_VERSION_PR_PINS.get((topology, auth, ssl), rotated_python)
+        task_combos.add((topology, auth, ssl, sync, python))
+
+    # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
+    for python, sync in product(ALL_PYTHONS, SYNCS):
+        task_combos.add(("sharded_cluster", "auth", "ssl", sync, python))
 
     # Assemble the tasks.
-    for (topology, auth, ssl, sync, python), (pr, pin_expansions) in sorted(combos.items()):
+    for topology, auth, ssl, sync, python in sorted(task_combos):
         combo = f"{topology}-{auth}-{ssl}"
         tags = ["server-version", f"python-{python}", combo, sync]
+        pr = SERVER_VERSION_PR_PINS.get((topology, auth, ssl)) == python
         if pr:
             tags.append("pr")
         if is_free_threaded(python):
             tags.append("free-threaded")
-        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, **pin_expansions)
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
-        if expansions.get("COVERAGE") == "1":
+        if pr and python == MAX_PYTHON:
+            expansions["COVERAGE"] = "1"
             tags.append("cov")
         name = get_task_name(
             "test-server-version",
@@ -745,30 +750,21 @@ def create_no_toolchain_tasks():
 def create_test_non_standard_tasks():
     """For variants that set a TEST_NAME."""
     tasks = []
-    # The rotation: one rotated python per (version, topology), plus the PyPy
-    # rotation. The DEFAULT_PR_PINS (PYTHON-6112) come last so a pin wins on
-    # collisions; a pin's auth/ssl/topology/sync are ignored: this family
-    # only runs sharded-auth-ssl, and the variant decides the sync mode.
-    combos = (
-        {
-            (version, topology, python): (False, {})
-            for (version, topology), python in zip_cycle(
-                list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS
-            )
-        }
-        | {
-            (version, topology, python): (False, {})
-            for (python, topology), version in zip_cycle(
-                list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS
-            )
-        }
-        | {
-            (pin.version, "sharded_cluster", pin.python): (True, pin.expansions)
-            for pin in DEFAULT_PR_PINS
-        }
-    )
-
-    for (version, topology, python), (pr, pin_expansions) in sorted(combos.items()):
+    task_combos = set()
+    # For each version and topology, rotate through the CPythons.
+    # The PR tasks are pinned to the boundary Pythons on the latest sharded
+    # cluster, so adding or removing a CPython re-binds the same pins instead
+    # of reshuffling the mix.
+    for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
+        if (version, topology) == ("latest", "sharded_cluster"):
+            for boundary in PR_PYTHONS:
+                task_combos.add((version, topology, boundary, True))
+        else:
+            task_combos.add((version, topology, python, False))
+    # For each PyPy and topology, rotate through the MongoDB versions.
+    for (python, topology), version in zip_cycle(list(product(PYPYS, TOPOLOGIES)), ALL_VERSIONS):
+        task_combos.add((version, topology, python, False))
+    for version, topology, python, pr in sorted(task_combos):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-non-standard",
@@ -783,10 +779,11 @@ def create_test_non_standard_tasks():
             tags.append("pypy")
         if pr:
             tags.append("pr")
-        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version, **pin_expansions)
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
-        if expansions.get("COVERAGE") == "1":
+        elif pr and python == MAX_PYTHON:
+            expansions["COVERAGE"] = "1"
             tags.append("cov")
         name = get_task_name("test-non-standard", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
@@ -848,28 +845,23 @@ def create_string_query_preview_tasks():
 def create_test_standard_auth_tasks():
     """We only use auth on sharded clusters"""
     tasks = []
-    # The rotation: one rotated python per version. The DEFAULT_PR_PINS
-    # (PYTHON-6112) come last so a pin wins on collisions.
-    combos = (
-        {
-            (version, topology, python): (False, {})
-            for (version, topology), python in zip_cycle(
-                list(product(ALL_VERSIONS, ["sharded_cluster"])), CPYTHONS
-            )
-        }
-        | {
-            (version, topology, python): (False, {})
-            for (python, topology), version in zip_cycle(
-                list(product(PYPYS, ["sharded_cluster"])), ALL_VERSIONS
-            )
-        }
-        | {
-            (pin.version, "sharded_cluster", pin.python): (True, pin.expansions)
-            for pin in DEFAULT_PR_PINS
-        }
-    )
-
-    for (version, topology, python), (pr, pin_expansions) in sorted(combos.items()):
+    task_combos = set()
+    # Rotate through the CPython and MongoDB versions.
+    # The PR tasks are pinned to the boundary Pythons on the latest sharded cluster.
+    for (version, topology), python in zip_cycle(
+        list(product(ALL_VERSIONS, ["sharded_cluster"])), CPYTHONS
+    ):
+        if version == "latest":
+            for boundary in PR_PYTHONS:
+                task_combos.add((version, topology, boundary, True))
+        else:
+            task_combos.add((version, topology, python, False))
+    # Rotate through each PyPy and MongoDB versions.
+    for (python, topology), version in zip_cycle(
+        list(product(PYPYS, ["sharded_cluster"])), ALL_VERSIONS
+    ):
+        task_combos.add((version, topology, python, False))
+    for version, topology, python, pr in sorted(task_combos):
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-standard-auth",
@@ -884,10 +876,11 @@ def create_test_standard_auth_tasks():
             tags.append("pypy")
         if pr:
             tags.append("pr")
-        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version, **pin_expansions)
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
-        if expansions.get("COVERAGE") == "1":
+        elif pr and python == MAX_PYTHON:
+            expansions["COVERAGE"] = "1"
             tags.append("cov")
         name = get_task_name("test-standard-auth", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
@@ -901,22 +894,25 @@ def create_test_standard_auth_tasks():
 def create_standard_tasks():
     """For variants that do not set a TEST_NAME."""
     tasks = []
-    # The rotation: for each python, topology, and sync/async, one rotated
-    # version. The DEFAULT_PR_PINS (PYTHON-6112) come last so a pin wins on
-    # collisions.
-    combos = {
-        (python, topology, sync): (
-            DefaultTask(*get_standard_auth_ssl(topology), topology, python, version, sync, {}),
-            False,
-        )
-        for (python, topology, sync), version in zip_cycle(
-            list(product(CPYTHONS + PYPYS, TOPOLOGIES, SYNCS)), ALL_VERSIONS
-        )
-    } | {(pin.python, pin.topology, pin.sync): (pin, True) for pin in DEFAULT_PR_PINS}
+    task_combos = set()
+    # For each python and topology and sync/async, rotate through the the versions.
+    # The PR tasks are pinned to the boundary Pythons against the latest server,
+    # so adding or removing a CPython re-binds the same pins instead of
+    # reshuffling the mix.
+    pins = {
+        (MIN_PYTHON, "standalone", "sync"),
+        (MAX_PYTHON, "standalone", "async"),
+        (FREE_THREADED_PYTHON, "sharded_cluster", "sync"),
+    }
+    for (python, topology, sync), rotated_version in zip_cycle(
+        list(product(CPYTHONS + PYPYS, TOPOLOGIES, SYNCS)), ALL_VERSIONS
+    ):
+        pr = (python, topology, sync) in pins
+        version = "latest" if pr else rotated_version
+        task_combos.add((version, topology, python, sync, pr))
 
-    for (python, topology, sync), (task, pr) in sorted(combos.items()):
-        auth, ssl = task.auth, task.ssl
-        version = task.version
+    for version, topology, python, sync, pr in sorted(task_combos):
+        auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-standard",
             f"server-{version}",
@@ -930,10 +926,11 @@ def create_standard_tasks():
             tags.append("pypy")
         if pr:
             tags.append("pr")
-        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version, **task.expansions)
+        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
-        if expansions.get("COVERAGE") == "1":
+        elif pr and python == MAX_PYTHON:
+            expansions["COVERAGE"] = "1"
             tags.append("cov")
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
@@ -984,6 +981,15 @@ def create_kms_tasks():
     return tasks
 
 
+# The PR tasks are pinned to the boundary Pythons on the latest server,
+# spread across the auth test types.
+AWS_PR_PINS = {
+    MIN_PYTHON: ("latest", "regular"),
+    MAX_PYTHON: ("latest", "session-creds"),
+    FREE_THREADED_PYTHON: ("latest", "assume-role"),
+}
+
+
 def create_aws_tasks():
     tasks = []
     aws_test_types = [
@@ -995,35 +1001,27 @@ def create_aws_tasks():
         "web-identity",
     ]
     assume_func = FunctionCall(func="assume ec2 role")
-    # The rotation: one python per (version, test type). The DEFAULT_PR_PINS
-    # (PYTHON-6112) come last so a pin wins on collisions, spread across the
-    # auth test types.
-    combos = {
-        (version, test_type, python): (False, {})
-        for version, test_type, python in zip_cycle(
-            get_versions_from("4.4"), aws_test_types, CPYTHONS
-        )
-    } | {
-        (pin.version, test_type, pin.python): (True, pin.expansions)
-        for pin, test_type in zip(DEFAULT_PR_PINS, ["regular", "session-creds", "assume-role"])
-    }
+    seen = set()
 
-    for (version, test_type, python), (pr, pin_expansions) in sorted(combos.items()):
+    def add_task(version, test_type, python, pr):
+        key = (version, test_type, python)
+        if key in seen:
+            return
+        seen.add(key)
         base_tags = ["auth-aws"]
         server_vars = dict(AUTH_AWS="1", VERSION=version)
         server_func = FunctionCall(func="run server", vars=server_vars)
         tags = [*base_tags, f"auth-aws-{test_type}", f"python-{python}"]
         if is_free_threaded(python):
             tags.append("free-threaded")
-        test_vars = dict(
-            TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, UV_PYTHON=python, **pin_expansions
-        )
+        test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, UV_PYTHON=python)
         if python == MIN_MAX_PYTHON[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
         if pr:
             tags.append("pr")
-        if test_vars.get("COVERAGE") == "1":
-            tags.append("cov")
+            if python == MAX_PYTHON:
+                test_vars["COVERAGE"] = "1"
+                tags.append("cov")
         name = get_task_name(f"test-auth-aws-{version}-{test_type}", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, assume_func, test_func]))
@@ -1045,6 +1043,11 @@ def create_aws_tasks():
             tasks.append(
                 EvgTask(name=name, tags=tags, commands=[server_func, assume_func, test_func])
             )
+
+    for python, (version, test_type) in sorted(AWS_PR_PINS.items()):
+        add_task(version, test_type, python, pr=True)
+    for version, test_type, python in zip_cycle(get_versions_from("4.4"), aws_test_types, CPYTHONS):
+        add_task(version, test_type, python, pr=False)
 
     # Add the ECS task.  This will run on Ubuntu 24 to match the
     # Fargate environment.
@@ -1078,7 +1081,7 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
     file_name = f"{algo}-basic-tls-ocsp-{variant}.json"
 
     for version in get_versions_from("4.4"):
-        if version == MAX_VERSION:
+        if version == "latest":
             python = MIN_MAX_PYTHON[-1]
         else:
             python = MIN_MAX_PYTHON[0]
@@ -1105,7 +1108,7 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
             and algo == "ecdsa"
             and version
             in (
-                MAX_VERSION,
+                "latest",
                 "4.4",
             )
         ):

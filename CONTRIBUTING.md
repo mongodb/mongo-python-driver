@@ -481,13 +481,12 @@ CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at
       (and with it the required-version check) at the submodule boundary.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
-- PR tasks are pinned to `DEFAULT_PR_PINS` instead of being assigned by rotation, and all of
-  them collect coverage: the min Python with `TEST_MIN_DEPS=1` runs on the oldest supported
-  server (`MIN_VERSION`), the max Python runs async on the middle server (`MIDDLE_VERSION`),
-  and the free-threaded Python runs on the newest (`MAX_VERSION`). Each family's creator maps
-  the pins onto its own dimensions (server-version runs every server version and both sync
-  modes; the sharded families run sharded clusters and let the variant pick the sync mode; the
-  AWS family spreads the pins across its auth test types). Regenerate the config with your
+- PR tasks are pinned to the Python boundaries (the min Python with `TEST_MIN_DEPS=1`, the max
+  Python with `COVERAGE=1`, and one free-threaded Python) against the latest server, instead of
+  being assigned by rotation; the pins live in the `SERVER_VERSION_PR_PINS` and `AWS_PR_PINS`
+  tables (or the pins in the task creators). Coverage is collected by the pinned max-Python PR
+  tasks (plus the numpy and ocsp tasks), so every topology and MongoDB version has at least one
+  coverage job and every coverage task carries the `cov` tag. Regenerate the config with your
   change so the PR-build effect is visible in review.
 
 ## Handling flaky tests
