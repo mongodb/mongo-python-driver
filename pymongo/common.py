@@ -511,9 +511,8 @@ def validate_document_class(
 ) -> Union[type[MutableMapping[str, Any]], type[RawBSONDocument]]:
     """Validate the document_class option."""
     # Generic aliases like SON[str, Any] or dict[str, Any] aren't classes, so
-    # resolve to their origin before the subclass check. Whether issubclass()
-    # raises TypeError or just returns False for such aliases is inconsistent
-    # across Python versions, so check the origin proactively instead of
+    # resolve to their origin before the subclass check. issubclass() raises
+    # TypeError for such aliases, so check the origin proactively instead of
     # relying on catching the error.
     check_class = getattr(value, "__origin__", value)
     try:
