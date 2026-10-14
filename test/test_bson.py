@@ -51,7 +51,9 @@ from bson import (
     json_util,
 )
 from bson.binary import (
+    OLD_UUID_SUBTYPE,
     USER_DEFINED_SUBTYPE,
+    UUID_SUBTYPE,
     Binary,
     BinaryVector,
     BinaryVectorDtype,
@@ -897,6 +899,50 @@ class TestBSON(unittest.TestCase):
         self.assertIsInstance(bin, Binary)
         transformed = bin.as_uuid(UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(id, transformed)
+
+    def test_short_uuid_subtype_binary(self):
+        # PYTHON-6172: the C and pure-Python decoders must agree on binary
+        # elements with UUID subtypes (3 and 4) whose payload is not 16
+        # bytes: decode to Binary under the default UNSPECIFIED uuid
+        # representation, and raise only when UUID conversion is requested.
+        regression_file = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            os.pardir,
+            "fuzz",
+            "regression",
+            "PYTHON-6172.bson",
+        )
+        with open(regression_file, "rb") as fp:
+            data = fp.read()
+        self.assertEqual(data, encode({"": Binary(b"", UUID_SUBTYPE)}))
+
+        # Default UNSPECIFIED representation: decode to Binary.
+        for subtype in (OLD_UUID_SUBTYPE, UUID_SUBTYPE):
+            doc = {"x": Binary(b"", subtype)}
+            payload = encode(doc)
+            self.assertEqual(decode(payload), doc)
+            self.assertEqual(decode_all(payload), [doc])
+            self.assertTrue(is_valid(payload))
+        self.assertEqual(decode_all(data), [{"": Binary(b"", UUID_SUBTYPE)}])
+
+        # Conversion to uuid.UUID requested: raise InvalidBSON.
+        standard = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        with self.assertRaisesRegex(InvalidBSON, "16-char"):
+            decode_all(data, standard)
+        subtype3_payload = encode({"x": Binary(b"", OLD_UUID_SUBTYPE)})
+        for rep in (
+            UuidRepresentation.PYTHON_LEGACY,
+            UuidRepresentation.JAVA_LEGACY,
+            UuidRepresentation.CSHARP_LEGACY,
+        ):
+            opts = CodecOptions(uuid_representation=rep)
+            with self.assertRaisesRegex(InvalidBSON, "16-char"):
+                decode_all(subtype3_payload, opts)
+            # Mismatched subtype/representation pairs do not convert.
+            self.assertEqual(
+                decode_all(encode({"x": Binary(b"", UUID_SUBTYPE)}), opts),
+                [{"x": Binary(b"", UUID_SUBTYPE)}],
+            )
 
     def test_vector(self):
         """Tests of subtype 9"""
