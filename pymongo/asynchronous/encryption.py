@@ -600,6 +600,10 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             the driver performs the KMS TLS handshake.
             Must be a coroutine function for the asynchronous API.
             The callback is responsible for honoring ``context.timeout``.
+            When a CSOT timeout is active, the driver stops waiting at the
+            deadline and closes any socket the callback yields later. For an
+            ordinary HTTP proxy, pass
+            :class:`~pymongo.encryption_options.AsyncHTTPProxyKMSConnect`.
             Defaults to ``None``, meaning the driver connects to KMS hosts
             directly.
 
