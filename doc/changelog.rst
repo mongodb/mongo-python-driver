@@ -86,6 +86,14 @@ Bug fixes
 .. _PYTHON-6163: https://jira.mongodb.org/browse/PYTHON-6163
 .. _PYTHON-6009: https://jira.mongodb.org/browse/PYTHON-6009
 
+Issues Resolved
+...............
+
+See the `PyMongo 4.19.0 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.19.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=52147
+
 Changes in Version 4.18.2 (2026/09/24)
 --------------------------------------
 
