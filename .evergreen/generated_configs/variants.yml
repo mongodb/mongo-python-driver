@@ -91,13 +91,12 @@ buildvariants:
     run_on:
       - macos-14
     tags: [pr]
-  - name: auth-aws-ecs-macos
+  - name: auth-aws-ecs-ubuntu-24
     tasks:
       - name: .auth-aws-ecs
-    display_name: Auth AWS ECS macOS
+    display_name: Auth AWS ECS Ubuntu-24
     run_on:
       - ubuntu2404-small
-    tags: [pr]
 
   # Aws lambda tests
   - name: faas-lambda
@@ -192,7 +191,7 @@ buildvariants:
       - rhel8.10-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption
+      TEST_NAME: encryption_sync
     tags: [encryption_tag]
   - name: encryption-macos
     tasks:
@@ -204,7 +203,7 @@ buildvariants:
       - macos-14
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption
+      TEST_NAME: encryption_sync
     tags: [encryption_tag]
   - name: encryption-win64
     tasks:
@@ -216,7 +215,7 @@ buildvariants:
       - windows-2022-latest-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption
+      TEST_NAME: encryption_sync
     tags: [encryption_tag]
   - name: encryption-crypt_shared-rhel8
     tasks:
@@ -227,7 +226,7 @@ buildvariants:
       - rhel8.10-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption
+      TEST_NAME: encryption_sync
       TEST_CRYPT_SHARED: "true"
     tags: [encryption_tag]
   - name: encryption-crypt_shared-macos
@@ -240,7 +239,7 @@ buildvariants:
       - macos-14
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption
+      TEST_NAME: encryption_sync
       TEST_CRYPT_SHARED: "true"
     tags: [encryption_tag]
   - name: encryption-crypt_shared-win64
@@ -253,8 +252,18 @@ buildvariants:
       - windows-2022-latest-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption
+      TEST_NAME: encryption_sync
       TEST_CRYPT_SHARED: "true"
+    tags: [encryption_tag]
+  - name: encryption-async-rhel8
+    tasks:
+      - name: .test-non-standard !.python-3.15t
+    display_name: Encryption Async RHEL8
+    run_on:
+      - rhel8.10-small
+    batchtime: 1440
+    expansions:
+      TEST_NAME: encryption_async
     tags: [encryption_tag]
   - name: encryption-pyopenssl-rhel8
     tasks:
@@ -264,7 +273,7 @@ buildvariants:
       - rhel8.10-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption
+      TEST_NAME: encryption_sync
       SUB_TEST_NAME: pyopenssl
     tags: [encryption_tag]
   - name: encryption-ubuntu-22
@@ -275,7 +284,7 @@ buildvariants:
       - ubuntu2204-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption
+      TEST_NAME: encryption_sync
     tags: [encryption_tag, pr]
   - name: encryption-pyopenssl-ubuntu-22
     tasks:
@@ -285,7 +294,7 @@ buildvariants:
       - ubuntu2204-small
     batchtime: 1440
     expansions:
-      TEST_NAME: encryption
+      TEST_NAME: encryption_sync
       SUB_TEST_NAME: pyopenssl
     tags: [encryption_tag, pr]
 

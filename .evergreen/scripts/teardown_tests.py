@@ -13,7 +13,7 @@ SUB_TEST_NAME = os.environ.get("SUB_TEST_NAME")
 LOGGER.info(f"Tearing down tests of type '{TEST_NAME}'...")
 
 # Shut down csfle servers if applicable.
-if TEST_NAME == "encryption":
+if TEST_NAME in ["encryption", "encryption_sync", "encryption_async"]:
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/csfle/stop-servers.sh")
 
 # Shut down load balancer if applicable.

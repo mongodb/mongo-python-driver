@@ -119,7 +119,7 @@ from test.version import Version
 
 _IS_SYNC = True
 
-pytestmark = pytest.mark.encryption
+pytestmark = [pytest.mark.encryption, pytest.mark.default]
 
 KMS_PROVIDERS = {"local": {"key": b"\x00" * 96}}
 

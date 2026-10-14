@@ -1636,7 +1636,7 @@ def generate_test_classes(
         # Add "encryption" marker if the "csfle" runOnRequirement is set.
         for req in test_spec.get("runOnRequirements", []):
             if "csfle" in req:
-                base = pytest.mark.encryption(base)
+                base = pytest.mark.default(pytest.mark.encryption(base))
 
         return base
 
