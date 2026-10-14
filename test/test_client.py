@@ -1293,9 +1293,6 @@ class TestClient(IntegrationTest):
         cursor = coll.aggregate([], batchSize=10)
         self.assertTrue(bool(next(cursor)))
         del cursor
-        # Required for PyPy and other Python implementations that
-        # don't use reference counting garbage collection.
-        gc.collect()
 
         # Close the client and ensure the topology is closed.
         self.assertTrue(test_client._topology._opened)
@@ -2150,7 +2147,6 @@ class TestClient(IntegrationTest):
         with self.assertRaises(ConfigurationError):
             MongoClient(["host1", "host2"], directConnection=True)
 
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-2927 fails often on PyPy")
     def test_continuous_network_errors(self):
         def server_description_count():
             i = 0
@@ -2190,7 +2186,6 @@ class TestClient(IntegrationTest):
             with self.assertRaisesRegex(AutoReconnect, expected):
                 client.pymongo_test.coll.find_one({})
 
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-2938 could fail on PyPy")
     def test_process_periodic_tasks(self):
         client = self.rs_or_single_client()
         coll = client.db.collection

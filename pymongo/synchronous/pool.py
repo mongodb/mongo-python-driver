@@ -713,8 +713,8 @@ class Pool:
             # Publish PoolClearedEvent while holding the lock and before
             # notify_all(). This guarantees it is recorded before any waiting
             # thread wakes up and emits ConnectionCheckOutFailedEvent, which
-            # also requires size_cond. Without this ordering, a race on PyPy
-            # and free-threaded Python causes ConnectionCheckOutFailedEvent to
+            # also requires size_cond. Without this ordering, a race on
+            # free-threaded Python causes ConnectionCheckOutFailedEvent to
             # arrive before PoolClearedEvent (PYTHON-3519).
             if not close and old_state != PoolState.PAUSED:
                 self._telemetry.pool_cleared(service_id, interrupt_connections)

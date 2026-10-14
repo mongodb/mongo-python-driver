@@ -61,7 +61,6 @@ class TestMonitor(AsyncIntegrationTest):
         await connected(client)
         return client
 
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-5283 fails often on PyPy")
     @unittest.skipIf(
         gevent_monkey_patched(), "PYTHON-5516 Resources are not cleared when using gevent"
     )
