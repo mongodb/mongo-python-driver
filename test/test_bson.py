@@ -901,19 +901,8 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(id, transformed)
 
     def test_short_uuid_subtype_binary(self):
-        # PYTHON-6172: the C and pure-Python decoders must agree on binary
-        # elements with UUID subtypes (3 and 4) whose payload is not 16
-        # bytes: decode to Binary under the default UNSPECIFIED uuid
-        # representation, and raise only when UUID conversion is requested.
-        regression_file = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
-            os.pardir,
-            "fuzz",
-            "regression",
-            "PYTHON-6172.bson",
-        )
-        with open(regression_file, "rb") as fp:
-            data = fp.read()
+        # PYTHON-6172: both decoders must agree on short UUID payloads.
+        data = bytes.fromhex("0c0000000500000000000400")
         self.assertEqual(data, encode({"": Binary(b"", UUID_SUBTYPE)}))
 
         # Default UNSPECIFIED representation: decode to Binary.
