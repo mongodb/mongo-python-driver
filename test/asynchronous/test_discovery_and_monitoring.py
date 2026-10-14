@@ -31,7 +31,6 @@ from pymongo.errors import ConnectionFailure
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
 from test.asynchronous.helpers import ConcurrentRunner
-from test.asynchronous.utils import flaky
 from test.utils_shared import delay
 
 sys.path[0:0] = [""]
