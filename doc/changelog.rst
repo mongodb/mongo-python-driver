@@ -12,6 +12,8 @@ PyMongo 4.19 brings a number of changes including:
 - Added support for Python 3.15.
 - Dropped support for Python 3.9 and 3.10.
 - Removed support for PyPy.
+- Removed the deprecated ``Algorithm.RANGEPREVIEW`` and
+  ``QueryType.RANGEPREVIEW`` members (`PYTHON-6009`_).
 - Added support for running the synchronous and asynchronous clients in
   subinterpreters, including inside
   ``concurrent.futures.InterpreterPoolExecutor`` (Python 3.14+). Only in
@@ -78,6 +80,7 @@ Bug fixes
 .. _PYTHON-6040: https://jira.mongodb.org/browse/PYTHON-6040
 .. _PYTHON-6111: https://jira.mongodb.org/browse/PYTHON-6111
 .. _PYTHON-6163: https://jira.mongodb.org/browse/PYTHON-6163
+.. _PYTHON-6009: https://jira.mongodb.org/browse/PYTHON-6009
 
 Changes in Version 4.18.2 (2026/09/24)
 --------------------------------------
