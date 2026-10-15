@@ -478,7 +478,7 @@ CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at
       the vendored `drivers-evergreen-tools` submodule: those scripts run uv versions this project does not pin, so
       the setup scripts write a `uv.toml` boundary into the submodule checkout that stops uv's config discovery
       (and with it the required-version check) at the submodule boundary.
-- Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`; the hook also runs the generation unit tests first.
+- Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - PR tasks pin to the Python boundaries: the min Python (`MIN_PYTHON`, `TEST_MIN_DEPS=1`), the max
   Python (`MAX_PYTHON`), and one free-threaded task (`FREE_THREADED_PYTHON`), each against the
   `latest-stable` server (the `latest` nightly is unstable). Every PR task
