@@ -139,7 +139,6 @@ def handle_fuzz() -> None:
     targets = ["fuzz_decode", "fuzz_decode_all", "fuzz_is_valid"]
 
     if SUB_TEST_NAME == "regression":
-        # Run every target over the committed known-bug reproducers.
         # Skip dotfiles (pathlib globbing matches them).
         inputs = sorted(
             str(p) for p in (ROOT / "fuzz" / "regression").glob("*") if not p.name.startswith(".")

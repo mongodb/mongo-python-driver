@@ -2,12 +2,8 @@
 """
 Fuzz target for bson.is_valid().
 
-Two invariants are checked:
-  1. If is_valid() returns True, decode() must not raise InvalidBSON.
-  2. The C extension and pure Python agree on the is_valid() result.
-
-Usage (with atheris / OSS-Fuzz):
-    python fuzz_is_valid.py corpus/
+Checks that is_valid() returning True means decode() raises no InvalidBSON,
+and that the C extension and pure Python agree on the result.
 """
 
 from __future__ import annotations
@@ -77,8 +73,7 @@ def TestOneInput(data: bytes) -> None:
                 f"InvalidBSON: {exc!r}\ninput: {data!r}"
             ) from exc
         except _EXPECTED_DECODE_ERRORS:
-            # is_valid() only guarantees structural validity; other decode
-            # errors are not invariant violations.
+            # is_valid() only guarantees structural validity.
             pass
 
     if _bson_pure is not None:

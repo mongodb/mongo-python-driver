@@ -3,18 +3,11 @@
 OSS-Fuzz seed corpus builder for BSON fuzzing, mirroring the Go driver's
 internal/cmd/build-oss-fuzz-corpus/main.go.
 
-Reads the vendored BSON spec corpus (test/bson_corpus/ by default), converts
-each valid test case to raw BSON bytes, and packages them into a ZIP. Also
-synthesizes seeds the spec corpus lacks: documents at the int32
-declared-length and minimum-size boundaries, and one large (~500 KB) stress
-document.
+Converts the valid cases in the vendored BSON spec corpus (test/bson_corpus/
+by default) to raw BSON bytes and packages them into a ZIP, plus synthesized
+boundary and large stress documents.
 
-Usage:
-    # Build the seed corpus ZIP:
-    python build_corpus.py bson_decode_seed_corpus.zip
-
-    # Use a custom data directory:
-    python build_corpus.py bson_decode_seed_corpus.zip --data-dir /path/to/bson-corpus
+Usage: python build_corpus.py bson_decode_seed_corpus.zip [--data-dir DIR]
 """
 
 from __future__ import annotations
@@ -28,8 +21,8 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-# Use the pure-Python bson implementation: JSON conversion needs no C
-# extension, and an ASan-instrumented _cbson would abort on import.
+# Force the pure-Python implementation: an ASan-instrumented _cbson would
+# abort on import.
 sys.modules["bson._cbson"] = None  # type: ignore[assignment]
 
 import bson
@@ -53,7 +46,6 @@ def canonical_hex_to_bson_bytes(hex_str: str) -> bytes:
 def add_to_corpus(zw: zipfile.ZipFile, bson_bytes: bytes) -> None:
     """Add BSON bytes to the corpus ZIP, named by their SHA-256 digest."""
     filename = hashlib.sha256(bson_bytes).hexdigest()
-    # namelist() is O(n), fine at this corpus size.
     if filename not in zw.namelist():
         zw.writestr(filename, bson_bytes)
 
@@ -135,35 +127,23 @@ def nest(doc: dict[str, Any], depth: int) -> dict[str, Any]:
 
 
 def seed_boundary_documents(zw: zipfile.ZipFile) -> None:
-    """
-    Seed documents at the int32 declared-length and minimum-size boundaries.
-
-    A declared length that lies must fail with InvalidBSON, never read or
-    allocate the declared size.
-    """
+    """Seed documents at the int32 declared-length and minimum-size boundaries."""
     lies: tuple[tuple[str, bytes], ...] = (
-        # Declares ~2 GB; body is 8 bytes.  Must fail fast, not allocate.
+        # Declares ~2 GB, body is 8 bytes.
         ("declared_length_int32max", struct.pack("<i", 0x7FFFFFFF) + b"\x00" * 4),
-        # 4 bytes and 0 bytes are below the 5-byte minimum document.
         ("declared_length_0", struct.pack("<i", 0)),
         ("declared_length_4", struct.pack("<i", 4)),
     )
     for description, bson_bytes in lies:
         add_to_corpus(zw, bson_bytes)
         print(f"  seeded boundary case: {description}")
-    # The other boundary: the smallest valid document.
     add_to_corpus(zw, struct.pack("<i", 5) + b"\x00")
     print("  seeded boundary case: minimum_5_byte_document")
 
 
 def seed_large_document(zw: zipfile.ZipFile) -> None:
-    """
-    Synthesize one large (~500 KB) stress document.
-
-    Without a seed this size, libFuzzer's max_len default of max(4096,
-    largest seed) keeps mutation below the size where long-string and
-    many-field paths live.
-    """
+    """Seed one ~500 KB document; without it, libFuzzer's max_len default
+    keeps mutation below the size where large-input paths live."""
     doc = {
         "long_string": "a" * (256 * 1024),
         "many_fields": {f"f{i:05d}": i for i in range(5_000)},

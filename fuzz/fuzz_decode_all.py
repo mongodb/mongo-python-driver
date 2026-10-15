@@ -2,12 +2,8 @@
 """
 Fuzz target for bson.decode_all().
 
-Runs the multi-document decoder on arbitrary bytes (including concatenated
-BSON documents) under both the C extension and pure Python implementations,
-and compares their results when both are present.
-
-Usage (with atheris / OSS-Fuzz):
-    python fuzz_decode_all.py corpus/
+Runs both implementations on arbitrary bytes (including concatenated
+documents) and compares their results when both are present.
 """
 
 from __future__ import annotations

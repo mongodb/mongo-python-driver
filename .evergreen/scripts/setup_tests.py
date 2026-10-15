@@ -529,8 +529,7 @@ def handle_test_env() -> None:
             TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
 
     if test_name == "fuzz" and sub_test_name != "regression":
-        # Build the seed corpus from the vendored spec data; nothing
-        # corpus-related is committed (PYTHON-4232).
+        # Build the seed corpus from the vendored spec data.
         corpus_dir = ROOT / "fuzz-corpus"
         shutil.rmtree(corpus_dir, ignore_errors=True)
         corpus_dir.mkdir()
