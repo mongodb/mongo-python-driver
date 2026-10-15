@@ -480,8 +480,9 @@ CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at
       (and with it the required-version check) at the submodule boundary.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - PR tasks pin to the Python boundaries: the min Python (`MIN_PYTHON`, `TEST_MIN_DEPS=1`), the max
-  Python (`MAX_PYTHON`, `COVERAGE=1`), and one free-threaded task (`FREE_THREADED_PYTHON`), each
-  against the `latest` server. The pins derive from `CPYTHONS` in `generate_config_utils.py`, so
+  Python (`MAX_PYTHON`), and one free-threaded task (`FREE_THREADED_PYTHON`), each against the
+  `latest-stable` server (the `latest` nightly needs AWS credentials to download). Every PR task
+  runs with `COVERAGE=1`. The pins derive from `CPYTHONS` in `generate_config_utils.py`, so
   adding or removing a CPython re-binds them instead of reshuffling the PR set. Review the
   regenerated `generated_configs/tasks.yml` diff to confirm the `pr` tags land on the boundary Pythons.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.

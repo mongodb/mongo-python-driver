@@ -177,7 +177,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
     version = kwargs.pop("VERSION", None)
     version = version or kwargs.pop("version", None)
     if version:
-        if version not in ["rapid", "latest"]:
+        if version not in ["rapid", "latest", "latest-stable"]:
             version = f"v{version}"
         display_name = f"{display_name}{sep}{version}"
     for key, value in kwargs.items():
