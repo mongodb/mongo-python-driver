@@ -4,3 +4,4 @@
 
 .. automodule:: pymongo.asynchronous.change_stream
    :members:
+   :inherited-members:

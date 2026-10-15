@@ -1324,9 +1324,6 @@ class TestClient(AsyncIntegrationTest):
         cursor = await coll.aggregate([], batchSize=10)
         self.assertTrue(bool(await anext(cursor)))
         del cursor
-        # Required for PyPy and other Python implementations that
-        # don't use reference counting garbage collection.
-        gc.collect()
 
         # Close the client and ensure the topology is closed.
         self.assertTrue(test_client._topology._opened)
@@ -1678,17 +1675,15 @@ class TestClient(AsyncIntegrationTest):
         # pool
         self.assertEqual(1, len((await async_get_pool(client)).conns))
 
-        # contextlib async support was added in Python 3.10
-        if _IS_SYNC or sys.version_info >= (3, 10):
-            async with contextlib.aclosing(client):
-                self.assertEqual("bar", (await client.pymongo_test.coll.find_one())["foo"])
-            with self.assertRaises(InvalidOperation):
-                await client.pymongo_test.coll.find_one()
-            client = await self.async_rs_or_single_client()
-            async with client as client:
-                self.assertEqual("bar", (await client.pymongo_test.coll.find_one())["foo"])
-            with self.assertRaises(InvalidOperation):
-                await client.pymongo_test.coll.find_one()
+        async with contextlib.aclosing(client):
+            self.assertEqual("bar", (await client.pymongo_test.coll.find_one())["foo"])
+        with self.assertRaises(InvalidOperation):
+            await client.pymongo_test.coll.find_one()
+        client = await self.async_rs_or_single_client()
+        async with client as client:
+            self.assertEqual("bar", (await client.pymongo_test.coll.find_one())["foo"])
+        with self.assertRaises(InvalidOperation):
+            await client.pymongo_test.coll.find_one()
 
     @async_client_context.require_sync
     def test_interrupt_signal(self):
@@ -2199,7 +2194,6 @@ class TestClient(AsyncIntegrationTest):
         with self.assertRaises(ConfigurationError):
             AsyncMongoClient(["host1", "host2"], directConnection=True)
 
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-2927 fails often on PyPy")
     async def test_continuous_network_errors(self):
         def server_description_count():
             i = 0
@@ -2239,7 +2233,6 @@ class TestClient(AsyncIntegrationTest):
             with self.assertRaisesRegex(AutoReconnect, expected):
                 await client.pymongo_test.coll.find_one({})
 
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-2938 could fail on PyPy")
     async def test_process_periodic_tasks(self):
         client = await self.async_rs_or_single_client()
         coll = client.db.collection

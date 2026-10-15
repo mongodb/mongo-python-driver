@@ -32,7 +32,7 @@ class TestLogger(AsyncIntegrationTest):
         await super().asyncTearDown()
 
     def _get_command_log(self, records, command_name, status):
-        # PyPy's GC is non-deterministic, so cleanup commands from earlier tests can pollute the logs,
+        # Cleanup commands from earlier tests can pollute the logs,
         # filter for the specific command and status we want
         for record in records:
             log = json_util.loads(record.getMessage())

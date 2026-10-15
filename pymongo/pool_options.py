@@ -93,18 +93,9 @@ else:
         "version": _aliased[2],
     }
 
-if platform.python_implementation().startswith("PyPy"):
-    _METADATA["platform"] = " ".join(
-        (
-            platform.python_implementation(),
-            ".".join(map(str, sys.pypy_version_info)),  # type: ignore
-            "(Python {})".format(".".join(map(str, sys.version_info))),
-        )
-    )
-else:
-    _METADATA["platform"] = " ".join(
-        (platform.python_implementation(), ".".join(map(str, sys.version_info)))
-    )
+_METADATA["platform"] = " ".join(
+    (platform.python_implementation(), ".".join(map(str, sys.version_info)))
+)
 
 DOCKER_ENV_PATH = "/.dockerenv"
 ENV_VAR_K8S = "KUBERNETES_SERVICE_HOST"
@@ -472,10 +463,7 @@ class PoolOptions:
             # raises.
             names = metadata["driver"]["name"].split("|")
             versions = metadata["driver"]["version"].split("|")
-            if sys.version_info >= (3, 10):
-                pairs = zip(names, versions, strict=True)
-            else:
-                pairs = zip(names, versions)
+            pairs = zip(names, versions, strict=True)
             if (driver.name, driver.version) in pairs:
                 self.__appended_drivers.add(driver)
 

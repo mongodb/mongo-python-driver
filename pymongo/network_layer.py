@@ -33,7 +33,6 @@ from typing import (
 )
 
 from pymongo import _csot, ssl_support
-from pymongo._asyncio_task import create_task
 from pymongo.common import MAX_MESSAGE_SIZE
 from pymongo.compression_support import decompress
 from pymongo.errors import ProtocolError, _OperationCancelled
@@ -266,7 +265,6 @@ async def _async_socket_receive(
     return mv
 
 
-_PYPY = "PyPy" in sys.version
 _WINDOWS = sys.platform == "win32"
 
 
@@ -318,9 +316,8 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
     try:
         while bytes_read < length:
             try:
-                # Use the legacy wait_for_read cancellation approach on PyPy due to PYTHON-5011.
-                # also use it on Windows due to PYTHON-5405
-                if _PYPY or _WINDOWS:
+                # Use the legacy wait_for_read cancellation approach on Windows due to PYTHON-5405.
+                if _WINDOWS:
                     wait_for_read(conn, deadline)
                     if _csot.get_timeout() and deadline is not None:
                         conn.set_conn_timeout(max(deadline - time.monotonic(), 0))
@@ -340,14 +337,8 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
             except socket.timeout:
                 if conn.cancel_context.cancelled:
                     raise _OperationCancelled("operation cancelled") from None
-                if (
-                    _PYPY
-                    or _WINDOWS
-                    or (
-                        not conn.is_sdam
-                        and deadline is not None
-                        and deadline - time.monotonic() < 0
-                    )
+                if _WINDOWS or (
+                    not conn.is_sdam and deadline is not None and deadline - time.monotonic() < 0
                 ):
                     # We reached the true deadline.
                     raise
@@ -711,8 +702,8 @@ async def async_receive_message(
         # timeouts on AWS Lambda and other FaaS environments.
         timeout = max(deadline - time.monotonic(), 0)
 
-    cancellation_task = create_task(_poll_cancellation(conn))
-    read_task = create_task(conn.conn.get_conn.read(request_id, max_message_size))
+    cancellation_task = asyncio.create_task(_poll_cancellation(conn))
+    read_task = asyncio.create_task(conn.conn.get_conn.read(request_id, max_message_size))
     tasks = [read_task, cancellation_task]
     try:
         done, pending = await asyncio.wait(

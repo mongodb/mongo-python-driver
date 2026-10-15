@@ -16,8 +16,7 @@ be of interest or that has already been addressed.
 
 ## Supported Interpreters
 
-PyMongo supports CPython 3.11+ and PyPy 3.11+. Language features not
-supported by all interpreters can not be used.
+PyMongo supports CPython 3.11+.
 
 ## Style Guide
 
@@ -464,10 +463,10 @@ To run any of the test suites with minimum supported dependencies, pass `--test-
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
 - Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
 - There are some considerations about the Python version used in the test:
-    - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10`, `UV_PYTHON=3.14t`, or
-`UV_PYTHON=pypy3.11`).  Tasks are host-agnostic, so the interpreter lookup happens on the host: for a plain
+    - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10` or `UV_PYTHON=3.14t`).
+Tasks are host-agnostic, so the interpreter lookup happens on the host: for a plain
 CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at it, and for anything else
-(including PyPy, or a version the toolchain lacks) uv downloads it.
+(a version the toolchain lacks) uv downloads it.
     - If a specific Python binary is needed (for example on the FIPS host), set `UV_PYTHON=/path/to/python`.
     - The default if `UV_PYTHON` is not set is CPython 3.10.  This is deterministic across host types, so a task
       that does not pin a version always gets the same Python (with the build headers (`Python.h`) needed to build
