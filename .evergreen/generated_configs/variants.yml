@@ -91,13 +91,13 @@ buildvariants:
     run_on:
       - macos-14
     tags: [pr]
-  - name: auth-aws-ecs-macos
+  - name: auth-aws-ecs-ubuntu-24
     tasks:
       - name: .auth-aws-ecs
-    display_name: Auth AWS ECS macOS
+    display_name: Auth AWS ECS Ubuntu-24
     run_on:
       - ubuntu2404-small
-    tags: [pr]
+    tags: []
 
   # Aws lambda tests
   - name: faas-lambda

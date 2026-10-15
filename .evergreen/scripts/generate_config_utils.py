@@ -31,7 +31,7 @@ MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 MIN_PYTHON = CPYTHONS[0]
 MAX_PYTHON = CPYTHONS[-1]
 FREE_THREADED_PYTHON = [p for p in CPYTHONS if "t" in p][-1]
-# The newest numbered server version, which PR tasks pin to.
+# The version PR tasks pin to: the newest numbered entry in ALL_VERSIONS.
 MAX_VERSION = max((v for v in ALL_VERSIONS if v[0].isdigit()), key=float)
 BATCHTIME_WEEK = 10080
 BATCHTIME_DAY = 1440
