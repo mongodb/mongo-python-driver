@@ -26,6 +26,11 @@ CPYTHONS = ["3.11", "3.12", "3.13", "3.14t", "3.14", "3.15t", "3.15"]
 MIN_SUPPORT_VERSIONS = ["3.11"]
 ALL_PYTHONS = CPYTHONS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
+# The Python boundaries that PR tasks are pinned to: adding or removing a
+# CPython re-binds the same pins instead of reshuffling the PR set.
+MIN_PYTHON = CPYTHONS[0]
+MAX_PYTHON = CPYTHONS[-1]
+FREE_THREADED_PYTHON = [p for p in CPYTHONS if "t" in p][-1]
 BATCHTIME_WEEK = 10080
 BATCHTIME_DAY = 1440
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
