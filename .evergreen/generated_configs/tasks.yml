@@ -75,6 +75,35 @@ tasks:
           SUB_TEST_NAME: session-creds
           UV_PYTHON: "3.14"
     tags: [auth-aws, auth-aws-session-creds]
+  - name: test-auth-aws-9.0-regular-python3.11-min-deps-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "9.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
+          UV_PYTHON: "3.11"
+          TEST_MIN_DEPS: "1"
+          COVERAGE: "1"
+    tags: [auth-aws, auth-aws-regular, pr]
+  - name: test-auth-aws-9.0-regular-python3.15-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH_AWS: "1"
+          VERSION: "9.0"
+      - func: assume ec2 role
+      - func: run tests
+        vars:
+          TEST_NAME: auth_aws
+          SUB_TEST_NAME: regular
+          UV_PYTHON: "3.15"
+          COVERAGE: "1"
+    tags: [auth-aws, auth-aws-regular, pr]
   - name: test-auth-aws-9.0-web-identity-python3.15t
     commands:
       - func: run server
@@ -116,35 +145,6 @@ tasks:
           UV_PYTHON: "3.11"
           TEST_MIN_DEPS: "1"
     tags: [auth-aws, auth-aws-assume-role]
-  - name: test-auth-aws-latest-stable-regular-python3.11-min-deps-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: latest-stable
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: regular
-          UV_PYTHON: "3.11"
-          TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
-    tags: [auth-aws, auth-aws-regular, pr]
-  - name: test-auth-aws-latest-stable-regular-python3.15-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH_AWS: "1"
-          VERSION: latest-stable
-      - func: assume ec2 role
-      - func: run tests
-        vars:
-          TEST_NAME: auth_aws
-          SUB_TEST_NAME: regular
-          UV_PYTHON: "3.15"
-          COVERAGE: "1"
-    tags: [auth-aws, auth-aws-regular, pr]
   - name: test-auth-aws-rapid-regular-python3.15
     commands:
       - func: run server
@@ -402,16 +402,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-valid-cert-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -489,16 +488,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-invalid-cert-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -576,16 +574,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-delegate-valid-cert-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -663,16 +660,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-delegate-invalid-cert-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -750,16 +746,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-soft-fail-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-soft-fail-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-soft-fail-rapid-python3.11-min-deps
     commands:
@@ -859,16 +854,15 @@ tasks:
       - ocsp-ecdsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-valid-cert-server-staples-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-valid-cert-server-staples-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -889,7 +883,7 @@ tasks:
       - ocsp-ecdsa
       - rapid
       - ocsp-staple
-  - name: test-ocsp-ecdsa-valid-cert-server-staples-latest-stable-python3.15-cov
+  - name: test-ocsp-ecdsa-valid-cert-server-staples-v9.0-python3.15-cov
     commands:
       - func: run tests
         vars:
@@ -897,12 +891,12 @@ tasks:
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
           UV_PYTHON: "3.15"
-          VERSION: latest-stable
+          VERSION: "9.0"
           COVERAGE: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
-      - latest-stable
+      - "9.0"
       - ocsp-staple
       - pr
   - name: test-ocsp-ecdsa-invalid-cert-server-staples-v4.4-python3.11-min-deps
@@ -980,16 +974,15 @@ tasks:
       - ocsp-ecdsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-invalid-cert-server-staples-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -1099,16 +1092,15 @@ tasks:
       - ocsp-ecdsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-delegate-valid-cert-server-staples-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -1218,16 +1210,15 @@ tasks:
       - ocsp-ecdsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-delegate-invalid-cert-server-staples-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-ecdsa
@@ -1317,16 +1308,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -1404,16 +1394,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -1491,16 +1480,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "8.0"]
-  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: ecdsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-ecdsa, "9.0"]
   - name: test-ocsp-ecdsa-malicious-no-responder-muststaple-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -1578,16 +1566,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-valid-cert-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-valid-cert-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -1665,16 +1652,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-invalid-cert-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -1752,16 +1738,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-delegate-valid-cert-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -1839,16 +1824,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-delegate-invalid-cert-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -1926,16 +1910,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-soft-fail-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-soft-fail-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-soft-fail-rapid-python3.11-min-deps
     commands:
@@ -2033,16 +2016,15 @@ tasks:
       - ocsp-rsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-valid-cert-server-staples-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-valid-cert-server-staples-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
@@ -2152,16 +2134,15 @@ tasks:
       - ocsp-rsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-invalid-cert-server-staples-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-invalid-cert-server-staples-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
@@ -2271,16 +2252,15 @@ tasks:
       - ocsp-rsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-delegate-valid-cert-server-staples-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: valid-delegate
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
@@ -2390,16 +2370,15 @@ tasks:
       - ocsp-rsa
       - "8.0"
       - ocsp-staple
-  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-delegate-invalid-cert-server-staples-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags:
       - ocsp
       - ocsp-rsa
@@ -2489,16 +2468,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -2576,16 +2554,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: revoked-delegate
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-delegate-malicious-invalid-cert-muststaple-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -2663,16 +2640,15 @@ tasks:
           VERSION: "8.0"
           TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "8.0"]
-  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v9.0-python3.11-min-deps
+  - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-v9.0-python3.15
     commands:
       - func: run tests
         vars:
           ORCHESTRATION_FILE: rsa-basic-tls-ocsp-mustStaple-disableStapling.json
           OCSP_SERVER_TYPE: no-responder
           TEST_NAME: ocsp
-          UV_PYTHON: "3.11"
+          UV_PYTHON: "3.15"
           VERSION: "9.0"
-          TEST_MIN_DEPS: "1"
     tags: [ocsp, ocsp-rsa, "9.0"]
   - name: test-ocsp-rsa-malicious-no-responder-muststaple-server-does-not-staple-rapid-python3.11-min-deps
     commands:
@@ -4136,6 +4112,31 @@ tasks:
       - replica_set-noauth-ssl
       - async
       - free-threaded
+  - name: test-standard-v9.0-python3.15-async-noauth-ssl-replica-set-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "9.0"
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "9.0"
+          COVERAGE: "1"
+          UV_PYTHON: "3.15"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-9.0
+      - python-3.15
+      - replica_set-noauth-ssl
+      - async
+      - pr
   - name: test-standard-v9.0-python3.11-async-auth-ssl-sharded-cluster-min-deps
     commands:
       - func: run server
@@ -4182,6 +4183,59 @@ tasks:
       - python-3.14
       - sharded_cluster-auth-ssl
       - async
+  - name: test-standard-v9.0-python3.15t-sync-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          COVERAGE: "1"
+          UV_PYTHON: 3.15t
+          TEST_NAME: default_sync
+    tags:
+      - test-standard
+      - server-9.0
+      - python-3.15t
+      - sharded_cluster-auth-ssl
+      - sync
+      - free-threaded
+      - pr
+  - name: test-standard-v9.0-python3.11-async-noauth-nossl-standalone-min-deps-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "9.0"
+          TEST_MIN_DEPS: "1"
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "9.0"
+          TEST_MIN_DEPS: "1"
+          COVERAGE: "1"
+          UV_PYTHON: "3.11"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-9.0
+      - python-3.11
+      - standalone-noauth-nossl
+      - async
+      - pr
   - name: test-standard-v9.0-python3.13-async-noauth-nossl-standalone
     commands:
       - func: run server
@@ -4316,84 +4370,6 @@ tasks:
       - standalone-noauth-nossl
       - async
       - free-threaded
-  - name: test-standard-latest-stable-python3.15-async-noauth-ssl-replica-set-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: latest-stable
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: latest-stable
-          COVERAGE: "1"
-          UV_PYTHON: "3.15"
-          TEST_NAME: default_async
-    tags:
-      - test-standard
-      - server-latest-stable
-      - python-3.15
-      - replica_set-noauth-ssl
-      - async
-      - pr
-  - name: test-standard-latest-stable-python3.15t-sync-auth-ssl-sharded-cluster-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          COVERAGE: "1"
-          UV_PYTHON: 3.15t
-          TEST_NAME: default_sync
-    tags:
-      - test-standard
-      - server-latest-stable
-      - python-3.15t
-      - sharded_cluster-auth-ssl
-      - sync
-      - free-threaded
-      - pr
-  - name: test-standard-latest-stable-python3.11-async-noauth-nossl-standalone-min-deps-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: latest-stable
-          TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: latest-stable
-          TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
-          UV_PYTHON: "3.11"
-          TEST_NAME: default_async
-    tags:
-      - test-standard
-      - server-latest-stable
-      - python-3.11
-      - standalone-noauth-nossl
-      - async
-      - pr
   - name: test-standard-rapid-python3.13-sync-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -4899,6 +4875,53 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - free-threaded
+  - name: test-non-standard-v9.0-python3.15-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          COVERAGE: "1"
+          UV_PYTHON: "3.15"
+    tags:
+      - test-non-standard
+      - server-9.0
+      - python-3.15
+      - sharded_cluster-auth-ssl
+      - auth
+      - pr
+      - cov
+  - name: test-non-standard-v9.0-python3.15-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          UV_PYTHON: "3.15"
+    tags:
+      - test-non-standard-no-cov
+      - server-9.0
+      - python-3.15
+      - sharded_cluster-auth-ssl
+      - auth
+      - pr
   - name: test-non-standard-v9.0-python3.12-noauth-nossl-standalone
     commands:
       - func: run server
@@ -4985,53 +5008,6 @@ tasks:
       - python-3.11
       - standalone-noauth-nossl
       - noauth
-  - name: test-non-standard-latest-stable-python3.15-auth-ssl-sharded-cluster-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          COVERAGE: "1"
-          UV_PYTHON: "3.15"
-    tags:
-      - test-non-standard
-      - server-latest-stable
-      - python-3.15
-      - sharded_cluster-auth-ssl
-      - auth
-      - pr
-      - cov
-  - name: test-non-standard-latest-stable-python3.15-auth-ssl-sharded-cluster
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          UV_PYTHON: "3.15"
-    tags:
-      - test-non-standard-no-cov
-      - server-latest-stable
-      - python-3.15
-      - sharded_cluster-auth-ssl
-      - auth
-      - pr
   - name: test-non-standard-rapid-python3.15t-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -5230,6 +5206,56 @@ tasks:
       - python-3.14
       - sharded_cluster-auth-ssl
       - auth
+  - name: test-standard-auth-v9.0-python3.11-auth-ssl-sharded-cluster-min-deps-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          TEST_MIN_DEPS: "1"
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          TEST_MIN_DEPS: "1"
+          COVERAGE: "1"
+          UV_PYTHON: "3.11"
+    tags:
+      - test-standard-auth
+      - server-9.0
+      - python-3.11
+      - sharded_cluster-auth-ssl
+      - auth
+      - pr
+  - name: test-standard-auth-v9.0-python3.15-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          COVERAGE: "1"
+          UV_PYTHON: "3.15"
+    tags:
+      - test-standard-auth
+      - server-9.0
+      - python-3.15
+      - sharded_cluster-auth-ssl
+      - auth
+      - pr
   - name: test-standard-auth-v9.0-python3.15t-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -5275,56 +5301,6 @@ tasks:
       - python-3.11
       - sharded_cluster-auth-ssl
       - auth
-  - name: test-standard-auth-latest-stable-python3.11-auth-ssl-sharded-cluster-min-deps-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
-          UV_PYTHON: "3.11"
-    tags:
-      - test-standard-auth
-      - server-latest-stable
-      - python-3.11
-      - sharded_cluster-auth-ssl
-      - auth
-      - pr
-  - name: test-standard-auth-latest-stable-python3.15-auth-ssl-sharded-cluster-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          COVERAGE: "1"
-          UV_PYTHON: "3.15"
-    tags:
-      - test-standard-auth
-      - server-latest-stable
-      - python-3.15
-      - sharded_cluster-auth-ssl
-      - auth
-      - pr
   - name: test-standard-auth-rapid-python3.15-auth-ssl-sharded-cluster
     commands:
       - func: run server

@@ -15,6 +15,7 @@ from generate_config_utils import (
     FREE_THREADED_PYTHON,
     HOSTS,
     MAX_PYTHON,
+    MAX_VERSION,
     MIN_MAX_PYTHON,
     MIN_PYTHON,
     OTHER_HOSTS,
@@ -722,10 +723,11 @@ def create_test_non_standard_tasks():
     # Only the sharded_cluster topology runs on PRs to keep patch build size manageable.
     for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
         task_combos.add((version, topology, python))
-    # The pinned PR task: the max Python on the latest stable server, sharded cluster.
-    task_combos.add(("latest-stable", "sharded_cluster", MAX_PYTHON))
+    # The pinned PR task: the max Python on the newest numbered server,
+    # sharded cluster.
+    task_combos.add((MAX_VERSION, "sharded_cluster", MAX_PYTHON))
     for version, topology, python in sorted(task_combos):
-        pr = version == "latest-stable"
+        pr = version == MAX_VERSION and topology == "sharded_cluster" and python == MAX_PYTHON
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-non-standard",
@@ -810,11 +812,11 @@ def create_test_standard_auth_tasks():
         list(product(ALL_VERSIONS, ["sharded_cluster"])), CPYTHONS
     ):
         task_combos.add((version, topology, python))
-    # The pinned PR tasks: the min and max Python on the latest stable server.
-    task_combos.add(("latest-stable", "sharded_cluster", MIN_PYTHON))
-    task_combos.add(("latest-stable", "sharded_cluster", MAX_PYTHON))
+    # The pinned PR tasks: the min and max Python on the newest numbered server.
+    task_combos.add((MAX_VERSION, "sharded_cluster", MIN_PYTHON))
+    task_combos.add((MAX_VERSION, "sharded_cluster", MAX_PYTHON))
     for version, topology, python in sorted(task_combos):
-        pr = version == "latest-stable"
+        pr = version == MAX_VERSION and python in (MIN_PYTHON, MAX_PYTHON)
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-standard-auth",
@@ -849,7 +851,7 @@ def create_standard_tasks():
     for (python, topology, sync), rotated in zip_cycle(
         list(product(CPYTHONS, TOPOLOGIES, SYNCS)), ALL_VERSIONS
     ):
-        # PR tasks pin to the Python boundaries on the latest stable server:
+        # PR tasks pin to the Python boundaries on the newest numbered server:
         # min Python on standalone, max Python on replica set, and the
         # free-threaded Python on sharded cluster.
         pr = (
@@ -857,7 +859,7 @@ def create_standard_tasks():
             or (python == MAX_PYTHON and topology == "replica_set" and sync == "async")
             or (python == FREE_THREADED_PYTHON and topology == "sharded_cluster" and sync == "sync")
         )
-        version = "latest-stable" if pr else rotated
+        version = MAX_VERSION if pr else rotated
         task_combos.add((version, topology, python, sync, pr))
 
     for version, topology, python, sync, pr in sorted(task_combos):
@@ -939,10 +941,10 @@ def create_aws_tasks():
     ]
     assume_func = FunctionCall(func="assume ec2 role")
     task_combos = set(zip_cycle(get_versions_from("4.4"), aws_test_types, CPYTHONS))
-    # The pinned PR tasks: the min and max Python on the latest stable server.
+    # The pinned PR tasks: the min and max Python on the newest numbered server.
     task_combos |= {
-        ("latest-stable", "regular", MIN_PYTHON),
-        ("latest-stable", "regular", MAX_PYTHON),
+        (MAX_VERSION, "regular", MIN_PYTHON),
+        (MAX_VERSION, "regular", MAX_PYTHON),
     }
     for version, test_type, python in sorted(task_combos):
         base_name = f"test-auth-aws-{version}"
@@ -953,8 +955,10 @@ def create_aws_tasks():
         if "t" in python:
             tags.append("free-threaded")
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, UV_PYTHON=python)
-        # The rotation never produces (latest-stable, regular).
-        pr = version == "latest-stable" and test_type == "regular"
+        # The rotation never produces (MAX_VERSION, regular).
+        pr = (
+            version == MAX_VERSION and test_type == "regular" and python in (MIN_PYTHON, MAX_PYTHON)
+        )
         if python == MIN_MAX_PYTHON[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
         if pr:
@@ -1016,15 +1020,15 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         # every PR (ecdsa only, to avoid doubling coverage across algorithms)
         # so a cryptography-backend regression at either dependency extreme,
         # like the min-deps ML-KEM breakage in PYTHON-6032, is caught before
-        # merge. The newest-server PR task downloads latest-stable; the
-        # "latest" nightly is unstable.
+        # merge. The newest-server PR task pins to the newest numbered server;
+        # the "latest" nightly is unstable.
         pr = (
             base_task_name == "valid-cert-server-staples"
             and algo == "ecdsa"
             and version in ("latest", "4.4")
         )
-        server_version = "latest-stable" if pr and version == "latest" else version
-        if server_version in ("latest", "latest-stable"):
+        server_version = MAX_VERSION if pr and version == "latest" else version
+        if server_version in ("latest", MAX_VERSION):
             python = MIN_MAX_PYTHON[-1]
         else:
             python = MIN_MAX_PYTHON[0]

@@ -31,6 +31,8 @@ MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
 MIN_PYTHON = CPYTHONS[0]
 MAX_PYTHON = CPYTHONS[-1]
 FREE_THREADED_PYTHON = [p for p in CPYTHONS if "t" in p][-1]
+# The newest numbered server version, which PR tasks pin to.
+MAX_VERSION = max((v for v in ALL_VERSIONS if v[0].isdigit()), key=float)
 BATCHTIME_WEEK = 10080
 BATCHTIME_DAY = 1440
 AUTH_SSLS = [("auth", "ssl"), ("noauth", "ssl"), ("noauth", "nossl")]
@@ -177,7 +179,7 @@ def get_common_name(base: str, sep: str, **kwargs) -> str:
     version = kwargs.pop("VERSION", None)
     version = version or kwargs.pop("version", None)
     if version:
-        if version not in ["rapid", "latest", "latest-stable"]:
+        if version not in ["rapid", "latest"]:
             version = f"v{version}"
         display_name = f"{display_name}{sep}{version}"
     for key, value in kwargs.items():

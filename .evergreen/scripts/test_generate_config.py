@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import generate_config
+import generate_config_utils
 
 
 def all_tasks():
@@ -35,10 +36,19 @@ def pr_tasks():
     return [task for task in all_tasks() if "pr" in (task.tags or [])]
 
 
-def test_pr_tasks_run_on_latest_stable():
-    """PR tasks must pin to latest-stable: the "latest" nightly is unstable."""
-    offenders = [task.name for task in pr_tasks() if task_vars(task).get("VERSION") == "latest"]
-    assert not offenders, f"PR tasks pinned to 'latest': {offenders}"
+def test_pr_tasks_pin_max_version():
+    """PR tasks must pin to the newest numbered server version: the "latest"
+    nightly is unstable. The min-deps extreme is the exception: it pins to
+    the oldest numbered server (4.4) to match its oldest dependencies."""
+    offenders = [
+        (task.name, task_vars(task).get("VERSION"))
+        for task in pr_tasks()
+        if task_vars(task).get("VERSION") not in (None, generate_config_utils.MAX_VERSION)
+        and not (
+            task_vars(task).get("VERSION") == "4.4" and task_vars(task).get("TEST_MIN_DEPS") == "1"
+        )
+    ]
+    assert not offenders, f"PR tasks not pinned to MAX_VERSION: {offenders}"
 
 
 def test_pr_min_deps_tasks_also_run_coverage():

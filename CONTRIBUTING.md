@@ -481,7 +481,7 @@ CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - PR tasks pin to the Python boundaries: the min Python (`MIN_PYTHON`, `TEST_MIN_DEPS=1`), the max
   Python (`MAX_PYTHON`), and one free-threaded task (`FREE_THREADED_PYTHON`), each against the
-  `latest-stable` server (the `latest` nightly is unstable). Every PR task
+  newest numbered server (`MAX_VERSION`; the `latest` nightly is unstable). Every PR task
   runs with `COVERAGE=1`. The pins derive from `CPYTHONS` in `generate_config_utils.py`, so
   adding or removing a CPython re-binds them instead of reshuffling the PR set. Review the
   regenerated `generated_configs/tasks.yml` diff to confirm the `pr` tags land on the boundary Pythons.
