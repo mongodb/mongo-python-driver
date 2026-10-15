@@ -8,14 +8,12 @@ compares their results when both are present.
 
 from __future__ import annotations
 
+import math
 import struct
 import sys
 from typing import Optional
 
 import atheris
-
-# Load both bson implementations before atheris instruments imports.
-import bson as _bson_c  # C extension when available
 
 
 def _load_pure_python_bson():
@@ -28,8 +26,7 @@ def _load_pure_python_bson():
     try:
         import bson as pure_bson
     except Exception as exc:
-        print(f"Warning: could not load pure-Python bson: {exc}", file=sys.stderr)
-        pure_bson = None
+        raise RuntimeError("Could not load pure-Python bson for cross-checking") from exc
     finally:
         for k in list(sys.modules):
             if k == "bson" or k.startswith("bson."):
@@ -39,18 +36,37 @@ def _load_pure_python_bson():
     return pure_bson
 
 
-_bson_pure = _load_pure_python_bson()
-
-# Consistency checks apply only when the two handles genuinely differ.
-_BOTH_IMPLS = _bson_pure is not None and _bson_c.has_c()
-
 with atheris.instrument_imports():
-    pass  # bson already imported above
+    # Load both implementations while import instrumentation is active so the
+    # pure-Python decoder gets coverage feedback; the C extension is a native
+    # module and is skipped by atheris.
+    import bson as _bson_c  # C extension when available
+
+    _bson_pure = _load_pure_python_bson()
+
+# Consistency checks apply only when the C extension is present.
+_BOTH_IMPLS = _bson_c.has_c()
 
 
 # InvalidBSON is excluded: each bson module has its own class, which
 # _decode_with catches as bson_mod.InvalidBSON below.
 _OTHER_ERRORS = (ValueError, struct.error, UnicodeDecodeError, OverflowError, KeyError)
+
+
+def _normalize(obj: object) -> object:
+    """Comparable form of a decoded document.
+
+    The two bson handles are separate module instances, so bson type classes
+    (ObjectId, Timestamp, ...) never compare equal across handles. Reduce
+    leaves to "type-name:repr"; NaN never compares equal to itself.
+    """
+    if isinstance(obj, dict):
+        return [(k, _normalize(v)) for k, v in obj.items()]
+    if isinstance(obj, (list, tuple)):
+        return [_normalize(v) for v in obj]
+    if isinstance(obj, float) and math.isnan(obj):
+        return "nan"
+    return f"{type(obj).__name__}:{obj!r}"
 
 
 def _decode_with(bson_mod, data: bytes) -> Optional[dict]:
@@ -75,29 +91,33 @@ def TestOneInput(data: bytes) -> None:
                 f"decoded document: {doc_c!r}"
             ) from exc
 
-    if _bson_pure is not None:
-        doc_pure = _decode_with(_bson_pure, data)
+    doc_pure = _decode_with(_bson_pure, data)
 
-        if doc_pure is not None:
-            try:
-                _bson_pure.encode(doc_pure)
-            except Exception as exc:
-                raise AssertionError(
-                    f"pure-Python bson.encode() failed after bson.decode() succeeded: {exc!r}\n"
-                    f"decoded document: {doc_pure!r}"
-                ) from exc
+    if doc_pure is not None:
+        try:
+            _bson_pure.encode(doc_pure)
+        except Exception as exc:
+            raise AssertionError(
+                f"pure-Python bson.encode() failed after bson.decode() succeeded: {exc!r}\n"
+                f"decoded document: {doc_pure!r}"
+            ) from exc
 
-        # Consistency check.
-        if _BOTH_IMPLS:
-            c_succeeded = doc_c is not None
-            pure_succeeded = doc_pure is not None
-            if c_succeeded != pure_succeeded:
-                raise AssertionError(
-                    f"C extension and pure-Python bson.decode() disagree: "
-                    f"C={'success' if c_succeeded else 'failure'}, "
-                    f"pure={'success' if pure_succeeded else 'failure'} "
-                    f"for input: {data!r}"
-                )
+    # Consistency check.
+    if _BOTH_IMPLS:
+        c_succeeded = doc_c is not None
+        pure_succeeded = doc_pure is not None
+        if c_succeeded != pure_succeeded:
+            raise AssertionError(
+                f"C extension and pure-Python bson.decode() disagree: "
+                f"C={'success' if c_succeeded else 'failure'}, "
+                f"pure={'success' if pure_succeeded else 'failure'} "
+                f"for input: {data!r}"
+            )
+        if doc_c is not None and doc_pure is not None and _normalize(doc_c) != _normalize(doc_pure):
+            raise AssertionError(
+                f"C extension and pure-Python bson.decode() produced different "
+                f"documents: C={doc_c!r}, pure={doc_pure!r}, input: {data!r}"
+            )
 
 
 def main() -> None:

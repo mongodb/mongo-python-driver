@@ -87,6 +87,10 @@ uv run --group fuzz --group coverage python -m coverage run fuzz/fuzz_decode.py 
 uv run --group coverage python -m coverage html
 ```
 
+The run count equals the file count: replaying individual files (not a corpus
+directory) performs no empty-input warmup, and letting the budget reach zero
+gives atheris a graceful exit so coverage.py can flush its report.
+
 ## Files
 
 ```

@@ -13,11 +13,9 @@ import sys
 
 import atheris
 
-# Load both bson implementations before atheris instruments imports.
-import bson as _bson_c
-
 
 def _load_pure_python_bson():
+    """Re-import bson with the C extension blocked, then restore sys.modules."""
     saved = {
         k: sys.modules.pop(k) for k in list(sys.modules) if k == "bson" or k.startswith("bson.")
     }
@@ -25,8 +23,7 @@ def _load_pure_python_bson():
     try:
         import bson as pure_bson
     except Exception as exc:
-        print(f"Warning: could not load pure-Python bson: {exc}", file=sys.stderr)
-        pure_bson = None
+        raise RuntimeError("Could not load pure-Python bson for cross-checking") from exc
     finally:
         for k in list(sys.modules):
             if k == "bson" or k.startswith("bson."):
@@ -35,14 +32,19 @@ def _load_pure_python_bson():
     return pure_bson
 
 
-_bson_pure = _load_pure_python_bson()
-_BOTH_IMPLS = _bson_pure is not None and _bson_c.has_c()
-
 with atheris.instrument_imports():
-    import bson
+    # Load both implementations while import instrumentation is active so the
+    # pure-Python parser gets coverage feedback; the C extension is a native
+    # module and is skipped by atheris.
+    import bson as _bson_c
+
+    _bson_pure = _load_pure_python_bson()
+
+# Consistency checks apply only when the C extension is present.
+_BOTH_IMPLS = _bson_c.has_c()
 
 _EXPECTED_DECODE_ERRORS = (
-    bson.InvalidBSON,
+    _bson_c.InvalidBSON,
     ValueError,
     struct.error,
     UnicodeDecodeError,
@@ -58,7 +60,7 @@ def TestOneInput(data: bytes) -> None:
     if valid_c:
         try:
             _bson_c.decode(data)
-        except bson.InvalidBSON as exc:
+        except _bson_c.InvalidBSON as exc:
             raise AssertionError(
                 f"bson.is_valid() returned True but bson.decode() raised "
                 f"InvalidBSON: {exc!r}\ninput: {data!r}"
@@ -67,25 +69,24 @@ def TestOneInput(data: bytes) -> None:
             # is_valid() only guarantees structural validity.
             pass
 
-    if _bson_pure is not None:
-        valid_pure = _bson_pure.is_valid(data)
+    valid_pure = _bson_pure.is_valid(data)
 
-        if valid_pure:
-            try:
-                _bson_pure.decode(data)
-            except _bson_pure.InvalidBSON as exc:
-                raise AssertionError(
-                    f"pure-Python bson.is_valid() returned True but bson.decode() "
-                    f"raised InvalidBSON: {exc!r}\ninput: {data!r}"
-                ) from exc
-            except _EXPECTED_DECODE_ERRORS:
-                pass
-
-        if _BOTH_IMPLS and valid_c != valid_pure:
+    if valid_pure:
+        try:
+            _bson_pure.decode(data)
+        except _bson_pure.InvalidBSON as exc:
             raise AssertionError(
-                f"C extension and pure-Python bson.is_valid() disagree: "
-                f"C={valid_c}, pure={valid_pure}\ninput: {data!r}"
-            )
+                f"pure-Python bson.is_valid() returned True but bson.decode() "
+                f"raised InvalidBSON: {exc!r}\ninput: {data!r}"
+            ) from exc
+        except _EXPECTED_DECODE_ERRORS:
+            pass
+
+    if _BOTH_IMPLS and valid_c != valid_pure:
+        raise AssertionError(
+            f"C extension and pure-Python bson.is_valid() disagree: "
+            f"C={valid_c}, pure={valid_pure}\ninput: {data!r}"
+        )
 
 
 def main() -> None:

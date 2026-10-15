@@ -145,6 +145,9 @@ def handle_fuzz() -> None:
         )
         if not inputs:
             raise RuntimeError("No fuzz regression inputs found in fuzz/regression/")
+        # One run per committed reproducer: with individual files libFuzzer
+        # performs no empty-input warmup (that only happens in directory-corpus
+        # mode), and atheris exits gracefully once the budget reaches 0.
         runs = len(inputs)
         for target in targets:
             run_command(f"python fuzz/{target}.py {' '.join(inputs)} -atheris_runs={runs}")
