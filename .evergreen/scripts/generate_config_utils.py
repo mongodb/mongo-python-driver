@@ -26,12 +26,10 @@ CPYTHONS = ["3.11", "3.12", "3.13", "3.14t", "3.14", "3.15t", "3.15"]
 MIN_SUPPORT_VERSIONS = ["3.11"]
 ALL_PYTHONS = CPYTHONS
 MIN_MAX_PYTHON = [CPYTHONS[0], CPYTHONS[-1]]
-# The Python boundaries PR tasks pin to: adding or removing a CPython
-# re-binds the same pins instead of reshuffling the PR set.
+# The Python boundaries and newest numbered server version that PR tasks pin to.
 MIN_PYTHON = CPYTHONS[0]
 MAX_PYTHON = CPYTHONS[-1]
 FREE_THREADED_PYTHON = [p for p in CPYTHONS if "t" in p][-1]
-# The version PR tasks pin to: the newest numbered entry in ALL_VERSIONS.
 MAX_VERSION = max((v for v in ALL_VERSIONS if v[0].isdigit()), key=float)
 BATCHTIME_WEEK = 10080
 BATCHTIME_DAY = 1440

@@ -1,9 +1,8 @@
 """Tests for the Evergreen PR task rules (PYTHON-6112).
 
 Run: pytest .evergreen/scripts/test_generate_config.py -m ""
-(-m "" overrides the repo-wide default marker filter.)
-Requires the same dependencies as the generate-config hook: pytest,
-pytest-asyncio, shrub.py, pyyaml.
+(-m "" clears the repo-wide marker filter.)
+Requires the generate-config hook's dependencies: pytest, pytest-asyncio, shrub.py, pyyaml.
 """
 
 from __future__ import annotations
@@ -46,9 +45,8 @@ def all_variants():
 
 
 def variant_selects(variant, task):
-    """Whether the variant's task selectors select the task. Selector tokens
-    are split on whitespace: a "." prefix matches a tag, "!" negates the
-    following token, and a bare token matches a task name."""
+    """Whether the variant's task selectors match the task: "." selects a
+    tag, "!" negates the token that follows, a bare token names a task."""
     tags = task.tags or []
     for ref in variant.tasks:
         includes, excludes, names = [], [], []
@@ -75,11 +73,9 @@ def variant_selects(variant, task):
 
 
 def test_pr_tasks_pin_max_version():
-    """PR tasks that set a server version must pin MAX_VERSION: the "latest"
-    nightly is unstable. The min-deps extreme is the exception: it pins to
-    4.4 to match its oldest dependencies. Tasks without a VERSION var inherit
-    the selecting variant's version instead; the merged result is checked by
-    test_pr_tasks_effectively_pin_max_version."""
+    """Task-level pins: pr tasks pin MAX_VERSION (the "latest" nightly is
+    unstable); the explicit 4.4 min-deps pin is the exception. Variant-merged
+    pins are checked by test_pr_tasks_effectively_pin_max_version."""
     offenders = [
         (task.name, task_vars(task).get("VERSION"))
         for task in pr_tasks()
@@ -92,12 +88,10 @@ def test_pr_tasks_pin_max_version():
 
 
 def test_pr_tasks_effectively_pin_max_version():
-    """A patch build runs pr tasks in every selecting variant with that
-    variant's expansions, so a task without its own VERSION var inherits the
-    variant's server version (4.4 through the unstable latest nightly). Every
-    pr task that runs a server must resolve to MAX_VERSION once the variant's
-    VERSION expansion is merged in. The only exception is an explicit 4.4
-    min-deps pin on the task itself."""
+    """Effective pins: a pr task without its own VERSION var inherits the
+    selecting variant's version, so every pr task that runs a server must
+    resolve to MAX_VERSION once variant expansions merge in. The explicit
+    4.4 min-deps pin is the exception."""
     tasks = [task for task in all_tasks() if "pr" in (task.tags or [])]
     offenders = []
     for variant in all_variants():
@@ -118,10 +112,9 @@ def test_pr_tasks_effectively_pin_max_version():
 
 
 def test_server_version_pr_tasks_selected_once():
-    """The mongodb-* variants differ only in their server version, so a
-    pr-tagged server-version task selected by several of them would run
-    identically once per variant per patch build. Only the MAX_VERSION
-    variant selects them."""
+    """The mongodb-* variants differ only in server version, so a pr task
+    they all select would run identically per variant. Only MAX_VERSION
+    selects them."""
     tasks = [
         task
         for task in all_tasks()
@@ -138,11 +131,8 @@ def test_server_version_pr_tasks_selected_once():
 
 
 def test_server_version_rotated_tasks_keep_coverage():
-    """The rotated server-version tasks inherit the selecting variant's
-    version (one variant per MongoDB version), so the family's per-commit
-    coverage rides the rotated boundary-Python tasks: the pinned pr tasks run
-    only in the MAX_VERSION variant, and coverage keyed to pr alone would
-    collapse to 9.0-only."""
+    """Per-commit coverage for this family rides the rotated boundary-Python
+    tasks, not the pr tasks (which run only on MAX_VERSION)."""
     family = [task for task in all_tasks() if "server-version" in (task.tags or [])]
     cov = [task for task in family if task_vars(task).get("COVERAGE") == "1"]
     assert any("pr" not in (task.tags or []) for task in cov), (
@@ -171,10 +161,9 @@ def test_pr_min_deps_tasks_also_run_coverage():
 
 
 def test_standard_family_pr_budget():
-    """The No C Ext and Compression variants select .test-standard, so their
-    patch builds run one PR task per pr-tagged test-standard task. Keep the
-    count at or below the pre-pin baseline (5), and at or below 3 for the
-    ubuntu22 compression variant, which filters to Python 3.14 and newer."""
+    """Patch-build PR budget: at most 5 pr-tagged test-standard tasks (the
+    pre-pin baseline), at most 3 on Python 3.14+ (the ubuntu22 compression
+    filter)."""
     tasks = [task for task in pr_tasks() if "test-standard" in (task.tags or [])]
     assert len(tasks) <= 5, f"too many test-standard PR tasks: {[t.name for t in tasks]}"
     newer = [
@@ -189,10 +178,8 @@ def test_standard_family_pr_budget():
 
 
 def test_pr_tasks_run_coverage():
-    """Every PR task that pins a server version runs with COVERAGE=1. The
-    no-cov companions are helpers for the macOS/Win64 encryption variants,
-    not PR tasks, and the non-test infrastructure tasks (coverage-report,
-    check-import-time, kms-fail) do not pin a server version."""
+    """Pr tasks that pin a server version run with COVERAGE=1; no-cov
+    companions and infrastructure tasks (no VERSION) are exempt."""
     offenders = [
         task.name
         for task in pr_tasks()
@@ -204,9 +191,9 @@ def test_pr_tasks_run_coverage():
 
 
 def test_rotated_tasks_keep_nightly_coverage():
-    """Mainline batch coverage rides the rotation, independently of the
-    pinned PR tasks: the rotated "latest" nightly tasks keep COVERAGE=1
-    (min-deps excepted), as do the rotated max-Python auth-aws tasks."""
+    """Batch coverage rides the rotation independently of the pr tasks:
+    rotated "latest" tasks and max-Python auth-aws tasks keep COVERAGE=1
+    (min-deps excepted)."""
     offenders = []
     for task in all_tasks():
         tags = task.tags or []
@@ -229,8 +216,7 @@ def test_rotated_tasks_keep_nightly_coverage():
         if is_aws_max_python and vars.get("COVERAGE") != "1":
             offenders.append(task.name)
     assert not offenders, f"rotated tasks without nightly COVERAGE: {offenders}"
-    # The rotated "latest" ECDSA staples task keeps its nightly coverage;
-    # the pinned PR task is emitted separately.
+    # The "latest" ECDSA staples task keeps its nightly coverage.
     latest_staples = [
         task.name
         for task in all_tasks()
@@ -240,8 +226,7 @@ def test_rotated_tasks_keep_nightly_coverage():
         and task_vars(task).get("COVERAGE") == "1"
     ]
     assert latest_staples, "no ECDSA staples task on the latest nightly with COVERAGE"
-    # The 9.0 nightly OCSP tasks stay on the min-deps Python; only the
-    # pinned PR task pins to MAX_VERSION.
+    # The 9.0 nightly OCSP tasks stay on the min-deps Python.
     offenders = [
         task.name
         for task in all_tasks()
@@ -254,9 +239,8 @@ def test_rotated_tasks_keep_nightly_coverage():
 
 
 def test_non_standard_cov_tasks_have_no_cov_companions():
-    """Each coverage task in the non-standard family also emits a
-    non-coverage companion so the macOS/Win64 encryption variants (which
-    filter out .cov due to timeout constraints) still have a task to
+    """Each non-standard coverage task also emits a no-cov companion, so the
+    macOS/Win64 encryption variants (which filter .cov) have a task to
     activate in patch builds."""
     no_cov = {task.name for task in all_tasks() if "test-non-standard-no-cov" in (task.tags or [])}
     for task in all_tasks():
