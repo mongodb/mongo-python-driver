@@ -36,10 +36,49 @@ def pr_tasks():
     return [task for task in all_tasks() if "pr" in (task.tags or [])]
 
 
+def all_variants():
+    variants = []
+    for name, func in getmembers(generate_config, isfunction):
+        if name.startswith("create_") and name.endswith("_variants"):
+            variants.extend(func())
+    return variants
+
+
+def variant_selects(variant, task):
+    """Whether the variant's task selectors select the task. Selector tokens
+    are split on whitespace: a "." prefix matches a tag, "!" negates the
+    following token, and a bare token matches a task name."""
+    tags = task.tags or []
+    for ref in variant.tasks:
+        includes, excludes, names = [], [], []
+        for token in ref.name.split():
+            if token.startswith("!."):
+                excludes.append(token[2:])
+            elif token.startswith("!"):
+                excludes.append(token[1:])
+            elif token.startswith("."):
+                includes.append(token[1:])
+            else:
+                names.append(token)
+        if any(tag in tags for tag in excludes):
+            continue
+        if not includes and not names:
+            # A negation-only selector matches every remaining task.
+            return True
+        if names and task.name not in names:
+            continue
+        if includes and not all(tag in tags for tag in includes):
+            continue
+        return True
+    return False
+
+
 def test_pr_tasks_pin_max_version():
-    """PR tasks must pin to MAX_VERSION: the "latest" nightly is unstable.
-    The min-deps extreme is the exception: it pins to 4.4 to match its
-    oldest dependencies."""
+    """PR tasks that set a server version must pin MAX_VERSION: the "latest"
+    nightly is unstable. The min-deps extreme is the exception: it pins to
+    4.4 to match its oldest dependencies. Tasks without a VERSION var inherit
+    the selecting variant's version instead; the merged result is checked by
+    test_pr_tasks_effectively_pin_max_version."""
     offenders = [
         (task.name, task_vars(task).get("VERSION"))
         for task in pr_tasks()
@@ -49,6 +88,76 @@ def test_pr_tasks_pin_max_version():
         )
     ]
     assert not offenders, f"PR tasks not pinned to MAX_VERSION: {offenders}"
+
+
+def test_pr_tasks_effectively_pin_max_version():
+    """A patch build runs pr tasks in every selecting variant with that
+    variant's expansions, so a task without its own VERSION var inherits the
+    variant's server version (4.4 through the unstable latest nightly). Every
+    pr task that runs a server must resolve to MAX_VERSION once the variant's
+    VERSION expansion is merged in. The only exception is an explicit 4.4
+    min-deps pin on the task itself."""
+    tasks = [task for task in all_tasks() if "pr" in (task.tags or [])]
+    offenders = []
+    for variant in all_variants():
+        variant_version = (variant.expansions or {}).get("VERSION")
+        for task in tasks:
+            if not variant_selects(variant, task):
+                continue
+            task_vars_ = task_vars(task)
+            if task_vars_.get("VERSION") == "4.4" and task_vars_.get("TEST_MIN_DEPS") == "1":
+                continue
+            effective = task_vars_.get("VERSION") or variant_version
+            if effective is None:
+                # Helpers that run the stable default server, like kms-fail.
+                continue
+            if effective != generate_config_utils.MAX_VERSION:
+                offenders.append((variant.name, task.name, effective))
+    assert not offenders, f"pr tasks not effectively pinned to MAX_VERSION: {offenders}"
+
+
+def test_server_version_pr_tasks_selected_once():
+    """The mongodb-* variants differ only in their server version, so a
+    pr-tagged server-version task selected by several of them would run
+    identically once per variant per patch build. Only the MAX_VERSION
+    variant selects them."""
+    tasks = [
+        task
+        for task in all_tasks()
+        if "server-version" in (task.tags or []) and "pr" in (task.tags or [])
+    ]
+    offenders = {}
+    for task in tasks:
+        selecting = [variant.name for variant in all_variants() if variant_selects(variant, task)]
+        if len(selecting) != 1:
+            offenders[task.name] = selecting
+    assert not offenders, (
+        f"server-version pr tasks not selected by exactly one variant: {offenders}"
+    )
+
+
+def test_server_version_rotated_tasks_keep_coverage():
+    """The rotated server-version tasks inherit the selecting variant's
+    version (one variant per MongoDB version), so the family's per-commit
+    coverage rides the rotated boundary-Python tasks: the pinned pr tasks run
+    only in the MAX_VERSION variant, and coverage keyed to pr alone would
+    collapse to 9.0-only."""
+    family = [task for task in all_tasks() if "server-version" in (task.tags or [])]
+    cov = [task for task in family if task_vars(task).get("COVERAGE") == "1"]
+    assert any("pr" not in (task.tags or []) for task in cov), (
+        "the server-version family's only COVERAGE tasks are pr tasks"
+    )
+    offenders = []
+    for task in family:
+        if "pr" in (task.tags or []):
+            continue
+        vars = task_vars(task)
+        boundary = generate_config.SERVER_VERSION_PR_PYTHONS.get(
+            (vars["TOPOLOGY"], vars["AUTH"], vars["SSL"])
+        )
+        if vars.get("UV_PYTHON") == boundary and vars.get("COVERAGE") != "1":
+            offenders.append(task.name)
+    assert not offenders, f"rotated server-version boundary tasks without COVERAGE: {offenders}"
 
 
 def test_pr_min_deps_tasks_also_run_coverage():

@@ -90,8 +90,12 @@ def create_server_version_variants() -> list[BuildVariant]:
     variants = []
     for version in ALL_VERSIONS:
         display_name = get_variant_name("* MongoDB", version=version)
+        # The pr-tagged server-version tasks pin MAX_VERSION in their own vars
+        # and are selected only by the MAX_VERSION variant, so a patch build
+        # runs each of them exactly once.
+        tasks = [".server-version"] if version == MAX_VERSION else [".server-version !.pr"]
         variant = create_variant(
-            [".server-version"],
+            tasks,
             display_name,
             version=version,
             host=DEFAULT_HOST,
@@ -650,42 +654,25 @@ def create_aws_lambda_variants():
 ##############
 
 
+# The server-version PR tasks pin to the Python boundaries: the min Python on
+# standalone, the max Python on replica set and sharded cluster.
+SERVER_VERSION_PR_PYTHONS = {
+    ("standalone", "noauth", "nossl"): MIN_PYTHON,
+    ("replica_set", "noauth", "nossl"): MAX_PYTHON,
+    ("sharded_cluster", "auth", "ssl"): MAX_PYTHON,
+}
+
+
 def create_server_version_tasks():
-    tasks = []
-    task_combos = set()
-    # PR tasks pin to the Python boundaries.
-    pr_pythons = {
-        ("standalone", "noauth", "nossl"): MIN_PYTHON,
-        ("replica_set", "noauth", "nossl"): MAX_PYTHON,
-        ("sharded_cluster", "auth", "ssl"): MAX_PYTHON,
-    }
-    # All combinations of topology, auth, ssl, and sync should be tested.
-    for (topology, auth, ssl, sync), rotated in zip_cycle(
-        list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
-    ):
-        task_combos.add((topology, auth, ssl, sync, rotated))
-        # The pinned PR task re-binds to the boundary Python instead of
-        # reshuffling when a CPython is added or removed.
-        if pr_python := pr_pythons.get((topology, auth, ssl)):
-            task_combos.add((topology, auth, ssl, sync, pr_python))
-
-    # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
-    for python, sync in product(ALL_PYTHONS, SYNCS):
-        task_combos.add(("sharded_cluster", "auth", "ssl", sync, python))
-
-    # Assemble the tasks.
-    for topology, auth, ssl, sync, python in sorted(task_combos):
+    def make_task(topology, auth, ssl, sync, python, extra_tags=(), **extra_vars):
         combo = f"{topology}-{auth}-{ssl}"
-        tags = ["server-version", f"python-{python}", combo, sync]
-        if python == pr_pythons.get((topology, auth, ssl)):
-            tags.append("pr")
+        tags = ["server-version", f"python-{python}", combo, sync, *extra_tags]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
+        expansions.update(extra_vars)
         if "t" in python:
             tags.append("free-threaded")
-        if "pr" in tags:
-            expansions["COVERAGE"] = "1"
         name = get_task_name(
             "test-server-version",
             python=python,
@@ -697,7 +684,48 @@ def create_server_version_tasks():
         test_vars["UV_PYTHON"] = python
         test_vars["TEST_NAME"] = f"default_{sync}"
         test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+        return EvgTask(name=name, tags=tags, commands=[server_func, test_func])
+
+    tasks = []
+    task_combos = set()
+    # All combinations of topology, auth, ssl, and sync should be tested, with
+    # the Python rotating so every CPython is tested on every server version.
+    for (topology, auth, ssl, sync), rotated in zip_cycle(
+        list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
+    ):
+        task_combos.add((topology, auth, ssl, sync, rotated))
+
+    # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
+    for python, sync in product(ALL_PYTHONS, SYNCS):
+        task_combos.add(("sharded_cluster", "auth", "ssl", sync, python))
+
+    # Rotated batch tasks inherit the selecting variant's server version (one
+    # variant per MongoDB version). The boundary-Python tasks keep per-commit
+    # coverage without the pr tag: the pinned PR tasks below are the only pr
+    # tasks, and they are selected only by the MAX_VERSION variant.
+    for topology, auth, ssl, sync, python in sorted(task_combos):
+        extra_vars = {}
+        if python == SERVER_VERSION_PR_PYTHONS.get((topology, auth, ssl)):
+            extra_vars["COVERAGE"] = "1"
+        tasks.append(make_task(topology, auth, ssl, sync, python, **extra_vars))
+
+    # The pinned PR tasks re-bind to the boundary Pythons on MAX_VERSION
+    # instead of reshuffling when a CPython is added or removed. Their own
+    # VERSION var pins them to MAX_VERSION wherever they run.
+    for (topology, auth, ssl), python in sorted(SERVER_VERSION_PR_PYTHONS.items()):
+        for sync in SYNCS:
+            tasks.append(
+                make_task(
+                    topology,
+                    auth,
+                    ssl,
+                    sync,
+                    python,
+                    extra_tags=("pr",),
+                    VERSION=MAX_VERSION,
+                    COVERAGE="1",
+                )
+            )
     return tasks
 
 
