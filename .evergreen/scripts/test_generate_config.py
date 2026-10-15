@@ -36,7 +36,7 @@ def pr_tasks():
 
 
 def test_pr_tasks_run_on_latest_stable():
-    """PR tasks must not download the "latest" nightly: it needs AWS credentials."""
+    """PR tasks must pin to latest-stable: the "latest" nightly is unstable."""
     offenders = [task.name for task in pr_tasks() if task_vars(task).get("VERSION") == "latest"]
     assert not offenders, f"PR tasks pinned to 'latest': {offenders}"
 

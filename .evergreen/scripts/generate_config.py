@@ -1013,7 +1013,7 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         # so a cryptography-backend regression at either dependency extreme,
         # like the min-deps ML-KEM breakage in PYTHON-6032, is caught before
         # merge. The newest-server PR task downloads latest-stable; the
-        # "latest" nightly needs AWS credentials.
+        # "latest" nightly is unstable.
         pr = (
             base_task_name == "valid-cert-server-staples"
             and algo == "ecdsa"
