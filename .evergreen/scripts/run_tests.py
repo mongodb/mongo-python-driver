@@ -150,7 +150,9 @@ def handle_fuzz() -> None:
         # mode), and atheris exits gracefully once the budget reaches 0.
         runs = len(inputs)
         for target in targets:
-            run_command(f"python fuzz/{target}.py {' '.join(inputs)} -atheris_runs={runs}")
+            run_command(
+                f"{sys.executable} fuzz/{target}.py {' '.join(inputs)} -atheris_runs={runs}"
+            )
         return
 
     # Time-boxed fuzzing against the generated seed corpus.
@@ -160,7 +162,7 @@ def handle_fuzz() -> None:
     max_time = os.environ.get("FUZZ_MAX_TIME", "300")
     for target in targets:
         run_command(
-            f"python fuzz/{target}.py {corpus_dir} "
+            f"{sys.executable} fuzz/{target}.py {corpus_dir} "
             f"-artifact_prefix={artifact_prefix} "
             f"-max_total_time={max_time} -max_len=1048576 -print_final_stats=1"
         )

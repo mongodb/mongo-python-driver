@@ -5,6 +5,7 @@ import os
 import platform
 import shutil
 import stat
+import sys
 from pathlib import Path
 from urllib import request
 
@@ -536,9 +537,9 @@ def handle_test_env() -> None:
         corpus_dir.mkdir(parents=True)
         zip_path = scratch_dir / "corpus-seed.zip"
         run_command(
-            f"python fuzz/build_corpus.py {zip_path} --data-dir {ROOT / 'test' / 'bson_corpus'}"
+            f"{sys.executable} fuzz/build_corpus.py {zip_path} --data-dir {ROOT / 'test' / 'bson_corpus'}"
         )
-        run_command(f"python -m zipfile -e {zip_path} {corpus_dir}")
+        run_command(f"{sys.executable} -m zipfile -e {zip_path} {corpus_dir}")
         run_command(f"rm {zip_path}")
         write_env("FUZZ_CORPUS_DIR", str(corpus_dir))
 
