@@ -168,6 +168,24 @@ tasks:
     depends_on: [{ name: .server-version, variant: .coverage_tag, status: "*", patch_optional: true }]
     tags: [coverage, pr]
 
+  # Fuzz tests
+  - name: fuzz-regression
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: fuzz
+          SUB_TEST_NAME: regression
+          UV_PYTHON: "3.13"
+    tags: [fuzz, fuzz-regression, pr]
+  - name: fuzz
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: fuzz
+          SUB_TEST_NAME: fuzz
+          UV_PYTHON: "3.13"
+    tags: [fuzz, fuzz-nightly]
+
   # Getdata tests
   - name: getdata
     commands:

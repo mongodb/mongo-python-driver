@@ -71,6 +71,7 @@ coverage = [
 mockupdb = [
     "mockupdb>=1.8.1"
 ]
+fuzz = ["atheris>=2.3.0"]
 perf = ["simplejson>=3.17.0"]
 typing = [
     "mypy==1.19.1",
@@ -260,6 +261,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
     "UP031", "F401", "B023", "F811"]
 "tools/*.py" = ["T201"]
 "tools/test_*.py" = ["E402", "S"]
+"fuzz/*.py" = ["T201", "E402"]
 "hatch_build.py" = ["S"]
 "_setup.py" = ["SIM112"]
 

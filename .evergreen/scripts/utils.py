@@ -67,6 +67,7 @@ SUB_TEST_NAME_MAP: dict[str, list[str] | None] = {
         "ecs-remote",
     ],
     "kms": ["azure", "azure-remote", "azure-fail", "gcp", "gcp-remote", "gcp-fail"],
+    "fuzz": ["regression", "fuzz"],
     "perf": ["sync", "async"],
     "auth_oidc": [
         "default",
@@ -83,7 +84,7 @@ SUB_TEST_NAME_MAP: dict[str, list[str] | None] = {
     ],
 }
 
-EXTRA_TESTS = ["aws_lambda", "doctest"]
+EXTRA_TESTS = ["aws_lambda", "doctest", "fuzz"]
 
 # The managed Python version used for perf tests (PYTHON-6135).
 PERF_PYTHON_VERSION = "3.11.9"
@@ -93,6 +94,7 @@ NO_RUN_ORCHESTRATION = [
     "auth_oidc",
     "atlas_connect",
     "aws_lambda",
+    "fuzz",
     "mockupdb",
     "ocsp",
     "sfp",

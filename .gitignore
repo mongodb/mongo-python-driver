@@ -53,3 +53,12 @@ error_log
 # AI-assistant review workflow logs (kept untracked)
 /REVIEW_STATE.md
 /REVIEW.md
+
+# Fuzzing (PYTHON-4232)
+/fuzz-corpus/
+/fuzz-corpus-seed.zip
+/crash-*
+/leak-*
+/oom-*
+/timeout-*
+/bson-fuzz-tests/

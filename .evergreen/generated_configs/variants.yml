@@ -318,6 +318,22 @@ buildvariants:
       TEST_NAME: enterprise_auth
       AUTH: auth
 
+  # Fuzz tests
+  - name: fuzz-regression-rhel8
+    tasks:
+      - name: .fuzz-regression
+    display_name: Fuzz Regression RHEL8
+    run_on:
+      - rhel8.10-small
+    tags: [pr]
+  - name: fuzz-rhel8
+    tasks:
+      - name: .fuzz-nightly
+    display_name: Fuzz RHEL8
+    run_on:
+      - rhel8.10-small
+    batchtime: 1440
+
   # Green framework tests
   - name: green-gevent-rhel8
     tasks:

@@ -36,6 +36,7 @@ PASS_THROUGH_ENV = [
     "UV_PYTHON_PREFERENCE",
     "REQUIRE_FIPS",
     "IS_WIN32",
+    "FUZZ_MAX_TIME",
 ]
 
 # Map the test name to test extra.
@@ -51,7 +52,7 @@ EXTRAS_MAP = {
 
 
 # Map the test name to test group.
-GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
+GROUP_MAP = dict(fuzz="fuzz", mockupdb="mockupdb", perf="perf")
 
 # The libmongocrypt release used when LIBMONGOCRYPT_URL is not set. Must be at
 # least 1.20.0 for the GA "substring" query type.
@@ -526,6 +527,20 @@ def handle_test_env() -> None:
             TEST_ARGS = f"test/performance/perf_test.py {TEST_ARGS}"
         else:
             TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
+
+    if test_name == "fuzz" and sub_test_name != "regression":
+        # Build the seed corpus from the vendored spec data; nothing
+        # corpus-related is committed (PYTHON-4232).
+        corpus_dir = ROOT / "fuzz-corpus"
+        shutil.rmtree(corpus_dir, ignore_errors=True)
+        corpus_dir.mkdir()
+        zip_path = ROOT / "fuzz-corpus-seed.zip"
+        run_command(
+            f"python fuzz/build_corpus.py {zip_path} --data-dir {ROOT / 'test' / 'bson_corpus'}"
+        )
+        run_command(f"python -m zipfile -e {zip_path} {corpus_dir}")
+        run_command(f"rm {zip_path}")
+        write_env("FUZZ_CORPUS_DIR", str(corpus_dir))
 
     # Add coverage if requested.
     if opts.cov:
