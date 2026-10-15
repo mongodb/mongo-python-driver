@@ -91,8 +91,7 @@ def create_server_version_variants() -> list[BuildVariant]:
     variants = []
     for version in ALL_VERSIONS:
         display_name = get_variant_name("* MongoDB", version=version)
-        # The pr tasks pin their own VERSION; each version-boundary variant
-        # selects only the pr tasks pinned to that version.
+        # Each version-boundary variant selects only the pr tasks pinned to its version.
         if version in SERVER_VERSION_PR_PYTHONS:
             tasks = [".server-version !.pr", f".server-version .{version}"]
         else:
@@ -656,9 +655,7 @@ def create_aws_lambda_variants():
 ##############
 
 
-# The server-version PR tasks: the Python boundaries to pin per server
-# version. The min server tests its min-Python floor; the newest numbered
-# server tests every boundary.
+# The server-version pr tasks: the Python boundaries pinned per server version.
 SERVER_VERSION_PR_PYTHONS = {
     MIN_VERSION: {("standalone", "noauth", "nossl"): MIN_PYTHON},
     MAX_VERSION: {
@@ -717,9 +714,7 @@ def create_server_version_tasks():
             extra_vars["COVERAGE"] = "1"
         tasks.append(make_task(topology, auth, ssl, sync, python, **extra_vars))
 
-    # The pinned PR tasks: the boundary Pythons pinned per server version,
-    # stable as CPYTHONS changes. Each carries its version as a tag so only
-    # the variant running that version selects it.
+    # The pinned pr tasks: the boundary Pythons per server version, stable as CPYTHONS changes.
     for version, combos in sorted(SERVER_VERSION_PR_PYTHONS.items()):
         for (topology, auth, ssl), python in sorted(combos.items()):
             for sync in SYNCS:
