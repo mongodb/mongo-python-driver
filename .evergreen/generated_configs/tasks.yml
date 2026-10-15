@@ -3751,6 +3751,28 @@ tasks:
       - python-3.13
       - sharded_cluster-auth-ssl
       - async
+  - name: test-standard-v5.0-python3.15-async-auth-ssl-sharded-cluster
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "5.0"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "5.0"
+          UV_PYTHON: "3.15"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-5.0
+      - python-3.15
+      - sharded_cluster-auth-ssl
+      - async
   - name: test-standard-v5.0-python3.14-async-noauth-nossl-standalone
     commands:
       - func: run server
@@ -3864,6 +3886,30 @@ tasks:
       - standalone-noauth-nossl
       - sync
       - free-threaded
+  - name: test-standard-v7.0-python3.11-async-noauth-ssl-replica-set-min-deps
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: ssl
+          TOPOLOGY: replica_set
+          VERSION: "7.0"
+          TEST_MIN_DEPS: "1"
+          UV_PYTHON: "3.11"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-7.0
+      - python-3.11
+      - replica_set-noauth-ssl
+      - async
   - name: test-standard-v7.0-python3.14-async-noauth-ssl-replica-set
     commands:
       - func: run server
@@ -4090,6 +4136,30 @@ tasks:
       - replica_set-noauth-ssl
       - async
       - free-threaded
+  - name: test-standard-v9.0-python3.11-async-auth-ssl-sharded-cluster-min-deps
+    commands:
+      - func: run server
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          TEST_MIN_DEPS: "1"
+      - func: run tests
+        vars:
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          TEST_MIN_DEPS: "1"
+          UV_PYTHON: "3.11"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-9.0
+      - python-3.11
+      - sharded_cluster-auth-ssl
+      - async
   - name: test-standard-v9.0-python3.14-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -4132,6 +4202,28 @@ tasks:
       - test-standard
       - server-9.0
       - python-3.13
+      - standalone-noauth-nossl
+      - async
+  - name: test-standard-v9.0-python3.15-async-noauth-nossl-standalone
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "9.0"
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          VERSION: "9.0"
+          UV_PYTHON: "3.15"
+          TEST_NAME: default_async
+    tags:
+      - test-standard
+      - server-9.0
+      - python-3.15
       - standalone-noauth-nossl
       - async
   - name: test-standard-latest-python3.13-async-noauth-ssl-replica-set
@@ -4224,33 +4316,6 @@ tasks:
       - standalone-noauth-nossl
       - async
       - free-threaded
-  - name: test-standard-latest-stable-python3.11-async-noauth-ssl-replica-set-min-deps-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: latest-stable
-          TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: latest-stable
-          TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
-          UV_PYTHON: "3.11"
-          TEST_NAME: default_async
-    tags:
-      - test-standard
-      - server-latest-stable
-      - python-3.11
-      - replica_set-noauth-ssl
-      - async
-      - pr
   - name: test-standard-latest-stable-python3.15-async-noauth-ssl-replica-set-cov
     commands:
       - func: run server
@@ -4274,58 +4339,6 @@ tasks:
       - server-latest-stable
       - python-3.15
       - replica_set-noauth-ssl
-      - async
-      - pr
-  - name: test-standard-latest-stable-python3.11-async-auth-ssl-sharded-cluster-min-deps-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          TEST_MIN_DEPS: "1"
-          COVERAGE: "1"
-          UV_PYTHON: "3.11"
-          TEST_NAME: default_async
-    tags:
-      - test-standard
-      - server-latest-stable
-      - python-3.11
-      - sharded_cluster-auth-ssl
-      - async
-      - pr
-  - name: test-standard-latest-stable-python3.15-async-auth-ssl-sharded-cluster-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: auth
-          SSL: ssl
-          TOPOLOGY: sharded_cluster
-          VERSION: latest-stable
-          COVERAGE: "1"
-          UV_PYTHON: "3.15"
-          TEST_NAME: default_async
-    tags:
-      - test-standard
-      - server-latest-stable
-      - python-3.15
-      - sharded_cluster-auth-ssl
       - async
       - pr
   - name: test-standard-latest-stable-python3.15t-sync-auth-ssl-sharded-cluster-cov
@@ -4378,31 +4391,6 @@ tasks:
       - test-standard
       - server-latest-stable
       - python-3.11
-      - standalone-noauth-nossl
-      - async
-      - pr
-  - name: test-standard-latest-stable-python3.15-async-noauth-nossl-standalone-cov
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: latest-stable
-          COVERAGE: "1"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: nossl
-          TOPOLOGY: standalone
-          VERSION: latest-stable
-          COVERAGE: "1"
-          UV_PYTHON: "3.15"
-          TEST_NAME: default_async
-    tags:
-      - test-standard
-      - server-latest-stable
-      - python-3.15
       - standalone-noauth-nossl
       - async
       - pr

@@ -849,9 +849,13 @@ def create_standard_tasks():
     for (python, topology, sync), rotated in zip_cycle(
         list(product(CPYTHONS, TOPOLOGIES, SYNCS)), ALL_VERSIONS
     ):
-        # PR tasks pin to the Python boundaries on the latest stable server.
-        pr = (python in (MIN_PYTHON, MAX_PYTHON) and sync == "async") or (
-            python == FREE_THREADED_PYTHON and topology == "sharded_cluster" and sync == "sync"
+        # PR tasks pin to the Python boundaries on the latest stable server:
+        # min Python on standalone, max Python on replica set, and the
+        # free-threaded Python on sharded cluster.
+        pr = (
+            (python == MIN_PYTHON and topology == "standalone" and sync == "async")
+            or (python == MAX_PYTHON and topology == "replica_set" and sync == "async")
+            or (python == FREE_THREADED_PYTHON and topology == "sharded_cluster" and sync == "sync")
         )
         version = "latest-stable" if pr else rotated
         task_combos.add((version, topology, python, sync, pr))

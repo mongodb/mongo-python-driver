@@ -48,3 +48,21 @@ def test_pr_min_deps_tasks_also_run_coverage():
         if task_vars(task).get("TEST_MIN_DEPS") == "1" and task_vars(task).get("COVERAGE") != "1"
     ]
     assert not offenders, f"min-deps PR tasks without COVERAGE: {offenders}"
+
+
+def test_standard_family_pr_budget():
+    """The No C Ext and Compression variants select .test-standard, so their
+    patch builds run one PR task per pr-tagged test-standard task. Keep the
+    count at or below the pre-pin baseline (5), and at or below 3 for the
+    ubuntu22 compression variant, which filters to Python 3.14 and newer."""
+    tasks = [task for task in pr_tasks() if "test-standard" in (task.tags or [])]
+    assert len(tasks) <= 5, f"too many test-standard PR tasks: {[t.name for t in tasks]}"
+    newer = [
+        task
+        for task in tasks
+        if any(
+            tag in (task.tags or [])
+            for tag in ("python-3.14", "python-3.14t", "python-3.15", "python-3.15t")
+        )
+    ]
+    assert len(newer) <= 3, f"too many 3.14+ test-standard PR tasks: {[t.name for t in newer]}"
