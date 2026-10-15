@@ -35,11 +35,8 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           python-version: "3.11"
-      - uses: mongodb-labs/drivers-github-tools/python/uv-lock-update@4089c3eb27d7a5101d987088c3345013858d65f8  # v3.0.6
+      - uses: mongodb-labs/drivers-github-tools/python/uv-lock-update@99b1cbd729bc83bf7fc74e1b2a97fffad3d65d7b  # v3.1.1
         with:
           app_id: ${{ vars.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
           dry_run: ${{ inputs.dry_run || 'false' }}
-          # Unset UV_EXCLUDE_NEWER, so the cutoff comes from exclude-newer in
-          # pyproject.toml instead of the action default.
-          exclude_newer: ""
