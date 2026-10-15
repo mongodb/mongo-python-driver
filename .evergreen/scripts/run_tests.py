@@ -151,11 +151,14 @@ def handle_fuzz() -> None:
         return
 
     # Time-boxed fuzzing against the generated seed corpus.
-    corpus_dir = os.environ.get("FUZZ_CORPUS_DIR", str(ROOT / "fuzz-corpus"))
+    corpus_dir = os.environ.get("FUZZ_CORPUS_DIR", str(ROOT / "fuzz-scratch" / "corpus"))
+    # Keep libFuzzer artifacts (crash-*, leak-*, ...) under the scratch dir.
+    artifact_prefix = f"{ROOT}/fuzz-scratch/"
     max_time = os.environ.get("FUZZ_MAX_TIME", "300")
     for target in targets:
         run_command(
             f"python fuzz/{target}.py {corpus_dir} "
+            f"-artifact_prefix={artifact_prefix} "
             f"-max_total_time={max_time} -max_len=1048576 -print_final_stats=1"
         )
 

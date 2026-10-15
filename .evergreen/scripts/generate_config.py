@@ -512,7 +512,7 @@ def create_fuzz_variants():
     # Regression test on every PR.
     name = get_variant_name("Fuzz Regression", host)
     pr_variant = create_variant([".fuzz-regression"], name, host=host, tags=["pr"])
-    # Atheris is CPython-only and Linux/macOS-only; use a pinned CPython on RHEL8.
+    # Fuzzing requires CPython on Linux/macOS; use a pinned CPython on RHEL8.
     name = get_variant_name("Fuzz", host)
     nightly = create_variant([".fuzz-nightly"], name, host=host, batchtime=BATCHTIME_DAY)
     return [pr_variant, nightly]

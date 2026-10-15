@@ -447,9 +447,8 @@ To run any of the test suites with minimum supported dependencies, pass `--test-
 
 ## Fuzz tests
 
-The `fuzz/` directory holds coverage-guided fuzz tests for `bson`, built on
-[atheris](https://github.com/google/atheris) (PYTHON-4232). See
-`fuzz/README.md` for details.
+The `fuzz/` directory holds coverage-guided fuzz tests for `bson`
+(PYTHON-4232). See `fuzz/README.md` for details.
 
 - Regression test (runs on every PR):
   `just setup-tests fuzz regression` then `just run-tests`.

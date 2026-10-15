@@ -39,7 +39,7 @@ def extjson_to_bson_bytes(extjson: str) -> bytes:
 
 
 def canonical_hex_to_bson_bytes(hex_str: str) -> bytes:
-    """Decode a canonical_bson hex string to raw BSON bytes."""
+    """Decode a hex string to bytes."""
     return bytes.fromhex(hex_str)
 
 

@@ -530,10 +530,11 @@ def handle_test_env() -> None:
 
     if test_name == "fuzz" and sub_test_name != "regression":
         # Build the seed corpus from the vendored spec data.
-        corpus_dir = ROOT / "fuzz-corpus"
-        shutil.rmtree(corpus_dir, ignore_errors=True)
-        corpus_dir.mkdir()
-        zip_path = ROOT / "fuzz-corpus-seed.zip"
+        scratch_dir = ROOT / "fuzz-scratch"
+        shutil.rmtree(scratch_dir, ignore_errors=True)
+        corpus_dir = scratch_dir / "corpus"
+        corpus_dir.mkdir(parents=True)
+        zip_path = scratch_dir / "corpus-seed.zip"
         run_command(
             f"python fuzz/build_corpus.py {zip_path} --data-dir {ROOT / 'test' / 'bson_corpus'}"
         )
