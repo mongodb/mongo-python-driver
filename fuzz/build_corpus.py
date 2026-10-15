@@ -74,16 +74,17 @@ def seed_test_cases(zw: zipfile.ZipFile, test_cases: list[dict[str, Any]]) -> No
     for tc in test_cases:
         desc = tc.get("description", "<unknown>")
 
-        # Canonical BSON bytes need no JSON round-trip.
-        if "canonical_bson" in tc:
-            try:
-                bson_bytes = hex_to_bytes(tc["canonical_bson"])
-                add_to_corpus(zw, bson_bytes)
-            except ValueError as exc:
-                print(
-                    f"Warning: {desc!r}: failed to decode canonical_bson hex: {exc}",
-                    file=sys.stderr,
-                )
+        # Raw BSON bytes need no JSON round-trip. A valid case can carry
+        # several distinct wire representations; seed each one.
+        for field in ("canonical_bson", "degenerate_bson", "converted_bson"):
+            if field in tc and tc[field] is not None:
+                try:
+                    add_to_corpus(zw, hex_to_bytes(tc[field]))
+                except ValueError as exc:
+                    print(
+                        f"Warning: {desc!r}: failed to decode {field} hex: {exc}",
+                        file=sys.stderr,
+                    )
 
         # Extended JSON variants, converted through the encoder to canonical BSON.
         for field, extjson_type in (

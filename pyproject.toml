@@ -71,6 +71,7 @@ coverage = [
 mockupdb = [
     "mockupdb>=1.8.1"
 ]
+# Atheris publishes CPython 3.12-3.14 Linux x86_64 wheels only; see fuzz/README.md.
 fuzz = ["atheris>=2.3.0"]
 perf = ["simplejson>=3.17.0"]
 typing = [
