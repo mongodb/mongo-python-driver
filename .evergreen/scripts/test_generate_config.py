@@ -2,7 +2,8 @@
 
 Run: pytest .evergreen/scripts/test_generate_config.py -m ""
 (-m "" overrides the repo-wide default marker filter.)
-Requires the same dependencies as the generate-config hook: shrub.py, pyyaml.
+Requires the same dependencies as the generate-config hook: pytest,
+pytest-asyncio, shrub.py, pyyaml.
 """
 
 from __future__ import annotations
