@@ -39,26 +39,17 @@ def _load_pure_python_bson():
     return pure_bson
 
 
-def _c_extension_available() -> bool:
-    try:
-        import bson._cbson as cbson
-
-        return cbson is not None
-    except ImportError:
-        return False
-
-
 _bson_pure = _load_pure_python_bson()
 
 # Consistency checks apply only when the two handles genuinely differ.
-_BOTH_IMPLS = _bson_pure is not None and _c_extension_available()
+_BOTH_IMPLS = _bson_pure is not None and _bson_c.has_c()
 
 with atheris.instrument_imports():
     pass  # bson already imported above
 
 
-# InvalidBSON is excluded: each bson module has its own class, caught via
-# bson_mod.InvalidBSON below.
+# InvalidBSON is excluded: each bson module has its own class, which
+# _decode_with catches as bson_mod.InvalidBSON below.
 _OTHER_ERRORS = (ValueError, struct.error, UnicodeDecodeError, OverflowError, KeyError)
 
 

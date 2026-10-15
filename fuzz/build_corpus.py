@@ -38,7 +38,7 @@ def extjson_to_bson_bytes(extjson: str) -> bytes:
     return bson.encode(doc)
 
 
-def canonical_hex_to_bson_bytes(hex_str: str) -> bytes:
+def hex_to_bytes(hex_str: str) -> bytes:
     """Decode a hex string to bytes."""
     return bytes.fromhex(hex_str)
 
@@ -77,7 +77,7 @@ def seed_test_cases(zw: zipfile.ZipFile, test_cases: list[dict[str, Any]]) -> No
         # Canonical BSON bytes need no JSON round-trip.
         if "canonical_bson" in tc:
             try:
-                bson_bytes = canonical_hex_to_bson_bytes(tc["canonical_bson"])
+                bson_bytes = hex_to_bytes(tc["canonical_bson"])
                 add_to_corpus(zw, bson_bytes)
             except ValueError as exc:
                 print(

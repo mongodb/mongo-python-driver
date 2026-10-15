@@ -35,17 +35,8 @@ def _load_pure_python_bson():
     return pure_bson
 
 
-def _c_extension_available() -> bool:
-    try:
-        import bson._cbson as cbson
-
-        return cbson is not None
-    except ImportError:
-        return False
-
-
 _bson_pure = _load_pure_python_bson()
-_BOTH_IMPLS = _bson_pure is not None and _c_extension_available()
+_BOTH_IMPLS = _bson_pure is not None and _bson_c.has_c()
 
 with atheris.instrument_imports():
     import bson
