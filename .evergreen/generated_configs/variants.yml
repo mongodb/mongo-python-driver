@@ -532,6 +532,7 @@ buildvariants:
   - name: mongodb-v4.4
     tasks:
       - name: .server-version !.pr
+      - name: .server-version .4.4
     display_name: "* MongoDB v4.4"
     run_on:
       - rhel8.10-small
@@ -576,7 +577,8 @@ buildvariants:
     tags: [coverage_tag]
   - name: mongodb-v9.0
     tasks:
-      - name: .server-version
+      - name: .server-version !.pr
+      - name: .server-version .9.0
     display_name: "* MongoDB v9.0"
     run_on:
       - rhel8.10-small

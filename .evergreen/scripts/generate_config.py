@@ -18,6 +18,7 @@ from generate_config_utils import (
     MAX_VERSION,
     MIN_MAX_PYTHON,
     MIN_PYTHON,
+    MIN_VERSION,
     OTHER_HOSTS,
     SYNCS,
     TOPOLOGIES,
@@ -90,9 +91,12 @@ def create_server_version_variants() -> list[BuildVariant]:
     variants = []
     for version in ALL_VERSIONS:
         display_name = get_variant_name("* MongoDB", version=version)
-        # The pr tasks pin their own VERSION; only the MAX_VERSION variant
-        # selects them.
-        tasks = [".server-version"] if version == MAX_VERSION else [".server-version !.pr"]
+        # The pr tasks pin their own VERSION; each version-boundary variant
+        # selects only the pr tasks pinned to that version.
+        if version in SERVER_VERSION_PR_PYTHONS:
+            tasks = [".server-version !.pr", f".server-version .{version}"]
+        else:
+            tasks = [".server-version !.pr"]
         variant = create_variant(
             tasks,
             display_name,
@@ -652,11 +656,16 @@ def create_aws_lambda_variants():
 ##############
 
 
-# The Python boundaries the server-version PR tasks pin to.
+# The server-version PR tasks: the Python boundaries to pin per server
+# version. The min server tests its min-Python floor; the newest numbered
+# server tests every boundary.
 SERVER_VERSION_PR_PYTHONS = {
-    ("standalone", "noauth", "nossl"): MIN_PYTHON,
-    ("replica_set", "noauth", "nossl"): MAX_PYTHON,
-    ("sharded_cluster", "auth", "ssl"): MAX_PYTHON,
+    MIN_VERSION: {("standalone", "noauth", "nossl"): MIN_PYTHON},
+    MAX_VERSION: {
+        ("standalone", "noauth", "nossl"): MIN_PYTHON,
+        ("replica_set", "noauth", "nossl"): MAX_PYTHON,
+        ("sharded_cluster", "auth", "ssl"): MAX_PYTHON,
+    },
 }
 
 
@@ -697,28 +706,35 @@ def create_server_version_tasks():
 
     # Rotated tasks inherit the variant's VERSION; boundary-Python tasks keep
     # COVERAGE without pr so per-commit coverage is not pr-only.
+    pr_pythons = {
+        combo: python
+        for combos in SERVER_VERSION_PR_PYTHONS.values()
+        for combo, python in combos.items()
+    }
     for topology, auth, ssl, sync, python in sorted(task_combos):
         extra_vars = {}
-        if python == SERVER_VERSION_PR_PYTHONS.get((topology, auth, ssl)):
+        if python == pr_pythons.get((topology, auth, ssl)):
             extra_vars["COVERAGE"] = "1"
         tasks.append(make_task(topology, auth, ssl, sync, python, **extra_vars))
 
-    # The pinned PR tasks: the boundary Pythons on MAX_VERSION, stable as
-    # CPYTHONS changes.
-    for (topology, auth, ssl), python in sorted(SERVER_VERSION_PR_PYTHONS.items()):
-        for sync in SYNCS:
-            tasks.append(
-                make_task(
-                    topology,
-                    auth,
-                    ssl,
-                    sync,
-                    python,
-                    extra_tags=("pr",),
-                    VERSION=MAX_VERSION,
-                    COVERAGE="1",
+    # The pinned PR tasks: the boundary Pythons pinned per server version,
+    # stable as CPYTHONS changes. Each carries its version as a tag so only
+    # the variant running that version selects it.
+    for version, combos in sorted(SERVER_VERSION_PR_PYTHONS.items()):
+        for (topology, auth, ssl), python in sorted(combos.items()):
+            for sync in SYNCS:
+                tasks.append(
+                    make_task(
+                        topology,
+                        auth,
+                        ssl,
+                        sync,
+                        python,
+                        extra_tags=("pr", version),
+                        VERSION=version,
+                        COVERAGE="1",
+                    )
                 )
-            )
     return tasks
 
 

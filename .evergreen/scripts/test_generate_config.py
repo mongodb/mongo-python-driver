@@ -113,21 +113,45 @@ def test_pr_tasks_effectively_pin_max_version():
 
 def test_server_version_pr_tasks_selected_once():
     """The mongodb-* variants differ only in server version, so a pr task
-    they all select would run identically per variant. Only MAX_VERSION
-    selects them."""
-    tasks = [
-        task
-        for task in all_tasks()
-        if "server-version" in (task.tags or []) and "pr" in (task.tags or [])
-    ]
+    must be selected only by the variant running the server version it pins."""
     offenders = {}
-    for task in tasks:
+    for task in pr_tasks():
+        if "server-version" not in (task.tags or []):
+            continue
+        own = task_vars(task).get("VERSION")
         selecting = [variant.name for variant in all_variants() if variant_selects(variant, task)]
-        if len(selecting) != 1:
-            offenders[task.name] = selecting
+        matching = [
+            variant.name
+            for variant in all_variants()
+            if (variant.expansions or {}).get("VERSION") == own
+        ]
+        if selecting != matching:
+            offenders[task.name] = {"selected by": selecting, "pins": own}
     assert not offenders, (
-        f"server-version pr tasks not selected by exactly one variant: {offenders}"
+        f"server-version pr tasks not selected by the variant matching their pin: {offenders}"
     )
+
+
+def test_pr_tasks_cover_version_boundaries():
+    """PRs test the server version boundaries: the newest numbered server
+    with every Python boundary, the min server with its min-Python floor."""
+    for version, pythons in (
+        (
+            generate_config_utils.MAX_VERSION,
+            (generate_config_utils.MIN_PYTHON, generate_config_utils.MAX_PYTHON),
+        ),
+        (generate_config_utils.MIN_VERSION, (generate_config_utils.MIN_PYTHON,)),
+    ):
+        tasks = [
+            task
+            for task in pr_tasks()
+            if "server-version" in (task.tags or []) and task_vars(task).get("VERSION") == version
+        ]
+        seen = {task_vars(task).get("UV_PYTHON") for task in tasks}
+        assert seen == set(pythons), (
+            f"{version} pr tasks pin {sorted(seen)}, want {sorted(pythons)}"
+        )
+        assert len(tasks) >= 2, f"{version} has too few server-version pr tasks"
 
 
 def test_server_version_rotated_tasks_keep_coverage():
@@ -138,14 +162,17 @@ def test_server_version_rotated_tasks_keep_coverage():
     assert any("pr" not in (task.tags or []) for task in cov), (
         "the server-version family's only COVERAGE tasks are pr tasks"
     )
+    pr_pythons = {
+        combo: python
+        for combos in generate_config.SERVER_VERSION_PR_PYTHONS.values()
+        for combo, python in combos.items()
+    }
     offenders = []
     for task in family:
         if "pr" in (task.tags or []):
             continue
         vars = task_vars(task)
-        boundary = generate_config.SERVER_VERSION_PR_PYTHONS.get(
-            (vars["TOPOLOGY"], vars["AUTH"], vars["SSL"])
-        )
+        boundary = pr_pythons.get((vars["TOPOLOGY"], vars["AUTH"], vars["SSL"]))
         if vars.get("UV_PYTHON") == boundary and vars.get("COVERAGE") != "1":
             offenders.append(task.name)
     assert not offenders, f"rotated server-version boundary tasks without COVERAGE: {offenders}"
