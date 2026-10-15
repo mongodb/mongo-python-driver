@@ -90,13 +90,6 @@ class Algorithm(str, enum.Enum):
 
     .. versionadded:: 4.9
     """
-    RANGEPREVIEW = "RangePreview"
-    """**DEPRECATED** - RangePreview.
-
-    .. note:: Support for RangePreview is deprecated. Use :attr:`Algorithm.RANGE` instead.
-
-    .. versionadded:: 4.4
-    """
     STRING = "String"
     """String.
 
@@ -124,14 +117,6 @@ class QueryType(str, enum.Enum):
     """Used to encrypt a value for a range query.
 
     .. versionadded:: 4.9
-    """
-
-    RANGEPREVIEW = "RangePreview"
-    """**DEPRECATED** - Used to encrypt a value for a rangePreview query.
-
-    .. note:: Support for RangePreview is deprecated. Use :attr:`QueryType.RANGE` instead.
-
-    .. versionadded:: 4.4
     """
 
     PREFIX = "prefix"

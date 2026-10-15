@@ -1,16 +1,34 @@
 Changelog
 =========
 
-Changes in Version 4.19.0 (2026/XX/XX)
+Changes in Version 4.20.0 (2026/XX/XX)
+--------------------------------------
+
+Bug fixes
+.........
+
+- Fixed a disagreement between the C extension and pure-Python BSON decoders
+  for binary elements with UUID subtypes (3 and 4) whose payload is not 16
+  bytes. Both now decode them to :class:`~bson.binary.Binary` under the
+  default ``UNSPECIFIED`` UUID representation, and raise
+  :class:`~bson.errors.InvalidBSON` when UUID conversion is requested
+  (`PYTHON-6172`_).
+
+.. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
+
+Changes in Version 4.19.0 (2026/10/14)
 --------------------------------------
 
 PyMongo 4.19 brings a number of changes including:
 
-.. warning:: PyMongo 4.19 drops support for Python 3.9 and 3.10 and PyPy 3.9
-  and 3.10: Python 3.11+ or PyPy 3.11+ is now required.
+.. warning:: PyMongo 4.19 drops support for Python 3.9 and 3.10 and removes
+  PyPy support: Python 3.11+ is now required.
 
 - Added support for Python 3.15.
-- Dropped support for Python 3.9 and 3.10 and PyPy 3.9 and 3.10 (PYTHON-6138).
+- Dropped support for Python 3.9 and 3.10.
+- Removed support for PyPy.
+- Removed the deprecated ``Algorithm.RANGEPREVIEW`` and
+  ``QueryType.RANGEPREVIEW`` members (`PYTHON-6009`_).
 - Added support for running the synchronous and asynchronous clients in
   subinterpreters, including inside
   ``concurrent.futures.InterpreterPoolExecutor`` (Python 3.14+). Only in
@@ -20,14 +38,18 @@ PyMongo 4.19 brings a number of changes including:
   interpreter remain daemon threads and shutdown behavior is unchanged.
   Note that because these threads are non-daemon, a subinterpreter may block
   on teardown until any in-flight monitor work completes.
-- Added the ``kms_connect_callback`` option on
+- Added support for routing Key Management Service (KMS) requests for
+  Client-Side Field Level Encryption and Queryable Encryption through an HTTP
+  proxy, using the new ``kms_connect_callback`` option on
   :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
   :class:`~pymongo.encryption.ClientEncryption`, and
-  :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`: a callable
-  that opens the connection to a Key Management Service (KMS) host for
-  Client-Side Field Level Encryption and Queryable Encryption, e.g. to route
-  KMS requests through a proxy. The driver performs the KMS TLS handshake over
-  the callback's connection, so verification still targets the KMS host.
+  :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`. The callback
+  opens the connection and the driver performs the KMS TLS handshake over it, so
+  verification still targets the KMS host rather than the proxy. For an ordinary
+  HTTP proxy, pass :class:`~pymongo.encryption_options.HTTPProxyKMSConnect` or
+  :class:`~pymongo.encryption_options.AsyncHTTPProxyKMSConnect` instead of
+  writing a callback. Both helpers accept custom ``CONNECT`` headers, e.g.
+  ``Proxy-Authorization`` for proxies that require authentication.
 - Added the ``srv_host_validator`` keyword argument to
   :class:`~pymongo.synchronous.mongo_client.MongoClient` and
   :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`, an alternative to
@@ -77,6 +99,15 @@ Bug fixes
 .. _PYTHON-6040: https://jira.mongodb.org/browse/PYTHON-6040
 .. _PYTHON-6111: https://jira.mongodb.org/browse/PYTHON-6111
 .. _PYTHON-6163: https://jira.mongodb.org/browse/PYTHON-6163
+.. _PYTHON-6009: https://jira.mongodb.org/browse/PYTHON-6009
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.19.0 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.19.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=52147
 
 Changes in Version 4.18.2 (2026/09/24)
 --------------------------------------

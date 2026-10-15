@@ -51,7 +51,9 @@ from bson import (
     json_util,
 )
 from bson.binary import (
+    OLD_UUID_SUBTYPE,
     USER_DEFINED_SUBTYPE,
+    UUID_SUBTYPE,
     Binary,
     BinaryVector,
     BinaryVectorDtype,
@@ -897,6 +899,58 @@ class TestBSON(unittest.TestCase):
         self.assertIsInstance(bin, Binary)
         transformed = bin.as_uuid(UuidRepresentation.PYTHON_LEGACY)
         self.assertEqual(id, transformed)
+
+    def test_short_uuid_subtype_binary(self):
+        # PYTHON-6172: both decoders must agree on short UUID payloads.
+        data = bytes.fromhex("0c0000000500000000000400")
+        self.assertEqual(data, encode({"": Binary(b"", UUID_SUBTYPE)}))
+
+        # Default UNSPECIFIED representation: decode to Binary.
+        for subtype in (OLD_UUID_SUBTYPE, UUID_SUBTYPE):
+            doc = {"x": Binary(b"", subtype)}
+            payload = encode(doc)
+            self.assertEqual(decode(payload), doc)
+            self.assertEqual(decode_all(payload), [doc])
+            self.assertTrue(is_valid(payload))
+        self.assertEqual(decode_all(data), [{"": Binary(b"", UUID_SUBTYPE)}])
+
+        # Conversion to uuid.UUID requested: raise InvalidBSON unless the
+        # payload is exactly 16 bytes, overlong included. JAVA_LEGACY must
+        # not silently truncate non-16-byte payloads.
+        standard = CodecOptions(uuid_representation=UuidRepresentation.STANDARD)
+        converting = [(UUID_SUBTYPE, standard)] + [
+            (OLD_UUID_SUBTYPE, CodecOptions(uuid_representation=rep))
+            for rep in (
+                UuidRepresentation.PYTHON_LEGACY,
+                UuidRepresentation.JAVA_LEGACY,
+                UuidRepresentation.CSHARP_LEGACY,
+            )
+        ]
+        for length in (0, 15, 17):
+            for subtype, opts in converting:
+                payload = encode({"x": Binary(b"x" * length, subtype)})
+                self.assertTrue(is_valid(payload))
+                with self.assertRaisesRegex(InvalidBSON, "expected 16"):
+                    decode_all(payload, opts)
+        # Mismatched subtype/representation pairs do not convert.
+        for rep in (
+            UuidRepresentation.PYTHON_LEGACY,
+            UuidRepresentation.JAVA_LEGACY,
+            UuidRepresentation.CSHARP_LEGACY,
+        ):
+            opts = CodecOptions(uuid_representation=rep)
+            self.assertEqual(
+                decode_all(encode({"x": Binary(b"", UUID_SUBTYPE)}), opts),
+                [{"x": Binary(b"", UUID_SUBTYPE)}],
+            )
+        # OLD_UUID_SUBTYPE with STANDARD is also mismatched: decode to
+        # Binary at any payload length, 16 included.
+        for length in (0, 15, 16, 17):
+            doc = {"x": Binary(b"x" * length, OLD_UUID_SUBTYPE)}
+            payload = encode(doc)
+            self.assertTrue(is_valid(payload))
+            self.assertEqual(decode(payload, standard), doc)
+            self.assertEqual(decode_all(payload, standard), [doc])
 
     def test_vector(self):
         """Tests of subtype 9"""

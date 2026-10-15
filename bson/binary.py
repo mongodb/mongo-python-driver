@@ -385,7 +385,7 @@ class Binary(bytes):
         with the provided ``uuid_representation``.
 
         Raises :exc:`ValueError` if this :class:`~bson.binary.Binary` instance
-        does not contain a UUID.
+        does not contain a UUID, or its payload is not exactly 16 bytes.
 
         :param uuid_representation: A member of
             :class:`~bson.binary.UuidRepresentation`. Default:
@@ -404,7 +404,11 @@ class Binary(bytes):
 
         if uuid_representation == UuidRepresentation.UNSPECIFIED:
             raise ValueError("uuid_representation cannot be UNSPECIFIED")
-        elif uuid_representation == UuidRepresentation.PYTHON_LEGACY:
+
+        if len(self) != 16:
+            raise ValueError(f"cannot decode a uuid from a {len(self)}-byte payload, expected 16")
+
+        if uuid_representation == UuidRepresentation.PYTHON_LEGACY:
             if self.subtype == OLD_UUID_SUBTYPE:
                 return UUID(bytes=self)
         elif uuid_representation == UuidRepresentation.JAVA_LEGACY:
