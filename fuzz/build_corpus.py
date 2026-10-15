@@ -32,8 +32,8 @@ from bson.code import Code
 DEFAULT_DATA_DIR = "test/bson_corpus"
 
 
-def extjson_to_bson_bytes(extjson: str) -> bytes:
-    """Convert an Extended JSON string to canonical BSON bytes."""
+def extjson_to_bytes(extjson: str) -> bytes:
+    """Convert an Extended JSON string to bytes."""
     doc = json_util.loads(extjson)
     return bson.encode(doc)
 
@@ -58,7 +58,7 @@ def seed_extjson(
 ) -> None:
     """Convert an Extended JSON string to BSON bytes and add it to the corpus."""
     try:
-        bson_bytes = extjson_to_bson_bytes(extjson)
+        bson_bytes = extjson_to_bytes(extjson)
     except Exception as exc:
         print(
             f"Warning: {description!r}: failed to convert {extjson_type} "
