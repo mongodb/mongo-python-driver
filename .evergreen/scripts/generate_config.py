@@ -650,10 +650,7 @@ def create_aws_lambda_variants():
 def create_server_version_tasks():
     tasks = []
     task_combos = set()
-    # The canonical PR combos, pinned to the Python boundaries: the min
-    # Python on standalone (min deps), the max Python on replica set and
-    # sharded cluster (coverage). The pins re-bind instead of reshuffling
-    # when a CPython is added or removed.
+    # PR tasks pin to the Python boundaries.
     pr_pythons = {
         ("standalone", "noauth", "nossl"): MIN_PYTHON,
         ("replica_set", "noauth", "nossl"): MAX_PYTHON,
@@ -852,8 +849,7 @@ def create_standard_tasks():
     for (python, topology, sync), rotated in zip_cycle(
         list(product(CPYTHONS, TOPOLOGIES, SYNCS)), ALL_VERSIONS
     ):
-        # PR tasks are pinned to the Python boundaries on the latest server:
-        # the min and max Python on async, plus one free-threaded task.
+        # PR tasks pin to the Python boundaries on the latest server.
         pr = (python in (MIN_PYTHON, MAX_PYTHON) and sync == "async") or (
             python == FREE_THREADED_PYTHON and topology == "sharded_cluster" and sync == "sync"
         )
@@ -950,8 +946,7 @@ def create_aws_tasks():
         if "t" in python:
             tags.append("free-threaded")
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, UV_PYTHON=python)
-        # PR tasks are pinned to the Python boundaries on the latest server;
-        # the rotation never produces (latest, regular).
+        # The rotation never produces (latest, regular).
         pr = version == "latest" and test_type == "regular" and python in (MIN_PYTHON, MAX_PYTHON)
         if python == MIN_MAX_PYTHON[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
