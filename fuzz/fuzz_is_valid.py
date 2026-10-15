@@ -2,13 +2,12 @@
 """
 Fuzz target for bson.is_valid().
 
-Checks that is_valid() returning True means decode() raises no InvalidBSON,
-and that the C extension and pure Python agree on the result.
+Checks that is_valid() returning True means decode() succeeds, and that
+the C extension and pure Python agree on the result.
 """
 
 from __future__ import annotations
 
-import struct
 import sys
 
 import atheris
@@ -43,15 +42,6 @@ with atheris.instrument_imports():
 # Consistency checks apply only when the C extension is present.
 _BOTH_IMPLS = _bson_c.has_c()
 
-_EXPECTED_DECODE_ERRORS = (
-    _bson_c.InvalidBSON,
-    ValueError,
-    struct.error,
-    UnicodeDecodeError,
-    OverflowError,
-    KeyError,
-)
-
 
 @atheris.instrument_func
 def TestOneInput(data: bytes) -> None:
@@ -60,27 +50,24 @@ def TestOneInput(data: bytes) -> None:
     if valid_c:
         try:
             _bson_c.decode(data)
-        except _bson_c.InvalidBSON as exc:
+        except Exception as exc:
+            # is_valid() performs a full decode and swallows every exception,
+            # so a True result guarantees decode() raises none.
             raise AssertionError(
                 f"bson.is_valid() returned True but bson.decode() raised "
-                f"InvalidBSON: {exc!r}\ninput: {data!r}"
+                f"{type(exc).__name__}: {exc!r}\ninput: {data!r}"
             ) from exc
-        except _EXPECTED_DECODE_ERRORS:
-            # is_valid() only guarantees structural validity.
-            pass
 
     valid_pure = _bson_pure.is_valid(data)
 
     if valid_pure:
         try:
             _bson_pure.decode(data)
-        except _bson_pure.InvalidBSON as exc:
+        except Exception as exc:
             raise AssertionError(
                 f"pure-Python bson.is_valid() returned True but bson.decode() "
-                f"raised InvalidBSON: {exc!r}\ninput: {data!r}"
+                f"raised {type(exc).__name__}: {exc!r}\ninput: {data!r}"
             ) from exc
-        except _EXPECTED_DECODE_ERRORS:
-            pass
 
     if _BOTH_IMPLS and valid_c != valid_pure:
         raise AssertionError(
