@@ -189,8 +189,8 @@ warn_unused_ignores = false
 disable_error_code = ["unused-coroutine", "no-redef"]
 
 [tool.ruff]
-target-version = "py39"
 line-length = 100
+extend-exclude = ["drivers-evergreen-tools"]
 
 [tool.ruff.lint]
 select = [
@@ -241,6 +241,12 @@ ignore = [
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
   "UP045", # Use `X | Y` for union annotation (Enable when we drop 3.9 support)
   "PLC0415", # `import` should be at the top-level of a file
+  "UP035",   # Deprecated import (e.g. `typing.Callable` instead of `collections.abc.Callable`)
+  "UP041",   # `asyncio.TimeoutError` is an alias of `TimeoutError` on 3.11+
+  "ASYNC109", # Async function with a `timeout` parameter (CSOT timeouts are not `asyncio.timeout`)
+  "UP042",   # `str, Enum` should be `StrEnum` (changes `__str__` semantics)
+  "UP017",   # `timezone.utc` preferred over `datetime.UTC` (keep existing style)
+  "B905",    # `zip()` without an explicit `strict=` parameter
 ]
 unfixable = [
   "RUF100", # Unused noqa
