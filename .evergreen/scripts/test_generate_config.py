@@ -370,31 +370,10 @@ SUITE_FAMILIES = {
 }
 
 
-def test_no_test_non_standard_tasks_remain():
-    offenders = [
-        task.name
-        for task in all_tasks()
-        if any(tag.startswith("test-non-standard") for tag in (task.tags or []))
-    ]
-    assert not offenders, f"test-non-standard tasks remain: {offenders}"
-
-
-def test_suite_tasks_identify_their_suite():
-    """Every per-suite task's name and tags identify the suite it runs."""
-    for task in all_tasks():
-        tags = task.tags or []
-        for family, suite in SUITE_FAMILIES.items():
-            if family not in tags:
-                continue
-            assert task.name.startswith(family), f"{task.name} does not start with {family}"
-            vars = task_vars(task)
-            assert vars.get("TEST_NAME") == suite, f"{task.name} does not set TEST_NAME={suite}"
-            if family == "test-encryption-pyopenssl":
-                assert vars.get("SUB_TEST_NAME") == "pyopenssl"
-
-
-def test_suite_family_sizes():
-    """The deliberate matrix sizes of the per-suite families (PYTHON-6167)."""
+def test_suite_families():
+    """Each per-suite family identifies its suite in its name and TEST_NAME,
+    runs its deliberate matrix size, never mixes min-deps with coverage, and
+    is selected only by its own variants (PYTHON-6167)."""
     sizes = {
         # The three standard corners plus the max-CPython sharded task across
         # the remaining MongoDB versions (8 per group), with rhel8-only
@@ -403,11 +382,13 @@ def test_suite_family_sizes():
         "test-encryption": 20,
         # PyOpenSSL encryption runs on RHEL 8 only: one 8-task group.
         "test-encryption-pyopenssl": 8,
+        # One sync and one async all-sharded task per version 6.0+, running
+        # the full default suite.
         "test-load-balancer": 12,
+        # One standalone task per server version.
         "test-doctest": 8,
-        # One task per compressor and version (every compressor on every
-        # server version): sync on the latest replica set, async on the
-        # sharded-cluster rotation.
+        # One sync task per compressor on the latest replica set plus one
+        # async sharded-cluster task per compressor and version.
         "test-compression": 24,
         # One task per server version per distro: sync on the latest replica
         # set, async on the sharded-cluster rotation.
@@ -426,14 +407,78 @@ def test_suite_family_sizes():
         # One sync standalone task per server version on the InMemory engine.
         "test-storage-inmemory": 8,
     }
-    counts = {}
-    for task in all_tasks():
-        for family in sizes:
+    for family, suite in SUITE_FAMILIES.items():
+        tasks = [task for task in all_tasks() if family in (task.tags or [])]
+        assert len(tasks) == sizes[family], f"{family} has {len(tasks)} tasks, want {sizes[family]}"
+        for task in tasks:
+            where = f"{family} {task.name}"
+            assert task.name.startswith(family), where
+            assert task_vars(task).get("TEST_NAME") == suite, where
+            vars = task_vars(task)
+            assert not (vars.get("TEST_MIN_DEPS") == "1" and vars.get("COVERAGE") == "1"), (
+                f"{where} mixes min-deps with coverage"
+            )
+    offenders = [
+        task.name
+        for task in all_tasks()
+        if any(tag.startswith("test-non-standard") for tag in (task.tags or []))
+    ]
+    assert not offenders, f"test-non-standard tasks remain: {offenders}"
+
+    # The per-suite pr pins: the encryption suites pin the RHEL 8
+    # sharded-cluster task on MAX_VERSION with coverage; the other families
+    # have no pr pin.
+    expected_pins = {"test-encryption": 2, "test-encryption-pyopenssl": 1}
+    pins_by_family = {}
+    for task in pr_tasks():
+        for family in expected_pins:
             if family in (task.tags or []):
-                counts.setdefault(family, []).append(task)
-    for family, expected in sizes.items():
-        tasks = counts.get(family, [])
-        assert len(tasks) == expected, f"{family} has {len(tasks)} tasks, want {expected}"
+                pins_by_family.setdefault(family, []).append(task)
+    assert set(pins_by_family) == set(expected_pins), f"per-suite pr pins: {sorted(pins_by_family)}"
+    for family, pins in pins_by_family.items():
+        assert len(pins) == expected_pins[family], f"{family} pr pins: {[t.name for t in pins]}"
+        for pin in pins:
+            tags = pin.tags or []
+            assert "rhel8" in tags, pin.name
+            assert "cov" in tags, pin.name
+            assert task_vars(pin).get("VERSION") == generate_config_utils.MAX_VERSION, pin.name
+            assert task_vars(pin).get("UV_PYTHON") == generate_config_utils.MAX_PYTHON, pin.name
+
+    # No variant runs another suite's tasks.
+    for variant in all_variants():
+        selected = [task for task in all_tasks() if variant_selects(variant, task)]
+        families = {
+            family for task in selected for family in SUITE_FAMILIES if family in (task.tags or [])
+        }
+        if variant.name == "encryption-rhel8":
+            expected = {"test-encryption", "test-encryption-pyopenssl"}
+        elif variant.name.startswith("encryption"):
+            expected = {"test-encryption"}
+        elif variant.name == "load-balancer":
+            expected = {"test-load-balancer"}
+        elif variant.name.startswith("doctests"):
+            expected = {"test-doctest"}
+        elif variant.name.startswith("compression"):
+            expected = {"test-compression"}
+        elif variant.name.startswith("pyopenssl"):
+            expected = {"test-pyopenssl"}
+        elif variant.name.startswith("green-gevent"):
+            expected = {"test-gevent"}
+        elif variant.name.startswith("disable-test-commands"):
+            expected = {"test-disable-test-commands"}
+        elif variant.name.startswith("no-c-ext"):
+            expected = {"test-no-c-ext"}
+        elif variant.name.startswith("stable-api"):
+            expected = {"test-stable-api"}
+        elif variant.name.startswith("test-macos") or variant.name.startswith("test-win"):
+            expected = {"test-standard"}
+        elif variant.name.startswith("storage-inmemory"):
+            expected = {"test-storage-inmemory"}
+        else:
+            expected = set()
+        assert families == expected, (
+            f"{variant.name} selects {sorted(families)}, want {sorted(expected)}"
+        )
 
 
 def corner_rows(split_coverage):
@@ -520,6 +565,14 @@ def test_encryption_shape():
         corners = corner_rows(family == "test-encryption")
         for version, row in corners.items():
             assert_corner_cells(f"{label} {version}", by_version[version], row)
+        # The crypt_shared tasks mirror the regular cells and set
+        # TEST_CRYPT_SHARED on the run server call; free-threaded
+        # encryption-pyopenssl cells ride RHEL 8 only.
+        if crypt_shared:
+            regular = family_tasks(family, crypt_shared=False)
+            assert {t.name.replace("-crypt-shared", "") for t in group} == {
+                t.name for t in regular
+            }, "crypt_shared tasks do not mirror the regular cells"
         # The shared tasks carry every distro tag; the twins only rhel8.
         for task in group:
             tags = task.tags or []
@@ -528,6 +581,17 @@ def test_encryption_shape():
             if "cov" in tags or "pr" in tags:
                 assert "rhel8" in tags, task.name
                 assert not {"macos", "win64"} & set(tags), task.name
+            if "free-threaded" in tags and family == "test-encryption-pyopenssl":
+                assert "rhel8" in tags, task.name
+        servers = [
+            (task, c)
+            for task in group
+            for c in task.commands or []
+            if getattr(c, "func", None) == "run server"
+        ]
+        if crypt_shared:
+            for task, server in servers:
+                assert server.vars.get("TEST_CRYPT_SHARED") == "true", task.name
         # Every encryption variant lists the same coverage of all versions.
         for variant in all_variants():
             if not variant.name.startswith("encryption") or not variant.name.endswith(
@@ -670,30 +734,6 @@ def test_standard_shape():
         )
 
 
-def test_crypt_shared_tasks_mirror_the_encryption_cells():
-    """The crypt_shared tasks twin the non-ubuntu22 encryption cells and set
-    TEST_CRYPT_SHARED on the run server call (PYTHON-6167)."""
-    regular = [
-        task
-        for task in all_tasks()
-        if "test-encryption" in (task.tags or [])
-        and "crypt-shared" not in (task.tags or [])
-        and "ubuntu22" not in (task.tags or [])
-    ]
-    twins = [task for task in all_tasks() if "crypt-shared" in (task.tags or [])]
-    assert twins, "no crypt_shared tasks"
-    assert {task.name.replace("-crypt-shared", "") for task in twins} == {
-        task.name for task in regular
-    }, "crypt_shared tasks do not mirror the regular cells"
-    for task in twins:
-        assert "ubuntu22" not in (task.tags or []), f"crypt_shared task on ubuntu22: {task.name}"
-        servers = [c for c in task.commands or [] if getattr(c, "func", None) == "run server"]
-        assert len(servers) == 1, f"{task.name} has no single run server call"
-        assert servers[0].vars.get("TEST_CRYPT_SHARED") == "true", (
-            f"{task.name} does not set TEST_CRYPT_SHARED"
-        )
-
-
 def test_per_version_families_cover_every_server_version():
     """The per-version families cover every server version without duplicating
     cells: PyOpenSSL (SUB_TEST_NAME=pyopenssl), disable-test-commands
@@ -792,37 +832,6 @@ def test_per_version_families_cover_every_server_version():
                 assert not [t for t in group if "free-threaded" in (t.tags or [])], label
 
 
-def test_pyopenssl_free_threaded_runs_on_rhel8():
-    """The free-threaded PyOpenSSL tasks ride the RHEL 8 encryption variant
-    only: setup_tests.py equips RHEL 8 with OpenSSL 3 when the system library
-    is older, and the pyopenssl-* variants select no free-threaded cells
-    (PYTHON-6167)."""
-    assert not [v for v in all_variants() if v.name == "pyopenssl-ubuntu-22"]
-    tasks = [
-        task
-        for task in all_tasks()
-        if "test-pyopenssl" in (task.tags or []) and "free-threaded" in (task.tags or [])
-    ]
-    assert not tasks, f"free-threaded pyopenssl tasks: {[t.name for t in tasks]}"
-    encryption_tasks = [
-        task
-        for task in all_tasks()
-        if "test-encryption-pyopenssl" in (task.tags or []) and "free-threaded" in (task.tags or [])
-    ]
-    assert encryption_tasks, "no free-threaded encryption-pyopenssl tasks"
-    assert all("rhel8" in (task.tags or []) for task in encryption_tasks), (
-        f"free-threaded encryption-pyopenssl tasks outside rhel8: "
-        f"{[t.name for t in encryption_tasks]}"
-    )
-    for variant in all_variants():
-        if not variant.name.startswith("pyopenssl"):
-            continue
-        selected = [task for task in encryption_tasks if variant_selects(variant, task)]
-        assert not selected, (
-            f"{variant.name} runs free-threaded pyopenssl cells: {[t.name for t in selected]}"
-        )
-
-
 def test_numpy_win32_tasks_run_on_windows_only():
     """The win32 numpy tasks use the 32-bit toolchain (IS_WIN32) and are
     selected only by the windows variant (PYTHON-6167)."""
@@ -841,94 +850,3 @@ def test_numpy_win32_tasks_run_on_windows_only():
             assert not selected, (
                 f"{variant.name} runs the win32 tasks: {[t.name for t in selected]}"
             )
-
-
-def test_suite_tasks_never_mix_min_deps_and_coverage():
-    """A per-suite task tests the minimum dependencies or collects coverage, never both."""
-    offenders = [
-        task.name
-        for task in all_tasks()
-        if SUITE_FAMILIES.keys() & set(task.tags or [])
-        and task_vars(task).get("TEST_MIN_DEPS") == "1"
-        and task_vars(task).get("COVERAGE") == "1"
-    ]
-    assert not offenders, f"tasks with both TEST_MIN_DEPS and COVERAGE: {offenders}"
-
-
-def test_suite_pr_pins():
-    """The per-suite pr pins: the encryption suites pin the RHEL 8
-    sharded-cluster rotation task on MAX_VERSION with coverage; the
-    compression, load balancer, pyopenssl, gevent, disable-test-commands, and
-    no-c-ext families have no pr pin."""
-    for family, expected_pins in (
-        ("test-encryption", 2),  # The regular task and its crypt_shared twin.
-        ("test-encryption-pyopenssl", 1),
-    ):
-        pins = [task for task in pr_tasks() if family in (task.tags or [])]
-        assert len(pins) == expected_pins, f"{family} pr pins: {[t.name for t in pins]}"
-        for pin in pins:
-            tags = pin.tags or []
-            assert "rhel8" in tags, pin.name
-            assert "sharded_cluster-auth-ssl" in tags, pin.name
-            vars = task_vars(pin)
-            assert vars.get("VERSION") == generate_config_utils.MAX_VERSION
-            assert vars.get("UV_PYTHON") == generate_config_utils.MAX_PYTHON
-            assert vars.get("COVERAGE") == "1"
-    for family in (
-        "test-compression",
-        "test-pyopenssl",
-        "test-gevent",
-        "test-disable-test-commands",
-        "test-no-c-ext",
-        "test-load-balancer",
-    ):
-        pins = [task for task in pr_tasks() if family in (task.tags or [])]
-        assert not pins, f"{family} pr pins: {[t.name for t in pins]}"
-
-
-def test_encryption_cov_and_pr_tasks_run_on_rhel8_only():
-    """Coverage and the PR pin ride the rhel8 groups only (the suites exceed
-    the 60-min timeout with coverage overhead on macOS/Win64)."""
-    for task in all_tasks():
-        tags = task.tags or []
-        if "test-encryption" in tags or "test-encryption-pyopenssl" in tags:
-            if "cov" in tags or "pr" in tags:
-                assert "rhel8" in tags, f"cov/pr task outside rhel8: {task.name}"
-
-
-def test_variants_select_only_their_suite():
-    """No variant runs another suite's tasks (PYTHON-6167)."""
-    for variant in all_variants():
-        selected = [task for task in all_tasks() if variant_selects(variant, task)]
-        families = {
-            family for task in selected for family in SUITE_FAMILIES if family in (task.tags or [])
-        }
-        if variant.name == "encryption-rhel8":
-            expected = {"test-encryption", "test-encryption-pyopenssl"}
-        elif variant.name.startswith("encryption"):
-            expected = {"test-encryption"}
-        elif variant.name == "load-balancer":
-            expected = {"test-load-balancer"}
-        elif variant.name.startswith("doctests"):
-            expected = {"test-doctest"}
-        elif variant.name.startswith("compression"):
-            expected = {"test-compression"}
-        elif variant.name.startswith("pyopenssl"):
-            expected = {"test-pyopenssl"}
-        elif variant.name.startswith("green-gevent"):
-            expected = {"test-gevent"}
-        elif variant.name.startswith("disable-test-commands"):
-            expected = {"test-disable-test-commands"}
-        elif variant.name.startswith("no-c-ext"):
-            expected = {"test-no-c-ext"}
-        elif variant.name.startswith("stable-api"):
-            expected = {"test-stable-api"}
-        elif variant.name.startswith("test-macos") or variant.name.startswith("test-win"):
-            expected = {"test-standard"}
-        elif variant.name.startswith("storage-inmemory"):
-            expected = {"test-storage-inmemory"}
-        else:
-            expected = set()
-        assert families == expected, (
-            f"{variant.name} selects {sorted(families)}, want {sorted(expected)}"
-        )
