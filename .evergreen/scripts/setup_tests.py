@@ -468,7 +468,12 @@ def handle_test_env() -> None:
 
     if sub_test_name == "pyopenssl":
         UV_ARGS.append("--extra ocsp")
-        ensure_openssl3()
+
+    if test_name == "encryption" or sub_test_name == "pyopenssl":
+        # The free-threaded cells build cryptography from source, which
+        # refuses OpenSSL 1.1: build OpenSSL 3 on linux (PYTHON-6167).
+        if "t" in os.environ.get("UV_PYTHON", ""):
+            ensure_openssl3()
 
     if opts.crypt_shared:
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")

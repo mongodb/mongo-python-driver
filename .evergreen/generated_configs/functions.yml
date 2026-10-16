@@ -255,6 +255,7 @@ functions:
         include_expansions_in_env:
           - UV_PYTHON
           - COVERAGE
+          - IS_WIN32
       type: test
 
   # Upload coverage codecov

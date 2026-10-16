@@ -189,8 +189,7 @@ def test_pr_min_deps_tasks_also_run_coverage():
 
 def test_standard_family_pr_budget():
     """Patch-build PR budget: at most 5 pr-tagged test-standard tasks (the
-    pre-pin baseline), at most 3 on Python 3.14+ (the ubuntu22 compression
-    filter)."""
+    pre-pin baseline), at most 3 on Python 3.14+."""
     tasks = [task for task in pr_tasks() if "test-standard" in (task.tags or [])]
     assert len(tasks) <= 5, f"too many test-standard PR tasks: {[t.name for t in tasks]}"
     newer = [
@@ -285,6 +284,14 @@ SUITE_FAMILIES = {
     "test-encryption-pyopenssl": "encryption",
     "test-load-balancer": "load_balancer",
     "test-doctest": "doctest",
+    "test-compression": "default",
+    "test-pyopenssl": "default",
+    "test-gevent": "default",
+    "test-disable-test-commands": "default",
+    "test-no-c-ext": "default",
+    "test-stable-api": "default",
+    "test-standard": "default",
+    "test-storage-inmemory": "default",
 }
 
 
@@ -311,36 +318,39 @@ def test_suite_tasks_identify_their_suite():
                 assert vars.get("SUB_TEST_NAME") == "pyopenssl"
 
 
-def test_encryption_and_load_balancer_split_sync_async():
-    """Each matrix cell of the split suites runs as one sync and one async task."""
-    for family in ("test-encryption", "test-encryption-pyopenssl", "test-load-balancer"):
-        modes = {}
-        for task in all_tasks():
-            tags = task.tags or []
-            if family not in tags:
-                continue
-            mode_tags = {"sync", "async"} & set(tags)
-            assert len(mode_tags) == 1, f"{task.name} carries tags {sorted(mode_tags)}"
-            mode = mode_tags.pop()
-            assert task_vars(task).get("SYNC") == mode, f"{task.name} does not set SYNC={mode}"
-            key = frozenset(tag for tag in tags if tag not in ("sync", "async"))
-            modes.setdefault(key, set()).add(mode)
-        assert modes, f"{family} has no tasks"
-        incomplete = [sorted(k) for k, v in modes.items() if v != {"sync", "async"}]
-        assert not incomplete, f"{family} cells without both sync modes: {incomplete}"
-
-
 def test_suite_family_sizes():
     """The deliberate matrix sizes of the per-suite families (PYTHON-6167)."""
     sizes = {
-        # 22 non-3.15t cells x 2 sync modes, doubled for the crypt_shared twins.
-        "test-encryption": {"rhel8": 88, "macos": 88, "win64": 88, "ubuntu22": 4},
-        # RHEL 8 runs every cell including 3.15t (setup_tests.py builds OpenSSL 3).
-        "test-encryption-pyopenssl": {"rhel8": 50},
-        "test-load-balancer": 14,
+        # The three standard corners plus the max-CPython sharded task across
+        # the remaining MongoDB versions (8 per group), with rhel8-only
+        # coverage twins of the max-stable and latest cells (10 per group),
+        # doubled for the crypt_shared twins.
+        "test-encryption": 20,
+        # PyOpenSSL encryption runs on RHEL 8 only: one 8-task group.
+        "test-encryption-pyopenssl": 8,
+        "test-load-balancer": 6,
         "test-doctest": 8,
+        # One task per compressor and version (every compressor on every
+        # server version): sync on the latest replica set, async on the
+        # sharded-cluster rotation.
+        "test-compression": 24,
+        # One task per server version per distro: sync on the latest replica
+        # set, async on the sharded-cluster rotation.
+        "test-pyopenssl": 8,
+        "test-gevent": 8,
+        # One task per server version: sync on the standalone and replica-set
+        # cells, async on the sharded-cluster cells.
+        "test-disable-test-commands": 8,
+        "test-no-c-ext": 8,
+        # One accept-v2 standalone task and one require-v1 sharded-cluster
+        # task per server version 5.0+.
+        "test-stable-api": 14,
+        # One task per server version: the encryption corners spread across
+        # the four non-linux platforms (arm64 6.0+, no free-threaded win32).
+        "test-standard": 8,
+        # One sync standalone task per server version on the InMemory engine.
+        "test-storage-inmemory": 8,
     }
-    distros = ("rhel8", "macos", "win64", "ubuntu22")
     counts = {}
     for task in all_tasks():
         for family in sizes:
@@ -348,29 +358,302 @@ def test_suite_family_sizes():
                 counts.setdefault(family, []).append(task)
     for family, expected in sizes.items():
         tasks = counts.get(family, [])
-        if isinstance(expected, int):
-            assert len(tasks) == expected, f"{family} has {len(tasks)} tasks, want {expected}"
-        else:
-            per_distro = dict.fromkeys(distros, 0)
-            for task in tasks:
-                distro = [d for d in distros if d in (task.tags or [])]
-                assert len(distro) == 1, f"{task.name} does not carry exactly one distro tag"
-                per_distro[distro[0]] += 1
-            assert {d: n for d, n in per_distro.items() if n} == expected, (
-                f"{family} sizes {per_distro}, want {expected}"
+        assert len(tasks) == expected, f"{family} has {len(tasks)} tasks, want {expected}"
+
+
+def test_encryption_shape():
+    """Per test type: the three standard corners — sync min-Python min-deps on
+    the min MongoDB standalone, async max-CPython on the max stable MongoDB
+    sharded cluster, and sync max free-threaded CPython on the middle MongoDB
+    replica set — plus the max-CPython sharded task across the remaining
+    MongoDB versions, including latest and rapid. The names carry no distro;
+    every encryption variant runs the shared tasks, with the max-stable and
+    latest coverage twins riding rhel8 only (PYTHON-6167)."""
+    for family, crypt_shared in (
+        ("test-encryption", False),
+        ("test-encryption", True),
+        ("test-encryption-pyopenssl", False),
+    ):
+        if crypt_shared and family != "test-encryption":
+            continue
+        group = [
+            task
+            for task in all_tasks()
+            if family in (task.tags or []) and ("crypt-shared" in (task.tags or [])) == crypt_shared
+        ]
+        label = f"{family}/crypt_shared={crypt_shared}"
+        assert group, f"{label} has no tasks"
+        by_version = {}
+        for task in group:
+            by_version.setdefault(task_vars(task).get("VERSION"), []).append(task)
+        assert set(by_version) == set(generate_config_utils.ALL_VERSIONS), (
+            f"{label} versions: {sorted(by_version)}"
+        )
+
+        # version -> (python, topology tag, sync mode, min deps, task count)
+        # The three-distro family splits the max-stable and latest cells into
+        # a plain task plus a rhel8-only coverage twin; the rhel8-only
+        # pyopenssl family folds coverage into the single task.
+        split_coverage = family == "test-encryption"
+        corners = {
+            # Sync, min Python, min deps, min MongoDB, standalone.
+            generate_config_utils.MIN_VERSION: (
+                generate_config_utils.MIN_PYTHON,
+                "standalone-noauth-nossl",
+                "sync",
+                True,
+                1,
+            ),
+            # Async, max CPython, max stable MongoDB, sharded cluster; the
+            # coverage twin rides rhel8 only.
+            generate_config.MAX_VERSION: (
+                generate_config_utils.MAX_PYTHON,
+                "sharded_cluster-auth-ssl",
+                "async",
+                False,
+                2 if split_coverage else 1,
+            ),
+            # Sync, max free-threaded CPython, middle MongoDB, replica set.
+            generate_config.MIDDLE_VERSION: (
+                generate_config_utils.FREE_THREADED_PYTHON,
+                "replica_set-noauth-ssl",
+                "sync",
+                False,
+                1,
+            ),
+        }
+        # Max-CPython sharded task across the remaining versions.
+        remaining = set(generate_config_utils.ALL_VERSIONS) - set(corners)
+        for version in remaining:
+            corners[version] = (
+                generate_config_utils.MAX_PYTHON,
+                "sharded_cluster-auth-ssl",
+                "async",
+                False,
+                2 if version == "latest" and split_coverage else 1,
+            )
+        for version, (python, topology, mode, min_deps, count) in corners.items():
+            cells = by_version[version]
+            where = f"{label} {version}"
+            assert len(cells) == count, f"{where}: {len(cells)} tasks, want {count}"
+            for task in cells:
+                tv = task_vars(task)
+                tags = task.tags or []
+                where = f"{label} {task.name}"
+                assert f"python-{python}" in tags, where
+                assert topology in tags, where
+                assert mode in tags, where
+                assert tv.get("UV_PYTHON") == python, where
+                assert (tv.get("TEST_MIN_DEPS") == "1") == min_deps, where
+        # The shared tasks carry every distro tag; the twins only rhel8.
+        for task in group:
+            tags = task.tags or []
+            assert "ubuntu22" not in tags, task.name
+            assert {"rhel8", "macos", "win64"} & set(tags), f"{task.name} carries no distro tag"
+            if "cov" in tags or "pr" in tags:
+                assert "rhel8" in tags, task.name
+                assert not {"macos", "win64"} & set(tags), task.name
+        # Every encryption variant lists the same coverage of all versions.
+        for variant in all_variants():
+            if not variant.name.startswith("encryption") or not variant.name.endswith(
+                ("rhel8", "macos", "win64")
+            ):
+                continue
+            if family == "test-encryption-pyopenssl" and variant.name != "encryption-rhel8":
+                # The pyopenssl encryption tasks ride the RHEL 8 variant only.
+                assert not [t for t in group if variant_selects(variant, t)], variant.name
+                continue
+            selected = [task for task in group if variant_selects(variant, task)]
+            selected_versions = {task_vars(task).get("VERSION") for task in selected}
+            assert selected_versions == set(generate_config_utils.ALL_VERSIONS), (
+                f"{variant.name} versions: {sorted(selected_versions)}"
             )
 
 
-def test_encryption_ubuntu22_groups_are_3_15t_only():
-    """The ubuntu22 group runs only the 3.15t cells on 6.0+, keeping the
-    pr-tagged variant's patch-build budget (PYTHON-6167)."""
-    for task in all_tasks():
+def test_compression_shape():
+    """Compression: one sync task per compressor on the latest replica set plus
+    one async sharded-cluster task per compressor and MongoDB version for every
+    other version, so each compressor is tested against every MongoDB version
+    without duplicating cells; every task enables its compressor
+    (PYTHON-6167)."""
+    tasks = [task for task in all_tasks() if "test-compression" in (task.tags or [])]
+    assert tasks, "test-compression has no tasks"
+    for compressor in ("snappy", "zlib", "zstd"):
+        primaries = [
+            task
+            for task in tasks
+            if f"test-compression-{compressor}" in task.name
+            and "replica_set-noauth-ssl" in (task.tags or [])
+            and "server-latest" in (task.tags or [])
+        ]
+        assert len(primaries) == 1, f"{compressor} primaries: {[t.name for t in primaries]}"
+        primary = primaries[0]
+        assert "sync" in (primary.tags or []), primary.name
+        assert task_vars(primary).get("SYNC") == "sync", primary.name
+        cells = [
+            task
+            for task in tasks
+            if f"test-compression-{compressor}" in task.name
+            and "sharded_cluster-auth-ssl" in (task.tags or [])
+        ]
+        by_version = {}
+        for task in cells:
+            by_version.setdefault(task_vars(task).get("VERSION"), []).append(task)
+        assert set(by_version) == set(generate_config_utils.ALL_VERSIONS) - {"latest"}, (
+            f"{compressor} sharded versions: {sorted(by_version)}"
+        )
+        for version, cell_tasks in by_version.items():
+            assert len(cell_tasks) == 1, (
+                f"{compressor} {version} cells: {[t.name for t in cell_tasks]}"
+            )
+            assert "async" in (cell_tasks[0].tags or []), cell_tasks[0].name
+            assert task_vars(cell_tasks[0]).get("SYNC") == "async", cell_tasks[0].name
+        covered = set(by_version) | {"latest"}
+        assert covered == set(generate_config_utils.ALL_VERSIONS), (
+            f"{compressor} tested server versions: {sorted(covered)}"
+        )
+    for task in tasks:
+        assert task_vars(task).get("COMPRESSORS"), f"{task.name} does not set COMPRESSORS"
+
+
+def test_stable_api_shape():
+    """Stable API: one consolidated family — a sync accept-v2 standalone task
+    and an async require-v1 sharded-cluster task per MongoDB version 5.0+,
+    with the CPython rotated across the versions. The require-v1 tasks start
+    the server with requireApiVersion=1 and pin apiVersion=1 on the suite; the
+    accept-v2 tasks use the versioned-api orchestration without pinning an
+    apiVersion; every stable-api variant lists all versions (PYTHON-6167)."""
+    tasks = [task for task in all_tasks() if "test-stable-api" in (task.tags or [])]
+    assert tasks, "test-stable-api has no tasks"
+    by_version = {}
+    for task in tasks:
+        by_version.setdefault(task_vars(task).get("VERSION"), []).append(task)
+    assert set(by_version) == set(generate_config_utils.get_versions_from("5.0")), (
+        f"stable api versions: {sorted(by_version)}"
+    )
+    for version, cells in by_version.items():
+        assert len(cells) == 2, f"{version} cells: {[t.name for t in cells]}"
+        require_v1 = [t for t in cells if "-require-v1-" in t.name]
+        accept_v2 = [t for t in cells if "-accept-v2-" in t.name]
+        assert len(require_v1) == 1, f"{version} require-v1 cells: {[t.name for t in cells]}"
+        assert len(accept_v2) == 1, f"{version} accept-v2 cells: {[t.name for t in cells]}"
+        # Async, auth, SSL, sharded cluster with requireApiVersion=1.
+        task = require_v1[0]
+        where = f"stable api {task.name}"
         tags = task.tags or []
-        if "test-encryption" not in tags or "ubuntu22" not in tags:
+        assert "sharded_cluster-auth-ssl" in tags, where
+        assert "async" in tags, where
+        vars = task_vars(task)
+        assert vars.get("REQUIRE_API_VERSION") == "1", where
+        assert vars.get("MONGODB_API_VERSION") == "1", where
+        servers = [c for c in task.commands or [] if getattr(c, "func", None) == "run server"]
+        assert servers[0].vars.get("REQUIRE_API_VERSION") == "1", where
+        # Sync, noauth, no SSL, standalone from the versioned-api orchestration.
+        task = accept_v2[0]
+        where = f"stable api {task.name}"
+        tags = task.tags or []
+        assert "standalone-noauth-nossl" in tags, where
+        assert "sync" in tags, where
+        vars = task_vars(task)
+        assert vars.get("ORCHESTRATION_FILE") == "versioned-api-testing.json", where
+        assert not vars.get("MONGODB_API_VERSION"), where
+        servers = [c for c in task.commands or [] if getattr(c, "func", None) == "run server"]
+        assert servers[0].vars.get("ORCHESTRATION_FILE") == "versioned-api-testing.json", where
+
+
+def test_standard_shape():
+    """The standard family: one task per MongoDB version following the
+    encryption corners — sync min-Python min-deps on the min MongoDB
+    standalone, sync max free-threaded CPython on the middle MongoDB replica
+    set, async max-CPython on the max stable MongoDB sharded cluster and the
+    remaining versions, with coverage on latest. The names carry no distro;
+    the platform tags restrict the cells: macos-arm64 starts at 6.0 and win32
+    gets no free-threaded CPython; every platform variant lists its full
+    version coverage (PYTHON-6167)."""
+    tasks = [task for task in all_tasks() if "test-standard" in (task.tags or [])]
+    assert tasks, "test-standard has no tasks"
+    by_version = {}
+    for task in tasks:
+        by_version.setdefault(task_vars(task).get("VERSION"), []).append(task)
+    assert set(by_version) == set(generate_config_utils.ALL_VERSIONS), (
+        f"standard versions: {sorted(by_version)}"
+    )
+    # version -> (python, topology tag, sync mode, min deps, platforms)
+    corners = {
+        generate_config_utils.MIN_VERSION: (
+            generate_config_utils.MIN_PYTHON,
+            "standalone-noauth-nossl",
+            "sync",
+            True,
+            {"macos", "win32", "win64"},
+        ),
+        generate_config.MIDDLE_VERSION: (
+            generate_config_utils.FREE_THREADED_PYTHON,
+            "replica_set-noauth-ssl",
+            "sync",
+            False,
+            {"macos", "macos-arm64", "win64"},
+        ),
+        generate_config.MAX_VERSION: (
+            generate_config_utils.MAX_PYTHON,
+            "sharded_cluster-auth-ssl",
+            "async",
+            False,
+            {"macos", "macos-arm64", "win32", "win64"},
+        ),
+    }
+    remaining = set(generate_config_utils.ALL_VERSIONS) - set(corners)
+    for version in remaining:
+        # macOS arm64 only works on server versions 6.0+.
+        platforms = (
+            {"macos", "win32", "win64"}
+            if version == "5.0"
+            else {
+                "macos",
+                "macos-arm64",
+                "win32",
+                "win64",
+            }
+        )
+        corners[version] = (
+            generate_config_utils.MAX_PYTHON,
+            "sharded_cluster-auth-ssl",
+            "async",
+            False,
+            platforms,
+        )
+    for version, (python, topology, mode, min_deps, platforms) in corners.items():
+        cells = by_version[version]
+        assert len(cells) == 1, f"{version} cells: {[t.name for t in cells]}"
+        task = cells[0]
+        tv = task_vars(task)
+        tags = task.tags or []
+        where = f"standard {task.name}"
+        assert f"python-{python}" in tags, where
+        assert topology in tags, where
+        assert mode in tags, where
+        assert tv.get("UV_PYTHON") == python, where
+        assert (tv.get("TEST_MIN_DEPS") == "1") == min_deps, where
+        assert set(platforms) <= set(tags), where
+        assert not ("free-threaded" in tags and "win32" in platforms), where
+    latest = by_version["latest"][0]
+    assert "cov" in (latest.tags or []), latest.name
+    assert task_vars(latest).get("COVERAGE") == "1", latest.name
+    # Every platform variant lists its full version coverage: macOS arm64
+    # starts at 6.0, and win32 skips the free-threaded middle corner.
+    for variant in all_variants():
+        if not variant.name.startswith("test-macos") and not variant.name.startswith("test-win"):
             continue
-        assert "python-3.15t" in tags, f"ubuntu22 task not on 3.15t: {task.name}"
-        assert {"server-4.4", "server-5.0"} & set(tags) == set(), (
-            f"ubuntu22 task on a server < 6.0: {task.name}"
+        selected = [task for task in tasks if variant_selects(variant, task)]
+        selected_versions = {task_vars(task).get("VERSION") for task in selected}
+        if variant.name == "test-macos-arm64":
+            expected = set(generate_config_utils.get_versions_from("6.0"))
+        elif variant.name == "test-win32":
+            expected = set(generate_config_utils.ALL_VERSIONS) - {generate_config.MIDDLE_VERSION}
+        else:
+            expected = set(generate_config_utils.ALL_VERSIONS)
+        assert selected_versions == expected, (
+            f"{variant.name} versions: {sorted(selected_versions)}"
         )
 
 
@@ -398,18 +681,149 @@ def test_crypt_shared_tasks_mirror_the_encryption_cells():
         )
 
 
+def test_per_version_families_cover_every_server_version():
+    """The per-version families run one task per server version without
+    duplicating cells: PyOpenSSL (SUB_TEST_NAME=pyopenssl), disable-test-commands
+    (DISABLE_TEST_COMMANDS=1), no-c-ext (NO_EXT=1), and gevent
+    (GREEN_FRAMEWORK=gevent) assign the sync mode like the encryption corners —
+    sync on the standalone and replica-set cells, async on the sharded-cluster
+    cells, except gevent which only runs the sync half — load balancer runs
+    one all-sharded task per version 6.0+, and storage-inmemory runs one sync
+    standalone task per version (PYTHON-6167)."""
+    for family, distros, extra_var, split_modes in (
+        ("test-pyopenssl", ("rhel8", "macos", "win64"), "SUB_TEST_NAME", True),
+        ("test-gevent", ("",), "GREEN_FRAMEWORK", False),
+        ("test-disable-test-commands", ("",), "DISABLE_TEST_COMMANDS", True),
+        ("test-no-c-ext", ("",), "NO_EXT", True),
+        ("test-load-balancer", ("",), None, False),
+        ("test-storage-inmemory", ("",), "STORAGE_ENGINE", True),
+    ):
+        for distro in distros:
+            group = [
+                task
+                for task in all_tasks()
+                if family in (task.tags or []) and (distro in (task.tags or []) if distro else True)
+            ]
+            label = f"{family}/{distro or 'any'}"
+            assert group, f"{label} has no tasks"
+            by_version = {}
+            for task in group:
+                by_version.setdefault(task_vars(task).get("VERSION"), []).append(task)
+            # Load balancer support starts with MongoDB 6.0.
+            expected_versions = set(
+                generate_config_utils.get_versions_from("6.0")
+                if family == "test-load-balancer"
+                else generate_config_utils.ALL_VERSIONS
+            )
+            assert set(by_version) == expected_versions, f"{label} versions: {sorted(by_version)}"
+            for version, cell_tasks in by_version.items():
+                assert len(cell_tasks) == 1, (
+                    f"{label} {version} duplicates its cell: {[t.name for t in cell_tasks]}"
+                )
+            for task in group:
+                tags = task.tags or []
+                where = f"{label} {task.name}"
+                if extra_var:
+                    assert task_vars(task).get(extra_var), f"{where} does not set {extra_var}"
+                topology = next(
+                    tag
+                    for tag in tags
+                    if tag.startswith(("standalone", "replica_set", "sharded_cluster"))
+                )
+                if split_modes:
+                    # Sync on the standalone and replica-set cells, async on
+                    # the sharded clusters, like the encryption corners.
+                    expected_mode = "async" if topology.startswith("sharded") else "sync"
+                    assert expected_mode in tags, where
+                    assert task_vars(task).get("SYNC") == expected_mode, where
+                elif family == "test-gevent":
+                    # Gevent only runs the sync half; the async tests are
+                    # excluded under the framework.
+                    assert "sync" in tags, where
+                    assert "async" not in tags, where
+                    assert task_vars(task).get("SYNC") == "sync", where
+                else:
+                    # Load balancer runs both halves in its single task.
+                    assert not {"sync", "async"} & set(tags), where
+            if family in ("test-gevent", "test-disable-test-commands", "test-no-c-ext"):
+                # One topology per version, cycling through all three.
+                topologies = {
+                    next(
+                        tag
+                        for tag in (task.tags or [])
+                        if tag.startswith(("standalone", "replica_set", "sharded_cluster"))
+                    )
+                    for task in group
+                }
+                assert topologies == {
+                    "standalone-noauth-nossl",
+                    "replica_set-noauth-ssl",
+                    "sharded_cluster-auth-ssl",
+                }, f"{label} topologies: {sorted(topologies)}"
+            if family == "test-load-balancer":
+                # Load balancer support requires an authenticated SSL sharded cluster.
+                assert all(
+                    "sharded_cluster-auth-ssl" in (task.tags or []) and "auth" in (task.tags or [])
+                    for task in group
+                ), label
+            if family == "test-storage-inmemory":
+                # The InMemory engine runs on standalone servers.
+                assert all("standalone-noauth-nossl" in (task.tags or []) for task in group), label
+            # Free-threaded CPython only rotates on RHEL 8, the distro
+            # setup_tests.py equips with OpenSSL 3; gevent does not support it.
+            if family in ("test-gevent", "test-pyopenssl"):
+                assert not [t for t in group if "free-threaded" in (t.tags or [])], label
+
+
 def test_pyopenssl_free_threaded_runs_on_rhel8():
-    """The free-threaded PyOpenSSL cells run on RHEL 8, which setup_tests.py
-    equips with OpenSSL 3 when the system library is older (PYTHON-6167)."""
+    """The free-threaded PyOpenSSL tasks ride the RHEL 8 encryption variant
+    only: setup_tests.py equips RHEL 8 with OpenSSL 3 when the system library
+    is older, and the pyopenssl-* variants select no free-threaded cells
+    (PYTHON-6167)."""
+    assert not [v for v in all_variants() if v.name == "pyopenssl-ubuntu-22"]
     tasks = [
+        task
+        for task in all_tasks()
+        if "test-pyopenssl" in (task.tags or []) and "free-threaded" in (task.tags or [])
+    ]
+    assert not tasks, f"free-threaded pyopenssl tasks: {[t.name for t in tasks]}"
+    encryption_tasks = [
         task
         for task in all_tasks()
         if "test-encryption-pyopenssl" in (task.tags or []) and "free-threaded" in (task.tags or [])
     ]
-    assert tasks, "no free-threaded pyopenssl tasks"
-    assert all("rhel8" in (task.tags or []) for task in tasks), (
-        f"free-threaded pyopenssl tasks outside rhel8: {[t.name for t in tasks]}"
+    assert encryption_tasks, "no free-threaded encryption-pyopenssl tasks"
+    assert all("rhel8" in (task.tags or []) for task in encryption_tasks), (
+        f"free-threaded encryption-pyopenssl tasks outside rhel8: "
+        f"{[t.name for t in encryption_tasks]}"
     )
+    for variant in all_variants():
+        if not variant.name.startswith("pyopenssl"):
+            continue
+        selected = [task for task in encryption_tasks if variant_selects(variant, task)]
+        assert not selected, (
+            f"{variant.name} runs free-threaded pyopenssl cells: {[t.name for t in selected]}"
+        )
+
+
+def test_numpy_win32_tasks_run_on_windows_only():
+    """The win32 numpy tasks use the 32-bit toolchain (IS_WIN32) and are
+    selected only by the windows variant (PYTHON-6167)."""
+    win32_tasks = [task for task in all_tasks() if "test-numpy-win32" in (task.tags or [])]
+    assert win32_tasks, "no win32 numpy tasks"
+    for task in win32_tasks:
+        assert "test-numpy" not in (task.tags or []), task.name
+        assert task_vars(task).get("IS_WIN32") == "1", task.name
+    for variant in all_variants():
+        if not variant.name.startswith("test-numpy"):
+            continue
+        selected = [task for task in win32_tasks if variant_selects(variant, task)]
+        if variant.name == "test-numpy-windows":
+            assert selected, "the windows numpy variant does not run the win32 tasks"
+        else:
+            assert not selected, (
+                f"{variant.name} runs the win32 tasks: {[t.name for t in selected]}"
+            )
 
 
 def test_suite_tasks_never_mix_min_deps_and_coverage():
@@ -425,16 +839,34 @@ def test_suite_tasks_never_mix_min_deps_and_coverage():
 
 
 def test_suite_pr_pins():
-    """Each split suite keeps its pinned PR task with coverage, in both sync modes."""
-    for family in ("test-encryption", "test-encryption-pyopenssl", "test-load-balancer"):
+    """The per-suite pr pins: the encryption suites pin the RHEL 8
+    sharded-cluster rotation task on MAX_VERSION with coverage; the
+    compression, load balancer, pyopenssl, gevent, disable-test-commands, and
+    no-c-ext families have no pr pin."""
+    for family, expected_pins in (
+        ("test-encryption", 2),  # The regular task and its crypt_shared twin.
+        ("test-encryption-pyopenssl", 1),
+    ):
         pins = [task for task in pr_tasks() if family in (task.tags or [])]
-        modes = {"sync" if "sync" in (task.tags or []) else "async" for task in pins}
-        assert modes == {"sync", "async"}, f"{family} pr pins: {[t.name for t in pins]}"
-        for task in pins:
-            vars = task_vars(task)
+        assert len(pins) == expected_pins, f"{family} pr pins: {[t.name for t in pins]}"
+        for pin in pins:
+            tags = pin.tags or []
+            assert "rhel8" in tags, pin.name
+            assert "sharded_cluster-auth-ssl" in tags, pin.name
+            vars = task_vars(pin)
             assert vars.get("VERSION") == generate_config_utils.MAX_VERSION
             assert vars.get("UV_PYTHON") == generate_config_utils.MAX_PYTHON
             assert vars.get("COVERAGE") == "1"
+    for family in (
+        "test-compression",
+        "test-pyopenssl",
+        "test-gevent",
+        "test-disable-test-commands",
+        "test-no-c-ext",
+        "test-load-balancer",
+    ):
+        pins = [task for task in pr_tasks() if family in (task.tags or [])]
+        assert not pins, f"{family} pr pins: {[t.name for t in pins]}"
 
 
 def test_encryption_cov_and_pr_tasks_run_on_rhel8_only():
@@ -462,6 +894,22 @@ def test_variants_select_only_their_suite():
             expected = {"test-load-balancer"}
         elif variant.name.startswith("doctests"):
             expected = {"test-doctest"}
+        elif variant.name.startswith("compression"):
+            expected = {"test-compression"}
+        elif variant.name.startswith("pyopenssl"):
+            expected = {"test-pyopenssl"}
+        elif variant.name.startswith("green-gevent"):
+            expected = {"test-gevent"}
+        elif variant.name.startswith("disable-test-commands"):
+            expected = {"test-disable-test-commands"}
+        elif variant.name.startswith("no-c-ext"):
+            expected = {"test-no-c-ext"}
+        elif variant.name.startswith("stable-api"):
+            expected = {"test-stable-api"}
+        elif variant.name.startswith("test-macos") or variant.name.startswith("test-win"):
+            expected = {"test-standard"}
+        elif variant.name.startswith("storage-inmemory"):
+            expected = {"test-storage-inmemory"}
         else:
             expected = set()
         assert families == expected, (
