@@ -12,8 +12,13 @@ from generate_config_utils import (
     C_EXTS,
     CPYTHONS,
     DEFAULT_HOST,
+    FREE_THREADED_PYTHON,
     HOSTS,
+    MAX_PYTHON,
+    MAX_VERSION,
     MIN_MAX_PYTHON,
+    MIN_PYTHON,
+    MIN_VERSION,
     OTHER_HOSTS,
     SYNCS,
     TOPOLOGIES,
@@ -86,8 +91,13 @@ def create_server_version_variants() -> list[BuildVariant]:
     variants = []
     for version in ALL_VERSIONS:
         display_name = get_variant_name("* MongoDB", version=version)
+        # Each version-boundary variant selects only the pr tasks pinned to its version.
+        if version in SERVER_VERSION_PR_PYTHONS:
+            tasks = [".server-version !.pr", f".server-version .{version}"]
+        else:
+            tasks = [".server-version !.pr"]
         variant = create_variant(
-            [".server-version"],
+            tasks,
             display_name,
             version=version,
             host=DEFAULT_HOST,
@@ -582,12 +592,13 @@ def create_aws_auth_variants():
         variants.append(variant)
 
     # The ECS test must be run on Ubuntu 24 to match the Fargate Config.
+    # Fresh tags and expansions: the loop's macOS values must not leak here.
     variant = create_variant(
         [".auth-aws-ecs"],
-        get_variant_name("Auth AWS ECS", host),
+        get_variant_name("Auth AWS ECS", HOSTS["ubuntu24"]),
         host=HOSTS["ubuntu24"],
-        tags=tags,
-        expansions=expansions,
+        tags=[],
+        expansions=dict(),
     )
     variants.append(variant)
     return variants
@@ -644,40 +655,27 @@ def create_aws_lambda_variants():
 ##############
 
 
+# The server-version pr tasks: the Python boundaries pinned per server version.
+SERVER_VERSION_PR_PYTHONS = {
+    MIN_VERSION: {("standalone", "noauth", "nossl"): MIN_PYTHON},
+    MAX_VERSION: {
+        ("standalone", "noauth", "nossl"): MIN_PYTHON,
+        ("replica_set", "noauth", "nossl"): MAX_PYTHON,
+        ("sharded_cluster", "auth", "ssl"): MAX_PYTHON,
+    },
+}
+
+
 def create_server_version_tasks():
-    tasks = []
-    task_combos = set()
-    # All combinations of topology, auth, ssl, and sync should be tested.
-    for (topology, auth, ssl, sync), python in zip_cycle(
-        list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
-    ):
-        task_combos.add((topology, auth, ssl, sync, python))
-
-    # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
-    for python, sync in product(ALL_PYTHONS, SYNCS):
-        task_combos.add(("sharded_cluster", "auth", "ssl", sync, python))
-
-    # Assemble the tasks.
-    seen = set()
-    for topology, auth, ssl, sync, python in sorted(task_combos):
+    def make_task(topology, auth, ssl, sync, python, extra_tags=(), **extra_vars):
         combo = f"{topology}-{auth}-{ssl}"
-        tags = ["server-version", f"python-{python}", combo, sync]
-        if combo in [
-            "standalone-noauth-nossl",
-            "replica_set-noauth-nossl",
-            "sharded_cluster-auth-ssl",
-        ]:
-            combo = f"{combo}-{sync}"
-            if combo not in seen:
-                seen.add(combo)
-                tags.append("pr")
+        tags = ["server-version", f"python-{python}", combo, sync, *extra_tags]
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
+        expansions.update(extra_vars)
         if "t" in python:
             tags.append("free-threaded")
-        if "pr" in tags:
-            expansions["COVERAGE"] = "1"
         name = get_task_name(
             "test-server-version",
             python=python,
@@ -689,7 +687,49 @@ def create_server_version_tasks():
         test_vars["UV_PYTHON"] = python
         test_vars["TEST_NAME"] = f"default_{sync}"
         test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
+        return EvgTask(name=name, tags=tags, commands=[server_func, test_func])
+
+    tasks = []
+    task_combos = set()
+    # All combinations of topology, auth, ssl, and sync should be tested.
+    for (topology, auth, ssl, sync), rotated in zip_cycle(
+        list(product(TOPOLOGIES, ["auth", "noauth"], ["ssl", "nossl"], SYNCS)), ALL_PYTHONS
+    ):
+        task_combos.add((topology, auth, ssl, sync, rotated))
+
+    # Every python should be tested with sharded cluster, auth, ssl, with sync and async.
+    for python, sync in product(ALL_PYTHONS, SYNCS):
+        task_combos.add(("sharded_cluster", "auth", "ssl", sync, python))
+
+    # Rotated tasks inherit the variant's VERSION; boundary-Python tasks keep
+    # COVERAGE without pr so per-commit coverage is not pr-only.
+    pr_pythons = {
+        combo: python
+        for combos in SERVER_VERSION_PR_PYTHONS.values()
+        for combo, python in combos.items()
+    }
+    for topology, auth, ssl, sync, python in sorted(task_combos):
+        extra_vars = {}
+        if python == pr_pythons.get((topology, auth, ssl)):
+            extra_vars["COVERAGE"] = "1"
+        tasks.append(make_task(topology, auth, ssl, sync, python, **extra_vars))
+
+    # The pinned pr tasks: the boundary Pythons per server version, stable as CPYTHONS changes.
+    for version, combos in sorted(SERVER_VERSION_PR_PYTHONS.items()):
+        for (topology, auth, ssl), python in sorted(combos.items()):
+            for sync in SYNCS:
+                tasks.append(
+                    make_task(
+                        topology,
+                        auth,
+                        ssl,
+                        sync,
+                        python,
+                        extra_tags=("pr", version),
+                        VERSION=version,
+                        COVERAGE="1",
+                    )
+                )
     return tasks
 
 
@@ -719,9 +759,11 @@ def create_test_non_standard_tasks():
     # For each version and topology, rotate through the CPythons.
     # Only the sharded_cluster topology runs on PRs to keep patch build size manageable.
     for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
-        pr = version == "latest" and topology == "sharded_cluster"
-        task_combos.add((version, topology, python, pr))
-    for version, topology, python, pr in sorted(task_combos):
+        task_combos.add((version, topology, python))
+    # The pinned PR task: the max Python on MAX_VERSION, sharded cluster.
+    task_combos.add((MAX_VERSION, "sharded_cluster", MAX_PYTHON))
+    for version, topology, python in sorted(task_combos):
+        pr = version == MAX_VERSION and topology == "sharded_cluster" and python == MAX_PYTHON
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-non-standard",
@@ -737,7 +779,7 @@ def create_test_non_standard_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
-        elif pr:
+        elif pr or (version == "latest" and topology == "sharded_cluster"):
             expansions["COVERAGE"] = "1"
             tags.append("cov")
         name = get_task_name("test-non-standard", python=python, **expansions)
@@ -749,14 +791,14 @@ def create_test_non_standard_tasks():
         # For each coverage task, also emit a non-coverage companion so that
         # macOS/Win64 encryption variants (which filter out .cov due to timeout
         # constraints) still have a "latest" task to activate in patch builds.
-        if pr and "cov" in tags:
+        if "cov" in tags:
             nc_expansions = {k: v for k, v in expansions.items() if k != "COVERAGE"}
             # Use a distinct primary tag so companions are not selected by existing
             # ".test-non-standard" selectors (e.g. load-balancer, PyOpenSSL variants).
             nc_tags = [
                 "test-non-standard-no-cov" if t == "test-non-standard" else t
                 for t in tags
-                if t != "cov"
+                if t not in ("cov", "pr")
             ]
             nc_name = get_task_name("test-non-standard", python=python, **nc_expansions)
             nc_server_func = FunctionCall(func="run server", vars=nc_expansions)
@@ -805,9 +847,12 @@ def create_test_standard_auth_tasks():
     for (version, topology), python in zip_cycle(
         list(product(ALL_VERSIONS, ["sharded_cluster"])), CPYTHONS
     ):
-        pr = version == "latest"
-        task_combos.add((version, topology, python, pr))
-    for version, topology, python, pr in sorted(task_combos):
+        task_combos.add((version, topology, python))
+    # The pinned PR tasks: the min and max Python on MAX_VERSION.
+    task_combos.add((MAX_VERSION, "sharded_cluster", MIN_PYTHON))
+    task_combos.add((MAX_VERSION, "sharded_cluster", MAX_PYTHON))
+    for version, topology, python in sorted(task_combos):
+        pr = version == MAX_VERSION and python in (MIN_PYTHON, MAX_PYTHON)
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-standard-auth",
@@ -823,7 +868,7 @@ def create_test_standard_auth_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
-        elif pr:
+        if pr:
             expansions["COVERAGE"] = "1"
         name = get_task_name("test-standard-auth", python=python, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
@@ -839,13 +884,23 @@ def create_standard_tasks():
     tasks = []
     task_combos = set()
     # For each python and topology and sync/async, rotate through the the versions.
-    for (python, topology, sync), version in zip_cycle(
+    for (python, topology, sync), rotated in zip_cycle(
         list(product(CPYTHONS, TOPOLOGIES, SYNCS)), ALL_VERSIONS
     ):
-        pr = version == "latest"
-        task_combos.add((version, topology, python, sync, pr))
+        # PR tasks pin to the Python boundaries on MAX_VERSION; the rotation
+        # keeps running every combination on its rotated server version.
+        pr = (
+            (python == MIN_PYTHON and topology == "standalone" and sync == "async")
+            or (python == MAX_PYTHON and topology == "replica_set" and sync == "async")
+            or (python == FREE_THREADED_PYTHON and topology == "sharded_cluster" and sync == "sync")
+        )
+        task_combos.add((rotated, topology, python, sync, False))
+        if pr:
+            task_combos.add((MAX_VERSION, topology, python, sync, True))
 
-    for version, topology, python, sync, pr in sorted(task_combos):
+    # A pinned combo can collide with a rotated one on MAX_VERSION; keep the pinned (pr) task.
+    combos = {combo[:4]: combo for combo in sorted(task_combos)}
+    for version, topology, python, sync, pr in combos.values():
         auth, ssl = get_standard_auth_ssl(topology)
         tags = [
             "test-standard",
@@ -861,7 +916,7 @@ def create_standard_tasks():
         expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
         if python == ALL_PYTHONS[0]:
             expansions["TEST_MIN_DEPS"] = "1"
-        elif pr:
+        if pr or (version == "latest" and python != ALL_PYTHONS[0]):
             expansions["COVERAGE"] = "1"
         name = get_task_name("test-standard", python=python, sync=sync, **expansions)
         server_func = FunctionCall(func="run server", vars=expansions)
@@ -923,7 +978,13 @@ def create_aws_tasks():
         "web-identity",
     ]
     assume_func = FunctionCall(func="assume ec2 role")
-    for version, test_type, python in zip_cycle(get_versions_from("4.4"), aws_test_types, CPYTHONS):
+    task_combos = set(zip_cycle(get_versions_from("4.4"), aws_test_types, CPYTHONS))
+    # The pinned PR tasks: the min and max Python on MAX_VERSION.
+    task_combos |= {
+        (MAX_VERSION, "regular", MIN_PYTHON),
+        (MAX_VERSION, "regular", MAX_PYTHON),
+    }
+    for version, test_type, python in sorted(task_combos):
         base_name = f"test-auth-aws-{version}"
         base_tags = ["auth-aws"]
         server_vars = dict(AUTH_AWS="1", VERSION=version)
@@ -932,10 +993,15 @@ def create_aws_tasks():
         if "t" in python:
             tags.append("free-threaded")
         test_vars = dict(TEST_NAME="auth_aws", SUB_TEST_NAME=test_type, UV_PYTHON=python)
+        # The rotation never produces (MAX_VERSION, regular).
+        pr = (
+            version == MAX_VERSION and test_type == "regular" and python in (MIN_PYTHON, MAX_PYTHON)
+        )
         if python == MIN_MAX_PYTHON[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
-        elif python == MIN_MAX_PYTHON[-1]:
+        if pr:
             tags.append("pr")
+        if pr or python == MIN_MAX_PYTHON[-1]:
             test_vars["COVERAGE"] = "1"
         name = get_task_name(f"{base_name}-{test_type}", **test_vars)
         test_func = FunctionCall(func="run tests", vars=test_vars)
@@ -989,6 +1055,15 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
     file_name = f"{algo}-basic-tls-ocsp-{variant}.json"
 
     for version in get_versions_from("4.4"):
+        # Rotated nightlies: latest-CPython on "latest", min-deps Python elsewhere.
+        pr = base_task_name == "valid-cert-server-staples" and algo == "ecdsa" and version == "4.4"
+        # The "latest" ECDSA staples task keeps nightly coverage; the pinned
+        # MAX_VERSION task below is the pr task.
+        nightly_cov = (
+            base_task_name == "valid-cert-server-staples"
+            and algo == "ecdsa"
+            and version == "latest"
+        )
         if version == "latest":
             python = MIN_MAX_PYTHON[-1]
         else:
@@ -1006,23 +1081,27 @@ def _create_ocsp_tasks(algo, variant, server_type, base_task_name):
         tags = ["ocsp", f"ocsp-{algo}", version]
         if "disableStapling" not in variant:
             tags.append("ocsp-staple")
-        # Run exactly one min-deps and one latest-CPython stapled OCSP task on
-        # every PR (ecdsa only, to avoid doubling coverage across algorithms)
-        # so a cryptography-backend regression at either dependency extreme,
-        # like the min-deps ML-KEM breakage in PYTHON-6032, is caught before
-        # merge instead of on the next weekly mainline batch run.
-        if (
-            base_task_name == "valid-cert-server-staples"
-            and algo == "ecdsa"
-            and version
-            in (
-                "latest",
-                "4.4",
-            )
-        ):
+        if pr or nightly_cov:
+            vars["COVERAGE"] = "1"
+        if pr:
             tags.append("pr")
-            if "TEST_MIN_DEPS" not in vars:
-                vars["COVERAGE"] = "1"
+        test_func = FunctionCall(func="run tests", vars=vars)
+        task_name = get_task_name(f"test-ocsp-{algo}-{base_task_name}", **vars)
+        tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
+
+    # One latest-CPython ECDSA staples task on every PR, pinned to MAX_VERSION
+    # (the "latest" nightly is unstable): catches cryptography-backend
+    # regressions at the dependency extremes before merge (PYTHON-6032).
+    if base_task_name == "valid-cert-server-staples" and algo == "ecdsa":
+        vars = dict(
+            ORCHESTRATION_FILE=file_name,
+            OCSP_SERVER_TYPE=server_type,
+            TEST_NAME="ocsp",
+            UV_PYTHON=MIN_MAX_PYTHON[-1],
+            VERSION=MAX_VERSION,
+            COVERAGE="1",
+        )
+        tags = ["ocsp", f"ocsp-{algo}", MAX_VERSION, "ocsp-staple", "pr"]
         test_func = FunctionCall(func="run tests", vars=vars)
         task_name = get_task_name(f"test-ocsp-{algo}-{base_task_name}", **vars)
         tasks.append(EvgTask(name=task_name, tags=tags, commands=[test_func]))
