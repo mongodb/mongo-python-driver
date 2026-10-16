@@ -205,14 +205,11 @@ def test_standard_family_pr_budget():
 
 
 def test_pr_tasks_run_coverage():
-    """Pr tasks that pin a server version run with COVERAGE=1; no-cov
-    companions and infrastructure tasks (no VERSION) are exempt."""
+    """Pr tasks that pin a server version run with COVERAGE=1."""
     offenders = [
         task.name
         for task in pr_tasks()
-        if task_vars(task).get("VERSION") is not None
-        and "test-non-standard-no-cov" not in (task.tags or [])
-        and task_vars(task).get("COVERAGE") != "1"
+        if task_vars(task).get("VERSION") is not None and task_vars(task).get("COVERAGE") != "1"
     ]
     assert not offenders, f"PR tasks without COVERAGE: {offenders}"
 
@@ -229,9 +226,14 @@ def test_rotated_tasks_keep_nightly_coverage():
             continue
         rotated_latest = "server-latest" in tags or ("ocsp-ecdsa" in tags and "latest" in tags)
         is_tested = ("test-standard" in tags and "server-latest" in tags) or (
-            "test-non-standard" in tags
+            any(
+                t in tags
+                for t in ("test-encryption", "test-encryption-pyopenssl", "test-load-balancer")
+            )
             and "server-latest" in tags
             and "sharded_cluster-auth-ssl" in tags
+            and "macos" not in tags
+            and "win64" not in tags
         )
         is_aws_max_python = (
             "auth-aws" in tags
@@ -265,14 +267,203 @@ def test_rotated_tasks_keep_nightly_coverage():
     assert not offenders, f"nightly 9.0 OCSP tasks not on min-deps Python: {offenders}"
 
 
-def test_non_standard_cov_tasks_have_no_cov_companions():
-    """Each non-standard coverage task also emits a no-cov companion, so the
-    macOS/Win64 encryption variants (which filter .cov) have a task to
-    activate in patch builds."""
-    no_cov = {task.name for task in all_tasks() if "test-non-standard-no-cov" in (task.tags or [])}
+def test_sync_option_env_override(monkeypatch):
+    """The SYNC env var selects the --sync option (PYTHON-6167)."""
+    import utils
+
+    monkeypatch.setattr(sys, "argv", ["setup_tests.py", "encryption"])
+    monkeypatch.delenv("SYNC", raising=False)
+    opts, _ = utils.get_test_options("Set up the test environment.")
+    assert opts.sync is None
+    monkeypatch.setenv("SYNC", "async")
+    opts, _ = utils.get_test_options("Set up the test environment.")
+    assert opts.sync == "async"
+
+
+SUITE_FAMILIES = {
+    "test-encryption": "encryption",
+    "test-encryption-pyopenssl": "encryption",
+    "test-load-balancer": "load_balancer",
+    "test-doctest": "doctest",
+}
+
+
+def test_no_test_non_standard_tasks_remain():
+    offenders = [
+        task.name
+        for task in all_tasks()
+        if any(tag.startswith("test-non-standard") for tag in (task.tags or []))
+    ]
+    assert not offenders, f"test-non-standard tasks remain: {offenders}"
+
+
+def test_suite_tasks_identify_their_suite():
+    """Every per-suite task's name and tags identify the suite it runs."""
     for task in all_tasks():
-        if "test-non-standard-no-cov" in (task.tags or []):
-            assert "pr" not in (task.tags or []), f"no-cov companion tagged pr: {task.name}"
-        elif "cov" in (task.tags or []) and "test-non-standard" in (task.tags or []):
-            companion = task.name.removesuffix("-cov")
-            assert companion in no_cov, f"missing no-cov companion for {task.name}"
+        tags = task.tags or []
+        for family, suite in SUITE_FAMILIES.items():
+            if family not in tags:
+                continue
+            assert task.name.startswith(family), f"{task.name} does not start with {family}"
+            vars = task_vars(task)
+            assert vars.get("TEST_NAME") == suite, f"{task.name} does not set TEST_NAME={suite}"
+            if family == "test-encryption-pyopenssl":
+                assert vars.get("SUB_TEST_NAME") == "pyopenssl"
+
+
+def test_encryption_and_load_balancer_split_sync_async():
+    """Each matrix cell of the split suites runs as one sync and one async task."""
+    for family in ("test-encryption", "test-encryption-pyopenssl", "test-load-balancer"):
+        modes = {}
+        for task in all_tasks():
+            tags = task.tags or []
+            if family not in tags:
+                continue
+            mode_tags = {"sync", "async"} & set(tags)
+            assert len(mode_tags) == 1, f"{task.name} carries tags {sorted(mode_tags)}"
+            mode = mode_tags.pop()
+            assert task_vars(task).get("SYNC") == mode, f"{task.name} does not set SYNC={mode}"
+            key = frozenset(tag for tag in tags if tag not in ("sync", "async"))
+            modes.setdefault(key, set()).add(mode)
+        assert modes, f"{family} has no tasks"
+        incomplete = [sorted(k) for k, v in modes.items() if v != {"sync", "async"}]
+        assert not incomplete, f"{family} cells without both sync modes: {incomplete}"
+
+
+def test_suite_family_sizes():
+    """The deliberate matrix sizes of the per-suite families (PYTHON-6167)."""
+    sizes = {
+        # 22 non-3.15t cells x 2 sync modes, doubled for the crypt_shared twins.
+        "test-encryption": {"rhel8": 88, "macos": 88, "win64": 88, "ubuntu22": 4},
+        # RHEL 8 runs every cell including 3.15t (setup_tests.py builds OpenSSL 3).
+        "test-encryption-pyopenssl": {"rhel8": 50},
+        "test-load-balancer": 14,
+        "test-doctest": 8,
+    }
+    distros = ("rhel8", "macos", "win64", "ubuntu22")
+    counts = {}
+    for task in all_tasks():
+        for family in sizes:
+            if family in (task.tags or []):
+                counts.setdefault(family, []).append(task)
+    for family, expected in sizes.items():
+        tasks = counts.get(family, [])
+        if isinstance(expected, int):
+            assert len(tasks) == expected, f"{family} has {len(tasks)} tasks, want {expected}"
+        else:
+            per_distro = dict.fromkeys(distros, 0)
+            for task in tasks:
+                distro = [d for d in distros if d in (task.tags or [])]
+                assert len(distro) == 1, f"{task.name} does not carry exactly one distro tag"
+                per_distro[distro[0]] += 1
+            assert {d: n for d, n in per_distro.items() if n} == expected, (
+                f"{family} sizes {per_distro}, want {expected}"
+            )
+
+
+def test_encryption_ubuntu22_groups_are_3_15t_only():
+    """The ubuntu22 group runs only the 3.15t cells on 6.0+, keeping the
+    pr-tagged variant's patch-build budget (PYTHON-6167)."""
+    for task in all_tasks():
+        tags = task.tags or []
+        if "test-encryption" not in tags or "ubuntu22" not in tags:
+            continue
+        assert "python-3.15t" in tags, f"ubuntu22 task not on 3.15t: {task.name}"
+        assert {"server-4.4", "server-5.0"} & set(tags) == set(), (
+            f"ubuntu22 task on a server < 6.0: {task.name}"
+        )
+
+
+def test_crypt_shared_tasks_mirror_the_encryption_cells():
+    """The crypt_shared tasks twin the non-ubuntu22 encryption cells and set
+    TEST_CRYPT_SHARED on the run server call (PYTHON-6167)."""
+    regular = [
+        task
+        for task in all_tasks()
+        if "test-encryption" in (task.tags or [])
+        and "crypt-shared" not in (task.tags or [])
+        and "ubuntu22" not in (task.tags or [])
+    ]
+    twins = [task for task in all_tasks() if "crypt-shared" in (task.tags or [])]
+    assert twins, "no crypt_shared tasks"
+    assert {task.name.replace("-crypt-shared", "") for task in twins} == {
+        task.name for task in regular
+    }, "crypt_shared tasks do not mirror the regular cells"
+    for task in twins:
+        assert "ubuntu22" not in (task.tags or []), f"crypt_shared task on ubuntu22: {task.name}"
+        servers = [c for c in task.commands or [] if getattr(c, "func", None) == "run server"]
+        assert len(servers) == 1, f"{task.name} has no single run server call"
+        assert servers[0].vars.get("TEST_CRYPT_SHARED") == "true", (
+            f"{task.name} does not set TEST_CRYPT_SHARED"
+        )
+
+
+def test_pyopenssl_free_threaded_runs_on_rhel8():
+    """The free-threaded PyOpenSSL cells run on RHEL 8, which setup_tests.py
+    equips with OpenSSL 3 when the system library is older (PYTHON-6167)."""
+    tasks = [
+        task
+        for task in all_tasks()
+        if "test-encryption-pyopenssl" in (task.tags or []) and "free-threaded" in (task.tags or [])
+    ]
+    assert tasks, "no free-threaded pyopenssl tasks"
+    assert all("rhel8" in (task.tags or []) for task in tasks), (
+        f"free-threaded pyopenssl tasks outside rhel8: {[t.name for t in tasks]}"
+    )
+
+
+def test_suite_tasks_never_mix_min_deps_and_coverage():
+    """A per-suite task tests the minimum dependencies or collects coverage, never both."""
+    offenders = [
+        task.name
+        for task in all_tasks()
+        if SUITE_FAMILIES.keys() & set(task.tags or [])
+        and task_vars(task).get("TEST_MIN_DEPS") == "1"
+        and task_vars(task).get("COVERAGE") == "1"
+    ]
+    assert not offenders, f"tasks with both TEST_MIN_DEPS and COVERAGE: {offenders}"
+
+
+def test_suite_pr_pins():
+    """Each split suite keeps its pinned PR task with coverage, in both sync modes."""
+    for family in ("test-encryption", "test-encryption-pyopenssl", "test-load-balancer"):
+        pins = [task for task in pr_tasks() if family in (task.tags or [])]
+        modes = {"sync" if "sync" in (task.tags or []) else "async" for task in pins}
+        assert modes == {"sync", "async"}, f"{family} pr pins: {[t.name for t in pins]}"
+        for task in pins:
+            vars = task_vars(task)
+            assert vars.get("VERSION") == generate_config_utils.MAX_VERSION
+            assert vars.get("UV_PYTHON") == generate_config_utils.MAX_PYTHON
+            assert vars.get("COVERAGE") == "1"
+
+
+def test_encryption_cov_and_pr_tasks_run_on_rhel8_only():
+    """Coverage and the PR pin ride the rhel8 groups only (the suites exceed
+    the 60-min timeout with coverage overhead on macOS/Win64)."""
+    for task in all_tasks():
+        tags = task.tags or []
+        if "test-encryption" in tags or "test-encryption-pyopenssl" in tags:
+            if "cov" in tags or "pr" in tags:
+                assert "rhel8" in tags, f"cov/pr task outside rhel8: {task.name}"
+
+
+def test_variants_select_only_their_suite():
+    """No variant runs another suite's tasks (PYTHON-6167)."""
+    for variant in all_variants():
+        selected = [task for task in all_tasks() if variant_selects(variant, task)]
+        families = {
+            family for task in selected for family in SUITE_FAMILIES if family in (task.tags or [])
+        }
+        if variant.name == "encryption-rhel8":
+            expected = {"test-encryption", "test-encryption-pyopenssl"}
+        elif variant.name.startswith("encryption"):
+            expected = {"test-encryption"}
+        elif variant.name == "load-balancer":
+            expected = {"test-load-balancer"}
+        elif variant.name.startswith("doctests"):
+            expected = {"test-doctest"}
+        else:
+            expected = set()
+        assert families == expected, (
+            f"{variant.name} selects {sorted(families)}, want {sorted(expected)}"
+        )

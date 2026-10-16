@@ -137,82 +137,26 @@ def create_encryption_variants() -> list[BuildVariant]:
     tags = ["encryption_tag"]
     batchtime = BATCHTIME_DAY
 
-    def get_encryption_expansions(encryption):
-        expansions = dict(TEST_NAME="encryption")
-        if "crypt_shared" in encryption:
-            expansions["TEST_CRYPT_SHARED"] = "true"
-        if "PyOpenSSL" in encryption:
-            expansions["SUB_TEST_NAME"] = "pyopenssl"
-        return expansions
-
-    # Test encryption on all hosts.
-    for encryption, host in product(
-        ["Encryption", "Encryption crypt_shared"], ["rhel8", "macos", "win64"]
-    ):
-        expansions = get_encryption_expansions(encryption)
-        display_name = get_variant_name(encryption, host, **expansions)
-        tasks = [".test-non-standard !.python-3.15t", ".test-string-query-preview"]
-        if host != "rhel8":
-            # Exclude coverage tasks (encryption suites exceed the 60-min timeout with
-            # coverage overhead on macOS/win64).
-            # Also include the non-coverage companion tasks (test-non-standard-no-cov) which
-            # carry the "latest" server tasks without COVERAGE=1.
-            tasks = [
-                ".test-non-standard !.cov !.python-3.15t",
-                ".test-non-standard-no-cov !.python-3.15t",
-                ".test-string-query-preview",
-            ]
-        variant = create_variant(
-            tasks,
-            display_name,
-            host=host,
-            expansions=expansions,
-            batchtime=batchtime,
-            tags=tags,
+    # The tasks identify the suite, distro, sync mode, and crypt_shared; each
+    # variant picks its distro group(s).
+    for host in ["rhel8", "macos", "win64"]:
+        tasks = [f".test-encryption .{host}", ".test-string-query-preview"]
+        if host == "rhel8":
+            tasks.append(".test-encryption-pyopenssl .rhel8")
+        display_name = get_variant_name("Encryption", host)
+        variants.append(
+            create_variant(tasks, display_name, host=host, batchtime=batchtime, tags=tags)
         )
-        variants.append(variant)
-
-    # Test PyOpenSSL on linux.
-    host = DEFAULT_HOST
-    encryption = "Encryption PyOpenSSL"
-    expansions = get_encryption_expansions(encryption)
-    display_name = get_variant_name(encryption, host, **expansions)
-    variant = create_variant(
-        [".test-non-standard !.python-3.15t"],
-        display_name,
-        host=host,
-        expansions=expansions,
-        batchtime=batchtime,
-        tags=tags,
-    )
-    variants.append(variant)
 
     # The 3.15t encryption tests only run on Ubuntu 22, whose OpenSSL 3.0.2 is
     # needed to build the cryptography package; only MongoDB 6.0+ runs there.
     host = HOSTS["ubuntu22"]
-    expansions = get_encryption_expansions("Encryption")
-    display_name = get_variant_name("Encryption", host, **expansions)
+    display_name = get_variant_name("Encryption", host)
     variants.append(
         create_variant(
-            [".test-non-standard .python-3.15t !.server-4.4 !.server-5.0"],
+            [".test-encryption .ubuntu22"],
             display_name,
             host=host,
-            expansions=expansions,
-            batchtime=batchtime,
-            tags=[*tags, "pr"],
-        )
-    )
-
-    # The 3.15t PyOpenSSL tests only run on Ubuntu 22, whose OpenSSL 3.0.2 is
-    # needed to build the cryptography package; only MongoDB 6.0+ runs there.
-    expansions = get_encryption_expansions("Encryption PyOpenSSL")
-    display_name = get_variant_name("Encryption PyOpenSSL", host, **expansions)
-    variants.append(
-        create_variant(
-            [".test-non-standard .python-3.15t !.server-4.4 !.server-5.0"],
-            display_name,
-            host=host,
-            expansions=expansions,
             batchtime=batchtime,
             tags=[*tags, "pr"],
         )
@@ -221,18 +165,12 @@ def create_encryption_variants() -> list[BuildVariant]:
 
 
 def create_load_balancer_variants():
-    tasks = [
-        f".test-non-standard .server-{v} .sharded_cluster-auth-ssl"
-        for v in get_versions_from("6.0")
-    ]
-    expansions = dict(TEST_NAME="load_balancer")
     return [
         create_variant(
-            tasks,
+            [".test-load-balancer"],
             "Load Balancer",
             host=DEFAULT_HOST,
             batchtime=BATCHTIME_DAY,
-            expansions=expansions,
         )
     ]
 
@@ -506,13 +444,11 @@ def create_mockupdb_variants():
 
 def create_doctests_variants():
     host = DEFAULT_HOST
-    expansions = dict(TEST_NAME="doctest")
     return [
         create_variant(
-            [".test-non-standard .standalone-noauth-nossl"],
+            [".test-doctest"],
             get_variant_name("Doctests", host),
             host=host,
-            expansions=expansions,
         )
     ]
 
@@ -752,73 +688,148 @@ def create_no_toolchain_tasks():
     return tasks
 
 
-def create_test_non_standard_tasks():
-    """For variants that set a TEST_NAME."""
-    tasks = []
-    task_combos = set()
-    # For each version and topology, rotate through the CPythons.
-    # Only the sharded_cluster topology runs on PRs to keep patch build size manageable.
+def _non_standard_cells():
+    """The (version, topology, python) cells behind the non-standard suites:
+    every version and topology with rotating CPythons, plus the pinned PR cell."""
+    cells = set()
     for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
-        task_combos.add((version, topology, python))
-    # The pinned PR task: the max Python on MAX_VERSION, sharded cluster.
-    task_combos.add((MAX_VERSION, "sharded_cluster", MAX_PYTHON))
-    for version, topology, python in sorted(task_combos):
-        pr = version == MAX_VERSION and topology == "sharded_cluster" and python == MAX_PYTHON
-        auth, ssl = get_standard_auth_ssl(topology)
-        tags = [
-            "test-non-standard",
-            f"server-{version}",
-            f"python-{python}",
-            f"{topology}-{auth}-{ssl}",
-            auth,
-        ]
-        if "t" in python:
-            tags.append("free-threaded")
-        if pr:
-            tags.append("pr")
-        expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
-        if python == ALL_PYTHONS[0]:
-            expansions["TEST_MIN_DEPS"] = "1"
-        elif pr or (version == "latest" and topology == "sharded_cluster"):
-            expansions["COVERAGE"] = "1"
-            tags.append("cov")
-        name = get_task_name("test-non-standard", python=python, **expansions)
-        server_func = FunctionCall(func="run server", vars=expansions)
-        test_vars = expansions.copy()
-        test_vars["UV_PYTHON"] = python
-        test_func = FunctionCall(func="run tests", vars=test_vars)
-        tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
-        # For each coverage task, also emit a non-coverage companion so that
-        # macOS/Win64 encryption variants (which filter out .cov due to timeout
-        # constraints) still have a "latest" task to activate in patch builds.
-        if "cov" in tags:
-            nc_expansions = {k: v for k, v in expansions.items() if k != "COVERAGE"}
-            # Use a distinct primary tag so companions are not selected by existing
-            # ".test-non-standard" selectors (e.g. load-balancer, PyOpenSSL variants).
-            nc_tags = [
-                "test-non-standard-no-cov" if t == "test-non-standard" else t
-                for t in tags
-                if t not in ("cov", "pr")
-            ]
-            nc_name = get_task_name("test-non-standard", python=python, **nc_expansions)
-            nc_server_func = FunctionCall(func="run server", vars=nc_expansions)
-            nc_test_vars = nc_expansions.copy()
-            nc_test_vars["UV_PYTHON"] = python
-            nc_test_func = FunctionCall(func="run tests", vars=nc_test_vars)
+        cells.add((version, topology, python))
+    cells.add((MAX_VERSION, "sharded_cluster", MAX_PYTHON))
+    return sorted(cells)
+
+
+def _create_suite_task(
+    family, distro, version, topology, python, sync, suite, sub_test=None, crypt_shared=False
+):
+    """One task of a per-suite family, identified by its name and tags."""
+    pr = distro in ("", "rhel8") and (version, topology, python) == (
+        MAX_VERSION,
+        "sharded_cluster",
+        MAX_PYTHON,
+    )
+    cov = pr or (
+        distro not in ("macos", "win64") and version == "latest" and topology == "sharded_cluster"
+    )
+    auth, ssl = get_standard_auth_ssl(topology)
+    tags = [
+        family,
+        f"server-{version}",
+        f"python-{python}",
+        f"{topology}-{auth}-{ssl}",
+        auth,
+    ]
+    if distro:
+        tags.append(distro)
+    if sync:
+        tags.append(sync)
+    if "t" in python:
+        tags.append("free-threaded")
+    if pr:
+        tags.append("pr")
+    expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION=version)
+    if crypt_shared:
+        tags.append("crypt-shared")
+        expansions["TEST_CRYPT_SHARED"] = "true"
+    if python == ALL_PYTHONS[0]:
+        expansions["TEST_MIN_DEPS"] = "1"
+    elif cov:
+        tags.append("cov")
+        expansions["COVERAGE"] = "1"
+    base = f"{family}-{distro}" if distro else family
+    if crypt_shared:
+        base += "-crypt-shared"
+    name = get_task_name(base, python=python, sync=sync, **expansions)
+    server_vars = dict(TEST_NAME=suite, **expansions)
+    test_vars = dict(TEST_NAME=suite, UV_PYTHON=python, **expansions)
+    if sub_test:
+        test_vars["SUB_TEST_NAME"] = sub_test
+    if sync:
+        test_vars["SYNC"] = sync
+    server_func = FunctionCall(func="run server", vars=server_vars)
+    test_func = FunctionCall(func="run tests", vars=test_vars)
+    return EvgTask(name=name, tags=tags, commands=[server_func, test_func])
+
+
+def _create_encryption_tasks(
+    family, distros, sub_test=None, crypt_shared=False, free_threaded_distro="ubuntu22"
+):
+    """Encryption tasks, grouped by distro and split by sync/async. The 3.15t
+    cells run only on free_threaded_distro (which must provide OpenSSL 3 to
+    build cryptography) and only on MongoDB 6.0+."""
+    tasks = []
+    for distro in distros:
+        for version, topology, python in _non_standard_cells():
+            if python == "3.15t" and distro != free_threaded_distro:
+                continue
+            if distro == "ubuntu22" and (python != "3.15t" or version in ("4.4", "5.0")):
+                continue
+            for sync in SYNCS:
+                tasks.append(
+                    _create_suite_task(
+                        family,
+                        distro,
+                        version,
+                        topology,
+                        python,
+                        sync,
+                        "encryption",
+                        sub_test=sub_test,
+                        crypt_shared=crypt_shared,
+                    )
+                )
+    return tasks
+
+
+def create_test_encryption_tasks():
+    """Encryption tasks, plus crypt_shared variants of the non-ubuntu22 groups."""
+    return _create_encryption_tasks(
+        "test-encryption", ["rhel8", "macos", "win64", "ubuntu22"]
+    ) + _create_encryption_tasks("test-encryption", ["rhel8", "macos", "win64"], crypt_shared=True)
+
+
+def create_test_encryption_pyopenssl_tasks():
+    """PyOpenSSL tasks on RHEL 8, including the free-threaded cells (setup
+    installs OpenSSL 3 there when the system library is older)."""
+    return _create_encryption_tasks(
+        "test-encryption-pyopenssl", ["rhel8"], sub_test="pyopenssl", free_threaded_distro="rhel8"
+    )
+
+
+def create_test_load_balancer_tasks():
+    """Load balancer tasks on the sharded-cluster cells of 6.0+, split by sync/async."""
+    tasks = []
+    versions = set(get_versions_from("6.0"))
+    for version, topology, python in _non_standard_cells():
+        if topology != "sharded_cluster" or version not in versions:
+            continue
+        for sync in SYNCS:
             tasks.append(
-                EvgTask(name=nc_name, tags=nc_tags, commands=[nc_server_func, nc_test_func])
+                _create_suite_task(
+                    "test-load-balancer", "", version, topology, python, sync, "load_balancer"
+                )
             )
+    return tasks
+
+
+def create_test_doctest_tasks():
+    """Doctest tasks on the standalone cells."""
+    tasks = []
+    for version, topology, python in _non_standard_cells():
+        if topology != "standalone":
+            continue
+        tasks.append(
+            _create_suite_task("test-doctest", "", version, topology, python, "", "doctest")
+        )
     return tasks
 
 
 def create_string_query_preview_tasks():
     """Tasks for the preview Queryable Encryption string query types.
 
-    The preview query types need a server that is at least 8.2 and older than
-    9.0, and ALL_VERSIONS jumps straight from 8.0 to 9.0, so they have nowhere
-    to run without a dedicated task. setup_tests.py pins the released
-    pymongocrypt for 8.x, which bundles a libmongocrypt still carrying the
-    preview types.
+    The preview types need a server >= 8.2 and < 9.0; ALL_VERSIONS jumps from
+    8.0 to 9.0, so they need a dedicated task. setup_tests.py pins the
+    released pymongocrypt for 8.x, which bundles a libmongocrypt still
+    carrying the preview types.
     """
     python = CPYTHONS[-1]
     topology = "replica_set"
@@ -1422,6 +1433,7 @@ def create_run_tests_func():
         "IS_WIN32",
         "REQUIRE_FIPS",
         "TEST_MIN_DEPS",
+        "SYNC",
     ]
     args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
     setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)

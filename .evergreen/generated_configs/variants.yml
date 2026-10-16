@@ -175,118 +175,47 @@ buildvariants:
   # Doctests tests
   - name: doctests-rhel8
     tasks:
-      - name: .test-non-standard .standalone-noauth-nossl
+      - name: .test-doctest
     display_name: Doctests RHEL8
     run_on:
       - rhel8.10-small
-    expansions:
-      TEST_NAME: doctest
 
   # Encryption tests
   - name: encryption-rhel8
     tasks:
-      - name: .test-non-standard !.python-3.15t
+      - name: .test-encryption .rhel8
       - name: .test-string-query-preview
+      - name: .test-encryption-pyopenssl .rhel8
     display_name: Encryption RHEL8
     run_on:
       - rhel8.10-small
     batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
     tags: [encryption_tag]
   - name: encryption-macos
     tasks:
-      - name: .test-non-standard !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.python-3.15t
+      - name: .test-encryption .macos
       - name: .test-string-query-preview
     display_name: Encryption macOS
     run_on:
       - macos-14
     batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
     tags: [encryption_tag]
   - name: encryption-win64
     tasks:
-      - name: .test-non-standard !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.python-3.15t
+      - name: .test-encryption .win64
       - name: .test-string-query-preview
     display_name: Encryption Win64
     run_on:
       - windows-2022-latest-small
     batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-    tags: [encryption_tag]
-  - name: encryption-crypt_shared-rhel8
-    tasks:
-      - name: .test-non-standard !.python-3.15t
-      - name: .test-string-query-preview
-    display_name: Encryption crypt_shared RHEL8
-    run_on:
-      - rhel8.10-small
-    batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-      TEST_CRYPT_SHARED: "true"
-    tags: [encryption_tag]
-  - name: encryption-crypt_shared-macos
-    tasks:
-      - name: .test-non-standard !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.python-3.15t
-      - name: .test-string-query-preview
-    display_name: Encryption crypt_shared macOS
-    run_on:
-      - macos-14
-    batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-      TEST_CRYPT_SHARED: "true"
-    tags: [encryption_tag]
-  - name: encryption-crypt_shared-win64
-    tasks:
-      - name: .test-non-standard !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.python-3.15t
-      - name: .test-string-query-preview
-    display_name: Encryption crypt_shared Win64
-    run_on:
-      - windows-2022-latest-small
-    batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-      TEST_CRYPT_SHARED: "true"
-    tags: [encryption_tag]
-  - name: encryption-pyopenssl-rhel8
-    tasks:
-      - name: .test-non-standard !.python-3.15t
-    display_name: Encryption PyOpenSSL RHEL8
-    run_on:
-      - rhel8.10-small
-    batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-      SUB_TEST_NAME: pyopenssl
     tags: [encryption_tag]
   - name: encryption-ubuntu-22
     tasks:
-      - name: .test-non-standard .python-3.15t !.server-4.4 !.server-5.0
+      - name: .test-encryption .ubuntu22
     display_name: Encryption Ubuntu-22
     run_on:
       - ubuntu2204-small
     batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-    tags: [encryption_tag, pr]
-  - name: encryption-pyopenssl-ubuntu-22
-    tasks:
-      - name: .test-non-standard .python-3.15t !.server-4.4 !.server-5.0
-    display_name: Encryption PyOpenSSL Ubuntu-22
-    run_on:
-      - ubuntu2204-small
-    batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-      SUB_TEST_NAME: pyopenssl
     tags: [encryption_tag, pr]
 
   # Enterprise auth tests
@@ -352,18 +281,11 @@ buildvariants:
   # Load balancer tests
   - name: load-balancer
     tasks:
-      - name: .test-non-standard .server-6.0 .sharded_cluster-auth-ssl
-      - name: .test-non-standard .server-7.0 .sharded_cluster-auth-ssl
-      - name: .test-non-standard .server-8.0 .sharded_cluster-auth-ssl
-      - name: .test-non-standard .server-9.0 .sharded_cluster-auth-ssl
-      - name: .test-non-standard .server-rapid .sharded_cluster-auth-ssl
-      - name: .test-non-standard .server-latest .sharded_cluster-auth-ssl
+      - name: .test-load-balancer
     display_name: Load Balancer
     run_on:
       - rhel8.10-small
     batchtime: 1440
-    expansions:
-      TEST_NAME: load_balancer
 
   # Min support tests
   - name: min-support-rhel8

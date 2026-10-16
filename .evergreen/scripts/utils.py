@@ -223,6 +223,14 @@ def get_test_options(
         other_group.add_argument(
             "--disable-test-commands", action="store_true", help="Disable test commands."
         )
+        other_group.add_argument(
+            "--sync",
+            choices=["sync", "async"],
+            help=(
+                "Run only the sync or async half of a directory-split suite "
+                "(the tests live in test/ and test/asynchronous/ and share one marker)."
+            ),
+        )
 
     # Get the options.
     if not allow_extra_opts:
