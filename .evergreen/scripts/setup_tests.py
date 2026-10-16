@@ -186,7 +186,13 @@ def ensure_openssl3() -> None:
             return
     LOGGER.info("No system OpenSSL 3: building one into the drivers-evergreen-tools prefix...")
     env = subprocess.run(  # noqa: S603
-        ["/bin/bash", "-c", f". {DRIVERS_TOOLS}/.evergreen/install-openssl3.sh >/dev/null && env"],
+        [
+            "/bin/bash",
+            "-c",
+            '. "$1" >/dev/null && env',
+            "bash",
+            f"{DRIVERS_TOOLS}/.evergreen/install-openssl3.sh",
+        ],
         capture_output=True,
         text=True,
         check=True,

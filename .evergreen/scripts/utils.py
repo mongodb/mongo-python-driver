@@ -44,7 +44,9 @@ TEST_SUITE_MAP = {
     "enterprise_auth": "auth",
     "search_index": "search_index",
     "kms": "kms",
-    "load_balancer": "load_balancer",
+    # No marker: the load balancer tasks run the full default suite, whose
+    # load-balancer-marked tests are part of it.
+    "load_balancer": "",
     "mockupdb": "mockupdb",
     "ocsp": "ocsp",
     "perf": "perf",

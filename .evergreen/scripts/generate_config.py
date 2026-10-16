@@ -11,6 +11,7 @@ from generate_config_utils import (
     BATCHTIME_WEEK,
     C_EXTS,
     CPYTHONS,
+    CPYTHONS_NO_FREE_THREADED,
     DEFAULT_HOST,
     FREE_THREADED_PYTHON,
     HOSTS,
@@ -27,6 +28,7 @@ from generate_config_utils import (
     get_s3_put,
     get_standard_auth_ssl,
     get_subprocess_exec,
+    get_suite_mode,
     get_task_name,
     get_variant_name,
     get_versions_from,
@@ -51,6 +53,9 @@ from utils import PERF_PYTHON_VERSION
 
 # The wire-protocol compressors exercised by the compression tasks.
 COMPRESSORS = ["snappy", "zlib", "zstd"]
+
+# The distros sharing the per-suite task definitions.
+ALL_DISTROS = ["rhel8", "macos", "win64"]
 
 # The middle stable MongoDB version, anchoring the free-threaded standard task.
 STABLE_VERSIONS = [v for v in ALL_VERSIONS if v not in ("rapid", "latest")]
@@ -622,16 +627,6 @@ def create_no_toolchain_tasks():
     return tasks
 
 
-def _non_standard_cells():
-    """The (version, topology, python) cells behind the non-standard suites:
-    every version and topology with rotating CPythons, plus the pinned PR cell."""
-    cells = set()
-    for (version, topology), python in zip_cycle(list(product(ALL_VERSIONS, TOPOLOGIES)), CPYTHONS):
-        cells.add((version, topology, python))
-    cells.add((MAX_VERSION, "sharded_cluster", MAX_PYTHON))
-    return sorted(cells)
-
-
 def _create_suite_task(
     family,
     version,
@@ -712,7 +707,7 @@ def _create_encryption_tasks(family, sub_test=None, crypt_shared=False, distros=
     coverage and the pr pin ride rhel8-only twins of the max-stable and
     latest cells, which exceed the 60-min timeout with coverage overhead on
     macOS/Win64 (PYTHON-6167)."""
-    all_distros = ["rhel8", "macos", "win64"]
+    all_distros = ALL_DISTROS
     distros = distros or all_distros
     split_coverage = distros == all_distros
     tasks = []
@@ -786,26 +781,26 @@ def create_test_encryption_pyopenssl_tasks():
 
 
 def create_test_load_balancer_tasks():
-    """Load balancer tasks: one task per MongoDB version 6.0+, all on
-    authenticated SSL sharded clusters (the load balancer requires one),
-    running both sync halves together, with the CPython paired one-to-one
-    across the versions (PYTHON-6167)."""
+    """Load balancer tasks: one sync and one async task per MongoDB version
+    6.0+ on an authenticated SSL sharded cluster fronted by a load balancer,
+    running the full default suite — the load-balancer-marked tests are part
+    of it — with the CPython paired one-to-one across the versions
+    (PYTHON-6167)."""
     return [
         _create_suite_task(
-            "test-load-balancer", version, "sharded_cluster", python, "", "load_balancer"
+            "test-load-balancer", version, "sharded_cluster", python, sync, "load_balancer"
         )
+        for sync in SYNCS
         for version, python in zip(get_versions_from("6.0"), CPYTHONS)
     ]
 
 
 def create_test_doctest_tasks():
-    """Doctest tasks on the standalone cells."""
-    tasks = []
-    for version, topology, python in _non_standard_cells():
-        if topology != "standalone":
-            continue
-        tasks.append(_create_suite_task("test-doctest", version, topology, python, "", "doctest"))
-    return tasks
+    """Doctest tasks: one task per MongoDB version on a standalone server."""
+    return [
+        _create_suite_task("test-doctest", version, "standalone", python, "", "doctest")
+        for version, python in zip_cycle(ALL_VERSIONS, CPYTHONS)
+    ]
 
 
 def create_test_compression_tasks():
@@ -866,19 +861,37 @@ def create_test_pyopenssl_tasks():
     across the cells; free-threaded CPython is covered by the
     encryption-pyopenssl family on RHEL 8, the distro setup_tests.py equips
     with OpenSSL 3 (PYTHON-6167)."""
-    no_free_threaded = [python for python in CPYTHONS if "t" not in python]
     return [
         _create_suite_task(
             "test-pyopenssl",
             version,
             topology,
             python,
-            "sync" if topology == "replica_set" else "async",
+            get_suite_mode(topology),
             "default",
             sub_test="pyopenssl",
-            distros=["rhel8", "macos", "win64"],
+            distros=ALL_DISTROS,
         )
-        for (version, topology), python in zip_cycle(_per_version_cells(), no_free_threaded)
+        for (version, topology), python in zip_cycle(
+            _per_version_cells(), CPYTHONS_NO_FREE_THREADED
+        )
+    ]
+
+
+def _create_rotation_tasks(family, extra_test_vars=None, pythons=CPYTHONS, sync=None):
+    """One task per MongoDB version, the topology cycling through standalone,
+    replica set, and sharded cluster (PYTHON-6167)."""
+    return [
+        _create_suite_task(
+            family,
+            version,
+            topology,
+            python,
+            sync if sync else get_suite_mode(topology),
+            "default",
+            extra_test_vars=extra_test_vars,
+        )
+        for version, topology, python in zip_cycle(ALL_VERSIONS, TOPOLOGIES, pythons)
     ]
 
 
@@ -888,20 +901,12 @@ def create_test_gevent_tasks():
     default suite under gevent; run_tests.py monkey-patches with gevent and
     skips the async tests. Free-threaded CPython is not supported by gevent
     (PYTHON-6167)."""
-    return [
-        _create_suite_task(
-            "test-gevent",
-            version,
-            topology,
-            python,
-            "sync",
-            "default",
-            extra_test_vars=dict(GREEN_FRAMEWORK="gevent"),
-        )
-        for version, topology, python in zip_cycle(
-            ALL_VERSIONS, TOPOLOGIES, [python for python in CPYTHONS if "t" not in python]
-        )
-    ]
+    return _create_rotation_tasks(
+        "test-gevent",
+        extra_test_vars=dict(GREEN_FRAMEWORK="gevent"),
+        pythons=CPYTHONS_NO_FREE_THREADED,
+        sync="sync",
+    )
 
 
 def create_test_disable_test_commands_tasks():
@@ -911,18 +916,9 @@ def create_test_disable_test_commands_tasks():
     suite against a server started without enableTestCommands. The mode
     follows the encryption corners: sync on the standalone and replica-set
     cells, async on the sharded clusters (PYTHON-6167)."""
-    return [
-        _create_suite_task(
-            "test-disable-test-commands",
-            version,
-            topology,
-            python,
-            "sync" if topology != "sharded_cluster" else "async",
-            "default",
-            extra_test_vars=dict(DISABLE_TEST_COMMANDS="1"),
-        )
-        for version, topology, python in zip_cycle(ALL_VERSIONS, TOPOLOGIES, CPYTHONS)
-    ]
+    return _create_rotation_tasks(
+        "test-disable-test-commands", extra_test_vars=dict(DISABLE_TEST_COMMANDS="1")
+    )
 
 
 def create_test_no_c_ext_tasks():
@@ -931,18 +927,7 @@ def create_test_no_c_ext_tasks():
     suite without the C extensions (NO_EXT feeds run_tests.py). The mode
     follows the encryption corners: sync on the standalone and replica-set
     cells, async on the sharded clusters (PYTHON-6167)."""
-    return [
-        _create_suite_task(
-            "test-no-c-ext",
-            version,
-            topology,
-            python,
-            "sync" if topology != "sharded_cluster" else "async",
-            "default",
-            extra_test_vars=dict(NO_EXT="1"),
-        )
-        for version, topology, python in zip_cycle(ALL_VERSIONS, TOPOLOGIES, CPYTHONS)
-    ]
+    return _create_rotation_tasks("test-no-c-ext", extra_test_vars=dict(NO_EXT="1"))
 
 
 def create_test_stable_api_tasks():
@@ -952,35 +937,31 @@ def create_test_stable_api_tasks():
     versioned-api-testing orchestration, with the CPython rotated across the
     versions. The require-v1 tasks pin apiVersion=1 on the suite; the
     accept-v2 tasks do not pin an apiVersion (PYTHON-6167)."""
-    tasks = []
-    for version, python in zip_cycle(get_versions_from("5.0"), CPYTHONS):
+    cells = [
         # Async, auth, SSL, sharded cluster started with requireApiVersion=1.
-        tasks.append(
-            _create_suite_task(
-                "test-stable-api",
-                version,
-                "sharded_cluster",
-                python,
-                "async",
-                "default",
-                suffix="require-v1",
-                extra_expansions=dict(REQUIRE_API_VERSION="1", MONGODB_API_VERSION="1"),
-            )
-        )
+        (
+            "require-v1",
+            "sharded_cluster",
+            "async",
+            dict(REQUIRE_API_VERSION="1", MONGODB_API_VERSION="1"),
+        ),
         # Sync, noauth, no SSL, standalone from the versioned-api orchestration.
-        tasks.append(
-            _create_suite_task(
-                "test-stable-api",
-                version,
-                "standalone",
-                python,
-                "sync",
-                "default",
-                suffix="accept-v2",
-                extra_expansions=dict(ORCHESTRATION_FILE="versioned-api-testing.json"),
-            )
+        ("accept-v2", "standalone", "sync", dict(ORCHESTRATION_FILE="versioned-api-testing.json")),
+    ]
+    return [
+        _create_suite_task(
+            "test-stable-api",
+            version,
+            topology,
+            python,
+            sync,
+            "default",
+            suffix=suffix,
+            extra_expansions=extra_expansions,
         )
-    return tasks
+        for version, python in zip_cycle(get_versions_from("5.0"), CPYTHONS)
+        for suffix, topology, sync, extra_expansions in cells
+    ]
 
 
 def create_test_storage_inmemory_tasks():
