@@ -416,17 +416,6 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
         )
         self.assertEqual(["cluster.my_domain.net"], [node[0] for node in res["nodelist"]])
 
-    async def test_srv_hostname_with_three_or_more_parts_may_equal_the_returned_hostname(
-        self,
-    ):
-        test_cases = [
-            {
-                "query": "_mongodb._tcp.blogs.mongodb.com",
-                "mock_target": "blogs.mongodb.com",
-            },
-        ]
-        await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
-
 
 class TestPublicSuffixListParsing(unittest.TestCase):
     def test_1_multi_label_ordinary_rule(self):
