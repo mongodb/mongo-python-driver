@@ -200,8 +200,27 @@ class TestPooling(_TestPoolingBase):
 
         self.assertRaises(ValueError, AsyncMongoClient, host=host, port=port, maxPoolSize="foo")
 
+        self.assertRaises(
+            ValueError, AsyncMongoClient, host=host, port=port, maxPoolSize=10, minPoolSize=20
+        )
+
         c = AsyncMongoClient(host=host, port=port, maxPoolSize=100, connect=False)
         self.assertEqual(c.options.pool_options.max_pool_size, 100)
+
+    async def test_max_pool_size_no_limit_with_min_pool_size(self):
+        # A maxPoolSize of 0 or None means no limit, so minPoolSize must
+        # still be allowed (PYTHON-6149).
+        host, port = await async_client_context.host, await async_client_context.port
+        for max_pool_size in (0, None):
+            c = AsyncMongoClient(
+                host=host,
+                port=port,
+                maxPoolSize=max_pool_size,
+                minPoolSize=5,
+                connect=False,
+            )
+            self.assertEqual(c.options.pool_options.max_pool_size, max_pool_size)
+            self.assertEqual(c.options.pool_options.min_pool_size, 5)
 
     async def test_no_disconnect(self):
         await run_cases(self.c, [NonUnique, Unique, InsertOneAndFind])
