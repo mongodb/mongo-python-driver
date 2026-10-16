@@ -479,6 +479,12 @@ CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at
       the setup scripts write a `uv.toml` boundary into the submodule checkout that stops uv's config discovery
       (and with it the required-version check) at the submodule boundary.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
+- PR tasks pin to the Python boundaries: `MIN_PYTHON` with `TEST_MIN_DEPS=1`, `MAX_PYTHON`, and one
+  `FREE_THREADED_PYTHON`, against the newest numbered server (`MAX_VERSION`; the `latest` nightly
+  is unstable), plus the min server (`MIN_VERSION`) through its `MIN_PYTHON` floor. Each runs with
+  `COVERAGE=1`. The pins derive from `CPYTHONS` in `generate_config_utils.py`, so CPython changes
+  re-bind them rather than reshuffle the set. Check the regenerated `generated_configs/tasks.yml`
+  diff to confirm the `pr` tags.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
 ## Handling flaky tests

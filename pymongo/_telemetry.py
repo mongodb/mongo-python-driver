@@ -37,12 +37,12 @@ from pymongo.logger import (
     _verbose_connection_error_reason,
 )
 from pymongo.message import _randint
-from pymongo.pool_shared import _ConnectionTelemetryInfo
 
 if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.hello import Hello
     from pymongo.monitoring import _EventListeners
+    from pymongo.pool_shared import _ConnectionTelemetryInfo
     from pymongo.server_description import ServerDescription
     from pymongo.topology_description import TopologyDescription
     from pymongo.typings import _Address, _DocumentOut

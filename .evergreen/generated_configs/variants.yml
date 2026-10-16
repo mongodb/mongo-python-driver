@@ -91,13 +91,13 @@ buildvariants:
     run_on:
       - macos-14
     tags: [pr]
-  - name: auth-aws-ecs-macos
+  - name: auth-aws-ecs-ubuntu-24
     tasks:
       - name: .auth-aws-ecs
-    display_name: Auth AWS ECS macOS
+    display_name: Auth AWS ECS Ubuntu-24
     run_on:
       - ubuntu2404-small
-    tags: [pr]
+    tags: []
 
   # Aws lambda tests
   - name: faas-lambda
@@ -531,7 +531,8 @@ buildvariants:
   # Server version tests
   - name: mongodb-v4.4
     tasks:
-      - name: .server-version
+      - name: .server-version !.pr
+      - name: .server-version .4.4
     display_name: "* MongoDB v4.4"
     run_on:
       - rhel8.10-small
@@ -540,7 +541,7 @@ buildvariants:
     tags: [coverage_tag]
   - name: mongodb-v5.0
     tasks:
-      - name: .server-version
+      - name: .server-version !.pr
     display_name: "* MongoDB v5.0"
     run_on:
       - rhel8.10-small
@@ -549,7 +550,7 @@ buildvariants:
     tags: [coverage_tag]
   - name: mongodb-v6.0
     tasks:
-      - name: .server-version
+      - name: .server-version !.pr
     display_name: "* MongoDB v6.0"
     run_on:
       - rhel8.10-small
@@ -558,7 +559,7 @@ buildvariants:
     tags: [coverage_tag]
   - name: mongodb-v7.0
     tasks:
-      - name: .server-version
+      - name: .server-version !.pr
     display_name: "* MongoDB v7.0"
     run_on:
       - rhel8.10-small
@@ -567,7 +568,7 @@ buildvariants:
     tags: [coverage_tag]
   - name: mongodb-v8.0
     tasks:
-      - name: .server-version
+      - name: .server-version !.pr
     display_name: "* MongoDB v8.0"
     run_on:
       - rhel8.10-small
@@ -576,7 +577,8 @@ buildvariants:
     tags: [coverage_tag]
   - name: mongodb-v9.0
     tasks:
-      - name: .server-version
+      - name: .server-version !.pr
+      - name: .server-version .9.0
     display_name: "* MongoDB v9.0"
     run_on:
       - rhel8.10-small
@@ -585,7 +587,7 @@ buildvariants:
     tags: [coverage_tag]
   - name: mongodb-rapid
     tasks:
-      - name: .server-version
+      - name: .server-version !.pr
     display_name: "* MongoDB rapid"
     run_on:
       - rhel8.10-small
@@ -594,7 +596,7 @@ buildvariants:
     tags: [coverage_tag]
   - name: mongodb-latest
     tasks:
-      - name: .server-version
+      - name: .server-version !.pr
     display_name: "* MongoDB latest"
     run_on:
       - rhel8.10-small
