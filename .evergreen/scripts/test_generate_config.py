@@ -109,6 +109,17 @@ def variant_selects(variant, task):
     return False
 
 
+def test_run_tests_env_carries_crypt_shared():
+    """The run tests setup env carries TEST_CRYPT_SHARED, which
+    setup_tests.py reads to wire the crypt_shared lib directory for the
+    crypt_shared twins (PYTHON-6167)."""
+    _, cmds = generate_config.create_run_tests_func()
+    setup_cmd = cmds[0]
+    includes = setup_cmd.params["include_expansions_in_env"]
+    assert "TEST_CRYPT_SHARED" in includes, includes
+    assert "LIBMONGOCRYPT_URL" in includes, includes
+
+
 def test_pr_tasks_pin_max_version():
     """Task-level pins: pr tasks pin MAX_VERSION (the "latest" nightly is
     unstable); the explicit 4.4 min-deps pin is the exception. Variant-merged

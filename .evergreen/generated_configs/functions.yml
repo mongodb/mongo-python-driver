@@ -157,6 +157,7 @@ functions:
           - REQUIRE_FIPS
           - TEST_MIN_DEPS
           - SYNC
+          - TEST_CRYPT_SHARED
       type: test
     - command: subprocess.exec
       params:

@@ -1613,6 +1613,9 @@ def create_run_tests_func():
         "REQUIRE_FIPS",
         "TEST_MIN_DEPS",
         "SYNC",
+        # setup_tests.py reads it to wire the crypt_shared lib directory for
+        # the crypt_shared tasks.
+        "TEST_CRYPT_SHARED",
     ]
     args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
     setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)
