@@ -878,7 +878,9 @@ def create_test_pyopenssl_tasks():
     ]
 
 
-def _create_rotation_tasks(family, extra_test_vars=None, pythons=CPYTHONS, sync=None):
+def _create_rotation_tasks(
+    family, extra_test_vars=None, extra_expansions=None, pythons=CPYTHONS, sync=None
+):
     """One task per MongoDB version, the topology cycling through standalone,
     replica set, and sharded cluster (PYTHON-6167)."""
     return [
@@ -890,6 +892,7 @@ def _create_rotation_tasks(family, extra_test_vars=None, pythons=CPYTHONS, sync=
             sync if sync else get_suite_mode(topology),
             "default",
             extra_test_vars=extra_test_vars,
+            extra_expansions=extra_expansions,
         )
         for version, topology, python in zip_cycle(ALL_VERSIONS, TOPOLOGIES, pythons)
     ]
@@ -917,7 +920,10 @@ def create_test_disable_test_commands_tasks():
     follows the encryption corners: sync on the standalone and replica-set
     cells, async on the sharded clusters (PYTHON-6167)."""
     return _create_rotation_tasks(
-        "test-disable-test-commands", extra_test_vars=dict(DISABLE_TEST_COMMANDS="1")
+        "test-disable-test-commands",
+        # Shared with the run server call, whose orchestration picks the
+        # disableTestCommands config from it.
+        extra_expansions=dict(DISABLE_TEST_COMMANDS="1"),
     )
 
 
@@ -1566,6 +1572,8 @@ def create_run_server_func():
         "LOAD_BALANCER",
         "LOCAL_ATLAS",
         "NO_EXT",
+        # The orchestration picks the disableTestCommands config from it.
+        "DISABLE_TEST_COMMANDS",
         # The AWS credentials are needed to download the "latest" nightly
         # build from the private S3 bucket, see DRIVERS-3628.
         "AWS_ACCESS_KEY_ID",

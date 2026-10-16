@@ -4668,6 +4668,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.4"
+          DISABLE_TEST_COMMANDS: "1"
           TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
@@ -4677,9 +4678,9 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "4.4"
+          DISABLE_TEST_COMMANDS: "1"
           TEST_MIN_DEPS: "1"
           SYNC: sync
-          DISABLE_TEST_COMMANDS: "1"
     tags:
       - test-disable-test-commands
       - server-4.4
@@ -4696,6 +4697,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "5.0"
+          DISABLE_TEST_COMMANDS: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -4704,8 +4706,8 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "5.0"
-          SYNC: sync
           DISABLE_TEST_COMMANDS: "1"
+          SYNC: sync
     tags:
       - test-disable-test-commands
       - server-5.0
@@ -4722,6 +4724,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "6.0"
+          DISABLE_TEST_COMMANDS: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -4730,8 +4733,8 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "6.0"
-          SYNC: async
           DISABLE_TEST_COMMANDS: "1"
+          SYNC: async
     tags:
       - test-disable-test-commands
       - server-6.0
@@ -4748,6 +4751,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "7.0"
+          DISABLE_TEST_COMMANDS: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -4756,8 +4760,8 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "7.0"
-          SYNC: sync
           DISABLE_TEST_COMMANDS: "1"
+          SYNC: sync
     tags:
       - test-disable-test-commands
       - server-7.0
@@ -4775,6 +4779,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "8.0"
+          DISABLE_TEST_COMMANDS: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -4783,8 +4788,8 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: "8.0"
-          SYNC: sync
           DISABLE_TEST_COMMANDS: "1"
+          SYNC: sync
     tags:
       - test-disable-test-commands
       - server-8.0
@@ -4801,6 +4806,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
+          DISABLE_TEST_COMMANDS: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -4809,8 +4815,8 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
-          SYNC: async
           DISABLE_TEST_COMMANDS: "1"
+          SYNC: async
     tags:
       - test-disable-test-commands
       - server-9.0
@@ -4828,6 +4834,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: rapid
+          DISABLE_TEST_COMMANDS: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -4836,8 +4843,8 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: rapid
-          SYNC: sync
           DISABLE_TEST_COMMANDS: "1"
+          SYNC: sync
     tags:
       - test-disable-test-commands
       - server-rapid
@@ -4854,6 +4861,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
+          DISABLE_TEST_COMMANDS: "1"
           TEST_MIN_DEPS: "1"
       - func: run tests
         vars:
@@ -4863,9 +4871,9 @@ tasks:
           SSL: ssl
           TOPOLOGY: replica_set
           VERSION: latest
+          DISABLE_TEST_COMMANDS: "1"
           TEST_MIN_DEPS: "1"
           SYNC: sync
-          DISABLE_TEST_COMMANDS: "1"
     tags:
       - test-disable-test-commands
       - server-latest

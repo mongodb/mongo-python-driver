@@ -111,6 +111,7 @@ functions:
           - LOAD_BALANCER
           - LOCAL_ATLAS
           - NO_EXT
+          - DISABLE_TEST_COMMANDS
           - AWS_ACCESS_KEY_ID
           - AWS_SECRET_ACCESS_KEY
           - AWS_SESSION_TOKEN

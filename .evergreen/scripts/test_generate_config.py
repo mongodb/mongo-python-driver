@@ -303,6 +303,23 @@ def test_rotated_tasks_keep_nightly_coverage():
     assert not offenders, f"nightly 9.0 OCSP tasks not on min-deps Python: {offenders}"
 
 
+def test_load_balancer_marker_selection(monkeypatch):
+    """The load balancer tasks select the full default suite alongside the
+    load-balancer-marked tests: pytest_conf.py only grants the implicit
+    default markers to unmarked tests, so the load_balancer marker must be
+    selected explicitly (PYTHON-6167)."""
+    import run_tests
+
+    monkeypatch.setattr(run_tests, "TEST_NAME", "load_balancer")
+    monkeypatch.setattr(run_tests, "GREEN_FRAMEWORK", None)
+    monkeypatch.setattr(run_tests, "TEST_ARGS", ["--ignore=test/asynchronous"])
+    run_tests.handle_load_balancer_marker()
+    assert run_tests.TEST_ARGS[-2:] == [
+        "-m",
+        "default or default_async or load_balancer",
+    ]
+
+
 def test_ensure_openssl3_passes_path_without_interpolation(monkeypatch, tmp_path):
     """ensure_openssl3() hands the install-openssl3.sh path to bash as a
     positional argument, never interpolated into the bash -c script, so shell
@@ -823,6 +840,17 @@ def test_per_version_families_cover_every_server_version():
                     "sharded_cluster-auth-ssl" in (task.tags or []) and "auth" in (task.tags or [])
                     for task in group
                 ), label
+            if family == "test-disable-test-commands":
+                # DISABLE_TEST_COMMANDS must reach the run server call, whose
+                # orchestration picks the disableTestCommands config from it.
+                for task in group:
+                    servers = [
+                        c for c in task.commands or [] if getattr(c, "func", None) == "run server"
+                    ]
+                    assert len(servers) == 1, f"{task.name} has no single run server call"
+                    assert servers[0].vars.get("DISABLE_TEST_COMMANDS") == "1", (
+                        f"{task.name} does not pass DISABLE_TEST_COMMANDS to the server"
+                    )
             if family == "test-storage-inmemory":
                 # The InMemory engine runs on standalone servers.
                 assert all("standalone-noauth-nossl" in (task.tags or []) for task in group), label
