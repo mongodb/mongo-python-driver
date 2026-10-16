@@ -277,7 +277,7 @@ class _ClientBulk(_AgnosticClientBulkBase):
             conn.send_cluster_time(cmd, session, self.client)
             conn.add_server_api(cmd)
             # CSOT: apply timeout before encoding the command.
-            conn.apply_timeout(self.client, cmd)
+            conn.apply_timeout(cmd)
             ops = islice(self.ops, self.idx_offset, None)
             namespaces = islice(self.namespaces, self.idx_offset, None)
 
