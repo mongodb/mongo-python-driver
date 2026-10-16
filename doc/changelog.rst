@@ -13,8 +13,13 @@ Bug fixes
   default ``UNSPECIFIED`` UUID representation, and raise
   :class:`~bson.errors.InvalidBSON` when UUID conversion is requested
   (`PYTHON-6172`_).
+- Fixed a bug where ``MongoClient(maxPoolSize=0, minPoolSize>0)`` raised
+  ``ValueError``, even though ``maxPoolSize=0`` means "no limit". The
+  ``minPoolSize <= maxPoolSize`` validation now treats both ``0`` and ``None``
+  as unlimited (`PYTHON-6149`_).
 
 .. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
+.. _PYTHON-6149: https://jira.mongodb.org/browse/PYTHON-6149
 
 Changes in Version 4.19.0 (2026/10/14)
 --------------------------------------
