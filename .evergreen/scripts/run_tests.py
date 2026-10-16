@@ -134,6 +134,40 @@ def handle_aws_lambda() -> None:
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/aws_lambda/{script_name}", env=env)
 
 
+def handle_fuzz() -> None:
+    """Run the BSON fuzz targets (PYTHON-4232). Not pytest-based."""
+    targets = ["fuzz_decode", "fuzz_decode_all", "fuzz_is_valid"]
+
+    if SUB_TEST_NAME == "regression":
+        # Skip dotfiles (pathlib globbing matches them).
+        inputs = sorted(
+            str(p) for p in (ROOT / "fuzz" / "regression").glob("*") if not p.name.startswith(".")
+        )
+        if not inputs:
+            raise RuntimeError("No fuzz regression inputs found in fuzz/regression/")
+        # Each reproducer is passed as its own file argument, so libFuzzer
+        # runs each exactly once; the -atheris_runs budget equals the file
+        # count so atheris exits cleanly after the last one.
+        runs = len(inputs)
+        for target in targets:
+            run_command(
+                f"{sys.executable} fuzz/{target}.py {' '.join(inputs)} -atheris_runs={runs}"
+            )
+        return
+
+    # Time-boxed fuzzing against the generated seed corpus.
+    corpus_dir = os.environ.get("FUZZ_CORPUS_DIR", str(ROOT / "fuzz-scratch" / "corpus"))
+    # Keep libFuzzer artifacts (crash-*, leak-*, ...) under the scratch dir.
+    artifact_prefix = f"{ROOT}/fuzz-scratch/"
+    max_time = os.environ.get("FUZZ_MAX_TIME", "300")
+    for target in targets:
+        run_command(
+            f"{sys.executable} fuzz/{target}.py {corpus_dir} "
+            f"-artifact_prefix={artifact_prefix} "
+            f"-max_total_time={max_time} -max_len=1048576 -print_final_stats=1"
+        )
+
+
 def run() -> None:
     # Add diagnostic for python version.
     print("Running with python", sys.version)
@@ -191,6 +225,10 @@ def run() -> None:
     # Run deployed aws lambda tests.
     if TEST_NAME == "aws_lambda":
         handle_aws_lambda()
+        return
+
+    if TEST_NAME == "fuzz":
+        handle_fuzz()
         return
 
     if os.environ.get("DEBUG_LOG"):
