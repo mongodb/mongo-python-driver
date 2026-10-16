@@ -26,7 +26,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: mongodb-labs/drivers-github-tools/python/setup@4089c3eb27d7a5101d987088c3345013858d65f8  # v3.0.6
+        uses: mongodb-labs/drivers-github-tools/python/setup@11cb3898ea71493d38e8cdea7cc17b44320899e5  # v3.0.7
         with:
           python-version: "3.11"
       # Runs before the install so a stale lock fails in seconds rather than
@@ -80,7 +80,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: mongodb-labs/drivers-github-tools/python/setup@4089c3eb27d7a5101d987088c3345013858d65f8  # v3.0.6
+        uses: mongodb-labs/drivers-github-tools/python/setup@11cb3898ea71493d38e8cdea7cc17b44320899e5  # v3.0.7
         with:
           # The beta Python here relies on the action's prerelease default.
           python-version: ${{ matrix.python-version }}
@@ -103,7 +103,7 @@ jobs:
           persist-credentials: false
           submodules: true
       - name: Install Python tooling
-        uses: mongodb-labs/drivers-github-tools/python/setup@4089c3eb27d7a5101d987088c3345013858d65f8  # v3.0.6
+        uses: mongodb-labs/drivers-github-tools/python/setup@11cb3898ea71493d38e8cdea7cc17b44320899e5  # v3.0.7
         with:
           python-version: "3.11"
       - id: setup-mongodb
@@ -129,7 +129,7 @@ jobs:
           persist-credentials: false
           submodules: true
       - name: Install Python tooling
-        uses: mongodb-labs/drivers-github-tools/python/setup@4089c3eb27d7a5101d987088c3345013858d65f8  # v3.0.6
+        uses: mongodb-labs/drivers-github-tools/python/setup@11cb3898ea71493d38e8cdea7cc17b44320899e5  # v3.0.7
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -151,7 +151,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: mongodb-labs/drivers-github-tools/python/setup@4089c3eb27d7a5101d987088c3345013858d65f8  # v3.0.6
+        uses: mongodb-labs/drivers-github-tools/python/setup@11cb3898ea71493d38e8cdea7cc17b44320899e5  # v3.0.7
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -170,7 +170,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python tooling
-        uses: mongodb-labs/drivers-github-tools/python/setup@4089c3eb27d7a5101d987088c3345013858d65f8  # v3.0.6
+        uses: mongodb-labs/drivers-github-tools/python/setup@11cb3898ea71493d38e8cdea7cc17b44320899e5  # v3.0.7
         with:
           python-version: "${{matrix.python}}"
       - name: Install dependencies
@@ -188,7 +188,7 @@ jobs:
           persist-credentials: false
           submodules: true
       - name: Install Python tooling
-        uses: mongodb-labs/drivers-github-tools/python/setup@4089c3eb27d7a5101d987088c3345013858d65f8  # v3.0.6
+        uses: mongodb-labs/drivers-github-tools/python/setup@11cb3898ea71493d38e8cdea7cc17b44320899e5  # v3.0.7
         with:
           python-version: "3.11"
       - name: Install dependencies
@@ -274,7 +274,7 @@ jobs:
           with:
             persist-credentials: false
         - name: Install Python tooling
-          uses: mongodb-labs/drivers-github-tools/python/setup@4089c3eb27d7a5101d987088c3345013858d65f8  # v3.0.6
+          uses: mongodb-labs/drivers-github-tools/python/setup@11cb3898ea71493d38e8cdea7cc17b44320899e5  # v3.0.7
           with:
             python-version: "3.11"
         - id: setup-mongodb
