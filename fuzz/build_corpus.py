@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 OSS-Fuzz seed corpus builder for BSON fuzzing, mirroring the Go driver's
-internal/cmd/build-oss-fuzz-corpus/main.go.
+(mongodb/mongo-go-driver) internal/cmd/build-oss-fuzz-corpus/main.go.
 
 Converts the valid cases in the vendored BSON spec corpus (test/bson_corpus/
 by default) to raw BSON bytes and packages them into a ZIP, plus synthesized
@@ -185,8 +185,8 @@ def main() -> None:
         print("Synthesized seeds:")
         seed_boundary_documents(zw)
         seed_large_document(zw)
+        entry_count = len(zw.namelist())
 
-    entry_count = len(zipfile.ZipFile(output_path).namelist())
     print(f"Wrote {entry_count} corpus entries to {output_path}")
 
 

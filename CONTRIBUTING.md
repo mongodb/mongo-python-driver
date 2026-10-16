@@ -448,7 +448,9 @@ To run any of the test suites with minimum supported dependencies, pass `--test-
 ## Fuzz tests
 
 The `fuzz/` directory holds coverage-guided fuzz tests for `bson`
-(PYTHON-4232). See [fuzz/README.md](fuzz/README.md) for details.
+(PYTHON-4232). See [fuzz/README.md](fuzz/README.md) for details. The fuzz
+tests can only be run on Linux x86_64, the only platform with atheris
+wheels (CPython 3.12-3.14).
 
 - Regression test (runs on every PR):
   `just setup-tests fuzz regression` then `just run-tests`.

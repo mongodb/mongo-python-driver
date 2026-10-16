@@ -8,31 +8,10 @@ documents) and compares their results when both are present.
 
 from __future__ import annotations
 
-import math
-import struct
-import sys
 from typing import Optional
 
 import atheris
-
-
-def _load_pure_python_bson():
-    """Re-import bson with the C extension blocked, then restore sys.modules."""
-    saved = {
-        k: sys.modules.pop(k) for k in list(sys.modules) if k == "bson" or k.startswith("bson.")
-    }
-    sys.modules["bson._cbson"] = None  # type: ignore[assignment]
-    try:
-        import bson as pure_bson
-    except Exception as exc:
-        raise RuntimeError("Could not load pure-Python bson for cross-checking") from exc
-    finally:
-        for k in list(sys.modules):
-            if k == "bson" or k.startswith("bson."):
-                del sys.modules[k]
-        sys.modules.update(saved)
-    return pure_bson
-
+from fuzz_shared import OTHER_ERRORS, load_pure_python_bson, main, normalize
 
 with atheris.instrument_imports():
     # Load both implementations while import instrumentation is active so the
@@ -40,35 +19,17 @@ with atheris.instrument_imports():
     # module and is skipped by atheris.
     import bson as _bson_c
 
-    _bson_pure = _load_pure_python_bson()
+    _bson_pure = load_pure_python_bson()
 
 # Consistency checks apply only when the C extension is present.
 _BOTH_IMPLS = _bson_c.has_c()
-
-_OTHER_ERRORS = (ValueError, struct.error, UnicodeDecodeError, OverflowError, KeyError)
-
-
-def _normalize(obj: object) -> object:
-    """Comparable form of a decoded document.
-
-    The two bson handles are separate module instances, so bson type classes
-    (ObjectId, Timestamp, ...) never compare equal across handles. Reduce
-    leaves to "type-name:repr"; NaN never compares equal to itself.
-    """
-    if isinstance(obj, dict):
-        return [(k, _normalize(v)) for k, v in obj.items()]
-    if isinstance(obj, (list, tuple)):
-        return [_normalize(v) for v in obj]
-    if isinstance(obj, float) and math.isnan(obj):
-        return "nan"
-    return f"{type(obj).__name__}:{obj!r}"
 
 
 def _decode_all_with(bson_mod, data: bytes) -> Optional[list]:
     """Run bson_mod.decode_all(data), returning the documents or None on expected errors."""
     try:
         return bson_mod.decode_all(data)
-    except (bson_mod.InvalidBSON, *_OTHER_ERRORS):
+    except (bson_mod.InvalidBSON, *OTHER_ERRORS):
         return None
 
 
@@ -116,7 +77,7 @@ def TestOneInput(data: bytes) -> None:
         if (
             docs_c is not None
             and docs_pure is not None
-            and _normalize(docs_c) != _normalize(docs_pure)
+            and normalize(docs_c) != normalize(docs_pure)
         ):
             raise AssertionError(
                 f"C extension and pure-Python bson.decode_all() produced different "
@@ -124,13 +85,5 @@ def TestOneInput(data: bytes) -> None:
             )
 
 
-def main() -> None:
-    import os
-
-    internal_libfuzzer = os.environ.get("FUZZ_NATIVE") != "1"
-    atheris.Setup(sys.argv, TestOneInput, internal_libfuzzer=internal_libfuzzer)
-    atheris.Fuzz()
-
-
 if __name__ == "__main__":
-    main()
+    main(TestOneInput)

@@ -6,6 +6,7 @@ import platform
 import shutil
 import stat
 import sys
+import zipfile
 from pathlib import Path
 from urllib import request
 
@@ -539,8 +540,9 @@ def handle_test_env() -> None:
         run_command(
             f"{sys.executable} fuzz/build_corpus.py {zip_path} --data-dir {ROOT / 'test' / 'bson_corpus'}"
         )
-        run_command(f"{sys.executable} -m zipfile -e {zip_path} {corpus_dir}")
-        run_command(f"rm {zip_path}")
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(corpus_dir)
+        zip_path.unlink()
         write_env("FUZZ_CORPUS_DIR", str(corpus_dir))
 
     # Add coverage if requested.

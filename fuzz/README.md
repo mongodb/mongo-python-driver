@@ -3,6 +3,10 @@
 Coverage-guided fuzz tests for the `bson` package, built on
 [atheris](https://github.com/google/atheris) (PYTHON-4232).
 
+"Coverage-guided" means the fuzzer records which code paths each input
+reaches and steers mutations toward untested code; it does not enumerate
+the API surface.
+
 Each target runs the C extension and the pure-Python implementation and
 compares their results when both are present.
 
@@ -10,7 +14,7 @@ compares their results when both are present.
 
 | File | What it tests |
 |---|---|
-| `fuzz_decode.py` | `bson.decode()` + round-trip `encode()` |
+| `fuzz_decode.py` | round-trip `bson.decode()` + `encode()` |
 | `fuzz_decode_all.py` | `bson.decode_all()` + per-document `encode()` |
 | `fuzz_is_valid.py` | `bson.is_valid()` and the invariant that `is_valid() == True` implies `decode()` succeeds |
 
@@ -35,7 +39,7 @@ The Evergreen fuzz tasks pin Linux CPython 3.13 and are unaffected.
 
 ### Regression inputs (deterministic)
 
-`regression/` holds committed reproducers for known bugs. Running the targets
+`regression/` holds reproducers for known bugs. Running the targets
 over them runs on Evergreen as the `fuzz-regression` sub-test on every PR:
 
 ```bash
@@ -109,5 +113,6 @@ build_corpus.py     Seed corpus builder (mirrors the Go driver's build-oss-fuzz-
 fuzz_decode.py      Fuzz target: bson.decode()
 fuzz_decode_all.py  Fuzz target: bson.decode_all()
 fuzz_is_valid.py    Fuzz target: bson.is_valid()
-regression/         Known bug reproducers (committed; no corpus setup required)
+fuzz_shared.py      Code shared by the fuzz targets
+regression/         Known bug reproducers (no corpus setup required)
 ```
