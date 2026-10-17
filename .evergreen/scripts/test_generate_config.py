@@ -331,14 +331,21 @@ def test_load_balancer_marker_selection(monkeypatch):
     ]
 
 
-def test_ensure_openssl3_passes_path_without_interpolation(monkeypatch, tmp_path):
-    """ensure_openssl3() hands the install-openssl3.sh path to bash as a
-    positional argument, never interpolated into the bash -c script, so shell
-    metacharacters in DRIVERS_TOOLS cannot execute (PYTHON-6167)."""
+def test_ensure_openssl3_escapes_persisted_values(monkeypatch, tmp_path):
+    """ensure_openssl3() passes the install-openssl3.sh path to bash as a
+    positional argument and persists the exported values shell-escaped in
+    env.sh, so a DRIVERS_TOOLS path carrying command substitution cannot
+    execute at write time or when the environment file is sourced
+    (PYTHON-6167)."""
+    import subprocess
+
     import setup_tests
+    import utils
 
     monkeypatch.setattr(setup_tests, "PLATFORM", "linux")
-    monkeypatch.setattr(setup_tests, "write_env", lambda *args, **kwargs: None)
+    env_file = tmp_path / "test-env.sh"
+    monkeypatch.setattr(utils, "ENV_FILE", env_file)
+    monkeypatch.setattr(setup_tests, "ENV_FILE", env_file)
 
     # A system openssl older than 3.0 forces the source path.
     fake_openssl = tmp_path / "openssl"
@@ -346,27 +353,65 @@ def test_ensure_openssl3_passes_path_without_interpolation(monkeypatch, tmp_path
     fake_openssl.chmod(0o755)
     monkeypatch.setattr(setup_tests.shutil, "which", lambda _name: str(fake_openssl))
 
-    # The drivers-evergreen-tools path carries a command substitution payload.
-    payload = tmp_path / "dr$(touch pwned.txt)vers"
-    script_dir = payload / ".evergreen"
+    # The drivers-evergreen-tools path carries a command substitution payload,
+    # reflected into the exported values by the install script.
+    payload_dir = tmp_path / "dr$(touch pwned.txt)vers"
+    script_dir = payload_dir / ".evergreen"
     script_dir.mkdir(parents=True)
     script = script_dir / "install-openssl3.sh"
-    script.write_text('export OPENSSL_DIR="/openssl3"\n')
-    monkeypatch.setenv("DRIVERS_TOOLS", str(payload))
-    monkeypatch.setattr(setup_tests, "DRIVERS_TOOLS", str(payload))
+    script.write_text(f"export OPENSSL_DIR='{script_dir}/openssl3'\n")
+    monkeypatch.setenv("DRIVERS_TOOLS", str(payload_dir))
+    monkeypatch.setattr(setup_tests, "DRIVERS_TOOLS", str(payload_dir))
 
     setup_tests.ensure_openssl3()
 
-    assert not (tmp_path / "pwned.txt").exists(), "the DRIVERS_TOOLS payload executed"
-    import os
+    # The payload must not have executed at write time...
+    assert not (Path.cwd() / "pwned.txt").exists()
+    assert not (tmp_path / "pwned.txt").exists()
+    # ...nor when the persisted environment is sourced: the values round-trip
+    # literally.
+    env = subprocess.run(  # noqa: S603
+        ["/bin/bash", "-c", '. "$1" >/dev/null && env', "bash", str(env_file)],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=str(tmp_path),
+    ).stdout
+    assert f"OPENSSL_DIR={script_dir}/openssl3" in env
+    assert not (Path.cwd() / "pwned.txt").exists()
+    assert not (tmp_path / "pwned.txt").exists()
 
-    try:
-        assert os.environ.get("OPENSSL_DIR") == "/openssl3", (
-            "the sourced script did not export OPENSSL_DIR"
-        )
-    finally:
-        os.environ.pop("OPENSSL_DIR", None)
-        os.environ.pop("LD_LIBRARY_PATH", None)
+
+def test_crypt_shared_persisted_to_env(monkeypatch, tmp_path):
+    """The crypt_shared setup persists TEST_CRYPT_SHARED to the test
+    environment: the encryption tests use it to decide whether to run their
+    crypt_shared cases (PYTHON-6167)."""
+    import setup_tests
+    import utils
+
+    monkeypatch.setattr(setup_tests, "check_drivers_tools", lambda: None)
+    monkeypatch.setattr(setup_tests, "run_command", lambda *args, **kwargs: None)
+    monkeypatch.setattr(setup_tests, "ensure_openssl3", lambda: None)
+    env_file = tmp_path / "test-env.sh"
+    monkeypatch.setattr(utils, "ENV_FILE", env_file)
+    monkeypatch.setattr(setup_tests, "ENV_FILE", env_file)
+    drivers_tools = tmp_path / "drivers-tools"
+    mo_expansion = drivers_tools / "mo-expansion.sh"
+    mo_expansion.parent.mkdir(parents=True)
+    mo_expansion.write_text('CRYPT_SHARED_LIB_PATH="/crypt_shared/lib/mongo_crypt.so"\n')
+    monkeypatch.setenv("DRIVERS_TOOLS", str(drivers_tools))
+    monkeypatch.setattr(setup_tests, "DRIVERS_TOOLS", str(drivers_tools))
+    monkeypatch.setenv("TEST_CRYPT_SHARED", "1")
+    monkeypatch.setattr(sys, "argv", ["setup_tests.py", "default"])
+
+    setup_tests.handle_test_env()
+
+    env_lines = env_file.read_text().splitlines()
+    assert 'export TEST_CRYPT_SHARED="1"' in env_lines, env_lines
+    assert any(
+        line.startswith("export LD_LIBRARY_PATH=") and "/crypt_shared/lib" in line
+        for line in env_lines
+    ), env_lines
 
 
 def test_sync_option_env_override(monkeypatch):

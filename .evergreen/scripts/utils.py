@@ -300,10 +300,17 @@ def read_env(path: Path | str) -> dict[str, str]:
     return config
 
 
-def write_env(name: str, value: Any = "1") -> None:
+def write_env(name: str, value: Any = "1", escape: bool = True) -> None:
+    """Append an export line for the value to the test environment file.
+
+    The value is persisted literally: command substitutions in it are escaped,
+    so sourcing the file never executes them. Pass escape=False for values
+    that must keep live expansions, like a trailing `$PATH` (PYTHON-6167)."""
     with ENV_FILE.open("a", newline="\n") as fid:
-        # Remove any existing quote chars.
         value = str(value).replace('"', "")
+        if escape:
+            # Double quotes expand `$` and backticks: keep the value literal.
+            value = value.replace("$", "\\$").replace("`", "\\`")
         fid.write(f'export {name}="{value}"\n')
 
 

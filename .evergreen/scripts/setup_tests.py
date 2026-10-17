@@ -482,17 +482,23 @@ def handle_test_env() -> None:
             ensure_openssl3()
 
     if opts.crypt_shared:
+        # Preserve the flag for the tests, which run their crypt_shared cases
+        # only when it is set.
+        write_env("TEST_CRYPT_SHARED", "1")
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
         CRYPT_SHARED_DIR = Path(config["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
+        # The trailing expansions must stay live; escape the literal prefix.
+        escaped_dir = CRYPT_SHARED_DIR.replace("$", "\\$").replace("`", "\\`")
         if PLATFORM == "windows":
-            write_env("PATH", f"{CRYPT_SHARED_DIR}:$PATH")
+            write_env("PATH", f"{escaped_dir}:$PATH", escape=False)
         else:
             write_env(
                 "DYLD_FALLBACK_LIBRARY_PATH",
-                f"{CRYPT_SHARED_DIR}:${{DYLD_FALLBACK_LIBRARY_PATH:-}}",
+                f"{escaped_dir}:${{DYLD_FALLBACK_LIBRARY_PATH:-}}",
+                escape=False,
             )
-            write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:${{LD_LIBRARY_PATH:-}}")
+            write_env("LD_LIBRARY_PATH", f"{escaped_dir}:${{LD_LIBRARY_PATH:-}}", escape=False)
 
     if test_name == "kms":
         from kms_tester import setup_kms
