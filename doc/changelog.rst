@@ -17,9 +17,15 @@ Bug fixes
   ``ValueError``, even though ``maxPoolSize=0`` means "no limit". The
   ``minPoolSize <= maxPoolSize`` validation now treats both ``0`` and ``None``
   as unlimited (`PYTHON-6149`_).
+- Fixed a bug where :class:`~bson.objectid.ObjectId` accepted a 24-character
+  string containing whitespace and created an ObjectId shorter than 12 bytes
+  from it. It now raises :class:`~bson.errors.InvalidId`, and
+  :meth:`~bson.objectid.ObjectId.is_valid` returns ``False`` for such a string
+  (`PYTHON-5873`_).
 
 .. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
 .. _PYTHON-6149: https://jira.mongodb.org/browse/PYTHON-6149
+.. _PYTHON-5873: https://jira.mongodb.org/browse/PYTHON-5873
 
 Changes in Version 4.19.0 (2026/10/14)
 --------------------------------------
