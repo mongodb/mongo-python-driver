@@ -111,6 +111,7 @@ functions:
           - LOAD_BALANCER
           - LOCAL_ATLAS
           - NO_EXT
+          - DISABLE_TEST_COMMANDS
           - AWS_ACCESS_KEY_ID
           - AWS_SECRET_ACCESS_KEY
           - AWS_SESSION_TOKEN
@@ -155,6 +156,8 @@ functions:
           - IS_WIN32
           - REQUIRE_FIPS
           - TEST_MIN_DEPS
+          - SYNC
+          - TEST_CRYPT_SHARED
       type: test
     - command: subprocess.exec
       params:
@@ -254,6 +257,7 @@ functions:
         include_expansions_in_env:
           - UV_PYTHON
           - COVERAGE
+          - IS_WIN32
       type: test
 
   # Upload coverage codecov
