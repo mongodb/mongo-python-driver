@@ -157,6 +157,11 @@ def handle_fuzz() -> None:
 
     # Time-boxed fuzzing against the generated seed corpus.
     corpus_dir = os.environ.get("FUZZ_CORPUS_DIR", str(ROOT / "fuzz-scratch" / "corpus"))
+    # Fail fast on a missing or empty corpus: libFuzzer would only log
+    # "starting from an empty corpus" and burn the whole time budget
+    # without the seeds the task exists to exercise.
+    if not any(Path(corpus_dir).glob("*")):
+        raise RuntimeError(f"No fuzz seed corpus found in {corpus_dir}; was setup_tests.py run?")
     # Keep libFuzzer artifacts (crash-*, leak-*, ...) under the scratch dir.
     artifact_prefix = f"{ROOT}/fuzz-scratch/"
     max_time = os.environ.get("FUZZ_MAX_TIME", "300")
