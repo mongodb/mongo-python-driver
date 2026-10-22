@@ -71,6 +71,7 @@ from pymongo import ASCENDING, MongoClient
 from pymongo.operations import DeleteOne, InsertOne, ReplaceOne
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.collection import Collection
+from pymongo.synchronous.cursor import Cursor
 from test import IntegrationTest, PyMongoTestCase, client_context
 
 TEST_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "mypy_fails")
@@ -136,6 +137,10 @@ class TestPymongo(IntegrationTest):
         cursor = self.coll.find()
         docs = to_list(cursor)
         self.assertTrue(docs)
+
+    @only_type_check
+    def test_cursor_let(self) -> None:
+        Cursor(self.coll, let={"threshold": 1})
 
     def test_distinct(self) -> None:
         self.coll.delete_many({})
