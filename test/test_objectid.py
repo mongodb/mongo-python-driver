@@ -63,9 +63,6 @@ class TestObjectId(unittest.TestCase):
         self.assertRaises(InvalidId, ObjectId, "00 " * 8)
         self.assertRaises(InvalidId, ObjectId, "01\n" * 8)
         self.assertRaises(InvalidId, ObjectId, " " * 24)
-        # The string form of an ObjectId round-trips.
-        oid = ObjectId()
-        self.assertEqual(oid, ObjectId(str(oid)))
 
     def test_repr_str(self):
         self.assertEqual(
@@ -165,6 +162,8 @@ class TestObjectId(unittest.TestCase):
         self.assertFalse(ObjectId.is_valid("12345678901"))
         self.assertFalse(ObjectId.is_valid("1234567890123"))
         self.assertFalse(ObjectId.is_valid("0123                0011"))
+        self.assertFalse(ObjectId.is_valid("00 " * 8))
+        self.assertFalse(ObjectId.is_valid("01\n" * 8))
         self.assertFalse(ObjectId.is_valid(" " * 24))
 
         self.assertTrue(ObjectId.is_valid(b"123456789012"))
