@@ -116,41 +116,12 @@ buildvariants:
       - rhel8.10-small
 
   # Compression tests
-  - name: compression-snappy-rhel8
+  - name: compression-rhel8
     tasks:
-      - name: .test-standard
-    display_name: Compression snappy RHEL8
+      - name: .test-compression
+    display_name: Compression RHEL8
     run_on:
       - rhel8.10-small
-    expansions:
-      COMPRESSOR: snappy
-  - name: compression-zlib-rhel8
-    tasks:
-      - name: .test-standard
-    display_name: Compression zlib RHEL8
-    run_on:
-      - rhel8.10-small
-    expansions:
-      COMPRESSOR: zlib
-  - name: compression-zstd-rhel8
-    tasks:
-      - name: .test-standard
-    display_name: Compression zstd RHEL8
-    run_on:
-      - rhel8.10-small
-    expansions:
-      COMPRESSOR: zstd
-  - name: compression-zstd-ubuntu-22
-    tasks:
-      - name: .test-standard !.server-4.4 !.server-5.0 .python-3.14
-      - name: .test-standard !.server-4.4 !.server-5.0 .python-3.14t
-      - name: .test-standard !.server-4.4 !.server-5.0 .python-3.15
-      - name: .test-standard !.server-4.4 !.server-5.0 .python-3.15t
-    display_name: Compression zstd Ubuntu-22
-    run_on:
-      - ubuntu2204-small
-    expansions:
-      COMPRESSOR: ztsd
 
   # Coverage report tests
   - name: coverage-report
@@ -163,131 +134,48 @@ buildvariants:
   # Disable test commands tests
   - name: disable-test-commands-rhel8
     tasks:
-      - name: .test-standard .server-latest
+      - name: .test-disable-test-commands
     display_name: Disable test commands RHEL8
     run_on:
       - rhel8.10-small
-    expansions:
-      AUTH: auth
-      SSL: ssl
-      DISABLE_TEST_COMMANDS: "1"
 
   # Doctests tests
   - name: doctests-rhel8
     tasks:
-      - name: .test-non-standard .standalone-noauth-nossl
+      - name: .test-doctest
     display_name: Doctests RHEL8
     run_on:
       - rhel8.10-small
-    expansions:
-      TEST_NAME: doctest
 
   # Encryption tests
   - name: encryption-rhel8
     tasks:
-      - name: .test-non-standard !.python-3.15t
+      - name: .test-encryption .rhel8
       - name: .test-string-query-preview
+      - name: .test-encryption-pyopenssl .rhel8
     display_name: Encryption RHEL8
     run_on:
       - rhel8.10-small
     batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
     tags: [encryption_tag]
   - name: encryption-macos
     tasks:
-      - name: .test-non-standard !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.python-3.15t
+      - name: .test-encryption .macos
       - name: .test-string-query-preview
     display_name: Encryption macOS
     run_on:
       - macos-14
     batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
     tags: [encryption_tag]
   - name: encryption-win64
     tasks:
-      - name: .test-non-standard !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.python-3.15t
+      - name: .test-encryption .win64
       - name: .test-string-query-preview
     display_name: Encryption Win64
     run_on:
       - windows-2022-latest-small
     batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
     tags: [encryption_tag]
-  - name: encryption-crypt_shared-rhel8
-    tasks:
-      - name: .test-non-standard !.python-3.15t
-      - name: .test-string-query-preview
-    display_name: Encryption crypt_shared RHEL8
-    run_on:
-      - rhel8.10-small
-    batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-      TEST_CRYPT_SHARED: "true"
-    tags: [encryption_tag]
-  - name: encryption-crypt_shared-macos
-    tasks:
-      - name: .test-non-standard !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.python-3.15t
-      - name: .test-string-query-preview
-    display_name: Encryption crypt_shared macOS
-    run_on:
-      - macos-14
-    batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-      TEST_CRYPT_SHARED: "true"
-    tags: [encryption_tag]
-  - name: encryption-crypt_shared-win64
-    tasks:
-      - name: .test-non-standard !.cov !.python-3.15t
-      - name: .test-non-standard-no-cov !.python-3.15t
-      - name: .test-string-query-preview
-    display_name: Encryption crypt_shared Win64
-    run_on:
-      - windows-2022-latest-small
-    batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-      TEST_CRYPT_SHARED: "true"
-    tags: [encryption_tag]
-  - name: encryption-pyopenssl-rhel8
-    tasks:
-      - name: .test-non-standard !.python-3.15t
-    display_name: Encryption PyOpenSSL RHEL8
-    run_on:
-      - rhel8.10-small
-    batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-      SUB_TEST_NAME: pyopenssl
-    tags: [encryption_tag]
-  - name: encryption-ubuntu-22
-    tasks:
-      - name: .test-non-standard .python-3.15t !.server-4.4 !.server-5.0
-    display_name: Encryption Ubuntu-22
-    run_on:
-      - ubuntu2204-small
-    batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-    tags: [encryption_tag, pr]
-  - name: encryption-pyopenssl-ubuntu-22
-    tasks:
-      - name: .test-non-standard .python-3.15t !.server-4.4 !.server-5.0
-    display_name: Encryption PyOpenSSL Ubuntu-22
-    run_on:
-      - ubuntu2204-small
-    batchtime: 1440
-    expansions:
-      TEST_NAME: encryption
-      SUB_TEST_NAME: pyopenssl
-    tags: [encryption_tag, pr]
 
   # Enterprise auth tests
   - name: auth-enterprise-rhel8
@@ -321,12 +209,10 @@ buildvariants:
   # Green framework tests
   - name: green-gevent-rhel8
     tasks:
-      - name: .test-standard .sync !.free-threaded
+      - name: .test-gevent
     display_name: Green Gevent RHEL8
     run_on:
       - rhel8.10-small
-    expansions:
-      GREEN_FRAMEWORK: gevent
 
   # Import time tests
   - name: import-time
@@ -352,18 +238,11 @@ buildvariants:
   # Load balancer tests
   - name: load-balancer
     tasks:
-      - name: .test-non-standard .server-6.0 .sharded_cluster-auth-ssl
-      - name: .test-non-standard .server-7.0 .sharded_cluster-auth-ssl
-      - name: .test-non-standard .server-8.0 .sharded_cluster-auth-ssl
-      - name: .test-non-standard .server-9.0 .sharded_cluster-auth-ssl
-      - name: .test-non-standard .server-rapid .sharded_cluster-auth-ssl
-      - name: .test-non-standard .server-latest .sharded_cluster-auth-ssl
+      - name: .test-load-balancer
     display_name: Load Balancer
     run_on:
       - rhel8.10-small
     batchtime: 1440
-    expansions:
-      TEST_NAME: load_balancer
 
   # Min support tests
   - name: min-support-rhel8
@@ -387,12 +266,10 @@ buildvariants:
   # No c ext tests
   - name: no-c-ext-rhel8
     tasks:
-      - name: .test-standard
+      - name: .test-no-c-ext
     display_name: No C Ext RHEL8
     run_on:
       - rhel8.10-small
-    expansions:
-      NO_EXT: "1"
 
   # No server tests
   - name: no-server-rhel8
@@ -480,45 +357,25 @@ buildvariants:
   # Pyopenssl tests
   - name: pyopenssl-rhel8
     tasks:
-      - name: .test-standard !.python-3.15t .sync
-      - name: .test-standard !.python-3.15t .async .replica_set-noauth-ssl
+      - name: .test-pyopenssl .rhel8
     display_name: PyOpenSSL RHEL8
     run_on:
       - rhel8.10-small
     batchtime: 1440
-    expansions:
-      SUB_TEST_NAME: pyopenssl
   - name: pyopenssl-macos
     tasks:
-      - name: .test-standard !.python-3.15t .sync
-      - name: .test-standard !.python-3.15t .async .replica_set-noauth-ssl
+      - name: .test-pyopenssl .macos
     display_name: PyOpenSSL macOS
     run_on:
       - macos-14
     batchtime: 1440
-    expansions:
-      SUB_TEST_NAME: pyopenssl
   - name: pyopenssl-win64
     tasks:
-      - name: .test-standard !.python-3.15t .sync
-      - name: .test-standard !.python-3.15t .async .replica_set-noauth-ssl
+      - name: .test-pyopenssl .win64
     display_name: PyOpenSSL Win64
     run_on:
       - windows-2022-latest-small
     batchtime: 1440
-    expansions:
-      SUB_TEST_NAME: pyopenssl
-  - name: pyopenssl-ubuntu-22
-    tasks:
-      - name: .test-standard .python-3.15t !.server-4.4 !.server-5.0 .sync
-      - name: .test-standard .python-3.15t !.server-4.4 !.server-5.0 .async .replica_set-noauth-ssl
-    display_name: PyOpenSSL Ubuntu-22
-    run_on:
-      - ubuntu2204-small
-    batchtime: 1440
-    expansions:
-      SUB_TEST_NAME: pyopenssl
-    tags: [pr]
 
   # Search index tests
   - name: search-index-helpers-rhel8
@@ -616,63 +473,32 @@ buildvariants:
     tags: [pr]
 
   # Stable api tests
-  - name: stable-api-require-v1-rhel8-auth
+  - name: stable-api-rhel8
     tasks:
-      - name: .test-standard !.replica_set-noauth-ssl .server-5.0
-      - name: .test-standard !.replica_set-noauth-ssl .server-6.0
-      - name: .test-standard !.replica_set-noauth-ssl .server-7.0
-      - name: .test-standard !.replica_set-noauth-ssl .server-8.0
-      - name: .test-standard !.replica_set-noauth-ssl .server-9.0
-      - name: .test-standard !.replica_set-noauth-ssl .server-rapid
-      - name: .test-standard !.replica_set-noauth-ssl .server-latest
-    display_name: Stable API require v1 RHEL8 Auth
+      - name: .test-stable-api
+    display_name: Stable API RHEL8
     run_on:
       - rhel8.10-small
-    expansions:
-      AUTH: auth
-      REQUIRE_API_VERSION: "1"
-      MONGODB_API_VERSION: "1"
-    tags: [versionedApi_tag]
-  - name: stable-api-accept-v2-rhel8-auth
-    tasks:
-      - name: .test-standard .server-5.0 .standalone-noauth-nossl
-      - name: .test-standard .server-6.0 .standalone-noauth-nossl
-      - name: .test-standard .server-7.0 .standalone-noauth-nossl
-      - name: .test-standard .server-8.0 .standalone-noauth-nossl
-      - name: .test-standard .server-9.0 .standalone-noauth-nossl
-      - name: .test-standard .server-rapid .standalone-noauth-nossl
-      - name: .test-standard .server-latest .standalone-noauth-nossl
-    display_name: Stable API accept v2 RHEL8 Auth
-    run_on:
-      - rhel8.10-small
-    expansions:
-      AUTH: auth
-      ORCHESTRATION_FILE: versioned-api-testing.json
     tags: [versionedApi_tag]
 
   # Standard nonlinux tests
   - name: test-macos
     tasks:
-      - name: .test-standard
+      - name: .test-standard .macos
     display_name: "* Test macOS"
     run_on:
       - macos-14
     tags: [standard-non-linux]
   - name: test-macos-arm64
     tasks:
-      - name: .test-standard .server-6.0
-      - name: .test-standard .server-7.0
-      - name: .test-standard .server-8.0
-      - name: .test-standard .server-9.0
-      - name: .test-standard .server-rapid
-      - name: .test-standard .server-latest
+      - name: .test-standard .macos-arm64
     display_name: "* Test macOS Arm64"
     run_on:
       - macos-14-arm64
     tags: [standard-non-linux]
   - name: test-win64
     tasks:
-      - name: .test-standard
+      - name: .test-standard .win64
       - name: .test-no-orchestration
     display_name: "* Test Win64"
     run_on:
@@ -680,7 +506,7 @@ buildvariants:
     tags: [standard-non-linux]
   - name: test-win32
     tasks:
-      - name: .test-standard !.free-threaded
+      - name: .test-standard .win32
     display_name: "* Test Win32"
     run_on:
       - windows-64-vsMulti-small
@@ -691,12 +517,10 @@ buildvariants:
   # Storage engine tests
   - name: storage-inmemory-rhel8
     tasks:
-      - name: .test-standard .standalone-noauth-nossl
+      - name: .test-storage-inmemory
     display_name: Storage InMemory RHEL8
     run_on:
       - rhel8.10-small
-    expansions:
-      STORAGE_ENGINE: inmemory
 
   # Test numpy tests
   - name: test-numpy-rhel8
@@ -706,12 +530,13 @@ buildvariants:
     run_on:
       - rhel8.10-small
     tags: [binary, vector, pr]
-  - name: test-numpy-macos
+  - name: test-numpy-windows
     tasks:
       - name: .test-numpy
-    display_name: Test Numpy macOS
+      - name: .test-numpy-win32
+    display_name: Test Numpy Windows
     run_on:
-      - macos-14
+      - windows-64-vsMulti-small
     tags: [binary, vector]
   - name: test-numpy-macos-arm64
     tasks:
@@ -719,20 +544,4 @@ buildvariants:
     display_name: Test Numpy macOS Arm64
     run_on:
       - macos-14-arm64
-    tags: [binary, vector]
-  - name: test-numpy-win64
-    tasks:
-      - name: .test-numpy
-    display_name: Test Numpy Win64
-    run_on:
-      - windows-2022-latest-small
-    tags: [binary, vector]
-  - name: test-numpy-win32
-    tasks:
-      - name: .test-numpy
-    display_name: Test Numpy Win32
-    run_on:
-      - windows-64-vsMulti-small
-    expansions:
-      IS_WIN32: "1"
     tags: [binary, vector]

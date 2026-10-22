@@ -5,6 +5,7 @@ import os
 import platform
 import shutil
 import stat
+import subprocess
 from pathlib import Path
 from urllib import request
 
@@ -166,6 +167,41 @@ def load_config_from_file(path: str | Path) -> dict[str, str]:
     for key, value in config.items():
         write_env(key, value)
     return config
+
+
+def ensure_openssl3() -> None:
+    """Build a local OpenSSL 3 when the system library is older (PYTHON-6167).
+
+    cryptography 47+ refuses OpenSSL 1.1.x; sources install-openssl3.sh from
+    drivers-evergreen-tools, exporting OPENSSL_DIR and LD_LIBRARY_PATH.
+    """
+    if PLATFORM != "linux":
+        return
+    openssl = shutil.which("openssl")
+    if openssl:
+        version = subprocess.run(  # noqa: S603
+            [openssl, "version"], capture_output=True, text=True, check=True
+        ).stdout.split()[1]
+        if int(version.split(".")[0]) >= 3:
+            return
+    LOGGER.info("No system OpenSSL 3: building one into the drivers-evergreen-tools prefix...")
+    env = subprocess.run(  # noqa: S603
+        [
+            "/bin/bash",
+            "-c",
+            '. "$1" >/dev/null && env',
+            "bash",
+            f"{DRIVERS_TOOLS}/.evergreen/install-openssl3.sh",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    for line in env.splitlines():
+        name, _, value = line.partition("=")
+        if name in ("OPENSSL_DIR", "LD_LIBRARY_PATH"):
+            os.environ[name] = value
+            write_env(name, value)
 
 
 def get_secrets(name: str) -> dict[str, str]:
@@ -439,18 +475,30 @@ def handle_test_env() -> None:
     if sub_test_name == "pyopenssl":
         UV_ARGS.append("--extra ocsp")
 
+    if test_name == "encryption" or sub_test_name == "pyopenssl":
+        # The free-threaded cells build cryptography from source, which
+        # refuses OpenSSL 1.1: build OpenSSL 3 on linux (PYTHON-6167).
+        if "t" in os.environ.get("UV_PYTHON", ""):
+            ensure_openssl3()
+
     if opts.crypt_shared:
+        # Preserve the flag for the tests, which run their crypt_shared cases
+        # only when it is set.
+        write_env("TEST_CRYPT_SHARED", "1")
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
         CRYPT_SHARED_DIR = Path(config["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
+        # The trailing expansions must stay live; escape the literal prefix.
+        escaped_dir = CRYPT_SHARED_DIR.replace("$", "\\$").replace("`", "\\`")
         if PLATFORM == "windows":
-            write_env("PATH", f"{CRYPT_SHARED_DIR}:$PATH")
+            write_env("PATH", f"{escaped_dir}:$PATH", escape=False)
         else:
             write_env(
                 "DYLD_FALLBACK_LIBRARY_PATH",
-                f"{CRYPT_SHARED_DIR}:${{DYLD_FALLBACK_LIBRARY_PATH:-}}",
+                f"{escaped_dir}:${{DYLD_FALLBACK_LIBRARY_PATH:-}}",
+                escape=False,
             )
-            write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:${{LD_LIBRARY_PATH:-}}")
+            write_env("LD_LIBRARY_PATH", f"{escaped_dir}:${{LD_LIBRARY_PATH:-}}", escape=False)
 
     if test_name == "kms":
         from kms_tester import setup_kms
@@ -546,6 +594,12 @@ def handle_test_env() -> None:
         TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
+        # Suites sharing one pytest marker across test/ and test/asynchronous/
+        # select the sync or async half by path when SYNC is set.
+        if opts.sync == "async":
+            TEST_ARGS = f"test/asynchronous {TEST_ARGS}"
+        elif opts.sync == "sync":
+            TEST_ARGS = f"--ignore=test/asynchronous {TEST_ARGS}"
 
     write_env("TEST_ARGS", TEST_ARGS)
     write_env("UV_ARGS", " ".join(UV_ARGS))

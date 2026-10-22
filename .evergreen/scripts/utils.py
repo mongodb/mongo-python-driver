@@ -44,7 +44,9 @@ TEST_SUITE_MAP = {
     "enterprise_auth": "auth",
     "search_index": "search_index",
     "kms": "kms",
-    "load_balancer": "load_balancer",
+    # No marker: the load balancer tasks run the full default suite, whose
+    # load-balancer-marked tests are part of it.
+    "load_balancer": "",
     "mockupdb": "mockupdb",
     "ocsp": "ocsp",
     "perf": "perf",
@@ -223,6 +225,14 @@ def get_test_options(
         other_group.add_argument(
             "--disable-test-commands", action="store_true", help="Disable test commands."
         )
+        other_group.add_argument(
+            "--sync",
+            choices=["sync", "async"],
+            help=(
+                "Run only the sync or async half of a directory-split suite "
+                "(the tests live in test/ and test/asynchronous/ and share one marker)."
+            ),
+        )
 
     # Get the options.
     if not allow_extra_opts:
@@ -290,10 +300,17 @@ def read_env(path: Path | str) -> dict[str, str]:
     return config
 
 
-def write_env(name: str, value: Any = "1") -> None:
+def write_env(name: str, value: Any = "1", escape: bool = True) -> None:
+    """Append an export line for the value to the test environment file.
+
+    The value is persisted literally: command substitutions in it are escaped,
+    so sourcing the file never executes them. Pass escape=False for values
+    that must keep live expansions, like a trailing `$PATH` (PYTHON-6167)."""
     with ENV_FILE.open("a", newline="\n") as fid:
-        # Remove any existing quote chars.
         value = str(value).replace('"', "")
+        if escape:
+            # Double quotes expand `$` and backticks: keep the value literal.
+            value = value.replace("$", "\\$").replace("`", "\\`")
         fid.write(f'export {name}="{value}"\n')
 
 
