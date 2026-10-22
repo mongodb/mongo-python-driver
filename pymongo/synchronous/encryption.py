@@ -1169,12 +1169,11 @@ class ClientEncryption(Generic[_DocumentType]):
 
            client_encryption.rewrap_many_data_key(
                filter={"keyAltNames": "optional filter for which keys you want to update"},
+               provider="azure",  # replace with your cloud provider
                master_key={
-                   "provider": "azure",  # replace with your cloud provider
-                   "master_key": {
-                       # put the rest of your master_key options here
-                       "key": "<your new key>"
-                   },
+                   # put the rest of your master_key options here
+                   "keyVaultEndpoint": "<your key vault endpoint>",
+                   "keyName": "<your new key name>",
                },
            )
 
