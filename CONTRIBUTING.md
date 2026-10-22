@@ -445,6 +445,19 @@ git config submodule.drivers-evergreen-tools.update none
 To run any of the test suites with minimum supported dependencies, pass `--test-min-deps` to
 `just setup-tests`.
 
+## Fuzz tests
+
+The `fuzz/` directory holds coverage-guided fuzz tests for `bson`
+(PYTHON-4232). See [fuzz/README.md](fuzz/README.md) for details. The fuzz
+tests can only be run on Linux x86_64, the only platform with atheris
+wheels (CPython 3.12-3.14).
+
+- Regression test (runs on every PR):
+  `just setup-tests fuzz regression` then `just run-tests`.
+- Time-boxed fuzzing (runs daily on Evergreen): `just setup-tests fuzz fuzz`
+  then `just run-tests`.  Set `FUZZ_MAX_TIME` (seconds, default 300) to change
+  the per-target budget.
+
 ## Testing time-dependent operations
 
 - `test.utils_shared.delay` - One can trigger an arbitrarily long-running operation on the server using this delay utility
