@@ -422,7 +422,7 @@ async def run_command(
 
     # Support CSOT
     if client:
-        conn.apply_timeout(client, spec)
+        conn.apply_timeout(spec)
     _csot.apply_write_concern(spec, write_concern)
 
     flags = _OpMsg.MORE_TO_COME if unacknowledged else 0

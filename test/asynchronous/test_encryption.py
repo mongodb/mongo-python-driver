@@ -60,7 +60,11 @@ from bson.json_util import JSONOptions
 from bson.son import SON
 from pymongo import ReadPreference
 from pymongo.asynchronous import encryption
-from pymongo.asynchronous.encryption import Algorithm, AsyncClientEncryption, QueryType
+from pymongo.asynchronous.encryption import (
+    Algorithm,
+    AsyncClientEncryption,
+    QueryType,
+)
 from pymongo.asynchronous.helpers import anext
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.cursor_shared import CursorType
@@ -222,6 +226,10 @@ class TestAutoEncryptionOpts(AsyncPyMongoTestCase):
         self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
 
 
+# KMS connect callback unit tests live in test_kms_connect.py. The prose
+# tests are in test_kms_connect_prose.py.
+
+
 class TestClientOptions(AsyncPyMongoTestCase):
     async def test_default(self):
         client = self.simple_client(connect=False)
@@ -316,9 +324,15 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
         key_vault_client: AsyncMongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        kms_connect_callback: Optional[Any] = None,
     ):
         client_encryption = AsyncClientEncryption(
-            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+            kms_providers,
+            key_vault_namespace,
+            key_vault_client,
+            codec_options,
+            kms_tls_options,
+            kms_connect_callback=kms_connect_callback,
         )
         self.addAsyncCleanup(client_encryption.close)
         return client_encryption
@@ -331,9 +345,15 @@ class AsyncEncryptionIntegrationTest(AsyncIntegrationTest):
         key_vault_client: AsyncMongoClient,
         codec_options: CodecOptions,
         kms_tls_options: Optional[Mapping[str, Any]] = None,
+        kms_connect_callback: Optional[Any] = None,
     ):
         client_encryption = AsyncClientEncryption(
-            kms_providers, key_vault_namespace, key_vault_client, codec_options, kms_tls_options
+            kms_providers,
+            key_vault_namespace,
+            key_vault_client,
+            codec_options,
+            kms_tls_options,
+            kms_connect_callback=kms_connect_callback,
         )
         return client_encryption
 
@@ -1988,6 +2008,10 @@ class TestKmsTLSProse(AsyncEncryptionIntegrationTest):
             await self.client_encrypted.create_data_key("aws", master_key=key)
 
 
+# KMS connect callback unit tests live in test_kms_connect.py. The prose
+# tests are in test_kms_connect_prose.py.
+
+
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#kms-tls-options-tests
 class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
     @unittest.skipUnless(any(AWS_CREDS.values()), "AWS environment credentials are not set")
@@ -2031,14 +2055,11 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
         )
         # Errors when client has no cert, some examples:
         # [SSL: TLSV13_ALERT_CERTIFICATE_REQUIRED] tlsv13 alert certificate required (_ssl.c:2623)
+        # EOF occurred in violation of protocol (_ssl.c:2384)
         self.cert_error = (
             "certificate required|SSL handshake failed|"
-            "KMS connection closed|Connection reset by peer|ECONNRESET|EPIPE"
+            "KMS connection closed|Connection reset by peer|ECONNRESET|EPIPE|EOF"
         )
-        # On Python 3.10+ this error might be:
-        # EOF occurred in violation of protocol (_ssl.c:2384)
-        if sys.version_info[:2] >= (3, 10):
-            self.cert_error += "|EOF"
         # On Windows this error might be:
         # [WinError 10054] An existing connection was forcibly closed by the remote host
         if sys.platform == "win32":

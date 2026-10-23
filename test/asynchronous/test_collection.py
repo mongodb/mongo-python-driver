@@ -1866,8 +1866,6 @@ class AsyncTestCollection(AsyncIntegrationTest):
         for _ in range(3):
             await anext(cur)
         self.assertEqual(0, len(pool.conns))
-        # if sys.platform.startswith("java") or "PyPy" in sys.version:
-        #     # Don't wait for GC or use gc.collect(), it's unreliable.
         await cur.close()
         cur = None
         # Wait until the background thread returns the socket.

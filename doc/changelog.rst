@@ -1,12 +1,45 @@
 Changelog
 =========
 
-Changes in Version 4.19.0 (2026/XX/XX)
+Changes in Version 4.20.0 (2026/XX/XX)
+--------------------------------------
+
+Bug fixes
+.........
+
+- Fixed a disagreement between the C extension and pure-Python BSON decoders
+  for binary elements with UUID subtypes (3 and 4) whose payload is not 16
+  bytes. Both now decode them to :class:`~bson.binary.Binary` under the
+  default ``UNSPECIFIED`` UUID representation, and raise
+  :class:`~bson.errors.InvalidBSON` when UUID conversion is requested
+  (`PYTHON-6172`_).
+- Fixed a bug where ``MongoClient(maxPoolSize=0, minPoolSize>0)`` raised
+  ``ValueError``, even though ``maxPoolSize=0`` means "no limit". The
+  ``minPoolSize <= maxPoolSize`` validation now treats both ``0`` and ``None``
+  as unlimited (`PYTHON-6149`_).
+- Fixed a bug where :class:`~bson.objectid.ObjectId` accepted a 24-character
+  string containing whitespace and created an ObjectId shorter than 12 bytes
+  from it. It now raises :class:`~bson.errors.InvalidId`, and
+  :meth:`~bson.objectid.ObjectId.is_valid` returns ``False`` for such a string
+  (`PYTHON-5873`_).
+
+.. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
+.. _PYTHON-6149: https://jira.mongodb.org/browse/PYTHON-6149
+.. _PYTHON-5873: https://jira.mongodb.org/browse/PYTHON-5873
+
+Changes in Version 4.19.0 (2026/10/14)
 --------------------------------------
 
 PyMongo 4.19 brings a number of changes including:
 
+.. warning:: PyMongo 4.19 drops support for Python 3.9 and 3.10 and removes
+  PyPy support: Python 3.11+ is now required.
+
 - Added support for Python 3.15.
+- Dropped support for Python 3.9 and 3.10.
+- Removed support for PyPy.
+- Removed the deprecated ``Algorithm.RANGEPREVIEW`` and
+  ``QueryType.RANGEPREVIEW`` members (`PYTHON-6009`_).
 - Added support for running the synchronous and asynchronous clients in
   subinterpreters, including inside
   ``concurrent.futures.InterpreterPoolExecutor`` (Python 3.14+). Only in
@@ -16,12 +49,26 @@ PyMongo 4.19 brings a number of changes including:
   interpreter remain daemon threads and shutdown behavior is unchanged.
   Note that because these threads are non-daemon, a subinterpreter may block
   on teardown until any in-flight monitor work completes.
+- Added support for routing Key Management Service (KMS) requests for
+  Client-Side Field Level Encryption and Queryable Encryption through an HTTP
+  proxy, using the new ``kms_connect_callback`` option on
+  :class:`~pymongo.encryption_options.AutoEncryptionOpts`,
+  :class:`~pymongo.encryption.ClientEncryption`, and
+  :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption`. The callback
+  opens the connection and the driver performs the KMS TLS handshake over it, so
+  verification still targets the KMS host rather than the proxy. For an ordinary
+  HTTP proxy, pass :class:`~pymongo.encryption_options.HTTPProxyKMSConnect` or
+  :class:`~pymongo.encryption_options.AsyncHTTPProxyKMSConnect` instead of
+  writing a callback. Both helpers accept custom ``CONNECT`` headers, e.g.
+  ``Proxy-Authorization`` for proxies that require authentication.
 - Added the ``srv_host_validator`` keyword argument to
   :class:`~pymongo.synchronous.mongo_client.MongoClient` and
   :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`, an alternative to
   ``srvAllowedHostsSuffix`` for deployments whose acceptable SRV hosts cannot be
   expressed as a single suffix. The callback is invoked once per SRV-returned
-  host and returns ``True`` to accept it. It is mutually exclusive with
+  host and must return a boolean: ``True`` to accept the host and ``False`` to
+  reject it. During initial DNS discovery a non-boolean return raises an error;
+  during SRV polling it is treated as a rejection. It is mutually exclusive with
   ``srvAllowedHostsSuffix`` and, because it takes a callable, cannot be set in a
   connection string. See the
   :class:`~pymongo.synchronous.mongo_client.MongoClient` and
@@ -52,9 +99,26 @@ Bug fixes
   any field contains the reserved ``|`` delimiter (`PYTHON-6040`_).
 - Fixed a bug in SRV polling where invalid hosts where topology would not be
   updated if one returned host was invalid.
+- Fixed a bug where the C extension's BSON decoder accepted documents whose
+  element data overlaps the document terminator instead of raising
+  ``InvalidBSON`` (`PYTHON-6111`_).
+- Fixed a bug where the pure-Python ``decode_all()`` accepted buffers ending
+  in a partial document instead of raising ``InvalidBSON``, now matching the
+  C extension (`PYTHON-6163`_).
 
 .. _PYTHON-6074: https://jira.mongodb.org/browse/PYTHON-6074
 .. _PYTHON-6040: https://jira.mongodb.org/browse/PYTHON-6040
+.. _PYTHON-6111: https://jira.mongodb.org/browse/PYTHON-6111
+.. _PYTHON-6163: https://jira.mongodb.org/browse/PYTHON-6163
+.. _PYTHON-6009: https://jira.mongodb.org/browse/PYTHON-6009
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.19.0 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.19.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=52147
 
 Changes in Version 4.18.2 (2026/09/24)
 --------------------------------------
@@ -195,7 +259,7 @@ PyMongo 4.17 brings a number of changes including:
 - Added the :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.bind` and :meth:`~pymongo.client_session.ClientSession.bind` methods
   that allow users to bind a session to all database operations within the scope of a context manager instead of having to explicitly pass the session to each individual operation.
   See the `Transactions docs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/transactions/#methods>`_ for examples and more information.
-- Added support for MongoDB's Intelligent Workload Management (IWM) and ingress connection rate limiting features in MongoDB server version 9.0.
+- Added support for MongoDB's `Intelligent Workload Management <https://www.mongodb.com/docs/atlas/intelligent-workload-management/>`_ (IWM) and ingress connection rate limiting features in MongoDB server version 9.0.
   The driver will gracefully handle write-blocking scenarios and optimizes connection establishment during high-load conditions to maintain application availability.
 
 Changes in Version 4.16.0 (2026/01/07)

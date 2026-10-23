@@ -34,13 +34,19 @@ from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _async_create_lock
 from pymongo.monitoring import _EventListeners
+from pymongo.pool_shared import _async_wrap_socket_tls
 from test.asynchronous.utils import async_get_pool, async_joinall, flaky
 
 sys.path[0:0] = [""]
 
 from pymongo.asynchronous.pool import Pool, PoolOptions
 from pymongo.socket_checker import SocketChecker
-from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
+from test.asynchronous import (
+    AsyncIntegrationTest,
+    AsyncPyMongoTestCase,
+    async_client_context,
+    unittest,
+)
 from test.asynchronous.helpers import ConcurrentRunner
 from test.utils_shared import CMAPListener, delay
 
@@ -194,8 +200,27 @@ class TestPooling(_TestPoolingBase):
 
         self.assertRaises(ValueError, AsyncMongoClient, host=host, port=port, maxPoolSize="foo")
 
+        self.assertRaises(
+            ValueError, AsyncMongoClient, host=host, port=port, maxPoolSize=10, minPoolSize=20
+        )
+
         c = AsyncMongoClient(host=host, port=port, maxPoolSize=100, connect=False)
         self.assertEqual(c.options.pool_options.max_pool_size, 100)
+
+    async def test_max_pool_size_no_limit_with_min_pool_size(self):
+        # A maxPoolSize of 0 or None means no limit, so minPoolSize must
+        # still be allowed (PYTHON-6149).
+        host, port = await async_client_context.host, await async_client_context.port
+        for max_pool_size in (0, None):
+            c = AsyncMongoClient(
+                host=host,
+                port=port,
+                maxPoolSize=max_pool_size,
+                minPoolSize=5,
+                connect=False,
+            )
+            self.assertEqual(c.options.pool_options.max_pool_size, max_pool_size)
+            self.assertEqual(c.options.pool_options.min_pool_size, 5)
 
     async def test_no_disconnect(self):
         await run_cases(self.c, [NonUnique, Unique, InsertOneAndFind])
@@ -917,6 +942,19 @@ class TestPoolHandleConnectionError(unittest.TestCase):
         err.__cause__ = ssl.SSLCertVerificationError("certificate verify failed")
         pool._handle_connection_error(err)
         self.assertFalse(err.has_error_label("SystemOverloadedError"))
+
+
+class TestWrapSocketTLS(AsyncPyMongoTestCase):
+    async def test_wrap_socket_tls_without_ssl_context_returns_same_socket(self):
+        options = PoolOptions(socket_timeout=7.5)
+        left, right = socket.socketpair()
+        self.addCleanup(left.close)
+        self.addCleanup(right.close)
+
+        result = await _async_wrap_socket_tls(left, ("kms.example.com", 443), options)
+
+        self.assertIs(result, left)
+        self.assertEqual(result.gettimeout(), 7.5)
 
 
 if __name__ == "__main__":

@@ -477,7 +477,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             argument, and must return ``True`` to accept the host or ``False`` to
             reject it. During initial DNS discovery, rejecting a host raises
             :exc:`~pymongo.errors.ConfigurationError`, as does an exception raised by
-            the callback itself. Use this when the set of acceptable hosts cannot be
+            the callback itself or a return value that is not a boolean. During SRV
+            polling, a rejection or a non-boolean return is treated as ``False`` and no
+            error is raised. Use this when the set of acceptable hosts cannot be
             expressed as a single suffix::
 
                 def validator(host: str) -> bool:

@@ -2351,11 +2351,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 PyObject* binary_value = NULL;
                 char uuid_rep = options->uuid_rep;
 
-                /* UUID should always be 16 bytes */
-                if (length != 16) {
-                    goto uuiderror;
-                }
-
                 PyObject* subtype_obj = PyLong_FromLong(subtype);
                 if (!subtype_obj) {
                     goto uuiderror;
@@ -2432,6 +2427,9 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
         }
     case 8:
         {
+            if (max < 1) {
+                goto invalid;
+            }
             char boolean_raw = buffer[(*position)++];
             if (0 == boolean_raw) {
                 value = Py_False;
@@ -2466,24 +2464,35 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
             PyObject* pattern;
             int flags;
             size_t flags_length, i;
-            size_t pattern_length = strlen(buffer + *position);
-            if (pattern_length > BSON_MAX_SIZE || max < pattern_length) {
+            /* PYTHON-6110: Search for each NUL within the bytes remaining
+             * in the document rather than scanning the buffer. */
+            const char* start = buffer + *position;
+            const char* pattern_nul = memchr(start, 0, max);
+            if (!pattern_nul) {
+                goto invalid;
+            }
+            size_t pattern_length = (size_t)(pattern_nul - start);
+            if (pattern_length > BSON_MAX_SIZE) {
                 goto invalid;
             }
             pattern = PyUnicode_DecodeUTF8(
-                buffer + *position, pattern_length,
+                start, pattern_length,
                 options->unicode_decode_error_handler);
             if (!pattern) {
                 goto invalid;
             }
             *position += (unsigned)pattern_length + 1;
-            flags_length = strlen(buffer + *position);
-            if (flags_length > BSON_MAX_SIZE ||
-                    (BSON_MAX_SIZE - pattern_length) < flags_length) {
+            start += pattern_length + 1;
+            /* PYTHON-6111: account for the pattern NUL consumed above so
+             * the flags terminator cannot overlap the document terminator. */
+            const char* flags_nul = memchr(start, 0, max - pattern_length - 1);
+            if (!flags_nul) {
                 Py_DECREF(pattern);
                 goto invalid;
             }
-            if (max < pattern_length + flags_length) {
+            flags_length = (size_t)(flags_nul - start);
+            if (flags_length > BSON_MAX_SIZE ||
+                    (BSON_MAX_SIZE - pattern_length) < flags_length) {
                 Py_DECREF(pattern);
                 goto invalid;
             }

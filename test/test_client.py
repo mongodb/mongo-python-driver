@@ -1293,9 +1293,6 @@ class TestClient(IntegrationTest):
         cursor = coll.aggregate([], batchSize=10)
         self.assertTrue(bool(next(cursor)))
         del cursor
-        # Required for PyPy and other Python implementations that
-        # don't use reference counting garbage collection.
-        gc.collect()
 
         # Close the client and ensure the topology is closed.
         self.assertTrue(test_client._topology._opened)
@@ -1633,17 +1630,15 @@ class TestClient(IntegrationTest):
         # pool
         self.assertEqual(1, len((get_pool(client)).conns))
 
-        # contextlib async support was added in Python 3.10
-        if _IS_SYNC or sys.version_info >= (3, 10):
-            with contextlib.closing(client):
-                self.assertEqual("bar", (client.pymongo_test.coll.find_one())["foo"])
-            with self.assertRaises(InvalidOperation):
-                client.pymongo_test.coll.find_one()
-            client = self.rs_or_single_client()
-            with client as client:
-                self.assertEqual("bar", (client.pymongo_test.coll.find_one())["foo"])
-            with self.assertRaises(InvalidOperation):
-                client.pymongo_test.coll.find_one()
+        with contextlib.closing(client):
+            self.assertEqual("bar", (client.pymongo_test.coll.find_one())["foo"])
+        with self.assertRaises(InvalidOperation):
+            client.pymongo_test.coll.find_one()
+        client = self.rs_or_single_client()
+        with client as client:
+            self.assertEqual("bar", (client.pymongo_test.coll.find_one())["foo"])
+        with self.assertRaises(InvalidOperation):
+            client.pymongo_test.coll.find_one()
 
     @client_context.require_sync
     def test_interrupt_signal(self):
@@ -2152,7 +2147,6 @@ class TestClient(IntegrationTest):
         with self.assertRaises(ConfigurationError):
             MongoClient(["host1", "host2"], directConnection=True)
 
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-2927 fails often on PyPy")
     def test_continuous_network_errors(self):
         def server_description_count():
             i = 0
@@ -2192,7 +2186,6 @@ class TestClient(IntegrationTest):
             with self.assertRaisesRegex(AutoReconnect, expected):
                 client.pymongo_test.coll.find_one({})
 
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-2938 could fail on PyPy")
     def test_process_periodic_tasks(self):
         client = self.rs_or_single_client()
         coll = client.db.collection

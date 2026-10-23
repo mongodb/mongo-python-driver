@@ -9,7 +9,7 @@ description = "PyMongo - the Official MongoDB Python driver"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 authors = [
     { name = "The MongoDB Python Team" },
 ]
@@ -27,11 +27,8 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX",
     "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -53,11 +50,9 @@ Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 # install-dependencies.sh installs it in Evergreen. Bump manually when a newer uv
 # is needed.
 required-version = "==0.12.12"
-# boto3 dropped Python 3.9 support in 1.43, so the universal lock forks at
-# 3.10. Without a floor the pre-3.10 fork back-solves to boto3 1.7.84 (2018),
-# whose vendored six and invalid escape sequences break test collection. No
-# AWS task runs on 3.9; this keeps both forks on current releases.
-constraint-dependencies = ["boto3>=1.34"]
+# Skip dependency releases newer than 7 days. Defining it here keeps every uv
+# invocation on the same cutoff.
+exclude-newer = "7 days"
 
 [dependency-groups]
 dev = []
@@ -71,11 +66,13 @@ unasync = [
 pip = ["pip>=20.2"]
 gevent = ["gevent>=21.12"]
 coverage = [
-    "coverage[toml]>=5,<=7.15.0"
+    "coverage[toml]>=6.4,<=7.15.0"
 ]
 mockupdb = [
     "mockupdb>=1.8.1"
 ]
+# Atheris publishes CPython 3.12-3.14 Linux x86_64 wheels only; see fuzz/README.md.
+fuzz = ["atheris>=2.3.0"]
 perf = ["simplejson>=3.17.0"]
 typing = [
     "mypy==1.19.1",
@@ -194,8 +191,8 @@ warn_unused_ignores = false
 disable_error_code = ["unused-coroutine", "no-redef"]
 
 [tool.ruff]
-target-version = "py39"
 line-length = 100
+extend-exclude = ["drivers-evergreen-tools"]
 
 [tool.ruff.lint]
 select = [
@@ -246,6 +243,12 @@ ignore = [
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
   "UP045", # Use `X | Y` for union annotation (Enable when we drop 3.9 support)
   "PLC0415", # `import` should be at the top-level of a file
+  "UP035",   # Deprecated import (e.g. `typing.Callable` instead of `collections.abc.Callable`)
+  "UP041",   # `asyncio.TimeoutError` is an alias of `TimeoutError` on 3.11+
+  "ASYNC109", # Async function with a `timeout` parameter (CSOT timeouts are not `asyncio.timeout`)
+  "UP042",   # `str, Enum` should be `StrEnum` (changes `__str__` semantics)
+  "UP017",   # `timezone.utc` preferred over `datetime.UTC` (keep existing style)
+  "B905",    # `zip()` without an explicit `strict=` parameter
 ]
 unfixable = [
   "RUF100", # Unused noqa
@@ -265,6 +268,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
     "UP031", "F401", "B023", "F811"]
 "tools/*.py" = ["T201"]
 "tools/test_*.py" = ["E402", "S"]
+"fuzz/*.py" = ["T201", "E402"]
 "hatch_build.py" = ["S"]
 "_setup.py" = ["SIM112"]
 
