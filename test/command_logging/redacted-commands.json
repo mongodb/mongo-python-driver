@@ -12,11 +12,11 @@
       "client": {
         "id": "client",
         "useMultipleMongoses": false,
-        "uriOptions": {
-          "appname": "commandLoggingRedactionTest"
-        },
         "observeLogMessages": {
           "command": "debug"
+        },
+        "uriOptions": {
+          "appName": "commandLoggingRedactionTest"
         }
       }
     },
@@ -104,8 +104,8 @@
                 "failCommands": [
                   "authenticate"
                 ],
-                "appName": "commandLoggingRedactionTest",
-                "closeConnection": true
+                "closeConnection": true,
+                "appName": "commandLoggingRedactionTest"
               }
             }
           }
@@ -226,8 +226,8 @@
                 "failCommands": [
                   "saslStart"
                 ],
-                "appName": "commandLoggingRedactionTest",
-                "closeConnection": true
+                "closeConnection": true,
+                "appName": "commandLoggingRedactionTest"
               }
             }
           }
@@ -348,8 +348,8 @@
                 "failCommands": [
                   "saslContinue"
                 ],
-                "appName": "commandLoggingRedactionTest",
-                "closeConnection": true
+                "closeConnection": true,
+                "appName": "commandLoggingRedactionTest"
               }
             }
           }
