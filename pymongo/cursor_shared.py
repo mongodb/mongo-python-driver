@@ -396,7 +396,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         comment: Optional[Any] = None,
         session: Optional[_AgnosticClientSession] = None,
         allow_disk_use: Optional[bool] = None,
-        let: Optional[bool] = None,
+        let: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Create a new cursor.
         Used by a collection's ``find()`` method to iterate over MongoDB query results.
