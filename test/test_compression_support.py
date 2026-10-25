@@ -219,6 +219,49 @@ class TestDecompress(unittest.TestCase):
         result = decompress(compressed, ZstdContext.compressor_id, max_message_size=2**20)
         self.assertEqual(result, data)
 
+    def test_zstd_compressor_reused_across_messages(self):
+        if not _have_zstd():
+            self.skipTest("zstd not available")
+        if sys.version_info >= (3, 14):
+            from compression import zstd
+        else:
+            from backports import zstd
+
+        messages = [bytes([i % 251]) * (1 + i * 997) for i in range(64)]
+        for data in messages:
+            compressed = ZstdContext.compress(data)
+            self.assertEqual(zstd.decompress(compressed), data)
+            self.assertEqual(
+                decompress(compressed, ZstdContext.compressor_id, max_message_size=2**20), data
+            )
+
+    def test_zstd_compress_from_many_threads(self):
+        if not _have_zstd():
+            self.skipTest("zstd not available")
+        import threading
+
+        errors = []
+
+        def worker(seed):
+            try:
+                for i in range(200):
+                    data = (b"%d-%d " % (seed, i)) * (1 + (seed * 31 + i) % 500)
+                    compressed = ZstdContext.compress(data)
+                    result = decompress(
+                        compressed, ZstdContext.compressor_id, max_message_size=2**20
+                    )
+                    if result != data:
+                        errors.append((seed, i))
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker, args=(seed,)) for seed in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(errors, [])
+
 
 class TestDecompressSizeLimit(unittest.TestCase):
     def test_decompression_peak_memory_bounded(self):

@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 import warnings
 from collections.abc import Iterable
 from typing import Any, Optional, Union
@@ -154,6 +155,8 @@ class ZlibContext:
 
 class ZstdContext:
     compressor_id = 3
+    # One compressor per thread: creating a zstd context costs more than compressing a small message.
+    _local = threading.local()
 
     @staticmethod
     def compress(data: bytes) -> bytes:
@@ -162,7 +165,14 @@ class ZstdContext:
         else:
             from backports import zstd
 
-        return zstd.compress(data)
+        compressor = getattr(ZstdContext._local, "compressor", None)
+        if compressor is None:
+            compressor = ZstdContext._local.compressor = zstd.ZstdCompressor()
+        try:
+            return compressor.compress(data, zstd.ZstdCompressor.FLUSH_FRAME)
+        except BaseException:
+            ZstdContext._local.compressor = None
+            raise
 
 
 def _snappy_uncompressed_length(data: bytes | memoryview) -> int:
