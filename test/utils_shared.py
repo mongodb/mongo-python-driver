@@ -617,8 +617,8 @@ def suppress_fork_deprecation():
         yield
 
 
-def clear_agent_env(keep=()):
-    """Clear the coding agent env vars the handshake reads.
+def unset_agent_env(keep=()):
+    """Unset the coding agent env vars the handshake reads.
 
     The test process itself often runs under a coding agent, which would add
     client.env.agent to the handshake metadata. Vars named in `keep` are left

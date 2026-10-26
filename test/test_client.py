@@ -132,13 +132,13 @@ from test.utils_shared import (
     FunctionCallRecorder,
     _driver_version,
     _metadata_with_appended_driver,
-    clear_agent_env,
     delay,
     gevent_monkey_patched,
     is_greenthread_patched,
     lazy_client_trial,
     one,
     suppress_fork_deprecation,
+    unset_agent_env,
 )
 
 _IS_SYNC = True
@@ -384,7 +384,7 @@ class ClientUnitTest(UnitTest):
         )
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
-    @clear_agent_env()
+    @unset_agent_env()
     def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         if has_c():
@@ -418,7 +418,7 @@ class ClientUnitTest(UnitTest):
         with self.assertRaises(TypeError):
             self.simple_client(driver=("Foo", "1", "a"))
 
-    @clear_agent_env()
+    @unset_agent_env()
     def test_metadata_appends_driver_info(self):
         metadata = _metadata_with_appended_driver(_IS_SYNC, "FooDriver", "1.2.3")
         client = self.simple_client(
@@ -600,7 +600,7 @@ class ClientUnitTest(UnitTest):
         self.assertEqual(metadata["driver"]["name"], names)
         self.assertEqual(metadata["driver"]["version"], vers)
 
-    @clear_agent_env()
+    @unset_agent_env()
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
         metadata = copy.deepcopy(_METADATA)
@@ -2323,7 +2323,7 @@ class TestClient(IntegrationTest):
     def _test_handshake(self, env_vars, expected_env):
         # Clear agent env vars already set in the test process (e.g. AI_AGENT
         # set by the CI runner) so detection only reflects env_vars.
-        with clear_agent_env(keep=env_vars), patch.dict("os.environ", env_vars):
+        with unset_agent_env(keep=env_vars), patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
             if has_c():
                 metadata["driver"]["name"] = "PyMongo|c"
