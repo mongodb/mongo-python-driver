@@ -517,8 +517,8 @@ class ClientUnitTest(UnitTest):
                 env["name"] = "azure.func"
             return {"env": env, "platform": "p" * plat_len}
 
-        # The document is one byte over the limit, less than the agent element
-        # costs, so dropping agent alone must make it fit without touching
+        # The document is one byte over the limit and less than the agent
+        # element costs. Dropping agent alone must make it fit without touching
         # platform.
         plat_len = next(
             n
@@ -2455,8 +2455,8 @@ class TestClient(IntegrationTest):
         self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
 
     def test_handshake_16_agent_generic_truncated_on_boundary(self):
-        # The byte limit falls inside the two-byte "é": no part of it, and no
-        # U+FFFD, may appear.
+        # The byte limit falls inside the two-byte "é". No part of it and no
+        # U+FFFD may appear.
         value = "a" * (_MAX_AGENT_SIZE - 1) + "é"
         self._test_handshake({"AI_AGENT": value}, {"agent": "a" * (_MAX_AGENT_SIZE - 1)})
 
