@@ -1514,7 +1514,7 @@ provides-extras = ["aws", "docs", "encryption", "gssapi", "ocsp", "snappy", "tes
 coverage = [{ name = "coverage", extras = ["toml"], specifier = ">=6.4,<=7.15.0" }]
 dev = []
 fuzz = [{ name = "atheris", specifier = ">=2.3.0" }]
-gevent = [{ name = "gevent", specifier = ">=21.12" }]
+gevent = [{ name = "gevent", specifier = ">=25.9.1" }]
 lint = [{ name = "ruff", specifier = "==0.15.20" }]
 mockupdb = [{ name = "mockupdb", specifier = ">=1.8.1" }]
 perf = [{ name = "simplejson", specifier = ">=3.17.0" }]
