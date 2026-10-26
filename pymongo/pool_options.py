@@ -175,8 +175,8 @@ def _metadata_agent() -> Optional[str]:
         return None
     if agent in ("1", "true"):
         return "ai_agent"
-    # Largest valid UTF-8 prefix of _MAX_AGENT_SIZE bytes. "ignore" drops a
-    # split character instead of replacing it with U+FFFD.
+    # Largest valid UTF-8 prefix of _MAX_AGENT_SIZE bytes; "ignore" drops a
+    # character split by the byte limit.
     return agent.encode()[:_MAX_AGENT_SIZE].decode(errors="ignore")
 
 
