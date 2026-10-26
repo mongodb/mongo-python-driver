@@ -418,6 +418,7 @@ class ClientUnitTest(UnitTest):
         with self.assertRaises(TypeError):
             self.simple_client(driver=("Foo", "1", "a"))
 
+    @no_ambient_agent()
     def test_metadata_appends_driver_info(self):
         metadata = _metadata_with_appended_driver(_IS_SYNC, "FooDriver", "1.2.3")
         client = self.simple_client(
@@ -2434,6 +2435,7 @@ class TestClient(IntegrationTest):
         # A known agent env var maps to its fixed name, regardless of value.
         self._test_handshake({"CLAUDECODE": "1"}, {"agent": "claude_code"})
         self._test_handshake({"CURSOR_AGENT": "some-value-42"}, {"agent": "cursor"})
+        self._test_handshake({"OPENCODE": "1"}, {"agent": "opencode_client"})
         self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
 
     def test_handshake_10b_agent_known_precedence(self):

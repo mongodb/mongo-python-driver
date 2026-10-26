@@ -425,6 +425,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         with self.assertRaises(TypeError):
             self.simple_client(driver=("Foo", "1", "a"))
 
+    @no_ambient_agent()
     async def test_metadata_appends_driver_info(self):
         metadata = _metadata_with_appended_driver(_IS_SYNC, "FooDriver", "1.2.3")
         client = self.simple_client(
@@ -2481,6 +2482,7 @@ class TestClient(AsyncIntegrationTest):
         # A known agent env var maps to its fixed name, regardless of value.
         await self._test_handshake({"CLAUDECODE": "1"}, {"agent": "claude_code"})
         await self._test_handshake({"CURSOR_AGENT": "some-value-42"}, {"agent": "cursor"})
+        await self._test_handshake({"OPENCODE": "1"}, {"agent": "opencode_client"})
         await self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
 
     async def test_handshake_10b_agent_known_precedence(self):
