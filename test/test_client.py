@@ -87,6 +87,7 @@ from pymongo.pool_options import (
     _METADATA,
     ENV_VAR_K8S,
     PoolOptions,
+    _element_size,
     _truncate_metadata,
 )
 from pymongo.read_preferences import ReadPreference
@@ -510,37 +511,55 @@ class ClientUnitTest(UnitTest):
             {"name": "PyMongo|" + "W" * name_len, "version": "1.0|1.0"},
         )
 
-    def test_metadata_truncation_omits_agent_before_name(self):
-        def metadata_for(plat_len: int, with_name: bool) -> dict[str, Any]:
-            env: dict[str, Any] = {"agent": "claude_code"}
-            if with_name:
-                env["name"] = "azure.func"
-            return {"env": env, "platform": "p" * plat_len}
+    def _metadata_with_agent_env(self, with_name: bool) -> dict[str, Any]:
+        """Metadata over the limit with env holding agent (and name).
 
-        # The document is one byte over the limit and less than the agent
-        # element costs. Dropping agent alone must make it fit without touching
-        # platform.
+        Dropping env.agent alone must bring the document back under the
+        limit. With agent-only env the excess is the env element less one byte
+        so removing env alone must bring the document one byte under.
+        """
+        env: dict[str, Any] = {"agent": "claude_code"}
+        if with_name:
+            env["name"] = "azure.func"
+        os_meta = {"type": "Darwin", "name": "Darwin", "architecture": "arm64", "version": "26.7.1"}
+
+        def metadata_for(plat_len: int) -> dict[str, Any]:
+            return {"env": env, "os": os_meta, "platform": "p" * plat_len}
+
+        target = (
+            _MAX_METADATA_SIZE + 1
+            if with_name
+            else _MAX_METADATA_SIZE - 1 + _element_size("env", env)
+        )
         plat_len = next(
             n
             for n in range(1, 2 * _MAX_METADATA_SIZE)
-            if len(bson.encode(metadata_for(n, True))) == _MAX_METADATA_SIZE + 1
+            if len(bson.encode(metadata_for(n))) == target
         )
-        metadata = metadata_for(plat_len, True)
+        return metadata_for(plat_len)
+
+    def test_metadata_truncation_omits_agent_before_name(self):
+        metadata = self._metadata_with_agent_env(with_name=True)
+        os_meta = metadata["os"]
+        plat = metadata["platform"]
         _truncate_metadata(metadata)
         self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
         self.assertEqual(metadata["env"], {"name": "azure.func"})
-        self.assertEqual(metadata["platform"], "p" * plat_len)
+        self.assertEqual(metadata["os"], os_meta)
+        self.assertEqual(metadata["platform"], plat)
 
-        plat_len = next(
-            n
-            for n in range(1, 2 * _MAX_METADATA_SIZE)
-            if len(bson.encode(metadata_for(n, False))) == _MAX_METADATA_SIZE + 1
-        )
-        metadata = metadata_for(plat_len, False)
+    def test_metadata_truncation_omits_agent_only_env(self):
+        # env holds only agent so the whole env document is omitted. The size
+        # accounting must record the full env element so no later field is
+        # touched.
+        metadata = self._metadata_with_agent_env(with_name=False)
+        os_meta = metadata["os"]
+        plat = metadata["platform"]
         _truncate_metadata(metadata)
         self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
         self.assertNotIn("env", metadata)
-        self.assertEqual(metadata["platform"], "p" * plat_len)
+        self.assertEqual(metadata["os"], os_meta)
+        self.assertEqual(metadata["platform"], plat)
 
     def test_metadata_append_is_bounded(self):
         # Successive appends must stay within the limit and keep name and
@@ -2319,7 +2338,7 @@ class TestClient(IntegrationTest):
     def _test_handshake(self, env_vars, expected_env):
         # Unset agent env vars already set in the test process (e.g. AI_AGENT
         # set by the CI runner) so detection only reflects env_vars.
-        with unset_agent_env(keep=env_vars), patch.dict("os.environ", env_vars):
+        with unset_agent_env(), patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
             if has_c():
                 metadata["driver"]["name"] = "PyMongo|c"
@@ -2445,6 +2464,8 @@ class TestClient(IntegrationTest):
         self._test_handshake({"AI_AGENT": "custom-agent"}, {"agent": "custom-agent"})
         self._test_handshake({"AI_AGENT": "1"}, {"agent": "ai_agent"})
         self._test_handshake({"AI_AGENT": "true"}, {"agent": "ai_agent"})
+        self._test_handshake({"AI_AGENT": " true "}, {"agent": "ai_agent"})
+        self._test_handshake({"AI_AGENT": "custom-\udcff"}, {"agent": "custom-"})
 
     def test_handshake_14_agent_generic_normalized(self):
         self._test_handshake(
@@ -2467,8 +2488,12 @@ class TestClient(IntegrationTest):
 
     def test_handshake_18_agent_with_provider(self):
         self._test_handshake(
-            {"FUNCTIONS_WORKER_RUNTIME": "python", "CLAUDECODE": "1"},
-            {"name": "azure.func", "agent": "claude_code"},
+            {
+                "AWS_EXECUTION_ENV": "AWS_Lambda_java8",
+                "AWS_REGION": "us-east-2",
+                "CLAUDECODE": "1",
+            },
+            {"name": "aws.lambda", "region": "us-east-2", "agent": "claude_code"},
         )
 
     def test_dict_hints(self):

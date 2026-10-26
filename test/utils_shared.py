@@ -617,18 +617,16 @@ def suppress_fork_deprecation():
         yield
 
 
-def unset_agent_env(keep=()):
+def unset_agent_env():
     """Unset the coding agent env vars the handshake reads.
 
     A coding agent often runs the test process itself, which would add
-    client.env.agent to the handshake metadata. Vars named in `keep` are left
-    alone so a test can set its own (PYTHON-5929).
+    client.env.agent to the handshake metadata (PYTHON-5929).
 
-    :param keep: env var names to leave unchanged.
     :return: a patch.dict context manager / decorator.
     """
     agent_vars = [_GENERIC_AGENT_ENV_VAR, *(var for var, _ in _AGENT_ENV_VARS)]
-    return patch.dict("os.environ", {var: "" for var in agent_vars if var not in keep})
+    return patch.dict("os.environ", dict.fromkeys(agent_vars, ""))
 
 
 def parse_read_preference(pref):

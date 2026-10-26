@@ -176,8 +176,9 @@ def _metadata_agent() -> Optional[str]:
     if agent in ("1", "true"):
         return "ai_agent"
     # Largest valid UTF-8 prefix of _MAX_AGENT_SIZE bytes. "ignore" drops a
-    # character split by the byte limit.
-    return agent.encode()[:_MAX_AGENT_SIZE].decode(errors="ignore")
+    # character split by the byte limit and surrogate-escaped bytes from a
+    # malformed value so detection never raises.
+    return agent.encode(errors="ignore")[:_MAX_AGENT_SIZE].decode(errors="ignore")
 
 
 def _getenv_int(key: str) -> Optional[int]:
@@ -280,11 +281,13 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     # have reported env.name since before env.agent existed.
     env = metadata.get("env")
     if env is not None and "agent" in env:
+        old_size = _element_size("env", env)
         new_env = {k: v for k, v in env.items() if k != "agent"}
-        size += _element_size("env", new_env) - _element_size("env", env)
         if new_env:
+            size += _element_size("env", new_env) - old_size
             metadata["env"] = new_env
         else:
+            size -= old_size
             del metadata["env"]
     if size <= _MAX_METADATA_SIZE:
         return
