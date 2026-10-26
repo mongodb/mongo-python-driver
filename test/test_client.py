@@ -2433,39 +2433,39 @@ class TestClient(IntegrationTest):
         self._test_handshake({"OPENCODE": "1"}, {"agent": "opencode_client"})
         self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
 
-    def test_handshake_10b_agent_known_precedence(self):
+    def test_handshake_11_agent_known_precedence(self):
         self._test_handshake({"GEMINI_CLI": "1", "CURSOR_AGENT": "1"}, {"agent": "cursor"})
 
-    def test_handshake_11_agent_known_beats_generic(self):
+    def test_handshake_12_agent_known_beats_generic(self):
         self._test_handshake(
             {"AI_AGENT": "custom-agent", "CLAUDECODE": "1"}, {"agent": "claude_code"}
         )
 
-    def test_handshake_12_agent_generic(self):
+    def test_handshake_13_agent_generic(self):
         self._test_handshake({"AI_AGENT": "custom-agent"}, {"agent": "custom-agent"})
         self._test_handshake({"AI_AGENT": "1"}, {"agent": "ai_agent"})
         self._test_handshake({"AI_AGENT": "true"}, {"agent": "ai_agent"})
 
-    def test_handshake_13_agent_generic_normalized(self):
+    def test_handshake_14_agent_generic_normalized(self):
         self._test_handshake(
             {"AI_AGENT": " Claude-Code_2-1-238_Agent "}, {"agent": "claude-code_2-1-238_agent"}
         )
 
-    def test_handshake_14_agent_generic_truncated(self):
+    def test_handshake_15_agent_generic_truncated(self):
         self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
 
-    def test_handshake_14b_agent_generic_truncated_on_boundary(self):
+    def test_handshake_16_agent_generic_truncated_on_boundary(self):
         # The byte limit falls inside the two-byte "é": no part of it, and no
         # U+FFFD, may appear.
         value = "a" * (_MAX_AGENT_SIZE - 1) + "é"
         self._test_handshake({"AI_AGENT": value}, {"agent": "a" * (_MAX_AGENT_SIZE - 1)})
 
-    def test_handshake_15_agent_unset(self):
+    def test_handshake_17_agent_unset(self):
         self._test_handshake({"AI_AGENT": ""}, None)
         self._test_handshake({"AI_AGENT": "   "}, None)
         self._test_handshake({"CLAUDECODE": "   "}, None)
 
-    def test_handshake_16_agent_with_provider(self):
+    def test_handshake_18_agent_with_provider(self):
         self._test_handshake(
             {"FUNCTIONS_WORKER_RUNTIME": "python", "CLAUDECODE": "1"},
             {"name": "azure.func", "agent": "claude_code"},

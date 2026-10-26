@@ -2480,39 +2480,39 @@ class TestClient(AsyncIntegrationTest):
         await self._test_handshake({"OPENCODE": "1"}, {"agent": "opencode_client"})
         await self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
 
-    async def test_handshake_10b_agent_known_precedence(self):
+    async def test_handshake_11_agent_known_precedence(self):
         await self._test_handshake({"GEMINI_CLI": "1", "CURSOR_AGENT": "1"}, {"agent": "cursor"})
 
-    async def test_handshake_11_agent_known_beats_generic(self):
+    async def test_handshake_12_agent_known_beats_generic(self):
         await self._test_handshake(
             {"AI_AGENT": "custom-agent", "CLAUDECODE": "1"}, {"agent": "claude_code"}
         )
 
-    async def test_handshake_12_agent_generic(self):
+    async def test_handshake_13_agent_generic(self):
         await self._test_handshake({"AI_AGENT": "custom-agent"}, {"agent": "custom-agent"})
         await self._test_handshake({"AI_AGENT": "1"}, {"agent": "ai_agent"})
         await self._test_handshake({"AI_AGENT": "true"}, {"agent": "ai_agent"})
 
-    async def test_handshake_13_agent_generic_normalized(self):
+    async def test_handshake_14_agent_generic_normalized(self):
         await self._test_handshake(
             {"AI_AGENT": " Claude-Code_2-1-238_Agent "}, {"agent": "claude-code_2-1-238_agent"}
         )
 
-    async def test_handshake_14_agent_generic_truncated(self):
+    async def test_handshake_15_agent_generic_truncated(self):
         await self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
 
-    async def test_handshake_14b_agent_generic_truncated_on_boundary(self):
+    async def test_handshake_16_agent_generic_truncated_on_boundary(self):
         # The byte limit falls inside the two-byte "é": no part of it, and no
         # U+FFFD, may appear.
         value = "a" * (_MAX_AGENT_SIZE - 1) + "é"
         await self._test_handshake({"AI_AGENT": value}, {"agent": "a" * (_MAX_AGENT_SIZE - 1)})
 
-    async def test_handshake_15_agent_unset(self):
+    async def test_handshake_17_agent_unset(self):
         await self._test_handshake({"AI_AGENT": ""}, None)
         await self._test_handshake({"AI_AGENT": "   "}, None)
         await self._test_handshake({"CLAUDECODE": "   "}, None)
 
-    async def test_handshake_16_agent_with_provider(self):
+    async def test_handshake_18_agent_with_provider(self):
         await self._test_handshake(
             {"FUNCTIONS_WORKER_RUNTIME": "python", "CLAUDECODE": "1"},
             {"name": "azure.func", "agent": "claude_code"},
