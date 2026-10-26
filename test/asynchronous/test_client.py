@@ -2267,9 +2267,8 @@ class TestClient(AsyncIntegrationTest):
             AsyncMongoClient(["host1", "host2"], directConnection=True)
 
     async def test_continuous_network_errors(self):
-        # Only count this client's ServerDescriptions so that objects left
-        # alive by earlier tests' clients (e.g. monitor greenlets under gevent
-        # that have not exited yet) don't skew the count.
+        # Only count this client's ServerDescriptions so that those left
+        # alive by earlier tests don't affect the count.
         def server_description_count():
             i = 0
             for obj in gc.get_objects():
