@@ -537,6 +537,30 @@ class AsyncClientUnitTest(AsyncUnitTest):
         plat_len = target - len(bson.encode(metadata_for(0)))
         return metadata_for(plat_len)
 
+    async def test_metadata_truncation_keeps_name_and_agent(self):
+        # Dropping the other env fields alone must bring the document back
+        # under the limit.
+        env: dict[str, Any] = {
+            "name": "azure.func",
+            "agent": "claude_code",
+            "region": "us-east-2",
+            "memory_mb": 1024,
+        }
+        os_meta = {"type": "Darwin", "name": "Darwin", "architecture": "arm64", "version": "26.7.1"}
+
+        def metadata_for(plat_len: int) -> dict[str, Any]:
+            return {"env": env, "os": os_meta, "platform": "p" * plat_len}
+
+        # Each platform character adds exactly one byte.
+        plat_len = _MAX_METADATA_SIZE + 1 - len(bson.encode(metadata_for(0)))
+        metadata = metadata_for(plat_len)
+        plat = metadata["platform"]
+        _truncate_metadata(metadata)
+        self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(metadata["env"], {"name": "azure.func", "agent": "claude_code"})
+        self.assertEqual(metadata["os"], os_meta)
+        self.assertEqual(metadata["platform"], plat)
+
     async def test_metadata_truncation_omits_agent_before_name(self):
         metadata = self._metadata_with_agent_env(with_name=True)
         os_meta = metadata["os"]
