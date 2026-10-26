@@ -273,23 +273,19 @@ class TestSrvPolling(AsyncPyMongoTestCase):
         def final_callback():
             return response_final
 
-        with SrvPollingKnobs(
-            ttl_time=WAIT_TIME,
-            min_srv_rescan_interval=WAIT_TIME,
-            nodelist_callback=initial_callback,
-            count_resolver_calls=True,
-        ):
+        # Keep the short rescan interval and TTL patched for the whole test so a
+        # poll racing the swap between callbacks can't pick up the real DNS TTL.
+        with SrvPollingKnobs(ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME):
             # Client uses unpatched method to get initial nodelist
             client = self.simple_client(self.CONNECTION_STRING)
             await client.aconnect()
-            # Invalid DNS resolver response should not change nodelist.
-            await self.assert_nodelist_nochange(self.BASE_SRV_RESPONSE, client)
+            with SrvPollingKnobs(nodelist_callback=initial_callback, count_resolver_calls=True):
+                # Invalid DNS resolver response should not change nodelist.
+                await self.assert_nodelist_nochange(self.BASE_SRV_RESPONSE, client)
 
-        with SrvPollingKnobs(
-            ttl_time=WAIT_TIME, min_srv_rescan_interval=WAIT_TIME, nodelist_callback=final_callback
-        ):
-            # Nodelist should reflect new valid DNS resolver response.
-            await self.assert_nodelist_change(response_final, client)
+            with SrvPollingKnobs(nodelist_callback=final_callback):
+                # Nodelist should reflect new valid DNS resolver response.
+                await self.assert_nodelist_change(response_final, client)
 
     async def test_recover_from_initially_empty_seedlist(self):
         def empty_seedlist():
