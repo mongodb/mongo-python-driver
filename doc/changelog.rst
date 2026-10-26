@@ -4,6 +4,9 @@ Changelog
 Changes in Version 4.20.0 (2026/XX/XX)
 --------------------------------------
 
+- The client handshake metadata now reports a detected coding agent in
+  ``client.env.agent`` (`PYTHON-5929`_).
+
 Bug fixes
 .........
 
@@ -23,6 +26,7 @@ Bug fixes
   :meth:`~bson.objectid.ObjectId.is_valid` returns ``False`` for such a string
   (`PYTHON-5873`_).
 
+.. _PYTHON-5929: https://jira.mongodb.org/browse/PYTHON-5929
 .. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
 .. _PYTHON-6149: https://jira.mongodb.org/browse/PYTHON-6149
 .. _PYTHON-5873: https://jira.mongodb.org/browse/PYTHON-5873
