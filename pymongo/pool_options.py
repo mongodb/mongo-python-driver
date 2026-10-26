@@ -159,7 +159,6 @@ _AGENT_ENV_VARS = [
     ("GOOSE_AGENT", "goose"),
 ]
 
-# Generic agent variable, checked last so a known agent keeps its fixed name.
 # Evaluated last, so a known agent keeps its fixed name.
 _GENERIC_AGENT_ENV_VAR = "AI_AGENT"
 
