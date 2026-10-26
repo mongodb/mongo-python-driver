@@ -2364,7 +2364,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
     async def _test_handshake(self, env_vars, expected_env):
-        # Clear agent env vars already set in the test process (e.g. AI_AGENT
+        # Unset agent env vars already set in the test process (e.g. AI_AGENT
         # set by the CI runner) so detection only reflects env_vars.
         with unset_agent_env(keep=env_vars), patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
