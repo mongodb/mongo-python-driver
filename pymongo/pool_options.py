@@ -142,9 +142,8 @@ def _is_faas() -> bool:
     return _is_lambda() or _is_azure_func() or _is_gcp_func() or _is_vercel()
 
 
-# Known coding agents, checked in order. The first populated variable gives
-# client.env.agent, whatever its value. Matches mongosh detection.
-# See DRIVERS-3529 and PYTHON-5929.
+# Ordered per the handshake spec (DRIVERS-3529): the first populated variable
+# gives client.env.agent, whatever its value.
 _AGENT_ENV_VARS = [
     ("CLAUDECODE", "claude_code"),
     ("CLAUDE_CODE_ENTRYPOINT", "claude_code"),
@@ -161,16 +160,15 @@ _AGENT_ENV_VARS = [
 ]
 
 # Generic agent variable, checked last so a known agent keeps its fixed name.
+# Evaluated last, so a known agent keeps its fixed name.
 _GENERIC_AGENT_ENV_VAR = "AI_AGENT"
 
-# Maximum size in bytes of a normalized AI_AGENT value.
 _MAX_AGENT_SIZE = 64
 
 
 def _metadata_agent() -> Optional[str]:
     """Detect a coding agent from the environment for client.env.agent."""
     for var, name in _AGENT_ENV_VARS:
-        # Unset, empty or whitespace-only is not populated.
         if (os.getenv(var) or "").strip():
             return name
     agent = (os.getenv(_GENERIC_AGENT_ENV_VAR) or "").strip().lower()
@@ -280,7 +278,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
     if size <= _MAX_METADATA_SIZE:
         return
     # 2. Omit env.agent. It goes before env.name, which drivers have reported
-    # for longer. If env has no remaining fields, omit env entirely.
+    # for longer.
     env = metadata.get("env")
     if env is not None and "agent" in env:
         new_env = {k: v for k, v in env.items() if k != "agent"}
