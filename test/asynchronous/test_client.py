@@ -133,11 +133,11 @@ from test.utils_shared import (
     FunctionCallRecorder,
     _driver_version,
     _metadata_with_appended_driver,
+    clear_agent_env,
     delay,
     gevent_monkey_patched,
     is_greenthread_patched,
     lazy_client_trial,
-    no_ambient_agent,
     one,
     suppress_fork_deprecation,
 )
@@ -391,7 +391,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         )
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
-    @no_ambient_agent()
+    @clear_agent_env()
     async def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         if has_c():
@@ -425,7 +425,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         with self.assertRaises(TypeError):
             self.simple_client(driver=("Foo", "1", "a"))
 
-    @no_ambient_agent()
+    @clear_agent_env()
     async def test_metadata_appends_driver_info(self):
         metadata = _metadata_with_appended_driver(_IS_SYNC, "FooDriver", "1.2.3")
         client = self.simple_client(
@@ -607,7 +607,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertEqual(metadata["driver"]["name"], names)
         self.assertEqual(metadata["driver"]["version"], vers)
 
-    @no_ambient_agent()
+    @clear_agent_env()
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
         metadata = copy.deepcopy(_METADATA)
@@ -2368,9 +2368,9 @@ class TestClient(AsyncIntegrationTest):
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
     async def _test_handshake(self, env_vars, expected_env):
-        # Clear ambient agent vars (e.g. AI_AGENT set by the CI runner) so
-        # detection only reflects env_vars.
-        with no_ambient_agent(keep=env_vars), patch.dict("os.environ", env_vars):
+        # Clear agent env vars already set in the test process (e.g. AI_AGENT
+        # set by the CI runner) so detection only reflects env_vars.
+        with clear_agent_env(keep=env_vars), patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
             if has_c():
                 metadata["driver"]["name"] = "PyMongo|c|async"
