@@ -14,6 +14,9 @@
         "useMultipleMongoses": false,
         "observeLogMessages": {
           "command": "debug"
+        },
+        "uriOptions": {
+          "appName": "commandLoggingRedactionTest"
         }
       }
     },
@@ -101,7 +104,8 @@
                 "failCommands": [
                   "authenticate"
                 ],
-                "closeConnection": true
+                "closeConnection": true,
+                "appName": "commandLoggingRedactionTest"
               }
             }
           }
@@ -222,7 +226,8 @@
                 "failCommands": [
                   "saslStart"
                 ],
-                "closeConnection": true
+                "closeConnection": true,
+                "appName": "commandLoggingRedactionTest"
               }
             }
           }
@@ -343,7 +348,8 @@
                 "failCommands": [
                   "saslContinue"
                 ],
-                "closeConnection": true
+                "closeConnection": true,
+                "appName": "commandLoggingRedactionTest"
               }
             }
           }

@@ -16,8 +16,7 @@ be of interest or that has already been addressed.
 
 ## Supported Interpreters
 
-PyMongo supports CPython 3.11+ and PyPy 3.11+. Language features not
-supported by all interpreters can not be used.
+PyMongo supports CPython 3.11+.
 
 ## Style Guide
 
@@ -446,6 +445,19 @@ git config submodule.drivers-evergreen-tools.update none
 To run any of the test suites with minimum supported dependencies, pass `--test-min-deps` to
 `just setup-tests`.
 
+## Fuzz tests
+
+The `fuzz/` directory holds coverage-guided fuzz tests for `bson`
+(PYTHON-4232). See [fuzz/README.md](fuzz/README.md) for details. The fuzz
+tests can only be run on Linux x86_64, the only platform with atheris
+wheels (CPython 3.12-3.14).
+
+- Regression test (runs on every PR):
+  `just setup-tests fuzz regression` then `just run-tests`.
+- Time-boxed fuzzing (runs daily on Evergreen): `just setup-tests fuzz fuzz`
+  then `just run-tests`.  Set `FUZZ_MAX_TIME` (seconds, default 300) to change
+  the per-target budget.
+
 ## Testing time-dependent operations
 
 - `test.utils_shared.delay` - One can trigger an arbitrarily long-running operation on the server using this delay utility
@@ -464,10 +476,10 @@ To run any of the test suites with minimum supported dependencies, pass `--test-
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
 - Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
 - There are some considerations about the Python version used in the test:
-    - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10`, `UV_PYTHON=3.14t`, or
-`UV_PYTHON=pypy3.11`).  Tasks are host-agnostic, so the interpreter lookup happens on the host: for a plain
+    - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10` or `UV_PYTHON=3.14t`).
+Tasks are host-agnostic, so the interpreter lookup happens on the host: for a plain
 CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at it, and for anything else
-(including PyPy, or a version the toolchain lacks) uv downloads it.
+(a version the toolchain lacks) uv downloads it.
     - If a specific Python binary is needed (for example on the FIPS host), set `UV_PYTHON=/path/to/python`.
     - The default if `UV_PYTHON` is not set is CPython 3.10.  This is deterministic across host types, so a task
       that does not pin a version always gets the same Python (with the build headers (`Python.h`) needed to build
@@ -480,6 +492,12 @@ CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at
       the setup scripts write a `uv.toml` boundary into the submodule checkout that stops uv's config discovery
       (and with it the required-version check) at the submodule boundary.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
+- PR tasks pin to the Python boundaries: `MIN_PYTHON` with `TEST_MIN_DEPS=1`, `MAX_PYTHON`, and one
+  `FREE_THREADED_PYTHON`, against the newest numbered server (`MAX_VERSION`; the `latest` nightly
+  is unstable), plus the min server (`MIN_VERSION`) through its `MIN_PYTHON` floor. Each runs with
+  `COVERAGE=1`. The pins derive from `CPYTHONS` in `generate_config_utils.py`, so CPython changes
+  re-bind them rather than reshuffle the set. Check the regenerated `generated_configs/tasks.yml`
+  diff to confirm the `pr` tags.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
 
 ## Handling flaky tests

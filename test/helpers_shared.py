@@ -43,7 +43,7 @@ if HAVE_SSL:
     import ssl
 
 
-# Enable debug output for uncollectable objects. PyPy does not have set_debug.
+# Enable debug output for uncollectable objects.
 if hasattr(gc, "set_debug"):
     gc.set_debug(
         gc.DEBUG_UNCOLLECTABLE | getattr(gc, "DEBUG_OBJECTS", 0) | getattr(gc, "DEBUG_INSTANCES", 0)
@@ -212,7 +212,7 @@ def _get_executors(topology):
             executors.append(server._monitor._executor)
         if hasattr(server._monitor, "_rtt_monitor"):
             executors.append(server._monitor._rtt_monitor._executor)
-    executors.append(topology._Topology__events_executor)
+    executors.append(topology._events_executor)
     if topology._srv_monitor:
         executors.append(topology._srv_monitor._executor)
 

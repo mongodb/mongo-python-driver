@@ -113,7 +113,7 @@ def _connect_kms(
         _close_rejected_kms_socket(sock)
         raise ConfigurationError(
             "kms_connect_callback must return a connected, unwrapped "
-            f"socket.socket, not {type(sock)}."
+            f"socket.socket, not {type(sock)}; consider HTTPProxyKMSConnect."
         )
     # wrap_socket refuses a non-blocking socket, so normalize the mode here.
     try:

@@ -2351,11 +2351,6 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 PyObject* binary_value = NULL;
                 char uuid_rep = options->uuid_rep;
 
-                /* UUID should always be 16 bytes */
-                if (length != 16) {
-                    goto uuiderror;
-                }
-
                 PyObject* subtype_obj = PyLong_FromLong(subtype);
                 if (!subtype_obj) {
                     goto uuiderror;

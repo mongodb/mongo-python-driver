@@ -1258,7 +1258,7 @@ class _Query:
         if self.exhaust:
             _check_exhaust_supported(conn)
 
-        conn.validate_session(self.client, self.session)  # type: ignore[arg-type]
+        conn.validate_session(self.client, self.session)
         return True
 
     def update_command(self, cmd: dict[str, Any]) -> None:
@@ -1296,10 +1296,10 @@ class _Query:
             # Explain does not support readConcern.
             if not explain and not self.session.in_transaction:
                 self.session._update_read_concern(cmd, conn)
-        conn.send_cluster_time(cmd, self.session, self.client)  # type: ignore[arg-type]
+        conn.send_cluster_time(cmd, self.session, self.client)
         # Support CSOT
         if apply_timeout:
-            conn.apply_timeout(self.client, cmd=cmd)  # type: ignore[arg-type]
+            conn.apply_timeout(cmd=cmd)
         self._as_command = cmd, self.db
         return self._as_command
 
@@ -1382,7 +1382,7 @@ class _GetMore:
         if self.exhaust:
             _check_exhaust_supported(conn)
 
-        conn.validate_session(self.client, self.session)  # type: ignore[arg-type]
+        conn.validate_session(self.client, self.session)
         return True
 
     def update_command(self, cmd: dict[str, Any]) -> None:
@@ -1406,10 +1406,10 @@ class _GetMore:
         if self.session:
             self.session._apply_to(cmd, False, self.read_preference, conn)
         conn.add_server_api(cmd)
-        conn.send_cluster_time(cmd, self.session, self.client)  # type: ignore[arg-type]
+        conn.send_cluster_time(cmd, self.session, self.client)
         # Support CSOT
         if apply_timeout:
-            conn.apply_timeout(self.client, cmd=None)  # type: ignore[arg-type]
+            conn.apply_timeout(cmd=None)
         self._as_command = cmd, self.db
         return self._as_command
 
