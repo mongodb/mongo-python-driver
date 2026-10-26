@@ -142,7 +142,7 @@ def _is_faas() -> bool:
     return _is_lambda() or _is_azure_func() or _is_gcp_func() or _is_vercel()
 
 
-# Ordered per the handshake spec (DRIVERS-3529): the first populated variable
+# Ordered per the handshake spec: the first populated variable
 # gives client.env.agent, whatever its value.
 _AGENT_ENV_VARS = [
     ("CLAUDECODE", "claude_code"),
@@ -324,7 +324,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         plat = metadata.pop("platform", None)
         if plat is not None:
             size -= _element_size("platform", plat)
-    # 6. Truncate driver info keeping name and version 1:1 index-aligned.
+    # 6. Truncate driver info, keeping name and version 1:1 index-aligned.
     driver = metadata.get("driver", {})
     if driver:
         # Keep the name and version segments paired so they stay 1:1 aligned,
@@ -345,7 +345,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         overflow = size - _MAX_METADATA_SIZE
         while overflow > 0 and len(pairs) > 1:
             # A single remaining pair never exceeds the limit: it is the base
-            # driver pair which steps 1-5 left small enough to fit.
+            # driver pair, which steps 1-5 left small enough to fit.
             last_name, last_version = pairs[-1]
             if last_version:
                 new_version = _truncate_utf8(last_version, overflow)

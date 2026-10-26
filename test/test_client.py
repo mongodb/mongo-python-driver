@@ -512,12 +512,7 @@ class ClientUnitTest(UnitTest):
         )
 
     def _metadata_with_agent_env(self, with_name: bool) -> dict[str, Any]:
-        """Metadata over the limit with env holding agent (and name).
-
-        Dropping env.agent alone must bring the document back under the
-        limit. With agent-only env the excess is the env element less one byte
-        so removing env alone must bring the document one byte under.
-        """
+        """Create metadata just over the size limit enforced by omitting `env.agent`."""
         env: dict[str, Any] = {"agent": "claude_code"}
         if with_name:
             env["name"] = "azure.func"
@@ -531,11 +526,8 @@ class ClientUnitTest(UnitTest):
             if with_name
             else _MAX_METADATA_SIZE - 1 + _element_size("env", env)
         )
-        plat_len = next(
-            n
-            for n in range(1, 2 * _MAX_METADATA_SIZE)
-            if len(bson.encode(metadata_for(n))) == target
-        )
+        # Each platform character adds exactly one byte.
+        plat_len = target - len(bson.encode(metadata_for(0)))
         return metadata_for(plat_len)
 
     def test_metadata_truncation_omits_agent_before_name(self):
@@ -2448,45 +2440,61 @@ class TestClient(IntegrationTest):
 
     def test_handshake_10_agent_known(self):
         self._test_handshake({"CLAUDECODE": "1"}, {"agent": "claude_code"})
+
+    def test_handshake_11_agent_known_fixed_name(self):
         self._test_handshake({"CURSOR_AGENT": "some-value-42"}, {"agent": "cursor"})
+
+    def test_handshake_12_agent_known_opencode(self):
         self._test_handshake({"OPENCODE": "1"}, {"agent": "opencode_client"})
+
+    def test_handshake_13_agent_known_opencode_client(self):
         self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
 
-    def test_handshake_11_agent_known_precedence(self):
+    def test_handshake_14_agent_known_precedence(self):
         self._test_handshake({"GEMINI_CLI": "1", "CURSOR_AGENT": "1"}, {"agent": "cursor"})
 
-    def test_handshake_12_agent_known_beats_generic(self):
+    def test_handshake_15_agent_known_beats_generic(self):
         self._test_handshake(
             {"AI_AGENT": "custom-agent", "CLAUDECODE": "1"}, {"agent": "claude_code"}
         )
 
-    def test_handshake_13_agent_generic(self):
+    def test_handshake_16_agent_generic_descriptive(self):
         self._test_handshake({"AI_AGENT": "custom-agent"}, {"agent": "custom-agent"})
+
+    def test_handshake_17_agent_generic_boolean(self):
         self._test_handshake({"AI_AGENT": "1"}, {"agent": "ai_agent"})
         self._test_handshake({"AI_AGENT": "true"}, {"agent": "ai_agent"})
-        self._test_handshake({"AI_AGENT": " true "}, {"agent": "ai_agent"})
-        self._test_handshake({"AI_AGENT": "custom-\udcff"}, {"agent": "custom-"})
 
-    def test_handshake_14_agent_generic_normalized(self):
+    def test_handshake_18_agent_generic_boolean_whitespace(self):
+        self._test_handshake({"AI_AGENT": " true "}, {"agent": "ai_agent"})
+
+    def test_handshake_19_agent_generic_normalized(self):
         self._test_handshake(
             {"AI_AGENT": " Claude-Code_2-1-238_Agent "}, {"agent": "claude-code_2-1-238_agent"}
         )
 
-    def test_handshake_15_agent_generic_truncated(self):
+    def test_handshake_20_agent_generic_truncated(self):
         self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
 
-    def test_handshake_16_agent_generic_truncated_on_boundary(self):
+    def test_handshake_21_agent_generic_truncated_on_boundary(self):
         # The byte limit falls inside the two-byte "é". No part of it and no
         # U+FFFD may appear.
         value = "a" * (_MAX_AGENT_SIZE - 1) + "é"
         self._test_handshake({"AI_AGENT": value}, {"agent": "a" * (_MAX_AGENT_SIZE - 1)})
 
-    def test_handshake_17_agent_unset(self):
+    def test_handshake_22_agent_generic_malformed(self):
+        self._test_handshake({"AI_AGENT": "custom-\udcff"}, {"agent": "custom-"})
+
+    def test_handshake_23_agent_unset_empty(self):
         self._test_handshake({"AI_AGENT": ""}, None)
+
+    def test_handshake_24_agent_unset_whitespace(self):
         self._test_handshake({"AI_AGENT": "   "}, None)
+
+    def test_handshake_25_agent_unset_known_whitespace(self):
         self._test_handshake({"CLAUDECODE": "   "}, None)
 
-    def test_handshake_18_agent_with_provider(self):
+    def test_handshake_26_agent_with_provider(self):
         self._test_handshake(
             {
                 "AWS_EXECUTION_ENV": "AWS_Lambda_java8",

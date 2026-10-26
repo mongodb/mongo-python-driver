@@ -519,12 +519,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         )
 
     def _metadata_with_agent_env(self, with_name: bool) -> dict[str, Any]:
-        """Metadata over the limit with env holding agent (and name).
-
-        Dropping env.agent alone must bring the document back under the
-        limit. With agent-only env the excess is the env element less one byte
-        so removing env alone must bring the document one byte under.
-        """
+        """Create metadata just over the size limit enforced by omitting `env.agent`."""
         env: dict[str, Any] = {"agent": "claude_code"}
         if with_name:
             env["name"] = "azure.func"
@@ -538,11 +533,8 @@ class AsyncClientUnitTest(AsyncUnitTest):
             if with_name
             else _MAX_METADATA_SIZE - 1 + _element_size("env", env)
         )
-        plat_len = next(
-            n
-            for n in range(1, 2 * _MAX_METADATA_SIZE)
-            if len(bson.encode(metadata_for(n))) == target
-        )
+        # Each platform character adds exactly one byte.
+        plat_len = target - len(bson.encode(metadata_for(0)))
         return metadata_for(plat_len)
 
     async def test_metadata_truncation_omits_agent_before_name(self):
@@ -2495,45 +2487,61 @@ class TestClient(AsyncIntegrationTest):
 
     async def test_handshake_10_agent_known(self):
         await self._test_handshake({"CLAUDECODE": "1"}, {"agent": "claude_code"})
+
+    async def test_handshake_11_agent_known_fixed_name(self):
         await self._test_handshake({"CURSOR_AGENT": "some-value-42"}, {"agent": "cursor"})
+
+    async def test_handshake_12_agent_known_opencode(self):
         await self._test_handshake({"OPENCODE": "1"}, {"agent": "opencode_client"})
+
+    async def test_handshake_13_agent_known_opencode_client(self):
         await self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
 
-    async def test_handshake_11_agent_known_precedence(self):
+    async def test_handshake_14_agent_known_precedence(self):
         await self._test_handshake({"GEMINI_CLI": "1", "CURSOR_AGENT": "1"}, {"agent": "cursor"})
 
-    async def test_handshake_12_agent_known_beats_generic(self):
+    async def test_handshake_15_agent_known_beats_generic(self):
         await self._test_handshake(
             {"AI_AGENT": "custom-agent", "CLAUDECODE": "1"}, {"agent": "claude_code"}
         )
 
-    async def test_handshake_13_agent_generic(self):
+    async def test_handshake_16_agent_generic_descriptive(self):
         await self._test_handshake({"AI_AGENT": "custom-agent"}, {"agent": "custom-agent"})
+
+    async def test_handshake_17_agent_generic_boolean(self):
         await self._test_handshake({"AI_AGENT": "1"}, {"agent": "ai_agent"})
         await self._test_handshake({"AI_AGENT": "true"}, {"agent": "ai_agent"})
-        await self._test_handshake({"AI_AGENT": " true "}, {"agent": "ai_agent"})
-        await self._test_handshake({"AI_AGENT": "custom-\udcff"}, {"agent": "custom-"})
 
-    async def test_handshake_14_agent_generic_normalized(self):
+    async def test_handshake_18_agent_generic_boolean_whitespace(self):
+        await self._test_handshake({"AI_AGENT": " true "}, {"agent": "ai_agent"})
+
+    async def test_handshake_19_agent_generic_normalized(self):
         await self._test_handshake(
             {"AI_AGENT": " Claude-Code_2-1-238_Agent "}, {"agent": "claude-code_2-1-238_agent"}
         )
 
-    async def test_handshake_15_agent_generic_truncated(self):
+    async def test_handshake_20_agent_generic_truncated(self):
         await self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
 
-    async def test_handshake_16_agent_generic_truncated_on_boundary(self):
+    async def test_handshake_21_agent_generic_truncated_on_boundary(self):
         # The byte limit falls inside the two-byte "é". No part of it and no
         # U+FFFD may appear.
         value = "a" * (_MAX_AGENT_SIZE - 1) + "é"
         await self._test_handshake({"AI_AGENT": value}, {"agent": "a" * (_MAX_AGENT_SIZE - 1)})
 
-    async def test_handshake_17_agent_unset(self):
+    async def test_handshake_22_agent_generic_malformed(self):
+        await self._test_handshake({"AI_AGENT": "custom-\udcff"}, {"agent": "custom-"})
+
+    async def test_handshake_23_agent_unset_empty(self):
         await self._test_handshake({"AI_AGENT": ""}, None)
+
+    async def test_handshake_24_agent_unset_whitespace(self):
         await self._test_handshake({"AI_AGENT": "   "}, None)
+
+    async def test_handshake_25_agent_unset_known_whitespace(self):
         await self._test_handshake({"CLAUDECODE": "   "}, None)
 
-    async def test_handshake_18_agent_with_provider(self):
+    async def test_handshake_26_agent_with_provider(self):
         await self._test_handshake(
             {
                 "AWS_EXECUTION_ENV": "AWS_Lambda_java8",
