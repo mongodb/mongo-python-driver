@@ -82,10 +82,12 @@ from pymongo.errors import (
 )
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
 from pymongo.pool_options import (
+    _MAX_AGENT_SIZE,
     _MAX_METADATA_SIZE,
     _METADATA,
     ENV_VAR_K8S,
     PoolOptions,
+    _element_size,
     _truncate_metadata,
 )
 from pymongo.read_preferences import ReadPreference
@@ -137,6 +139,7 @@ from test.utils_shared import (
     lazy_client_trial,
     one,
     suppress_fork_deprecation,
+    unset_agent_env,
 )
 
 _IS_SYNC = True
@@ -382,6 +385,7 @@ class ClientUnitTest(UnitTest):
         )
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
+    @unset_agent_env()
     def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         if has_c():
@@ -415,6 +419,7 @@ class ClientUnitTest(UnitTest):
         with self.assertRaises(TypeError):
             self.simple_client(driver=("Foo", "1", "a"))
 
+    @unset_agent_env()
     def test_metadata_appends_driver_info(self):
         metadata = _metadata_with_appended_driver(_IS_SYNC, "FooDriver", "1.2.3")
         client = self.simple_client(
@@ -506,6 +511,72 @@ class ClientUnitTest(UnitTest):
             {"name": "PyMongo|" + "W" * name_len, "version": "1.0|1.0"},
         )
 
+    def _metadata_with_agent_env(self, with_name: bool) -> dict[str, Any]:
+        """Create metadata just over the size limit enforced by omitting `env.agent`."""
+        env: dict[str, Any] = {"agent": "claude_code"}
+        if with_name:
+            env["name"] = "azure.func"
+        os_meta = {"type": "Darwin", "name": "Darwin", "architecture": "arm64", "version": "26.7.1"}
+
+        def metadata_for(plat_len: int) -> dict[str, Any]:
+            return {"env": env, "os": os_meta, "platform": "p" * plat_len}
+
+        target = (
+            _MAX_METADATA_SIZE + 1
+            if with_name
+            else _MAX_METADATA_SIZE - 1 + _element_size("env", env)
+        )
+        # Each platform character adds exactly one byte.
+        plat_len = target - len(bson.encode(metadata_for(0)))
+        return metadata_for(plat_len)
+
+    def test_metadata_truncation_keeps_name_and_agent(self):
+        # Dropping the other env fields alone must bring the document back
+        # under the limit.
+        env: dict[str, Any] = {
+            "name": "azure.func",
+            "agent": "claude_code",
+            "region": "us-east-2",
+            "memory_mb": 1024,
+        }
+        os_meta = {"type": "Darwin", "name": "Darwin", "architecture": "arm64", "version": "26.7.1"}
+
+        def metadata_for(plat_len: int) -> dict[str, Any]:
+            return {"env": env, "os": os_meta, "platform": "p" * plat_len}
+
+        # Each platform character adds exactly one byte.
+        plat_len = _MAX_METADATA_SIZE + 1 - len(bson.encode(metadata_for(0)))
+        metadata = metadata_for(plat_len)
+        plat = metadata["platform"]
+        _truncate_metadata(metadata)
+        self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(metadata["env"], {"name": "azure.func", "agent": "claude_code"})
+        self.assertEqual(metadata["os"], os_meta)
+        self.assertEqual(metadata["platform"], plat)
+
+    def test_metadata_truncation_omits_agent_before_name(self):
+        metadata = self._metadata_with_agent_env(with_name=True)
+        os_meta = metadata["os"]
+        plat = metadata["platform"]
+        _truncate_metadata(metadata)
+        self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(metadata["env"], {"name": "azure.func"})
+        self.assertEqual(metadata["os"], os_meta)
+        self.assertEqual(metadata["platform"], plat)
+
+    def test_metadata_truncation_omits_agent_only_env(self):
+        # env holds only agent so the whole env document is omitted. The size
+        # accounting must record the full env element so no later field is
+        # touched.
+        metadata = self._metadata_with_agent_env(with_name=False)
+        os_meta = metadata["os"]
+        plat = metadata["platform"]
+        _truncate_metadata(metadata)
+        self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertNotIn("env", metadata)
+        self.assertEqual(metadata["os"], os_meta)
+        self.assertEqual(metadata["platform"], plat)
+
     def test_metadata_append_is_bounded(self):
         # Successive appends must stay within the limit and keep name and
         # version index-aligned after truncation. Once the metadata saturates,
@@ -560,6 +631,7 @@ class ClientUnitTest(UnitTest):
         self.assertEqual(metadata["driver"]["name"], names)
         self.assertEqual(metadata["driver"]["version"], vers)
 
+    @unset_agent_env()
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
         metadata = copy.deepcopy(_METADATA)
@@ -2280,7 +2352,9 @@ class TestClient(IntegrationTest):
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
     def _test_handshake(self, env_vars, expected_env):
-        with patch.dict("os.environ", env_vars):
+        # Unset agent env vars already set in the test process (e.g. AI_AGENT
+        # set by the CI runner) so detection only reflects env_vars.
+        with unset_agent_env(), patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
             if has_c():
                 metadata["driver"]["name"] = "PyMongo|c"
@@ -2386,6 +2460,72 @@ class TestClient(IntegrationTest):
                 "region": "us-east-1",
                 "memory_mb": 256,
             },
+        )
+
+    def test_handshake_10_agent_known(self):
+        self._test_handshake({"CLAUDECODE": "1"}, {"agent": "claude_code"})
+
+    def test_handshake_11_agent_known_fixed_name(self):
+        self._test_handshake({"CURSOR_AGENT": "some-value-42"}, {"agent": "cursor"})
+
+    def test_handshake_12_agent_known_opencode(self):
+        self._test_handshake({"OPENCODE": "1"}, {"agent": "opencode_client"})
+
+    def test_handshake_13_agent_known_opencode_client(self):
+        self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
+
+    def test_handshake_14_agent_known_precedence(self):
+        self._test_handshake({"GEMINI_CLI": "1", "CURSOR_AGENT": "1"}, {"agent": "cursor"})
+
+    def test_handshake_15_agent_known_beats_generic(self):
+        self._test_handshake(
+            {"AI_AGENT": "custom-agent", "CLAUDECODE": "1"}, {"agent": "claude_code"}
+        )
+
+    def test_handshake_16_agent_generic_descriptive(self):
+        self._test_handshake({"AI_AGENT": "custom-agent"}, {"agent": "custom-agent"})
+
+    def test_handshake_17_agent_generic_boolean(self):
+        self._test_handshake({"AI_AGENT": "1"}, {"agent": "ai_agent"})
+        self._test_handshake({"AI_AGENT": "true"}, {"agent": "ai_agent"})
+
+    def test_handshake_18_agent_generic_boolean_whitespace(self):
+        self._test_handshake({"AI_AGENT": " true "}, {"agent": "ai_agent"})
+
+    def test_handshake_19_agent_generic_normalized(self):
+        self._test_handshake(
+            {"AI_AGENT": " Claude-Code_2-1-238_Agent "}, {"agent": "claude-code_2-1-238_agent"}
+        )
+
+    def test_handshake_20_agent_generic_truncated(self):
+        self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
+
+    def test_handshake_21_agent_generic_truncated_on_boundary(self):
+        # The byte limit falls inside the two-byte "é". No part of it and no
+        # U+FFFD may appear.
+        value = "a" * (_MAX_AGENT_SIZE - 1) + "é"
+        self._test_handshake({"AI_AGENT": value}, {"agent": "a" * (_MAX_AGENT_SIZE - 1)})
+
+    def test_handshake_22_agent_generic_malformed(self):
+        self._test_handshake({"AI_AGENT": "custom-\udcff"}, {"agent": "custom-"})
+
+    def test_handshake_23_agent_unset_empty(self):
+        self._test_handshake({"AI_AGENT": ""}, None)
+
+    def test_handshake_24_agent_unset_whitespace(self):
+        self._test_handshake({"AI_AGENT": "   "}, None)
+
+    def test_handshake_25_agent_unset_known_whitespace(self):
+        self._test_handshake({"CLAUDECODE": "   "}, None)
+
+    def test_handshake_26_agent_with_provider(self):
+        self._test_handshake(
+            {
+                "AWS_EXECUTION_ENV": "AWS_Lambda_java8",
+                "AWS_REGION": "us-east-2",
+                "CLAUDECODE": "1",
+            },
+            {"name": "aws.lambda", "region": "us-east-2", "agent": "claude_code"},
         )
 
     def test_dict_hints(self):
