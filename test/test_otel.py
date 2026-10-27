@@ -42,6 +42,7 @@ if _otel._HAS_OPENTELEMETRY:
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import SimpleSpanProcessor
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+        from opentelemetry.trace import INVALID_SPAN_CONTEXT, NonRecordingSpan, SpanContext
 
         _HAS_OTEL_TEST_DEPS = True
     except ImportError:
@@ -50,6 +51,87 @@ if _otel._HAS_OPENTELEMETRY:
 _IS_SYNC = True
 
 pytestmark = pytest.mark.otel
+
+
+class _StubSpan:
+    """A minimal not-recording span stub that records observable calls.
+
+    ``valid`` toggles between a sampler-dropped context (valid) and an
+    api-only context (invalid); both report ``is_recording() == False``.
+    """
+
+    valid = True
+
+    def __init__(self) -> None:
+        self.attributes: dict[str, Any] = {}
+        self.exceptions: list[BaseException] = []
+        self.status: Any = None
+        self.ended = False
+
+    def get_span_context(self) -> Any:
+        if self.valid:
+            return SpanContext(
+                trace_id=0x11111111111111111111111111111111,
+                span_id=0x2222222222222222,
+                is_remote=False,
+            )
+        return INVALID_SPAN_CONTEXT
+
+    def is_recording(self) -> bool:
+        return False
+
+    def set_attribute(self, key: str, value: Any) -> None:
+        self.attributes[key] = value
+
+    def record_exception(self, exception: BaseException) -> None:
+        self.exceptions.append(exception)
+
+    def set_status(self, status: Any) -> None:
+        self.status = status
+
+    def end(self) -> None:
+        self.ended = True
+
+
+class _StubTracer:
+    """A tracer whose ``start_span`` returns a canned :class:`_StubSpan`."""
+
+    def __init__(self, span: _StubSpan) -> None:
+        self._span = span
+        self.created: list[tuple[str, Optional[dict[str, Any]]]] = []
+
+    def start_span(self, name: str, kind: Any = None, attributes: Any = None) -> _StubSpan:
+        self.created.append((name, attributes))
+        return self._span
+
+
+class _NoSdkSpan:
+    """A not-recording span with an invalid context, like api-only returns."""
+
+    def get_span_context(self) -> Any:
+        return INVALID_SPAN_CONTEXT
+
+    def is_recording(self) -> bool:
+        return False
+
+    def set_attribute(self, key: str, value: Any) -> None:
+        pass
+
+    def record_exception(self, exception: BaseException) -> None:
+        pass
+
+    def set_status(self, status: Any) -> None:
+        pass
+
+    def end(self) -> None:
+        pass
+
+
+class _NoSdkTracer:
+    """A tracer like the one an api-only (no SDK) install hands the driver."""
+
+    def start_span(self, name: str, kind: Any = None, attributes: Any = None) -> _NoSdkSpan:
+        return _NoSdkSpan()
 
 
 def _shared_test_provider() -> TracerProvider:
@@ -372,6 +454,106 @@ class TestOTelSpans(IntegrationTest):
         coll = client[self.db.name].test_otel_operation
         coll.drop()
         coll.insert_one({"x": 1})
+        self.assertEqual(self.spans(), [])
+
+    # Invalid context: skip all span work.
+    def test_operation_span_skipped_when_context_invalid(self):
+        tracer = _StubTracer(_StubSpan())
+        tracer._span.valid = False
+        with patch.object(_otel, "_TRACER", tracer):
+            context = _otel.operation_span(
+                {"enabled": True, "query_text_max_length": 0}, "insert", "db", "coll"
+            )
+        self.assertEqual(len(tracer.created), 1)
+        name, attributes = tracer.created[0]
+        self.assertEqual(name, "insert db.coll")
+        self.assertEqual(
+            attributes,
+            {
+                "db.system.name": "mongodb",
+                "db.namespace": "db",
+                "db.collection.name": "coll",
+                "db.operation.name": "insert",
+            },
+        )
+        self.assertIs(context, _otel._NO_OPERATION_SPAN)
+        with context:
+            pass
+
+    def test_operation_span_made_current_but_not_recorded_when_dropped(self):
+        # Dropped by the sampler: still made current and ended.
+        span = _StubSpan()
+        with patch.object(_otel, "_TRACER", _StubTracer(span)):
+            context = _otel.operation_span(
+                {"enabled": True, "query_text_max_length": 0}, "insert", "db", "coll"
+            )
+        self.assertIsNot(context, _otel._NO_OPERATION_SPAN)
+        with self.assertRaises(ValueError):
+            with context:
+                raise ValueError("operation failed")
+        self.assertTrue(span.ended)
+        self.assertEqual(span.attributes, {})
+        self.assertEqual(span.exceptions, [])
+        self.assertIsNone(span.status)
+
+    def test_command_span_skipped_when_context_invalid(self):
+        class _FakeConn:
+            id = 1
+            server_connection_id: Optional[int] = None
+            address: _Address = ("localhost", 27017)
+            service_id = None
+            _otel_connection_attributes: tuple[Optional[int], dict[str, Any]] = (None, {})
+
+        with patch.object(_otel, "_TRACER", _NoSdkTracer()):
+            span = _otel.start_command_span(
+                {"enabled": True, "query_text_max_length": 0},
+                _FakeConn(),
+                {"ping": 1},
+                "admin",
+                "ping",
+                False,
+            )
+        self.assertIsNone(span)
+        _otel.end_command_span_success(span, {"ping": 1}, "ping", {"ok": 1})
+        _otel.end_command_span_failure(span, {}, TimeoutError("timed out"))
+
+    def test_command_span_valid_but_not_recorded_gets_no_outcome(self):
+        class _FakeConn:
+            id = 1
+            server_connection_id: Optional[int] = None
+            address: _Address = ("localhost", 27017)
+            service_id = None
+            _otel_connection_attributes: tuple[Optional[int], dict[str, Any]] = (None, {})
+
+        span = _StubSpan()
+        with patch.object(_otel, "_TRACER", _StubTracer(span)):
+            got = _otel.start_command_span(
+                {"enabled": True, "query_text_max_length": 0},
+                _FakeConn(),
+                {"ping": 1, "txnNumber": 5},
+                "admin",
+                "ping",
+                False,
+            )
+        self.assertIs(got, span)
+        self.assertEqual(span.attributes, {})
+        _otel.end_command_span_failure(got, {"code": 26}, OperationFailure("nope"))
+        self.assertEqual(span.exceptions, [])
+        self.assertEqual(span.attributes, {})
+        self.assertIsNone(span.status)
+        self.assertTrue(span.ended)
+
+    def test_api_only_produces_no_spans(self):
+        # Tracing enabled but no SDK installed: no span does any work.
+        client = self.rs_or_single_client(tracing={"enabled": True})
+        coll = client[self.db.name].test_otel_operation
+        coll.drop()
+        self.exporter.clear()
+
+        with patch.object(_otel, "_TRACER", _NoSdkTracer()):
+            coll.insert_one({"x": 1})
+            with self.assertRaises(OperationFailure):
+                client[self.db.name].command("thisCommandDoesNotExist")
         self.assertEqual(self.spans(), [])
 
     def test_tracing_disabled_by_default(self):

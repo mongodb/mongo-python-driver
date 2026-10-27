@@ -50,6 +50,7 @@ except ImportError:
     _TRACER = None
 
 if TYPE_CHECKING:
+    from opentelemetry.context import Context, Token
     from opentelemetry.trace import Span, Tracer
 
     from pymongo.pool_shared import _ConnectionTelemetryInfo
@@ -290,8 +291,9 @@ def start_command_span(
 ) -> Optional[Span]:
     """Start and return a CLIENT-kind span for a server command, or None.
 
-    Returns None when tracing is disabled/unavailable or the command is
-    sensitive (mirroring the redaction applied to logs).
+    Returns None when tracing is disabled/unavailable, the command is
+    sensitive (mirroring the redaction applied to logs), or the created
+    span's context is invalid.
 
     Only cheap attributes (constants and values already held by the
     connection) are provided at span creation, so they are visible to the
@@ -313,9 +315,10 @@ def start_command_span(
 
     assert _TRACER is not None  # _is_tracing_enabled already checked _HAS_OPENTELEMETRY
     span = _TRACER.start_span(command_name, kind=_SPAN_KIND_CLIENT, attributes=attributes)
+    if not span.get_span_context().is_valid:
+        return None
     if not span.is_recording():
-        # The span was dropped by the sampler (or tracing is a no-op): the
-        # spec says no further attributes are added to it.
+        # Dropped by the sampler: no attributes, but still ended.
         return span
 
     # Expensive attributes, added after the sampling decision; they are not
@@ -348,18 +351,21 @@ def end_command_span_success(
     cursor is exhausted, so the attribute is omitted unless the command
     operated on an existing cursor (getMore), in which case the cursor id the
     command sent is recorded; a literal zero is never recorded.
+
+    The outcome is only recorded when the span is recording; it ends either way.
     """
     if span is None:
         return
-    cursor = reply.get("cursor")
-    if isinstance(cursor, Mapping) and "id" in cursor:
-        cursor_id = cursor["id"]
-        if cursor_id:
-            span.set_attribute("db.mongodb.cursor_id", cursor_id)
-        elif command_name == _GET_MORE:
-            sent_id = cmd.get(_GET_MORE)
-            if sent_id:
-                span.set_attribute("db.mongodb.cursor_id", sent_id)
+    if span.is_recording():
+        cursor = reply.get("cursor")
+        if isinstance(cursor, Mapping) and "id" in cursor:
+            cursor_id = cursor["id"]
+            if cursor_id:
+                span.set_attribute("db.mongodb.cursor_id", cursor_id)
+            elif command_name == _GET_MORE:
+                sent_id = cmd.get(_GET_MORE)
+                if sent_id:
+                    span.set_attribute("db.mongodb.cursor_id", sent_id)
     span.end()
 
 
@@ -373,18 +379,21 @@ def end_command_span_failure(
     ``error.type`` (OpenTelemetry convention): the server response code when
     the failure came from a server response, otherwise the exception class
     name, so server and transport failures are distinguishable.
+
+    The outcome is only recorded when the span is recording; it ends either way.
     """
     if span is None:
         return
-    span.record_exception(exc)
-    code = failure.get("code")
-    if code is not None:
-        code = str(code)
-        span.set_attribute("db.response.status_code", code)
-        span.set_attribute("error.type", code)
-    else:
-        span.set_attribute("error.type", type(exc).__name__)
-    span.set_status(Status(StatusCode.ERROR, description=failure.get("errmsg")))
+    if span.is_recording():
+        span.record_exception(exc)
+        code = failure.get("code")
+        if code is not None:
+            code = str(code)
+            span.set_attribute("db.response.status_code", code)
+            span.set_attribute("error.type", code)
+        else:
+            span.set_attribute("error.type", type(exc).__name__)
+        span.set_status(Status(StatusCode.ERROR, description=failure.get("errmsg")))
     span.end()
 
 
@@ -414,26 +423,27 @@ class _OperationSpanContext:
     command spans (created with ``Tracer.start_span``, which parents from the
     current context) nest beneath it. Ends the span on exit; on exception,
     records the exception and sets the spec's ``error.type`` attribute first.
+    The outcome is only recorded when the span is recording; it ends either way.
     """
 
     __slots__ = ("_span", "_token")
 
     def __init__(self, span: Span) -> None:
         self._span = span
-        self._token: Optional[object] = None
+        self._token: Optional[Token[Context]] = None
 
     def __enter__(self) -> Span:
         self._token = otel_context.attach(trace.set_span_in_context(self._span))
         return self._span
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+        assert self._token is not None
         otel_context.detach(self._token)
         span = self._span
-        if exc_value is not None:
+        if exc_value is not None and span.is_recording():
             span.record_exception(exc_value)
-            # The spec's operation-span error.type: the name of the exception
-            # class raised to the application (a failed command does not carry
-            # its server code over: a retry of the same operation may succeed).
+            # The exception class name raised to the application: a failed
+            # command does not carry its server code over.
             span.set_attribute("error.type", type(exc_value).__name__)
             span.set_status(Status(StatusCode.ERROR, description=str(exc_value)))
         span.end()
@@ -452,7 +462,12 @@ def operation_span(
     all of the driver's activities, named ``operation_name db.collection_name``
     (or ``operation_name db`` when there is no collection) and carrying the
     spec's required attributes. Returns the :data:`_NO_OPERATION_SPAN`
-    singleton when tracing is disabled so the disabled path stays at parity.
+    singleton when tracing is disabled or the created span's context is
+    invalid (never recorded and unable to parent anything, so all span work
+    is skipped).
+
+    ``db.operation.summary`` is added only when the span is recording, per
+    the spec's performance guidelines.
     """
     if not _is_tracing_enabled(tracing_options):
         return _NO_OPERATION_SPAN
@@ -463,13 +478,15 @@ def operation_span(
     attributes: dict[str, Any] = {
         "db.system.name": "mongodb",
         "db.operation.name": operation_name,
-        "db.operation.summary": summary,
     }
     if dbname:
         attributes["db.namespace"] = dbname
     if collection:
         attributes["db.collection.name"] = collection
     assert _TRACER is not None  # _is_tracing_enabled already checked _HAS_OPENTELEMETRY
-    return _OperationSpanContext(
-        _TRACER.start_span(summary, kind=_SPAN_KIND_CLIENT, attributes=attributes)
-    )
+    span = _TRACER.start_span(summary, kind=_SPAN_KIND_CLIENT, attributes=attributes)
+    if not span.get_span_context().is_valid:
+        return _NO_OPERATION_SPAN
+    if span.is_recording():
+        span.set_attribute("db.operation.summary", summary)
+    return _OperationSpanContext(span)
