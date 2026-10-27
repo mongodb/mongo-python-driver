@@ -47,6 +47,9 @@ just setup-tests fuzz regression
 just run-tests
 ```
 
+On every PR, the `fuzz-regression` task runs the committed reproducers and the full generated seed
+corpus.
+
 Or without the justfile:
 
 ```bash
@@ -114,5 +117,5 @@ fuzz_decode.py      Fuzz target: bson.decode()
 fuzz_decode_all.py  Fuzz target: bson.decode_all()
 fuzz_is_valid.py    Fuzz target: bson.is_valid()
 fuzz_shared.py      Code shared by the fuzz targets
-regression/         Known bug reproducers (no corpus setup required)
+regression/         Known bug reproducers; run with the seed corpus on PRs
 ```

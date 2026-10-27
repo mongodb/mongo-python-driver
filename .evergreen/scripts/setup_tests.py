@@ -530,8 +530,9 @@ def handle_test_env() -> None:
         else:
             TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
 
-    if test_name == "fuzz" and sub_test_name != "regression":
-        # Build the seed corpus from the vendored spec data.
+    if test_name == "fuzz":
+        # Build the seed corpus from the vendored spec data. Regression runs
+        # run it too.
         scratch_dir = ROOT / "fuzz-scratch"
         shutil.rmtree(scratch_dir, ignore_errors=True)
         corpus_dir = scratch_dir / "corpus"

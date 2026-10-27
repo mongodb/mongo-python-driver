@@ -57,6 +57,10 @@ def normalize(obj: object) -> object:
         return [normalize(v) for v in obj]
     if isinstance(obj, float) and math.isnan(obj):
         return "nan"
+    if type(obj).__name__ == "Regex":
+        # int() canonicalizes the C extension's plain int flags and pure
+        # Python's re.RegexFlag.
+        return f"Regex:{obj.pattern!r}:{int(obj.flags)}"
     return f"{type(obj).__name__}:{obj!r}"
 
 
