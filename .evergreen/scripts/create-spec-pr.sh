@@ -46,6 +46,13 @@ if [ -n "$bot_id" ]; then
 fi
 
 git add ./test
+
+if git diff --cached --quiet && git diff --quiet --ignore-submodules=dirty; then
+    echo "No spec changes to commit; skipping PR creation."
+    cat "$1"
+    exit 0
+fi
+
 git commit -am "resyncing specs $(date '+%m-%d-%Y')"
 echo "Creating the git checkout... done."
 
