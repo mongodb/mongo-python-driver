@@ -157,7 +157,7 @@ def handle_fuzz() -> None:
                 f"No fuzz seed corpus found in {corpus_dir}; was setup_tests.py run?"
             )
         inputs.extend(corpus_files)
-        # Each input runs exactly once without mutating; the -atheris_runs
+        # Each input runs exactly once without random fuzzing; the -atheris_runs
         # budget equals the file count so atheris exits cleanly after the last.
         runs = len(inputs)
         for target in targets:
