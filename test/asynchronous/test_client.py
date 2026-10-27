@@ -2267,11 +2267,13 @@ class TestClient(AsyncIntegrationTest):
             AsyncMongoClient(["host1", "host2"], directConnection=True)
 
     async def test_continuous_network_errors(self):
+        # Only count this client's ServerDescriptions so that those left
+        # alive by earlier tests don't affect the count.
         def server_description_count():
             i = 0
             for obj in gc.get_objects():
                 try:
-                    if isinstance(obj, ServerDescription):
+                    if isinstance(obj, ServerDescription) and obj.address == ("invalid", 27017):
                         i += 1
                 except ReferenceError:
                     pass
@@ -2290,8 +2292,8 @@ class TestClient(AsyncIntegrationTest):
             await client.close()
             # If a bug like PYTHON-2433 is reintroduced then too many
             # ServerDescriptions will be kept alive and this test will fail:
-            # AssertionError: 11 != 47 within 20 delta (36 difference)
-            self.assertAlmostEqual(initial_count, final_count, delta=30)
+            # AssertionError: 1 != 42 within 10 delta (41 difference)
+            self.assertAlmostEqual(initial_count, final_count, delta=10)
 
     @async_client_context.require_failCommand_fail_point
     async def test_network_error_message(self):
