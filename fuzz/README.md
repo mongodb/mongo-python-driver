@@ -117,5 +117,5 @@ fuzz_decode.py      Fuzz target: bson.decode()
 fuzz_decode_all.py  Fuzz target: bson.decode_all()
 fuzz_is_valid.py    Fuzz target: bson.is_valid()
 fuzz_shared.py      Code shared by the fuzz targets
-regression/         Known bug reproducers; replayed with the seed corpus on PRs
+regression/         Known bug reproducers; run with the seed corpus on PRs
 ```
