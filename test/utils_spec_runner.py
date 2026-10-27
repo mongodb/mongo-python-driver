@@ -37,27 +37,30 @@ class SpecRunnerThread(ConcurrentRunner):
         self.ops = []
 
     def schedule(self, work):
-        self.ops.append(work)
         with self.cond:
+            self.ops.append(work)
             self.cond.notify()
 
     def stop(self):
-        self.stopped = True
         with self.cond:
+            self.stopped = True
             self.cond.notify()
 
     def run(self):
-        while not self.stopped or self.ops:
-            if not self.ops:
-                with self.cond:
+        while True:
+            # Check ops and stopped while holding the lock so a notify() from
+            # schedule() or stop() can't be missed before the wait starts.
+            with self.cond:
+                while not self.ops and not self.stopped:
                     _cond_wait(self.cond, 10)
-            if self.ops:
-                try:
-                    work = self.ops.pop(0)
-                    work()
-                except Exception as exc:
-                    self.exc = exc
-                    self.stop()
+                if not self.ops:
+                    break
+                work = self.ops.pop(0)
+            try:
+                work()
+            except Exception as exc:
+                self.exc = exc
+                self.stop()
 
 
 class SpecTestCreator:

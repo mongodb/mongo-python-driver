@@ -37,27 +37,30 @@ class SpecRunnerTask(ConcurrentRunner):
         self.ops = []
 
     async def schedule(self, work):
-        self.ops.append(work)
         async with self.cond:
+            self.ops.append(work)
             self.cond.notify()
 
     async def stop(self):
-        self.stopped = True
         async with self.cond:
+            self.stopped = True
             self.cond.notify()
 
     async def run(self):
-        while not self.stopped or self.ops:
-            if not self.ops:
-                async with self.cond:
+        while True:
+            # Check ops and stopped while holding the lock so a notify() from
+            # schedule() or stop() can't be missed before the wait starts.
+            async with self.cond:
+                while not self.ops and not self.stopped:
                     await _async_cond_wait(self.cond, 10)
-            if self.ops:
-                try:
-                    work = self.ops.pop(0)
-                    await work()
-                except Exception as exc:
-                    self.exc = exc
-                    await self.stop()
+                if not self.ops:
+                    break
+                work = self.ops.pop(0)
+            try:
+                await work()
+            except Exception as exc:
+                self.exc = exc
+                await self.stop()
 
 
 class AsyncSpecTestCreator:
