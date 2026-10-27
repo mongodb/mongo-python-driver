@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import os
 import pprint
 import sys
 import threading
@@ -25,7 +24,11 @@ from unittest import mock
 from pymongo import MongoClient
 from pymongo.common import MAX_ADAPTIVE_RETRIES
 from pymongo.errors import OperationFailure, PyMongoError
-from test.asynchronous.utils import async_ensure_all_connected, async_set_fail_point
+from test.asynchronous.utils import (
+    async_ensure_all_connected,
+    async_set_fail_point,
+    async_wait_until,
+)
 
 sys.path[0:0] = [""]
 
@@ -180,6 +183,14 @@ class TestRetryableReads(AsyncIntegrationTest):
             async_client_context.mongos_seeds(),
             event_listeners=[listener],
             retryReads=True,
+        )
+
+        # Ensure the client has discovered all mongoses.
+        await async_wait_until(
+            lambda: (
+                len(client.topology_description.known_servers) == len(async_client_context.mongoses)
+            ),
+            "discover all mongoses",
         )
 
         with self.assertRaises(OperationFailure):
