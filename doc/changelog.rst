@@ -24,7 +24,7 @@ Bug fixes
   (`PYTHON-5873`_).
 - Fixed the type annotation of the ``let`` argument of
   :class:`~pymongo.cursor.Cursor` and
-  :class:`~pymongo.asynchronous.cursor.AsyncCursor`. It is now
+  :class:`~pymongo.asynchronous.cursor.AsyncCursor` to be
   ``Optional[Mapping[str, Any]]`` instead of ``Optional[bool]``, matching what
   the argument accepts at runtime (`PYTHON-6145`_).
 
