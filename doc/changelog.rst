@@ -25,11 +25,17 @@ Bug fixes
   from it. It now raises :class:`~bson.errors.InvalidId`, and
   :meth:`~bson.objectid.ObjectId.is_valid` returns ``False`` for such a string
   (`PYTHON-5873`_).
+- Fixed the type annotation of the ``let`` argument of
+  :class:`~pymongo.cursor.Cursor` and
+  :class:`~pymongo.asynchronous.cursor.AsyncCursor` to be
+  ``Optional[Mapping[str, Any]]`` instead of ``Optional[bool]``, matching what
+  the argument accepts at runtime (`PYTHON-6145`_).
 
 .. _PYTHON-5929: https://jira.mongodb.org/browse/PYTHON-5929
 .. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
 .. _PYTHON-6149: https://jira.mongodb.org/browse/PYTHON-6149
 .. _PYTHON-5873: https://jira.mongodb.org/browse/PYTHON-5873
+.. _PYTHON-6145: https://jira.mongodb.org/browse/PYTHON-6145
 
 Changes in Version 4.19.0 (2026/10/14)
 --------------------------------------
