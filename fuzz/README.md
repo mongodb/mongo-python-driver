@@ -47,9 +47,8 @@ just setup-tests fuzz regression
 just run-tests
 ```
 
-On every PR, the `fuzz-regression` task also replays the full generated seed
-corpus (PYTHON-6188): the committed reproducers plus every corpus seed exactly
-once, deterministically — no mutations, no time budget.
+On every PR, the `fuzz-regression` task runs the committed reproducers and the full generated seed
+corpus.
 
 Or without the justfile:
 
