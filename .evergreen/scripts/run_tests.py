@@ -148,7 +148,7 @@ def handle_fuzz() -> None:
             raise RuntimeError("No fuzz regression inputs found in fuzz/regression/")
         corpus_dir = os.environ.get("FUZZ_CORPUS_DIR", str(ROOT / "fuzz-scratch" / "corpus"))
         # Fail fast on a missing or empty corpus; libFuzzer would silently
-        # skip it. Skip dotfiles so a dotfile-only dir counts as empty.
+        # skip it.
         corpus_files = sorted(
             str(p) for p in Path(corpus_dir).glob("*") if not p.name.startswith(".")
         )
