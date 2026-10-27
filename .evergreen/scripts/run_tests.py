@@ -139,15 +139,26 @@ def handle_fuzz() -> None:
     targets = ["fuzz_decode", "fuzz_decode_all", "fuzz_is_valid"]
 
     if SUB_TEST_NAME == "regression":
+        # Replay the committed reproducers plus the seed corpus (PYTHON-6188).
         # Skip dotfiles (pathlib globbing matches them).
         inputs = sorted(
             str(p) for p in (ROOT / "fuzz" / "regression").glob("*") if not p.name.startswith(".")
         )
         if not inputs:
             raise RuntimeError("No fuzz regression inputs found in fuzz/regression/")
-        # Each reproducer is passed as its own file argument, so libFuzzer
-        # runs each exactly once; the -atheris_runs budget equals the file
-        # count so atheris exits cleanly after the last one.
+        corpus_dir = os.environ.get("FUZZ_CORPUS_DIR", str(ROOT / "fuzz-scratch" / "corpus"))
+        # Fail fast on a missing or empty corpus; libFuzzer would silently
+        # skip it. Skip dotfiles so a dotfile-only dir counts as empty.
+        corpus_files = sorted(
+            str(p) for p in Path(corpus_dir).glob("*") if not p.name.startswith(".")
+        )
+        if not corpus_files:
+            raise RuntimeError(
+                f"No fuzz seed corpus found in {corpus_dir}; was setup_tests.py run?"
+            )
+        inputs.extend(corpus_files)
+        # Each input runs exactly once without mutating; the -atheris_runs
+        # budget equals the file count so atheris exits cleanly after the last.
         runs = len(inputs)
         for target in targets:
             run_command(

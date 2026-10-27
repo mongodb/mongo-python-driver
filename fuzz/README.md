@@ -47,6 +47,10 @@ just setup-tests fuzz regression
 just run-tests
 ```
 
+On every PR, the `fuzz-regression` task also replays the full generated seed
+corpus (PYTHON-6188): the committed reproducers plus every corpus seed exactly
+once, deterministically — no mutations, no time budget.
+
 Or without the justfile:
 
 ```bash
@@ -114,5 +118,5 @@ fuzz_decode.py      Fuzz target: bson.decode()
 fuzz_decode_all.py  Fuzz target: bson.decode_all()
 fuzz_is_valid.py    Fuzz target: bson.is_valid()
 fuzz_shared.py      Code shared by the fuzz targets
-regression/         Known bug reproducers (no corpus setup required)
+regression/         Known bug reproducers; replayed with the seed corpus on PRs
 ```
