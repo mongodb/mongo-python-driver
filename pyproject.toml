@@ -64,7 +64,7 @@ unasync = [
     "unasync",
 ]
 pip = ["pip>=20.2"]
-gevent = ["gevent>=21.12"]
+gevent = ["gevent>=25.9.1"]
 coverage = [
     "coverage[toml]>=6.4,<=7.15.0"
 ]
