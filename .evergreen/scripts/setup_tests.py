@@ -532,7 +532,7 @@ def handle_test_env() -> None:
 
     if test_name == "fuzz":
         # Build the seed corpus from the vendored spec data. Regression runs
-        # replay it too (PYTHON-6188).
+        # run it too.
         scratch_dir = ROOT / "fuzz-scratch"
         shutil.rmtree(scratch_dir, ignore_errors=True)
         corpus_dir = scratch_dir / "corpus"
