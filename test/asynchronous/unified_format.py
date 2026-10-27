@@ -186,6 +186,16 @@ async def is_run_on_requirement_satisfied(requirement):
     )
 
 
+def _unwrap_server_error(exception):
+    """Return the error that carries the server's response details and labels."""
+    if isinstance(exception, ClientBulkWriteException) and exception.error is not None:
+        return exception.error
+    # EncryptionError wraps the original exception.
+    if isinstance(exception, EncryptionError) and isinstance(exception.cause, PyMongoError):
+        return exception.cause
+    return exception
+
+
 class NonLazyCursor:
     """A find cursor proxy that creates the remote cursor when initialized."""
 
@@ -673,11 +683,10 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         error_labels_omit = spec.get("errorLabelsOmit")
         expect_result = spec.get("expectResult")
         error_response = spec.get("errorResponse")
+        write_concern_errors = spec.get("writeConcernErrors")
+        server_error = _unwrap_server_error(exception)
         if error_response:
-            if isinstance(exception, ClientBulkWriteException):
-                self.match_evaluator.match_result(error_response, exception.error.details)
-            else:
-                self.match_evaluator.match_result(error_response, exception.details)
+            self.match_evaluator.match_result(error_response, server_error.details)
 
         if is_error:
             # already satisfied because exception was raised
@@ -714,31 +723,33 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             self.assertIn(error_contains.lower(), errmsg)
 
         if error_code:
-            if isinstance(exception, ClientBulkWriteException):
-                self.assertEqual(error_code, exception.error.details.get("code"))
-            else:
-                self.assertEqual(error_code, exception.details.get("code"))
+            self.assertEqual(error_code, server_error.details.get("code"))
 
         if error_code_name:
-            if isinstance(exception, ClientBulkWriteException):
-                self.assertEqual(error_code, exception.error.details.get("codeName"))
-            else:
-                self.assertEqual(error_code_name, exception.details.get("codeName"))
+            self.assertEqual(error_code_name, server_error.details.get("codeName"))
 
         if error_labels_contain:
-            if isinstance(exception, ClientBulkWriteException):
-                error = exception.error
-            else:
-                error = exception
             labels = [
-                err_label for err_label in error_labels_contain if error.has_error_label(err_label)
+                err_label
+                for err_label in error_labels_contain
+                if server_error.has_error_label(err_label)
             ]
             self.assertEqual(labels, error_labels_contain)
 
         if error_labels_omit:
             for err_label in error_labels_omit:
-                if exception.has_error_label(err_label):
+                if server_error.has_error_label(err_label):
                     self.fail(f"Exception '{exception}' unexpectedly had label '{err_label}'")
+
+        if write_concern_errors is not None:
+            if not isinstance(exception, ClientBulkWriteException):
+                self.fail(
+                    f"writeConcernErrors can only be specified with {ClientBulkWriteException} exceptions, got {exception}"
+                )
+            actual_write_concern_errors = exception.details.get("writeConcernErrors", [])
+            self.assertEqual(len(write_concern_errors), len(actual_write_concern_errors))
+            for expected_wce, actual_wce in zip(write_concern_errors, actual_write_concern_errors):
+                self.match_evaluator.match_result(expected_wce, actual_wce)
 
         if expect_result:
             if isinstance(exception, BulkWriteError):
