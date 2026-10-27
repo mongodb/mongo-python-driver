@@ -30,12 +30,16 @@ Bug fixes
   :class:`~pymongo.asynchronous.cursor.AsyncCursor` to be
   ``Optional[Mapping[str, Any]]`` instead of ``Optional[bool]``, matching what
   the argument accepts at runtime (`PYTHON-6145`_).
+- Disabled TLS session reuse on Python 3.11
+  due to a CPython memory leak bug (`python/cpython#116810 <https://github.com/python/cpython/issues/116810>`_).
+  The bug was fixed in Python 3.12.7 and Python 3.13.1 (`PYTHON-6182`_).
 
 .. _PYTHON-5929: https://jira.mongodb.org/browse/PYTHON-5929
 .. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
 .. _PYTHON-6149: https://jira.mongodb.org/browse/PYTHON-6149
 .. _PYTHON-5873: https://jira.mongodb.org/browse/PYTHON-5873
 .. _PYTHON-6145: https://jira.mongodb.org/browse/PYTHON-6145
+.. _PYTHON-6182: https://jira.mongodb.org/browse/PYTHON-6182
 
 Changes in Version 4.19.0 (2026/10/14)
 --------------------------------------

@@ -31,6 +31,7 @@ from pymongo import AsyncMongoClient, ssl_support
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.pool_shared import (
+    _TLS_SESSION_REUSE_LEAKS,
     _configured_protocol_interface,
     _configured_socket_interface,
     _get_ssl_session,
@@ -923,11 +924,19 @@ class TestSSL(AsyncIntegrationTest):
         await client.close()
 
     @async_client_context.require_tls
+    @unittest.skipIf(_TLS_SESSION_REUSE_LEAKS, "TLS session reuse is not supported on Python 3.11")
     async def test_pool_has_ssl_session_cache(self):
         pool = list(self.client._topology._servers.values())[0].pool
         self.assertIsInstance(pool._ssl_session_cache, list)
 
     @async_client_context.require_tls
+    @unittest.skipUnless(_TLS_SESSION_REUSE_LEAKS, "TLS session reuse is enabled on Python 3.12+")
+    async def test_pool_has_no_ssl_session_cache_on_python_311(self):
+        pool = list(self.client._topology._servers.values())[0].pool
+        self.assertIsNone(pool._ssl_session_cache)
+
+    @async_client_context.require_tls
+    @unittest.skipIf(_TLS_SESSION_REUSE_LEAKS, "TLS session reuse is not supported on Python 3.11")
     @unittest.skipUnless(
         _IS_SYNC and _HAVE_PYOPENSSL,
         "Sync stdlib ssl may return None for session on TLS 1.3; test limited to PyOpenSSL",
