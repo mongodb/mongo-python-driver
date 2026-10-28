@@ -32,7 +32,8 @@ Bug fixes
   the argument accepts at runtime (`PYTHON-6145`_).
 - Disabled TLS session reuse on Python 3.11
   due to a CPython memory leak bug (`python/cpython#116810 <https://github.com/python/cpython/issues/116810>`_).
-  The bug was fixed in Python 3.12.7 and Python 3.13.1 (`PYTHON-6182`_).
+  The bug was fixed in Python 3.12.7 and Python 3.13.1.
+  Users of Python 3.12 and 3.13 should upgrade to at least those versions (`PYTHON-6182`_).
 
 .. _PYTHON-5929: https://jira.mongodb.org/browse/PYTHON-5929
 .. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
