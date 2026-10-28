@@ -1456,6 +1456,10 @@ class TestClient(AsyncIntegrationTest):
         topology = client._topology
         await client.close()
         for server in topology._servers.values():
+            # Wait for monitor tasks to finish.
+            # Can be removed once PYTHON-1634 is implemented.
+            await server._monitor._executor.join(10)
+            await server._monitor._rtt_monitor._executor.join(10)
             self.assertFalse(server._pool.conns)
             self.assertTrue(server._monitor._executor._stopped)
             self.assertTrue(server._monitor._rtt_monitor._executor._stopped)
