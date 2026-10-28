@@ -40,6 +40,7 @@ from test import (
     client_context,
     unittest,
 )
+from test.utils_shared import gevent_monkey_patched
 
 _IS_SYNC = True
 
@@ -54,6 +55,11 @@ class TestSubinterpreters(IntegrationTest):
 
     @unittest.skipUnless(
         sys.version_info >= (3, 14), "concurrent.interpreters requires Python 3.14+"
+    )
+    @unittest.skipIf(
+        gevent_monkey_patched(),
+        "gevent turns threads into greenlets, so interp.exec() blocks the "
+        "main greenlet and release.put() never runs",
     )
     def test_subinterpreters(self):
         if interpreters is None:
