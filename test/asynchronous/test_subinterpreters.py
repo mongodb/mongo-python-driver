@@ -58,8 +58,7 @@ class TestSubinterpreters(AsyncIntegrationTest):
     )
     @unittest.skipIf(
         gevent_monkey_patched(),
-        "gevent turns threads into greenlets, so interp.exec() blocks the "
-        "main greenlet and release.put() never runs",
+        "gevent does not support subinterpreters",
     )
     async def test_subinterpreters(self):
         if interpreters is None:
