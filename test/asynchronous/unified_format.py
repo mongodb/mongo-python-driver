@@ -750,7 +750,10 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             self.assertEqual(len(write_concern_errors), len(actual_write_concern_errors))
             for expected_wce, actual_wce in zip(write_concern_errors, actual_write_concern_errors):
                 # Use the spec's WriteConcernError field names.
-                formatted_actual_wce = {"code": actual_wce["code"], "message": actual_wce["errmsg"]}
+                formatted_actual_wce = {
+                    "code": actual_wce.get("code", ""),
+                    "message": actual_wce.get("errmsg", ""),
+                }
                 self.match_evaluator.match_result(expected_wce, formatted_actual_wce)
 
         if expect_result:
