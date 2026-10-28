@@ -748,7 +748,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
             actual_write_concern_errors = exception.details.get("writeConcernErrors", [])
             self.assertEqual(len(write_concern_errors), len(actual_write_concern_errors))
             for expected_wce, actual_wce in zip(write_concern_errors, actual_write_concern_errors):
-                self.match_evaluator.match_result(expected_wce, actual_wce)
+                # Use the spec's WriteConcernError field names.
+                formatted_actual_wce = {"code": actual_wce["code"], "message": actual_wce["errmsg"]}
+                self.match_evaluator.match_result(expected_wce, formatted_actual_wce)
 
         if expect_result:
             if isinstance(exception, BulkWriteError):
