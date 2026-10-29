@@ -87,6 +87,10 @@ _UNDO_PENDING = 8
 _ConnT = TypeVar("_ConnT", bound="_AgnosticBaseConnection[Any]")
 _PoolT = TypeVar("_PoolT", bound="_AgnosticBasePool[Any]")
 
+# Reading SSLSocket.session / SSLObject.session leaks a copy of the session on
+# every call in CPython 3.11, so disable TLS session reuse on that version.
+_TLS_SESSION_REUSE_LEAKS = sys.version_info < (3, 12)
+
 
 class _ConnectionTelemetryInfo(Protocol):
     """Protocol for connection fields consumed by :class:`~pymongo._telemetry._CommandTelemetry`."""
@@ -308,7 +312,7 @@ class _AgnosticBasePool(Generic[_ConnT]):
         self._pending = 0
         self._max_connecting = self.opts.max_connecting
         self._ssl_session_cache: Optional[list[Any]] = (
-            [None] if self.opts._ssl_context is not None else None
+            [None] if self.opts._ssl_context is not None and not _TLS_SESSION_REUSE_LEAKS else None
         )
         self._telemetry = _CmapTelemetry(
             client_id, address, options._event_listeners, publish=not is_sdam, log=not is_sdam

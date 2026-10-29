@@ -227,6 +227,7 @@ do
       ;;
     read-write-concern|read_write_concern)
       cpjson read-write-concern/tests/operation read_write_concern/operation
+      cpjson read-write-concern/tests/write-concern-errors read_write_concern/write-concern-errors
       ;;
     retryable-reads|retryable_reads)
       cpjson retryable-reads/tests/ retryable_reads
