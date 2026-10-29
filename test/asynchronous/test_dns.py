@@ -153,6 +153,9 @@ def create_test(test_case):
                     await client.aconnect()
                 if num_seeds is not None:
                     self.assertEqual(len(client._topology_settings.seeds), num_seeds)
+                # Wake every monitor now to ensure failed heartbeats retry quickly
+                # instead of waiting for the full 10-second heartbeat interval.
+                await client._topology.request_check_all()
                 if hosts is not None:
                     await async_wait_until(
                         lambda: hosts == client.nodes, "match test hosts to client nodes"
