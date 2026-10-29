@@ -43,6 +43,12 @@ _IS_SYNC = True
 pytestmark = pytest.mark.search_index
 
 _NAME = "test-search-index"
+_WAIT_TIMEOUT_SECS = 10 * 60
+
+
+def _is_search_index_management_unavailable(exc: OperationFailure) -> bool:
+    """Return True for transient search index management errors."""
+    return exc.code == 125 and "Error connecting to Search Index Management service" in str(exc)
 
 
 class TestCreateSearchIndex(IntegrationTest):
@@ -101,29 +107,51 @@ class SearchIndexIntegrationBase(PyMongoTestCase):
         # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
         self.coll0 = self.db.create_collection(f"col{uuid.uuid4()}")
 
+    def _poll(self, check, timeout_msg):
+        """Call ``check`` every 5 seconds until it returns a non-None value.
+
+        Transient search index management errors are retried until the timeout.
+        """
+        start = time.monotonic()
+        last_exc = None
+        while True:
+            try:
+                result = check()
+                if result is not None:
+                    return result
+            except OperationFailure as exc:
+                if not _is_search_index_management_unavailable(exc):
+                    raise
+                last_exc = exc
+            if time.monotonic() - start > _WAIT_TIMEOUT_SECS:
+                raise TimeoutError(timeout_msg) from last_exc
+            time.sleep(5)
+
     def wait_for_ready(self, coll, name=_NAME, predicate=None):
         """Wait for a search index to be ready."""
-        indices: list[Mapping[str, Any]] = []
         if predicate is None:
             predicate = lambda index: index.get("queryable") is True
 
-        while True:
+        def check():
             indices = (coll.list_search_indexes(name)).to_list()
             if len(indices) and predicate(indices[0]):
                 return indices[0]
-            time.sleep(5)
+
+        return self._poll(check, "Timed out waiting for index to be ready")
 
     def drop_and_wait(self, coll, name):
         """Drop a search index and wait for it to be dropped."""
-        coll.drop_search_index(name)
-        start = time.time()
-        while True:
-            indices = (coll.list_search_indexes(name)).to_list()
-            if not indices:
-                return
-            if (time.time() - start) / 60 > 5:
-                raise TimeoutError("Timed out waiting for index deletion")
-            time.sleep(5)
+
+        def drop():
+            coll.drop_search_index(name)
+            return True
+
+        def check():
+            if not (coll.list_search_indexes(name)).to_list():
+                return True
+
+        self._poll(drop, "Timed out dropping index")
+        self._poll(check, "Timed out waiting for index deletion")
 
 
 class TestSearchIndexIntegration(SearchIndexIntegrationBase):
@@ -220,17 +248,8 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         self.wait_for_ready(self.coll0)
 
         # Run a ``dropSearchIndex`` on ``self.coll0``, using ``test-search-index`` for the name.
-        self.coll0.drop_search_index(_NAME)
-
         # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until ``listSearchIndexes`` returns an empty array.
-        t0 = time.time()
-        while True:
-            indices = (self.coll0.list_search_indexes()).to_list()
-            if not indices:
-                break
-            if (time.time() - t0) / 60 > 5:
-                raise TimeoutError("Timed out waiting for index deletion")
-            time.sleep(5)
+        self.drop_and_wait(self.coll0, _NAME)
 
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_4(self):
