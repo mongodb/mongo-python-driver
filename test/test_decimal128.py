@@ -68,6 +68,13 @@ class TestDecimal128(unittest.TestCase):
         self.assertEqual("Infinity", str(ctx.copy().create_decimal("1E6145")))
         self.assertEqual("0E-6176", str(ctx.copy().create_decimal("1E-6177")))
 
+    def test_significand_too_large(self):
+        bid = bytes.fromhex("003d203b9db5056f05000000fcffffdb")
+        dec = Decimal128.from_bid(bid)
+        self.assertEqual(Decimal(0), dec.to_decimal())
+        self.assertEqual("-0E+5599", str(dec))
+        self.assertEqual("Decimal128('-0E+5599')", repr(dec))
+
 
 if __name__ == "__main__":
     unittest.main()
