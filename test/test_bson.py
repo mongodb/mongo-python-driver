@@ -463,6 +463,20 @@ class TestBSON(unittest.TestCase):
             self.assertEqual(decode(mm), expected)
             self.assertEqual(decode_all(mm), [expected])
 
+    def test_binary_subtype_255_round_trip(self):
+        for subtype in (0x80, 0xFE, 0xFF):
+            with self.subTest(subtype=subtype):
+                doc = {"x": Binary(b"a" * 16, subtype)}
+                self.assertEqual(decode(encode(doc)), doc)
+
+    def test_regex_invalid_utf8_flags(self):
+        data = b"\x0f\x00\x00\x00\x0ba\x00abc\x00\xc4m\x00\x00"
+        self.assertFalse(is_valid(data))
+        with self.assertRaises(InvalidBSON):
+            decode(data)
+        with self.assertRaises(InvalidBSON):
+            decode_all(data)
+
     def test_element_overlaps_document_terminator(self):
         # PYTHON-6111: an element whose value would consume the document
         # terminator byte must be rejected, matching the pure-Python decoder.
