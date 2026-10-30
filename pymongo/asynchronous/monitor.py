@@ -242,6 +242,8 @@ class Monitor(MonitorBase):
         finally:
             if self._executor._stopped:
                 await self._rtt_monitor.close()
+                # Make sure no connections outlive close().
+                await self._reset_connection()
 
     async def _check_server(self) -> ServerDescription:
         """Call hello or read the next streaming response.
@@ -440,6 +442,10 @@ class _RttMonitor(MonitorBase):
             await self.close()
         except Exception:
             await self._pool.reset()
+        finally:
+            if self._executor._stopped:
+                # Make sure no connections outlive close().
+                await self._pool.reset()
 
     async def _ping(self) -> float:
         """Run a "hello" command and return the RTT."""
