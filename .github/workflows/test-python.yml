@@ -213,7 +213,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v7.0.0
+      - uses: actions/setup-python@v7.1.0
         with:
           cache: 'pip'
           cache-dependency-path: 'pyproject.toml'
@@ -247,7 +247,7 @@ jobs:
             mkdir test
             tar --strip-components=1 -zxf *.tar.gz -C ./test
             ls test
-        - uses: actions/setup-python@v7.0.0
+        - uses: actions/setup-python@v7.1.0
           with:
             cache: 'pip'
             cache-dependency-path: 'sdist/test/pyproject.toml'
