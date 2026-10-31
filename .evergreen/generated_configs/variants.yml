@@ -115,6 +115,14 @@ buildvariants:
     run_on:
       - rhel8.10-small
 
+  # Bson codec compare tests
+  - name: bson-codec-compare
+    tasks:
+      - name: bson-codec-compare
+    display_name: BSON Codec Compare
+    run_on:
+      - ubuntu2204-small
+
   # Compression tests
   - name: compression-snappy-rhel8
     tasks:
@@ -490,7 +498,7 @@ buildvariants:
       - name: .perf
     display_name: Performance Benchmarks
     run_on:
-      - rhel90-dbx-perf-large
+      - ubuntu2204-small
     batchtime: 1440
 
   # Pyopenssl tests

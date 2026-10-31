@@ -265,6 +265,92 @@ def test_rotated_tasks_keep_nightly_coverage():
     assert not offenders, f"nightly 9.0 OCSP tasks not on min-deps Python: {offenders}"
 
 
+def test_bson_codec_compare_uploads_artifacts_as_files():
+    """The BSON codec comparison task uploads its result files with s3.put:
+    attach.artifacts instead parses each listed file as a JSON manifest of
+    {name, link} entries, so benchmark data or markdown crash the task (the
+    markdown is "invalid character '|'" JSON) or attach empty entries."""
+    task = next(task for task in all_tasks() if task.name == "bson-codec-compare")
+    offenders = [
+        command
+        for command in task.commands
+        if getattr(command, "command", None) == "attach.artifacts"
+    ]
+    assert not offenders, f"bson-codec-compare still uses attach.artifacts: {offenders}"
+    funcs = [getattr(command, "func", None) for command in task.commands]
+    assert "upload bson compare artifacts" in funcs
+
+    func_name, cmds = generate_config.create_upload_bson_compare_artifacts_func()
+    assert func_name == "upload bson compare artifacts"
+    assert [cmd.command for cmd in cmds] == [
+        "ec2.assume_role",
+        "s3.put",
+        "s3.put",
+        "s3.put",
+        "s3.put",
+        "s3.put",
+    ]
+    puts = [cmd for cmd in cmds if cmd.command == "s3.put"]
+    by_local = {cmd.params["local_file"]: cmd.params for cmd in puts}
+    assert set(by_local) == {
+        "src/results_c.json",
+        "src/results_rust.json",
+        "src/bson_comparison.md",
+        "src/perf_deepdec_c.txt",
+        "src/perf_deepdec_rust.txt",
+    }
+    assert by_local["src/results_c.json"]["content_type"] == "application/json"
+    assert by_local["src/results_rust.json"]["content_type"] == "application/json"
+    assert by_local["src/bson_comparison.md"]["content_type"] == "text/markdown"
+    assert by_local["src/perf_deepdec_c.txt"]["content_type"] == "text/plain"
+    assert by_local["src/perf_deepdec_rust.txt"]["content_type"] == "text/plain"
+    assert all(params.get("display_name") for params in by_local.values())
+    remotes = [cmd.params["remote_file"] for cmd in puts]
+    assert len(set(remotes)) == len(remotes), f"colliding remote paths: {remotes}"
+    assert all("${task_id}-${execution}" in remote for remote in remotes), remotes
+
+
+def test_bson_codec_compare_profiles_deep_decoding():
+    """The task profiles DeepDecoding (the one benchmark still below the
+    parity bar on the host) under perf, once per codec. Drift tripwire: the
+    known report files must stay written by the script AND uploaded; a new
+    report file needs a matching upload added here."""
+    script = (Path(__file__).parent / "bson_codec_compare.sh").read_text()
+    assert "perf record" in script, "no perf record in bson_codec_compare.sh"
+    assert "'DeepDecoding and not Json'" in script, (
+        "the profile runs must select DeepDecoding and exclude the Json benchmarks"
+    )
+    assert "for impl in c rust" in script, "the profile must run once per codec"
+    assert "dnf install -y perf" in script, (
+        "the script must try to install perf (best-effort) before skipping the profiles"
+    )
+    assert "apt-get install" in script, (
+        "the script must try to install perf (best-effort) before skipping the profiles"
+    )
+    # rhel90 has no perf and cannot install it; the ubuntu2204 image ships
+    # valgrind — the fallback must keep the same DeepDecoding contract.
+    assert "callgrind_annotate" in script, "no callgrind fallback for hosts without perf (rhel90)"
+    assert "--tool=callgrind" in script, (
+        "the callgrind fallback must profile DeepDecoding in fast mode"
+    )
+    assert "FASTBENCH=1" in script, "the callgrind fallback must profile DeepDecoding in fast mode"
+    # valgrind 3.18 cannot decode AVX-512 (EVEX) instructions, which
+    # target-cpu=native emits (memchr's runtime dispatch); the profiled
+    # build must stay on AVX2 (x86-64-v3, VEX-encoded) to avoid SIGILL.
+    assert "target-cpu=x86-64-v3" in script, (
+        "the callgrind fallback must rebuild the codec without AVX-512"
+    )
+    emitted = {"perf_deepdec_c.txt", "perf_deepdec_rust.txt"}
+    assert '"perf_deepdec_${impl}.txt"' in script, "the script never writes the profile reports"
+    _, cmds = generate_config.create_upload_bson_compare_artifacts_func()
+    uploaded = {
+        cmd.params["local_file"].removeprefix("src/")
+        for cmd in cmds
+        if cmd.command == "s3.put" and cmd.params["local_file"].startswith("src/perf_deepdec_")
+    }
+    assert uploaded == emitted, f"uploaded profiles {uploaded} != emitted {emitted}"
+
+
 def test_non_standard_cov_tasks_have_no_cov_companions():
     """Each non-standard coverage task also emits a no-cov companion, so the
     macOS/Win64 encryption variants (which filter .cov) have a task to

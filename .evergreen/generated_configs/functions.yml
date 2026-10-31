@@ -257,6 +257,78 @@ functions:
           - COVERAGE
       type: test
 
+  # Upload bson compare artifacts
+  upload bson compare artifacts:
+    - command: ec2.assume_role
+      params:
+        role_arn: ${assume_role_arn}
+      type: setup
+    - command: s3.put
+      params:
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/bson-compare/${task_id}-${execution}-results_c.json
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        bucket: ${bucket_name}
+        local_file: src/results_c.json
+        permissions: public-read
+        content_type: application/json
+        display_name: BSON C results
+        optional: "true"
+      type: setup
+    - command: s3.put
+      params:
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/bson-compare/${task_id}-${execution}-results_rust.json
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        bucket: ${bucket_name}
+        local_file: src/results_rust.json
+        permissions: public-read
+        content_type: application/json
+        display_name: BSON Rust results
+        optional: "true"
+      type: setup
+    - command: s3.put
+      params:
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/bson-compare/${task_id}-${execution}-bson_comparison.md
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        bucket: ${bucket_name}
+        local_file: src/bson_comparison.md
+        permissions: public-read
+        content_type: text/markdown
+        display_name: BSON codec comparison
+        optional: "true"
+      type: setup
+    - command: s3.put
+      params:
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/bson-compare/${task_id}-${execution}-perf_deepdec_c.txt
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        bucket: ${bucket_name}
+        local_file: src/perf_deepdec_c.txt
+        permissions: public-read
+        content_type: text/plain
+        display_name: BSON perf profile (C, DeepDecoding)
+        optional: "true"
+      type: setup
+    - command: s3.put
+      params:
+        remote_file: ${build_variant}/${revision}/${version_id}/${build_id}/bson-compare/${task_id}-${execution}-perf_deepdec_rust.txt
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        bucket: ${bucket_name}
+        local_file: src/perf_deepdec_rust.txt
+        permissions: public-read
+        content_type: text/plain
+        display_name: BSON perf profile (Rust, DeepDecoding)
+        optional: "true"
+      type: setup
+
   # Upload coverage codecov
   upload codecov:
     - command: subprocess.exec

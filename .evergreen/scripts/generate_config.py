@@ -580,6 +580,13 @@ def create_perf_variants():
     return [create_variant([".perf"], "Performance Benchmarks", host=host, batchtime=BATCHTIME_DAY)]
 
 
+def create_bson_codec_compare_variants():
+    # Patch-only variant (no batchtime): compares the C and Rust-backed
+    # BSON codecs on the perf host.
+    host = HOSTS["perf"]
+    return [create_variant(["bson-codec-compare"], "BSON Codec Compare", host=host)]
+
+
 def create_aws_auth_variants():
     variants = []
 
@@ -1174,6 +1181,34 @@ def create_search_index_tasks():
     return [EvgTask(name=task_name, tags=tags, commands=commands)]
 
 
+def create_bson_codec_compare_tasks():
+    """Compare BSON codec throughput: C extension vs the Rust-backed codec."""
+    vars = dict(
+        VERSION="v8.0-perf",
+        SSL="nossl",
+        UV_PYTHON=PERF_PYTHON_VERSION,
+        UV_PYTHON_PREFERENCE="only-managed",
+    )
+    server_func = FunctionCall(func="run server", vars=vars)
+    # The script drives uv itself (setup-tests.sh + the benchmark runs), so
+    # the pinned-uv variables must be in its environment (the script sources
+    # setup-dev-env.sh to put the pinned uv first on PATH).
+    compare_func = get_subprocess_exec(
+        include_expansions_in_env=["UV_PYTHON", "UV_PYTHON_PREFERENCE"],
+        args=[".evergreen/scripts/bson_codec_compare.sh"],
+    )
+    # Upload the result files with s3.put: attach.artifacts would instead
+    # parse each listed file as a JSON manifest of {name, link} entries,
+    # which the benchmark data and markdown comparison are not.
+    upload_func = FunctionCall(func="upload bson compare artifacts")
+    task = EvgTask(
+        name="bson-codec-compare",
+        tags=["bson-codec-compare"],
+        commands=[server_func, compare_func, upload_func],
+    )
+    return [task]
+
+
 def create_perf_tasks():
     tasks = []
     for version, ssl, sync in product(["8.0"], ["ssl", "nossl"], ["sync", "async"]):
@@ -1350,6 +1385,49 @@ def create_download_and_merge_coverage_func():
     )
     cmds = [get_assume_role(), merge_cmd, combine_cmd, upload_cmd, put_cmd]
     return "download and merge coverage", cmds
+
+
+def create_upload_bson_compare_artifacts_func():
+    """Upload the BSON codec benchmark results and comparison as task files."""
+    remote_prefix = (
+        "${build_variant}/${revision}/${version_id}/${build_id}"
+        "/bson-compare/${task_id}-${execution}"
+    )
+    puts = [
+        get_s3_put(
+            local_file="src/results_c.json",
+            remote_file=f"{remote_prefix}-results_c.json",
+            display_name="BSON C results",
+            content_type="application/json",
+        ),
+        get_s3_put(
+            local_file="src/results_rust.json",
+            remote_file=f"{remote_prefix}-results_rust.json",
+            display_name="BSON Rust results",
+            content_type="application/json",
+        ),
+        get_s3_put(
+            local_file="src/bson_comparison.md",
+            remote_file=f"{remote_prefix}-bson_comparison.md",
+            display_name="BSON codec comparison",
+            content_type="text/markdown",
+        ),
+        # Optional perf profiles of DeepDecoding (emitted by the script when
+        # perf is available); optional=true skips a missing file without error.
+        get_s3_put(
+            local_file="src/perf_deepdec_c.txt",
+            remote_file=f"{remote_prefix}-perf_deepdec_c.txt",
+            display_name="BSON perf profile (C, DeepDecoding)",
+            content_type="text/plain",
+        ),
+        get_s3_put(
+            local_file="src/perf_deepdec_rust.txt",
+            remote_file=f"{remote_prefix}-perf_deepdec_rust.txt",
+            display_name="BSON perf profile (Rust, DeepDecoding)",
+            content_type="text/plain",
+        ),
+    ]
+    return "upload bson compare artifacts", [get_assume_role(), *puts]
 
 
 def create_upload_mo_artifacts_func():
