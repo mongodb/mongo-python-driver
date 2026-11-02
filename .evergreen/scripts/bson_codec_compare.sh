@@ -133,10 +133,9 @@ rm results_c_a.json results_c_b.json results_rust_a.json results_rust_b.json
 # Print the comparison (also uploaded as a task artifact).
 .venv/bin/python tools/compare_bson_perf.py results_c.json results_rust.json | tee bson_comparison.md
 
-# Profile DeepDecoding — the one benchmark still below the parity bar on the
-# perf host (~0.90x Rust/C, stable across runs) — once per codec, for
-# hotspot data to close the remaining gap. Entirely non-fatal: profiling is
-# best-effort and the benchmark numbers never depend on it.
+# Profile DeepDecoding once per codec for decode hotspot data. Entirely
+# non-fatal: profiling is best-effort and the benchmark numbers never
+# depend on it.
 # The rhel90 perf image does not ship perf; try the platform package manager
 # with passwordless sudo (the established pattern on Evergreen hosts, e.g.
 # setup-system.sh) before skipping.
