@@ -47,4 +47,4 @@ New features need integration tests. Bug fixes need regression tests.
 - Backport PRs: append the target branch in brackets — `PYTHON-1234 [v4.9] Fix retryable write`
 - Merge via **Squash and Merge** only
 
-See .github/copilot-instructions.md for more details.
+See [copilot-instructions.md](.github/copilot-instructions.md) and [CODING-STANDARDS.md](CODING-STANDARDS.md) for more details.
