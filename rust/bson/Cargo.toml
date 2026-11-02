@@ -10,7 +10,14 @@ crate-type = ["cdylib"]
 
 [dependencies]
 memchr = "2.8.3"
-pyo3 = { version = "0.29", features = ["extension-module"] }
+pyo3 = { version = "0.29" }
+
+[features]
+# Extension-module is a default feature so maturin's builds keep it; test
+# binaries build with --no-default-features to link libpython and run the
+# unit tests (an extension module cannot link a test harness).
+default = ["extension-module"]
+extension-module = ["pyo3/extension-module"]
 
 [build-dependencies]
 pyo3-build-config = { version = "0.29", features = ["resolve-config"] }

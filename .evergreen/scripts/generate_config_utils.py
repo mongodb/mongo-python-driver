@@ -70,13 +70,7 @@ HOSTS["macos"] = Host("macos", "macos-14", "macOS", dict())
 HOSTS["macos-arm64"] = Host("macos-arm64", "macos-14-arm64", "macOS Arm64", dict())
 HOSTS["ubuntu22"] = Host("ubuntu22", "ubuntu2204-small", "Ubuntu-22", dict())
 HOSTS["ubuntu24"] = Host("ubuntu24", "ubuntu2404-small", "Ubuntu-24", dict())
-# TEMPORARY (debug): flipped to ubuntu2204-small for the DeepDecoding
-# callgrind profile run — rhel90-dbx-perf-large cannot install perf and has
-# no valgrind; the ubuntu2204 image ships valgrind preinstalled. REVERT this
-# line (back to "rhel90-dbx-perf-large") after the profile run: the timing
-# bar belongs on the perf host. The patch build selects only
-# bson-codec-compare, so no other task is affected in the patch.
-HOSTS["perf"] = Host("perf", "ubuntu2204-small", "", dict())
+HOSTS["perf"] = Host("perf", "rhel90-dbx-perf-large", "", dict())
 HOSTS["debian11"] = Host("debian11", "debian11-small", "Debian11", dict())
 DEFAULT_HOST = HOSTS["rhel8"]
 

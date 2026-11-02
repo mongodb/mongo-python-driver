@@ -60,6 +60,11 @@ fn contains_view_eligible_doc(data: &[u8], threshold: usize) -> bool {
 /// `_prepare_input_buffer`: raw-document decoding from mutable/foreign
 /// buffers copies them to bytes when the stream contains a
 /// view-eligible (>= threshold) document.
+///
+/// The scan and copy read the exporter's memory through a transient borrow
+/// that spans no Python callbacks (the eligibility scan is pure Rust), so
+/// the snapshot of `with_buffer_view` is not required here; at most one
+/// copy is made, straight into the returned bytes object.
 fn prepare_input_buffer<'py>(
     py: Python<'py>,
     object: &Bound<'py, PyAny>,
@@ -71,24 +76,29 @@ fn prepare_input_buffer<'py>(
     {
         return Ok(object.clone());
     }
-    let eligible = with_buffer_view(object, |data| {
-        Ok(contains_view_eligible_doc(
-            data,
-            Types::get(py)?.raw_bson_view_threshold,
-        ))
-    })?;
-    if eligible {
+    let buffer = PyBuffer::<u8>::get(object)?;
+    with_get_buffer_checks(&buffer)?;
+    let data =
+        unsafe { std::slice::from_raw_parts(buffer.buf_ptr() as *const u8, buffer.len_bytes()) };
+    if contains_view_eligible_doc(data, Types::get(py)?.raw_bson_view_threshold) {
         // Copy to bytes so memoryview-backed views outlive the input
         // (mirrors PyBytes_FromObject).
-        let copy = with_buffer_view(object, |data| Ok(PyBytes::new(py, data)))?;
-        return Ok(copy.into_any());
+        let copy = PyBytes::new(py, data);
+        drop(buffer);
+        Ok(copy.into_any())
+    } else {
+        drop(buffer);
+        Ok(object.clone())
     }
-    Ok(object.clone())
 }
 
 /// Calls `f` with a `&[u8]` view of any buffer-protocol object (bytes,
 /// bytearray, memoryview, mmap, ...), mirroring `_get_buffer` in the C
-/// extension. The view is zero-copy.
+/// extension. Immutable bytes are borrowed zero-copy; every other exporter
+/// is snapshotted to an owned copy first — its memory is writable through
+/// other paths (a buffer export prevents resizing, not writes), and `f`
+/// invokes decoder callbacks that can run Python code, so an immutable
+/// Rust slice over that memory would be unsound.
 fn with_buffer_view<R>(
     object: &Bound<'_, PyAny>,
     f: impl FnOnce(&[u8]) -> PyResult<R>,
@@ -98,11 +108,14 @@ fn with_buffer_view<R>(
     }
     let buffer = PyBuffer::<u8>::get(object)?;
     with_get_buffer_checks(&buffer)?;
-    let slice =
-        unsafe { std::slice::from_raw_parts(buffer.buf_ptr() as *const u8, buffer.len_bytes()) };
-    let result = f(slice);
+    // Copy while the GIL is held and before any callback runs: nothing can
+    // write through the exporter during this window, and the view is
+    // dropped before `f` executes.
+    let data =
+        unsafe { std::slice::from_raw_parts(buffer.buf_ptr() as *const u8, buffer.len_bytes()) }
+            .to_vec();
     drop(buffer);
-    result
+    f(&data)
 }
 
 /// The defensive checks of the C's `_get_buffer`: pyo3 acquires buffers
@@ -342,11 +355,17 @@ fn _raw_to_dict<'py>(
         while pos < end {
             let type_byte = data[pos];
             pos += 1;
+            // The name scan is bounded by obj_end (the eoo index), not by
+            // end: a no-payload final value (None, MinKey, MaxKey) puts the
+            // name's NUL at obj_end - 1, the last byte before the
+            // terminator (the C's _element_to_dict scans with max =
+            // obj_end). The eoo check above guarantees the scan cannot run
+            // past the buffer.
             let name_start = pos;
-            while pos < end && data[pos] != 0 {
+            while pos < obj_end as usize && data[pos] != 0 {
                 pos += 1;
             }
-            if pos >= end {
+            if pos >= obj_end as usize {
                 return Err(invalid_bson(py, "field name too large"));
             }
             let name_bytes = &data[name_start..pos];
@@ -427,7 +446,7 @@ fn _array_of_documents_to_buffer<'py>(
             if value_length >= size - position {
                 return Err(invalid_bson(py, "invalid array content"));
             }
-            buffer.write_bytes(&data[position..position + value_length]);
+            buffer.write_bytes(&data[position..position + value_length])?;
             position += value_length;
         }
         if position != size - 1 {

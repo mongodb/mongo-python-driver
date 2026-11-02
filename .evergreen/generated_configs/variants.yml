@@ -498,7 +498,7 @@ buildvariants:
       - name: .perf
     display_name: Performance Benchmarks
     run_on:
-      - ubuntu2204-small
+      - rhel90-dbx-perf-large
     batchtime: 1440
 
   # Pyopenssl tests

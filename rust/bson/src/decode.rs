@@ -663,12 +663,14 @@ fn dbref_hook<'py>(
         return Ok(value);
     };
     let database = lookup("$db")?;
-    // Type checks: $ref must be str, $db must be str (or absent).
+    // Type checks: $ref must be str; $db must be str, None (the key may be
+    // present with a null value), or absent — matching the C's
+    // `database == Py_None || PyUnicode_Check(database)`.
     if reference.cast::<PyString>().is_err() {
         return Ok(value);
     }
     if let Some(db) = &database {
-        if db.cast::<PyString>().is_err() {
+        if !db.is_none() && db.cast::<PyString>().is_err() {
             return Ok(value);
         }
     }

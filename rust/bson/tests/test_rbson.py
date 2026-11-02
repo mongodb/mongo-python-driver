@@ -974,3 +974,114 @@ def test_field_name_cache_not_shared_across_handlers():
             decode_rust(bad)
         with pytest.raises(InvalidBSON):
             decode_c(bad)
+
+
+# --- Copilot review findings --------------------------------------------------
+
+
+def test_dbref_none_db_value_matches_c():
+    # A present $db whose value is None must still produce a DBRef (the C's
+    # _dbref_hook accepts `database == Py_None`), not a plain dict.
+    result = assert_same_decode(encode_c({"a": {"$ref": "c", "$id": 5, "$db": None}}))
+    assert isinstance(result["a"], DBRef)
+    assert result["a"].database is None
+
+
+def test_encode_registered_mapping_without_items():
+    # A Mapping registered with Mapping.register (not subclassed) need not
+    # inherit the ABC's items() mixin: the C iterates keys and looks each
+    # value up, so the Rust must not require an items() method.
+    import collections.abc
+
+    class RegisteredMapping:
+        def __init__(self, data):
+            self._data = dict(data)
+
+        def __iter__(self):
+            return iter(self._data)
+
+        def __getitem__(self, key):
+            return self._data[key]
+
+        def __len__(self):
+            return len(self._data)
+
+    collections.abc.Mapping.register(RegisteredMapping)
+    doc = {"b": RegisteredMapping({"x": 1}), "a": RegisteredMapping({"y": 2})}
+    assert_same_encode(doc)
+
+    # Missing keys during iteration raise KeyError, like the C.
+    class MissingValue(RegisteredMapping):
+        def __getitem__(self, key):
+            if key == "gone":
+                raise KeyError(key)
+            return super().__getitem__(key)
+
+    collections.abc.Mapping.register(MissingValue)
+    with pytest.raises(KeyError):
+        encode_rust({"a": MissingValue({"gone": 1})})
+    with pytest.raises(KeyError):
+        encode_c({"a": MissingValue({"gone": 1})})
+
+
+def test_encode_list_subclass_len_override():
+    # A list/tuple subclass's __len__ must not change the encoded element
+    # count: the C sizes arrays with PyList_Size/PyTuple_Size.
+    class LyingList(list):
+        def __len__(self):
+            return 0
+
+    class LyingTuple(tuple):
+        def __len__(self):
+            return 0
+
+    assert_same_encode({"a": LyingList([1, 2])})
+    assert_same_encode({"a": LyingTuple((1, 2))})
+    assert decode_rust(encode_rust({"a": LyingList([1, 2])})) == {"a": [1, 2]}
+
+
+def test_raw_to_dict_no_payload_last_value():
+    # The last element of a document may have no payload (None/MinKey/MaxKey):
+    # its name's NUL is the byte before the terminator, and inflating such a
+    # raw document must not raise "field name too large".
+    from bson import MaxKey, MinKey
+
+    for doc in (
+        {"a": None},
+        {"x": 1, "a": None},
+        {"a": MinKey()},
+        {"a": MaxKey()},
+        {"x": MinKey(), "y": MaxKey()},
+    ):
+        raw = encode_c(doc)
+        expected = _cbson._raw_to_dict(raw, 4, len(raw) - 1, OPTIONS, {}, False)
+        result = {}
+        actual = _rbson._raw_to_dict(raw, 4, len(raw) - 1, OPTIONS, result, False)
+        assert actual is result
+        assert result == expected == doc
+        # RawBSONDocument's lazy inflation runs the same entry point.
+        assert_same_decode(raw, CodecOptions(document_class=RawBSONDocument))
+
+
+def test_decode_bytearray_mutated_by_decoder():
+    # Decoding borrows the exporter's memory only through an owned snapshot:
+    # a decoder callback may mutate (even empty) the source buffer mid-decode
+    # without corrupting the values decoded from the snapshot.
+    from bson.codec_options import TypeDecoder, TypeRegistry
+
+    doc = {"a": "one", "b": "two", "c": "three"}
+    buf = bytearray(encode_c(doc))
+
+    class StrDecoder(TypeDecoder):
+        bson_type = str
+
+        def transform_bson(self, value):
+            buf.clear()
+            return value
+
+    opts = CodecOptions(type_registry=TypeRegistry([StrDecoder()]))
+    result = decode_rust(bytes(buf), opts)
+    assert result == doc
+    # bytearray and memoryview inputs decode exactly like bytes.
+    assert decode_rust(bytearray(encode_c(doc)), opts) == decode_c(encode_c(doc), opts)
+    assert decode_rust(memoryview(encode_c(doc)), opts) == decode_c(encode_c(doc), opts)

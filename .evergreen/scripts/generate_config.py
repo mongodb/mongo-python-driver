@@ -582,8 +582,12 @@ def create_perf_variants():
 
 def create_bson_codec_compare_variants():
     # Patch-only variant (no batchtime): compares the C and Rust-backed
-    # BSON codecs on the perf host.
-    host = HOSTS["perf"]
+    # BSON codecs. It is a self-contained C-vs-Rust comparison, so it does
+    # not need the perf host's historical comparability — unlike the .perf
+    # suite, whose shared HOSTS["perf"] assignment must not move. Ubuntu is
+    # selected here for the profiling runs: the image ships valgrind, and
+    # perf installs there (the perf host can do neither).
+    host = HOSTS["ubuntu22"]
     return [create_variant(["bson-codec-compare"], "BSON Codec Compare", host=host)]
 
 

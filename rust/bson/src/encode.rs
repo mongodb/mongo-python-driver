@@ -133,7 +133,7 @@ pub fn write_dict<'py>(
             if marker == MARKER_RAW_BSON {
                 let raw = mapping.getattr(pyo3::intern!(py, "raw"))?;
                 let data = raw_bytes_of(py, &raw)?;
-                buf.write_bytes(&data);
+                buf.write_bytes(&data)?;
                 return Ok(());
             }
         }
@@ -147,7 +147,7 @@ pub fn write_dict<'py>(
     }
 
     let start = buf.position();
-    buf.write_u32_le(0); // length placeholder
+    buf.write_u32_le(0)?; // length placeholder
     let _guard = recursion_guard(py, GUARD_DOCUMENT)?;
 
     let mut skip_id = false;
@@ -155,15 +155,13 @@ pub fn write_dict<'py>(
         // _id is encoded first, regardless of its position in the mapping.
         // The lookup must not trigger mapping hooks (e.g. defaultdict's
         // __missing__): dict lookups use the raw storage API, other
-        // mappings use a has-key check first.
+        // mappings probe with PyMapping_HasKey first — which swallows all
+        // lookup errors and treats the key as missing.
         let id_value = if let Ok(dict) = mapping.cast::<PyDict>() {
             dict.get_item(pyo3::intern!(py, "_id"))?
         } else {
-            match mapping.get_item(pyo3::intern!(py, "_id")) {
-                Ok(value) => Some(value),
-                Err(err) if err.is_instance_of::<pyo3::exceptions::PyKeyError>(py) => None,
-                Err(err) => return Err(err),
-            }
+            // Swallows all lookup errors (PyMapping_HasKey parity).
+            mapping.get_item(pyo3::intern!(py, "_id")).ok()
         };
         if let Some(value) = id_value {
             write_value(
@@ -173,7 +171,9 @@ pub fn write_dict<'py>(
         }
     }
     // Fast path: dict or dict subclass (e.g. SON). Other Mappings are
-    // iterated via their `items()` method.
+    // iterated by key, looking each value up — mirroring the C, which
+    // does not require an items() method (a Mapping registered via
+    // Mapping.register may only provide __iter__/__getitem__/__len__).
     if let Ok(dict) = mapping.cast::<PyDict>() {
         for (key, value) in dict.iter() {
             if skip_id && is_str_eq(&key, "_id") {
@@ -184,14 +184,15 @@ pub fn write_dict<'py>(
             }
         }
     } else {
-        let items = mapping.getattr(pyo3::intern!(py, "items"))?.call0()?;
-        for item in items.try_iter()? {
-            let item = item?;
-            let pair = item.cast::<PyTuple>().map_err(|_| {
-                pyo3::exceptions::PyTypeError::new_err("encoder expected mapping items")
-            })?;
-            let key = pair.get_item(0)?;
-            let value = pair.get_item(1)?;
+        for key in mapping.try_iter()? {
+            let key = key?;
+            let value = match mapping.get_item(&key) {
+                Ok(value) => value,
+                // The C replaces any lookup failure with KeyError(key).
+                Err(_) => {
+                    return Err(pyo3::exceptions::PyKeyError::new_err(key.unbind()));
+                }
+            };
             if skip_id && is_str_eq(&key, "_id") {
                 continue;
             }
@@ -200,7 +201,7 @@ pub fn write_dict<'py>(
             }
         }
     }
-    buf.write_u8(0);
+    buf.write_u8(0)?;
     let length = (buf.len() - start) as u32;
     buf.backpatch_u32(start, length);
     Ok(())
@@ -315,9 +316,9 @@ fn write_value<'py>(
     // bool must be checked before int (bool is an int subclass).
     if is_exact::<PyBool>(value) {
         let v: bool = value.extract()?;
-        buf.write_u8(BSONBOO);
-        buf.write_bytes(name);
-        buf.write_u8(v as u8);
+        buf.write_u8(BSONBOO)?;
+        buf.write_bytes(name)?;
+        buf.write_u8(v as u8)?;
         return Ok(());
     }
     if is_exact::<PyInt>(value) {
@@ -334,14 +335,14 @@ fn write_value<'py>(
     }
     if is_exact::<PyFloat>(value) {
         let v: f64 = value.extract()?;
-        buf.write_u8(BSONNUM);
-        buf.write_bytes(name);
-        buf.write_f64_le(v);
+        buf.write_u8(BSONNUM)?;
+        buf.write_bytes(name)?;
+        buf.write_f64_le(v)?;
         return Ok(());
     }
     if value.is_none() {
-        buf.write_u8(BSONNUL);
-        buf.write_bytes(name);
+        buf.write_u8(BSONNUL)?;
+        buf.write_bytes(name)?;
         return Ok(());
     }
     if is_exact::<PyDict>(value) {
@@ -381,9 +382,9 @@ fn write_value<'py>(
     // ---- isinstance waterfall for builtins and stdlib types. ----
     if value.is_instance_of::<PyBool>() {
         let v: bool = value.extract()?;
-        buf.write_u8(BSONBOO);
-        buf.write_bytes(name);
-        buf.write_u8(v as u8);
+        buf.write_u8(BSONBOO)?;
+        buf.write_bytes(name)?;
+        buf.write_u8(v as u8)?;
         return Ok(());
     }
     if value.is_instance_of::<PyInt>() {
@@ -400,14 +401,14 @@ fn write_value<'py>(
     }
     if value.is_instance_of::<PyFloat>() {
         let v: f64 = value.extract()?;
-        buf.write_u8(BSONNUM);
-        buf.write_bytes(name);
-        buf.write_f64_le(v);
+        buf.write_u8(BSONNUM)?;
+        buf.write_bytes(name)?;
+        buf.write_f64_le(v)?;
         return Ok(());
     }
     if value.is_none() {
-        buf.write_u8(BSONNUL);
-        buf.write_bytes(name);
+        buf.write_u8(BSONNUL)?;
+        buf.write_bytes(name)?;
         return Ok(());
     }
     if value.is_instance_of::<PyDict>() {
@@ -466,7 +467,9 @@ fn write_value<'py>(
     }
 
     // ---- Cannot encode. ----
-    buf.write_bytes(name); // Keep the buffer consistent for error reporting.
+    // An overflow here (the buffer is at the size limit) must not mask the
+    // cannot-encode error that follows.
+    let _ = buf.write_bytes(name); // Keep the buffer consistent for error reporting.
     Err(cannot_encode(py, value, in_fallback_call))
 }
 
@@ -544,27 +547,27 @@ fn write_marker_value<'py>(
                 ));
             }
             let size = data.len() as i32;
-            buf.write_u8(BSONBIN);
-            buf.write_bytes(name);
+            buf.write_u8(BSONBIN)?;
+            buf.write_bytes(name)?;
             if subtype == 2 {
                 // The payload carries an extra length prefix.
-                buf.write_i32_le(size + 4);
-                buf.write_u8(2);
+                buf.write_i32_le(size + 4)?;
+                buf.write_u8(2)?;
             }
-            buf.write_i32_le(size);
+            buf.write_i32_le(size)?;
             if subtype != 2 {
-                buf.write_u8(subtype as u8);
+                buf.write_u8(subtype as u8)?;
             }
-            buf.write_bytes(data);
+            buf.write_bytes(data)?;
             Ok(true)
         }
         7 => {
             // ObjectId: .binary is the 12-byte representation.
             let binary = value.getattr(pyo3::intern!(py, "binary"))?;
             let bytes = binary.cast::<PyBytes>().map_err(PyErr::from)?;
-            buf.write_u8(BSONOID);
-            buf.write_bytes(name);
-            buf.write_bytes(bytes.as_bytes());
+            buf.write_u8(BSONOID)?;
+            buf.write_bytes(name)?;
+            buf.write_bytes(bytes.as_bytes())?;
             Ok(true)
         }
         9 => {
@@ -582,9 +585,9 @@ fn write_marker_value<'py>(
                     "MongoDB datetimes can only handle up to 8-byte ints",
                 )
             })?;
-            buf.write_u8(BSONDAT);
-            buf.write_bytes(name);
-            buf.write_i64_le(millis);
+            buf.write_u8(BSONDAT)?;
+            buf.write_bytes(name)?;
+            buf.write_i64_le(millis)?;
             Ok(true)
         }
         11 => {
@@ -597,15 +600,15 @@ fn write_marker_value<'py>(
             let scope = value.getattr(pyo3::intern!(py, "scope"))?;
             let code = value.cast::<PyString>().map_err(PyErr::from)?;
             if scope.is_none() {
-                buf.write_u8(BSONCOD);
-                buf.write_bytes(name);
+                buf.write_u8(BSONCOD)?;
+                buf.write_bytes(name)?;
                 write_string_payload(buf, code)?;
                 return Ok(true);
             }
-            buf.write_u8(BSONCWS);
-            buf.write_bytes(name);
+            buf.write_u8(BSONCWS)?;
+            buf.write_bytes(name)?;
             let start = buf.position();
-            buf.write_u32_le(0); // total length placeholder
+            buf.write_u32_le(0)?; // total length placeholder
             write_string_payload(buf, code)?;
             // The scope is a full document (length + elements + term),
             // written without key checking (mirrors the C).
@@ -634,10 +637,10 @@ fn write_marker_value<'py>(
                         "can't convert negative value to unsigned long",
                     )
                 })?;
-            buf.write_u8(BSONTIM);
-            buf.write_bytes(name);
-            buf.write_i32_le(inc as i32);
-            buf.write_i32_le(time as i32);
+            buf.write_u8(BSONTIM)?;
+            buf.write_bytes(name)?;
+            buf.write_i32_le(inc as i32)?;
+            buf.write_i32_le(time as i32)?;
             Ok(true)
         }
         18 => {
@@ -647,25 +650,25 @@ fn write_marker_value<'py>(
                     "MongoDB can only handle up to 8-byte ints",
                 )
             })?;
-            buf.write_u8(BSONLON);
-            buf.write_bytes(name);
-            buf.write_i64_le(v);
+            buf.write_u8(BSONLON)?;
+            buf.write_bytes(name)?;
+            buf.write_i64_le(v)?;
             Ok(true)
         }
         19 => {
             // Decimal128: .bid is the 16-byte representation.
             let bid = value.getattr(pyo3::intern!(py, "bid"))?;
             let bytes = bid.cast::<PyBytes>().map_err(PyErr::from)?;
-            buf.write_u8(BSONDEC);
-            buf.write_bytes(name);
-            buf.write_bytes(bytes.as_bytes());
+            buf.write_u8(BSONDEC)?;
+            buf.write_bytes(name)?;
+            buf.write_bytes(bytes.as_bytes())?;
             Ok(true)
         }
         100 => {
             // DBRef: encoded as its as_doc() document.
             let as_doc = value.call_method0(pyo3::intern!(py, "as_doc"))?;
-            buf.write_u8(BSONOBJ);
-            buf.write_bytes(name);
+            buf.write_u8(BSONOBJ)?;
+            buf.write_bytes(name)?;
             write_dict(py, buf, &as_doc, false, options, false)?;
             Ok(true)
         }
@@ -673,19 +676,19 @@ fn write_marker_value<'py>(
             // RawBSONDocument: .raw (bytes or memoryview) written as-is.
             let raw = value.getattr(pyo3::intern!(py, "raw"))?;
             let data = raw_bytes_of(py, &raw)?;
-            buf.write_u8(BSONOBJ);
-            buf.write_bytes(name);
-            buf.write_bytes(&data);
+            buf.write_u8(BSONOBJ)?;
+            buf.write_bytes(name)?;
+            buf.write_bytes(&data)?;
             Ok(true)
         }
         255 => {
-            buf.write_u8(BSONMIN);
-            buf.write_bytes(name);
+            buf.write_u8(BSONMIN)?;
+            buf.write_bytes(name)?;
             Ok(true)
         }
         127 => {
-            buf.write_u8(BSONMAX);
-            buf.write_bytes(name);
+            buf.write_u8(BSONMAX)?;
+            buf.write_bytes(name)?;
             Ok(true)
         }
         _ => Ok(false), // unknown marker: fall through to the chain
@@ -758,10 +761,10 @@ fn write_regex_value<'py>(
         ));
     }
 
-    buf.write_u8(BSONRGX);
-    buf.write_bytes(name);
-    buf.write_bytes(&pattern_bytes);
-    buf.write_u8(0);
+    buf.write_u8(BSONRGX)?;
+    buf.write_bytes(name)?;
+    buf.write_bytes(&pattern_bytes)?;
+    buf.write_u8(0)?;
     // Flag chars are written in bit order: i l m s u x.
     let mut flags = Vec::new();
     if int_flags & 2 != 0 {
@@ -782,8 +785,8 @@ fn write_regex_value<'py>(
     if int_flags & 64 != 0 {
         flags.push(b'x');
     }
-    buf.write_bytes(&flags);
-    buf.write_u8(0);
+    buf.write_bytes(&flags)?;
+    buf.write_u8(0)?;
     Ok(())
 }
 
@@ -813,13 +816,13 @@ fn write_int_dispatch<'py>(
     match value.extract::<i64>() {
         Ok(v) => {
             if (I32_MIN..=I32_MAX).contains(&v) {
-                buf.write_u8(BSONINT);
-                buf.write_bytes(name);
-                buf.write_i32_le(v as i32);
+                buf.write_u8(BSONINT)?;
+                buf.write_bytes(name)?;
+                buf.write_i32_le(v as i32)?;
             } else {
-                buf.write_u8(BSONLON);
-                buf.write_bytes(name);
-                buf.write_i64_le(v);
+                buf.write_u8(BSONLON)?;
+                buf.write_bytes(name)?;
+                buf.write_i64_le(v)?;
             }
             Ok(())
         }
@@ -909,8 +912,8 @@ fn write_document_value<'py>(
     check_keys: bool,
     options: &CodecOptionsData<'py>,
 ) -> PyResult<()> {
-    buf.write_u8(BSONOBJ);
-    buf.write_bytes(name);
+    buf.write_u8(BSONOBJ)?;
+    buf.write_bytes(name)?;
     write_dict(py, buf, value, check_keys, options, false)
 }
 
@@ -923,23 +926,32 @@ fn write_array_value<'py>(
     check_keys: bool,
     options: &CodecOptionsData<'py>,
 ) -> PyResult<()> {
-    buf.write_u8(BSONARR);
-    buf.write_bytes(name);
+    buf.write_u8(BSONARR)?;
+    buf.write_bytes(name)?;
     let start = buf.position();
-    buf.write_u32_le(0); // length placeholder
+    buf.write_u32_le(0)?; // length placeholder
     let _guard = recursion_guard(py, GUARD_ARRAY)?;
-    let len = value.len()?;
     // List/tuple values (including subclasses — the cast is
     // isinstance-based, matching the C's subclass-inclusive PyList_Check /
     // PyTuple_Check) are read through the concrete sequence API
     // (PyList_GET_ITEM / PyTuple_GET_ITEM in the C), which bypasses
-    // __getitem__ overrides. The mapping-protocol fallback below only
-    // stays for defensive symmetry with the dispatch above it.
+    // __getitem__ overrides. The size likewise comes from the concrete
+    // PyList_Size/PyTuple_Size storage, not a subclass's __len__ —
+    // value.len() would dispatch to it and mis-size the array. The
+    // mapping-protocol fallback below only stays for defensive symmetry
+    // with the dispatch above it.
     let list = value.cast::<PyList>().ok();
     let tuple = if list.is_none() {
         value.cast::<PyTuple>().ok()
     } else {
         None
+    };
+    let len = if let Some(list) = &list {
+        list.len()
+    } else if let Some(tuple) = &tuple {
+        tuple.len()
+    } else {
+        value.len()?
     };
     // The numeric element key ("0", "1", ... + NUL) is built in a stack
     // buffer (snprintf into a local in the C): no per-element allocation.
@@ -976,7 +988,7 @@ fn write_array_value<'py>(
             false,
         )?;
     }
-    buf.write_u8(0);
+    buf.write_u8(0)?;
     let length = (buf.len() - start) as u32;
     buf.backpatch_u32(start, length);
     Ok(())
@@ -996,11 +1008,11 @@ fn write_binary_subtype_zero(
             "String length must be <= 2147483647",
         ));
     }
-    buf.write_u8(BSONBIN);
-    buf.write_bytes(name);
-    buf.write_i32_le(data.len() as i32);
-    buf.write_u8(0); // subtype
-    buf.write_bytes(data);
+    buf.write_u8(BSONBIN)?;
+    buf.write_bytes(name)?;
+    buf.write_i32_le(data.len() as i32)?;
+    buf.write_u8(0)?; // subtype
+    buf.write_bytes(data)?;
     Ok(())
 }
 
@@ -1011,8 +1023,8 @@ fn write_string_value<'py>(
     name: &[u8],
     value: &Bound<'py, PyString>,
 ) -> PyResult<()> {
-    buf.write_u8(BSONSTR);
-    buf.write_bytes(name);
+    buf.write_u8(BSONSTR)?;
+    buf.write_bytes(name)?;
     write_string_payload(buf, value)
 }
 
@@ -1026,9 +1038,9 @@ fn write_string_payload(buf: &mut Buffer, value: &Bound<'_, PyString>) -> PyResu
             "String length must be <= 2147483647",
         ));
     }
-    buf.write_i32_le(utf8.len() as i32 + 1);
-    buf.write_bytes(utf8.as_bytes());
-    buf.write_u8(0);
+    buf.write_i32_le(utf8.len() as i32 + 1)?;
+    buf.write_bytes(utf8.as_bytes())?;
+    buf.write_u8(0)?;
     Ok(())
 }
 
@@ -1059,8 +1071,8 @@ fn write_datetime_value<'py>(
         effective.get_second(),
         effective.get_microsecond(),
     );
-    buf.write_u8(BSONDAT);
-    buf.write_bytes(name);
-    buf.write_i64_le(millis);
+    buf.write_u8(BSONDAT)?;
+    buf.write_bytes(name)?;
+    buf.write_i64_le(millis)?;
     Ok(())
 }

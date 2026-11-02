@@ -63,7 +63,7 @@ uv pip install maturin
 # the pip-built C extension only gets baseline codegen. Set via RUSTFLAGS —
 # cargo only discovers a crate-local .cargo/config.toml from the invocation
 # directory upward, which maturin (run from the checkout root) would miss.
-export RUSTFLAGS="${RUSTFLAGS:-}-C target-cpu=native"
+export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-cpu=native"
 .venv/bin/maturin develop --release -m rust/bson/Cargo.toml
 
 # Run the benchmarks with the venv's interpreter directly: no implicit
@@ -182,9 +182,16 @@ elif command -v valgrind > /dev/null 2>&1; then
   # Rebuild for the profiled run on x86-64-v3 (AVX2, VEX-encoded, which
   # valgrind handles — the C extension is baseline x86-64 and profiles
   # fine). Nothing after this block uses the codec.
+  # The rebuild is part of the best-effort profiling contract: under
+  # set -e a failure here must not fail the task (all comparison results
+  # are already written) — the task still needs to reach its
+  # artifact-upload command, so treat it as a skipped profile.
   echo "Rebuilding the Rust codec without AVX-512 for valgrind..."
-  RUSTFLAGS="-C target-cpu=x86-64-v3" .venv/bin/maturin develop --release \
-    -m rust/bson/Cargo.toml
+  if ! RUSTFLAGS="-C target-cpu=x86-64-v3" .venv/bin/maturin develop --release \
+    -m rust/bson/Cargo.toml; then
+    echo "codec rebuild for valgrind failed; skipping the DeepDecoding profiles" >&2
+    exit 0
+  fi
   for impl in c rust; do
     echo "Profiling DeepDecoding with callgrind (BSON_IMPL=$impl)..."
     FASTBENCH=1 BSON_IMPL="$impl" OUTPUT_FILE="results_profile_${impl}.json" \
