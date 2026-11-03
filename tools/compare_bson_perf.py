@@ -13,16 +13,17 @@ from __future__ import annotations
 
 import json
 import sys
+from typing import Any
 
 
-def load(path):
+def load(path: str) -> list[dict[str, Any]]:
     with open(path) as fid:
         return json.load(fid)
 
 
-def metrics_by_name(results):
+def metrics_by_name(results: list[dict[str, Any]]) -> dict[str, float]:
     """Maps test name → megabytes_per_sec (one entry per test today)."""
-    metrics = {}
+    metrics: dict[str, float] = {}
     for entry in results:
         name = entry["info"]["test_name"]
         for metric in entry["metrics"]:
