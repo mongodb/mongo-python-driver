@@ -310,6 +310,20 @@ def test_bson_codec_compare_uploads_artifacts_as_files():
     assert all("${task_id}-${execution}" in remote for remote in remotes), remotes
 
 
+def test_bson_codec_compare_is_patch_only():
+    """The BSON codec comparison variant is patch-only: omitting batchtime
+    does not stop Evergreen from running it on mainline commits, and
+    shrub's BuildVariant model cannot express the field, so the writer
+    injects it into the generated YAML. Drift tripwire for that injection.
+    """
+    import yaml
+
+    here = Path(__file__).parent
+    config = yaml.safe_load((here.parent / "generated_configs" / "variants.yml").read_text())
+    variant = next(v for v in config["buildvariants"] if v["name"] == "bson-codec-compare")
+    assert variant.get("patch_only") is True
+
+
 def test_bson_codec_compare_profiles_deep_decoding():
     """The task profiles DeepDecoding (the one benchmark still below the
     parity bar on the host) under perf, once per codec. Drift tripwire: the

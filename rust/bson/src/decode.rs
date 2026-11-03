@@ -210,6 +210,9 @@ pub fn decode_elements_into<'py>(
             get_value(py, &input, name, type_byte, position, body.len(), options)
                 .map_err(|err| rewrap_as_invalid_bson(py, err))?;
         position = new_position;
+        // Document-level converter failures propagate unwrapped (the C's
+        // _element_to_dict does not rewrap get_value failures).
+        let value = apply_decoder(py, value, options)?;
 
         // Track the decoded key, not the raw bytes: a non-strict handler
         // can mangle b'\xff$ref' into '$ref', and the C's _dbref_hook
@@ -306,10 +309,12 @@ pub fn get_value_with_raw_array<'py>(
                 elements_to_dict(py, input, &data[position..position + size], options)
                     .map_err(|err| rewrap_as_invalid_bson(py, err))?;
             position += size;
-            // Hook for DBRefs ($ref/$id shaped docs decode to DBRef);
-            // skipped when no key could be "$ref"/"$id" (every DBRef key
-            // starts with "$") or for raw document classes (mirrors the C).
-            if options.is_raw_bson || !has_dollar_key {
+            // Hook for DBRefs ($ref/$id shaped docs decode to DBRef). The
+            // C runs it unconditionally; the skip is only sound for exact
+            // dicts, which store keys as decoded. A custom class may add
+            // or rewrite keys in its constructor or __setitem__, so its
+            // result is always checked.
+            if options.is_raw_bson || (options.is_dict_class && !has_dollar_key) {
                 value
             } else {
                 dbref_hook(py, value, options)?
@@ -340,6 +345,10 @@ pub fn get_value_with_raw_array<'py>(
                     let (item, new_pos) =
                         get_value(py, input, name, element_type, pos, arr_end, options)
                             .map_err(|err| rewrap_as_invalid_bson(py, err))?;
+                    // The C's array loop wraps item failures (goto
+                    // invalid), converter errors included.
+                    let item = apply_decoder(py, item, options)
+                        .map_err(|err| rewrap_as_invalid_bson(py, err))?;
                     pos = new_pos;
                     if unsafe { pyo3::ffi::PyList_Append(list.as_ptr(), item.as_ptr()) } < 0 {
                         return Err(PyErr::fetch(py));
@@ -613,14 +622,26 @@ pub fn get_value_with_raw_array<'py>(
         }
     };
 
-    // Apply a custom decoder for this value's exact type, if registered.
+    Ok((value, position))
+}
+
+/// Applies the type registry's decoder for the value's exact type, if
+/// registered. Mirrors the C's decoder-map tail in get_value: the converter
+/// result is returned directly, so its failures are not wrapped here —
+/// whether they are wrapped depends on the caller (document-level callers
+/// propagate; the array loop wraps, like the C's `goto invalid`).
+pub fn apply_decoder<'py>(
+    py: Python<'py>,
+    value: Py<PyAny>,
+    options: &CodecOptionsData<'py>,
+) -> PyResult<Py<PyAny>> {
     if let Some(decoder_map) = &options.decoder_map_dict {
         let value_bound = value.bind(py);
         if let Some(converter) = decoder_map.get_item(value_bound.get_type())? {
-            return Ok((converter.call1((value_bound,))?.unbind(), position));
+            return Ok(converter.call1((value_bound,))?.unbind());
         }
     }
-    Ok((value, position))
+    Ok(value)
 }
 
 /// Constructs a `DatetimeMS` for the millis value (vectorcall, no tuple).
@@ -647,11 +668,14 @@ fn dbref_hook<'py>(
 ) -> PyResult<Py<PyAny>> {
     let doc = value.bind(py);
     let lookup = |key: &str| -> PyResult<Option<Bound<'py, PyAny>>> {
-        // Dict fast path: PyDict_GetItemWithError raises no exceptions for
-        // missing keys, and one lookup serves both the presence check and
-        // the value (PyMapping_HasKey + PyObject_GetItem in the C); other
-        // mappings fall back to get_item with a caught KeyError.
-        if let Ok(dict) = doc.cast::<PyDict>() {
+        // Exact-dict fast path: PyDict_GetItemWithError raises no
+        // exceptions for missing keys, and one lookup serves both the
+        // presence check and the value (PyMapping_HasKey +
+        // PyObject_GetItem in the C). Subclasses are excluded — their
+        // __getitem__ override must win — and other mappings fall back to
+        // get_item with a caught KeyError.
+        if doc.is_exact_instance_of::<PyDict>() {
+            let dict = doc.cast::<PyDict>().unwrap();
             let key = pyo3::types::PyString::intern(py, key);
             let item = unsafe { pyo3::ffi::PyDict_GetItemWithError(dict.as_ptr(), key.as_ptr()) };
             if item.is_null() {
@@ -959,10 +983,10 @@ pub fn decode_utf8<'py>(
 /// hashing fresh strings for every dict insertion is a large share of the
 /// decode loop, and a hit reuses the cached string's CPython hash. Repeat
 /// decodes now return the same str object for a repeated name (benign;
-/// strings are immutable). Enabled only for the strict handler, where
-/// decoding is a pure function of the bytes. Like `Types`, the cache is
-/// process-wide: importing the module into more than one interpreter is
-/// not supported.
+/// strings are immutable). Enabled only for valid-UTF-8 keys under the
+/// strict handler with no registered override, where decoding is a pure
+/// function of the bytes. Like `Types`, the cache is process-wide:
+/// importing the module into more than one interpreter is not supported.
 const KEY_CACHE_SLOTS: usize = 1 << 13;
 /// Keys longer than this skip the cache: caching them would cost as much
 /// as the decode it avoids.
@@ -1016,25 +1040,38 @@ fn decode_key_cached<'py>(
     Ok(decoded)
 }
 
-/// Decodes a field-name key, using the intern cache when the strict handler
-/// is in effect (any other handler makes decoding depend on mutable options
-/// state, so the cache is bypassed).
+/// Decodes a field-name key, using the intern cache for valid-UTF-8 keys
+/// under the strict handler. Any other handler makes decoding depend on
+/// mutable options state, and invalid UTF-8 can invoke a registered
+/// "strict" handler (which may re-enter decoding or make decoding impure),
+/// so both bypass the cache.
 #[inline]
 pub fn decode_key<'py>(
     py: Python<'py>,
     bytes: &[u8],
     options: &CodecOptionsData<'py>,
 ) -> PyResult<Bound<'py, PyAny>> {
-    if options.utf8_handler.is_none() && bytes.len() <= KEY_CACHE_MAX_KEY_LEN {
+    if options.utf8_handler.is_none()
+        && bytes.len() <= KEY_CACHE_MAX_KEY_LEN
+        && std::str::from_utf8(bytes).is_ok()
+    {
         return decode_key_cached(py, bytes, options);
     }
     decode_utf8(py, bytes, options)
 }
 
 /// Wraps unexpected errors during value decoding in InvalidBSON, mirroring
-/// `_rewrap_as_invalid_bson` in the C extension.
+/// `_rewrap_as_invalid_bson` in the C extension: only `Exception` subclasses
+/// are wrapped — `KeyboardInterrupt` and `SystemExit` pass through — and
+/// an `InvalidBSON` is returned as-is.
 #[cold]
 pub fn rewrap_as_invalid_bson(py: Python<'_>, err: PyErr) -> PyErr {
+    if !err
+        .value(py)
+        .is_instance_of::<pyo3::exceptions::PyException>()
+    {
+        return err;
+    }
     let is_invalid_bson = Types::get(py)
         .ok()
         .and_then(|types| err.value(py).is_instance(types.invalid_bson.bind(py)).ok())

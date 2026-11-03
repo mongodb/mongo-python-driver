@@ -6,7 +6,6 @@
 
 use std::ffi::CStr;
 
-use pyo3::buffer::PyBuffer;
 use pyo3::prelude::*;
 use pyo3::types::{
     PyAny, PyBool, PyBytes, PyDateAccess, PyDateTime, PyDict, PyFloat, PyInt, PyList, PyString,
@@ -708,16 +707,12 @@ fn raw_bytes_of<'py>(_py: Python<'py>, raw: &Bound<'py, PyAny>) -> PyResult<Vec<
             raw.get_type().name()?.to_cow()?
         )));
     }
-    let buffer = PyBuffer::<u8>::get(raw)?;
-    // A misbehaving exporter may hand back non-contiguous or null buffers.
-    if buffer.buf_ptr().is_null() || !buffer.is_c_contiguous() || buffer.item_size() != 1 {
-        return Err(pyo3::exceptions::PyTypeError::new_err(
-            "RawBSONDocument.raw must be bytes or memoryview",
-        ));
-    }
-    let slice =
-        unsafe { std::slice::from_raw_parts(buffer.buf_ptr() as *const u8, buffer.len_bytes()) };
-    Ok(slice.to_vec())
+    let buffer = crate::RawBuffer::get(raw)?;
+    // The C's write_raw_doc goes through _get_buffer: a misbehaving
+    // exporter may hand back non-contiguous, oversize-item, or null
+    // buffers.
+    crate::with_get_buffer_checks(&buffer)?;
+    Ok(buffer.as_slice().to_vec())
 }
 
 /// Writes the regex element shared by the `Regex` class and compiled

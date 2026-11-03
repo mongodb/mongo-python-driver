@@ -23,7 +23,6 @@ mod errors;
 mod options;
 mod types;
 
-use pyo3::buffer::PyBuffer;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes, PyList, PyModule, PyTuple};
 
@@ -32,6 +31,65 @@ use decode::BSON_MIN_SIZE;
 use errors::invalid_bson;
 use options::CodecOptionsData;
 use types::Types;
+
+/// A format-independent buffer view (`PyBUF_SIMPLE`), mirroring the C's
+/// `PyObject_GetBuffer` call sites: any contiguous single-byte exporter is
+/// accepted, including signed-byte buffers (`memoryview.cast("b")`,
+/// `array.array("b")`) that the typed `PyBuffer<u8>` rejects.
+pub(crate) struct RawBuffer {
+    view: pyo3::ffi::Py_buffer,
+}
+
+impl RawBuffer {
+    pub(crate) fn get(object: &Bound<'_, PyAny>) -> PyResult<Self> {
+        // SAFETY: zero-initialized view; released in Drop on failure.
+        let mut view: pyo3::ffi::Py_buffer = unsafe { std::mem::zeroed() };
+        // SAFETY: the view is released before returning the error.
+        if unsafe {
+            pyo3::ffi::PyObject_GetBuffer(object.as_ptr(), &mut view, pyo3::ffi::PyBUF_SIMPLE)
+        } != 0
+        {
+            return Err(PyErr::fetch(object.py()));
+        }
+        Ok(Self { view })
+    }
+
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        // SAFETY: the view is live and the caller has applied the
+        // `_get_buffer` checks (null, contiguity, itemsize).
+        unsafe { std::slice::from_raw_parts(self.view.buf as *const u8, self.view.len as usize) }
+    }
+}
+
+impl Drop for RawBuffer {
+    fn drop(&mut self) {
+        unsafe { pyo3::ffi::PyBuffer_Release(&mut self.view) };
+    }
+}
+
+/// The C's `_get_buffer` checks: pyo3 acquires buffers with PyBUF_FULL_RO
+/// elsewhere, so a misbehaving exporter can hand back null or
+/// non-contiguous buffers.
+pub(crate) fn with_get_buffer_checks(view: &RawBuffer) -> PyResult<()> {
+    // `!view->buf || view->len < 0`.
+    if view.view.buf.is_null() || view.view.len < 0 {
+        return Err(pyo3::exceptions::PyValueError::new_err("invalid buffer"));
+    }
+    // `!PyBuffer_IsContiguous(view, 'C')`.
+    // SAFETY: the view is live and validly initialized.
+    if unsafe { pyo3::ffi::PyBuffer_IsContiguous(&view.view, b'C' as _) } == 0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "must be a contiguous buffer",
+        ));
+    }
+    // `view->itemsize != 1`.
+    if view.view.itemsize != 1 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "buffer data must be ascii or utf8",
+        ));
+    }
+    Ok(())
+}
 
 /// True when any document in the stream is at least `threshold` bytes
 /// (mirrors `_contains_view_eligible_doc`).
@@ -69,10 +127,9 @@ fn prepare_input_buffer<'py>(
         return Ok(object.clone());
     }
     let threshold = Types::get(py)?.raw_bson_view_threshold;
-    let buffer = PyBuffer::<u8>::get(object)?;
+    let buffer = RawBuffer::get(object)?;
     with_get_buffer_checks(&buffer)?;
-    let data =
-        unsafe { std::slice::from_raw_parts(buffer.buf_ptr() as *const u8, buffer.len_bytes()) };
+    let data = buffer.as_slice();
     if contains_view_eligible_doc(data, threshold) {
         // Copy so memoryview-backed views outlive the input.
         let copy = PyBytes::new(py, data);
@@ -94,37 +151,12 @@ fn with_buffer_view<R>(
     if let Ok(bytes) = object.cast::<PyBytes>() {
         return f(bytes.as_bytes());
     }
-    let buffer = PyBuffer::<u8>::get(object)?;
+    let buffer = RawBuffer::get(object)?;
     with_get_buffer_checks(&buffer)?;
     // Copy while the GIL is held and before any callback runs.
-    let data =
-        unsafe { std::slice::from_raw_parts(buffer.buf_ptr() as *const u8, buffer.len_bytes()) }
-            .to_vec();
+    let data = buffer.as_slice().to_vec();
     drop(buffer);
     f(&data)
-}
-
-/// Mirrors the C's `_get_buffer` checks: pyo3 acquires buffers with
-/// PyBUF_FULL_RO, so a misbehaving exporter can hand back null or
-/// non-contiguous buffers.
-fn with_get_buffer_checks(buffer: &PyBuffer<u8>) -> PyResult<()> {
-    // `!view->buf || view->len < 0`.
-    if buffer.buf_ptr().is_null() {
-        return Err(pyo3::exceptions::PyValueError::new_err("invalid buffer"));
-    }
-    // `!PyBuffer_IsContiguous(view, 'C')`.
-    if !buffer.is_c_contiguous() {
-        return Err(pyo3::exceptions::PyValueError::new_err(
-            "must be a contiguous buffer",
-        ));
-    }
-    // `view->itemsize != 1`.
-    if buffer.item_size() != 1 {
-        return Err(pyo3::exceptions::PyValueError::new_err(
-            "buffer data must be ascii or utf8",
-        ));
-    }
-    Ok(())
 }
 
 /// Encodes a Python mapping to BSON bytes.
@@ -290,6 +322,8 @@ fn _element_to_dict<'py>(
         py, &input, name_bytes, type_byte, pos, max, &options, raw_array,
     )
     .map_err(|err| rewrap(py, err))?;
+    // Converter failures propagate unwrapped (the C's _element_to_dict).
+    let value = decode::apply_decoder(py, value, &options)?;
     let result = PyTuple::new(
         py,
         [
@@ -364,6 +398,9 @@ fn _raw_to_dict<'py>(
             )
             .map_err(|err| rewrap(py, err))?;
             pos = new_pos;
+            // Converter failures propagate unwrapped (the C's
+            // _element_to_dict).
+            let value = decode::apply_decoder(py, value, &options)?;
 
             result_mapping.set_item(name, value)?;
         }

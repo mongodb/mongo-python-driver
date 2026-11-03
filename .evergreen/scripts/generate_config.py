@@ -588,7 +588,9 @@ def create_bson_codec_compare_variants():
     # selected here for the profiling runs: the image ships valgrind, and
     # perf installs there (the perf host can do neither).
     host = HOSTS["ubuntu22"]
-    return [create_variant(["bson-codec-compare"], "BSON Codec Compare", host=host)]
+    return [
+        create_variant(["bson-codec-compare"], "BSON Codec Compare", host=host, patch_only=True)
+    ]
 
 
 def create_aws_auth_variants():

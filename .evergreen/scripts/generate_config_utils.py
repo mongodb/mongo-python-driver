@@ -93,6 +93,12 @@ for name, run_on in zip(
 ##############
 
 
+# Variants that must only run on patches. shrub's BuildVariant model has no
+# patch_only field, so create_variant_generic records the name and
+# write_variants_to_file injects the field into the generated YAML.
+PATCH_ONLY_VARIANTS: set[str] = set()
+
+
 def create_variant_generic(
     tasks: list[str | EvgTaskRef],
     display_name: str,
@@ -103,6 +109,7 @@ def create_variant_generic(
     **kwargs: Any,
 ) -> BuildVariant:
     """Create a build variant for the given inputs."""
+    patch_only = kwargs.pop("patch_only", False)
     task_refs = []
     if isinstance(host, str):
         host = HOSTS[host]
@@ -123,6 +130,8 @@ def create_variant_generic(
     if isinstance(run_on, str):
         run_on = [run_on]
     name = display_name.replace(" ", "-").replace("*-", "").lower()
+    if patch_only:
+        PATCH_ONLY_VARIANTS.add(name)
     return BuildVariant(
         name=name,
         display_name=display_name,
@@ -285,6 +294,10 @@ def write_variants_to_file(mod):
             fid.write(f"  # {title} tests\n")
             for line in out[1:]:
                 fid.write(f"{line}\n")
+                # Variant entries sit at two-space indent; task refs inside
+                # a variant render deeper and must not match.
+                if line.startswith("  - name: ") and line[10:].strip() in PATCH_ONLY_VARIANTS:
+                    fid.write("    patch_only: true\n")
             fid.write("\n")
 
     # Remove extra trailing newline:

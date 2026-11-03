@@ -117,6 +117,7 @@ buildvariants:
 
   # Bson codec compare tests
   - name: bson-codec-compare
+    patch_only: true
     tasks:
       - name: bson-codec-compare
     display_name: BSON Codec Compare

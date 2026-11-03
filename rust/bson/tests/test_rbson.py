@@ -866,11 +866,14 @@ def test_invalid_id_not_wrapped():
 
 
 def test_non_contiguous_buffer_rejected():
-    # MIN-4: a non-contiguous buffer exporter raises ValueError instead of
-    # silently decoding wrong bytes.
+    # MIN-4: a non-contiguous buffer exporter fails to decode instead of
+    # silently decoding wrong bytes. Both codecs get BufferError from the
+    # exporter (PyBUF_SIMPLE): memoryview refuses the request itself.
     values = bytearray(b"\x0d\x00\x00\x00\x02a\x00\x01\x00\x00\x00x\x00\x00")
     view = memoryview(values)[::-1]  # reversed: not C-contiguous
-    with pytest.raises(ValueError, match="contiguous"):
+    with pytest.raises((ValueError, BufferError), match="contiguous"):
+        decode_c(view, OPTIONS)
+    with pytest.raises((ValueError, BufferError), match="contiguous"):
         _rbson._bson_to_dict(view, OPTIONS)
 
 
@@ -1165,3 +1168,203 @@ def test_decimal128_marker_fixed_payload():
 
     with pytest.raises(InvalidDocument):
         encode_rust({"a": ShortDecimal128()})
+
+
+def _invalid_key_doc():
+    # {"<invalid-utf8>a": "x"}: the 0xff byte invokes the error handler
+    # during key decode.
+    import struct
+
+    element = b"\x02\xff\x61\x00" + struct.pack("<i", 2) + b"x\x00"
+    length = 4 + len(element) + 1
+    return struct.pack("<i", length) + element + b"\x00"
+
+
+def test_registered_strict_handler_bypasses_cache():
+    # A handler registered under the name "strict" runs inside
+    # PyUnicode_DecodeUTF8 even for a NULL errors argument, and its output
+    # may differ per call: invalid-UTF-8 keys must bypass the key cache
+    # rather than caching handler output as a strict decode.
+    import codecs
+
+    data = _invalid_key_doc()
+    calls = []
+
+    def handler(exc):
+        calls.append(exc)
+        return ("k", exc.end)
+
+    # codecs has no unregister_error; restore the builtin by re-registering.
+    builtin = codecs.lookup_error("strict")
+    codecs.register_error("strict", handler)
+    try:
+        first = decode_rust(data, CodecOptions())
+        second = decode_rust(data, CodecOptions())
+    finally:
+        codecs.register_error("strict", builtin)
+    assert first == second == {"ka": "x"}
+    # No cache: the handler ran for every decode of the invalid bytes.
+    assert len(calls) == 2
+
+
+def test_registered_strict_handler_can_reenter():
+    # Re-entering decoding from a registered "strict" handler must not
+    # deadlock: invalid-UTF-8 keys bypass the cache, so the handler never
+    # runs while the cache lock is held.
+    import codecs
+    import threading
+
+    data = _invalid_key_doc()
+    depth = [0]
+
+    def handler(exc):
+        depth[0] += 1
+        try:
+            if depth[0] < 3:
+                try:
+                    decode_rust(data, CodecOptions())
+                except InvalidBSON:
+                    pass
+            return ("k", exc.end)
+        finally:
+            depth[0] -= 1
+
+    # codecs has no unregister_error; restore the builtin by re-registering.
+    builtin = codecs.lookup_error("strict")
+    codecs.register_error("strict", handler)
+    try:
+        outcome = {}
+
+        def run():
+            try:
+                outcome["result"] = decode_rust(data, CodecOptions())
+            except BaseException as err:
+                outcome["error"] = err
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        thread.join(timeout=10)
+        assert not thread.is_alive(), "decode re-entered the key-cache lock and deadlocked"
+    finally:
+        codecs.register_error("strict", builtin)
+    assert "result" in outcome
+    assert outcome["result"] == {"ka": "x"}
+
+
+def test_dbref_keys_rewritten_by_document_class():
+    # A document class may add or rewrite keys in __setitem__: the C's
+    # _dbref_hook checks the RESULTING mapping, so {"ref", "id"} stored as
+    # {"$ref", "$id"} still decodes to a DBRef. The no-dollar-key skip is
+    # therefore only for exact dicts.
+    class RewritingDoc(dict):
+        def __setitem__(self, key, value):
+            if key == "ref":
+                key = "$ref"
+            elif key == "id":
+                key = "$id"
+            super().__setitem__(key, value)
+
+    data = encode_c({"a": {"ref": "coll", "id": 1}})
+    opts = CodecOptions(document_class=RewritingDoc)
+    expected = decode_c(data, opts)
+    assert isinstance(expected["a"], DBRef)
+    result = decode_rust(data, opts)
+    assert result == expected
+    assert type(result["a"]) is DBRef
+
+
+def test_dbref_lookup_uses_mapping_protocol():
+    # The DBRef hook's lookups honor __getitem__ overrides on dict
+    # subclasses (the C uses PyMapping lookups): an override normalizing
+    # the $ref value changes the DBRef's collection.
+    class Overriding(dict):
+        def __getitem__(self, key):
+            if key == "$ref":
+                return "overridden"
+            return super().__getitem__(key)
+
+    data = encode_c({"a": {"$ref": "coll", "$id": 1}})
+    opts = CodecOptions(document_class=Overriding)
+    expected = decode_c(data, opts)
+    assert expected["a"].collection == "overridden"
+    result = decode_rust(data, opts)
+    assert result == expected
+
+
+def test_top_level_decoder_exception_propagates():
+    # A decoder's exception at document level propagates unwrapped: the C
+    # returns the converter's result (or error) directly from get_value.
+    from bson.codec_options import TypeDecoder, TypeRegistry
+
+    class Boom(TypeDecoder):
+        bson_type = Int64
+
+        def transform_bson(self, value):
+            raise ValueError("boom")
+
+    opts = CodecOptions(type_registry=TypeRegistry([Boom()]))
+    data = encode_c({"a": Int64(1)})
+    with pytest.raises(ValueError, match="boom"):
+        decode_c(data, opts)
+    with pytest.raises(ValueError, match="boom"):
+        decode_rust(data, opts)
+
+
+def test_array_item_decoder_exception_wrapped():
+    # The C's array loop wraps item failures (goto invalid), so a
+    # decoder's ValueError on an array element becomes InvalidBSON.
+    from bson.codec_options import TypeDecoder, TypeRegistry
+
+    class Boom(TypeDecoder):
+        bson_type = Int64
+
+        def transform_bson(self, value):
+            raise ValueError("boom")
+
+    opts = CodecOptions(type_registry=TypeRegistry([Boom()]))
+    data = encode_c({"a": [Int64(1)]})
+    with pytest.raises(InvalidBSON, match="boom"):
+        decode_c(data, opts)
+    with pytest.raises(InvalidBSON, match="boom"):
+        decode_rust(data, opts)
+
+
+def test_base_exception_propagates():
+    # Only Exception subclasses are wrapped as InvalidBSON: a decoder
+    # raising KeyboardInterrupt interrupts the decode.
+    from bson.codec_options import TypeDecoder, TypeRegistry
+
+    class Interrupt(TypeDecoder):
+        bson_type = Int64
+
+        def transform_bson(self, value):
+            raise KeyboardInterrupt
+
+    opts = CodecOptions(type_registry=TypeRegistry([Interrupt()]))
+    data = encode_c({"a": Int64(1)})
+    for decoder in (decode_c, decode_rust):
+        with pytest.raises(KeyboardInterrupt):
+            decoder(data, opts)
+
+
+def test_signed_byte_buffer_inputs():
+    # The C acquires buffers with PyBUF_SIMPLE: any contiguous single-byte
+    # exporter decodes, including signed-byte ones (format "b") that a
+    # typed PyBuffer<u8> rejects.
+    import array
+
+    encoded = encode_c({"a": "x"})
+    for exporter in (
+        memoryview(encoded).cast("b"),
+        array.array("b", encoded),
+    ):
+        assert decode_rust(exporter) == {"a": "x"}
+        assert decode_c(exporter) == {"a": "x"}
+
+
+def test_raw_bson_document_signed_byte_view():
+    # RawBSONDocument.raw may be a signed-byte memoryview: the encode
+    # passthrough accepts it like the C.
+    raw = encode_c({"a": 1})
+    view = memoryview(raw).cast("b")
+    assert_same_encode({"a": RawBSONDocument(view)})
