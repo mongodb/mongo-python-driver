@@ -474,6 +474,10 @@ def test_crypt_shared_escapes_backslashes(monkeypatch, tmp_path):
     monkeypatch.setattr(setup_tests, "DRIVERS_TOOLS", str(drivers_tools))
     monkeypatch.setenv("TEST_CRYPT_SHARED", "1")
     monkeypatch.setattr(sys, "argv", ["setup_tests.py", "default"])
+    # Pin the ambient value: a pre-set LD_LIBRARY_PATH proves the trailing
+    # expansion stays live while the prefix stays literal, independent of the
+    # runner's environment.
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/preset/lib")
 
     setup_tests.handle_test_env()
 
@@ -491,8 +495,8 @@ def test_crypt_shared_escapes_backslashes(monkeypatch, tmp_path):
         check=False,  # The file must source cleanly; asserted via returncode.
     )
     assert result.returncode == 0, result.stderr
-    # The literal prefix round-trips and the trailing default stays live.
-    assert result.stdout == f"{payload_dir}:", repr(result.stdout)
+    # The literal prefix round-trips and the trailing expansion stays live.
+    assert result.stdout == f"{payload_dir}:/preset/lib", repr(result.stdout)
     assert not (Path.cwd() / "cs-pwned.txt").exists()
     assert not (tmp_path / "cs-pwned.txt").exists()
 
