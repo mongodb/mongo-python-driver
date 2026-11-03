@@ -62,9 +62,11 @@ fn contains_view_eligible_doc(data: &[u8], threshold: usize) -> bool {
 /// view-eligible (>= threshold) document.
 ///
 /// The scan and copy read the exporter's memory through a transient borrow
-/// that spans no Python callbacks (the eligibility scan is pure Rust), so
-/// the snapshot of `with_buffer_view` is not required here; at most one
-/// copy is made, straight into the returned bytes object.
+/// that spans no Python code: `Types::get` is resolved *before* the buffer
+/// is acquired (its first use imports modules and compiles a regex, and
+/// that initialization could run Python that mutates the exporter), and
+/// the eligibility scan itself is pure Rust. At most one copy is made,
+/// straight into the returned bytes object.
 fn prepare_input_buffer<'py>(
     py: Python<'py>,
     object: &Bound<'py, PyAny>,
@@ -76,11 +78,12 @@ fn prepare_input_buffer<'py>(
     {
         return Ok(object.clone());
     }
+    let threshold = Types::get(py)?.raw_bson_view_threshold;
     let buffer = PyBuffer::<u8>::get(object)?;
     with_get_buffer_checks(&buffer)?;
     let data =
         unsafe { std::slice::from_raw_parts(buffer.buf_ptr() as *const u8, buffer.len_bytes()) };
-    if contains_view_eligible_doc(data, Types::get(py)?.raw_bson_view_threshold) {
+    if contains_view_eligible_doc(data, threshold) {
         // Copy to bytes so memoryview-backed views outlive the input
         // (mirrors PyBytes_FromObject).
         let copy = PyBytes::new(py, data);

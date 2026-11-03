@@ -1076,12 +1076,97 @@ def test_decode_bytearray_mutated_by_decoder():
         bson_type = str
 
         def transform_bson(self, value):
-            buf.clear()
+            # In-place overwrite: clear() would deallocate the buffer
+            # instead of writing through it.
+            buf[:] = bytes(len(buf))
             return value
 
     opts = CodecOptions(type_registry=TypeRegistry([StrDecoder()]))
-    result = decode_rust(bytes(buf), opts)
+    # Pass the bytearray itself: the callback must mutate the exporter
+    # being decoded, or the test cannot detect a missing snapshot (a
+    # bytes() copy would be immune to the mutation by construction).
+    result = decode_rust(buf, opts)
     assert result == doc
     # bytearray and memoryview inputs decode exactly like bytes.
     assert decode_rust(bytearray(encode_c(doc)), opts) == decode_c(encode_c(doc), opts)
     assert decode_rust(memoryview(encode_c(doc)), opts) == decode_c(encode_c(doc), opts)
+
+
+def test_dbref_dollar_keys_after_ignore_decode():
+    # Field names whose leading invalid bytes drop out under "ignore"
+    # decode to "$ref"/"$id"; the C's _dbref_hook sees the decoded
+    # mapping and returns a DBRef. The Rust dollar-key flag must
+    # therefore track the decoded key, not the raw bytes.
+    import struct
+
+    inner = (
+        struct.pack("<i", 31)
+        + b"\x02\xff$ref\x00"
+        + struct.pack("<i", 5)
+        + b"coll\x00"
+        + b"\x10\xff$id\x00"
+        + struct.pack("<i", 1)
+        + b"\x00"
+    )
+    outer = struct.pack("<i", 4 + 1 + 2 + 31 + 1) + b"\x03a\x00" + inner + b"\x00"
+    opts = CodecOptions(unicode_decode_error_handler="ignore")
+    expected = decode_c(outer, opts)
+    assert isinstance(expected["a"], DBRef)
+    result = decode_rust(outer, opts)
+    assert result == expected
+    assert type(result["a"]) is DBRef
+
+
+def test_error_handler_embedded_nul_rejected():
+    # The C parses the handler with PyArg_ParseTuple's "z" format, which
+    # rejects an embedded NUL with ValueError; the Rust must propagate the
+    # conversion failure, not silently fall back to strict decoding.
+    raw = encode_c({"a": "x"})
+    opts = CodecOptions(unicode_decode_error_handler="replace\x00")
+    with pytest.raises(ValueError, match="embedded null"):
+        decode_c(raw, opts)
+    with pytest.raises(ValueError, match="embedded null"):
+        decode_rust(raw, opts)
+
+
+def test_objectid_marker_fixed_payload():
+    # The C writes exactly 12 bytes of .binary (buffer_write_bytes(data,
+    # 12)), truncating a longer payload; a marker-bearing object with a
+    # longer .binary must not produce malformed BSON. A shorter payload
+    # would make the C read past the buffer, so the Rust rejects it.
+    class LongObjectId:
+        _type_marker = 7
+
+        def __init__(self):
+            self.binary = b"\x01" * 12 + b"\xff"
+
+    assert_same_encode({"a": LongObjectId()})
+
+    class ShortObjectId:
+        _type_marker = 7
+
+        def __init__(self):
+            self.binary = b"\x01" * 11
+
+    with pytest.raises(InvalidDocument):
+        encode_rust({"a": ShortObjectId()})
+
+
+def test_decimal128_marker_fixed_payload():
+    # As with ObjectId, the C writes exactly 16 bytes of .bid.
+    class LongDecimal128:
+        _type_marker = 19
+
+        def __init__(self):
+            self.bid = b"\x02" * 16 + b"\xff"
+
+    assert_same_encode({"a": LongDecimal128()})
+
+    class ShortDecimal128:
+        _type_marker = 19
+
+        def __init__(self):
+            self.bid = b"\x02" * 15
+
+    with pytest.raises(InvalidDocument):
+        encode_rust({"a": ShortDecimal128()})

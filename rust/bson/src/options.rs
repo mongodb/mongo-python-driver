@@ -146,11 +146,25 @@ impl<'py> CodecOptionsData<'py> {
                 .ok()
                 .cloned();
             match handler {
-                Some(h) => h
-                    .to_str()
-                    .ok()
-                    .filter(|s| *s != "strict")
-                    .and_then(|s| CString::new(s.to_string()).ok()),
+                Some(h) => {
+                    // Mirrors the C's PyArg_ParseTuple "z" format, which
+                    // fails the options conversion when the handler cannot
+                    // be converted: an unencodable (surrogate) handler
+                    // raises UnicodeEncodeError from to_str, and an
+                    // embedded NUL is a ValueError (matching CPython's
+                    // "embedded null character"). Python's CodecOptions
+                    // constructor only checks isinstance(str), so both
+                    // are reachable; silently treating either as strict
+                    // would change decoding behavior.
+                    let handler = h.to_str()?;
+                    if handler == "strict" {
+                        None
+                    } else {
+                        Some(CString::new(handler.to_string()).map_err(|_| {
+                            pyo3::exceptions::PyValueError::new_err("embedded null character")
+                        })?)
+                    }
+                }
                 None => None,
             }
         };

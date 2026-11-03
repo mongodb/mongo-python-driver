@@ -212,12 +212,31 @@ pub fn decode_elements_into<'py>(
                 .map_err(|err| rewrap_as_invalid_bson(py, err))?;
         position = new_position;
 
+        // The flag must track the *decoded* key, because a non-strict
+        // handler can mangle the raw bytes: with "ignore", b'\xff$ref'
+        // decodes to '$ref', and the C's _dbref_hook (which sees only the
+        // decoded mapping) then returns a DBRef where a raw-byte check
+        // would return a plain dict. With the strict handler the decoded
+        // key preserves the raw bytes exactly ('$' is ASCII, so the first
+        // byte decides), keeping the check on the borrowed slice. A key
+        // that cannot be re-borrowed as UTF-8 (surrogates under
+        // "surrogateescape") is treated as not starting with '$': it
+        // cannot equal the "$ref"/"$id" the hook requires, and any real
+        // "$ref"/"$id" keys decode borrowably and are seen.
+        has_dollar_key |= if options.utf8_handler.is_none() {
+            name.first() == Some(&b'$')
+        } else {
+            key.cast::<PyString>()
+                .ok()
+                .and_then(|key| key.to_str().ok())
+                .is_some_and(|key| key.starts_with('$'))
+        };
+
         if let Some(dict) = &dict_target {
             dict.set_item(key, value)?;
         } else {
             document.set_item(key, value)?;
         }
-        has_dollar_key |= name.first() == Some(&b'$');
     }
     if position != body.len() {
         return Err(invalid_bson(py, "bad object or element length"));

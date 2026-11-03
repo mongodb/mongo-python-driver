@@ -562,12 +562,26 @@ fn write_marker_value<'py>(
             Ok(true)
         }
         7 => {
-            // ObjectId: .binary is the 12-byte representation.
+            // ObjectId: .binary is the 12-byte representation. The C
+            // writes exactly 12 bytes (bson/_cbsonmodule.c), truncating a
+            // longer payload from a marker-bearing object or subclass; a
+            // shorter one would overread the buffer, which the Rust
+            // rejects instead.
             let binary = value.getattr(pyo3::intern!(py, "binary"))?;
             let bytes = binary.cast::<PyBytes>().map_err(PyErr::from)?;
+            let payload = bytes.as_bytes();
+            if payload.len() < 12 {
+                return Err(invalid_document(
+                    py,
+                    &format!(
+                        "Expected ObjectId binary to be 12 bytes, got {}",
+                        payload.len()
+                    ),
+                ));
+            }
             buf.write_u8(BSONOID)?;
             buf.write_bytes(name)?;
-            buf.write_bytes(bytes.as_bytes())?;
+            buf.write_bytes(&payload[..12])?;
             Ok(true)
         }
         9 => {
@@ -656,12 +670,25 @@ fn write_marker_value<'py>(
             Ok(true)
         }
         19 => {
-            // Decimal128: .bid is the 16-byte representation.
+            // Decimal128: .bid is the 16-byte representation. As with
+            // ObjectId, the C writes exactly 16 bytes, truncating a
+            // longer payload; a shorter one is rejected rather than
+            // overread.
             let bid = value.getattr(pyo3::intern!(py, "bid"))?;
             let bytes = bid.cast::<PyBytes>().map_err(PyErr::from)?;
+            let payload = bytes.as_bytes();
+            if payload.len() < 16 {
+                return Err(invalid_document(
+                    py,
+                    &format!(
+                        "Expected Decimal128 bid to be 16 bytes, got {}",
+                        payload.len()
+                    ),
+                ));
+            }
             buf.write_u8(BSONDEC)?;
             buf.write_bytes(name)?;
-            buf.write_bytes(bytes.as_bytes())?;
+            buf.write_bytes(&payload[..16])?;
             Ok(true)
         }
         100 => {

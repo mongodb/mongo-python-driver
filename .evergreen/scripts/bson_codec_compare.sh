@@ -66,6 +66,13 @@ uv pip install maturin
 export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-cpu=native"
 .venv/bin/maturin develop --release -m rust/bson/Cargo.toml
 
+# Run the differential codec suite before benchmarking: it compares the
+# Rust codec against the C extension (the behavioral reference) value for
+# value, so a fast but incorrect codec fails the task here instead of
+# producing a successful comparison. The suite lives outside the repo's
+# configured testpaths and no other CI command invokes it.
+.venv/bin/python -m pytest rust/bson/tests/test_rbson.py -q
+
 # Run the benchmarks with the venv's interpreter directly: no implicit
 # sync, so the locally-installed codec survives both runs. -m perf is
 # required: the repo's addopts (-m "default or default_async") would
