@@ -15,10 +15,9 @@ SCRIPT_DIR="$(cd "$SCRIPT_DIR" > /dev/null 2>&1 && pwd)"
 ROOT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 cd "$ROOT_DIR"
 
-# Source (not execute) so the exports apply here: this puts the pinned uv
+# Source (not execute) so the exports apply: this puts the pinned uv
 # (required-version in pyproject.toml) first on PATH and ensures it is
-# installed — the host image's uv may be older and would abort every uv
-# invocation. Sources env.sh/test-env.sh and runs install-dependencies.sh
+# installed. Sources env.sh/test-env.sh and runs install-dependencies.sh
 # (idempotent; 'setup system' already ran it).
 . "$SCRIPT_DIR/setup-dev-env.sh"
 
@@ -53,16 +52,14 @@ fi
 # uv sync prunes locally-installed packages that are not in uv.lock.
 uv sync ${UV_ARGS:-}
 
-# Build the Rust codec into the venv (after the sync — see above). Two uv
-# pitfalls to avoid here: `uv run --with maturin` would run maturin inside
-# a throwaway overlay environment (the codec lands in the overlay, not the
-# venv), and uv run's implicit sync would prune the freshly built codec.
+# Build the Rust codec into the venv. `uv run --with maturin` would install
+# the codec into a throwaway overlay environment, and uv run's implicit
+# sync would prune it again, so install maturin into the venv directly.
+# Target the building machine's CPU (this task builds with `maturin
+# develop` on the host that benchmarks): cargo only discovers a
+# crate-local .cargo/config.toml from the invocation directory upward,
+# which maturin (run from the checkout root) would miss — set RUSTFLAGS.
 uv pip install maturin
-# Target the building machine's CPU: this task builds with `maturin develop`
-# on the same host that benchmarks (never cross-compiled or distributed), and
-# the pip-built C extension only gets baseline codegen. Set via RUSTFLAGS —
-# cargo only discovers a crate-local .cargo/config.toml from the invocation
-# directory upward, which maturin (run from the checkout root) would miss.
 export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-cpu=native"
 .venv/bin/maturin develop --release -m rust/bson/Cargo.toml
 
@@ -81,10 +78,9 @@ export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-cpu=native"
 TEST_SELECTOR='(Flat or Deep or Full) and not Json'
 
 # Run each codec's pass twice in swapped order (C→Rust, then Rust→C) and
-# merge to the per-benchmark mean: machine state (turbo/thermal drift) moves
-# over the ~6-minute window, so a single back-to-back C/Rust pair is
-# systematically biased in favor of whichever codec runs first. The swap
-# cancels that bias; the merged files are what gets compared and uploaded.
+# merge to the per-benchmark mean: machine state (turbo/thermal drift)
+# moves over the ~6-minute window and would bias a single back-to-back
+# pair in favor of whichever codec runs first.
 BSON_IMPL=c OUTPUT_FILE=results_c_a.json \
   .venv/bin/python -m pytest \
   test/performance/perf_test.py -m perf -k "$TEST_SELECTOR" -q
@@ -142,10 +138,8 @@ rm results_c_a.json results_c_b.json results_rust_a.json results_rust_b.json
 
 # Profile DeepDecoding once per codec for decode hotspot data. Entirely
 # non-fatal: profiling is best-effort and the benchmark numbers never
-# depend on it.
-# The rhel90 perf image does not ship perf; try the platform package manager
-# with passwordless sudo (the established pattern on Evergreen hosts, e.g.
-# setup-system.sh) before skipping.
+# depend on it. The rhel90 perf image does not ship perf; try the platform
+# package manager with passwordless sudo before skipping.
 if ! command -v perf > /dev/null 2>&1; then
   if command -v dnf > /dev/null 2>&1; then
     sudo dnf install -y perf || sudo yum install -y perf || true
@@ -178,21 +172,16 @@ if command -v perf > /dev/null 2>&1; then
     rm -f "results_profile_${impl}.json"
   done
 elif command -v valgrind > /dev/null 2>&1; then
-  # No perf (e.g. the rhel90 image and it cannot be installed there): fall
-  # back to callgrind, which the ubuntu2204 image ships preinstalled.
-  # Callgrind's instruction counts are exact and deterministic, so hotspot
-  # attribution is valid at any run length — FASTBENCH keeps the ~30x
-  # slowdown bounded, and pytest/interpreter startup churn is discountable
-  # in the annotation (it lands in importlib/PyImport frames).
-  # The native build emits AVX-512 (EVEX) instructions via memchr's runtime
-  # dispatch, and valgrind 3.18 cannot decode EVEX — it SIGILLs mid-run.
-  # Rebuild for the profiled run on x86-64-v3 (AVX2, VEX-encoded, which
-  # valgrind handles — the C extension is baseline x86-64 and profiles
-  # fine). Nothing after this block uses the codec.
-  # The rebuild is part of the best-effort profiling contract: under
-  # set -e a failure here must not fail the task (all comparison results
-  # are already written) — the task still needs to reach its
-  # artifact-upload command, so treat it as a skipped profile.
+  # No perf (e.g. the rhel90 image): fall back to callgrind, which the
+  # ubuntu2204 image ships preinstalled. Callgrind's instruction counts are
+  # exact and deterministic, so hotspot attribution is valid at any run
+  # length — FASTBENCH keeps the ~30x slowdown bounded, and pytest/interpreter
+  # startup churn is discountable in the annotation (it lands in importlib
+  # frames). The native build emits AVX-512 (EVEX) via memchr's runtime
+  # dispatch and valgrind 3.18 cannot decode EVEX — rebuild for x86-64-v3
+  # (AVX2), which valgrind handles. Nothing after this block uses the codec,
+  # and under set -e a rebuild failure must not fail the task (all
+  # comparison results are already written).
   echo "Rebuilding the Rust codec without AVX-512 for valgrind..."
   if ! RUSTFLAGS="-C target-cpu=x86-64-v3" .venv/bin/maturin develop --release \
     -m rust/bson/Cargo.toml; then

@@ -1,11 +1,9 @@
 //! Growable little-endian byte buffer for BSON encoding.
 //!
-//! Mirrors the semantics of `bson/buffer.c`: append-only writes with the
-//! ability to backpatch previously written 4-byte length fields. Like the
-//! C's `buffer_assure_space`, cumulative growth beyond `INT_MAX` (the BSON
-//! document size limit) fails instead of wrapping the length fields the
-//! buffer's own consumers backpatch and decode, and allocation failure
-//! raises instead of aborting (the C's MemoryError).
+//! Mirrors `bson/buffer.c`: append-only writes with backpatchable 4-byte
+//! length fields. Cumulative growth beyond `INT_MAX` fails instead of
+//! wrapping the length fields, and allocation failure raises instead of
+//! aborting.
 
 use pyo3::exceptions::{PyMemoryError, PyValueError};
 use pyo3::prelude::*;
@@ -35,10 +33,8 @@ impl From<ReserveError> for PyErr {
     fn from(err: ReserveError) -> PyErr {
         match err {
             ReserveError::Overflow => {
-                // Mirrors the C's buffer_assure_space: a plain ValueError.
                 PyValueError::new_err("Document would overflow BSON size limit")
             }
-            // Mirrors the C's buffer_grow: a plain MemoryError.
             ReserveError::Allocation => PyMemoryError::new_err(()),
         }
     }
@@ -63,10 +59,8 @@ impl Buffer {
         self.buf.len()
     }
 
-    /// Reserves `additional` bytes, failing when the cumulative size would
-    /// exceed `i32::MAX` (checked before any allocation, mirroring the C's
-    /// `buffer_assure_space`) or when the allocation fails (the C's
-    /// MemoryError; `try_reserve` raises instead of aborting).
+    /// Reserves `additional` bytes, failing before any allocation when the
+    /// cumulative size would exceed `i32::MAX`.
     #[inline]
     fn reserve(&mut self, additional: usize) -> Result<(), ReserveError> {
         match self.buf.len().checked_add(additional) {
@@ -158,11 +152,9 @@ mod tests {
         // A failed write leaves nothing behind; later writes still succeed.
         buf.write_u8(1).unwrap();
         assert_eq!(buf.len(), 1);
-        // Exactly INT_MAX total bytes is the largest legal document. Grow
-        // in 512 MiB chunks from one reused source so the test peaks at
-        // ~2.5 GiB (the capped buffer plus one chunk) rather than twice
-        // that; the last write lands exactly on the boundary, and one more
-        // byte overflows.
+        // Grow in 512 MiB chunks so the test peaks at ~2.5 GiB rather than
+        // twice that; the last write lands exactly on the boundary, and
+        // one more byte overflows.
         let chunk = vec![0u8; 1 << 29];
         for _ in 0..3 {
             buf.write_bytes(&chunk).unwrap();

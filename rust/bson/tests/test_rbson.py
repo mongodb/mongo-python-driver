@@ -1064,9 +1064,8 @@ def test_raw_to_dict_no_payload_last_value():
 
 
 def test_decode_bytearray_mutated_by_decoder():
-    # Decoding borrows the exporter's memory only through an owned snapshot:
-    # a decoder callback may mutate (even empty) the source buffer mid-decode
-    # without corrupting the values decoded from the snapshot.
+    # A decoder callback may mutate the source buffer mid-decode; values
+    # must come from an owned snapshot, not the exporter's memory.
     from bson.codec_options import TypeDecoder, TypeRegistry
 
     doc = {"a": "one", "b": "two", "c": "three"}
@@ -1082,9 +1081,8 @@ def test_decode_bytearray_mutated_by_decoder():
             return value
 
     opts = CodecOptions(type_registry=TypeRegistry([StrDecoder()]))
-    # Pass the bytearray itself: the callback must mutate the exporter
-    # being decoded, or the test cannot detect a missing snapshot (a
-    # bytes() copy would be immune to the mutation by construction).
+    # Pass the bytearray itself: a bytes() copy would be immune to the
+    # callback's mutation, and the test could not detect a missing snapshot.
     result = decode_rust(buf, opts)
     assert result == doc
     # bytearray and memoryview inputs decode exactly like bytes.
@@ -1093,10 +1091,9 @@ def test_decode_bytearray_mutated_by_decoder():
 
 
 def test_dbref_dollar_keys_after_ignore_decode():
-    # Field names whose leading invalid bytes drop out under "ignore"
-    # decode to "$ref"/"$id"; the C's _dbref_hook sees the decoded
-    # mapping and returns a DBRef. The Rust dollar-key flag must
-    # therefore track the decoded key, not the raw bytes.
+    # With "ignore", b'\xff$ref' decodes to '$ref'; the C's _dbref_hook
+    # sees the decoded mapping and returns a DBRef. The dollar-key flag
+    # must track the decoded key, not the raw bytes.
     import struct
 
     inner = (
@@ -1130,10 +1127,8 @@ def test_error_handler_embedded_nul_rejected():
 
 
 def test_objectid_marker_fixed_payload():
-    # The C writes exactly 12 bytes of .binary (buffer_write_bytes(data,
-    # 12)), truncating a longer payload; a marker-bearing object with a
-    # longer .binary must not produce malformed BSON. A shorter payload
-    # would make the C read past the buffer, so the Rust rejects it.
+    # The C writes exactly 12 bytes of .binary, truncating longer
+    # payloads; a shorter payload would overread, so the Rust rejects it.
     class LongObjectId:
         _type_marker = 7
 

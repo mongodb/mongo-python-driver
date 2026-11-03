@@ -165,11 +165,10 @@ fn raw_document<'py>(
     Ok(document.unbind())
 }
 
-/// Decodes elements from `body` (the elements of a document, excluding the
-/// length prefix and the terminator) into an existing mapping. Returns
-/// whether any field name started with `$` — a necessary condition for the
-/// document to be shaped like a DBRef (its keys must include "$ref" and
-/// "$id"), letting `get_value` skip `_dbref_hook` in the common case.
+/// Decodes elements from `body` (a document's elements, excluding the
+/// length prefix and terminator) into an existing mapping. Returns whether
+/// any field name started with `$` — a necessary condition for a DBRef
+/// shape, letting `get_value` skip the hook in the common case.
 pub fn decode_elements_into<'py>(
     py: Python<'py>,
     document: &Bound<'py, PyAny>,
@@ -212,17 +211,12 @@ pub fn decode_elements_into<'py>(
                 .map_err(|err| rewrap_as_invalid_bson(py, err))?;
         position = new_position;
 
-        // The flag must track the *decoded* key, because a non-strict
-        // handler can mangle the raw bytes: with "ignore", b'\xff$ref'
-        // decodes to '$ref', and the C's _dbref_hook (which sees only the
-        // decoded mapping) then returns a DBRef where a raw-byte check
-        // would return a plain dict. With the strict handler the decoded
-        // key preserves the raw bytes exactly ('$' is ASCII, so the first
-        // byte decides), keeping the check on the borrowed slice. A key
-        // that cannot be re-borrowed as UTF-8 (surrogates under
-        // "surrogateescape") is treated as not starting with '$': it
-        // cannot equal the "$ref"/"$id" the hook requires, and any real
-        // "$ref"/"$id" keys decode borrowably and are seen.
+        // Track the decoded key, not the raw bytes: a non-strict handler
+        // can mangle b'\xff$ref' into '$ref', and the C's _dbref_hook
+        // sees only the decoded mapping. Strict decodes preserve raw
+        // bytes, so the first byte decides; a key that cannot be
+        // re-borrowed as UTF-8 (surrogates under "surrogateescape")
+        // cannot equal "$ref"/"$id" either.
         has_dollar_key |= if options.utf8_handler.is_none() {
             name.first() == Some(&b'$')
         } else {
@@ -796,7 +790,7 @@ fn decode_datetime<'py>(
     ) {
         Ok(dt) => dt,
         // Out-of-range ValueError gets the DATETIME_AUTO suggestion
-        // appended (mirrors datetime_from_millis in the C).
+        // appended.
         Err(err) => return Err(append_datetime_suggestion(py, err)),
     };
     let value: Bound<'py, PyAny> = naive.into_any();
@@ -856,8 +850,7 @@ fn offset_millis<'py>(
 }
 
 /// Reads and validates a nested document size at `position`, bounded by
-/// `end`. Mirrors the checks in the C get_value's document case: every
-/// failure lands on the shared "invalid length or type code" message.
+/// `end` (mirrors the C get_value's document case).
 #[inline(always)]
 fn read_size_at(py: Python<'_>, data: &[u8], position: usize, end: usize) -> PyResult<usize> {
     if position + 4 > end {
@@ -874,9 +867,7 @@ fn read_size_at(py: Python<'_>, data: &[u8], position: usize, end: usize) -> PyR
 }
 
 /// Reads a length-prefixed string's length (which includes the trailing
-/// NUL) and validates it, guarding against negative lengths. All failures
-/// land on the shared "invalid length or type code" message (the C's
-/// `goto invalid`).
+/// NUL), guarding against negative lengths (the C's `goto invalid`).
 #[inline(always)]
 fn read_string_length(py: Python<'_>, data: &[u8], position: usize, end: usize) -> PyResult<usize> {
     if position + 4 > end {
@@ -898,8 +889,7 @@ fn read_u32(py: Python<'_>, data: &[u8], position: usize) -> PyResult<u32> {
 }
 
 /// Calls `callee` with positional arguments through `PyObject_Vectorcall`
-/// (a C argument array — no argument tuple allocation, mirroring the C
-/// extension's constructor call sites).
+/// (no argument tuple allocation).
 #[inline(always)]
 fn vectorcall<'py>(
     py: Python<'py>,
@@ -965,25 +955,17 @@ pub fn decode_utf8<'py>(
     Ok(decoded.into_any())
 }
 
-/// Field names repeat heavily within and across documents; decoding each
-/// occurrence with PyUnicode_DecodeUTF8 (allocation + decode) and hashing the
-/// fresh string for every dict insertion is a large share of the decode loop.
-/// A bounded direct-mapped cache of raw key bytes to decoded strings removes
-/// both on a hit: the cached string's hash is computed once by CPython and
-/// reused for every subsequent PyDict_SetItem. (Unlike the C extension,
-/// repeat decodes return the *same* str object for a repeated name — benign,
-/// strings are immutable.) Only enabled for the strict UTF-8 handler, where
-/// decoding is a pure function of the bytes.
-///
-/// Thread safety: the module requires the GIL (`gil_used = true` in
-/// lib.rs), so every entry point holds it; the Mutex additionally guards
-/// the Vec against the (theoretical) free-threaded case, and statics are
-/// never dropped in Rust, so cached strings are only ever released by
-/// eviction, under the GIL. The cache — like `Types` — is process-wide:
-/// importing the module into more than one interpreter is not supported.
+/// A direct-mapped cache of raw key bytes to decoded strings: decoding and
+/// hashing fresh strings for every dict insertion is a large share of the
+/// decode loop, and a hit reuses the cached string's CPython hash. Repeat
+/// decodes now return the same str object for a repeated name (benign;
+/// strings are immutable). Enabled only for the strict handler, where
+/// decoding is a pure function of the bytes. Like `Types`, the cache is
+/// process-wide: importing the module into more than one interpreter is
+/// not supported.
 const KEY_CACHE_SLOTS: usize = 1 << 13;
-/// Keys longer than this skip the cache: the copy of the raw bytes needed to
-/// cache them would rival the decode cost being avoided.
+/// Keys longer than this skip the cache: caching them would cost as much
+/// as the decode it avoids.
 const KEY_CACHE_MAX_KEY_LEN: usize = 64;
 
 /// A cache slot: the raw key bytes and the decoded string.

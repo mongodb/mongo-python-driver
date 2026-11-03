@@ -1,9 +1,6 @@
-//! Parsing of `bson.CodecOptions` (a `NamedTuple`) into a Rust-side struct.
-//!
-//! Mirrors `convert_codec_options` in `_cbsonmodule.c`: the options object is
-//! consumed positionally with the field order
-//! `(document_class, tz_aware, uuid_representation,
-//!   unicode_decode_error_handler, tzinfo, type_registry, datetime_conversion)`.
+//! Parsing of `bson.CodecOptions` (a `NamedTuple`) into a Rust-side struct,
+//! mirroring `convert_codec_options` in `_cbsonmodule.c`: the options object
+//! is consumed positionally.
 
 use std::ffi::CString;
 
@@ -50,20 +47,16 @@ impl<'py> CodecOptionsData<'py> {
     }
 }
 
-/// Reads the `_type_marker` attribute of an object.
-///
-/// Mirrors `_type_marker()` in `_cbsonmodule.c`: the attribute is read
-/// optionally and only accepted when it is an *exact* `int` (objects with
-/// broken `__getattr__` implementations could return arbitrary types).
-/// Returns `None` when the marker is absent or not an exact int; returns
-/// `Err` only when the attribute read itself fails with a non-AttributeError.
+/// Reads the `_type_marker` attribute of an object, accepting only an
+/// *exact* `int` (objects with broken `__getattr__` could return arbitrary
+/// types). Returns `None` when absent or not an exact int; returns `Err`
+/// only when the attribute read itself fails with a non-AttributeError.
 pub fn read_type_marker<'py>(object: &Bound<'py, PyAny>) -> PyResult<Option<i64>> {
     let py = object.py();
     #[cfg(Py_3_13)]
     let marker = {
-        // PyObject_GetOptionalAttr (the C's 3.13+ path) finds the attribute
-        // without materializing an AttributeError — the common case is a
-        // document_class without a marker (plain dict).
+        // Avoids materializing an AttributeError for the common
+        // no-marker case (a plain dict).
         let intern = pyo3::intern!(py, "_type_marker");
         let mut raw: *mut pyo3::ffi::PyObject = std::ptr::null_mut();
         let found = unsafe {
@@ -147,15 +140,10 @@ impl<'py> CodecOptionsData<'py> {
                 .cloned();
             match handler {
                 Some(h) => {
-                    // Mirrors the C's PyArg_ParseTuple "z" format, which
-                    // fails the options conversion when the handler cannot
-                    // be converted: an unencodable (surrogate) handler
-                    // raises UnicodeEncodeError from to_str, and an
-                    // embedded NUL is a ValueError (matching CPython's
-                    // "embedded null character"). Python's CodecOptions
-                    // constructor only checks isinstance(str), so both
-                    // are reachable; silently treating either as strict
-                    // would change decoding behavior.
+                    // The C's "z" parse fails the conversion for
+                    // unencodable (surrogate) handlers and embedded NULs;
+                    // the Python constructor only isinstance-checks, so
+                    // both are reachable. Propagating matches the C.
                     let handler = h.to_str()?;
                     if handler == "strict" {
                         None

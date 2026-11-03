@@ -1,8 +1,6 @@
-//! Raising `bson.errors` exceptions from Rust.
-//!
-//! Mirrors `_cbsonmodule.c`'s `_error()` helper: the exception classes are
-//! looked up on the `bson.errors` module. Error paths are cold, so a
-//! per-call module lookup (cached after first use) is fine.
+//! Raising `bson.errors` exceptions from Rust, mirroring the C's
+//! `_error()` helper. Error paths are cold, so a cached module lookup is
+//! fine.
 
 use pyo3::sync::PyOnceLock;
 

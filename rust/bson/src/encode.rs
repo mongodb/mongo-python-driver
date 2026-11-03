@@ -62,9 +62,8 @@ pub fn dict_to_bson<'py>(
     top_level: bool,
 ) -> PyResult<Vec<u8>> {
     let mut buf = Buffer::new();
-    // The C's handle_invalid_doc_error wraps only failures of the element
-    // iteration loops (not the _id pre-write), so the wrapping lives in
-    // write_dict.
+    // The C wraps only element-iteration failures (not the _id pre-write),
+    // so the wrapping lives in write_dict.
     write_dict(py, &mut buf, document, check_keys, options, top_level)?;
     Ok(buf.into_vec())
 }
@@ -114,10 +113,8 @@ fn is_str_eq(key: &Bound<'_, PyAny>, expected: &str) -> bool {
 }
 
 /// Writes `length + elements + terminator` for a mapping, with the `_id`
-/// element first when `top_level` — mirroring the C's `write_dict`, which
-/// owns the framing. A raw document (marker 101) writes only its raw
-/// bytes: the raw document's own length prefix frames it, so no extra
-/// length or terminator is written.
+/// element first when `top_level`. A raw document (marker 101) writes only
+/// its raw bytes, already framed by its own length prefix.
 pub fn write_dict<'py>(
     py: Python<'py>,
     buf: &mut Buffer,
@@ -126,8 +123,6 @@ pub fn write_dict<'py>(
     options: &CodecOptionsData<'py>,
     top_level: bool,
 ) -> PyResult<()> {
-    // Fast path: dict or dict subclass (e.g. SON). Non-dict mappings first
-    // check for a raw document passthrough, then for the Mapping protocol.
     if mapping.cast::<PyDict>().is_err() {
         if let Some(marker) = read_type_marker(mapping)? {
             if marker == MARKER_RAW_BSON {
@@ -152,15 +147,12 @@ pub fn write_dict<'py>(
 
     let mut skip_id = false;
     if top_level {
-        // _id is encoded first, regardless of its position in the mapping.
-        // The lookup must not trigger mapping hooks (e.g. defaultdict's
-        // __missing__): dict lookups use the raw storage API, other
-        // mappings probe with PyMapping_HasKey first — which swallows all
-        // lookup errors and treats the key as missing.
+        // _id encodes first regardless of its position. Lookups must not
+        // trigger mapping hooks: dicts use the raw storage API; other
+        // mappings swallow lookup errors (PyMapping_HasKey parity).
         let id_value = if let Ok(dict) = mapping.cast::<PyDict>() {
             dict.get_item(pyo3::intern!(py, "_id"))?
         } else {
-            // Swallows all lookup errors (PyMapping_HasKey parity).
             mapping.get_item(pyo3::intern!(py, "_id")).ok()
         };
         if let Some(value) = id_value {
@@ -170,10 +162,8 @@ pub fn write_dict<'py>(
             skip_id = true;
         }
     }
-    // Fast path: dict or dict subclass (e.g. SON). Other Mappings are
-    // iterated by key, looking each value up — mirroring the C, which
-    // does not require an items() method (a Mapping registered via
-    // Mapping.register may only provide __iter__/__getitem__/__len__).
+    // Mappings are iterated by key with per-key lookup: no items() method
+    // is required (Mapping.register'd classes may not provide one).
     if let Ok(dict) = mapping.cast::<PyDict>() {
         for (key, value) in dict.iter() {
             if skip_id && is_str_eq(&key, "_id") {
@@ -207,10 +197,8 @@ pub fn write_dict<'py>(
     Ok(())
 }
 
-/// The element-iteration failure path: at the top level, InvalidDocument
-/// errors are wrapped with the document (mirrors the C's
-/// `handle_invalid_doc_error` call sites, which gate on `top_level` and
-/// exclude the `_id` pre-write).
+/// At the top level, InvalidDocument errors are wrapped with the document
+/// (mirrors the C's `handle_invalid_doc_error` call sites).
 fn fail_element<'py>(
     py: Python<'py>,
     top_level: bool,
@@ -223,8 +211,7 @@ fn fail_element<'py>(
     wrap_invalid_document(py, mapping, err)
 }
 
-/// Validates a key and writes its element (`decode_and_write_pair`'s
-/// encode-side counterpart: `write_pair` in the C extension).
+/// Validates a key and writes its element (the C's `write_pair`).
 fn write_pair<'py>(
     py: Python<'py>,
     buf: &mut Buffer,
@@ -272,8 +259,7 @@ fn write_pair<'py>(
         }
     }
 
-    // The element name (key bytes + NUL) goes in a stack buffer for the
-    // common short-key case; the C builds it on the stack the same way.
+    // Short keys write from a stack buffer (the C does the same).
     let key_bytes = key_utf8.as_bytes();
     const STACK_NAME_LEN: usize = 96;
     let mut stack_name = [0u8; STACK_NAME_LEN];
@@ -454,9 +440,8 @@ fn write_value<'py>(
     }
 
     // ---- Custom type encoder (exact type match), then fallback. ----
-    // The re-dispatch is bounded by CPython's recursion counter (the C
-    // relies on the Python frames of the callbacks; guarding explicitly
-    // keeps the Rust stack bounded the same way).
+    // The re-dispatch is recursion-guarded: the C relies on the Python
+    // frames of the callbacks to bound the stack.
     if let Some(converted) = custom_encoder_value(py, options, value, in_custom_call)? {
         let _guard = recursion_guard(py, GUARD_EMPTY)?;
         return write_value(py, buf, name, &converted, check_keys, options, true, false);
@@ -482,12 +467,9 @@ pub struct RecursionGuard {
     _not_send: std::marker::PhantomData<*const ()>,
 }
 
-/// Enters a CPython recursion check; returns an `Err` with the pending
-/// error (typically RecursionError) when the limit is hit.
-///
-/// The message is a static C string (CPython reads it when formatting the
-/// RecursionError): no per-call allocation, so guards are cheap enough
-/// for every document, array, and converted value.
+/// Enters a CPython recursion check; returns the pending error (typically
+/// RecursionError) when the limit is hit. The message is a static C string,
+/// read by CPython when formatting the error.
 pub fn recursion_guard(py: Python<'_>, message: &'static CStr) -> PyResult<RecursionGuard> {
     let ok = unsafe { pyo3::ffi::Py_EnterRecursiveCall(message.as_ptr()) };
     if ok != 0 {
@@ -562,11 +544,8 @@ fn write_marker_value<'py>(
             Ok(true)
         }
         7 => {
-            // ObjectId: .binary is the 12-byte representation. The C
-            // writes exactly 12 bytes (bson/_cbsonmodule.c), truncating a
-            // longer payload from a marker-bearing object or subclass; a
-            // shorter one would overread the buffer, which the Rust
-            // rejects instead.
+            // The C writes exactly 12 bytes of .binary, truncating a
+            // longer payload; a shorter one would overread, so reject it.
             let binary = value.getattr(pyo3::intern!(py, "binary"))?;
             let bytes = binary.cast::<PyBytes>().map_err(PyErr::from)?;
             let payload = bytes.as_bytes();
@@ -585,9 +564,8 @@ fn write_marker_value<'py>(
             Ok(true)
         }
         9 => {
-            // DatetimeMS: int(value) is the millis value (the C uses
-            // PyNumber_Long, which routes through __int__ and requires the
-            // result to be an int; a float __int__ raises TypeError).
+            // int(value) is the millis value; a float __int__ raises
+            // TypeError (PyNumber_Long parity).
             let as_int = value.call_method0(pyo3::intern!(py, "__int__"))?;
             if !as_int.is_instance_of::<PyInt>() {
                 return Err(pyo3::exceptions::PyTypeError::new_err(
@@ -632,9 +610,8 @@ fn write_marker_value<'py>(
             Ok(true)
         }
         17 => {
-            // Timestamp: i32 inc, then i32 time. Mirrors the C's
-            // PyLong_AsUnsignedLong: negative or >unsigned-long values
-            // raise OverflowError; [2³¹, 2³²) truncates to i32.
+            // PyLong_AsUnsignedLong parity: negative or >unsigned-long
+            // raises OverflowError; [2³¹, 2³²) truncates to i32.
             let inc: u64 = value
                 .getattr(pyo3::intern!(py, "inc"))?
                 .extract()
@@ -670,10 +647,8 @@ fn write_marker_value<'py>(
             Ok(true)
         }
         19 => {
-            // Decimal128: .bid is the 16-byte representation. As with
-            // ObjectId, the C writes exactly 16 bytes, truncating a
-            // longer payload; a shorter one is rejected rather than
-            // overread.
+            // As with ObjectId: exactly 16 bytes of .bid; a shorter
+            // payload is rejected rather than overread.
             let bid = value.getattr(pyo3::intern!(py, "bid"))?;
             let bytes = bid.cast::<PyBytes>().map_err(PyErr::from)?;
             let payload = bytes.as_bytes();
@@ -734,8 +709,7 @@ fn raw_bytes_of<'py>(_py: Python<'py>, raw: &Bound<'py, PyAny>) -> PyResult<Vec<
         )));
     }
     let buffer = PyBuffer::<u8>::get(raw)?;
-    // Defensive checks mirroring the C's write_raw_doc/_get_buffer: a
-    // misbehaving exporter may hand back non-contiguous or null buffers.
+    // A misbehaving exporter may hand back non-contiguous or null buffers.
     if buffer.buf_ptr().is_null() || !buffer.is_c_contiguous() || buffer.item_size() != 1 {
         return Err(pyo3::exceptions::PyTypeError::new_err(
             "RawBSONDocument.raw must be bytes or memoryview",

@@ -11,15 +11,9 @@
 //! - `_raw_to_dict(bson, position, obj_end, codec_options, result, raw_array)`
 //! - `_array_of_documents_to_buffer(array)`
 //!
-//! The GIL is held for the duration of every call (parity with the C
-//! extension): the module declares `Py_mod_gil = Py_MOD_GIL_USED`
-//! (`gil_used = true`), so free-threaded CPython builds re-enable the GIL
-//! when importing it. Note that pyo3 does not declare
-//! `Py_mod_multiple_interpreters`, and the import machinery defaults a
-//! missing slot to SUPPORTED — so this module *can* be imported into a
-//! shared-GIL subinterpreter even though its process-wide statics (`Types`,
-//! the field-name cache) would then be shared across interpreters.
-//! Importing the module into more than one interpreter is not supported.
+//! Every call holds the GIL (`gil_used = true`). Importing the module into
+//! more than one interpreter is unsupported: its process-wide statics would
+//! be shared across them.
 
 mod buffer;
 mod datetime_conv;
@@ -56,17 +50,13 @@ fn contains_view_eligible_doc(data: &[u8], threshold: usize) -> bool {
     false
 }
 
-/// Prepares the input buffer owner for decoding, mirroring
-/// `_prepare_input_buffer`: raw-document decoding from mutable/foreign
-/// buffers copies them to bytes when the stream contains a
-/// view-eligible (>= threshold) document.
+/// Mirrors `_prepare_input_buffer`: for raw-document decoding, a mutable
+/// or foreign buffer whose stream holds a view-eligible document is
+/// copied to bytes.
 ///
-/// The scan and copy read the exporter's memory through a transient borrow
-/// that spans no Python code: `Types::get` is resolved *before* the buffer
-/// is acquired (its first use imports modules and compiles a regex, and
-/// that initialization could run Python that mutates the exporter), and
-/// the eligibility scan itself is pure Rust. At most one copy is made,
-/// straight into the returned bytes object.
+/// `Types` is resolved before the buffer is acquired: its first-use
+/// initialization runs Python, which must not happen while the exporter's
+/// memory is borrowed as an immutable slice.
 fn prepare_input_buffer<'py>(
     py: Python<'py>,
     object: &Bound<'py, PyAny>,
@@ -84,8 +74,7 @@ fn prepare_input_buffer<'py>(
     let data =
         unsafe { std::slice::from_raw_parts(buffer.buf_ptr() as *const u8, buffer.len_bytes()) };
     if contains_view_eligible_doc(data, threshold) {
-        // Copy to bytes so memoryview-backed views outlive the input
-        // (mirrors PyBytes_FromObject).
+        // Copy so memoryview-backed views outlive the input.
         let copy = PyBytes::new(py, data);
         drop(buffer);
         Ok(copy.into_any())
@@ -95,13 +84,9 @@ fn prepare_input_buffer<'py>(
     }
 }
 
-/// Calls `f` with a `&[u8]` view of any buffer-protocol object (bytes,
-/// bytearray, memoryview, mmap, ...), mirroring `_get_buffer` in the C
-/// extension. Immutable bytes are borrowed zero-copy; every other exporter
-/// is snapshotted to an owned copy first — its memory is writable through
-/// other paths (a buffer export prevents resizing, not writes), and `f`
-/// invokes decoder callbacks that can run Python code, so an immutable
-/// Rust slice over that memory would be unsound.
+/// Mirrors the C's `_get_buffer`: bytes are borrowed zero-copy; every
+/// other buffer is copied first. Its memory is writable through other
+/// paths, and `f` can run Python, so a shared slice would be unsound.
 fn with_buffer_view<R>(
     object: &Bound<'_, PyAny>,
     f: impl FnOnce(&[u8]) -> PyResult<R>,
@@ -111,9 +96,7 @@ fn with_buffer_view<R>(
     }
     let buffer = PyBuffer::<u8>::get(object)?;
     with_get_buffer_checks(&buffer)?;
-    // Copy while the GIL is held and before any callback runs: nothing can
-    // write through the exporter during this window, and the view is
-    // dropped before `f` executes.
+    // Copy while the GIL is held and before any callback runs.
     let data =
         unsafe { std::slice::from_raw_parts(buffer.buf_ptr() as *const u8, buffer.len_bytes()) }
             .to_vec();
@@ -121,10 +104,9 @@ fn with_buffer_view<R>(
     f(&data)
 }
 
-/// The defensive checks of the C's `_get_buffer`: pyo3 acquires buffers
-/// with PyBUF_FULL_RO (not PyBUF_SIMPLE), so a misbehaving exporter can
-/// hand back non-contiguous or null buffers; mirroring the C, each is
-/// rejected with a ValueError.
+/// Mirrors the C's `_get_buffer` checks: pyo3 acquires buffers with
+/// PyBUF_FULL_RO, so a misbehaving exporter can hand back null or
+/// non-contiguous buffers.
 fn with_get_buffer_checks(buffer: &PyBuffer<u8>) -> PyResult<()> {
     // `!view->buf || view->len < 0`.
     if buffer.buf_ptr().is_null() {
@@ -160,18 +142,15 @@ fn _dict_to_bson<'py>(
 ) -> PyResult<Bound<'py, PyBytes>> {
     let options = CodecOptionsData::parse(codec_options)?;
 
-    // A RawBSONDocument encodes to its raw bytes unconditionally (mirrors
-    // the C `_cbson_dict_to_bson`, which checks the marker regardless of
-    // top_level): bytes are returned as-is, anything else is converted
-    // with PyBytes_FromObject.
+    // A RawBSONDocument encodes to its raw bytes regardless of top_level
+    // (mirrors the C).
     if let Some(marker) = options::read_type_marker(document)? {
         if marker == options::RAW_BSON_DOCUMENT_MARKER {
             let raw = document.getattr(pyo3::intern!(py, "raw"))?;
             return match raw.cast::<PyBytes>() {
                 Ok(bytes) => Ok(bytes.clone()),
                 Err(_) => {
-                    // Copy via the buffer protocol (mirrors
-                    // PyBytes_FromObject).
+                    // Copy via the buffer protocol.
                     let data = with_buffer_view(&raw, |data| Ok(data.to_vec()))?;
                     Ok(PyBytes::new(py, &data))
                 }
@@ -226,9 +205,8 @@ fn _decode_all<'py>(
             if size > slice.len() {
                 return Err(invalid_bson(py, "objsize too large"));
             }
-            // The C's _cbson_decode_all propagates elements_to_dict
-            // failures untouched — the InvalidBSON wrapping happened
-            // deeper, in get_value.
+            // Failures propagate unwrapped: the C wraps them deeper, in
+            // get_value.
             let value = decode::elements_to_dict(py, &input, &slice[..size], &options)
                 .map(|(value, _)| value)?;
             results.append(value)?;
@@ -243,8 +221,7 @@ fn read_size_prefix(py: Python<'_>, data: &[u8]) -> PyResult<usize> {
     if data.len() < BSON_MIN_SIZE {
         return Err(invalid_bson(py, "not enough data for a BSON document"));
     }
-    // The C reads the size prefix as a signed int32; negative values
-    // (and zero) are "invalid message size".
+    // The size prefix is a signed int32; negative (or zero) is invalid.
     let size = i32::from_le_bytes([data[0], data[1], data[2], data[3]]);
     if size < BSON_MIN_SIZE as i32 {
         return Err(invalid_bson(py, "invalid message size"));
@@ -264,8 +241,7 @@ fn rewrap(py: Python<'_>, err: PyErr) -> PyErr {
 }
 
 /// Decodes a single key/value pair at `position`, returning
-/// `(name, value, new_position)`. The input must be a bytes object
-/// (mirrors `_cbson_element_to_dict`).
+/// `(name, value, new_position)`. The input must be bytes.
 #[pyfunction]
 #[pyo3(signature = (bson, position, obj_end, codec_options, raw_array=false))]
 fn _element_to_dict<'py>(
@@ -307,8 +283,8 @@ fn _element_to_dict<'py>(
     let name_bytes = &data[name_start..pos];
     pos += 1; // skip the NUL
 
-    // The name is decoded before the value (mirrors the C's
-    // _element_to_dict); a UnicodeDecodeError is wrapped in InvalidBSON.
+    // The name decodes before the value (mirrors the C); a
+    // UnicodeDecodeError is wrapped in InvalidBSON.
     let name = decode::decode_key(py, name_bytes, &options).map_err(|err| rewrap(py, err))?;
     let (value, new_position) = decode::get_value_with_raw_array(
         py, &input, name_bytes, type_byte, pos, max, &options, raw_array,
@@ -358,12 +334,9 @@ fn _raw_to_dict<'py>(
         while pos < end {
             let type_byte = data[pos];
             pos += 1;
-            // The name scan is bounded by obj_end (the eoo index), not by
-            // end: a no-payload final value (None, MinKey, MaxKey) puts the
-            // name's NUL at obj_end - 1, the last byte before the
-            // terminator (the C's _element_to_dict scans with max =
-            // obj_end). The eoo check above guarantees the scan cannot run
-            // past the buffer.
+            // The name scan is bounded by obj_end (the eoo index), not
+            // end: a no-payload final value (None, MinKey, MaxKey) puts
+            // its NUL at obj_end - 1.
             let name_start = pos;
             while pos < obj_end as usize && data[pos] != 0 {
                 pos += 1;
@@ -374,8 +347,7 @@ fn _raw_to_dict<'py>(
             let name_bytes = &data[name_start..pos];
             pos += 1; // skip the NUL
 
-            // The name is decoded before the value (mirrors the C); a
-            // UnicodeDecodeError is wrapped in InvalidBSON.
+            // The name decodes before the value (mirrors the C).
             let name =
                 decode::decode_key(py, name_bytes, &options).map_err(|err| rewrap(py, err))?;
             let (value, new_pos) = decode::get_value_with_raw_array(
@@ -384,8 +356,8 @@ fn _raw_to_dict<'py>(
                 name_bytes,
                 type_byte,
                 pos,
-                // Per-element values are bounded by the eoo index
-                // (the C passes obj_end as max to _element_to_dict).
+                // Values are bounded by the eoo index (the C passes
+                // obj_end as max).
                 obj_end as usize,
                 &options,
                 raw_array,
@@ -430,7 +402,7 @@ fn _array_of_documents_to_buffer<'py>(
                 return Err(invalid_bson(py, "array element was not an object"));
             }
             position += 1;
-            // Just skip the key.
+            // Skip the key.
             while position < size && data[position] != 0 {
                 position += 1;
             }
