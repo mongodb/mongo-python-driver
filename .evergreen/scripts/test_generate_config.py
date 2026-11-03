@@ -450,10 +450,50 @@ def test_write_env_escapes_backslashes(monkeypatch, tmp_path):
     assert not (tmp_path / "pwned.txt").exists()
 
 
+def test_read_env_unescapes_double_quoted_escapes(monkeypatch, tmp_path):
+    """read_env yields the value bash sourcing would: in double quotes the
+    backslash is dropped from \\$, \\`, \\", and \\\\ escapes; single-quoted
+    values stay literal. A pre-escaped secrets value (SASL_DB='$external')
+    must round-trip through read_env and write_env to the same literal
+    (PYTHON-6167)."""
+    import subprocess
+
+    import utils
+
+    source = tmp_path / "secrets-export.sh"
+    source.write_text(
+        'export DB="\\$external"\n'
+        "export SINGLE='\\$external'\n"
+        'export TICK="a\\`echo hi\\`b"\n'
+        'export QUOTE="a\\"b"\n'
+        'export BS="a\\\\b"\n'
+    )
+    config = utils.read_env(source)
+    assert config["DB"] == "$external"
+    assert config["SINGLE"] == "\\$external"
+    assert config["TICK"] == "a`echo hi`b"
+    assert config["QUOTE"] == 'a"b'
+    assert config["BS"] == "a\\b"
+
+    env_file = tmp_path / "test-env.sh"
+    monkeypatch.setattr(utils, "ENV_FILE", env_file)
+    utils.write_env("SASL_DB", config["DB"])
+    result = subprocess.run(  # noqa: S603
+        ["/bin/bash", "-c", '. "$1" && printf "%s" "$SASL_DB"', "bash", str(env_file)],
+        capture_output=True,
+        text=True,
+        cwd=str(tmp_path),
+        check=False,  # The file must source cleanly; asserted via returncode.
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "$external", repr(result.stdout)
+
+
 def test_crypt_shared_escapes_backslashes(monkeypatch, tmp_path):
-    """The crypt_shared dir prefix is escaped with backslashes first: a path
-    carrying a backslash-prefixed substitution must persist literally while
-    the trailing LD_LIBRARY_PATH expansion stays live (PYTHON-6167)."""
+    """The crypt_shared dir is escaped when persisted: a mo-expansion path
+    whose bash-escaped value carries a command substitution must persist
+    literally (no execution, no bash escapes in the value) while the
+    trailing LD_LIBRARY_PATH expansion stays live (PYTHON-6167)."""
     import subprocess
 
     import setup_tests
@@ -465,11 +505,16 @@ def test_crypt_shared_escapes_backslashes(monkeypatch, tmp_path):
     env_file = tmp_path / "test-env.sh"
     monkeypatch.setattr(utils, "ENV_FILE", env_file)
     monkeypatch.setattr(setup_tests, "ENV_FILE", env_file)
-    payload_dir = "\\$(touch cs-pwned.txt)"
+    # The mo-expansion file carries the path bash-escaped, as the secrets
+    # service writes it; bash (and read_env) sees the value without the
+    # backslash, so the persisted prefix must be the escaped-substitution
+    # literal, not the raw file text.
+    escaped_payload = "\\$(touch cs-pwned.txt)"
+    literal_payload = "$(touch cs-pwned.txt)"
     drivers_tools = tmp_path / "drivers-tools"
     mo_expansion = drivers_tools / "mo-expansion.sh"
     mo_expansion.parent.mkdir(parents=True)
-    mo_expansion.write_text(f'CRYPT_SHARED_LIB_PATH="{payload_dir}/mongo_crypt.so"\n')
+    mo_expansion.write_text(f'CRYPT_SHARED_LIB_PATH="{escaped_payload}/mongo_crypt.so"\n')
     monkeypatch.setenv("DRIVERS_TOOLS", str(drivers_tools))
     monkeypatch.setattr(setup_tests, "DRIVERS_TOOLS", str(drivers_tools))
     monkeypatch.setenv("TEST_CRYPT_SHARED", "1")
@@ -496,7 +541,7 @@ def test_crypt_shared_escapes_backslashes(monkeypatch, tmp_path):
     )
     assert result.returncode == 0, result.stderr
     # The literal prefix round-trips and the trailing expansion stays live.
-    assert result.stdout == f"{payload_dir}:/preset/lib", repr(result.stdout)
+    assert result.stdout == f"{literal_payload}:/preset/lib", repr(result.stdout)
     assert not (Path.cwd() / "cs-pwned.txt").exists()
     assert not (tmp_path / "cs-pwned.txt").exists()
 

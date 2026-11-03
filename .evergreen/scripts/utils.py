@@ -4,6 +4,7 @@ import argparse
 import dataclasses
 import logging
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -296,7 +297,11 @@ def read_env(path: Path | str) -> dict[str, str]:
                 continue
             name, _, value = line.strip().partition("=")
             if value.startswith(('"', "'")):
-                value = value[1:-1]
+                quote, value = value[0], value[1:-1]
+                if quote == '"':
+                    # In double quotes bash drops the backslash from these
+                    # escapes; yield the value sourcing would produce.
+                    value = re.sub(r'\\([$`"\\])', r"\1", value)
             name = name.replace("export ", "")
             config[name] = value
     return config
