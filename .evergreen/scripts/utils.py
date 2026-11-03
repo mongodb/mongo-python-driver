@@ -302,6 +302,15 @@ def read_env(path: Path | str) -> dict[str, str]:
     return config
 
 
+def shell_escape(value: str) -> str:
+    """Escape a value for a double-quoted shell context.
+
+    Backslashes are escaped first: a backslash-prefixed `$(...)` in the
+    value would otherwise consume the escape written for the `$` and re-arm
+    the substitution when the file is sourced (PYTHON-6167)."""
+    return value.replace("\\", "\\\\").replace("$", "\\$").replace("`", "\\`")
+
+
 def write_env(name: str, value: Any = "1", escape: bool = True) -> None:
     """Append an export line for the value to the test environment file.
 
@@ -311,8 +320,7 @@ def write_env(name: str, value: Any = "1", escape: bool = True) -> None:
     with ENV_FILE.open("a", newline="\n") as fid:
         value = str(value).replace('"', "")
         if escape:
-            # Double quotes expand `$` and backticks: keep the value literal.
-            value = value.replace("$", "\\$").replace("`", "\\`")
+            value = shell_escape(value)
         fid.write(f'export {name}="{value}"\n')
 
 

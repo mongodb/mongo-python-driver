@@ -414,6 +414,89 @@ def test_crypt_shared_persisted_to_env(monkeypatch, tmp_path):
     ), env_lines
 
 
+def test_write_env_escapes_backslashes(monkeypatch, tmp_path):
+    """write_env escapes backslashes before $ and backticks: a value
+    carrying a backslash-prefixed substitution would otherwise consume the
+    escape and re-arm it when the file is sourced, and a trailing backslash
+    would escape the closing quote and corrupt the file (PYTHON-6167)."""
+    import subprocess
+
+    import utils
+
+    env_file = tmp_path / "test-env.sh"
+    monkeypatch.setattr(utils, "ENV_FILE", env_file)
+
+    utils.write_env("PAYLOAD", "\\$(touch pwned.txt)")
+    utils.write_env("TRAILING", "C:\\tools\\")
+    utils.write_env("TICKS", "a`echo pwned`b")
+
+    result = subprocess.run(  # noqa: S603
+        [
+            "/bin/bash",
+            "-c",
+            '. "$1" && printf "%s\\n" "$PAYLOAD" "$TRAILING" "$TICKS"',
+            "bash",
+            str(env_file),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(tmp_path),
+        check=False,  # The file must source cleanly; asserted via returncode.
+    )
+    # The file must source cleanly and every value must round-trip literally.
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "\\$(touch pwned.txt)\nC:\\tools\\\na`echo pwned`b\n"
+    assert not (Path.cwd() / "pwned.txt").exists()
+    assert not (tmp_path / "pwned.txt").exists()
+
+
+def test_crypt_shared_escapes_backslashes(monkeypatch, tmp_path):
+    """The crypt_shared dir prefix is escaped with backslashes first: a path
+    carrying a backslash-prefixed substitution must persist literally while
+    the trailing LD_LIBRARY_PATH expansion stays live (PYTHON-6167)."""
+    import subprocess
+
+    import setup_tests
+    import utils
+
+    monkeypatch.setattr(setup_tests, "check_drivers_tools", lambda: None)
+    monkeypatch.setattr(setup_tests, "run_command", lambda *args, **kwargs: None)
+    monkeypatch.setattr(setup_tests, "ensure_openssl3", lambda: None)
+    env_file = tmp_path / "test-env.sh"
+    monkeypatch.setattr(utils, "ENV_FILE", env_file)
+    monkeypatch.setattr(setup_tests, "ENV_FILE", env_file)
+    payload_dir = "\\$(touch cs-pwned.txt)"
+    drivers_tools = tmp_path / "drivers-tools"
+    mo_expansion = drivers_tools / "mo-expansion.sh"
+    mo_expansion.parent.mkdir(parents=True)
+    mo_expansion.write_text(f'CRYPT_SHARED_LIB_PATH="{payload_dir}/mongo_crypt.so"\n')
+    monkeypatch.setenv("DRIVERS_TOOLS", str(drivers_tools))
+    monkeypatch.setattr(setup_tests, "DRIVERS_TOOLS", str(drivers_tools))
+    monkeypatch.setenv("TEST_CRYPT_SHARED", "1")
+    monkeypatch.setattr(sys, "argv", ["setup_tests.py", "default"])
+
+    setup_tests.handle_test_env()
+
+    result = subprocess.run(  # noqa: S603
+        [
+            "/bin/bash",
+            "-c",
+            '. "$1" >/dev/null && printf "%s" "$LD_LIBRARY_PATH"',
+            "bash",
+            str(env_file),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(tmp_path),
+        check=False,  # The file must source cleanly; asserted via returncode.
+    )
+    assert result.returncode == 0, result.stderr
+    # The literal prefix round-trips and the trailing default stays live.
+    assert result.stdout == f"{payload_dir}:", repr(result.stdout)
+    assert not (Path.cwd() / "cs-pwned.txt").exists()
+    assert not (tmp_path / "cs-pwned.txt").exists()
+
+
 def test_sync_option_env_override(monkeypatch):
     """The SYNC env var selects the --sync option (PYTHON-6167)."""
     import utils

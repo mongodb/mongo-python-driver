@@ -25,6 +25,7 @@ from utils import (
     get_test_options,
     read_env,
     run_command,
+    shell_escape,
     write_env,
 )
 
@@ -492,7 +493,7 @@ def handle_test_env() -> None:
         CRYPT_SHARED_DIR = Path(config["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
         # The trailing expansions must stay live; escape the literal prefix.
-        escaped_dir = CRYPT_SHARED_DIR.replace("$", "\\$").replace("`", "\\`")
+        escaped_dir = shell_escape(CRYPT_SHARED_DIR)
         if PLATFORM == "windows":
             write_env("PATH", f"{escaped_dir}:$PATH", escape=False)
         else:
