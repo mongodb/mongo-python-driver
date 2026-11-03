@@ -32,10 +32,9 @@ use errors::invalid_bson;
 use options::CodecOptionsData;
 use types::Types;
 
-/// A format-independent buffer view (`PyBUF_SIMPLE`), mirroring the C's
-/// `PyObject_GetBuffer` call sites: any contiguous single-byte exporter is
-/// accepted, including signed-byte buffers (`memoryview.cast("b")`,
-/// `array.array("b")`) that the typed `PyBuffer<u8>` rejects.
+/// A format-independent buffer view (`PyBUF_SIMPLE`): accepts any
+/// contiguous single-byte exporter, including signed-byte buffers
+/// (`memoryview.cast("b")`) that the typed `PyBuffer<u8>` rejects.
 pub(crate) struct RawBuffer {
     view: pyo3::ffi::Py_buffer,
 }
@@ -67,9 +66,8 @@ impl Drop for RawBuffer {
     }
 }
 
-/// The C's `_get_buffer` checks: pyo3 acquires buffers with PyBUF_FULL_RO
-/// elsewhere, so a misbehaving exporter can hand back null or
-/// non-contiguous buffers.
+/// The C's `_get_buffer` checks: a misbehaving exporter can hand back
+/// null, non-contiguous, or oversize-item buffers.
 pub(crate) fn with_get_buffer_checks(view: &RawBuffer) -> PyResult<()> {
     // `!view->buf || view->len < 0`.
     if view.view.buf.is_null() || view.view.len < 0 {

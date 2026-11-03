@@ -214,13 +214,11 @@ pub fn decode_elements_into<'py>(
         // _element_to_dict does not rewrap get_value failures).
         let value = apply_decoder(py, value, options)?;
 
-        // Track the decoded key, not the raw bytes: a non-strict handler
-        // can mangle b'\xff$ref' into '$ref', and the C's _dbref_hook
-        // sees only the decoded mapping. Strict decodes preserve raw
-        // bytes, so the first byte decides; a key that cannot be
-        // re-borrowed as UTF-8 (surrogates under "surrogateescape")
-        // cannot equal "$ref"/"$id" either.
-        has_dollar_key |= if options.utf8_handler.is_none() {
+        // The raw-byte shortcut needs valid UTF-8 plus an unmodified
+        // strict handler: a registered "strict" handler can still turn
+        // b'\xffref' into '$ref' (the C's _dbref_hook sees only the
+        // decoded mapping). Surrogate keys cannot equal "$ref"/"$id".
+        has_dollar_key |= if options.utf8_handler.is_none() && std::str::from_utf8(name).is_ok() {
             name.first() == Some(&b'$')
         } else {
             key.cast::<PyString>()
@@ -309,11 +307,10 @@ pub fn get_value_with_raw_array<'py>(
                 elements_to_dict(py, input, &data[position..position + size], options)
                     .map_err(|err| rewrap_as_invalid_bson(py, err))?;
             position += size;
-            // Hook for DBRefs ($ref/$id shaped docs decode to DBRef). The
-            // C runs it unconditionally; the skip is only sound for exact
-            // dicts, which store keys as decoded. A custom class may add
-            // or rewrite keys in its constructor or __setitem__, so its
-            // result is always checked.
+            // The C runs the DBRef hook unconditionally; the skip is only
+            // sound for exact dicts, which store keys as decoded. A custom
+            // class may add or rewrite keys, so its result is always
+            // checked.
             if options.is_raw_bson || (options.is_dict_class && !has_dollar_key) {
                 value
             } else {
@@ -626,10 +623,9 @@ pub fn get_value_with_raw_array<'py>(
 }
 
 /// Applies the type registry's decoder for the value's exact type, if
-/// registered. Mirrors the C's decoder-map tail in get_value: the converter
-/// result is returned directly, so its failures are not wrapped here —
-/// whether they are wrapped depends on the caller (document-level callers
-/// propagate; the array loop wraps, like the C's `goto invalid`).
+/// registered. Mirrors the C's decoder-map tail in get_value: its failures
+/// are not wrapped here — document-level callers propagate them; the array
+/// loop wraps, like the C's `goto invalid`.
 pub fn apply_decoder<'py>(
     py: Python<'py>,
     value: Py<PyAny>,
@@ -668,12 +664,11 @@ fn dbref_hook<'py>(
 ) -> PyResult<Py<PyAny>> {
     let doc = value.bind(py);
     let lookup = |key: &str| -> PyResult<Option<Bound<'py, PyAny>>> {
-        // Exact-dict fast path: PyDict_GetItemWithError raises no
-        // exceptions for missing keys, and one lookup serves both the
-        // presence check and the value (PyMapping_HasKey +
-        // PyObject_GetItem in the C). Subclasses are excluded — their
-        // __getitem__ override must win — and other mappings fall back to
-        // get_item with a caught KeyError.
+        // Exact-dict fast path: one raw-storage lookup serves both the
+        // presence check and the value (PyMapping_HasKey + GetItem in the
+        // C). Subclasses are excluded — their __getitem__ override must
+        // win — and other mappings fall back to get_item with a caught
+        // KeyError.
         if doc.is_exact_instance_of::<PyDict>() {
             let dict = doc.cast::<PyDict>().unwrap();
             let key = pyo3::types::PyString::intern(py, key);
@@ -1041,10 +1036,9 @@ fn decode_key_cached<'py>(
 }
 
 /// Decodes a field-name key, using the intern cache for valid-UTF-8 keys
-/// under the strict handler. Any other handler makes decoding depend on
-/// mutable options state, and invalid UTF-8 can invoke a registered
+/// under the strict handler. Anything else can invoke a registered
 /// "strict" handler (which may re-enter decoding or make decoding impure),
-/// so both bypass the cache.
+/// so it bypasses the cache.
 #[inline]
 pub fn decode_key<'py>(
     py: Python<'py>,
@@ -1061,9 +1055,8 @@ pub fn decode_key<'py>(
 }
 
 /// Wraps unexpected errors during value decoding in InvalidBSON, mirroring
-/// `_rewrap_as_invalid_bson` in the C extension: only `Exception` subclasses
-/// are wrapped — `KeyboardInterrupt` and `SystemExit` pass through — and
-/// an `InvalidBSON` is returned as-is.
+/// `_rewrap_as_invalid_bson` in the C: only `Exception` subclasses are
+/// wrapped, and an `InvalidBSON` is returned as-is.
 #[cold]
 pub fn rewrap_as_invalid_bson(py: Python<'_>, err: PyErr) -> PyErr {
     if !err

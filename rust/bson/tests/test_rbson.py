@@ -1181,10 +1181,8 @@ def _invalid_key_doc():
 
 
 def test_registered_strict_handler_bypasses_cache():
-    # A handler registered under the name "strict" runs inside
-    # PyUnicode_DecodeUTF8 even for a NULL errors argument, and its output
-    # may differ per call: invalid-UTF-8 keys must bypass the key cache
-    # rather than caching handler output as a strict decode.
+    # A handler registered as "strict" runs on invalid UTF-8 keys, and its
+    # output may differ per call: those keys must bypass the key cache.
     import codecs
 
     data = _invalid_key_doc()
@@ -1249,6 +1247,44 @@ def test_registered_strict_handler_can_reenter():
         codecs.register_error("strict", builtin)
     assert "result" in outcome
     assert outcome["result"] == {"ka": "x"}
+
+
+def test_dbref_dollar_keys_from_registered_strict_handler():
+    # A handler registered under the name "strict" runs on invalid bytes
+    # even with a NULL errors argument, so b'\xffref'/b'\xffid' decode to
+    # "$ref"/"$id" while utf8_handler stays None. The C's _dbref_hook sees
+    # the decoded mapping and returns a DBRef; the raw-byte shortcut must
+    # only apply to valid-UTF-8 names.
+    import codecs
+    import struct
+
+    inner = (
+        struct.pack("<i", 29)
+        + b"\x02\xffref\x00"
+        + struct.pack("<i", 5)
+        + b"coll\x00"
+        + b"\x10\xffid\x00"
+        + struct.pack("<i", 1)
+        + b"\x00"
+    )
+    outer = struct.pack("<i", 37) + b"\x03a\x00" + inner + b"\x00"
+    assert len(inner) == 29
+    assert len(outer) == 37
+
+    def handler(exc):
+        return ("$", exc.end)
+
+    # codecs has no unregister_error; restore the builtin by re-registering.
+    builtin = codecs.lookup_error("strict")
+    codecs.register_error("strict", handler)
+    try:
+        expected = decode_c(outer, CodecOptions())
+        result = decode_rust(outer, CodecOptions())
+    finally:
+        codecs.register_error("strict", builtin)
+    assert isinstance(expected["a"], DBRef)
+    assert result == expected
+    assert type(result["a"]) is DBRef
 
 
 def test_dbref_keys_rewritten_by_document_class():
@@ -1348,9 +1384,8 @@ def test_base_exception_propagates():
 
 
 def test_signed_byte_buffer_inputs():
-    # The C acquires buffers with PyBUF_SIMPLE: any contiguous single-byte
-    # exporter decodes, including signed-byte ones (format "b") that a
-    # typed PyBuffer<u8> rejects.
+    # The C acquires buffers with PyBUF_SIMPLE: any contiguous
+    # single-byte exporter decodes, including signed-byte (format "b").
     import array
 
     encoded = encode_c({"a": "x"})
