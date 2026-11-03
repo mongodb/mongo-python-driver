@@ -314,9 +314,8 @@ def shell_escape(value: str) -> str:
 def write_env(name: str, value: Any = "1", escape: bool = True) -> None:
     """Append an export line for the value to the test environment file.
 
-    The value is persisted literally: command substitutions in it are escaped,
-    so sourcing the file never executes them. Pass escape=False for values
-    that must keep live expansions, like a trailing `$PATH` (PYTHON-6167)."""
+    The value is persisted literally; pass escape=False for values that must
+    keep live expansions, like a trailing `$PATH` (PYTHON-6167)."""
     with ENV_FILE.open("a", newline="\n") as fid:
         value = str(value).replace('"', "")
         if escape:

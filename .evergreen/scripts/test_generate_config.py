@@ -695,11 +695,8 @@ def assert_corner_cells(label, cells, row):
 
 
 def test_encryption_shape():
-    """Per test type: the three standard corners — sync min-Python min-deps on
-    the min MongoDB standalone, async max-CPython on the max stable MongoDB
-    sharded cluster, and sync max free-threaded CPython on the middle MongoDB
-    replica set — plus the max-CPython sharded task across the remaining
-    MongoDB versions, including latest and rapid. The names carry no distro;
+    """Per test type: the three standard corners plus the max-CPython sharded
+    task across the remaining MongoDB versions. The names carry no distro;
     every encryption variant runs the shared tasks, with the max-stable and
     latest coverage twins riding rhel8 only (PYTHON-6167)."""
     for family, crypt_shared in (
@@ -794,12 +791,11 @@ def test_compression_shape():
 
 
 def test_stable_api_shape():
-    """Stable API: one consolidated family — a sync accept-v2 standalone task
-    and an async require-v1 sharded-cluster task per MongoDB version 5.0+,
-    with the CPython rotated across the versions. The require-v1 tasks start
-    the server with requireApiVersion=1 and pin apiVersion=1 on the suite; the
-    accept-v2 tasks use the versioned-api orchestration without pinning an
-    apiVersion; every stable-api variant lists all versions (PYTHON-6167)."""
+    """Stable API: one sync accept-v2 standalone task and one async
+    require-v1 sharded-cluster task per MongoDB version 5.0+. The require-v1
+    tasks pin apiVersion=1 on the suite; the accept-v2 tasks use the
+    versioned-api orchestration without pinning an apiVersion; every
+    stable-api variant lists all versions (PYTHON-6167)."""
     tasks = family_tasks("test-stable-api")
     assert tasks, "test-stable-api has no tasks"
     by_version = group_by_version(tasks)
@@ -836,10 +832,7 @@ def test_stable_api_shape():
 
 def test_standard_shape():
     """The standard family: one task per MongoDB version following the
-    encryption corners — sync min-Python min-deps on the min MongoDB
-    standalone, sync max free-threaded CPython on the middle MongoDB replica
-    set, async max-CPython on the max stable MongoDB sharded cluster and the
-    remaining versions, with coverage on latest. The names carry no distro;
+    encryption corners, with coverage on latest. The names carry no distro;
     the platform tags restrict the cells: macos-arm64 starts at 6.0 and win32
     gets no free-threaded CPython; every platform variant lists its full
     version coverage (PYTHON-6167)."""
@@ -892,14 +885,11 @@ def test_standard_shape():
 
 def test_per_version_families_cover_every_server_version():
     """The per-version families cover every server version without duplicating
-    cells: PyOpenSSL (SUB_TEST_NAME=pyopenssl), disable-test-commands
-    (DISABLE_TEST_COMMANDS=1), no-c-ext (NO_EXT=1), and gevent
-    (GREEN_FRAMEWORK=gevent) assign the sync mode like the encryption corners —
-    sync on the standalone and replica-set cells, async on the sharded-cluster
-    cells, except gevent which only runs the sync half — load balancer runs a
-    sync and an async all-sharded task per version 6.0+ covering the full
-    suite, and storage-inmemory runs one sync standalone task per version
-    (PYTHON-6167)."""
+    cells: PyOpenSSL, disable-test-commands, no-c-ext, and gevent cycle the
+    topologies with the sync mode assigned per cell (gevent runs only the
+    sync half); load balancer runs a sync and an async all-sharded task per
+    version 6.0+ covering the full suite; storage-inmemory runs one sync
+    standalone task per version (PYTHON-6167)."""
     for family, distros, extra_var, split_modes, per_version in (
         ("test-pyopenssl", ("rhel8", "macos", "win64"), "SUB_TEST_NAME", True, 1),
         ("test-gevent", ("",), "GREEN_FRAMEWORK", False, 1),

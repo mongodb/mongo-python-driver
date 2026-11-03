@@ -123,9 +123,8 @@ def create_standard_nonlinux_variants() -> list[BuildVariant]:
     variants = []
     base_display_name = "* Test"
 
-    # Test the standard family on each of the other platforms; the platform
-    # tags restrict the cells (macOS arm64 starts at 6.0, win32 has no
-    # free-threaded CPython).
+    # The platform tags restrict the cells: macOS arm64 starts at 6.0, and
+    # win32 has no free-threaded CPython.
     for host_name in ("macos", "macos-arm64", "win64", "win32"):
         host = HOSTS[host_name]
         display_name = get_variant_name(base_display_name, host)
@@ -149,8 +148,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     tags = ["encryption_tag"]
     batchtime = BATCHTIME_DAY
 
-    # The tasks identify the suite, distro, sync mode, and crypt_shared; each
-    # variant picks its distro group(s).
+    # Each variant picks its distro group(s).
     for host in ["rhel8", "macos", "win64"]:
         tasks = [f".test-encryption .{host}", ".test-string-query-preview"]
         if host == "rhel8":
@@ -300,10 +298,8 @@ def create_test_numpy_variants() -> list[BuildVariant]:
     variants = []
     base_display_name = "Test Numpy"
 
-    # Test a subset on each of the other platforms: Linux, Windows (the 32-bit
-    # and 64-bit tasks in one variant on their shared distro, named to avoid
-    # create_variant's "Win64" display-name redirect), and macOS Apple
-    # silicon. The Intel macOS host is not tested.
+    # The custom win64 display name avoids create_variant's "Win64" redirect;
+    # the Intel macOS host is untested.
     for host_name, display_name in (
         ("rhel8", None),
         ("win64", f"{base_display_name} Windows"),
@@ -654,10 +650,9 @@ def _create_suite_task(
     pr=False,
     cov=None,
 ):
-    """One task of a per-suite family, identified by its name and tags. The
-    name carries no distro, so the same definitions are listed for every
-    distro variant; the distros param tags which variants run the task
-    (PYTHON-6167)."""
+    """One task of a per-suite family. The name carries no distro, so the
+    same definitions are listed for every distro variant; the distros param
+    tags which variants run the task (PYTHON-6167)."""
     auth, ssl = get_standard_auth_ssl(topology)
     tags = [
         family,
@@ -709,15 +704,12 @@ def _create_suite_task(
 
 
 def _create_encryption_tasks(family, sub_test=None, crypt_shared=False, distros=None):
-    """Encryption tasks for one test type: the three standard corners — sync
-    min-Python min-deps on the min MongoDB standalone, async max-CPython on
-    the max stable MongoDB sharded cluster, and sync max free-threaded CPython
-    on the middle MongoDB replica set — plus the max-CPython sharded task
-    across the remaining MongoDB versions, including latest and rapid. The
-    names carry no distro, so the same tasks are listed for every distro;
-    coverage and the pr pin ride rhel8-only twins of the max-stable and
-    latest cells, which exceed the 60-min timeout with coverage overhead on
-    macOS/Win64 (PYTHON-6167)."""
+    """Encryption tasks for one test type (PYTHON-6167).
+
+    The names carry no distro, so the same tasks are listed for every
+    distro; coverage and the pr pin ride rhel8-only twins of the max-stable
+    and latest cells, which exceed the 60-min timeout with coverage overhead
+    on macOS/Win64."""
     all_distros = ALL_DISTROS
     distros = distros or all_distros
     split_coverage = distros == all_distros
@@ -757,8 +749,7 @@ def _create_encryption_tasks(family, sub_test=None, crypt_shared=False, distros=
     else:
         add(MAX_VERSION, "sharded_cluster", MAX_PYTHON, "async", distros=distros, pr=True, cov=True)
     # The max-CPython sharded task across the remaining MongoDB versions; the
-    # latest cell keeps a rhel8-only coverage twin when the family spans the
-    # distros that cannot run coverage.
+    # latest cell keeps a rhel8-only coverage twin.
     for version in ALL_VERSIONS:
         if version in (MIN_VERSION, MIDDLE_VERSION, MAX_VERSION):
             continue
@@ -794,9 +785,8 @@ def create_test_encryption_pyopenssl_tasks():
 def create_test_load_balancer_tasks():
     """Load balancer tasks: one sync and one async task per MongoDB version
     6.0+ on an authenticated SSL sharded cluster fronted by a load balancer,
-    running the full default suite — the load-balancer-marked tests are part
-    of it — with the CPython paired one-to-one across the versions
-    (PYTHON-6167)."""
+    running the full default suite (the load-balancer-marked tests are part
+    of it) (PYTHON-6167)."""
     return [
         _create_suite_task(
             "test-load-balancer", version, "sharded_cluster", python, sync, "load_balancer"
@@ -816,12 +806,10 @@ def create_test_doctest_tasks():
 
 def create_test_compression_tasks():
     """Compression tasks: one sync task per compressor on the latest replica
-    set plus one async sharded-cluster task per compressor and MongoDB version
-    for every other version, with the CPython rotated across the cells, so
-    each compressor is tested against every MongoDB version without
-    duplicating cells (the compressors differ in client-side support, the
-    versions in server-side wire support). Each task runs the default suite
-    with its compressor enabled on every client (PYTHON-6167)."""
+    set plus async sharded-cluster cells on every other MongoDB version, so
+    each compressor meets every server version (the compressors differ in
+    client-side support, the versions in server-side wire support)
+    (PYTHON-6167)."""
     tasks = []
     for compressor in COMPRESSORS:
         # Sync, max CPython, noauth, SSL, replica set.
@@ -864,12 +852,8 @@ def _per_version_cells():
 
 
 def create_test_pyopenssl_tasks():
-    """PyOpenSSL tasks: one task per MongoDB version — sync on the latest
-    replica set, async on the sharded-cluster rotation — running the default
-    suite with the PyOpenSSL extra installed (SUB_TEST_NAME feeds
-    setup_tests.py), so the PyOpenSSL SSL backend is exercised against every
-    server version. The tasks run on every distro with the CPython rotated
-    across the cells; free-threaded CPython is covered by the
+    """PyOpenSSL tasks: one task per MongoDB version, running the default
+    suite with the PyOpenSSL extra. Free-threaded CPython is covered by the
     encryption-pyopenssl family on RHEL 8, the distro setup_tests.py equips
     with OpenSSL 3 (PYTHON-6167)."""
     return [
@@ -910,11 +894,9 @@ def _create_rotation_tasks(
 
 
 def create_test_gevent_tasks():
-    """Gevent tasks: one task per MongoDB version, the topology cycling
-    through standalone, replica set, and sharded cluster, running the sync
-    default suite under gevent; run_tests.py monkey-patches with gevent and
-    skips the async tests. Free-threaded CPython is not supported by gevent
-    (PYTHON-6167)."""
+    """Gevent tasks: one task per MongoDB version running the sync default
+    suite; run_tests.py monkey-patches with gevent and skips the async tests,
+    and free-threaded CPython is unsupported (PYTHON-6167)."""
     return _create_rotation_tasks(
         "test-gevent",
         extra_test_vars=dict(GREEN_FRAMEWORK="gevent"),
@@ -924,12 +906,9 @@ def create_test_gevent_tasks():
 
 
 def create_test_disable_test_commands_tasks():
-    """Disable-test-commands tasks: one task per MongoDB version, the topology
-    cycling through standalone, replica set, and sharded cluster (each uses
-    its own disableTestCommands orchestration config), running the default
-    suite against a server started without enableTestCommands. The mode
-    follows the encryption corners: sync on the standalone and replica-set
-    cells, async on the sharded clusters (PYTHON-6167)."""
+    """Disable-test-commands tasks: one task per MongoDB version, the
+    topology cycling through all three topologies (each uses its own
+    disableTestCommands orchestration config) (PYTHON-6167)."""
     return _create_rotation_tasks(
         "test-disable-test-commands",
         # Shared with the run server call, whose orchestration picks the
@@ -940,20 +919,15 @@ def create_test_disable_test_commands_tasks():
 
 def create_test_no_c_ext_tasks():
     """No-c-ext tasks: one task per MongoDB version, the topology cycling
-    through standalone, replica set, and sharded cluster, running the default
-    suite without the C extensions (NO_EXT feeds run_tests.py). The mode
-    follows the encryption corners: sync on the standalone and replica-set
-    cells, async on the sharded clusters (PYTHON-6167)."""
+    through all three, running the default suite without the C extensions
+    (NO_EXT feeds run_tests.py) (PYTHON-6167)."""
     return _create_rotation_tasks("test-no-c-ext", extra_test_vars=dict(NO_EXT="1"))
 
 
 def create_test_stable_api_tasks():
-    """Stable API tasks: one require-v1 task per MongoDB version 5.0+ on an
-    authenticated SSL sharded cluster started with requireApiVersion=1, and
-    one accept-v2 task per version on a standalone server from the
-    versioned-api-testing orchestration, with the CPython rotated across the
-    versions. The require-v1 tasks pin apiVersion=1 on the suite; the
-    accept-v2 tasks do not pin an apiVersion (PYTHON-6167)."""
+    """Stable API tasks: one require-v1 task per MongoDB version 5.0+ on a
+    sharded cluster, and one accept-v2 standalone task per version
+    (PYTHON-6167)."""
     cells = [
         # Async, auth, SSL, sharded cluster started with requireApiVersion=1.
         (
@@ -983,8 +957,7 @@ def create_test_stable_api_tasks():
 
 def create_test_storage_inmemory_tasks():
     """InMemory storage engine tasks: one sync standalone task per MongoDB
-    version, running the default suite against a server started with
-    STORAGE_ENGINE=inmemory (PYTHON-6167)."""
+    version (PYTHON-6167)."""
     return [
         _create_suite_task(
             "test-storage-inmemory",
@@ -1068,12 +1041,9 @@ def create_test_standard_auth_tasks():
 
 def create_standard_tasks():
     """The standard suite on the non-linux platforms, one task per MongoDB
-    version following the encryption corners: sync min-Python min-deps on the
-    min MongoDB standalone, sync max free-threaded CPython on the middle
-    MongoDB replica set, and async max-CPython on the max stable MongoDB
-    sharded cluster and the remaining versions, with coverage on latest. The
-    names carry no distro; the platform tags restrict the cells (macOS arm64
-    starts at 6.0, win32 has no free-threaded CPython) (PYTHON-6167)."""
+    version following the encryption corners; the platform tags restrict the
+    cells (macOS arm64 starts at 6.0, win32 has no free-threaded CPython)
+    (PYTHON-6167)."""
     all_platforms = ["macos", "macos-arm64", "win32", "win64"]
     corners = [
         # Sync, min Python, min deps, min MongoDB, no auth, no SSL, standalone.

@@ -176,9 +176,7 @@ def load_config_from_file(path: str | Path) -> dict[str, str]:
 def ensure_openssl3() -> None:
     """Build a local OpenSSL 3 when the system library is older (PYTHON-6167).
 
-    cryptography 47+ refuses OpenSSL 1.1.x; sources install-openssl3.sh from
-    drivers-evergreen-tools, exporting OPENSSL_DIR and LD_LIBRARY_PATH.
-    """
+    cryptography 47+ refuses OpenSSL 1.1.x."""
     if PLATFORM != "linux":
         return
     openssl = shutil.which("openssl")
@@ -486,8 +484,7 @@ def handle_test_env() -> None:
             ensure_openssl3()
 
     if opts.crypt_shared:
-        # Preserve the flag for the tests, which run their crypt_shared cases
-        # only when it is set.
+        # The tests run their crypt_shared cases only when this is set.
         write_env("TEST_CRYPT_SHARED", "1")
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
         CRYPT_SHARED_DIR = Path(config["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
