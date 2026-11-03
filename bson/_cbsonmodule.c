@@ -1146,7 +1146,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         {
             /* Binary */
             PyObject* subtype_object;
-            char subtype;
+            long subtype_long;
+            unsigned char subtype;
             const char* data;
             int size;
 
@@ -1155,11 +1156,13 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             if (!subtype_object) {
                 return 0;
             }
-            subtype = (char)PyLong_AsLong(subtype_object);
-            if (subtype == -1) {
+            subtype_long = PyLong_AsLong(subtype_object);
+            if (subtype_long == -1 && PyErr_Occurred()) {
                 Py_DECREF(subtype_object);
                 return 0;
             }
+            /* Subtype is 0-255, so a signed char would turn 255 into -1. */
+            subtype = (unsigned char)subtype_long;
             size = _downcast_and_check(PyBytes_Size(value), 0);
             if (size == -1) {
                 Py_DECREF(subtype_object);
@@ -1174,7 +1177,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                 if (!buffer_write_int32(buffer, other_size)) {
                     return 0;
                 }
-                if (!buffer_write_bytes(buffer, &subtype, 1)) {
+                if (!buffer_write_bytes(buffer, (const char*)&subtype, 1)) {
                     return 0;
                 }
             }
@@ -1182,7 +1185,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                 return 0;
             }
             if (subtype != 2) {
-                if (!buffer_write_bytes(buffer, &subtype, 1)) {
+                if (!buffer_write_bytes(buffer, (const char*)&subtype, 1)) {
                     return 0;
                 }
             }
@@ -2496,6 +2499,15 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                 Py_DECREF(pattern);
                 goto invalid;
             }
+            /* Validate the flags as UTF-8. */
+            PyObject* flags_str = PyUnicode_DecodeUTF8(
+                start, flags_length,
+                options->unicode_decode_error_handler);
+            if (!flags_str) {
+                Py_DECREF(pattern);
+                goto invalid;
+            }
+            Py_DECREF(flags_str);
             flags = 0;
             for (i = 0; i < flags_length; i++) {
                 if (buffer[*position + i] == 'i') {

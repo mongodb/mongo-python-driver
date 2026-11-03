@@ -4,6 +4,9 @@ Changelog
 Changes in Version 4.20.0 (2026/XX/XX)
 --------------------------------------
 
+- The client handshake metadata now reports a detected coding agent in
+  ``client.env.agent`` (`PYTHON-5929`_).
+
 Bug fixes
 .........
 
@@ -13,8 +16,31 @@ Bug fixes
   default ``UNSPECIFIED`` UUID representation, and raise
   :class:`~bson.errors.InvalidBSON` when UUID conversion is requested
   (`PYTHON-6172`_).
+- Fixed a bug where ``MongoClient(maxPoolSize=0, minPoolSize>0)`` raised
+  ``ValueError``, even though ``maxPoolSize=0`` means "no limit". The
+  ``minPoolSize <= maxPoolSize`` validation now treats both ``0`` and ``None``
+  as unlimited (`PYTHON-6149`_).
+- Fixed a bug where :class:`~bson.objectid.ObjectId` accepted a 24-character
+  string containing whitespace and created an ObjectId shorter than 12 bytes
+  from it. It now raises :class:`~bson.errors.InvalidId`, and
+  :meth:`~bson.objectid.ObjectId.is_valid` returns ``False`` for such a string
+  (`PYTHON-5873`_).
+- Fixed the type annotation of the ``let`` argument of
+  :class:`~pymongo.cursor.Cursor` and
+  :class:`~pymongo.asynchronous.cursor.AsyncCursor` to be
+  ``Optional[Mapping[str, Any]]`` instead of ``Optional[bool]``, matching what
+  the argument accepts at runtime (`PYTHON-6145`_).
+- Disabled TLS session reuse on Python 3.11
+  due to a CPython memory leak bug (`python/cpython#116810 <https://github.com/python/cpython/issues/116810>`_).
+  The bug was fixed in Python 3.12.7 and Python 3.13.1.
+  Users of Python 3.12 and 3.13 should upgrade to at least those versions (`PYTHON-6182`_).
 
+.. _PYTHON-5929: https://jira.mongodb.org/browse/PYTHON-5929
 .. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
+.. _PYTHON-6149: https://jira.mongodb.org/browse/PYTHON-6149
+.. _PYTHON-5873: https://jira.mongodb.org/browse/PYTHON-5873
+.. _PYTHON-6145: https://jira.mongodb.org/browse/PYTHON-6145
+.. _PYTHON-6182: https://jira.mongodb.org/browse/PYTHON-6182
 
 Changes in Version 4.19.0 (2026/10/14)
 --------------------------------------

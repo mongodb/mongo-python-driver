@@ -158,6 +158,7 @@ functions:
           - TEST_MIN_DEPS
           - SYNC
           - TEST_CRYPT_SHARED
+          - FUZZ_MAX_TIME
       type: test
     - command: subprocess.exec
       params:

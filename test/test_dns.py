@@ -153,6 +153,11 @@ def create_test(test_case):
                     client._connect()
                 if num_seeds is not None:
                     self.assertEqual(len(client._topology_settings.seeds), num_seeds)
+                # For sharded clusters, wake every monitor now to ensure
+                # failed heartbeats retry quickly
+                # instead of waiting for the full 10-second heartbeat interval.
+                if client_context.is_mongos:
+                    client._topology.request_check_all()
                 if hosts is not None:
                     wait_until(lambda: hosts == client.nodes, "match test hosts to client nodes")
                 if num_hosts is not None:
@@ -411,17 +416,6 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
             srv_allowed_hosts_suffix=".my_domain.net",
         )
         self.assertEqual(["cluster.my_domain.net"], [node[0] for node in res["nodelist"]])
-
-    def test_srv_hostname_with_three_or_more_parts_may_equal_the_returned_hostname(
-        self,
-    ):
-        test_cases = [
-            {
-                "query": "_mongodb._tcp.blogs.mongodb.com",
-                "mock_target": "blogs.mongodb.com",
-            },
-        ]
-        self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
 
 class TestPublicSuffixListParsing(unittest.TestCase):

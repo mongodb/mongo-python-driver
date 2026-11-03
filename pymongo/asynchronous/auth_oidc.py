@@ -24,7 +24,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 import bson
-from bson.binary import Binary
 from pymongo._csot import remaining
 from pymongo.auth_oidc_shared import (
     CALLBACK_VERSION,
@@ -36,10 +35,9 @@ from pymongo.auth_oidc_shared import (
     OIDCCallbackResult,
     OIDCIdPInfo,
     _get_authenticator,
-    _OIDCProperties,
+    _OIDCAuthenticatorBase,
 )
 from pymongo.errors import OperationFailure
-from pymongo.helpers_shared import _AUTHENTICATION_FAILURE_CODE
 from pymongo.lock import Lock, _async_create_lock
 
 if TYPE_CHECKING:
@@ -50,24 +48,16 @@ _IS_SYNC = False
 
 
 @dataclass
-class _OIDCAuthenticator:
-    username: str
-    properties: _OIDCProperties
-    refresh_token: Optional[str] = field(default=None)
-    access_token: Optional[str] = field(default=None)
-    idp_info: Optional[OIDCIdPInfo] = field(default=None)
-    token_gen_id: int = field(default=0)
+class _OIDCAuthenticator(_OIDCAuthenticatorBase):
     if not _IS_SYNC:
         lock: Lock = field(default_factory=_async_create_lock)  # type: ignore[assignment]
     else:
         lock: threading.Lock = field(default_factory=_async_create_lock)  # type: ignore[assignment, no-redef]
 
-    last_call_time: float = field(default=0)
-
     async def reauthenticate(self, conn: AsyncConnection) -> Optional[Mapping[str, Any]]:
         """Handle a reauthenticate from the server."""
         # Invalidate the token for the connection.
-        self._invalidate(conn)
+        self._invalidate(conn.oidc_token_gen_id)
         # Call the appropriate auth logic for the callback type.
         if self.properties.callback:
             return await self._authenticate_machine(conn)
@@ -90,12 +80,6 @@ class _OIDCAuthenticator:
         if self.properties.callback:
             return await self._authenticate_machine(conn)
         return await self._authenticate_human(conn)
-
-    def get_spec_auth_cmd(self) -> Optional[MutableMapping[str, Any]]:
-        """Get the appropriate speculative auth command."""
-        if not self.access_token:
-            return None
-        return self._get_start_command({"jwt": self.access_token})
 
     async def _authenticate_machine(self, conn: AsyncConnection) -> Mapping[str, Any]:
         # If there is a cached access token, try to authenticate with it. If
@@ -212,21 +196,8 @@ class _OIDCAuthenticator:
             return await conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
         except OperationFailure as e:
             if self._is_auth_error(e):
-                self._invalidate(conn)
+                self._invalidate(conn.oidc_token_gen_id)
             raise
-
-    def _is_auth_error(self, err: Exception) -> bool:
-        if not isinstance(err, OperationFailure):
-            return False
-        return err.code == _AUTHENTICATION_FAILURE_CODE
-
-    def _invalidate(self, conn: AsyncConnection) -> None:
-        # Ignore the invalidation if a token gen id is given and is less than our
-        # current token gen id.
-        token_gen_id = conn.oidc_token_gen_id or 0
-        if token_gen_id is not None and token_gen_id < self.token_gen_id:
-            return
-        self.access_token = None
 
     async def _sasl_continue_jwt(
         self, conn: AsyncConnection, start_resp: Mapping[str, Any]
@@ -246,26 +217,6 @@ class _OIDCAuthenticator:
         conn.oidc_token_gen_id = self.token_gen_id
         cmd = self._get_start_command({"jwt": access_token})
         return await self._run_command(conn, cmd)
-
-    def _get_start_command(self, payload: Optional[Mapping[str, Any]]) -> MutableMapping[str, Any]:
-        if payload is None:
-            principal_name = self.username
-            if principal_name:
-                payload = {"n": principal_name}
-            else:
-                payload = {}
-        bin_payload = Binary(bson.encode(payload))
-        return {"saslStart": 1, "mechanism": "MONGODB-OIDC", "payload": bin_payload}
-
-    def _get_continue_command(
-        self, payload: Mapping[str, Any], start_resp: Mapping[str, Any]
-    ) -> MutableMapping[str, Any]:
-        bin_payload = Binary(bson.encode(payload))
-        return {
-            "saslContinue": 1,
-            "payload": bin_payload,
-            "conversationId": start_resp["conversationId"],
-        }
 
 
 async def _authenticate_oidc(

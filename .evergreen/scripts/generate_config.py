@@ -392,6 +392,17 @@ def create_doctests_variants():
     ]
 
 
+def create_fuzz_variants():
+    host = HOSTS["rhel8"]
+    # Regression test on every PR.
+    name = get_variant_name("Fuzz Regression", host)
+    pr_variant = create_variant([".fuzz-regression"], name, host=host, tags=["pr"])
+    # Fuzzing requires CPython on Linux/macOS; use a pinned CPython on RHEL8.
+    name = get_variant_name("Fuzz", host)
+    nightly = create_variant([".fuzz-nightly"], name, host=host, batchtime=BATCHTIME_DAY)
+    return [pr_variant, nightly]
+
+
 def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [
@@ -1134,6 +1145,21 @@ def create_no_orchestration_tasks():
     return tasks
 
 
+def create_fuzz_tasks():
+    # Deterministic regression test over the committed known-bug reproducers.
+    tags = ["fuzz", "fuzz-regression", "pr"]
+    test_vars = dict(TEST_NAME="fuzz", SUB_TEST_NAME="regression", UV_PYTHON="3.13")
+    test_func = FunctionCall(func="run tests", vars=test_vars)
+    tasks = [EvgTask(name="fuzz-regression", tags=tags, commands=[test_func])]
+
+    # Time-boxed fuzzing against the generated seed corpus.
+    tags = ["fuzz", "fuzz-nightly"]
+    test_vars = dict(TEST_NAME="fuzz", SUB_TEST_NAME="fuzz", UV_PYTHON="3.13")
+    test_func = FunctionCall(func="run tests", vars=test_vars)
+    tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func]))
+    return tasks
+
+
 def create_kms_tasks():
     tasks = []
     for kms_type in ["gcp", "azure"]:
@@ -1616,6 +1642,7 @@ def create_run_tests_func():
         # setup_tests.py reads it to wire the crypt_shared lib directory for
         # the crypt_shared tasks.
         "TEST_CRYPT_SHARED",
+        "FUZZ_MAX_TIME",
     ]
     args = [".evergreen/just.sh", "setup-tests", "${TEST_NAME}", "${SUB_TEST_NAME}"]
     setup_cmd = get_subprocess_exec(include_expansions_in_env=includes, args=args)

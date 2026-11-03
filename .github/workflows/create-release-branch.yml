@@ -57,7 +57,7 @@ jobs:
         run: |
           auth_header=$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)
           git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ${auth_header}"
-      - uses: mongodb-labs/drivers-github-tools/setup@4089c3eb27d7a5101d987088c3345013858d65f8  # v3.0.6
+      - uses: mongodb-labs/drivers-github-tools/setup@99b1cbd729bc83bf7fc74e1b2a97fffad3d65d7b  # v3.1.1
         with:
           aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
           aws_region_name: ${{ vars.AWS_REGION_NAME }}
@@ -65,7 +65,7 @@ jobs:
           artifactory_username: ${{ vars.ARTIFACTORY_USERNAME }}
       - name: Get hatch
         run: pip install hatch
-      - uses: mongodb-labs/drivers-github-tools/create-branch@4089c3eb27d7a5101d987088c3345013858d65f8  # v3.0.6
+      - uses: mongodb-labs/drivers-github-tools/create-branch@99b1cbd729bc83bf7fc74e1b2a97fffad3d65d7b  # v3.1.1
         id: create-branch
         with:
           branch_name: ${{ inputs.branch_name }}

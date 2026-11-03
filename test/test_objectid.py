@@ -57,6 +57,13 @@ class TestObjectId(unittest.TestCase):
         ObjectId("123456789012123456789012")
         self.assertRaises(InvalidId, ObjectId, "123456789012123456789G12")
 
+    def test_from_hex_whitespace(self):
+        # bytes.fromhex() skips whitespace, which must not shorten the ObjectId.
+        self.assertRaises(InvalidId, ObjectId, "0123                0011")
+        self.assertRaises(InvalidId, ObjectId, "00 " * 8)
+        self.assertRaises(InvalidId, ObjectId, "01\n" * 8)
+        self.assertRaises(InvalidId, ObjectId, " " * 24)
+
     def test_repr_str(self):
         self.assertEqual(
             repr(ObjectId("1234567890abcdef12345678")), "ObjectId('1234567890abcdef12345678')"
@@ -154,6 +161,10 @@ class TestObjectId(unittest.TestCase):
         self.assertFalse(ObjectId.is_valid(""))
         self.assertFalse(ObjectId.is_valid("12345678901"))
         self.assertFalse(ObjectId.is_valid("1234567890123"))
+        self.assertFalse(ObjectId.is_valid("0123                0011"))
+        self.assertFalse(ObjectId.is_valid("00 " * 8))
+        self.assertFalse(ObjectId.is_valid("01\n" * 8))
+        self.assertFalse(ObjectId.is_valid(" " * 24))
 
         self.assertTrue(ObjectId.is_valid(b"123456789012"))
         self.assertTrue(ObjectId.is_valid("123456789012123456789012"))

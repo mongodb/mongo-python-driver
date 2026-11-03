@@ -24,7 +24,7 @@ import threading
 from unittest import mock
 
 from pymongo.common import MAX_ADAPTIVE_RETRIES
-from test.asynchronous.utils import async_set_fail_point, flaky
+from test.asynchronous.utils import async_set_fail_point, async_wait_until, flaky
 
 sys.path[0:0] = [""]
 
@@ -393,6 +393,14 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             appName="retryableWriteTest",
             event_listeners=[listener],
             retryWrites=True,
+        )
+
+        # Ensure the client has discovered all mongoses.
+        await async_wait_until(
+            lambda: (
+                len(client.topology_description.known_servers) == len(async_client_context.mongoses)
+            ),
+            "discover all mongoses",
         )
 
         with self.assertRaises(AutoReconnect):

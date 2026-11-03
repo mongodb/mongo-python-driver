@@ -24,7 +24,7 @@ import threading
 from unittest import mock
 
 from pymongo.common import MAX_ADAPTIVE_RETRIES
-from test.utils import flaky, set_fail_point
+from test.utils import flaky, set_fail_point, wait_until
 
 sys.path[0:0] = [""]
 
@@ -391,6 +391,12 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             appName="retryableWriteTest",
             event_listeners=[listener],
             retryWrites=True,
+        )
+
+        # Ensure the client has discovered all mongoses.
+        wait_until(
+            lambda: len(client.topology_description.known_servers) == len(client_context.mongoses),
+            "discover all mongoses",
         )
 
         with self.assertRaises(AutoReconnect):

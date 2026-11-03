@@ -160,7 +160,8 @@ def _parse_pool_options(
     max_pool_size = options.get("maxpoolsize", common.MAX_POOL_SIZE)
     min_pool_size = options.get("minpoolsize", common.MIN_POOL_SIZE)
     max_idle_time_seconds = options.get("maxidletimems", common.MAX_IDLE_TIME_SEC)
-    if max_pool_size is not None and min_pool_size > max_pool_size:
+    # A maxPoolSize of 0 or None means no limit.
+    if max_pool_size and min_pool_size > max_pool_size:
         raise ValueError("minPoolSize must be smaller or equal to maxPoolSize")
     connect_timeout = options.get("connecttimeoutms", common.CONNECT_TIMEOUT)
     socket_timeout = options.get("sockettimeoutms")
