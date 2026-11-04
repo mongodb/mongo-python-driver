@@ -37,142 +37,10 @@ from pymongo.pool_options import PoolOptions, _ProxyOptions
 from pymongo.pool_shared import _async_configured_socket, _async_create_connection, _Socks5Error
 from test.asynchronous import AsyncPyMongoTestCase, unittest
 from test.helpers_shared import CERT_PATH
+from test.socks5_helpers import Socks5Server, _Socks5Server
 
 _IS_SYNC = False
 pytestmark = pytest.mark.default_async
-
-
-class _Socks5Server:
-    def __init__(
-        self,
-        method: int = 0,
-        auth_status: int = 0,
-        reply: int = 0,
-        bound_atyp: int = 1,
-        payload: bytes = b"",
-        method_version: int = 5,
-        reply_version: int = 5,
-        eof_stage: Optional[str] = None,
-        stall: bool = False,
-        target: Optional[tuple[str, int]] = None,
-    ) -> None:
-        self.method = method
-        self.auth_status = auth_status
-        self.reply = reply
-        self.bound_atyp = bound_atyp
-        self.payload = payload
-        self.method_version = method_version
-        self.reply_version = reply_version
-        self.eof_stage = eof_stage
-        self.stall = stall
-        self.target = target
-        self.started = threading.Event()
-        self.greeting = b""
-        self.auth = b""
-        self.request = b""
-        self.error: Optional[BaseException] = None
-        self.listener = socket.socket()
-        self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
-        self.listener.bind(("127.0.0.1", 0))
-        self.listener.listen(1)
-        self.listener.settimeout(3)
-        self.address = self.listener.getsockname()
-        self.thread = threading.Thread(target=self._serve, daemon=True)
-        self.thread.start()
-
-    @staticmethod
-    def _read(sock: socket.socket, size: int) -> bytes:
-        data = bytearray()
-        while len(data) < size:
-            part = sock.recv(size - len(data))
-            if not part:
-                raise EOFError("client closed connection")
-            data.extend(part)
-        return bytes(data)
-
-    def _serve(self) -> None:
-        upstream: Optional[socket.socket] = None
-        try:
-            with self.listener.accept()[0] as conn:
-                conn.settimeout(3)
-                version, nmethods = self._read(conn, 2)
-                self.greeting = bytes((version, nmethods)) + self._read(conn, nmethods)
-                self.started.set()
-                if self.stall:
-                    conn.recv(1)
-                    return
-                if self.eof_stage == "greeting":
-                    conn.sendall(b"\x05")
-                    return
-                conn.sendall(bytes((self.method_version, self.method)))
-                if self.method == 2:
-                    auth_version, username_length = self._read(conn, 2)
-                    username = self._read(conn, username_length)
-                    password_length = self._read(conn, 1)[0]
-                    password = self._read(conn, password_length)
-                    self.auth = (
-                        bytes((auth_version, username_length))
-                        + username
-                        + bytes((password_length,))
-                        + password
-                    )
-                    if self.eof_stage == "auth":
-                        conn.sendall(b"\x01")
-                        return
-                    conn.sendall(bytes((1, self.auth_status)))
-                    if self.auth_status:
-                        return
-                version, command, reserved, atyp = self._read(conn, 4)
-                if atyp == 1:
-                    addr = self._read(conn, 4)
-                elif atyp == 4:
-                    addr = self._read(conn, 16)
-                else:
-                    length = self._read(conn, 1)
-                    addr = length + self._read(conn, length[0])
-                self.request = (
-                    bytes((version, command, reserved, atyp)) + addr + self._read(conn, 2)
-                )
-                if self.eof_stage == "connect":
-                    conn.sendall(b"\x05\x00")
-                    return
-                if self.target is not None:
-                    upstream = socket.create_connection(self.target, timeout=3)
-                if self.bound_atyp == 1:
-                    bound = b"\x01\x7f\x00\x00\x01\x00\x00"
-                elif self.bound_atyp == 4:
-                    bound = b"\x04" + (b"\x00" * 16) + b"\x00\x00"
-                else:
-                    bound = b"\x03\x01x\x00\x00"
-                conn.sendall(bytes((self.reply_version, self.reply, 0)) + bound + self.payload)
-                if self.payload:
-                    return
-                if upstream is not None:
-                    conn.setblocking(False)
-                    upstream.setblocking(False)
-                    while True:
-                        readable, _, _ = select.select([conn, upstream], [], [], 5)
-                        if not readable:
-                            return
-                        for source in readable:
-                            data = source.recv(65536)
-                            if not data:
-                                return
-                            destination = upstream if source is conn else conn
-                            destination.sendall(data)
-                else:
-                    while conn.recv(1024):
-                        pass
-        except BaseException as exc:
-            self.error = exc
-        finally:
-            if upstream is not None:
-                upstream.close()
-            self.listener.close()
-
-    def close(self) -> None:
-        self.listener.close()
-        self.thread.join(timeout=3)
 
 
 @contextmanager
@@ -319,7 +187,8 @@ class TestSocks5(AsyncPyMongoTestCase):
         from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
         client = AsyncMongoClient(
-            "mongodb://localhost/?proxyHost=localhost&proxyPort=1234",
+            "mongodb://localhost/?proxyHost=localhost&proxyPort=1234"
+            "&proxyUsername=uri-user&proxyPassword=uri-password",
             proxyHost="[::1]",
             proxyPort=5678,
             proxyUsername="",
@@ -330,6 +199,21 @@ class TestSocks5(AsyncPyMongoTestCase):
             self.assertEqual(client.options.pool_options._proxy_options, _ProxyOptions("::1", 5678))
         finally:
             await client.close()
+
+    async def test_client_equality_includes_proxy_options(self) -> None:
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
+        clients = [
+            AsyncMongoClient("mongodb://localhost/?proxyHost=proxy.example", connect=False),
+            AsyncMongoClient("mongodb://localhost/?proxyHost=proxy.example", connect=False),
+            AsyncMongoClient("mongodb://localhost/?proxyHost=other.example", connect=False),
+        ]
+        try:
+            self.assertEqual(clients[0], clients[1])
+            self.assertNotEqual(clients[0], clients[2])
+        finally:
+            for client in clients:
+                await client.close()
 
     async def test_bad_versions_and_unexpected_eof_fail(self) -> None:
         cases = (
@@ -355,7 +239,7 @@ class TestSocks5(AsyncPyMongoTestCase):
             await self._connect(server, ("localhost", 27017), timeout=0.1)
         server.close()
 
-    @unittest.skipIf(_IS_SYNC, "Async cancellation is tested in the asynchronous driver")
+    @unittest.skipIf(_IS_SYNC, "Async cancellation only applies to async connections")
     async def test_cancellation_closes_proxy_socket(self) -> None:
         server = _Socks5Server(stall=True)
         self.addCleanup(server.close)
@@ -365,7 +249,7 @@ class TestSocks5(AsyncPyMongoTestCase):
         with self.assertRaises(asyncio.CancelledError):
             await task
 
-    @unittest.skipIf(_IS_SYNC, "Async cancellation is tested in the asynchronous driver")
+    @unittest.skipIf(_IS_SYNC, "Async cancellation only applies to async connections")
     async def test_cancellation_when_proxy_send_completes_closes_socket(self) -> None:
         server = _Socks5Server(stall=True)
         self.addCleanup(server.close)
@@ -758,8 +642,6 @@ class TestSocks5(AsyncPyMongoTestCase):
                             await client.close()
 
     async def test_in_process_socks5_server_forwarding(self) -> None:
-        from test.asynchronous.test_socks5_prose import Socks5Server
-
         echo_listener = socket.socket()
         echo_listener.bind(("127.0.0.1", 0))
         echo_listener.listen(2)

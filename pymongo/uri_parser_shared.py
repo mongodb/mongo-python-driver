@@ -481,6 +481,8 @@ def split_hosts(hosts: str, default_port: Optional[int] = DEFAULT_PORT) -> list[
 # backward-compat we allow "db.collection" in URI.
 _BAD_DB_CHARS = re.compile("[" + re.escape(r'/ "$') + "]")
 
+_SOCKS5_MAX_STR_LEN = 255
+
 _ALLOWED_TXT_OPTS = frozenset(
     ["authsource", "authSource", "replicaset", "replicaSet", "loadbalanced", "loadBalanced"]
 )
@@ -508,8 +510,10 @@ def _check_proxy_options(nodes: Sized, options: Mapping[str, Any]) -> None:
     if bool(proxy_username) != bool(proxy_password):
         raise ConfigurationError("Both proxyUsername and proxyPassword must be specified together")
     for name, value in (("proxyUsername", proxy_username), ("proxyPassword", proxy_password)):
-        if value is not None and len(value.encode("utf-8")) > 255:
-            raise ConfigurationError(f"{name} must be no more than 255 UTF-8 bytes")
+        if value is not None and len(value.encode("utf-8")) > _SOCKS5_MAX_STR_LEN:
+            raise ConfigurationError(
+                f"{name} must be no more than {_SOCKS5_MAX_STR_LEN} UTF-8 bytes"
+            )
     if any(host.endswith(".sock") for host, _ in cast(Iterable[_Address], nodes)):
         raise ConfigurationError("Cannot specify proxyHost with Unix domain sockets")
 

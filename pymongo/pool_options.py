@@ -103,6 +103,7 @@ ENV_VAR_K8S = "KUBERNETES_SERVICE_HOST"
 
 RUNTIME_NAME_DOCKER = "docker"
 ORCHESTRATOR_NAME_K8S = "kubernetes"
+_DEFAULT_PROXY_PORT = 1080
 
 
 def get_container_env_info() -> dict[str, str]:
@@ -375,7 +376,7 @@ class _ProxyOptions:
     """Immutable SOCKS5 proxy connection settings."""
 
     host: str
-    port: int = 1080
+    port: int = _DEFAULT_PROXY_PORT
     username: Optional[str] = None
     password: Optional[str] = field(default=None, repr=False)
 

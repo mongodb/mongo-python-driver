@@ -100,6 +100,7 @@ from pymongo.operations import (
     UpdateOne,
     _Op,
 )
+from pymongo.pool_options import _ProxyOptions
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import ClientBulkWriteResult
 from pymongo.server_description import ServerDescription
@@ -674,6 +675,10 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
+        .. versionchanged:: 4.20
+           Added the ``proxyHost``, ``proxyPort``, ``proxyUsername``, and
+           ``proxyPassword`` keyword arguments and URI options.
+
         .. versionchanged:: 4.19
            Added the ``srv_host_validator`` keyword argument.
 
@@ -1125,9 +1130,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         keyword_opts = common._CaseInsensitiveDictionary(
             dict(common.validate(keyword_opts.cased_key(k), v) for k, v in keyword_opts.items())
         )
-        for name in ("proxyusername", "proxypassword"):
-            if keyword_opts.get(name) == "":
-                keyword_opts.pop(name)
         # Override connection string options with kwarg options.
         opts.update(keyword_opts)
         return opts
@@ -1386,12 +1388,15 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return self._options
 
-    def eq_props(self) -> tuple[tuple[_Address, ...], Optional[str], Optional[str], str]:
+    def eq_props(
+        self,
+    ) -> tuple[tuple[_Address, ...], Optional[str], Optional[str], str, Optional[_ProxyOptions]]:
         return (
             tuple(sorted(self._resolve_srv_info["seeds"])),
             self._options.replica_set_name,
             self._resolve_srv_info["fqdn"],
             self._resolve_srv_info["srv_service_name"],
+            self._options.pool_options._proxy_options,
         )
 
     def __eq__(self, other: Any) -> bool:
