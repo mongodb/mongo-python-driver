@@ -1068,7 +1068,9 @@ async def test_kms_request_does_not_retry_a_contract_violation(api):
         return "not-a-socket"
 
     opts = AutoEncryptionOpts({}, "k.d", kms_connect_callback=api.callback(action))
-    io = api.encryption()._EncryptionIO(None, mock.MagicMock(), None, opts)
+    proxy_client = mock.MagicMock()
+    proxy_client.options.pool_options._proxy_options = None
+    io = api.encryption()._EncryptionIO(None, mock.MagicMock(), None, opts, proxy_client)
 
     class StubKmsContext:
         endpoint = "kms.example.com:443"
