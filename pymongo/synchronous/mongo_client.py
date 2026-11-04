@@ -2860,6 +2860,8 @@ class _ClientConnectionRetryable(
 ):
     """Responsible for executing retryable connections on read or write operations"""
 
+    __slots__ = ()
+
     _client: MongoClient[Any]
     _session: Optional[ClientSession]
 
