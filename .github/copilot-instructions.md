@@ -1,5 +1,8 @@
 When reviewing code, focus on:
 
+## Coding Standards
+- All guidelines in [CODING-STANDARDS.md](../CODING-STANDARDS.md).
+
 ## Security Critical Issues
 - Check for hardcoded secrets, API keys, or credentials.
 - Check for instances of potential method call injection, dynamic code execution, symbol injection or other code injection vulnerabilities.
@@ -20,7 +23,7 @@ When reviewing code, focus on:
 
 ## Review Style
 - Be specific and actionable in feedback.
-- Explain the "why" behind recommendations.
+- Explain the "why" behind recommendations. Source findings directly to the guideline that produced them.
 - Acknowledge good patterns when you see them.
 - Ask clarifying questions when code intent is unclear.
 
