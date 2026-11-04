@@ -2867,7 +2867,7 @@ class _ClientReadCheckout(_ClientCheckout):
 
 
 class _ClientConnectionRetryable(
-    _AgnosticClientConnectionRetryableBase[T, "Server", _WriteCall[T] | _ReadCall[T]], Generic[T]
+    _AgnosticClientConnectionRetryableBase[T, "Server", _WriteCall[T] | _ReadCall[T]]
 ):
     """Responsible for executing retryable connections on read or write operations"""
 

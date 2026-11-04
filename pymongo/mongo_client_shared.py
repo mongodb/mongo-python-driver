@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, TypeVar, Union, cast
 
 from pymongo import _csot
 from pymongo._telemetry import _generate_op_id_or_none, log_command_retry
@@ -35,16 +35,19 @@ from pymongo.logger import (
     _CLIENT_LOGGER,
     _log_or_warn,
 )
-from pymongo.read_preferences import _ServerMode
-from pymongo.server_selectors import Selection, writable_server_selector
-from pymongo.typings import (
-    _Address,
-    _AgnosticBulk,
-    _AgnosticClientBulk,
-    _AgnosticClientSession,
-    _AgnosticMongoClient,
-    _AgnosticServer,
-)
+from pymongo.server_selectors import writable_server_selector
+
+if TYPE_CHECKING:
+    from pymongo.read_preferences import _ServerMode
+    from pymongo.server_selectors import Selection
+    from pymongo.typings import (
+        _Address,
+        _AgnosticBulk,
+        _AgnosticClientBulk,
+        _AgnosticClientSession,
+        _AgnosticMongoClient,
+        _AgnosticServer,
+    )
 
 T = TypeVar("T")
 _ServerT = TypeVar("_ServerT", bound="_AgnosticServer")
