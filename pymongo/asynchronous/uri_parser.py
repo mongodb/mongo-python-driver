@@ -136,6 +136,7 @@ async def _parse_srv(
     srv_max_hosts: Optional[int] = None,
     srv_allowed_hosts_suffix: Optional[str] = None,
     srv_host_validator: Optional[Callable[[str], bool]] = None,
+    validate_proxy: bool = True,
 ) -> dict[str, Any]:
     if uri.startswith(SCHEME):
         is_srv = False
@@ -198,7 +199,7 @@ async def _parse_srv(
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 
-    _check_options(nodes, options)
+    _check_options(nodes, options, validate_proxy=validate_proxy)
 
     return {
         "nodelist": nodes,

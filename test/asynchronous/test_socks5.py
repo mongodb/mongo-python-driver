@@ -432,26 +432,64 @@ class TestSocks5(AsyncPyMongoTestCase):
     async def test_proxy_password_is_redacted_in_repr(self) -> None:
         from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
-        client = AsyncMongoClient(
-            "mongodb://user:dbsecret@localhost/?proxyHost=127.0.0.1"
-            "&proxyUsername=proxyuser&proxyPassword=hunter2",
+        for client in (
+            AsyncMongoClient(
+                "mongodb://user:dbsecret@localhost/?proxyHost=127.0.0.1"
+                "&proxyUsername=proxyuser&proxyPassword=hunter2",
+                connect=False,
+            ),
+            AsyncMongoClient(
+                "mongodb://localhost/",
+                username="user",
+                password="dbsecret",
+                proxyHost="127.0.0.1",
+                proxyUsername="proxyuser",
+                proxyPassword="hunter2",
+                connect=False,
+            ),
+        ):
+            try:
+                client_repr = repr(client)
+                proxy_repr = repr(client.options.pool_options._proxy_options)
+                self.assertNotIn("hunter2", client_repr)
+                self.assertNotIn("proxyuser", client_repr)
+                self.assertNotIn("dbsecret", client_repr)
+                self.assertNotIn("hunter2", proxy_repr)
+                self.assertIn("127.0.0.1", proxy_repr)
+            finally:
+                await client.close()
+
+    async def test_split_proxy_options_across_uri_and_kwargs(self) -> None:
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+
+        client1 = AsyncMongoClient(
+            "mongodb://localhost/?proxyPort=1081",
+            proxyHost="proxy.example",
+            connect=False,
+        )
+        client2 = AsyncMongoClient(
+            "mongodb://localhost/?proxyHost=proxy.example&proxyUsername=u",
+            proxyPassword="p",
             connect=False,
         )
         try:
-            client_repr = repr(client)
-            proxy_repr = repr(client.options.pool_options._proxy_options)
-            self.assertNotIn("hunter2", client_repr)
-            self.assertNotIn("proxyuser", client_repr)
-            self.assertNotIn("dbsecret", client_repr)
-            self.assertNotIn("hunter2", proxy_repr)
-            self.assertIn("127.0.0.1", proxy_repr)
+            self.assertEqual(
+                client1.options.pool_options._proxy_options,
+                _ProxyOptions("proxy.example", 1081),
+            )
+            self.assertEqual(
+                client2.options.pool_options._proxy_options,
+                _ProxyOptions("proxy.example", 1080, "u", "p"),
+            )
         finally:
-            await client.close()
+            await client1.close()
+            await client2.close()
 
     async def test_malformed_proxy_uri_options_raise_instead_of_warning(self) -> None:
         from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
         for uri in (
+            "mongodb://localhost/?proxyHost=",
             "mongodb://localhost/?proxyHost=proxy%3A1080",
             "mongodb://localhost/?proxyHost=local%20host",
             "mongodb://localhost/?proxyHost=localhost&proxyPort=0",

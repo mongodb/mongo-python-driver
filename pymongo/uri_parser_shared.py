@@ -514,7 +514,7 @@ def _check_proxy_options(nodes: Sized, options: Mapping[str, Any]) -> None:
         raise ConfigurationError("Cannot specify proxyHost with Unix domain sockets")
 
 
-def _check_options(nodes: Sized, options: Mapping[str, Any]) -> None:
+def _check_options(nodes: Sized, options: Mapping[str, Any], validate_proxy: bool = True) -> None:
     # Ensure directConnection was not True if there are multiple seeds.
     if len(nodes) > 1 and options.get("directconnection"):
         raise ConfigurationError("Cannot specify multiple hosts with directConnection=true")
@@ -527,7 +527,8 @@ def _check_options(nodes: Sized, options: Mapping[str, Any]) -> None:
         if options.get("replicaset"):
             raise ConfigurationError("Cannot specify replicaSet with loadBalanced=true")
 
-    _check_proxy_options(nodes, options)
+    if validate_proxy:
+        _check_proxy_options(nodes, options)
 
 
 def _parse_kms_tls_options(
@@ -573,6 +574,7 @@ def _validate_uri(
     warn: bool = False,
     normalize: bool = True,
     srv_max_hosts: Optional[int] = None,
+    validate_proxy: bool = True,
 ) -> dict[str, Any]:
     if uri.startswith(SCHEME):
         is_srv = False
@@ -652,7 +654,7 @@ def _validate_uri(
     else:
         nodes = split_hosts(hosts, default_port=default_port)
 
-    _check_options(nodes, options)
+    _check_options(nodes, options, validate_proxy=validate_proxy)
 
     return {
         "nodelist": nodes,

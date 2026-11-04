@@ -219,7 +219,8 @@ class TestSocks5Prose(AsyncIntegrationTest):
         proxy_options = {"proxyHost": "localhost", "proxyPort": port}
         if credentials:
             proxy_options["proxyUsername"], proxy_options["proxyPassword"] = credentials
-        options = dict(TLS_OPTIONS)
+        tls_options = dict(TLS_OPTIONS) if async_client_context.tls else {}
+        options = dict(tls_options)
         options.update(self.credentials)
         options.update(proxy_options)
         options["serverSelectionTimeoutMS"] = 2500
@@ -234,9 +235,9 @@ class TestSocks5Prose(AsyncIntegrationTest):
             uri_options += "&serverSelectionTimeoutMS=2500"
             if hosts == "localhost:12345":
                 uri_options += "&directConnection=true"
-            if TLS_OPTIONS:
+            if tls_options:
                 uri_options += "&" + "&".join(
-                    f"{key}={quote_plus(str(value))}" for key, value in TLS_OPTIONS.items()
+                    f"{key}={quote_plus(str(value))}" for key, value in tls_options.items()
                 )
             auth = ""
             if self.credentials:

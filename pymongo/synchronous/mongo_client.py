@@ -882,6 +882,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     warn=True,
                     normalize=False,
                     srv_max_hosts=srv_max_hosts,
+                    validate_proxy=False,
                 )
                 is_srv = entity.startswith(SRV_SCHEME)
                 self._seeds.update(res["nodelist"])
@@ -1007,6 +1008,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     srv_max_hosts=srv_max_hosts,
                     srv_allowed_hosts_suffix=srv_allowed_hosts_suffix,
                     srv_host_validator=srv_host_validator,
+                    validate_proxy=False,
                 )
                 seeds.update(res["nodelist"])
                 opts = res["options"]
