@@ -32,6 +32,7 @@ from collections import abc, defaultdict
 from functools import partial
 from inspect import iscoroutinefunction
 from typing import Any
+from unittest.mock import patch
 
 from bson.objectid import ObjectId
 from pymongo import monitoring, operations, read_preferences
@@ -53,7 +54,7 @@ from pymongo.monitoring import (
     PoolCreatedEvent,
     PoolReadyEvent,
 )
-from pymongo.pool_options import _METADATA
+from pymongo.pool_options import _AGENT_ENV_VARS, _GENERIC_AGENT_ENV_VAR, _METADATA
 from pymongo.pool_shared import _CancellationContext, _PoolGeneration
 from pymongo.read_concern import ReadConcern
 from pymongo.server_type import SERVER_TYPE
@@ -614,6 +615,18 @@ def suppress_fork_deprecation():
                 category=DeprecationWarning,
             )
         yield
+
+
+def unset_agent_env():
+    """Unset the coding agent env vars the handshake reads.
+
+    A coding agent often runs the test process itself, which would add
+    client.env.agent to the handshake metadata.
+
+    :return: a patch.dict context manager / decorator.
+    """
+    agent_vars = [_GENERIC_AGENT_ENV_VAR, *(var for var, _ in _AGENT_ENV_VARS)]
+    return patch.dict("os.environ", dict.fromkeys(agent_vars, ""))
 
 
 def parse_read_preference(pref):

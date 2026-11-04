@@ -73,6 +73,7 @@ replacements = {
     "AsyncClientEncryption": "ClientEncryption",
     "AsyncMongoCryptCallback": "MongoCryptCallback",
     "AsyncKMSConnectCallback": "KMSConnectCallback",
+    "AsyncHTTPProxyKMSConnect": "HTTPProxyKMSConnect",
     "AsyncExplicitEncrypter": "ExplicitEncrypter",
     "AsyncAutoEncrypter": "AutoEncrypter",
     "AsyncContextManager": "ContextManager",

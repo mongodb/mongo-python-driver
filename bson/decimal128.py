@@ -35,6 +35,7 @@ _EXPONENT_BIAS = 6176
 _EXPONENT_MAX = 6144
 _EXPONENT_MIN = -6143
 _MAX_DIGITS = 34
+_MAX_COEFFICIENT = 10**_MAX_DIGITS - 1
 
 _INF = 0x7800000000000000
 _NAN = 0x7C00000000000000
@@ -303,8 +304,13 @@ class Decimal128:
         mask = 0x0001000000000000
         arr[0] = (high & mask) >> 48
 
+        coefficient = int.from_bytes(arr, "big")
+        if coefficient > _MAX_COEFFICIENT:
+            # A significand of more than 34 digits is treated as 0.
+            return decimal.Decimal((sign, (0,), exponent))
+
         # cdecimal only accepts a tuple for digits.
-        digits = tuple(int(digit) for digit in str(int.from_bytes(arr, "big")))
+        digits = tuple(int(digit) for digit in str(coefficient))
 
         with decimal.localcontext(_DEC128_CTX) as ctx:
             return ctx.create_decimal((sign, digits, exponent))

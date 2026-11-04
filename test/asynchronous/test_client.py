@@ -91,10 +91,12 @@ from pymongo.errors import (
 )
 from pymongo.monitoring import ServerHeartbeatListener, ServerHeartbeatStartedEvent
 from pymongo.pool_options import (
+    _MAX_AGENT_SIZE,
     _MAX_METADATA_SIZE,
     _METADATA,
     ENV_VAR_K8S,
     PoolOptions,
+    _element_size,
     _truncate_metadata,
 )
 from pymongo.read_preferences import ReadPreference
@@ -138,6 +140,7 @@ from test.utils_shared import (
     lazy_client_trial,
     one,
     suppress_fork_deprecation,
+    unset_agent_env,
 )
 
 _IS_SYNC = False
@@ -389,6 +392,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         )
         self.assertEqual(c.read_preference, ReadPreference.NEAREST)
 
+    @unset_agent_env()
     async def test_metadata(self):
         metadata = copy.deepcopy(_METADATA)
         if has_c():
@@ -422,6 +426,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         with self.assertRaises(TypeError):
             self.simple_client(driver=("Foo", "1", "a"))
 
+    @unset_agent_env()
     async def test_metadata_appends_driver_info(self):
         metadata = _metadata_with_appended_driver(_IS_SYNC, "FooDriver", "1.2.3")
         client = self.simple_client(
@@ -513,6 +518,72 @@ class AsyncClientUnitTest(AsyncUnitTest):
             {"name": "PyMongo|" + "W" * name_len, "version": "1.0|1.0"},
         )
 
+    def _metadata_with_agent_env(self, with_name: bool) -> dict[str, Any]:
+        """Create metadata just over the size limit enforced by omitting `env.agent`."""
+        env: dict[str, Any] = {"agent": "claude_code"}
+        if with_name:
+            env["name"] = "azure.func"
+        os_meta = {"type": "Darwin", "name": "Darwin", "architecture": "arm64", "version": "26.7.1"}
+
+        def metadata_for(plat_len: int) -> dict[str, Any]:
+            return {"env": env, "os": os_meta, "platform": "p" * plat_len}
+
+        target = (
+            _MAX_METADATA_SIZE + 1
+            if with_name
+            else _MAX_METADATA_SIZE - 1 + _element_size("env", env)
+        )
+        # Each platform character adds exactly one byte.
+        plat_len = target - len(bson.encode(metadata_for(0)))
+        return metadata_for(plat_len)
+
+    async def test_metadata_truncation_keeps_name_and_agent(self):
+        # Dropping the other env fields alone must bring the document back
+        # under the limit.
+        env: dict[str, Any] = {
+            "name": "azure.func",
+            "agent": "claude_code",
+            "region": "us-east-2",
+            "memory_mb": 1024,
+        }
+        os_meta = {"type": "Darwin", "name": "Darwin", "architecture": "arm64", "version": "26.7.1"}
+
+        def metadata_for(plat_len: int) -> dict[str, Any]:
+            return {"env": env, "os": os_meta, "platform": "p" * plat_len}
+
+        # Each platform character adds exactly one byte.
+        plat_len = _MAX_METADATA_SIZE + 1 - len(bson.encode(metadata_for(0)))
+        metadata = metadata_for(plat_len)
+        plat = metadata["platform"]
+        _truncate_metadata(metadata)
+        self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(metadata["env"], {"name": "azure.func", "agent": "claude_code"})
+        self.assertEqual(metadata["os"], os_meta)
+        self.assertEqual(metadata["platform"], plat)
+
+    async def test_metadata_truncation_omits_agent_before_name(self):
+        metadata = self._metadata_with_agent_env(with_name=True)
+        os_meta = metadata["os"]
+        plat = metadata["platform"]
+        _truncate_metadata(metadata)
+        self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertEqual(metadata["env"], {"name": "azure.func"})
+        self.assertEqual(metadata["os"], os_meta)
+        self.assertEqual(metadata["platform"], plat)
+
+    async def test_metadata_truncation_omits_agent_only_env(self):
+        # env holds only agent so the whole env document is omitted. The size
+        # accounting must record the full env element so no later field is
+        # touched.
+        metadata = self._metadata_with_agent_env(with_name=False)
+        os_meta = metadata["os"]
+        plat = metadata["platform"]
+        _truncate_metadata(metadata)
+        self.assertLessEqual(len(bson.encode(metadata)), _MAX_METADATA_SIZE)
+        self.assertNotIn("env", metadata)
+        self.assertEqual(metadata["os"], os_meta)
+        self.assertEqual(metadata["platform"], plat)
+
     async def test_metadata_append_is_bounded(self):
         # Successive appends must stay within the limit and keep name and
         # version index-aligned after truncation. Once the metadata saturates,
@@ -567,6 +638,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
         self.assertEqual(metadata["driver"]["name"], names)
         self.assertEqual(metadata["driver"]["version"], vers)
 
+    @unset_agent_env()
     @mock.patch.dict("os.environ", {ENV_VAR_K8S: "1"})
     def test_container_metadata(self):
         metadata = copy.deepcopy(_METADATA)
@@ -1324,9 +1396,6 @@ class TestClient(AsyncIntegrationTest):
         cursor = await coll.aggregate([], batchSize=10)
         self.assertTrue(bool(await anext(cursor)))
         del cursor
-        # Required for PyPy and other Python implementations that
-        # don't use reference counting garbage collection.
-        gc.collect()
 
         # Close the client and ensure the topology is closed.
         self.assertTrue(test_client._topology._opened)
@@ -1387,6 +1456,10 @@ class TestClient(AsyncIntegrationTest):
         topology = client._topology
         await client.close()
         for server in topology._servers.values():
+            # Wait for monitor tasks to finish.
+            # Can be removed once PYTHON-1634 is implemented.
+            await server._monitor._executor.join(10)
+            await server._monitor._rtt_monitor._executor.join(10)
             self.assertFalse(server._pool.conns)
             self.assertTrue(server._monitor._executor._stopped)
             self.assertTrue(server._monitor._rtt_monitor._executor._stopped)
@@ -1678,17 +1751,15 @@ class TestClient(AsyncIntegrationTest):
         # pool
         self.assertEqual(1, len((await async_get_pool(client)).conns))
 
-        # contextlib async support was added in Python 3.10
-        if _IS_SYNC or sys.version_info >= (3, 10):
-            async with contextlib.aclosing(client):
-                self.assertEqual("bar", (await client.pymongo_test.coll.find_one())["foo"])
-            with self.assertRaises(InvalidOperation):
-                await client.pymongo_test.coll.find_one()
-            client = await self.async_rs_or_single_client()
-            async with client as client:
-                self.assertEqual("bar", (await client.pymongo_test.coll.find_one())["foo"])
-            with self.assertRaises(InvalidOperation):
-                await client.pymongo_test.coll.find_one()
+        async with contextlib.aclosing(client):
+            self.assertEqual("bar", (await client.pymongo_test.coll.find_one())["foo"])
+        with self.assertRaises(InvalidOperation):
+            await client.pymongo_test.coll.find_one()
+        client = await self.async_rs_or_single_client()
+        async with client as client:
+            self.assertEqual("bar", (await client.pymongo_test.coll.find_one())["foo"])
+        with self.assertRaises(InvalidOperation):
+            await client.pymongo_test.coll.find_one()
 
     @async_client_context.require_sync
     def test_interrupt_signal(self):
@@ -2199,13 +2270,14 @@ class TestClient(AsyncIntegrationTest):
         with self.assertRaises(ConfigurationError):
             AsyncMongoClient(["host1", "host2"], directConnection=True)
 
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-2927 fails often on PyPy")
     async def test_continuous_network_errors(self):
+        # Only count this client's ServerDescriptions so that those left
+        # alive by earlier tests don't affect the count.
         def server_description_count():
             i = 0
             for obj in gc.get_objects():
                 try:
-                    if isinstance(obj, ServerDescription):
+                    if isinstance(obj, ServerDescription) and obj.address == ("invalid", 27017):
                         i += 1
                 except ReferenceError:
                     pass
@@ -2224,8 +2296,8 @@ class TestClient(AsyncIntegrationTest):
             await client.close()
             # If a bug like PYTHON-2433 is reintroduced then too many
             # ServerDescriptions will be kept alive and this test will fail:
-            # AssertionError: 11 != 47 within 20 delta (36 difference)
-            self.assertAlmostEqual(initial_count, final_count, delta=30)
+            # AssertionError: 1 != 42 within 10 delta (41 difference)
+            self.assertAlmostEqual(initial_count, final_count, delta=10)
 
     @async_client_context.require_failCommand_fail_point
     async def test_network_error_message(self):
@@ -2239,7 +2311,6 @@ class TestClient(AsyncIntegrationTest):
             with self.assertRaisesRegex(AutoReconnect, expected):
                 await client.pymongo_test.coll.find_one({})
 
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-2938 could fail on PyPy")
     async def test_process_periodic_tasks(self):
         client = await self.async_rs_or_single_client()
         coll = client.db.collection
@@ -2334,7 +2405,9 @@ class TestClient(AsyncIntegrationTest):
         self.assertNotIn("ServerHeartbeatFailedEvent", log_output)
 
     async def _test_handshake(self, env_vars, expected_env):
-        with patch.dict("os.environ", env_vars):
+        # Unset agent env vars already set in the test process (e.g. AI_AGENT
+        # set by the CI runner) so detection only reflects env_vars.
+        with unset_agent_env(), patch.dict("os.environ", env_vars):
             metadata = copy.deepcopy(_METADATA)
             if has_c():
                 metadata["driver"]["name"] = "PyMongo|c|async"
@@ -2440,6 +2513,72 @@ class TestClient(AsyncIntegrationTest):
                 "region": "us-east-1",
                 "memory_mb": 256,
             },
+        )
+
+    async def test_handshake_10_agent_known(self):
+        await self._test_handshake({"CLAUDECODE": "1"}, {"agent": "claude_code"})
+
+    async def test_handshake_11_agent_known_fixed_name(self):
+        await self._test_handshake({"CURSOR_AGENT": "some-value-42"}, {"agent": "cursor"})
+
+    async def test_handshake_12_agent_known_opencode(self):
+        await self._test_handshake({"OPENCODE": "1"}, {"agent": "opencode_client"})
+
+    async def test_handshake_13_agent_known_opencode_client(self):
+        await self._test_handshake({"OPENCODE_CLIENT": "1"}, {"agent": "opencode_client"})
+
+    async def test_handshake_14_agent_known_precedence(self):
+        await self._test_handshake({"GEMINI_CLI": "1", "CURSOR_AGENT": "1"}, {"agent": "cursor"})
+
+    async def test_handshake_15_agent_known_beats_generic(self):
+        await self._test_handshake(
+            {"AI_AGENT": "custom-agent", "CLAUDECODE": "1"}, {"agent": "claude_code"}
+        )
+
+    async def test_handshake_16_agent_generic_descriptive(self):
+        await self._test_handshake({"AI_AGENT": "custom-agent"}, {"agent": "custom-agent"})
+
+    async def test_handshake_17_agent_generic_boolean(self):
+        await self._test_handshake({"AI_AGENT": "1"}, {"agent": "ai_agent"})
+        await self._test_handshake({"AI_AGENT": "true"}, {"agent": "ai_agent"})
+
+    async def test_handshake_18_agent_generic_boolean_whitespace(self):
+        await self._test_handshake({"AI_AGENT": " true "}, {"agent": "ai_agent"})
+
+    async def test_handshake_19_agent_generic_normalized(self):
+        await self._test_handshake(
+            {"AI_AGENT": " Claude-Code_2-1-238_Agent "}, {"agent": "claude-code_2-1-238_agent"}
+        )
+
+    async def test_handshake_20_agent_generic_truncated(self):
+        await self._test_handshake({"AI_AGENT": "a" * 100}, {"agent": "a" * _MAX_AGENT_SIZE})
+
+    async def test_handshake_21_agent_generic_truncated_on_boundary(self):
+        # The byte limit falls inside the two-byte "é". No part of it and no
+        # U+FFFD may appear.
+        value = "a" * (_MAX_AGENT_SIZE - 1) + "é"
+        await self._test_handshake({"AI_AGENT": value}, {"agent": "a" * (_MAX_AGENT_SIZE - 1)})
+
+    async def test_handshake_22_agent_generic_malformed(self):
+        await self._test_handshake({"AI_AGENT": "custom-\udcff"}, {"agent": "custom-"})
+
+    async def test_handshake_23_agent_unset_empty(self):
+        await self._test_handshake({"AI_AGENT": ""}, None)
+
+    async def test_handshake_24_agent_unset_whitespace(self):
+        await self._test_handshake({"AI_AGENT": "   "}, None)
+
+    async def test_handshake_25_agent_unset_known_whitespace(self):
+        await self._test_handshake({"CLAUDECODE": "   "}, None)
+
+    async def test_handshake_26_agent_with_provider(self):
+        await self._test_handshake(
+            {
+                "AWS_EXECUTION_ENV": "AWS_Lambda_java8",
+                "AWS_REGION": "us-east-2",
+                "CLAUDECODE": "1",
+            },
+            {"name": "aws.lambda", "region": "us-east-2", "agent": "claude_code"},
         )
 
     def test_dict_hints(self):

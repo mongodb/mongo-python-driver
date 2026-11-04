@@ -31,6 +31,7 @@ from pymongo import AsyncMongoClient, ssl_support
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.pool_shared import (
+    _TLS_SESSION_REUSE_LEAKS,
     _configured_protocol_interface,
     _configured_socket_interface,
     _get_ssl_session,
@@ -189,10 +190,7 @@ class TestClientSSL(AsyncPyMongoTestCase):
 
         self.assertIs(_get_ssl_session(FakeSSLSock()), fake_session)
 
-    @unittest.skipUnless(
-        not _IS_SYNC and sys.version_info >= (3, 11),
-        "Tests async sslobject_class injection (Python 3.11+ only)",
-    )
+    @unittest.skipUnless(not _IS_SYNC, "Tests async sslobject_class injection only")
     def test_async_tls_session_injected_via_sslobject_class(self):
         """On Python 3.11+, a cached session is injected by setting sslobject_class."""
         fake_session = object()
@@ -260,10 +258,7 @@ class TestClientSSL(AsyncPyMongoTestCase):
         asyncio.run(run())
         self.assertIs(cache[0], fake_session)
 
-    @unittest.skipUnless(
-        not _IS_SYNC and sys.version_info >= (3, 11),
-        "Tests async session injection on Python 3.11+",
-    )
+    @unittest.skipUnless(not _IS_SYNC, "Tests async session injection only")
     def test_async_configured_protocol_injects_session_via_sslobject_class(self):
         """When the cache has a session, sslobject_class is set and its __init__ body runs."""
         initial_session = object()
@@ -418,8 +413,6 @@ class TestSSL(AsyncIntegrationTest):
 
     @async_client_context.require_tls
     async def test_simple_ssl(self):
-        if "PyPy" in sys.version:
-            self.skipTest("Test is flaky on PyPy")
         # Expects the server to be running with ssl and with
         # no --sslPEMKeyFile or with --sslWeakCertificateValidation
         await self.assertClientWorks(self.client)
@@ -556,10 +549,6 @@ class TestSSL(AsyncIntegrationTest):
         client = self.simple_client(uri_fmt % (CLIENT_PEM, "true", CA_PEM))
         await self.assertClientWorks(client)
 
-    @unittest.skipIf(
-        "PyPy" in sys.version and not _IS_SYNC,
-        "https://github.com/pypy/pypy/issues/5131 flaky on async PyPy due to SSL EOF",
-    )
     @async_client_context.require_tlsCertificateKeyFile
     @async_client_context.require_server_resolvable
     @async_client_context.require_no_api_version
@@ -687,10 +676,6 @@ class TestSSL(AsyncIntegrationTest):
                     self.simple_client(uri_fmt % (CRL_PEM, CA_PEM), **self.credentials)  # type: ignore[arg-type]
                 )
 
-    @unittest.skipIf(
-        "PyPy" in sys.version and not _IS_SYNC,
-        "https://github.com/pypy/pypy/issues/5131 flaky on async PyPy due to SSL EOF",
-    )
     @async_client_context.require_tlsCertificateKeyFile
     @async_client_context.require_server_resolvable
     @async_client_context.require_no_api_version
@@ -939,11 +924,19 @@ class TestSSL(AsyncIntegrationTest):
         await client.close()
 
     @async_client_context.require_tls
+    @unittest.skipIf(_TLS_SESSION_REUSE_LEAKS, "TLS session reuse is not supported on Python 3.11")
     async def test_pool_has_ssl_session_cache(self):
         pool = list(self.client._topology._servers.values())[0].pool
         self.assertIsInstance(pool._ssl_session_cache, list)
 
     @async_client_context.require_tls
+    @unittest.skipUnless(_TLS_SESSION_REUSE_LEAKS, "TLS session reuse is enabled on Python 3.12+")
+    async def test_pool_has_no_ssl_session_cache_on_python_311(self):
+        pool = list(self.client._topology._servers.values())[0].pool
+        self.assertIsNone(pool._ssl_session_cache)
+
+    @async_client_context.require_tls
+    @unittest.skipIf(_TLS_SESSION_REUSE_LEAKS, "TLS session reuse is not supported on Python 3.11")
     @unittest.skipUnless(
         _IS_SYNC and _HAVE_PYOPENSSL,
         "Sync stdlib ssl may return None for session on TLS 1.3; test limited to PyOpenSSL",

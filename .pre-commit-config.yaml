@@ -1,3 +1,4 @@
+exclude: ^drivers-evergreen-tools/
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -51,7 +52,7 @@ repos:
       pass_filenames: false
 
 - repo: https://github.com/adamchainz/blacken-docs
-  rev: "1.16.0"
+  rev: "1.20.0"
   hooks:
   - id: blacken-docs
     additional_dependencies:
@@ -134,4 +135,4 @@ repos:
     entry: .evergreen/scripts/generate-config.sh
     language: python
     require_serial: true
-    additional_dependencies: ["shrub.py>=3.10.0", "pyyaml>=6.0.2"]
+    additional_dependencies: ["pytest", "pytest-asyncio", "shrub.py>=3.10.0", "pyyaml>=6.0.2"]

@@ -199,9 +199,7 @@ class TestStreamingProtocol(IntegrationTest):
                 "appName": "heartbeatEventAwaitedFlag",
             },
         }
-        # PYTHON-6002: PyPy's JIT warm-up can delay the heartbeat monitor
-        # thread past the default timeout on slow/throttled CI runners.
-        timeout = 30 if "PyPy" in sys.version else 10
+        timeout = 10
         with self.fail_point(fail_heartbeat):
             wait_until(
                 lambda: hb_listener.matching(hb_failed),

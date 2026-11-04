@@ -308,10 +308,6 @@ class TestTransactions(AsyncTransactionsBase):
     @async_client_context.require_transactions
     @unittest.skipIf(sys.platform == "win32", "Our Windows machines are too slow to pass this test")
     async def test_transaction_starts_with_batched_write(self):
-        if "PyPy" in sys.version and async_client_context.tls:
-            self.skipTest(
-                "PYTHON-2937 PyPy is so slow sending large messages over TLS that this test fails"
-            )
         # Start a transaction with a batch of operations that needs to be
         # split.
         listener = OvertCommandListener()

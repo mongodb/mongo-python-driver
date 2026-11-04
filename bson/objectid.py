@@ -112,6 +112,10 @@ class ObjectId:
                     self.__id = bytes.fromhex(oid)
                 except (TypeError, ValueError):
                     _raise_invalid_id(oid)
+                # bytes.fromhex() skips ASCII whitespace, so a 24-character
+                # string can decode to fewer than 12 bytes.
+                if len(self.__id) != 12:
+                    _raise_invalid_id(oid)
             else:
                 _raise_invalid_id(oid)
         elif isinstance(oid, ObjectId):

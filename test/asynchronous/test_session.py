@@ -177,15 +177,13 @@ class TestSession(AsyncIntegrationTest):
 
                 lsids.append(event.command["lsid"])
 
-            if not (sys.platform.startswith("java") or "PyPy" in sys.version):
-                # Server session was returned to pool. Ignore interpreters with
-                # non-deterministic GC.
-                for lsid in lsids:
-                    self.assertIn(
-                        lsid,
-                        session_ids(client),
-                        f"{f.__name__} did not return implicit session to pool",
-                    )
+            # Server session was returned to pool.
+            for lsid in lsids:
+                self.assertIn(
+                    lsid,
+                    session_ids(client),
+                    f"{f.__name__} did not return implicit session to pool",
+                )
 
         # Explicit bound session
         for f, args, kw in ops:

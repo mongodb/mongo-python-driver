@@ -50,7 +50,7 @@ def get_executors(client):
         executors.append(server._monitor._executor)
         executors.append(server._monitor._rtt_monitor._executor)
     executors.append(client._kill_cursors_executor)
-    executors.append(client._topology._Topology__events_executor)
+    executors.append(client._topology._events_executor)
     return [e for e in executors if e is not None]
 
 
@@ -61,7 +61,6 @@ class TestMonitor(AsyncIntegrationTest):
         await connected(client)
         return client
 
-    @unittest.skipIf("PyPy" in sys.version, "PYTHON-5283 fails often on PyPy")
     @unittest.skipIf(
         gevent_monkey_patched(), "PYTHON-5516 Resources are not cleared when using gevent"
     )

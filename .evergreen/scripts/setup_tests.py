@@ -5,6 +5,8 @@ import os
 import platform
 import shutil
 import stat
+import sys
+import zipfile
 from pathlib import Path
 from urllib import request
 
@@ -36,6 +38,7 @@ PASS_THROUGH_ENV = [
     "UV_PYTHON_PREFERENCE",
     "REQUIRE_FIPS",
     "IS_WIN32",
+    "FUZZ_MAX_TIME",
 ]
 
 # Map the test name to test extra.
@@ -51,7 +54,7 @@ EXTRAS_MAP = {
 
 
 # Map the test name to test group.
-GROUP_MAP = dict(mockupdb="mockupdb", perf="perf")
+GROUP_MAP = dict(fuzz="fuzz", mockupdb="mockupdb", perf="perf")
 
 # The libmongocrypt release used when LIBMONGOCRYPT_URL is not set. Must be at
 # least 1.20.0 for the GA "substring" query type.
@@ -527,9 +530,24 @@ def handle_test_env() -> None:
         else:
             TEST_ARGS = f"test/performance/async_perf_test.py {TEST_ARGS}"
 
+    if test_name == "fuzz":
+        # Build the seed corpus from the vendored spec data. Regression runs
+        # run it too.
+        scratch_dir = ROOT / "fuzz-scratch"
+        shutil.rmtree(scratch_dir, ignore_errors=True)
+        corpus_dir = scratch_dir / "corpus"
+        corpus_dir.mkdir(parents=True)
+        zip_path = scratch_dir / "corpus-seed.zip"
+        run_command(
+            f"{sys.executable} fuzz/build_corpus.py {zip_path} --data-dir {ROOT / 'test' / 'bson_corpus'}"
+        )
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(corpus_dir)
+        zip_path.unlink()
+        write_env("FUZZ_CORPUS_DIR", str(corpus_dir))
+
     # Add coverage if requested.
-    # Only cover CPython. PyPy reports suspiciously low coverage.
-    if opts.cov and platform.python_implementation() == "CPython":
+    if opts.cov:
         # Keep in sync with combine-coverage.sh.
         # coverage >=5 is needed for relative_files=true.
         UV_ARGS.append("--group coverage")
@@ -538,9 +556,6 @@ def handle_test_env() -> None:
     if opts.green_framework:
         framework = opts.green_framework or os.environ["GREEN_FRAMEWORK"]
         UV_ARGS.append(f"--group {framework}")
-        if framework == "gevent" and opts.test_min_deps:
-            # PYTHON-5729.  This can be removed when the min supported gevent is moved to 25.9.1.
-            UV_ARGS.append('--with "setuptools==81.0"')
 
     else:
         TEST_ARGS = f"-v --durations=5 {TEST_ARGS}"

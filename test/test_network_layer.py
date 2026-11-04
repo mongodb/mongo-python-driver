@@ -36,7 +36,7 @@ from test.utils_shared import pack_msg_header
 def _make_conn():
     conn = MagicMock()
     conn.conn.gettimeout.return_value = None
-    # On PyPy/Windows, receive_data() calls wait_for_read() before recv_into().
+    # On Windows, receive_data() calls wait_for_read() before recv_into().
     # wait_for_read() checks fileno() == -1 as an early-exit; without this mock,
     # sock.fileno() returns a MagicMock and sock.pending() > 0 raises TypeError.
     conn.conn.sock.fileno.return_value = -1

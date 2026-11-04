@@ -19,10 +19,11 @@ fi
 # Now we can safely enable xtrace
 set -o xtrace
 
-# Install a C compiler (for the C extensions) and git (needed by uv to
-# resolve the mockupdb git dependency)
+# Install a C compiler (for the C extensions), pip (needed by ensure_uv:
+# the image's Python has neither pip nor ensurepip), and git (needed by uv
+# to resolve the mockupdb git dependency)
 apt-get -qq update  < /dev/null > /dev/null
-apt-get -q install -y build-essential git
+apt-get -q install -y build-essential git python3-pip
 
 export SET_XTRACE_ON=1
 export CI=true

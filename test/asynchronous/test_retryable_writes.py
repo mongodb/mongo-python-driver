@@ -23,9 +23,8 @@ import sys
 import threading
 from unittest import mock
 
-from pymongo._asyncio_task import create_task
 from pymongo.common import MAX_ADAPTIVE_RETRIES
-from test.asynchronous.utils import async_set_fail_point, flaky
+from test.asynchronous.utils import async_set_fail_point, async_wait_until, flaky
 
 sys.path[0:0] = [""]
 
@@ -104,7 +103,7 @@ class InsertEventListener(EventListener):
             else:
                 # succeeded() cannot await, so the fail point may be configured after
                 # the driver dispatches the retry it is meant to fail.
-                self._task = create_task(async_client_context.client.admin.command(cmd))  # type: ignore[arg-type]
+                self._task = asyncio.create_task(async_client_context.client.admin.command(cmd))  # type: ignore[arg-type]
                 self._task.add_done_callback(self._store_fail_point_exc)
 
 
@@ -394,6 +393,14 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             appName="retryableWriteTest",
             event_listeners=[listener],
             retryWrites=True,
+        )
+
+        # Ensure the client has discovered all mongoses.
+        await async_wait_until(
+            lambda: (
+                len(client.topology_description.known_servers) == len(async_client_context.mongoses)
+            ),
+            "discover all mongoses",
         )
 
         with self.assertRaises(AutoReconnect):

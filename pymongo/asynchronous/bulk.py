@@ -236,7 +236,7 @@ class _AsyncBulk(_AgnosticBulkBase):
                 conn.send_cluster_time(cmd, session, client)
                 conn.add_server_api(cmd)
                 # CSOT: apply timeout before encoding the command.
-                conn.apply_timeout(client, cmd)
+                conn.apply_timeout(cmd)
                 ops = islice(run.ops, run.idx_offset, None)
 
                 # Run as many ops as possible in one command.

@@ -4,9 +4,9 @@
 install-dependencies.sh probes with `setup-uv.py --check`, sources ensure-uv.sh
 (which finds or installs uv), then runs this script for the rest. Only the
 standard library is used.
-"""
 
-from __future__ import annotations
+This runs under the host's system python3, which may be older than our minimum supported version.
+"""
 
 import os
 import re
@@ -57,7 +57,7 @@ def _install_uv_astral() -> None:
     curl = shutil.which("curl")
     sh = shutil.which("sh")
     proc = subprocess.run(  # noqa: S603
-        [curl, "-LsSf", ASTRAL_INSTALL_URL], capture_output=True, env=env, check=True
+        [curl, "-LsSf", ASTRAL_INSTALL_URL], stdout=subprocess.PIPE, env=env, check=True
     )
     subprocess.run([sh], input=proc.stdout, env=env, check=True)  # noqa: S603
     _add_path(os.environ["UV_TOOL_BIN_DIR"])
@@ -141,7 +141,7 @@ def _pinned_uv_installed() -> bool:
     if uv_path is None:
         return False
     proc = subprocess.run(  # noqa: S603
-        [uv_path, "--version"], capture_output=True, check=True
+        [uv_path, "--version"], stdout=subprocess.PIPE, check=True
     )
     # Output looks like "uv 0.12.12 (aarch64-unknown-linux-gnu)".
     return proc.stdout.decode().split()[1] == pin[len("==") :]

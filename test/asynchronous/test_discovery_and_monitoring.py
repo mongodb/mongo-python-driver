@@ -31,7 +31,6 @@ from pymongo.errors import ConnectionFailure
 from pymongo.operations import _Op
 from pymongo.server_selectors import writable_server_selector
 from test.asynchronous.helpers import ConcurrentRunner
-from test.asynchronous.utils import flaky
 from test.utils_shared import delay
 
 sys.path[0:0] = [""]
@@ -327,8 +326,6 @@ class TestIgnoreStaleErrors(AsyncIntegrationTest):
         "PYTHON-5861: asyncio.Barrier hangs on macOS ARM64 CI",
     )
     async def test_ignore_stale_connection_errors(self):
-        if not _IS_SYNC and sys.version_info < (3, 11):
-            self.skipTest("Test requires asyncio.Barrier (added in Python 3.11)")
         N_TASKS = 5
         barrier = async_create_barrier(N_TASKS)
         client = await self.async_rs_or_single_client(minPoolSize=N_TASKS)
@@ -411,7 +408,6 @@ class TestPoolManagement(AsyncIntegrationTest):
     @async_client_context.require_failCommand_appName
     @async_client_context.require_test_commands
     @async_client_context.require_async
-    @flaky(reason="PyPy is slow")
     async def test_connection_close_does_not_block_other_operations(self):
         listener = CMAPHeartbeatListener()
         client = await self.async_single_client(

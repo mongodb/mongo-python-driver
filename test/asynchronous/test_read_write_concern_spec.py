@@ -42,7 +42,7 @@ from test.utils_shared import OvertCommandListener
 
 _IS_SYNC = False
 
-TEST_PATH = get_test_path("read_write_concern")
+_TEST_PATH = get_test_path("read_write_concern")
 
 
 class TestReadWriteConcernSpec(AsyncIntegrationTest):
@@ -298,11 +298,11 @@ def create_document_test(test_case):
 
 
 def create_tests():
-    for dirpath, _, filenames in os.walk(TEST_PATH):
+    for dirpath, _, filenames in os.walk(_TEST_PATH):
         dirname = os.path.split(dirpath)[-1]
 
-        if dirname == "operation":
-            # This directory is tested by TestOperations.
+        if dirname == "operation" or dirname == "write-concern-errors":
+            # These directories have their tests generated below by generate_test_classes().
             continue
         elif dirname == "connection-string":
             create_test = create_connection_string_test
@@ -333,9 +333,16 @@ create_tests()
 # PyMongo does not support MapReduce.
 globals().update(
     generate_test_classes(
-        os.path.join(TEST_PATH, "operation"),
+        os.path.join(_TEST_PATH, "operation"),
         module=__name__,
         expected_failures=["MapReduce .*"],
+    )
+)
+globals().update(
+    generate_test_classes(
+        os.path.join(_TEST_PATH, "write-concern-errors"),
+        module=__name__,
+        expected_failures=["(?i)MapReduce .*"],
     )
 )
 

@@ -66,14 +66,10 @@ class TestLB(IntegrationTest):
         pool = get_pool(self.client)
         n_conns = len(pool.conns)
         self.db.coll.find_one({})
-        # On PyPy it can take a few rounds to collect the cursor.
-        for _ in range(3):
-            gc.collect()
+        gc.collect()
         self.assertEqual(len(pool.conns), n_conns)
         (self.db.coll.aggregate([{"$limit": 1}])).to_list()
-        # On PyPy it can take a few rounds to collect the cursor.
-        for _ in range(3):
-            gc.collect()
+        gc.collect()
         self.assertEqual(len(pool.conns), n_conns)
 
     @client_context.require_load_balancer
@@ -132,9 +128,7 @@ class TestLB(IntegrationTest):
         # Garbage collect the resource while the pool is locked to ensure we
         # don't deadlock.
         del resource
-        # On PyPy it can take a few rounds to collect the cursor.
-        for _ in range(3):
-            gc.collect()
+        gc.collect()
         task.unlock.set()
         task.join(5)
         self.assertFalse(task.is_alive())
@@ -162,9 +156,7 @@ class TestLB(IntegrationTest):
         # Garbage collect the session while the pool is locked to ensure we
         # don't deadlock.
         del session
-        # On PyPy it can take a few rounds to collect the session.
-        for _ in range(3):
-            gc.collect()
+        gc.collect()
         task.unlock.set()
         task.join(5)
         self.assertFalse(task.is_alive())

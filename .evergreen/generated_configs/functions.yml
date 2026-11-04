@@ -155,6 +155,7 @@ functions:
           - IS_WIN32
           - REQUIRE_FIPS
           - TEST_MIN_DEPS
+          - FUZZ_MAX_TIME
       type: test
     - command: subprocess.exec
       params:
