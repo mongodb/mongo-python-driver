@@ -26,7 +26,7 @@ import sys
 from collections.abc import MutableMapping
 from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional
 
 import bson
 from pymongo import __version__
@@ -369,6 +369,15 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
 "foo".encode("idna")
 
 
+class _ProxyOptions(NamedTuple):
+    """Immutable SOCKS5 proxy connection settings."""
+
+    host: str
+    port: int = 1080
+    username: Optional[str] = None
+    password: Optional[str] = None
+
+
 class PoolOptions:
     """Read only connection pool options for an AsyncMongoClient/MongoClient.
 
@@ -398,6 +407,7 @@ class PoolOptions:
         "__metadata_lock",
         "__min_pool_size",
         "__pause_enabled",
+        "__proxy_options",
         "__server_api",
         "__socket_timeout",
         "__ssl_context",
@@ -425,6 +435,7 @@ class PoolOptions:
         load_balanced: Optional[bool] = None,
         credentials: Optional[MongoCredential] = None,
         is_sync: Optional[bool] = True,
+        proxy_options: Optional[_ProxyOptions] = None,
     ):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -443,6 +454,7 @@ class PoolOptions:
         self.__server_api = server_api
         self.__load_balanced = load_balanced
         self.__credentials = credentials
+        self.__proxy_options = proxy_options
         self.__metadata = copy.deepcopy(_METADATA)
         self.__appended_drivers: set[DriverInfo] = set()
         # Only the synchronous client can append metadata from multiple threads.
@@ -606,6 +618,11 @@ class PoolOptions:
         has no free sockets.
         """
         return self.__wait_queue_timeout
+
+    @property
+    def _proxy_options(self) -> Optional[_ProxyOptions]:
+        """SOCKS5 proxy settings or None."""
+        return self.__proxy_options
 
     @property
     def _ssl_context(self) -> Optional[SSLContext]:

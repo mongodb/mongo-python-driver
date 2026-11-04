@@ -140,6 +140,8 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             ),
         )
         self.mongocryptd_client = mongocryptd_client
+        proxy_client = client if client is not None else key_vault_coll.database.client
+        self._proxy_options = proxy_client.options.pool_options._proxy_options
         self.opts = opts
         self._spawned = False
         self._kms_ssl_contexts = opts._kms_ssl_contexts(_IS_SYNC)
@@ -182,6 +184,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             connect_timeout=connect_timeout,
             socket_timeout=connect_timeout,
             ssl_context=ctx,
+            proxy_options=self._proxy_options,
         )
         try:
             conn = await _connect_kms(

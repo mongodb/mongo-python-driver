@@ -647,6 +647,63 @@ class TestURI(unittest.TestCase):
     def test_split_options_empty_authsource(self):
         self.assertRaises(InvalidURI, split_options, "authSource=")
 
+    def test_socks5_proxy_options(self):
+        parsed = parse_uri(
+            "mongodb://localhost/?proxyHost=%5B%3A%3A1%5D&proxyPort=1234"
+            "&proxyUsername=user&proxyPassword=pass"
+        )
+        self.assertEqual(
+            parsed["options"],
+            {
+                "proxyHost": "::1",
+                "proxyPort": 1234,
+                "proxyUsername": "user",
+                "proxyPassword": "pass",
+            },
+        )
+        empty_credentials = parse_uri(
+            "mongodb://localhost/?proxyHost=localhost&proxyUsername=&proxyPassword="
+        )
+        self.assertEqual(empty_credentials["options"], {"proxyHost": "localhost"})
+        self.assertEqual(
+            parse_uri("mongodb://localhost/?proxyHost=localhost")["options"]["proxyHost"],
+            "localhost",
+        )
+
+    def test_socks5_invalid_proxy_options(self):
+        for query in (
+            "proxyHost=",
+            "proxyHost=%5B%3A%3A1",
+            "proxyHost=%5B%3A%3A1%5D%3A1080",
+            "proxyHost=localhost%3A1080",
+            "proxyHost=local%20host",
+            "proxyPort=1080",
+            "proxyUsername=user",
+            "proxyPassword=pass",
+            "proxyHost=localhost&proxyUsername=user",
+            "proxyHost=localhost&proxyPassword=pass",
+            "proxyHost=localhost&proxyPort=0",
+            "proxyHost=localhost&proxyPort=-1",
+            "proxyHost=localhost&proxyPort=65536",
+            "proxyHost=localhost&proxyPort=abc",
+            "proxyHost=localhost&proxyUsername=" + ("é" * 128) + "&proxyPassword=pass",
+            "proxyHost=localhost&proxyUsername=user&proxyPassword=" + ("é" * 128),
+        ):
+            with (
+                self.subTest(query=query[:60]),
+                self.assertRaises((InvalidURI, ValueError, ConfigurationError)),
+            ):
+                parse_uri("mongodb://localhost/?" + query)
+
+        for option in ("proxyhost", "proxyport", "proxyusername", "proxypassword"):
+            uri = "mongodb://localhost/?proxyHost=localhost&" + option + "=a&" + option + "=b"
+            with self.subTest(option=option), self.assertRaises(InvalidURI):
+                parse_uri(uri)
+
+    def test_socks5_proxy_rejects_unix_socket(self):
+        with self.assertRaises(ConfigurationError):
+            parse_uri("mongodb://%2Ftmp%2Fmongodb.sock/?proxyHost=localhost")
+
     def test_check_options_conflicts(self):
         self.assertRaises(
             ConfigurationError,

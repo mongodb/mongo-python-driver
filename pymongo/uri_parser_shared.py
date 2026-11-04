@@ -23,7 +23,7 @@ from __future__ import annotations
 import re
 import sys
 import warnings
-from collections.abc import Mapping, MutableMapping, Sized
+from collections.abc import Iterable, Mapping, MutableMapping, Sized
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -39,6 +39,7 @@ from pymongo.common import (
     URI_OPTIONS_DEPRECATION_MAP,
     _CaseInsensitiveDictionary,
     get_validated_options,
+    validate_proxy_host,
 )
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.typings import _Address
@@ -249,6 +250,8 @@ def _parse_options(opts: str, delim: Optional[str]) -> _CaseInsensitiveDictionar
             options.setdefault(key, []).append(value)
         else:
             if key in options:
+                if key.lower() in ("proxyhost", "proxyport", "proxyusername", "proxypassword"):
+                    raise InvalidURI(f"Duplicate URI option '{key}' is not allowed")
                 warnings.warn(f"Duplicate URI option '{key}'.", stacklevel=2)
             if key.lower() == "authmechanismproperties":
                 val = value
@@ -364,6 +367,10 @@ def _normalize_options(options: _CaseInsensitiveDictionary) -> _CaseInsensitiveD
         for opt in _IMPLICIT_TLSINSECURE_OPTS:
             # Implicit options are logically the same as tlsInsecure.
             options[opt] = tlsinsecure
+
+    for optname in ("proxyusername", "proxypassword"):
+        if options.get(optname) == "":
+            options.pop(optname)
 
     for optname in list(options):
         intname = INTERNAL_URI_OPTION_NAME_MAP.get(optname, None)
@@ -491,6 +498,32 @@ def _check_options(nodes: Sized, options: Mapping[str, Any]) -> None:
             raise ConfigurationError("Cannot specify directConnection=true with loadBalanced=true")
         if options.get("replicaset"):
             raise ConfigurationError("Cannot specify replicaSet with loadBalanced=true")
+
+    proxy_host = options.get("proxyhost")
+    proxy_port = options.get("proxyport")
+    proxy_username = options.get("proxyusername")
+    proxy_password = options.get("proxypassword")
+    if proxy_username == "":
+        proxy_username = None
+    if proxy_password == "":
+        proxy_password = None
+    if proxy_host is None:
+        if proxy_port is not None or proxy_username is not None or proxy_password is not None:
+            raise ConfigurationError(
+                "Cannot specify proxyPort, proxyUsername, or proxyPassword without proxyHost"
+            )
+        return
+
+    # Validate here as well as in the option validator because this function is
+    # also used by callers that disable URI option validation.
+    validate_proxy_host("proxyHost", proxy_host)
+    if bool(proxy_username) != bool(proxy_password):
+        raise ConfigurationError("Both proxyUsername and proxyPassword must be specified together")
+    for name, value in (("proxyUsername", proxy_username), ("proxyPassword", proxy_password)):
+        if value is not None and len(value.encode("utf-8")) > 255:
+            raise ConfigurationError(f"{name} must be no more than 255 UTF-8 bytes")
+    if any(host.endswith(".sock") for host, _ in cast(Iterable[_Address], nodes)):
+        raise ConfigurationError("Cannot specify proxyHost with Unix domain sockets")
 
 
 def _parse_kms_tls_options(

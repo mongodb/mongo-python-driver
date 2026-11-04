@@ -332,6 +332,14 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             connecting a new socket to a server before concluding the server
             is unavailable. ``0`` or ``None`` means no timeout.
             Defaults to ``20000`` (20 seconds).
+          - `proxyHost` (string): The hostname or IP address of a SOCKS5 proxy.
+            IPv6 literals may be enclosed in brackets. Defaults to no proxy.
+          - `proxyPort` (integer): The TCP port of the SOCKS5 proxy. Defaults
+            to ``1080`` when ``proxyHost`` is specified.
+          - `proxyUsername` (string): The username for SOCKS5 username/password
+            authentication. Must be specified together with ``proxyPassword``.
+          - `proxyPassword` (string): The password for SOCKS5 username/password
+            authentication. Must be specified together with ``proxyUsername``.
           - `server_selector`: (callable or None) Optional, user-provided
             function that augments server selection rules. The function should
             accept as an argument a list of
@@ -1114,6 +1122,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         keyword_opts = common._CaseInsensitiveDictionary(
             dict(common.validate(keyword_opts.cased_key(k), v) for k, v in keyword_opts.items())
         )
+        for name in ("proxyusername", "proxypassword"):
+            if keyword_opts.get(name) == "":
+                keyword_opts.pop(name)
         # Override connection string options with kwarg options.
         opts.update(keyword_opts)
         return opts

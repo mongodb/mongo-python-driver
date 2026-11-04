@@ -20,6 +20,7 @@ import asyncio
 import collections
 import contextlib
 import functools
+import ipaddress
 import os
 import socket
 import ssl
@@ -63,7 +64,7 @@ from pymongo.network_layer import (
     NetworkingInterfaceBase,
     PyMongoProtocol,
 )
-from pymongo.pool_options import PoolOptions
+from pymongo.pool_options import PoolOptions, _ProxyOptions
 from pymongo.server_api import _add_to_command
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import SSL_EOF_ERRORS, PYSSLError, SSLError, _has_sni
@@ -341,7 +342,10 @@ class _AgnosticBasePool(Generic[_ConnT]):
             return
         assert isinstance(error, AutoReconnect)  # Appease type checker.
         # If the original error was a DNS, certificate, or SSL error, ignore it.
-        if isinstance(error.__cause__, (_CertificateError, SSLErrors, socket.gaierror)):
+        if isinstance(
+            error.__cause__,
+            (_CertificateError, SSLErrors, socket.gaierror, _Socks5Error, _Socks5Timeout),
+        ):
             # End of file errors are excluded, because the server may have disconnected
             # during the handshake.
             if not isinstance(error.__cause__, SSL_EOF_ERRORS):
@@ -593,6 +597,314 @@ class PoolState:
     CLOSED = 3
 
 
+class _Socks5Error(OSError):
+    """A SOCKS5 proxy connection or protocol failure."""
+
+
+class _Socks5Timeout(socket.timeout):
+    """A timeout while connecting through a SOCKS5 proxy."""
+
+
+def _proxy_deadline(options: PoolOptions) -> Optional[float]:
+    timeout = _csot.remaining()
+    if timeout is None:
+        timeout = options.connect_timeout
+    elif timeout <= 0:
+        raise _Socks5Timeout("timed out")
+    if timeout is None:
+        return None
+    return time.monotonic() + timeout
+
+
+def _proxy_remaining(deadline: Optional[float]) -> Optional[float]:
+    if deadline is None:
+        return None
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise _Socks5Timeout("timed out")
+    return remaining
+
+
+def _socks5_request(address: _Address) -> bytes:
+    host, port = address
+    try:
+        ip = ipaddress.ip_address(host.split("%", 1)[0])
+    except ValueError:
+        try:
+            domain = host.encode("idna")
+        except UnicodeError as exc:
+            raise _Socks5Error(f"SOCKS5 connect failed: invalid domain name: {exc}") from exc
+        if not 1 <= len(domain) <= 255:
+            raise _Socks5Error("SOCKS5 connect failed: invalid domain name length") from None
+        encoded_host = b"\x03" + bytes((len(domain),)) + domain
+    else:
+        encoded_host = (b"\x01" if ip.version == 4 else b"\x04") + ip.packed
+    if port is None:
+        raise _Socks5Error("SOCKS5 connect failed: destination port is required")
+    return b"\x05\x01\x00" + encoded_host + port.to_bytes(2, "big")
+
+
+def _socks5_read_exact(sock: socket.socket, size: int, deadline: Optional[float]) -> bytes:
+    data = bytearray()
+    while len(data) < size:
+        sock.settimeout(_proxy_remaining(deadline))
+        chunk = sock.recv(size - len(data))
+        if not chunk:
+            raise _Socks5Error("SOCKS5 handshake failed: unexpected EOF")
+        data.extend(chunk)
+    return bytes(data)
+
+
+def _socks5_handshake(
+    sock: socket.socket, address: _Address, proxy: _ProxyOptions, deadline: Optional[float]
+) -> None:
+    has_credentials = proxy.username is not None and proxy.password is not None
+    greeting = b"\x05\x02\x00\x02" if has_credentials else b"\x05\x01\x00"
+    sock.settimeout(_proxy_remaining(deadline))
+    sock.sendall(greeting)
+    version, method = _socks5_read_exact(sock, 2, deadline)
+    if version != 0x05:
+        raise _Socks5Error(f"SOCKS5 initial handshake failed: unexpected version {version:#04x}")
+    allowed = (0x00, 0x02) if has_credentials else (0x00,)
+    if method not in allowed:
+        if method == 0xFF:
+            raise _Socks5Error(
+                "SOCKS5 initial handshake failed: no acceptable authentication methods"
+            )
+        raise _Socks5Error(
+            f"SOCKS5 initial handshake failed: unexpected authentication method {method:#04x}"
+        )
+    if method == 0x02:
+        assert proxy.username is not None
+        assert proxy.password is not None
+        username = proxy.username.encode("utf-8")
+        password = proxy.password.encode("utf-8")
+        sock.settimeout(_proxy_remaining(deadline))
+        sock.sendall(bytes((0x01, len(username))) + username + bytes((len(password),)) + password)
+        auth_version, status = _socks5_read_exact(sock, 2, deadline)
+        if auth_version != 0x01 or status != 0x00:
+            raise _Socks5Error("SOCKS5 authentication failed")
+
+    sock.settimeout(_proxy_remaining(deadline))
+    sock.sendall(_socks5_request(address))
+    version, reply, reserved, atyp = _socks5_read_exact(sock, 4, deadline)
+    if version != 0x05:
+        raise _Socks5Error(f"SOCKS5 connect failed: unexpected version {version:#04x}")
+    if reserved != 0x00:
+        raise _Socks5Error(f"SOCKS5 connect failed: invalid reserved byte {reserved:#04x}")
+    if reply:
+        reasons = {
+            0x01: "general SOCKS server failure",
+            0x02: "connection not allowed by ruleset",
+            0x03: "network unreachable",
+            0x04: "host unreachable",
+            0x05: "connection refused",
+            0x06: "TTL expired",
+            0x07: "command not supported",
+            0x08: "address type not supported",
+        }
+        reason = reasons.get(reply, f"unknown error {reply:#04x}")
+        raise _Socks5Error(f"SOCKS5 connect failed: {reason}")
+    if atyp == 0x01:
+        bound_size = 6
+    elif atyp == 0x04:
+        bound_size = 18
+    elif atyp == 0x03:
+        domain_length = _socks5_read_exact(sock, 1, deadline)[0]
+        bound_size = domain_length + 2
+    else:
+        raise _Socks5Error(f"SOCKS5 connect failed: invalid address type {atyp:#04x}")
+    _socks5_read_exact(sock, bound_size, deadline)
+
+
+async def _async_socks5_read_exact(
+    sock: socket.socket, size: int, deadline: Optional[float]
+) -> bytes:
+    data = bytearray()
+    loop = asyncio.get_running_loop()
+    while len(data) < size:
+        chunk = await asyncio.wait_for(
+            loop.sock_recv(sock, size - len(data)), timeout=_proxy_remaining(deadline)
+        )
+        if not chunk:
+            raise _Socks5Error("SOCKS5 handshake failed: unexpected EOF")
+        data.extend(chunk)
+    return bytes(data)
+
+
+async def _async_socks5_handshake(
+    sock: socket.socket, address: _Address, proxy: _ProxyOptions, deadline: Optional[float]
+) -> None:
+    loop = asyncio.get_running_loop()
+    has_credentials = proxy.username is not None and proxy.password is not None
+    greeting = b"\x05\x02\x00\x02" if has_credentials else b"\x05\x01\x00"
+    await asyncio.wait_for(loop.sock_sendall(sock, greeting), timeout=_proxy_remaining(deadline))
+    version, method = await _async_socks5_read_exact(sock, 2, deadline)
+    if version != 0x05:
+        raise _Socks5Error(f"SOCKS5 initial handshake failed: unexpected version {version:#04x}")
+    allowed = (0x00, 0x02) if has_credentials else (0x00,)
+    if method not in allowed:
+        if method == 0xFF:
+            raise _Socks5Error(
+                "SOCKS5 initial handshake failed: no acceptable authentication methods"
+            )
+        raise _Socks5Error(
+            f"SOCKS5 initial handshake failed: unexpected authentication method {method:#04x}"
+        )
+    if method == 0x02:
+        assert proxy.username is not None
+        assert proxy.password is not None
+        username = proxy.username.encode("utf-8")
+        password = proxy.password.encode("utf-8")
+        auth = bytes((0x01, len(username))) + username + bytes((len(password),)) + password
+        await asyncio.wait_for(loop.sock_sendall(sock, auth), timeout=_proxy_remaining(deadline))
+        auth_version, status = await _async_socks5_read_exact(sock, 2, deadline)
+        if auth_version != 0x01 or status != 0x00:
+            raise _Socks5Error("SOCKS5 authentication failed")
+    await asyncio.wait_for(
+        loop.sock_sendall(sock, _socks5_request(address)), timeout=_proxy_remaining(deadline)
+    )
+    version, reply, reserved, atyp = await _async_socks5_read_exact(sock, 4, deadline)
+    if version != 0x05:
+        raise _Socks5Error(f"SOCKS5 connect failed: unexpected version {version:#04x}")
+    if reserved != 0x00:
+        raise _Socks5Error(f"SOCKS5 connect failed: invalid reserved byte {reserved:#04x}")
+    if reply:
+        reasons = {
+            0x01: "general SOCKS server failure",
+            0x02: "connection not allowed by ruleset",
+            0x03: "network unreachable",
+            0x04: "host unreachable",
+            0x05: "connection refused",
+            0x06: "TTL expired",
+            0x07: "command not supported",
+            0x08: "address type not supported",
+        }
+        reason = reasons.get(reply, f"unknown error {reply:#04x}")
+        raise _Socks5Error(f"SOCKS5 connect failed: {reason}")
+    if atyp == 0x01:
+        bound_size = 6
+    elif atyp == 0x04:
+        bound_size = 18
+    elif atyp == 0x03:
+        domain_length = (await _async_socks5_read_exact(sock, 1, deadline))[0]
+        bound_size = domain_length + 2
+    else:
+        raise _Socks5Error(f"SOCKS5 connect failed: invalid address type {atyp:#04x}")
+    await _async_socks5_read_exact(sock, bound_size, deadline)
+
+
+async def _async_create_proxy_connection(
+    address: _Address, options: PoolOptions, proxy: _ProxyOptions
+) -> socket.socket:
+    deadline = _proxy_deadline(options)
+    family = socket.AF_INET
+    if socket.has_ipv6 and proxy.host != "localhost":
+        family = socket.AF_UNSPEC
+    try:
+        getaddrinfo = _getaddrinfo(proxy.host, proxy.port, family=family, type=socket.SOCK_STREAM)
+        results = await asyncio.wait_for(getaddrinfo, timeout=_proxy_remaining(deadline))
+    except asyncio.TimeoutError as exc:
+        raise _Socks5Timeout("timed out") from exc
+    except OSError as exc:
+        raise _Socks5Error(f"SOCKS5 proxy connection failed: {exc}") from exc
+
+    err: Optional[OSError] = None
+    loop = asyncio.get_running_loop()
+    for af, socktype, proto, _, sockaddr in results:
+        try:
+            sock = socket.socket(af, socktype | getattr(socket, "SOCK_CLOEXEC", 0), proto)
+        except OSError:
+            sock = socket.socket(af, socktype, proto)
+        _set_non_inheritable_non_atomic(sock.fileno())
+        connected = False
+        try:
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
+            _set_keepalive_times(sock)
+            sock.setblocking(False)
+            await asyncio.wait_for(
+                loop.sock_connect(sock, sockaddr), timeout=_proxy_remaining(deadline)
+            )
+            connected = True
+            await _async_socks5_handshake(sock, address, proxy, deadline)
+            sock.settimeout(_proxy_remaining(deadline))
+            return sock
+        except asyncio.TimeoutError as exc:
+            sock.close()
+            raise _Socks5Timeout("timed out") from exc
+        except asyncio.CancelledError:
+            sock.close()
+            raise
+        except OSError as exc:
+            sock.close()
+            if isinstance(exc, _Socks5Error):
+                raise
+            if isinstance(exc, socket.timeout):
+                raise _Socks5Timeout("timed out") from exc
+            err = exc
+            # A connected proxy's handshake failure must not try a different
+            # resolved proxy address; the failure is specific to the endpoint.
+            if connected:
+                raise _Socks5Error(f"SOCKS5 handshake failed: {exc}") from exc
+        except BaseException:
+            sock.close()
+            raise
+
+    if err is not None:
+        raise _Socks5Error(f"SOCKS5 proxy connection failed: {err}") from err
+    raise _Socks5Error("SOCKS5 proxy connection failed: getaddrinfo returned no addresses")
+
+
+def _create_proxy_connection(
+    address: _Address, options: PoolOptions, proxy: _ProxyOptions
+) -> socket.socket:
+    deadline = _proxy_deadline(options)
+    family = socket.AF_INET
+    if socket.has_ipv6 and proxy.host != "localhost":
+        family = socket.AF_UNSPEC
+    try:
+        results = socket.getaddrinfo(proxy.host, proxy.port, family=family, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        raise _Socks5Error(f"SOCKS5 proxy connection failed: {exc}") from exc
+
+    err: Optional[OSError] = None
+    for af, socktype, proto, _, sockaddr in results:
+        try:
+            sock = socket.socket(af, socktype | getattr(socket, "SOCK_CLOEXEC", 0), proto)
+        except OSError:
+            sock = socket.socket(af, socktype, proto)
+        _set_non_inheritable_non_atomic(sock.fileno())
+        connected = False
+        try:
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
+            _set_keepalive_times(sock)
+            sock.settimeout(_proxy_remaining(deadline))
+            sock.connect(sockaddr)
+            connected = True
+            _socks5_handshake(sock, address, proxy, deadline)
+            return sock
+        except socket.timeout as exc:
+            sock.close()
+            raise _Socks5Timeout("timed out") from exc
+        except OSError as exc:
+            sock.close()
+            if isinstance(exc, _Socks5Error):
+                raise
+            err = exc
+            if connected:
+                # Handshake failures are not address-resolution failures.
+                raise _Socks5Error(f"SOCKS5 handshake failed: {exc}") from exc
+        except BaseException:
+            sock.close()
+            raise
+
+    if err is not None:
+        raise _Socks5Error(f"SOCKS5 proxy connection failed: {err}") from err
+    raise _Socks5Error("SOCKS5 proxy connection failed: getaddrinfo returned no addresses")
+
+
 async def _async_create_connection(address: _Address, options: PoolOptions) -> socket.socket:
     """Given (host, port) and PoolOptions, connect and return a raw socket object.
 
@@ -601,6 +913,9 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
     This is a modified version of create_connection from CPython >= 2.7.
     """
     host, port = address
+
+    if options._proxy_options is not None:
+        return await _async_create_proxy_connection(address, options, options._proxy_options)
 
     # Check if dealing with a unix domain socket
     if host.endswith(".sock"):
@@ -848,6 +1163,9 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
     This is a modified version of create_connection from CPython >= 2.7.
     """
     host, port = address
+
+    if options._proxy_options is not None:
+        return _create_proxy_connection(address, options, options._proxy_options)
 
     # Check if dealing with a unix domain socket
     if host.endswith(".sock"):

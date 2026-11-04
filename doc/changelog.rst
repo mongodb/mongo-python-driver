@@ -4,6 +4,12 @@ Changelog
 Changes in Version 4.20.0 (2026/XX/XX)
 --------------------------------------
 
+- Added support for connecting to MongoDB and Client-Side Field Level
+  Encryption KMS servers through a SOCKS5 proxy via the ``proxyHost``,
+  ``proxyPort``, ``proxyUsername``, and ``proxyPassword`` URI and keyword
+  options on :class:`~pymongo.synchronous.mongo_client.MongoClient` and
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`
+  (`PYTHON-2943`_).
 - The client handshake metadata now reports a detected coding agent in
   ``client.env.agent`` (`PYTHON-5929`_).
 
@@ -35,6 +41,7 @@ Bug fixes
   The bug was fixed in Python 3.12.7 and Python 3.13.1.
   Users of Python 3.12 and 3.13 should upgrade to at least those versions (`PYTHON-6182`_).
 
+.. _PYTHON-2943: https://jira.mongodb.org/browse/PYTHON-2943
 .. _PYTHON-5929: https://jira.mongodb.org/browse/PYTHON-5929
 .. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
 .. _PYTHON-6149: https://jira.mongodb.org/browse/PYTHON-6149
