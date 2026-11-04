@@ -573,3 +573,170 @@ class TestSocks5(AsyncPyMongoTestCase):
         finally:
             await parent_client.close()
             await kv_client.close()
+
+    async def test_socks5_helper_edge_cases(self) -> None:
+        from pymongo.common import validate_proxy_host, validate_proxy_port
+        from pymongo.pool_shared import (
+            _proxy_deadline,
+            _proxy_remaining,
+            _socks5_check_connect_reply,
+            _socks5_request,
+            _Socks5Timeout,
+        )
+
+        self.assertIsNone(validate_proxy_host("proxyHost", None))
+        self.assertEqual(validate_proxy_host("proxyHost", "::1"), "::1")
+        with self.assertRaises(ValueError):
+            validate_proxy_host("proxyHost", "[not-ipv6]")
+        with self.assertRaises(ValueError):
+            validate_proxy_host("proxyHost", "bad/host")
+        self.assertIsNone(validate_proxy_port("proxyPort", None))
+        with self.assertRaises(TypeError):
+            validate_proxy_port("proxyPort", True)
+
+        self.assertIsNone(_proxy_deadline(PoolOptions(connect_timeout=None)))
+        self.assertIsNone(_proxy_remaining(None))
+        with self.assertRaises(_Socks5Timeout):
+            _proxy_remaining(0.0)
+        with (
+            mock.patch("pymongo.pool_shared._csot.remaining", return_value=0.0),
+            self.assertRaises(_Socks5Timeout),
+        ):
+            _proxy_deadline(PoolOptions(connect_timeout=1))
+
+        with self.assertRaisesRegex(_Socks5Error, "invalid domain name length"):
+            _socks5_request(("a" * 256, 27017))
+        with self.assertRaisesRegex(_Socks5Error, "invalid domain name"):
+            _socks5_request((".münich.example", 27017))
+        with self.assertRaisesRegex(_Socks5Error, "destination port is required"):
+            _socks5_request(("localhost", None))  # type: ignore[arg-type]
+        with self.assertRaisesRegex(_Socks5Error, "invalid reserved byte"):
+            _socks5_check_connect_reply(b"\x05\x00\x01\x01")
+        with self.assertRaisesRegex(_Socks5Error, "invalid address type"):
+            _socks5_check_connect_reply(b"\x05\x00\x00\x09")
+
+    async def test_proxy_connection_error_paths(self) -> None:
+        proxy_opts = PoolOptions(
+            connect_timeout=1, proxy_options=_ProxyOptions("proxy.invalid", 1080)
+        )
+        target = (
+            "pymongo.pool_shared.socket.getaddrinfo"
+            if _IS_SYNC
+            else "pymongo.pool_shared._getaddrinfo"
+        )
+
+        # 1. getaddrinfo raises OSError
+        def raise_gai(*_a: Any, **_kw: Any) -> Any:
+            raise socket.gaierror("resolution failed")
+
+        with (
+            mock.patch(target, side_effect=raise_gai),
+            self.assertRaisesRegex(_Socks5Error, "proxy connection failed"),
+        ):
+            await _async_create_connection(("localhost", 27017), proxy_opts)
+
+        # 2. getaddrinfo returns empty list
+        async def empty_async(*_a: Any, **_kw: Any) -> Any:
+            return []
+
+        replacement_empty: Any = (lambda *_a, **_kw: []) if _IS_SYNC else empty_async
+        with (
+            mock.patch(target, new=replacement_empty),
+            self.assertRaisesRegex(_Socks5Error, "returned no addresses"),
+        ):
+            await _async_create_connection(("localhost", 27017), proxy_opts)
+
+        # 3. All proxy addresses refuse connection
+        dead_sock = socket.socket()
+        dead_sock.bind(("127.0.0.1", 0))
+        dead_addr = dead_sock.getsockname()
+        dead_sock.close()
+        dead_results = [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", dead_addr)]
+
+        async def dead_async(*_a: Any, **_kw: Any) -> Any:
+            return dead_results
+
+        replacement_dead: Any = (lambda *_a, **_kw: dead_results) if _IS_SYNC else dead_async
+        with (
+            mock.patch(target, new=replacement_dead),
+            self.assertRaisesRegex(_Socks5Error, "proxy connection failed"),
+        ):
+            await _async_create_connection(("localhost", 27017), proxy_opts)
+
+    async def test_in_process_socks5_server_forwarding(self) -> None:
+        from test.asynchronous.test_socks5_prose import Socks5Server
+
+        echo_listener = socket.socket()
+        echo_listener.bind(("127.0.0.1", 0))
+        echo_listener.listen(2)
+        echo_addr = echo_listener.getsockname()
+
+        def serve_echo() -> None:
+            for _ in range(2):
+                try:
+                    conn, _ = echo_listener.accept()
+                except OSError:
+                    return
+                with conn:
+                    data = conn.recv(64)
+                    if data:
+                        conn.sendall(b"ack:" + data)
+
+        echo_thread = threading.Thread(target=serve_echo, daemon=True)
+        echo_thread.start()
+        self.addCleanup(echo_listener.close)
+
+        mapping = {("mapped.example", 12345): echo_addr}
+        auth_proxy = Socks5Server(0, mapping, ("user", "secret"))
+        noauth_proxy = Socks5Server(0, mapping)
+        self.addCleanup(auth_proxy.close)
+        self.addCleanup(noauth_proxy.close)
+
+        # Test authenticated domain mapping + bidirectional forwarding
+        sock1 = await _async_create_connection(
+            ("mapped.example", 12345),
+            PoolOptions(
+                connect_timeout=2,
+                proxy_options=_ProxyOptions("127.0.0.1", auth_proxy.port, "user", "secret"),
+            ),
+        )
+        try:
+            sock1.settimeout(2)
+            sock1.sendall(b"hello")
+            self.assertEqual(sock1.recv(64), b"ack:hello")
+        finally:
+            sock1.close()
+
+        # Test unauthenticated IPv4 connect + bidirectional forwarding
+        sock2 = await _async_create_connection(
+            echo_addr,
+            PoolOptions(
+                connect_timeout=2,
+                proxy_options=_ProxyOptions("127.0.0.1", noauth_proxy.port),
+            ),
+        )
+        try:
+            sock2.settimeout(2)
+            sock2.sendall(b"world")
+            self.assertEqual(sock2.recv(64), b"ack:world")
+        finally:
+            sock2.close()
+
+        # Test bad auth and unreachable target against Socks5Server
+        with self.assertRaises(_Socks5Error):
+            await _async_create_connection(
+                ("mapped.example", 12345),
+                PoolOptions(
+                    connect_timeout=2,
+                    proxy_options=_ProxyOptions("127.0.0.1", auth_proxy.port, "user", "wrong"),
+                ),
+            )
+        with self.assertRaises(_Socks5Error):
+            await _async_create_connection(
+                ("127.0.0.1", 1),
+                PoolOptions(
+                    connect_timeout=2,
+                    proxy_options=_ProxyOptions("127.0.0.1", noauth_proxy.port),
+                ),
+            )
+        echo_thread.join(timeout=2)
