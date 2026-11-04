@@ -2855,8 +2855,13 @@ class _ClientReadCheckout(_ClientCheckout):
         return conn, read_pref
 
 
-class _ClientConnectionRetryable(_AgnosticClientConnectionRetryableBase, Generic[T]):
+class _ClientConnectionRetryable(
+    _AgnosticClientConnectionRetryableBase[T, "Server", _WriteCall[T] | _ReadCall[T]], Generic[T]
+):
     """Responsible for executing retryable connections on read or write operations"""
+
+    _client: MongoClient[Any]
+    _session: Optional[ClientSession]
 
     def run(self) -> T:
         """Runs the supplied func() and attempts a retry

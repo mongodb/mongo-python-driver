@@ -47,6 +47,8 @@ from pymongo.typings import (
 )
 
 T = TypeVar("T")
+_ServerT = TypeVar("_ServerT", bound="_AgnosticServer")
+_FuncT = TypeVar("_FuncT", bound=Callable[..., Any])
 
 
 def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
@@ -125,7 +127,7 @@ def _detect_external_db(entity: str) -> bool:
     return False
 
 
-class _AgnosticClientConnectionRetryableBase(Generic[T]):
+class _AgnosticClientConnectionRetryableBase(Generic[T, _ServerT, _FuncT]):
     """Responsible for executing retryable connections on read or write operations"""
 
     __slots__ = (
@@ -155,8 +157,8 @@ class _AgnosticClientConnectionRetryableBase(Generic[T]):
 
     def __init__(
         self,
-        mongo_client: _AgnosticMongoClient,  # type: ignore[type-arg]
-        func: _WriteCall[T] | _ReadCall[T],
+        mongo_client: _AgnosticMongoClient,
+        func: _FuncT,
         bulk: Optional[Union[_AgnosticBulk, _AgnosticClientBulk]],
         operation: str,
         is_read: bool = False,
@@ -174,7 +176,7 @@ class _AgnosticClientConnectionRetryableBase(Generic[T]):
         self._max_retries = float("inf") if _csot.get_timeout() is not None else 1
         self._client = mongo_client
         self._retry_policy = mongo_client._retry_policy
-        self._func = func
+        self._func: _FuncT = func
         self._bulk = bulk
         self._session = session
         self._is_read = is_read
@@ -184,8 +186,8 @@ class _AgnosticClientConnectionRetryableBase(Generic[T]):
             read_pref if is_read else writable_server_selector  # type: ignore
         )
         self._address = address
-        self._server: _AgnosticServer = None  # type: ignore
-        self._deprioritized_servers: Optional[list[_AgnosticServer]] = None
+        self._server: _ServerT = None  # type: ignore
+        self._deprioritized_servers: Optional[list[_ServerT]] = None
         self._operation = operation
         # Only generate an operation id when APM/logging is enabled.
         if operation_id is None:
