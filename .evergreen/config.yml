@@ -58,9 +58,9 @@ tasks:
       - command: subprocess.exec
         type: test
         params:
-          binary: python3
+          binary: bash
           args:
-            - .evergreen/scripts/run_socks5_proxy.py
+            - .evergreen/scripts/run_socks5_proxy.sh
             - --port
             - "1080"
             - --auth
@@ -73,9 +73,9 @@ tasks:
       - command: subprocess.exec
         type: test
         params:
-          binary: python3
+          binary: bash
           args:
-            - .evergreen/scripts/run_socks5_proxy.py
+            - .evergreen/scripts/run_socks5_proxy.sh
             - --port
             - "1081"
           background: true
@@ -126,9 +126,9 @@ tasks:
       - command: subprocess.exec
         type: test
         params:
-          binary: python3
+          binary: bash
           args:
-            - .evergreen/scripts/run_socks5_proxy.py
+            - .evergreen/scripts/run_socks5_proxy.sh
             - --port
             - "1080"
             - --auth
@@ -141,9 +141,9 @@ tasks:
       - command: subprocess.exec
         type: test
         params:
-          binary: python3
+          binary: bash
           args:
-            - .evergreen/scripts/run_socks5_proxy.py
+            - .evergreen/scripts/run_socks5_proxy.sh
             - --port
             - "1081"
           background: true
