@@ -85,7 +85,7 @@ jobs:
           # The beta Python here relies on the action's prerelease default.
           python-version: ${{ matrix.python-version }}
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@f33b31d5ce6c444c698dba95077c1c088776a870 # v1.3.0
+        uses: mongodb-labs/drivers-evergreen-tools@e35ecc9d563b5dada8185e64b7a571541000bc6d # v1.4.0
         with:
           version: "${{ matrix.mongodb-version }}"
       - name: Run tests
@@ -107,7 +107,7 @@ jobs:
         with:
           python-version: "3.11"
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@f33b31d5ce6c444c698dba95077c1c088776a870 # v1.3.0
+        uses: mongodb-labs/drivers-evergreen-tools@e35ecc9d563b5dada8185e64b7a571541000bc6d # v1.4.0
         with:
           version: "8.0"
       - name: Setup tests
@@ -135,7 +135,7 @@ jobs:
       - name: Install dependencies
         run: just install
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@f33b31d5ce6c444c698dba95077c1c088776a870 # v1.3.0
+        uses: mongodb-labs/drivers-evergreen-tools@e35ecc9d563b5dada8185e64b7a571541000bc6d # v1.4.0
         with:
           version: "8.0"
       - name: Run tests
@@ -194,12 +194,12 @@ jobs:
       - name: Install dependencies
         run: just install
       - id: setup-mongodb
-        uses: mongodb-labs/drivers-evergreen-tools@f33b31d5ce6c444c698dba95077c1c088776a870 # v1.3.0
+        uses: mongodb-labs/drivers-evergreen-tools@e35ecc9d563b5dada8185e64b7a571541000bc6d # v1.4.0
       - name: Run tests
         run:  |
           just integration-tests
       - id: setup-mongodb-ssl
-        uses: mongodb-labs/drivers-evergreen-tools@f33b31d5ce6c444c698dba95077c1c088776a870 # v1.3.0
+        uses: mongodb-labs/drivers-evergreen-tools@e35ecc9d563b5dada8185e64b7a571541000bc6d # v1.4.0
         with:
           ssl: true
       - name: Run tests
@@ -254,7 +254,7 @@ jobs:
             # Test sdist on lowest supported Python
             python-version: "3.11"
         - id: setup-mongodb
-          uses: mongodb-labs/drivers-evergreen-tools@f33b31d5ce6c444c698dba95077c1c088776a870 # v1.3.0
+          uses: mongodb-labs/drivers-evergreen-tools@e35ecc9d563b5dada8185e64b7a571541000bc6d # v1.4.0
         - name: Run connect test from sdist
           shell: bash
           run: |
@@ -278,7 +278,7 @@ jobs:
           with:
             python-version: "3.11"
         - id: setup-mongodb
-          uses: mongodb-labs/drivers-evergreen-tools@f33b31d5ce6c444c698dba95077c1c088776a870 # v1.3.0
+          uses: mongodb-labs/drivers-evergreen-tools@e35ecc9d563b5dada8185e64b7a571541000bc6d # v1.4.0
           with:
             version: "8.0"
         - name: Run tests
