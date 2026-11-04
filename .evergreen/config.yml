@@ -46,6 +46,7 @@ post:
 
 tasks:
   - name: test-socks5-prose-noauth-nossl
+    tags: [pr]
     commands:
       - func: run server
         vars:
@@ -113,6 +114,7 @@ tasks:
             - MONGODB_URI
 
   - name: test-socks5-prose-noauth-ssl
+    tags: [pr]
     commands:
       - func: run server
         vars:
@@ -221,6 +223,7 @@ buildvariants:
     display_name: "SOCKS5 Prose Tests"
     run_on: rhel8.10-small
     patchable: true
+    tags: [pr]
     expansions:
       SOCKS5_PROXIES_STARTED: "1"
       UV_PYTHON: "3.11"
