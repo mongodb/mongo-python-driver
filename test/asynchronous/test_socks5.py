@@ -22,6 +22,8 @@ import socket
 import ssl
 import sys
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Any, Optional, cast
 from unittest import mock
@@ -171,6 +173,31 @@ class _Socks5Server:
     def close(self) -> None:
         self.listener.close()
         self.thread.join(timeout=3)
+
+
+@contextmanager
+def _refuse_connection(address: tuple[str, int]) -> Iterator[None]:
+    if _IS_SYNC:
+        original_connect = socket.socket.connect
+
+        def connect(sock: socket.socket, target: tuple[str, int]) -> None:
+            if target == address:
+                raise ConnectionRefusedError("connection refused")
+            original_connect(sock, target)
+
+        with mock.patch.object(socket.socket, "connect", new=connect):
+            yield
+    else:
+        loop = asyncio.get_running_loop()
+        original_sock_connect = loop.sock_connect
+
+        async def sock_connect(sock: socket.socket, target: tuple[str, int]) -> None:
+            if target == address:
+                raise ConnectionRefusedError("connection refused")
+            await original_sock_connect(sock, target)
+
+        with mock.patch.object(loop, "sock_connect", new=sock_connect):
+            yield
 
 
 class TestSocks5(AsyncPyMongoTestCase):
@@ -331,12 +358,32 @@ class TestSocks5(AsyncPyMongoTestCase):
     @unittest.skipIf(_IS_SYNC, "Async cancellation is tested in the asynchronous driver")
     async def test_cancellation_closes_proxy_socket(self) -> None:
         server = _Socks5Server(stall=True)
+        self.addCleanup(server.close)
         task = asyncio.create_task(cast(Any, self._connect(server, ("localhost", 27017))))
-        await asyncio.to_thread(server.started.wait, 2)
+        self.assertTrue(await asyncio.to_thread(server.started.wait, 2))
         task.cancel()
         with self.assertRaises(asyncio.CancelledError):
             await task
-        server.close()
+
+    @unittest.skipIf(_IS_SYNC, "Async cancellation is tested in the asynchronous driver")
+    async def test_cancellation_when_proxy_send_completes_closes_socket(self) -> None:
+        server = _Socks5Server(stall=True)
+        self.addCleanup(server.close)
+        loop = asyncio.get_running_loop()
+        original_sendall = loop.sock_sendall
+        sockets: list[socket.socket] = []
+
+        async def cancel_after_send(sock: socket.socket, data: bytes) -> None:
+            sockets.append(sock)
+            await original_sendall(sock, data)
+            task.cancel()
+
+        with mock.patch.object(loop, "sock_sendall", new=cancel_after_send):
+            task = asyncio.create_task(cast(Any, self._connect(server, ("localhost", 27017))))
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+        self.assertEqual(len(sockets), 1)
+        self.assertEqual(sockets[0].fileno(), -1)
 
     async def test_tls_sni_targets_destination_not_proxy(self) -> None:
         listener = socket.socket()
@@ -515,10 +562,7 @@ class TestSocks5(AsyncPyMongoTestCase):
     async def test_multi_address_proxy_fallback_on_connect_error(self) -> None:
         server = _Socks5Server()
         self.addCleanup(server.close)
-        dead_sock = socket.socket()
-        dead_sock.bind(("127.0.0.1", 0))
-        dead_addr = dead_sock.getsockname()
-        dead_sock.close()
+        dead_addr = ("127.0.0.1", 1)
 
         fake_results = [
             (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", dead_addr),
@@ -534,7 +578,7 @@ class TestSocks5(AsyncPyMongoTestCase):
             return fake_results
 
         replacement: Any = (lambda *_a, **_kw: fake_results) if _IS_SYNC else async_fake_getaddrinfo
-        with mock.patch(target, new=replacement):
+        with mock.patch(target, new=replacement), _refuse_connection(dead_addr):
             sock = await self._connect(server, ("localhost", 27017))
             sock.close()
 
@@ -625,7 +669,6 @@ class TestSocks5(AsyncPyMongoTestCase):
             else "pymongo.pool_shared._getaddrinfo"
         )
 
-        # 1. getaddrinfo raises OSError
         def raise_gai(*_a: Any, **_kw: Any) -> Any:
             raise socket.gaierror("resolution failed")
 
@@ -635,7 +678,6 @@ class TestSocks5(AsyncPyMongoTestCase):
         ):
             await _async_create_connection(("localhost", 27017), proxy_opts)
 
-        # 2. getaddrinfo returns empty list
         async def empty_async(*_a: Any, **_kw: Any) -> Any:
             return []
 
@@ -646,11 +688,7 @@ class TestSocks5(AsyncPyMongoTestCase):
         ):
             await _async_create_connection(("localhost", 27017), proxy_opts)
 
-        # 3. All proxy addresses refuse connection
-        dead_sock = socket.socket()
-        dead_sock.bind(("127.0.0.1", 0))
-        dead_addr = dead_sock.getsockname()
-        dead_sock.close()
+        dead_addr = ("127.0.0.1", 1)
         dead_results = [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", dead_addr)]
 
         async def dead_async(*_a: Any, **_kw: Any) -> Any:
@@ -659,9 +697,65 @@ class TestSocks5(AsyncPyMongoTestCase):
         replacement_dead: Any = (lambda *_a, **_kw: dead_results) if _IS_SYNC else dead_async
         with (
             mock.patch(target, new=replacement_dead),
+            _refuse_connection(dead_addr),
             self.assertRaisesRegex(_Socks5Error, "proxy connection failed"),
         ):
             await _async_create_connection(("localhost", 27017), proxy_opts)
+
+    async def test_prose_client_options(self) -> None:
+        from pymongo.asynchronous.mongo_client import AsyncMongoClient
+        from pymongo.errors import OperationFailure
+        from test.asynchronous import test_socks5_prose
+
+        async def command(name: str) -> None:
+            if name == "nonexistent_socks5_test_command":
+                raise OperationFailure("unsupported command")
+
+        async def close() -> None:
+            pass
+
+        fake_client = SimpleNamespace(admin=SimpleNamespace(command=command), close=close)
+        case = test_socks5_prose.TestSocks5Prose()
+        case.credentials = {"username": "dbuser", "password": "dbpass", "authSource": "admin"}
+        listener = test_socks5_prose._CommandListener()
+        for tls in (False, True):
+            for use_uri in (False, True):
+                for event_listener in (None, listener):
+                    with self.subTest(tls=tls, use_uri=use_uri, listener=event_listener):
+                        with (
+                            mock.patch.object(test_socks5_prose.async_client_context, "tls", tls),
+                            mock.patch.object(
+                                test_socks5_prose, "AsyncMongoClient", return_value=fake_client
+                            ) as factory,
+                        ):
+                            await case._run_case(
+                                "localhost:12345",
+                                1080,
+                                ("proxyuser", "proxypass"),
+                                True,
+                                use_uri,
+                                event_listener,
+                            )
+                        factory.assert_called_once()
+                        args, kwargs = factory.call_args
+                        client = AsyncMongoClient(*args, connect=False, **kwargs)
+                        try:
+                            self.assertEqual(
+                                client.options.pool_options._proxy_options,
+                                _ProxyOptions("localhost", 1080, "proxyuser", "proxypass"),
+                            )
+                            self.assertEqual(client.options.direct_connection, True)
+                            self.assertEqual(client.options.server_selection_timeout, 2.5)
+                            self.assertEqual(
+                                client.options.pool_options._ssl_context is not None, tls
+                            )
+                            self.assertEqual(kwargs["authSource"], "admin")
+                            if event_listener is None:
+                                self.assertNotIn("event_listeners", kwargs)
+                            else:
+                                self.assertEqual(kwargs["event_listeners"], [event_listener])
+                        finally:
+                            await client.close()
 
     async def test_in_process_socks5_server_forwarding(self) -> None:
         from test.asynchronous.test_socks5_prose import Socks5Server
@@ -684,6 +778,7 @@ class TestSocks5(AsyncPyMongoTestCase):
 
         echo_thread = threading.Thread(target=serve_echo, daemon=True)
         echo_thread.start()
+        self.addCleanup(echo_thread.join, 2)
         self.addCleanup(echo_listener.close)
 
         mapping = {("mapped.example", 12345): echo_addr}
@@ -692,7 +787,6 @@ class TestSocks5(AsyncPyMongoTestCase):
         self.addCleanup(auth_proxy.close)
         self.addCleanup(noauth_proxy.close)
 
-        # Test authenticated domain mapping + bidirectional forwarding
         sock1 = await _async_create_connection(
             ("mapped.example", 12345),
             PoolOptions(
@@ -701,13 +795,19 @@ class TestSocks5(AsyncPyMongoTestCase):
             ),
         )
         try:
-            sock1.settimeout(2)
-            sock1.sendall(b"hello")
-            self.assertEqual(sock1.recv(64), b"ack:hello")
+            if _IS_SYNC:
+                sock1.settimeout(2)
+                sock1.sendall(b"hello")
+                response = sock1.recv(64)
+            else:
+                sock1.setblocking(False)
+                loop = asyncio.get_running_loop()
+                await loop.sock_sendall(sock1, b"hello")
+                response = await asyncio.wait_for(loop.sock_recv(sock1, 64), timeout=2)
+            self.assertEqual(response, b"ack:hello")
         finally:
             sock1.close()
 
-        # Test unauthenticated IPv4 connect + bidirectional forwarding
         sock2 = await _async_create_connection(
             echo_addr,
             PoolOptions(
@@ -716,13 +816,19 @@ class TestSocks5(AsyncPyMongoTestCase):
             ),
         )
         try:
-            sock2.settimeout(2)
-            sock2.sendall(b"world")
-            self.assertEqual(sock2.recv(64), b"ack:world")
+            if _IS_SYNC:
+                sock2.settimeout(2)
+                sock2.sendall(b"world")
+                response = sock2.recv(64)
+            else:
+                sock2.setblocking(False)
+                loop = asyncio.get_running_loop()
+                await loop.sock_sendall(sock2, b"world")
+                response = await asyncio.wait_for(loop.sock_recv(sock2, 64), timeout=2)
+            self.assertEqual(response, b"ack:world")
         finally:
             sock2.close()
 
-        # Test bad auth and unreachable target against Socks5Server
         with self.assertRaises(_Socks5Error):
             await _async_create_connection(
                 ("mapped.example", 12345),
@@ -731,7 +837,12 @@ class TestSocks5(AsyncPyMongoTestCase):
                     proxy_options=_ProxyOptions("127.0.0.1", auth_proxy.port, "user", "wrong"),
                 ),
             )
-        with self.assertRaises(_Socks5Error):
+        with (
+            mock.patch(
+                "socket.create_connection", side_effect=ConnectionRefusedError("connection refused")
+            ),
+            self.assertRaisesRegex(_Socks5Error, "connection refused"),
+        ):
             await _async_create_connection(
                 ("127.0.0.1", 1),
                 PoolOptions(
@@ -739,4 +850,3 @@ class TestSocks5(AsyncPyMongoTestCase):
                     proxy_options=_ProxyOptions("127.0.0.1", noauth_proxy.port),
                 ),
             )
-        echo_thread.join(timeout=2)

@@ -746,9 +746,8 @@ async def _async_socks5_read_exact(
     data = bytearray()
     loop = asyncio.get_running_loop()
     while len(data) < size:
-        chunk = await asyncio.wait_for(
-            loop.sock_recv(sock, size - len(data)), timeout=_proxy_remaining(deadline)
-        )
+        async with asyncio.timeout(_proxy_remaining(deadline)):
+            chunk = await loop.sock_recv(sock, size - len(data))
         if not chunk:
             raise _Socks5Error("SOCKS5 handshake failed: unexpected EOF")
         data.extend(chunk)
@@ -760,19 +759,17 @@ async def _async_socks5_handshake(
 ) -> None:
     loop = asyncio.get_running_loop()
     greeting, allowed = _socks5_greeting(proxy)
-    await asyncio.wait_for(loop.sock_sendall(sock, greeting), timeout=_proxy_remaining(deadline))
+    async with asyncio.timeout(_proxy_remaining(deadline)):
+        await loop.sock_sendall(sock, greeting)
     method = _socks5_check_greeting_reply(
         await _async_socks5_read_exact(sock, 2, deadline), allowed
     )
     if method == 0x02:
-        await asyncio.wait_for(
-            loop.sock_sendall(sock, _socks5_auth_request(proxy)),
-            timeout=_proxy_remaining(deadline),
-        )
+        async with asyncio.timeout(_proxy_remaining(deadline)):
+            await loop.sock_sendall(sock, _socks5_auth_request(proxy))
         _socks5_check_auth_reply(await _async_socks5_read_exact(sock, 2, deadline))
-    await asyncio.wait_for(
-        loop.sock_sendall(sock, _socks5_request(address)), timeout=_proxy_remaining(deadline)
-    )
+    async with asyncio.timeout(_proxy_remaining(deadline)):
+        await loop.sock_sendall(sock, _socks5_request(address))
     atyp = _socks5_check_connect_reply(await _async_socks5_read_exact(sock, 4, deadline))
     if atyp == 0x01:
         bound_size = 6
@@ -791,9 +788,10 @@ async def _async_create_proxy_connection(
     if socket.has_ipv6 and proxy.host != "localhost":
         family = socket.AF_UNSPEC
     try:
-        remaining = _proxy_remaining(deadline)
-        getaddrinfo = _getaddrinfo(proxy.host, proxy.port, family=family, type=socket.SOCK_STREAM)
-        results = await asyncio.wait_for(getaddrinfo, timeout=remaining)
+        async with asyncio.timeout(_proxy_remaining(deadline)):
+            results = await _getaddrinfo(
+                proxy.host, proxy.port, family=family, type=socket.SOCK_STREAM
+            )
     except (asyncio.TimeoutError, socket.timeout) as exc:
         raise _Socks5Timeout("timed out") from exc
     except OSError as exc:
@@ -813,9 +811,8 @@ async def _async_create_proxy_connection(
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
             sock.setblocking(False)
-            await asyncio.wait_for(
-                loop.sock_connect(sock, sockaddr), timeout=_proxy_remaining(deadline)
-            )
+            async with asyncio.timeout(_proxy_remaining(deadline)):
+                await loop.sock_connect(sock, sockaddr)
             connected = True
             await _async_socks5_handshake(sock, address, proxy, deadline)
             post_timeout = _csot.remaining() if _csot.get_timeout() else options.connect_timeout

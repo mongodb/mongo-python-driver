@@ -222,7 +222,6 @@ class TestSocks5Prose(IntegrationTest):
         tls_options = dict(TLS_OPTIONS) if client_context.tls else {}
         options = dict(tls_options)
         options.update(self.credentials)
-        options.update(proxy_options)
         options["serverSelectionTimeoutMS"] = 2500
         if hosts == "localhost:12345":
             options["directConnection"] = True
@@ -232,22 +231,10 @@ class TestSocks5Prose(IntegrationTest):
             uri_options = "&".join(
                 f"{key}={quote_plus(str(value))}" for key, value in proxy_options.items()
             )
-            uri_options += "&serverSelectionTimeoutMS=2500"
-            if hosts == "localhost:12345":
-                uri_options += "&directConnection=true"
-            if tls_options:
-                uri_options += "&" + "&".join(
-                    f"{key}={quote_plus(str(value))}" for key, value in tls_options.items()
-                )
-            auth = ""
-            if self.credentials:
-                auth = f"{quote_plus(self.credentials['username'])}:{quote_plus(self.credentials['password'])}@"
-            client = MongoClient(
-                f"mongodb://{auth}{hosts}/?{uri_options}",
-                event_listeners=options.get("event_listeners"),
-            )
+            hosts = f"mongodb://{hosts}/?{uri_options}"
         else:
-            client = MongoClient(hosts, **options)
+            options.update(proxy_options)
+        client = MongoClient(hosts, **options)
         try:
             if succeeds:
                 client.admin.command(HelloCompat.CMD)

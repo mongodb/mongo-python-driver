@@ -8,7 +8,9 @@ Changes in Version 4.20.0 (2026/XX/XX)
   Encryption KMS servers through a SOCKS5 proxy via the ``proxyHost``,
   ``proxyPort``, ``proxyUsername``, and ``proxyPassword`` URI and keyword
   options on :class:`~pymongo.synchronous.mongo_client.MongoClient` and
-  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`
+  :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`.
+  Asynchronous proxy connections support cancellation during connection
+  establishment and negotiation
   (`PYTHON-2943`_).
 - The client handshake metadata now reports a detected coding agent in
   ``client.env.agent`` (`PYTHON-5929`_).
