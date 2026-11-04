@@ -23,7 +23,7 @@ from __future__ import annotations
 import re
 import sys
 import warnings
-from collections.abc import Iterable, Mapping, MutableMapping, Sized
+from collections.abc import Collection, Iterable, Mapping, MutableMapping
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -35,6 +35,8 @@ from urllib.parse import unquote_plus
 
 from pymongo.client_options import _parse_ssl_options
 from pymongo.common import (
+    _SOCKS5_MAX_STR_LEN,
+    _URI_OPTS_MUST_RAISE,
     INTERNAL_URI_OPTION_NAME_MAP,
     URI_OPTIONS_DEPRECATION_MAP,
     _CaseInsensitiveDictionary,
@@ -250,7 +252,7 @@ def _parse_options(opts: str, delim: Optional[str]) -> _CaseInsensitiveDictionar
             options.setdefault(key, []).append(value)
         else:
             if key in options:
-                if key.lower() in ("proxyhost", "proxyport", "proxyusername", "proxypassword"):
+                if key.lower() in _URI_OPTS_MUST_RAISE:
                     raise InvalidURI(f"Duplicate URI option '{key}' is not allowed")
                 warnings.warn(f"Duplicate URI option '{key}'.", stacklevel=2)
             if key.lower() == "authmechanismproperties":
@@ -481,14 +483,12 @@ def split_hosts(hosts: str, default_port: Optional[int] = DEFAULT_PORT) -> list[
 # backward-compat we allow "db.collection" in URI.
 _BAD_DB_CHARS = re.compile("[" + re.escape(r'/ "$') + "]")
 
-_SOCKS5_MAX_STR_LEN = 255
-
 _ALLOWED_TXT_OPTS = frozenset(
     ["authsource", "authSource", "replicaset", "replicaSet", "loadbalanced", "loadBalanced"]
 )
 
 
-def _check_proxy_options(nodes: Sized, options: Mapping[str, Any]) -> None:
+def _check_proxy_options(nodes: Iterable[_Address], options: Mapping[str, Any]) -> None:
     proxy_host = options.get("proxyhost")
     proxy_port = options.get("proxyport")
     proxy_username = options.get("proxyusername")
@@ -514,11 +514,13 @@ def _check_proxy_options(nodes: Sized, options: Mapping[str, Any]) -> None:
             raise ConfigurationError(
                 f"{name} must be no more than {_SOCKS5_MAX_STR_LEN} UTF-8 bytes"
             )
-    if any(host.endswith(".sock") for host, _ in cast(Iterable[_Address], nodes)):
+    if any(host.endswith(".sock") for host, _ in nodes):
         raise ConfigurationError("Cannot specify proxyHost with Unix domain sockets")
 
 
-def _check_options(nodes: Sized, options: Mapping[str, Any], validate_proxy: bool = True) -> None:
+def _check_options(
+    nodes: Collection[_Address], options: Mapping[str, Any], validate_proxy: bool = True
+) -> None:
     # Ensure directConnection was not True if there are multiple seeds.
     if len(nodes) > 1 and options.get("directconnection"):
         raise ConfigurationError("Cannot specify multiple hosts with directConnection=true")

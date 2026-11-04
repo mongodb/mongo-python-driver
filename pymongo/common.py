@@ -154,6 +154,7 @@ _MECH_PROP_MUST_RAISE = ["CANONICALIZE_HOST_NAME"]
 # URI options that must raise an error instead of warning if they invalidate,
 # so a malformed proxy option never silently falls back to a direct connection.
 _URI_OPTS_MUST_RAISE = frozenset(["proxyhost", "proxyport", "proxyusername", "proxypassword"])
+_SOCKS5_MAX_STR_LEN = 255
 
 
 def partition_node(node: str) -> tuple[str, int]:

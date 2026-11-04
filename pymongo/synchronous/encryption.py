@@ -122,7 +122,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         key_vault_coll: Collection[_DocumentTypeArg],
         mongocryptd_client: Optional[MongoClient[_DocumentTypeArg]],
         opts: AutoEncryptionOpts,
-        proxy_client: Optional[MongoClient[_DocumentTypeArg]] = None,
+        proxy_client: MongoClient[_DocumentTypeArg],
     ):
         """Internal class to perform I/O on behalf of pymongocrypt."""
         self.client_ref: Any
@@ -140,8 +140,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             ),
         )
         self.mongocryptd_client = mongocryptd_client
-        source_client = proxy_client or client or key_vault_coll.database.client
-        self._proxy_options = source_client.options.pool_options._proxy_options
+        self._proxy_options = proxy_client.options.pool_options._proxy_options
         self.opts = opts
         self._spawned = False
         self._kms_ssl_contexts = opts._kms_ssl_contexts(_IS_SYNC)

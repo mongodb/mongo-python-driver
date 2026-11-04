@@ -43,7 +43,13 @@ from pymongo import _csot
 from pymongo._telemetry import _CmapTelemetry
 from pymongo.asynchronous.helpers import _getaddrinfo
 from pymongo.auth_shared import _AuthContext
-from pymongo.common import MAX_BSON_SIZE, MAX_MESSAGE_SIZE, MAX_WIRE_VERSION, MAX_WRITE_BATCH_SIZE
+from pymongo.common import (
+    _SOCKS5_MAX_STR_LEN,
+    MAX_BSON_SIZE,
+    MAX_MESSAGE_SIZE,
+    MAX_WIRE_VERSION,
+    MAX_WRITE_BATCH_SIZE,
+)
 from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConnectionFailure,
@@ -104,7 +110,6 @@ _SOCKS5_GREETING_REPLY_LEN = 2
 _SOCKS5_AUTH_REPLY_LEN = 2
 _SOCKS5_CONNECT_REPLY_LEN = 4
 _SOCKS5_DOMAIN_LENGTH_LEN = 1
-_SOCKS5_MAX_STR_LEN = 255
 
 # Flags recording the counters a checkout has incremented, so a failed
 # checkout can restore them exactly once (PYTHON-6136).
@@ -659,7 +664,9 @@ def _proxy_deadline(options: PoolOptions) -> Optional[float]:
 
 
 def _new_tcp_socket(af: int, socktype: int, proto: int) -> socket.socket:
-    # SOCK_CLOEXEC is not available on all platforms or kernels.
+    # SOCK_CLOEXEC was added in CPython 3.2 and is not available on all
+    # platforms or kernels. PEP 446 makes descriptors non-inheritable by
+    # default starting in CPython 3.4.
     try:
         sock = socket.socket(af, socktype | getattr(socket, "SOCK_CLOEXEC", 0), proto)
     except OSError:
@@ -677,7 +684,10 @@ def _configure_tcp_socket(sock: socket.socket, *, non_blocking: bool = False) ->
 
 
 def _proxy_socket_timeout(options: PoolOptions) -> Optional[float]:
-    return _csot.remaining() if _csot.get_timeout() else options.connect_timeout
+    timeout = _csot.remaining() if _csot.get_timeout() else options.connect_timeout
+    if timeout is not None and timeout <= 0:
+        raise _Socks5Timeout("timed out")
+    return timeout
 
 
 def _socks5_bound_address_size(atyp: int, domain_length: Optional[int] = None) -> int:
@@ -750,6 +760,8 @@ def _socks5_check_auth_reply(data: bytes) -> None:
 
 def _socks5_request(address: _Address) -> bytes:
     host, port = address
+    if port is None:
+        raise _Socks5Error("SOCKS5 connect failed: destination port is required")
     try:
         ip = ipaddress.ip_address(host.split("%", 1)[0])
     except ValueError:
@@ -764,8 +776,6 @@ def _socks5_request(address: _Address) -> bytes:
         encoded_host = (
             bytes((_SOCKS5_ATYP_IPV4 if ip.version == 4 else _SOCKS5_ATYP_IPV6,)) + ip.packed
         )
-    if port is None:
-        raise _Socks5Error("SOCKS5 connect failed: destination port is required")
     return (
         bytes((_SOCKS5_VERSION, _SOCKS5_CMD_CONNECT, _SOCKS5_RESERVED))
         + encoded_host
@@ -882,7 +892,7 @@ async def _async_create_proxy_connection(
             results = await _getaddrinfo(
                 proxy.host, proxy.port, family=family, type=socket.SOCK_STREAM
             )
-    except (asyncio.TimeoutError, socket.timeout) as exc:
+    except TimeoutError as exc:
         raise _Socks5Timeout("timed out") from exc
     except OSError as exc:
         raise _Socks5Error(f"SOCKS5 proxy connection failed: {exc}") from exc
@@ -900,15 +910,12 @@ async def _async_create_proxy_connection(
             await _async_socks5_handshake(sock, address, proxy, deadline)
             sock.settimeout(_proxy_socket_timeout(options))
             return sock
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             sock.close()
             if connected or (deadline is not None and deadline - time.monotonic() <= 0):
                 raise _Socks5Timeout("timed out") from exc
             err = _Socks5Timeout("timed out")
             err.__cause__ = exc
-        except asyncio.CancelledError:
-            sock.close()
-            raise
         except OSError as exc:
             sock.close()
             if isinstance(exc, _Socks5Error):
@@ -995,7 +1002,6 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
         if not hasattr(socket, "AF_UNIX"):
             raise ConnectionFailure("UNIX-sockets are not supported on this system")
         sock = socket.socket(socket.AF_UNIX)
-        # SOCK_CLOEXEC not supported for Unix sockets.
         _set_non_inheritable_non_atomic(sock.fileno())
         try:
             sock.setblocking(False)
@@ -1015,9 +1021,6 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
     err = None
     for res in await _getaddrinfo(host, port, family=family, type=socket.SOCK_STREAM):
         af, socktype, proto, dummy, sa = res
-        # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
-        # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
-        # all file descriptors are created non-inheritable. See PEP 446.
         sock = _new_tcp_socket(af, socktype, proto)
         try:
             _configure_tcp_socket(sock, non_blocking=True)
@@ -1254,9 +1257,6 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
     err = None
     for res in socket.getaddrinfo(host, port, family=family, type=socket.SOCK_STREAM):  # type: ignore[attr-defined, unused-ignore]
         af, socktype, proto, dummy, sa = res
-        # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
-        # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
-        # all file descriptors are created non-inheritable. See PEP 446.
         sock = _new_tcp_socket(af, socktype, proto)
         try:
             _configure_tcp_socket(sock)
