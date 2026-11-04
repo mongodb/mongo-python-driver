@@ -46,8 +46,6 @@ find /$PYMONGO/test -type f -name 'pre-42-*.json' -delete
 rm $PYMONGO/test/csot/override-collection-timeoutMS.json
 rm $PYMONGO/test/csot/override-database-timeoutMS.json
 
-# PYTHON-2943 - Socks5 Proxy Support
-
 # PYTHON-5517 - Avoid clearing the connection pool when the server connection rate limiter triggers
 rm $PYMONGO/test/discovery_and_monitoring/unified/backpressure-*.json
 

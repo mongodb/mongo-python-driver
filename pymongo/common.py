@@ -151,6 +151,10 @@ ENABLE_OVERLOAD_RETARGETING = False
 # Auth mechanism properties that must raise an error instead of warning if they invalidate.
 _MECH_PROP_MUST_RAISE = ["CANONICALIZE_HOST_NAME"]
 
+# URI options that must raise an error instead of warning if they invalidate,
+# so a malformed proxy option never silently falls back to a direct connection.
+_URI_OPTS_MUST_RAISE = frozenset(["proxyhost", "proxyport", "proxyusername", "proxypassword"])
+
 
 def partition_node(node: str) -> tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""
@@ -230,8 +234,10 @@ def validate_non_negative_integer(option: str, value: Any) -> int:
     return val
 
 
-def validate_proxy_host(option: str, value: Any) -> str:
+def validate_proxy_host(option: str, value: Any) -> Optional[str]:
     """Validate and normalize a SOCKS5 proxy host."""
+    if value is None:
+        return None
     host = validate_string(option, value)
     if not host:
         raise ValueError(f"{option} cannot be an empty string")
@@ -933,7 +939,7 @@ def get_validated_options(
             validator = _get_validator(opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key)
             validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
-            if (
+            if normed_key in _URI_OPTS_MUST_RAISE or (
                 normed_key == "authmechanismproperties"
                 and any(p in str(exc) for p in _MECH_PROP_MUST_RAISE)
                 and "is not a supported auth mechanism property" not in str(exc)

@@ -486,19 +486,7 @@ _ALLOWED_TXT_OPTS = frozenset(
 )
 
 
-def _check_options(nodes: Sized, options: Mapping[str, Any]) -> None:
-    # Ensure directConnection was not True if there are multiple seeds.
-    if len(nodes) > 1 and options.get("directconnection"):
-        raise ConfigurationError("Cannot specify multiple hosts with directConnection=true")
-
-    if options.get("loadbalanced"):
-        if len(nodes) > 1:
-            raise ConfigurationError("Cannot specify multiple hosts with loadBalanced=true")
-        if options.get("directconnection"):
-            raise ConfigurationError("Cannot specify directConnection=true with loadBalanced=true")
-        if options.get("replicaset"):
-            raise ConfigurationError("Cannot specify replicaSet with loadBalanced=true")
-
+def _check_proxy_options(nodes: Sized, options: Mapping[str, Any]) -> None:
     proxy_host = options.get("proxyhost")
     proxy_port = options.get("proxyport")
     proxy_username = options.get("proxyusername")
@@ -524,6 +512,22 @@ def _check_options(nodes: Sized, options: Mapping[str, Any]) -> None:
             raise ConfigurationError(f"{name} must be no more than 255 UTF-8 bytes")
     if any(host.endswith(".sock") for host, _ in cast(Iterable[_Address], nodes)):
         raise ConfigurationError("Cannot specify proxyHost with Unix domain sockets")
+
+
+def _check_options(nodes: Sized, options: Mapping[str, Any]) -> None:
+    # Ensure directConnection was not True if there are multiple seeds.
+    if len(nodes) > 1 and options.get("directconnection"):
+        raise ConfigurationError("Cannot specify multiple hosts with directConnection=true")
+
+    if options.get("loadbalanced"):
+        if len(nodes) > 1:
+            raise ConfigurationError("Cannot specify multiple hosts with loadBalanced=true")
+        if options.get("directconnection"):
+            raise ConfigurationError("Cannot specify directConnection=true with loadBalanced=true")
+        if options.get("replicaset"):
+            raise ConfigurationError("Cannot specify replicaSet with loadBalanced=true")
+
+    _check_proxy_options(nodes, options)
 
 
 def _parse_kms_tls_options(

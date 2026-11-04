@@ -25,8 +25,9 @@ import platform
 import sys
 from collections.abc import MutableMapping
 from contextlib import AbstractContextManager, nullcontext
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, NamedTuple, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import bson
 from pymongo import __version__
@@ -369,13 +370,14 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
 "foo".encode("idna")
 
 
-class _ProxyOptions(NamedTuple):
+@dataclass(frozen=True, slots=True)
+class _ProxyOptions:
     """Immutable SOCKS5 proxy connection settings."""
 
     host: str
     port: int = 1080
     username: Optional[str] = None
-    password: Optional[str] = None
+    password: Optional[str] = field(default=None, repr=False)
 
 
 class PoolOptions:

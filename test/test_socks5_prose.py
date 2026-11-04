@@ -28,8 +28,8 @@ import pytest
 from pymongo import monitoring
 from pymongo.hello import HelloCompat
 from pymongo.synchronous.mongo_client import MongoClient
-from test import IntegrationTest, client_context, unittest
-from test.helpers_shared import TLS_OPTIONS, db_pwd, db_user
+from test import IntegrationTest, client_context
+from test.helpers_shared import TLS_OPTIONS
 
 _IS_SYNC = True
 pytestmark = pytest.mark.default

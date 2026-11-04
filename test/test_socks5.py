@@ -428,3 +428,110 @@ class TestSocks5(PyMongoTestCase):
             self.assertEqual(client.options.pool_options._proxy_options, _ProxyOptions("::1"))
         finally:
             client.close()
+
+    def test_proxy_password_is_redacted_in_repr(self) -> None:
+        from pymongo.synchronous.mongo_client import MongoClient
+
+        client = MongoClient(
+            "mongodb://user:dbsecret@localhost/?proxyHost=127.0.0.1"
+            "&proxyUsername=proxyuser&proxyPassword=hunter2",
+            connect=False,
+        )
+        try:
+            client_repr = repr(client)
+            proxy_repr = repr(client.options.pool_options._proxy_options)
+            self.assertNotIn("hunter2", client_repr)
+            self.assertNotIn("proxyuser", client_repr)
+            self.assertNotIn("dbsecret", client_repr)
+            self.assertNotIn("hunter2", proxy_repr)
+            self.assertIn("127.0.0.1", proxy_repr)
+        finally:
+            client.close()
+
+    def test_malformed_proxy_uri_options_raise_instead_of_warning(self) -> None:
+        from pymongo.synchronous.mongo_client import MongoClient
+
+        for uri in (
+            "mongodb://localhost/?proxyHost=proxy%3A1080",
+            "mongodb://localhost/?proxyHost=local%20host",
+            "mongodb://localhost/?proxyHost=localhost&proxyPort=0",
+            "mongodb://localhost/?proxyHost=localhost&proxyPort=abc",
+        ):
+            with self.subTest(uri=uri), self.assertRaises(ValueError):
+                MongoClient(uri, connect=False)
+
+    def test_socks5_errors_are_not_labeled_system_overloaded(self) -> None:
+        from pymongo.errors import AutoReconnect, NetworkTimeout
+        from pymongo.pool_shared import _raise_connection_failure, _Socks5Timeout
+        from pymongo.synchronous.pool import Pool
+
+        pool = Pool(("localhost", 27017), PoolOptions(connect_timeout=1))
+        for cause in (_Socks5Error("boom"), _Socks5Timeout("timed out")):
+            try:
+                _raise_connection_failure(("localhost", 27017), cause)
+            except (AutoReconnect, NetworkTimeout) as wrapped:
+                pool._handle_connection_error(wrapped)
+                self.assertFalse(wrapped.has_error_label("SystemOverloadedError"))
+                self.assertFalse(wrapped.has_error_label("RetryableError"))
+
+    def test_multi_address_proxy_fallback_on_connect_error(self) -> None:
+        server = _Socks5Server()
+        self.addCleanup(server.close)
+        dead_sock = socket.socket()
+        dead_sock.bind(("127.0.0.1", 0))
+        dead_addr = dead_sock.getsockname()
+        dead_sock.close()
+
+        fake_results = [
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", dead_addr),
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", server.address),
+        ]
+        target = (
+            "pymongo.pool_shared.socket.getaddrinfo"
+            if _IS_SYNC
+            else "pymongo.pool_shared._getaddrinfo"
+        )
+
+        def async_fake_getaddrinfo(*_args: Any, **_kwargs: Any) -> Any:
+            return fake_results
+
+        replacement: Any = (lambda *_a, **_kw: fake_results) if _IS_SYNC else async_fake_getaddrinfo
+        with mock.patch(target, new=replacement):
+            sock = self._connect(server, ("localhost", 27017))
+            sock.close()
+
+    @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
+    def test_kms_proxy_uses_parent_client_even_with_bypass_auto_encryption(self) -> None:
+        from pymongo.synchronous.encryption import _EncryptionIO
+        from pymongo.synchronous.mongo_client import MongoClient
+
+        class FakeOpts:
+            _kms_connect_callback = None
+
+            @staticmethod
+            def _kms_ssl_contexts(_is_sync: bool) -> dict[str, object]:
+                return {"aws": object()}
+
+        parent_client = MongoClient("mongodb://localhost/?proxyHost=10.0.0.1", connect=False)
+        kv_client = MongoClient("mongodb://localhost/?proxyHost=10.0.0.2", connect=False)
+        try:
+            io_bypass = _EncryptionIO(
+                None,
+                kv_client.keyvault.datakeys,
+                None,
+                FakeOpts(),  # type: ignore[arg-type]
+                proxy_client=parent_client,
+            )
+            self.assertEqual(io_bypass._proxy_options, _ProxyOptions("10.0.0.1"))
+
+            io_explicit = _EncryptionIO(
+                None,
+                kv_client.keyvault.datakeys,
+                None,
+                FakeOpts(),  # type: ignore[arg-type]
+                proxy_client=kv_client,
+            )
+            self.assertEqual(io_explicit._proxy_options, _ProxyOptions("10.0.0.2"))
+        finally:
+            parent_client.close()
+            kv_client.close()

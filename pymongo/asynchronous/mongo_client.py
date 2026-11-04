@@ -152,6 +152,8 @@ _ReadCall = Callable[
     Coroutine[Any, Any, T],
 ]
 
+_REDACTED_REPR_OPTS = frozenset(["username", "password", "proxyusername", "proxypassword"])
+
 _IS_SYNC = False
 
 _WriteOp = Union[
@@ -1436,7 +1438,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         options.extend(
             option_repr(key, self._options._options[key])
             for key in self._options._options
-            if key not in set(self._constructor_args) and key != "username" and key != "password"
+            if key not in set(self._constructor_args) and key not in _REDACTED_REPR_OPTS
         )
         return ", ".join(options)
 

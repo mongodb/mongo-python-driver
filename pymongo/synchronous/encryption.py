@@ -122,6 +122,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         key_vault_coll: Collection[_DocumentTypeArg],
         mongocryptd_client: Optional[MongoClient[_DocumentTypeArg]],
         opts: AutoEncryptionOpts,
+        proxy_client: Optional[MongoClient[_DocumentTypeArg]] = None,
     ):
         """Internal class to perform I/O on behalf of pymongocrypt."""
         self.client_ref: Any
@@ -139,8 +140,8 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             ),
         )
         self.mongocryptd_client = mongocryptd_client
-        proxy_client = client if client is not None else key_vault_coll.database.client
-        self._proxy_options = proxy_client.options.pool_options._proxy_options
+        source_client = proxy_client or client or key_vault_coll.database.client
+        self._proxy_options = source_client.options.pool_options._proxy_options
         self.opts = opts
         self._spawned = False
         self._kms_ssl_contexts = opts._kms_ssl_contexts(_IS_SYNC)
@@ -409,6 +410,7 @@ class _Encrypter:
             key_vault_coll,  # type:ignore[arg-type]
             mongocryptd_client,
             opts,
+            proxy_client=client,
         )
         self._auto_encrypter = AutoEncrypter(
             io_callbacks,
@@ -652,7 +654,7 @@ class ClientEncryption(Generic[_DocumentType]):
         )
         self._kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
         self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
-            None, key_vault_coll, None, opts
+            None, key_vault_coll, None, opts, proxy_client=key_vault_client
         )
         self._encryption = ExplicitEncrypter(
             self._io_callbacks,

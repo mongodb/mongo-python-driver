@@ -28,8 +28,8 @@ import pytest
 from pymongo import monitoring
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.hello import HelloCompat
-from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
-from test.helpers_shared import TLS_OPTIONS, db_pwd, db_user
+from test.asynchronous import AsyncIntegrationTest, async_client_context
+from test.helpers_shared import TLS_OPTIONS
 
 _IS_SYNC = False
 pytestmark = pytest.mark.default_async
