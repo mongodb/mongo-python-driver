@@ -115,6 +115,15 @@ buildvariants:
     run_on:
       - rhel8.10-small
 
+  # Bson codec compare tests
+  - name: bson-codec-compare
+    patch_only: true
+    tasks:
+      - name: bson-codec-compare
+    display_name: BSON Codec Compare
+    run_on:
+      - ubuntu2204-small
+
   # Compression tests
   - name: compression-snappy-rhel8
     tasks:

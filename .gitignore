@@ -56,3 +56,14 @@ error_log
 
 # Fuzzing (PYTHON-4232)
 /fuzz-scratch/
+
+# Rust build artifacts
+rust/**/target/
+
+# BSON codec comparison outputs (bson_codec_compare.sh, untracked)
+/results_c*.json
+/results_rust*.json
+/results_profile_*.json
+/bson_comparison.md
+/perf_deepdec_c.txt
+/perf_deepdec_rust.txt
