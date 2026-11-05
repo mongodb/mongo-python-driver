@@ -56,7 +56,6 @@ from typing import (
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
 from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
-from pymongo._telemetry import _generate_op_id_or_none, log_command_retry
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
 from pymongo.asynchronous.client_bulk import _AsyncClientBulk
@@ -88,6 +87,7 @@ from pymongo.message import _CursorAddress, _GetMore, _Query
 from pymongo.mongo_client_shared import (
     _add_retryable_write_error,
     _after_fork_child,
+    _AgnosticClientConnectionRetryableBase,
     _detect_external_db,
 )
 from pymongo.monitoring import ConnectionClosedReason, _EventListeners
@@ -2866,76 +2866,15 @@ class _ClientReadCheckout(_ClientCheckout):
         return conn, read_pref
 
 
-class _ClientConnectionRetryable(Generic[T]):
+class _ClientConnectionRetryable(
+    _AgnosticClientConnectionRetryableBase[T, "Server", _WriteCall[T] | _ReadCall[T]]
+):
     """Responsible for executing retryable connections on read or write operations"""
 
-    __slots__ = (
-        "_address",
-        "_always_retryable",
-        "_attempt_number",
-        "_base_backoff_ms",
-        "_bulk",
-        "_client",
-        "_deprioritized_servers",
-        "_func",
-        "_is_aggregate_write",
-        "_is_read",
-        "_is_run_command",
-        "_last_error",
-        "_max_retries",
-        "_operation",
-        "_operation_id",
-        "_read_pref",
-        "_retry_policy",
-        "_retryable",
-        "_retrying",
-        "_server",
-        "_server_selector",
-        "_session",
-    )
+    __slots__ = ()
 
-    def __init__(
-        self,
-        mongo_client: AsyncMongoClient,  # type: ignore[type-arg]
-        func: _WriteCall[T] | _ReadCall[T],
-        bulk: Optional[Union[_AsyncBulk, _AsyncClientBulk]],
-        operation: str,
-        is_read: bool = False,
-        session: Optional[AsyncClientSession] = None,
-        read_pref: Optional[_ServerMode] = None,
-        address: Optional[_Address] = None,
-        retryable: bool = False,
-        operation_id: Optional[int] = None,
-        is_run_command: bool = False,
-        is_aggregate_write: bool = False,
-    ):
-        self._last_error: Optional[Exception] = None
-        self._retrying = False
-        self._always_retryable = False
-        self._max_retries = float("inf") if _csot.get_timeout() is not None else 1
-        self._client = mongo_client
-        self._retry_policy = mongo_client._retry_policy
-        self._func = func
-        self._bulk = bulk
-        self._session = session
-        self._is_read = is_read
-        self._retryable = retryable
-        self._read_pref = read_pref
-        self._server_selector: Callable[[Selection], Selection] = (
-            read_pref if is_read else writable_server_selector  # type: ignore
-        )
-        self._address = address
-        self._server: Server = None  # type: ignore
-        self._deprioritized_servers: Optional[list[Server]] = None
-        self._operation = operation
-        # Only generate an operation id when APM/logging is enabled.
-        if operation_id is None:
-            operation_id = _generate_op_id_or_none(self._client._event_listeners)
-        self._operation_id = operation_id
-        self._attempt_number = 0
-        self._is_run_command = is_run_command
-        self._is_aggregate_write = is_aggregate_write
-        self._base_backoff_ms: Optional[float] = None
+    _client: AsyncMongoClient[Any]
+    _session: Optional[AsyncClientSession]
 
     async def run(self) -> T:
         """Runs the supplied func() and attempts a retry
@@ -3091,38 +3030,6 @@ class _ClientConnectionRetryable(Generic[T]):
                             raise
                     await asyncio.sleep(delay)
 
-    def _is_not_eligible_for_retry(self) -> bool:
-        """Checks if the exchange is not eligible for retry"""
-        return not self._retryable or (
-            self._is_retrying() and self._attempt_number >= self._max_retries
-        )
-
-    def _is_retrying(self) -> bool:
-        """Checks if the exchange is currently undergoing a retry"""
-        return self._bulk.retrying if self._bulk else self._retrying
-
-    def _is_session_state_retryable(self) -> bool:
-        """Checks if provided session is eligible for retry
-
-        reads: Make sure there is no ongoing transaction (if provided a session)
-        writes: Make sure there is a session without an active transaction
-        """
-        if self._is_read:
-            return not (self._session and self._session.in_transaction)
-        return bool(self._session and not self._session.in_transaction)
-
-    def _check_last_error(self, check_csot: bool = False) -> None:
-        """Checks if the ongoing client exchange experienced a exception previously.
-        If so, raise last error
-
-        :param check_csot: Checks CSOT to ensure we are retrying with time remaining defaults to False
-        """
-        if self._is_retrying():
-            remaining = _csot.remaining()
-            if not check_csot or (remaining is not None and remaining <= 0):
-                assert self._last_error is not None
-                raise self._last_error
-
     async def _get_server(self) -> Server:
         """Retrieves a server object based on provided object context
 
@@ -3135,15 +3042,6 @@ class _ClientConnectionRetryable(Generic[T]):
             address=self._address,
             deprioritized_servers=self._deprioritized_servers,
             operation_id=self._operation_id,
-        )
-
-    def _log_retry(self, is_write: bool) -> None:
-        log_command_retry(
-            self._client._topology_id,
-            self._operation,
-            self._operation_id,
-            self._attempt_number,
-            is_write,
         )
 
     async def _write(self) -> T:
