@@ -3778,6 +3778,36 @@ tasks:
       - pr
       - "9.0"
 
+  # Socks5 tests
+  - name: test-socks5-prose-noauth-nossl
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: socks5
+          VERSION: "9.0"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: nossl
+      - func: run tests
+        vars:
+          TEST_NAME: socks5
+          COVERAGE: "1"
+    tags: [socks5, pr]
+  - name: test-socks5-prose-noauth-ssl
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: socks5
+          VERSION: "9.0"
+          TOPOLOGY: replica_set
+          AUTH: noauth
+          SSL: ssl
+      - func: run tests
+        vars:
+          TEST_NAME: socks5
+          COVERAGE: "1"
+    tags: [socks5, pr]
+
   # Standard tests
   - name: test-standard-v4.4-python3.12-sync-noauth-ssl-replica-set
     commands:

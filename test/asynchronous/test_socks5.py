@@ -37,7 +37,8 @@ from pymongo import monitoring
 from pymongo.encryption_options import _HAVE_PYMONGOCRYPT
 from pymongo.hello import HelloCompat
 from pymongo.pool_options import PoolOptions, _ProxyOptions
-from pymongo.pool_shared import _async_configured_socket, _async_create_connection, _Socks5Error
+from pymongo.pool_shared import _async_configured_socket, _async_create_connection
+from pymongo.socks5_shared import _Socks5Error
 from test.asynchronous import (
     AsyncIntegrationTest,
     AsyncPyMongoTestCase,
@@ -369,7 +370,7 @@ class TestSocks5(AsyncPyMongoTestCase):
         self.assertEqual(sni_names, ["mongodb.example"])
 
     @unittest.skipUnless(_HAVE_PYMONGOCRYPT, "pymongocrypt is not installed")
-    async def test_kms_request_uses_client_proxy_options(self) -> None:
+    async def test_kms_request_uses_proxy_options(self) -> None:
         import pymongo.asynchronous.encryption as encryption_module
         from pymongo.asynchronous.encryption import _EncryptionIO
         from pymongo.asynchronous.mongo_client import AsyncMongoClient
@@ -381,41 +382,42 @@ class TestSocks5(AsyncPyMongoTestCase):
             def _kms_ssl_contexts(_is_sync: bool) -> dict[str, object]:
                 return {"aws": object()}
 
-        client = AsyncMongoClient("mongodb://localhost/?proxyHost=127.0.0.1", connect=False)
-        expected = _ProxyOptions("127.0.0.1")
-        io = _EncryptionIO(
-            client,
-            client.keyvault.datakeys,
-            None,
-            FakeOpts(),  # type: ignore[arg-type]
-            proxy_client=client,
-        )
-        connection = mock.MagicMock()
-
-        async def connect(_address, options, _callback, _timeout):
-            self.assertEqual(options._proxy_options, expected)
-            return connection
-
-        async def sendall(_connection, _message):
-            pass
-
+        client = AsyncMongoClient("mongodb://localhost/", connect=False)
         try:
-            with (
-                mock.patch.object(encryption_module, "_connect_kms", new=connect),
-                mock.patch.object(encryption_module, "async_socket_sendall", new=sendall),
-            ):
-                await io.kms_request(
-                    SimpleNamespace(
-                        endpoint="kms.example:443",
-                        message=b"request",
-                        kms_provider="aws",
-                        usleep=0,
-                        bytes_needed=0,
+            for expected in (None, _ProxyOptions("127.0.0.1")):
+                with self.subTest(proxy_options=expected):
+                    io = _EncryptionIO(
+                        client,
+                        client.keyvault.datakeys,
+                        None,
+                        FakeOpts(),  # type: ignore[arg-type]
+                        proxy_options=expected,
                     )
-                )
+                    connection = mock.MagicMock()
+
+                    async def connect(_address, options, _callback, _timeout):
+                        self.assertIs(options._proxy_options, expected)
+                        return connection
+
+                    async def sendall(_connection, _message):
+                        pass
+
+                    with (
+                        mock.patch.object(encryption_module, "_connect_kms", new=connect),
+                        mock.patch.object(encryption_module, "async_socket_sendall", new=sendall),
+                    ):
+                        await io.kms_request(
+                            SimpleNamespace(
+                                endpoint="kms.example:443",
+                                message=b"request",
+                                kms_provider="aws",
+                                usleep=0,
+                                bytes_needed=0,
+                            )
+                        )
+                    connection.close.assert_called_once_with()
         finally:
             await client.close()
-        connection.close.assert_called_once_with()
 
     async def test_proxy_settings_are_stored_in_pool_options(self) -> None:
         from pymongo.asynchronous.mongo_client import AsyncMongoClient
@@ -498,7 +500,8 @@ class TestSocks5(AsyncPyMongoTestCase):
     async def test_socks5_errors_are_not_labeled_system_overloaded(self) -> None:
         from pymongo.asynchronous.pool import Pool
         from pymongo.errors import AutoReconnect, NetworkTimeout
-        from pymongo.pool_shared import _raise_connection_failure, _Socks5Timeout
+        from pymongo.pool_shared import _raise_connection_failure
+        from pymongo.socks5_shared import _Socks5Timeout
 
         pool = Pool(("localhost", 27017), PoolOptions(connect_timeout=1))
         for cause in (_Socks5Error("boom"), _Socks5Timeout("timed out")):
@@ -518,9 +521,9 @@ class TestSocks5(AsyncPyMongoTestCase):
             (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", server.address),
         ]
         target = (
-            "pymongo.pool_shared.socket.getaddrinfo"
+            "pymongo.socks5_shared.socket.getaddrinfo"
             if _IS_SYNC
-            else "pymongo.pool_shared._getaddrinfo"
+            else "pymongo.socks5_shared._getaddrinfo"
         )
 
         async def async_fake_getaddrinfo(*_args: Any, **_kwargs: Any) -> Any:
@@ -551,7 +554,7 @@ class TestSocks5(AsyncPyMongoTestCase):
                 kv_client.keyvault.datakeys,
                 None,
                 FakeOpts(),  # type: ignore[arg-type]
-                proxy_client=parent_client,
+                proxy_options=parent_client.options.pool_options._proxy_options,
             )
             self.assertEqual(io_bypass._proxy_options, _ProxyOptions("10.0.0.1"))
 
@@ -560,7 +563,7 @@ class TestSocks5(AsyncPyMongoTestCase):
                 kv_client.keyvault.datakeys,
                 None,
                 FakeOpts(),  # type: ignore[arg-type]
-                proxy_client=kv_client,
+                proxy_options=kv_client.options.pool_options._proxy_options,
             )
             self.assertEqual(io_explicit._proxy_options, _ProxyOptions("10.0.0.2"))
         finally:
@@ -585,54 +588,54 @@ class TestSocks5(AsyncPyMongoTestCase):
             validate_proxy_port("proxyPort", True)
 
     async def test_proxy_deadline(self) -> None:
-        from pymongo.pool_shared import _proxy_deadline, _proxy_remaining, _Socks5Timeout
+        from pymongo.socks5_shared import _proxy_deadline, _proxy_remaining, _Socks5Timeout
 
         self.assertIsNone(_proxy_deadline(PoolOptions(connect_timeout=None)))
         self.assertIsNone(_proxy_remaining(None))
         with self.assertRaises(_Socks5Timeout):
             _proxy_remaining(0.0)
         with (
-            mock.patch("pymongo.pool_shared._csot.remaining", return_value=0.0),
+            mock.patch("pymongo.socks5_shared._csot.remaining", return_value=0.0),
             self.assertRaises(_Socks5Timeout),
         ):
             _proxy_deadline(PoolOptions(connect_timeout=1))
 
     async def test_proxy_socket_timeout_rejects_expired_deadline(self) -> None:
-        from pymongo.pool_shared import _proxy_socket_timeout, _Socks5Timeout
+        from pymongo.socks5_shared import _proxy_socket_timeout, _Socks5Timeout
 
         with (
-            mock.patch("pymongo.pool_shared._csot.get_timeout", return_value=True),
-            mock.patch("pymongo.pool_shared._csot.remaining", return_value=-0.1),
+            mock.patch("pymongo.socks5_shared._csot.get_timeout", return_value=True),
+            mock.patch("pymongo.socks5_shared._csot.remaining", return_value=-0.1),
             self.assertRaises(_Socks5Timeout),
         ):
             _proxy_socket_timeout(PoolOptions(connect_timeout=1))
 
     async def test_socks5_request_rejects_long_domain(self) -> None:
-        from pymongo.pool_shared import _socks5_request
+        from pymongo.socks5_shared import _socks5_request
 
         with self.assertRaisesRegex(_Socks5Error, "invalid domain name length"):
             _socks5_request(("a" * 256, 27017))
 
     async def test_socks5_request_rejects_invalid_domain(self) -> None:
-        from pymongo.pool_shared import _socks5_request
+        from pymongo.socks5_shared import _socks5_request
 
         with self.assertRaisesRegex(_Socks5Error, "invalid domain name"):
             _socks5_request((".münich.example", 27017))
 
     async def test_socks5_request_checks_port_before_encoding_domain(self) -> None:
-        from pymongo.pool_shared import _socks5_request
+        from pymongo.socks5_shared import _socks5_request
 
         with self.assertRaisesRegex(_Socks5Error, "destination port is required"):
             _socks5_request(("a" * 256, None))  # type: ignore[arg-type]
 
     async def test_socks5_connect_reply_rejects_invalid_reserved_byte(self) -> None:
-        from pymongo.pool_shared import _socks5_check_connect_reply
+        from pymongo.socks5_shared import _socks5_check_connect_reply
 
         with self.assertRaisesRegex(_Socks5Error, "invalid reserved byte"):
             _socks5_check_connect_reply(b"\x05\x00\x01\x01")
 
     async def test_socks5_connect_reply_rejects_invalid_address_type(self) -> None:
-        from pymongo.pool_shared import _socks5_check_connect_reply
+        from pymongo.socks5_shared import _socks5_check_connect_reply
 
         with self.assertRaisesRegex(_Socks5Error, "invalid address type"):
             _socks5_check_connect_reply(b"\x05\x00\x00\x09")
@@ -642,9 +645,9 @@ class TestSocks5(AsyncPyMongoTestCase):
             connect_timeout=1, proxy_options=_ProxyOptions("proxy.invalid", 1080)
         )
         target = (
-            "pymongo.pool_shared.socket.getaddrinfo"
+            "pymongo.socks5_shared.socket.getaddrinfo"
             if _IS_SYNC
-            else "pymongo.pool_shared._getaddrinfo"
+            else "pymongo.socks5_shared._getaddrinfo"
         )
 
         def raise_gai(*_a: Any, **_kw: Any) -> Any:

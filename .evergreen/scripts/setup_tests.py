@@ -4,8 +4,11 @@ import base64
 import os
 import platform
 import shutil
+import socket
 import stat
+import subprocess
 import sys
+import time
 import zipfile
 from pathlib import Path
 from urllib import request
@@ -177,6 +180,71 @@ def get_secrets(name: str) -> dict[str, str]:
     return load_config_from_file(secrets_dir / "secrets-export.sh")
 
 
+def setup_socks5() -> None:
+    """Start and verify the authenticated and unauthenticated test proxies.
+
+    :raises ValueError: If ``MONGODB_URI`` is unset.
+    :raises OSError: If a proxy port is already in use.
+    :raises RuntimeError: If the tools checkout is missing or a proxy fails to start.
+    """
+    check_drivers_tools()
+    if not os.environ.get("MONGODB_URI"):
+        raise ValueError("MONGODB_URI must point to the replica set for SOCKS5 tests")
+
+    ports = (1080, 1081)
+    for port in ports:
+        with socket.socket() as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind(("127.0.0.1", port))
+
+    env = os.environ.copy()
+    env["DRIVERS_TOOLS"] = DRIVERS_TOOLS
+    processes: list[subprocess.Popen[bytes]] = []
+    started = False
+    try:
+        for port in ports:
+            args = [sys.executable, str(HERE / "run_socks5_proxy.py"), "--port", str(port)]
+            if port == 1080:
+                args.extend(("--auth", "username:p4ssw0rd"))
+            log_path = HERE / f"socks5-proxy-{port}.log"
+            LOGGER.info("Starting SOCKS5 proxy on port %s; log: %s", port, log_path)
+            with log_path.open("wb") as log:
+                process = subprocess.Popen(  # noqa: S603
+                    args,
+                    env=env,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                )
+            processes.append(process)
+            deadline = time.monotonic() + 10
+            while True:
+                if process.poll() is not None:
+                    raise RuntimeError(f"SOCKS5 proxy on port {port} exited; see {log_path}")
+                try:
+                    with socket.create_connection(("127.0.0.1", port), timeout=0.1):
+                        break
+                except OSError as exc:
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError(
+                            f"SOCKS5 proxy on port {port} did not start; see {log_path}"
+                        ) from exc
+                    time.sleep(0.1)
+        write_env("SOCKS5_PROXY_PIDS", " ".join(str(process.pid) for process in processes))
+        write_env("SOCKS5_PROXIES_STARTED")
+        started = True
+    finally:
+        if not started:
+            for process in processes:
+                if process.poll() is None:
+                    process.terminate()
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+
+
 def handle_test_env() -> None:
     opts, _ = get_test_options("Set up the test environment and services.")
     test_name = opts.test_name
@@ -334,6 +402,9 @@ def handle_test_env() -> None:
         check_drivers_tools()
         cmd = f'bash "{DRIVERS_TOOLS}/.evergreen/run-load-balancer.sh" start'
         run_command(cmd)
+
+    if test_name == "socks5":
+        setup_socks5()
 
     if test_name == "ocsp":
         if sub_test_name:

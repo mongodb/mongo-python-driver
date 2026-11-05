@@ -36,6 +36,11 @@ elif TEST_NAME == "auth_oidc":
 elif TEST_NAME == "ocsp":
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/ocsp/teardown.sh")
 
+elif TEST_NAME == "socks5":
+    from run_socks5_proxy import stop_socks5_proxies
+
+    stop_socks5_proxies([int(pid) for pid in os.environ.get("SOCKS5_PROXY_PIDS", "").split()])
+
 # Tear down atlas cluster if applicable.
 if TEST_NAME in ["aws_lambda", "search_index"]:
     run_command(f"bash {DRIVERS_TOOLS}/.evergreen/atlas/teardown-atlas-cluster.sh")

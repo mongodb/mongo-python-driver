@@ -102,6 +102,8 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
+    from pymongo.pool_options import _ProxyOptions
+
 
 _IS_SYNC = False
 
@@ -123,7 +125,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         key_vault_coll: AsyncCollection[_DocumentTypeArg],
         mongocryptd_client: Optional[AsyncMongoClient[_DocumentTypeArg]],
         opts: AutoEncryptionOpts,
-        proxy_client: AsyncMongoClient[_DocumentTypeArg],
+        proxy_options: Optional[_ProxyOptions],
     ):
         """Internal class to perform I/O on behalf of pymongocrypt."""
         self.client_ref: Any
@@ -141,7 +143,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             ),
         )
         self.mongocryptd_client = mongocryptd_client
-        self._proxy_options = proxy_client.options.pool_options._proxy_options
+        self._proxy_options = proxy_options
         self.opts = opts
         self._spawned = False
         self._kms_ssl_contexts = opts._kms_ssl_contexts(_IS_SYNC)
@@ -412,7 +414,7 @@ class _Encrypter:
             key_vault_coll,  # type:ignore[arg-type]
             mongocryptd_client,
             opts,
-            proxy_client=client,
+            proxy_options=client.options.pool_options._proxy_options,
         )
         self._auto_encrypter = AsyncAutoEncrypter(
             io_callbacks,
@@ -660,7 +662,11 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         )
         self._kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
         self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
-            None, key_vault_coll, None, opts, proxy_client=key_vault_client
+            None,
+            key_vault_coll,
+            None,
+            opts,
+            proxy_options=key_vault_client.options.pool_options._proxy_options,
         )
         self._encryption = AsyncExplicitEncrypter(
             self._io_callbacks,

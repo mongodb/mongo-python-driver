@@ -558,6 +558,19 @@ def create_coverage_report_variants():
     return [create_variant(["coverage-report"], "Coverage Report", host=DEFAULT_HOST)]
 
 
+def create_socks5_variants():
+    variant = create_variant(
+        [".socks5"],
+        "SOCKS5 Prose Tests",
+        host=DEFAULT_HOST,
+        tags=["pr"],
+        expansions=dict(UV_PYTHON=MIN_PYTHON),
+        patchable=True,
+    )
+    variant.name = "socks5-prose"
+    return [variant]
+
+
 def create_kms_variants():
     tasks = []
     tasks.append(EvgTaskRef(name="test-gcpkms", batchtime=BATCHTIME_DAY))
@@ -969,6 +982,28 @@ def create_fuzz_tasks():
     test_vars = dict(TEST_NAME="fuzz", SUB_TEST_NAME="fuzz", UV_PYTHON="3.13")
     test_func = FunctionCall(func="run tests", vars=test_vars)
     tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func]))
+    return tasks
+
+
+def create_socks5_tasks():
+    tasks = []
+    for ssl in ["nossl", "ssl"]:
+        server_vars = dict(
+            TEST_NAME="socks5",
+            VERSION=MAX_VERSION,
+            TOPOLOGY="replica_set",
+            AUTH="noauth",
+            SSL=ssl,
+        )
+        commands = [
+            FunctionCall(func="run server", vars=server_vars),
+            FunctionCall(func="run tests", vars=dict(TEST_NAME="socks5", COVERAGE="1")),
+        ]
+        tasks.append(
+            EvgTask(
+                name=f"test-socks5-prose-noauth-{ssl}", tags=["socks5", "pr"], commands=commands
+            )
+        )
     return tasks
 
 
