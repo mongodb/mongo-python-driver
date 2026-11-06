@@ -4,6 +4,7 @@ import argparse
 import dataclasses
 import logging
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -44,7 +45,8 @@ TEST_SUITE_MAP = {
     "enterprise_auth": "auth",
     "search_index": "search_index",
     "kms": "kms",
-    "load_balancer": "load_balancer",
+    # No marker: the load balancer tasks run the full default suite, LB tests included.
+    "load_balancer": "",
     "mockupdb": "mockupdb",
     "ocsp": "ocsp",
     "perf": "perf",
@@ -225,6 +227,14 @@ def get_test_options(
         other_group.add_argument(
             "--disable-test-commands", action="store_true", help="Disable test commands."
         )
+        other_group.add_argument(
+            "--sync",
+            choices=["sync", "async"],
+            help=(
+                "Run only the sync or async half of a directory-split suite "
+                "(the tests live in test/ and test/asynchronous/ and share one marker)."
+            ),
+        )
 
     # Get the options.
     if not allow_extra_opts:
@@ -286,16 +296,33 @@ def read_env(path: Path | str) -> dict[str, str]:
                 continue
             name, _, value = line.strip().partition("=")
             if value.startswith(('"', "'")):
-                value = value[1:-1]
+                quote, value = value[0], value[1:-1]
+                if quote == '"':
+                    # In double quotes bash drops the backslash from these
+                    # escapes; yield the value sourcing would produce.
+                    value = re.sub(r'\\([$`"\\])', r"\1", value)
             name = name.replace("export ", "")
             config[name] = value
     return config
 
 
-def write_env(name: str, value: Any = "1") -> None:
+def shell_escape(value: str) -> str:
+    """Escape a value for a double-quoted shell context.
+
+    Backslashes are escaped first or a backslash-prefixed substitution
+    re-arms when the file is sourced (PYTHON-6167)."""
+    return value.replace("\\", "\\\\").replace("$", "\\$").replace("`", "\\`")
+
+
+def write_env(name: str, value: Any = "1", escape: bool = True) -> None:
+    """Append an export line for the value to the test environment file.
+
+    The value persists literally; pass escape=False to keep live expansions,
+    like a trailing `$PATH` (PYTHON-6167)."""
     with ENV_FILE.open("a", newline="\n") as fid:
-        # Remove any existing quote chars.
         value = str(value).replace('"', "")
+        if escape:
+            value = shell_escape(value)
         fid.write(f'export {name}="{value}"\n')
 
 

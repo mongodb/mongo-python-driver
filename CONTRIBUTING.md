@@ -474,7 +474,9 @@ wheels (CPython 3.12-3.14).
 - The bulk of the logic will typically be in `.evergreen/scripts/setup_tests.py`.  This is where you should fetch secrets and make them available using `write_env`, start services, and write other env vars needed using `write_env`.
 - If there are any special test considerations, including not running `pytest` at all, handle it in `.evergreen/scripts/run_tests.py`.
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
-- Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
+- Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`;
+  the per-suite task families live in `.evergreen/scripts/task_suite_families.py` (re-exported by
+  `generate_config.py`).
 - There are some considerations about the Python version used in the test:
     - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10` or `UV_PYTHON=3.14t`).
 Tasks are host-agnostic, so the interpreter lookup happens on the host: for a plain
