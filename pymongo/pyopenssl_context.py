@@ -24,9 +24,10 @@ import socket as _socket
 import ssl as _stdlibssl
 import sys as _sys
 import time as _time
+from collections.abc import Callable
 from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
-from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union
 
 import cryptography.x509 as x509
 import service_identity

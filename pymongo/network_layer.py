@@ -24,10 +24,10 @@ import struct
 import sys
 import time
 from asyncio import AbstractEventLoop, BaseTransport, BufferedProtocol, Future, Transport
+from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Optional,
     Union,
 )

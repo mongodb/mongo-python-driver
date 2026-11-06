@@ -20,9 +20,9 @@ import asyncio
 import builtins
 import functools
 import socket
+from collections.abc import Callable
 from typing import (
     Any,
-    Callable,
     TypeVar,
     cast,
 )
