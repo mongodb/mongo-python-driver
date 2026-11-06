@@ -62,7 +62,7 @@ from pymongo.monitoring import (
     ServerHeartbeatStartedEvent,
 )
 from pymongo.server_description import SERVER_TYPE, ServerDescription
-from pymongo.topology_description import TOPOLOGY_TYPE
+from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 from pymongo.topology_shared import _ErrorContext
 from test.asynchronous import (
     AsyncIntegrationTest,
@@ -769,6 +769,51 @@ class TestMonitorRecoversAfterSelfRemoval(AsyncUnitTest):
             for server in servers:
                 server.close()
             await asyncio.gather(*[server.wait_closed() for server in servers])
+
+
+class TestServerRemovalHardening(AsyncUnitTest):
+    async def test_removal_bookkeeping_survives_close_cancellation(self):
+        # Extra hardening for PYTHON-6226: _update_servers() must record the
+        # monitor and pop the server before awaiting server.close(), so a
+        # cancellation raised during close() cannot strand a stale server in
+        # _servers.
+        if _IS_SYNC:
+            self.skipTest("PYTHON-6226: task cancellation is async-only")
+
+        topology = await create_mock_topology("mongodb://a:27017,b:27017")
+        address_b = ("b", 27017)
+        victim = topology._servers[address_b]
+
+        async def cancelling_close():
+            # Simulate an executor cancelling the task that is closing it,
+            # as AsyncPeriodicExecutor.close() did before PYTHON-6226.
+            asyncio.current_task().cancel()
+            await asyncio.sleep(0)
+
+        # A description that no longer contains the victim.
+        descriptions = topology._description.server_descriptions()
+        topology._description = TopologyDescription(
+            TOPOLOGY_TYPE.Unknown,
+            {addr: sd for addr, sd in descriptions.items() if addr != address_b},
+            None,
+            None,
+            None,
+            topology._settings,
+        )
+
+        async def remove_victim():
+            async with topology._lock:
+                with patch.object(victim, "close", cancelling_close):
+                    await topology._update_servers()
+
+        task = asyncio.create_task(remove_victim())
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+
+        # The stale server must be gone despite the cancellation, and its
+        # monitor must be queued for cleanup.
+        self.assertNotIn(address_b, topology._servers)
+        self.assertIn(victim._monitor, topology._monitor_tasks)
 
 
 # Generate unified tests.
