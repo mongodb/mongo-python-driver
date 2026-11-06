@@ -17,7 +17,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any, Optional
 
 from pymongo.asynchronous.srv_resolver import _SrvResolver
 from pymongo.common import SRV_SERVICE_NAME, _CaseInsensitiveDictionary

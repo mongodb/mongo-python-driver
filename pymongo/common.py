@@ -20,13 +20,12 @@ from __future__ import annotations
 import datetime
 import warnings
 from collections import OrderedDict, abc
-from collections.abc import Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from difflib import get_close_matches
 from importlib.metadata import requires, version
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     NoReturn,
     Optional,
     Union,

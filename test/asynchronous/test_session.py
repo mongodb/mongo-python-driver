@@ -19,9 +19,10 @@ from __future__ import annotations
 import copy
 import sys
 import time
+from collections.abc import Callable
 from inspect import iscoroutinefunction
 from io import BytesIO
-from typing import Any, Callable
+from typing import Any
 
 from test.asynchronous.helpers import ExceptionCatchingTask
 

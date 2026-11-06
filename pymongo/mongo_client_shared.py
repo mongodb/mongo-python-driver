@@ -16,8 +16,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, TypeVar, Union, cast
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
 from pymongo import _csot
 from pymongo._telemetry import _generate_op_id_or_none, log_command_retry
