@@ -21,7 +21,7 @@ import threading
 import time
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 import bson
 from pymongo._csot import remaining
@@ -54,7 +54,7 @@ class _OIDCAuthenticator(_OIDCAuthenticatorBase):
     else:
         lock: threading.Lock = field(default_factory=_create_lock)  # type: ignore[assignment, no-redef]
 
-    def reauthenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
+    def reauthenticate(self, conn: Connection) -> Mapping[str, Any] | None:
         """Handle a reauthenticate from the server."""
         # Invalidate the token for the connection.
         self._invalidate(conn.oidc_token_gen_id)
@@ -63,7 +63,7 @@ class _OIDCAuthenticator(_OIDCAuthenticatorBase):
             return self._authenticate_machine(conn)
         return self._authenticate_human(conn)
 
-    def authenticate(self, conn: Connection) -> Optional[Mapping[str, Any]]:
+    def authenticate(self, conn: Connection) -> Mapping[str, Any] | None:
         """Handle an initial authenticate request."""
         # First handle speculative auth.
         # If it succeeded, we are done.
@@ -95,7 +95,7 @@ class _OIDCAuthenticator(_OIDCAuthenticatorBase):
                 raise
         return self._sasl_start_jwt(conn)
 
-    def _authenticate_human(self, conn: Connection) -> Optional[Mapping[str, Any]]:
+    def _authenticate_human(self, conn: Connection) -> Mapping[str, Any] | None:
         # If we have a cached access token, try a JwtStepRequest.
         # authentication fails with error code 18, invalidate the access token,
         # and try to authenticate again.  If authentication fails for any other
@@ -128,9 +128,9 @@ class _OIDCAuthenticator(_OIDCAuthenticatorBase):
         # Attempt to authenticate with a JwtStepRequest.
         return self._sasl_continue_jwt(conn, start_resp)
 
-    def _get_access_token(self) -> Optional[str]:
+    def _get_access_token(self) -> str | None:
         properties = self.properties
-        cb: Union[None, OIDCCallback]
+        cb: None | OIDCCallback
         resp: OIDCCallbackResult
 
         is_human = properties.human_callback is not None
@@ -219,7 +219,7 @@ class _OIDCAuthenticator(_OIDCAuthenticatorBase):
 
 def _authenticate_oidc(
     credentials: MongoCredential, conn: Connection, reauthenticate: bool
-) -> Optional[Mapping[str, Any]]:
+) -> Mapping[str, Any] | None:
     """Authenticate using MONGODB-OIDC."""
     authenticator = _get_authenticator(credentials, conn.address, _OIDCAuthenticator)
     if reauthenticate:

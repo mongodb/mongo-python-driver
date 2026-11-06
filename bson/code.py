@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from collections.abc import Mapping as _Mapping
-from typing import Any, Optional, Union
+from typing import Any
 
 
 class Code(str):
@@ -49,12 +49,12 @@ class Code(str):
     """
 
     _type_marker = 13
-    __scope: Union[Mapping[str, Any], None]
+    __scope: Mapping[str, Any] | None
 
     def __new__(
         cls: type[Code],
-        code: Union[str, Code],
-        scope: Optional[Mapping[str, Any]] = None,
+        code: str | Code,
+        scope: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> Code:
         if not isinstance(code, str):
@@ -84,7 +84,7 @@ class Code(str):
         return self
 
     @property
-    def scope(self) -> Optional[Mapping[str, Any]]:
+    def scope(self) -> Mapping[str, Any] | None:
         """Scope dictionary for this instance or ``None``."""
         return self.__scope
 

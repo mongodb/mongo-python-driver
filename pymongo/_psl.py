@@ -17,9 +17,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
-_PUBLIC_SUFFIXES: Optional[tuple[set[str], set[str], set[str]]] = None
+_PUBLIC_SUFFIXES: tuple[set[str], set[str], set[str]] | None = None
 
 # Single labels that srvAllowedHostsSuffix may be set to. See the
 # srvAllowedHostsSuffix section of the Initial DNS Seedlist Discovery spec.

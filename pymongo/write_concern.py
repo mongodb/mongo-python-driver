@@ -19,7 +19,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import Any
 
 from pymongo.errors import ConfigurationError
 
@@ -65,10 +65,10 @@ class WriteConcern:
 
     def __init__(
         self,
-        w: Optional[Union[int, str]] = None,
-        wtimeout: Optional[int] = None,
-        j: Optional[bool] = None,
-        fsync: Optional[bool] = None,
+        w: int | str | None = None,
+        wtimeout: int | None = None,
+        j: bool | None = None,
+        fsync: bool | None = None,
     ) -> None:
         self.__document: dict[str, Any] = {}
         self.__acknowledged = True

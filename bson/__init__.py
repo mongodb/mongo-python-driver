@@ -90,9 +90,7 @@ from typing import (
     BinaryIO,
     Callable,
     NoReturn,
-    Optional,
     TypeVar,
-    Union,
     cast,
     overload,
 )
@@ -248,7 +246,7 @@ def get_data_and_view(data: Any) -> tuple[Any, memoryview]:
     return data, memoryview(data)
 
 
-def _raw_as_bytes(raw: Union[bytes, bytearray, memoryview]) -> bytes:
+def _raw_as_bytes(raw: bytes | bytearray | memoryview) -> bytes:
     """Convert a raw BSON buffer (bytes, bytearray, or memoryview) to bytes."""
     return raw if isinstance(raw, bytes) else bytes(raw)
 
@@ -391,7 +389,7 @@ def _get_array(
 
 def _get_binary(
     data: Any, _view: Any, position: int, obj_end: int, opts: CodecOptions[Any], dummy1: Any
-) -> tuple[Union[Binary, uuid.UUID], int]:
+) -> tuple[Binary | uuid.UUID, int]:
     """Decode a BSON binary to bson.binary.Binary or python UUID."""
     length, subtype = _UNPACK_LENGTH_SUBTYPE_FROM(data, position)
     position += 5
@@ -449,7 +447,7 @@ def _get_boolean(
 
 def _get_date(
     data: Any, _view: Any, position: int, dummy0: int, opts: CodecOptions[Any], dummy1: Any
-) -> tuple[Union[datetime.datetime, DatetimeMS], int]:
+) -> tuple[datetime.datetime | DatetimeMS, int]:
     """Decode a BSON datetime to python datetime.datetime."""
     return _millis_to_datetime(_UNPACK_LONG_FROM(data, position)[0], opts), position + 8
 
@@ -691,7 +689,7 @@ def gen_list_name() -> Generator[bytes, None, None]:
         yield (str(next(counter)) + "\x00").encode("utf8")
 
 
-def _make_c_string_check(string: Union[str, bytes]) -> bytes:
+def _make_c_string_check(string: str | bytes) -> bytes:
     """Make a 'C' string, checking for embedded NUL characters."""
     if isinstance(string, bytes):
         if b"\x00" in string:
@@ -709,7 +707,7 @@ def _make_c_string_check(string: Union[str, bytes]) -> bytes:
         return _utf_8_encode(string)[0] + b"\x00"
 
 
-def _make_c_string(string: Union[str, bytes]) -> bytes:
+def _make_c_string(string: str | bytes) -> bytes:
     """Make a 'C' string."""
     if isinstance(string, bytes):
         try:
@@ -1094,8 +1092,8 @@ def decode(data: _ReadableBuffer, codec_options: CodecOptions[_DocumentType]) ->
 
 
 def decode(
-    data: _ReadableBuffer, codec_options: Optional[CodecOptions[_DocumentType]] = None
-) -> Union[dict[str, Any], _DocumentType]:
+    data: _ReadableBuffer, codec_options: CodecOptions[_DocumentType] | None = None
+) -> dict[str, Any] | _DocumentType:
     """Decode BSON to a document.
 
     By default, returns a BSON document represented as a Python
@@ -1124,7 +1122,7 @@ def decode(
     if not isinstance(opts, CodecOptions):
         raise _CODEC_OPTIONS_TYPE_ERROR
 
-    return cast("Union[dict[str, Any], _DocumentType]", _bson_to_dict(data, opts))
+    return cast("dict[str, Any] | _DocumentType", _bson_to_dict(data, opts))
 
 
 def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> list[_DocumentType]:
@@ -1177,8 +1175,8 @@ def decode_all(
 
 
 def decode_all(
-    data: _ReadableBuffer, codec_options: Optional[CodecOptions[_DocumentType]] = None
-) -> Union[list[dict[str, Any]], list[_DocumentType]]:
+    data: _ReadableBuffer, codec_options: CodecOptions[_DocumentType] | None = None
+) -> list[dict[str, Any]] | list[_DocumentType]:
     """Decode BSON data to multiple documents.
 
     `data` must be a bytes-like object implementing the buffer protocol that
@@ -1232,7 +1230,7 @@ def _decode_selective(
     return doc
 
 
-def _array_of_documents_to_buffer(data: Union[memoryview, bytes]) -> bytes:
+def _array_of_documents_to_buffer(data: memoryview | bytes) -> bytes:
     # Extract the raw bytes of each document.
     position = 0
     view = memoryview(data)
@@ -1329,8 +1327,8 @@ def decode_iter(
 
 
 def decode_iter(
-    data: bytes, codec_options: Optional[CodecOptions[_DocumentType]] = None
-) -> Union[Iterator[dict[str, Any]], Iterator[_DocumentType]]:
+    data: bytes, codec_options: CodecOptions[_DocumentType] | None = None
+) -> Iterator[dict[str, Any]] | Iterator[_DocumentType]:
     """Decode BSON data to multiple documents as a generator.
 
     Works similarly to the decode_all function, but yields one document at a
@@ -1365,20 +1363,20 @@ def decode_iter(
 
 @overload
 def decode_file_iter(
-    file_obj: Union[BinaryIO, IO[bytes]], codec_options: None = None
+    file_obj: BinaryIO | IO[bytes], codec_options: None = None
 ) -> Iterator[dict[str, Any]]: ...
 
 
 @overload
 def decode_file_iter(
-    file_obj: Union[BinaryIO, IO[bytes]], codec_options: CodecOptions[_DocumentType]
+    file_obj: BinaryIO | IO[bytes], codec_options: CodecOptions[_DocumentType]
 ) -> Iterator[_DocumentType]: ...
 
 
 def decode_file_iter(
-    file_obj: Union[BinaryIO, IO[bytes]],
-    codec_options: Optional[CodecOptions[_DocumentType]] = None,
-) -> Union[Iterator[dict[str, Any]], Iterator[_DocumentType]]:
+    file_obj: BinaryIO | IO[bytes],
+    codec_options: CodecOptions[_DocumentType] | None = None,
+) -> Iterator[dict[str, Any]] | Iterator[_DocumentType]:
     """Decode bson data from a file to multiple documents as a generator.
 
     Works similarly to the decode_all function, but reads from the file object

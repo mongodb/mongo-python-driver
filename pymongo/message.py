@@ -31,8 +31,6 @@ from typing import (
     Any,
     Callable,
     NoReturn,
-    Optional,
-    Union,
 )
 
 import bson
@@ -171,15 +169,15 @@ _MODIFIERS = {
 def _gen_find_command(
     coll: str,
     spec: Mapping[str, Any],
-    projection: Optional[Union[Mapping[str, Any], Iterable[str]]],
+    projection: Mapping[str, Any] | Iterable[str] | None,
     skip: int,
     limit: int,
-    batch_size: Optional[int],
-    options: Optional[int],
+    batch_size: int | None,
+    options: int | None,
     read_concern: ReadConcern,
-    collation: Optional[Mapping[str, Any]] = None,
-    session: Optional[_AgnosticClientSession] = None,
-    allow_disk_use: Optional[bool] = None,
+    collation: Mapping[str, Any] | None = None,
+    session: _AgnosticClientSession | None = None,
+    allow_disk_use: bool | None = None,
 ) -> dict[str, Any]:
     """Generate a find command document."""
     cmd: dict[str, Any] = {"find": coll}
@@ -224,11 +222,11 @@ def _gen_find_command(
 
 
 def _gen_get_more_command(
-    cursor_id: Optional[int],
+    cursor_id: int | None,
     coll: str,
-    batch_size: Optional[int],
-    max_await_time_ms: Optional[int],
-    comment: Optional[Any],
+    batch_size: int | None,
+    max_await_time_ms: int | None,
+    comment: Any | None,
 ) -> dict[str, Any]:
     """Generate a getMore command document."""
     cmd: dict[str, Any] = {"getMore": cursor_id, "collection": coll}
@@ -246,7 +244,7 @@ _COMPRESSION_HEADER_SIZE = 25
 
 
 def _compress(
-    operation: int, data: bytes, ctx: Union[SnappyContext, ZlibContext, ZstdContext]
+    operation: int, data: bytes, ctx: SnappyContext | ZlibContext | ZstdContext
 ) -> tuple[int, bytes]:
     """Takes message data, compresses it, and adds an OP_COMPRESSED header."""
     compressed = ctx.compress(data)
@@ -286,7 +284,7 @@ def _op_msg_no_header(
     flags: int,
     command: Mapping[str, Any],
     identifier: str,
-    docs: Optional[list[Mapping[str, Any]]],
+    docs: list[Mapping[str, Any]] | None,
     opts: CodecOptions[Any],
 ) -> tuple[bytes, int, int]:
     """Get a OP_MSG message.
@@ -318,9 +316,9 @@ def _op_msg_compressed(
     flags: int,
     command: Mapping[str, Any],
     identifier: str,
-    docs: Optional[list[Mapping[str, Any]]],
+    docs: list[Mapping[str, Any]] | None,
     opts: CodecOptions[Any],
-    ctx: Union[SnappyContext, ZlibContext, ZstdContext],
+    ctx: SnappyContext | ZlibContext | ZstdContext,
 ) -> tuple[int, bytes, int, int]:
     """Internal OP_MSG message helper."""
     msg, total_size, max_bson_size = _op_msg_no_header(flags, command, identifier, docs, opts)
@@ -332,7 +330,7 @@ def _op_msg_uncompressed(
     flags: int,
     command: Mapping[str, Any],
     identifier: str,
-    docs: Optional[list[Mapping[str, Any]]],
+    docs: list[Mapping[str, Any]] | None,
     opts: CodecOptions[Any],
 ) -> tuple[int, bytes, int, int]:
     """Internal compressed OP_MSG message helper."""
@@ -349,9 +347,9 @@ def _op_msg(
     flags: int,
     command: MutableMapping[str, Any],
     dbname: str,
-    read_preference: Optional[_ServerMode],
+    read_preference: _ServerMode | None,
     opts: CodecOptions[Any],
-    ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
+    ctx: SnappyContext | ZlibContext | ZstdContext | None = None,
 ) -> tuple[int, bytes, int, int]:
     """Get a OP_MSG message."""
     command["$db"] = dbname
@@ -408,9 +406,9 @@ class _BulkWriteContextBase:
         database_name: str,
         cmd_name: str,
         conn: _AgnosticConnection,
-        operation_id: Optional[int],
+        operation_id: int | None,
         listeners: _EventListeners,
-        session: Optional[_AgnosticClientSession],
+        session: _AgnosticClientSession | None,
         op_type: int,
         codec: CodecOptions[Any],
     ):
@@ -459,9 +457,9 @@ class _BulkWriteContext(_BulkWriteContextBase):
         database_name: str,
         cmd_name: str,
         conn: _AgnosticConnection,
-        operation_id: Optional[int],
+        operation_id: int | None,
         listeners: _EventListeners,
-        session: Optional[_AgnosticClientSession],
+        session: _AgnosticClientSession | None,
         op_type: int,
         codec: CodecOptions[Any],
     ):
@@ -478,7 +476,7 @@ class _BulkWriteContext(_BulkWriteContextBase):
 
     def batch_command(
         self, cmd: MutableMapping[str, Any], docs: list[Mapping[str, Any]]
-    ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]]]:
+    ) -> tuple[int, bytes | dict[str, Any], list[Mapping[str, Any]]]:
         namespace = self.db_name + ".$cmd"
         request_id, msg, to_send = _do_batched_op_msg(
             namespace, self.op_type, cmd, docs, self.codec, self
@@ -702,9 +700,9 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
         database_name: str,
         cmd_name: str,
         conn: _AgnosticConnection,
-        operation_id: Optional[int],
+        operation_id: int | None,
         listeners: _EventListeners,
-        session: Optional[_AgnosticClientSession],
+        session: _AgnosticClientSession | None,
         codec: CodecOptions[Any],
     ):
         super().__init__(
@@ -723,7 +721,7 @@ class _ClientBulkWriteContext(_BulkWriteContextBase):
         cmd: MutableMapping[str, Any],
         operations: list[tuple[str, Mapping[str, Any]]],
         namespaces: list[str],
-    ) -> tuple[int, Union[bytes, dict[str, Any]], list[Mapping[str, Any]], list[Mapping[str, Any]]]:
+    ) -> tuple[int, bytes | dict[str, Any], list[Mapping[str, Any]], list[Mapping[str, Any]]]:
         request_id, msg, to_send_ops, to_send_ns = _client_do_batched_op_msg(
             cmd, operations, namespaces, self.codec, self
         )
@@ -1101,8 +1099,8 @@ class _OpMsg:
 
     def raw_response(
         self,
-        cursor_id: Optional[int] = None,
-        user_fields: Optional[Mapping[str, Any]] = {},
+        cursor_id: int | None = None,
+        user_fields: Mapping[str, Any] | None = {},
     ) -> list[Mapping[str, Any]]:
         """
         cursor_id is ignored
@@ -1115,9 +1113,9 @@ class _OpMsg:
 
     def unpack_response(
         self,
-        cursor_id: Optional[int] = None,
+        cursor_id: int | None = None,
         codec_options: CodecOptions[Any] = _UNICODE_REPLACE_CODEC_OPTIONS,
-        user_fields: Optional[Mapping[str, Any]] = None,
+        user_fields: Mapping[str, Any] | None = None,
         legacy_response: bool = False,
     ) -> list[dict[str, Any]]:
         """Unpack a OP_MSG command response.
@@ -1217,16 +1215,16 @@ class _Query:
         coll: str,
         ntoskip: int,
         spec: Mapping[str, Any],
-        fields: Optional[Mapping[str, Any]],
+        fields: Mapping[str, Any] | None,
         codec_options: CodecOptions[Any],
         read_preference: _ServerMode,
         limit: int,
         batch_size: int,
         read_concern: ReadConcern,
-        collation: Optional[Mapping[str, Any]],
-        session: Optional[_AgnosticClientSession],
+        collation: Mapping[str, Any] | None,
+        session: _AgnosticClientSession | None,
         client: _AgnosticMongoClient,
-        allow_disk_use: Optional[bool],
+        allow_disk_use: bool | None,
         exhaust: bool,
     ):
         self.flags = flags
@@ -1245,7 +1243,7 @@ class _Query:
         self.client = client
         self.allow_disk_use = allow_disk_use
         self.name = "find"
-        self._as_command: Optional[tuple[dict[str, Any], str]] = None
+        self._as_command: tuple[dict[str, Any], str] | None = None
         self.exhaust = exhaust
 
     def reset(self) -> None:
@@ -1351,9 +1349,9 @@ class _GetMore:
         cursor_id: int,
         codec_options: CodecOptions[Any],
         read_preference: _ServerMode,
-        session: Optional[_AgnosticClientSession],
+        session: _AgnosticClientSession | None,
         client: _AgnosticMongoClient,
-        max_await_time_ms: Optional[int],
+        max_await_time_ms: int | None,
         conn_mgr: Any,
         exhaust: bool,
         comment: Any,
@@ -1368,7 +1366,7 @@ class _GetMore:
         self.client = client
         self.max_await_time_ms = max_await_time_ms
         self.conn_mgr = conn_mgr
-        self._as_command: Optional[tuple[dict[str, Any], str]] = None
+        self._as_command: tuple[dict[str, Any], str] | None = None
         self.exhaust = exhaust
         self.comment = comment
 

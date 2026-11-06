@@ -23,8 +23,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     NoReturn,
-    Optional,
-    Union,
 )
 
 from bson import DEFAULT_CODEC_OPTIONS
@@ -126,8 +124,8 @@ class AsyncConnection(_AgnosticBaseConnection["Pool"]):
 
     async def _hello(
         self,
-        topology_version: Optional[Any],
-        heartbeat_frequency: Optional[int],
+        topology_version: Any | None,
+        heartbeat_frequency: int | None,
     ) -> Hello[dict[str, Any]]:
         cmd = self.hello_cmd()
         performing_handshake = not self.performed_handshake
@@ -179,7 +177,7 @@ class AsyncConnection(_AgnosticBaseConnection["Pool"]):
         self.supports_sessions = (
             hello.logical_session_timeout_minutes is not None and hello.is_readable
         )
-        self.logical_session_timeout_minutes: Optional[int] = hello.logical_session_timeout_minutes
+        self.logical_session_timeout_minutes: int | None = hello.logical_session_timeout_minutes
         # hello_ok is set from helloOk, which is only returned from ismaster
         # don't overwrite this when connection switches to hello
         self.hello_ok = self.hello_ok or hello.hello_ok
@@ -229,16 +227,16 @@ class AsyncConnection(_AgnosticBaseConnection["Pool"]):
         read_preference: _ServerMode = ReadPreference.PRIMARY,
         codec_options: CodecOptions[Mapping[str, Any]] = DEFAULT_CODEC_OPTIONS,  # type: ignore[assignment]
         check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_concern: Optional[ReadConcern] = None,
-        write_concern: Optional[WriteConcern] = None,
+        allowable_errors: Sequence[str | int] | None = None,
+        read_concern: ReadConcern | None = None,
+        write_concern: WriteConcern | None = None,
         parse_write_concern_error: bool = False,
-        collation: Optional[_CollationIn] = None,
-        session: Optional[AsyncClientSession] = None,
-        client: Optional[AsyncMongoClient[Any]] = None,
+        collation: _CollationIn | None = None,
+        session: AsyncClientSession | None = None,
+        client: AsyncMongoClient[Any] | None = None,
         retryable_write: bool = False,
         publish_events: bool = True,
-        user_fields: Optional[Mapping[str, Any]] = None,
+        user_fields: Mapping[str, Any] | None = None,
         exhaust_allowed: bool = False,
     ) -> dict[str, Any]:
         """Execute a command or raise an error.
@@ -327,7 +325,7 @@ class AsyncConnection(_AgnosticBaseConnection["Pool"]):
         except BaseException as error:
             await self._raise_connection_failure(error)
 
-    async def receive_message(self, request_id: Optional[int]) -> _OpMsg:
+    async def receive_message(self, request_id: int | None) -> _OpMsg:
         """Receive a raw BSON message or raise ConnectionFailure.
 
         If any exception is raised, the socket is closed.
@@ -359,7 +357,7 @@ class AsyncConnection(_AgnosticBaseConnection["Pool"]):
             self.ready = True
             self._telemetry.connection_ready(self.id, self.creation_time)
 
-    async def close_conn(self, reason: Optional[str]) -> None:
+    async def close_conn(self, reason: str | None) -> None:
         """Close this connection with a reason."""
         if self.closed:
             return
@@ -429,7 +427,7 @@ class Pool(_AgnosticBasePool["AsyncConnection"]):
         address: _Address,
         options: PoolOptions,
         is_sdam: bool = False,
-        client_id: Optional[ObjectId] = None,
+        client_id: ObjectId | None = None,
     ):
         """
         :param address: a (hostname, port) tuple
@@ -459,7 +457,7 @@ class Pool(_AgnosticBasePool["AsyncConnection"]):
         self,
         close: bool,
         pause: bool = True,
-        service_id: Optional[ObjectId] = None,
+        service_id: ObjectId | None = None,
         interrupt_connections: bool = False,
     ) -> None:
         old_state = self.state
@@ -530,7 +528,7 @@ class Pool(_AgnosticBasePool["AsyncConnection"]):
                 for conn in sockets:
                     await conn.close_conn(ConnectionClosedReason.STALE)
 
-    async def update_is_writable(self, is_writable: Optional[bool]) -> None:
+    async def update_is_writable(self, is_writable: bool | None) -> None:
         """Updates the is_writable attribute on all sockets currently in the
         Pool.
         """
@@ -540,7 +538,7 @@ class Pool(_AgnosticBasePool["AsyncConnection"]):
                 _socket.update_is_writable(self.is_writable)  # type: ignore[arg-type]
 
     async def reset(
-        self, service_id: Optional[ObjectId] = None, interrupt_connections: bool = False
+        self, service_id: ObjectId | None = None, interrupt_connections: bool = False
     ) -> None:
         await self._reset(
             close=False, service_id=service_id, interrupt_connections=interrupt_connections
@@ -621,7 +619,7 @@ class Pool(_AgnosticBasePool["AsyncConnection"]):
                     self.requests -= 1
                     self.size_cond.notify()
 
-    async def connect(self, handler: Optional[_ClientCheckout] = None) -> AsyncConnection:
+    async def connect(self, handler: _ClientCheckout | None = None) -> AsyncConnection:
         """Connect to Mongo and return a new AsyncConnection.
 
         Can raise ConnectionFailure.
@@ -689,7 +687,7 @@ class Pool(_AgnosticBasePool["AsyncConnection"]):
 
         return conn
 
-    def checkout(self, handler: Optional[_ClientCheckout] = None) -> _PoolCheckout:
+    def checkout(self, handler: _ClientCheckout | None = None) -> _PoolCheckout:
         """Get a connection from the pool. Always use in an async with statement::
 
             async with pool.checkout() as connection:
@@ -703,7 +701,7 @@ class Pool(_AgnosticBasePool["AsyncConnection"]):
         return _PoolCheckout(self, handler)
 
     async def _get_conn(
-        self, checkout_started_time: float, handler: Optional[_ClientCheckout] = None
+        self, checkout_started_time: float, handler: _ClientCheckout | None = None
     ) -> AsyncConnection:
         """Get or create a AsyncConnection. Can raise ConnectionFailure."""
         # We use the pid here to avoid issues with fork / multiprocessing.
@@ -881,7 +879,7 @@ class Pool(_AgnosticBasePool["AsyncConnection"]):
         self._pinned_sockets.discard(conn)
         forked = self.pid != os.getpid()
         # Re-apply the accounting if a BaseException interrupts here (PYTHON-6074).
-        close_conn_reason: Optional[str] = None
+        close_conn_reason: str | None = None
         emit_closed = False
         accounted = False
         try:
@@ -967,11 +965,11 @@ class _PoolCheckout:
     def __init__(
         self,
         pool: Pool,
-        handler: Optional[_ClientCheckout] = None,
+        handler: _ClientCheckout | None = None,
     ) -> None:
         self._pool = pool
         self._handler = handler
-        self._conn: Optional[AsyncConnection] = None
+        self._conn: AsyncConnection | None = None
 
     async def __aenter__(self) -> AsyncConnection:
         pool = self._pool
@@ -997,9 +995,9 @@ class _PoolCheckout:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         conn = self._conn
         if conn is None:

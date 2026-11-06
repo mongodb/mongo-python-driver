@@ -22,7 +22,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import deque
 from collections.abc import Iterable, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Generic, Optional, Union, cast, overload
+from typing import TYPE_CHECKING, Any, Generic, cast, overload
 
 from bson import RE_TYPE
 from bson.code import Code
@@ -55,7 +55,7 @@ _CURSOR_DOC_FIELDS = {"cursor": {"firstBatch": 1, "nextBatch": 1}}
 
 
 def _split_message(
-    message: Union[tuple[int, bytes], tuple[int, bytes, int]],
+    message: tuple[int, bytes] | tuple[int, bytes, int],
 ) -> tuple[int, bytes, int]:
     """Return request_id, data, max_doc_size.
 
@@ -76,11 +76,11 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
 
     # These are all typed more accurately in subclasses.
     _collection: Any
-    _id: Optional[int]
+    _id: int | None
     _data: Any
-    _address: Optional[_Address]
+    _address: _Address | None
     _sock_mgr: Any
-    _session: Optional[Any]
+    _session: Any | None
     _killed: bool
 
     @abstractmethod
@@ -89,7 +89,7 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
         ...
 
     @property
-    def session(self) -> Optional[_AgnosticClientSession]:
+    def session(self) -> _AgnosticClientSession | None:
         """The cursor's session, or None if the session is implicit.
 
         Typed more accurately in subclasses.
@@ -131,7 +131,7 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
         return bool(len(self._data) or (not self._killed))
 
     @property
-    def cursor_id(self) -> Optional[int]:
+    def cursor_id(self) -> int | None:
         """Returns the id of the cursor.
 
         .. versionadded:: 2.2
@@ -139,7 +139,7 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
         return self._id
 
     @property
-    def address(self) -> Optional[_Address]:
+    def address(self) -> _Address | None:
         """The (host, port) of the server used, or None.
 
         .. versionchanged:: 3.0
@@ -147,7 +147,7 @@ class _AgnosticCursorBase(Generic[_DocumentType], ABC):
         """
         return self._address
 
-    def _prepare_to_die(self, already_killed: bool) -> tuple[int, Optional[_CursorAddress]]:
+    def _prepare_to_die(self, already_killed: bool) -> tuple[int, _CursorAddress | None]:
         self._killed = True
         if self._id and not already_killed:
             cursor_id = self._id
@@ -192,10 +192,10 @@ class _AgnosticCommandCursorBase(_AgnosticCursorBase[_DocumentType]):
         self,
         collection: _AgnosticCollection[_DocumentType],
         cursor_info: Mapping[str, Any],
-        address: Optional[_Address],
+        address: _Address | None,
         batch_size: int = 0,
-        max_await_time_ms: Optional[int] = None,
-        session: Optional[_AgnosticClientSession] = None,
+        max_await_time_ms: int | None = None,
+        session: _AgnosticClientSession | None = None,
         comment: Any = None,
     ) -> None:
         """Create a new command cursor."""
@@ -203,7 +203,7 @@ class _AgnosticCommandCursorBase(_AgnosticCursorBase[_DocumentType]):
         self._collection = collection
         self._id = cursor_info["id"]
         self._data = deque(cursor_info["firstBatch"])
-        self._postbatchresumetoken: Optional[Mapping[str, Any]] = cursor_info.get(
+        self._postbatchresumetoken: Mapping[str, Any] | None = cursor_info.get(
             "postBatchResumeToken"
         )
         self._address = address
@@ -263,7 +263,7 @@ class _AgnosticCommandCursorBase(_AgnosticCursorBase[_DocumentType]):
         return len(self._data) > 0
 
     @property
-    def _post_batch_resume_token(self) -> Optional[Mapping[str, Any]]:
+    def _post_batch_resume_token(self) -> Mapping[str, Any] | None:
         """Retrieve the postBatchResumeToken from the response to a
         changeStream aggregate or getMore.
         """
@@ -272,9 +272,9 @@ class _AgnosticCommandCursorBase(_AgnosticCursorBase[_DocumentType]):
     def _unpack_response(
         self,
         response: _OpMsg,
-        cursor_id: Optional[int],
+        cursor_id: int | None,
         codec_options: CodecOptions[Mapping[str, Any]],
-        user_fields: Optional[Mapping[str, Any]] = None,
+        user_fields: Mapping[str, Any] | None = None,
         legacy_response: bool = False,
     ) -> Sequence[_DocumentOut]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
@@ -356,10 +356,8 @@ class CursorType:
     """
 
 
-_Sort = Union[
-    Sequence[Union[str, tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
-]
-_Hint = Union[str, _Sort]
+_Sort = Sequence[str | tuple[str, int | str | Mapping[str, Any]]] | Mapping[str, Any]
+_Hint = str | _Sort
 
 
 class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
@@ -374,29 +372,29 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
     def __init__(
         self,
         collection: _AgnosticCollection[_DocumentType],
-        filter: Optional[Mapping[str, Any]] = None,
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
+        filter: Mapping[str, Any] | None = None,
+        projection: Mapping[str, Any] | Iterable[str] | None = None,
         skip: int = 0,
         limit: int = 0,
         no_cursor_timeout: bool = False,
         cursor_type: int = CursorType.NON_TAILABLE,
-        sort: Optional[_Sort] = None,
+        sort: _Sort | None = None,
         allow_partial_results: bool = False,
         oplog_replay: bool = False,
         batch_size: int = 0,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_Hint] = None,
-        max_scan: Optional[int] = None,
-        max_time_ms: Optional[int] = None,
-        max: Optional[_Sort] = None,
-        min: Optional[_Sort] = None,
-        return_key: Optional[bool] = None,
-        show_record_id: Optional[bool] = None,
-        snapshot: Optional[bool] = None,
-        comment: Optional[Any] = None,
-        session: Optional[_AgnosticClientSession] = None,
-        allow_disk_use: Optional[bool] = None,
-        let: Optional[Mapping[str, Any]] = None,
+        collation: _CollationIn | None = None,
+        hint: _Hint | None = None,
+        max_scan: int | None = None,
+        max_time_ms: int | None = None,
+        max: _Sort | None = None,
+        min: _Sort | None = None,
+        return_key: bool | None = None,
+        show_record_id: bool | None = None,
+        snapshot: bool | None = None,
+        comment: Any | None = None,
+        session: _AgnosticClientSession | None = None,
+        allow_disk_use: bool | None = None,
+        let: Mapping[str, Any] | None = None,
     ) -> None:
         """Create a new cursor.
         Used by a collection's ``find()`` method to iterate over MongoDB query results.
@@ -473,15 +471,15 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         self._comment = comment
         self._max_time_ms = max_time_ms
         self._timeout = self._collection.database.client.options.timeout
-        self._max_await_time_ms: Optional[int] = None
-        self._max: Optional[Union[dict[Any, Any], _Sort]] = max
-        self._min: Optional[Union[dict[Any, Any], _Sort]] = min
+        self._max_await_time_ms: int | None = None
+        self._max: dict[Any, Any] | _Sort | None = max
+        self._min: dict[Any, Any] | _Sort | None = min
         self._collation = validate_collation_or_none(collation)
         self._return_key = return_key
         self._show_record_id = show_record_id
         self._allow_disk_use = allow_disk_use
         self._snapshot = snapshot
-        self._hint: Union[str, dict[str, Any], None]
+        self._hint: str | dict[str, Any] | None
         self._set_hint(hint)
 
         # This is ugly. People want to be able to do cursor[5:5] and
@@ -493,12 +491,12 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         self._empty = False
 
         self._data: deque = deque()  # type: ignore[type-arg]
-        self._address: Optional[_Address] = None
+        self._address: _Address | None = None
         self._retrieved = 0
 
         self._codec_options = collection.codec_options
         # Read preference is set when the initial find is sent.
-        self._read_preference: Optional[_ServerMode] = None
+        self._read_preference: _ServerMode | None = None
         self._read_concern = collection.read_concern
 
         self._query_flags = cursor_type
@@ -545,7 +543,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         """
         return self._clone(True)
 
-    def _clone(self, deepcopy: bool = True, base: Optional[Any] = None) -> Self:
+    def _clone(self, deepcopy: bool = True, base: Any | None = None) -> Self:
         """Internal clone helper."""
         if not base:
             if self._session and not self._session._implicit:
@@ -587,7 +585,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         base.__dict__.update(data)
         return base
 
-    def _clone_base(self, session: Optional[Any]) -> Self:
+    def _clone_base(self, session: Any | None) -> Self:
         """Creates an empty cursor object for information to be copied into."""
         return self.__class__(self._collection, session=session)
 
@@ -752,7 +750,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         self._skip = skip
         return self
 
-    def max_time_ms(self, max_time_ms: Optional[int]) -> Self:
+    def max_time_ms(self, max_time_ms: int | None) -> Self:
         """Specifies a time limit for a query operation. If the specified
         time is exceeded, the operation will be aborted and
         :exc:`~pymongo.errors.ExecutionTimeout` is raised. If `max_time_ms`
@@ -771,7 +769,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         self._max_time_ms = max_time_ms
         return self
 
-    def max_await_time_ms(self, max_await_time_ms: Optional[int]) -> Self:
+    def max_await_time_ms(self, max_await_time_ms: int | None) -> Self:
         """Specifies a time limit for a getMore operation on a
         :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` cursor. For all other
         types of cursor max_await_time_ms is ignored.
@@ -799,7 +797,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
 
         return self
 
-    def max_scan(self, max_scan: Optional[int]) -> Self:
+    def max_scan(self, max_scan: int | None) -> Self:
         """**DEPRECATED** - Limit the number of documents to scan when
         performing the query.
 
@@ -860,7 +858,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         self._min = dict(spec)
         return self
 
-    def sort(self, key_or_list: _Hint, direction: Optional[Union[int, str]] = None) -> Self:
+    def sort(self, key_or_list: _Hint, direction: int | str | None = None) -> Self:
         """Sorts this cursor's results.
 
         Pass a field name and a direction, either
@@ -923,7 +921,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         self._ordering = helpers_shared._index_document(keys)
         return self
 
-    def _set_hint(self, index: Optional[_Hint]) -> None:
+    def _set_hint(self, index: _Hint | None) -> None:
         if index is None:
             self._hint = None
             return
@@ -933,7 +931,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         else:
             self._hint = helpers_shared._index_document(index)
 
-    def hint(self, index: Optional[_Hint]) -> Self:
+    def hint(self, index: _Hint | None) -> Self:
         """Adds a 'hint', telling Mongo the proper index to use for the query.
 
         Judicious use of hints can greatly improve query
@@ -970,7 +968,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         self._comment = comment
         return self
 
-    def where(self, code: Union[str, Code]) -> Self:
+    def where(self, code: str | Code) -> Self:
         """Adds a `$where`_ clause to this query.
 
         The `code` argument must be an instance of :class:`str` or
@@ -1017,7 +1015,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         self._spec = spec
         return self
 
-    def collation(self, collation: Optional[_CollationIn]) -> Self:
+    def collation(self, collation: _CollationIn | None) -> Self:
         """Adds a :class:`~pymongo.collation.Collation` to this query.
 
         Raises :exc:`TypeError` if `collation` is not an instance of
@@ -1035,9 +1033,9 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
     def _unpack_response(
         self,
         response: _OpMsg,
-        cursor_id: Optional[int],
+        cursor_id: int | None,
         codec_options: CodecOptions,  # type: ignore[type-arg]
-        user_fields: Optional[Mapping[str, Any]] = None,
+        user_fields: Mapping[str, Any] | None = None,
         legacy_response: bool = False,
     ) -> Sequence[_DocumentOut]:
         return response.unpack_response(cursor_id, codec_options, user_fields, legacy_response)
@@ -1063,28 +1061,28 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self._clone(deepcopy=True)
 
     @overload
-    def _deepcopy(self, x: Iterable, memo: Optional[dict[int, Union[list, dict]]] = None) -> list:  # type: ignore[type-arg]
+    def _deepcopy(self, x: Iterable, memo: dict[int, list | dict] | None = None) -> list:  # type: ignore[type-arg]
         ...
 
     @overload
     def _deepcopy(
         self,
         x: SupportsItems,  # type: ignore[type-arg]
-        memo: Optional[dict[int, Union[list, dict]]] = None,  # type: ignore[type-arg]
+        memo: dict[int, list | dict] | None = None,  # type: ignore[type-arg]
     ) -> dict:  # type: ignore[type-arg]
         ...
 
     def _deepcopy(
         self,
-        x: Union[Iterable, SupportsItems],  # type: ignore[type-arg]
-        memo: Optional[dict[int, Union[list, dict]]] = None,  # type: ignore[type-arg]
-    ) -> Union[list[Any], dict[str, Any]]:
+        x: Iterable | SupportsItems,  # type: ignore[type-arg]
+        memo: dict[int, list | dict] | None = None,  # type: ignore[type-arg]
+    ) -> list[Any] | dict[str, Any]:
         """Deepcopy helper for the data dictionary or list.
 
         Regular expressions cannot be deep copied but as they are immutable we
         don't have to copy them when cloning.
         """
-        y: Union[list[Any], dict[str, Any]]
+        y: list[Any] | dict[str, Any]
         iterator: Iterable[tuple[Any, Any]]
         if not hasattr(x, "items"):
             y, is_list, iterator = [], True, enumerate(x)

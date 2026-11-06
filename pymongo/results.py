@@ -20,7 +20,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from pymongo.errors import InvalidOperation
 
@@ -128,7 +128,7 @@ class UpdateResult(_WriteResult):
 
     def __init__(
         self,
-        raw_result: Optional[Mapping[str, Any]],
+        raw_result: Mapping[str, Any] | None,
         acknowledged: bool,
         in_client_bulk: bool = False,
     ):
@@ -140,7 +140,7 @@ class UpdateResult(_WriteResult):
         return f"{self.__class__.__name__}({self.__raw_result!r}, acknowledged={self.acknowledged})"
 
     @property
-    def raw_result(self) -> Optional[Mapping[str, Any]]:
+    def raw_result(self) -> Mapping[str, Any] | None:
         """The raw result document returned by the server."""
         return self.__raw_result
 
@@ -280,7 +280,7 @@ class BulkWriteResult(_BulkWriteResultBase):
         )
 
     @property
-    def upserted_ids(self) -> Optional[dict[int, Any]]:
+    def upserted_ids(self) -> dict[int, Any] | None:
         """A map of operation index to the _id of the upserted document."""
         self._raise_if_unacknowledged("upserted_ids")
         if self.bulk_api_result:

@@ -924,7 +924,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
 
 
 class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
-    w: Optional[int]
+    w: int | None
     secondary: AsyncMongoClient
 
     async def asyncSetUp(self):

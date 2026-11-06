@@ -20,7 +20,6 @@
 from __future__ import annotations
 
 from collections import namedtuple
-from typing import Optional
 
 
 class DriverInfo(namedtuple("DriverInfo", ["name", "version", "platform"])):
@@ -40,7 +39,7 @@ class DriverInfo(namedtuple("DriverInfo", ["name", "version", "platform"])):
     """
 
     def __new__(
-        cls, name: str, version: Optional[str] = None, platform: Optional[str] = None
+        cls, name: str, version: str | None = None, platform: str | None = None
     ) -> DriverInfo:
         self = super().__new__(cls, name, version, platform)
         for key, value in self._asdict().items():

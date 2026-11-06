@@ -22,7 +22,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Optional, Union
+from typing import Any
 
 from pymongo import common
 from pymongo.write_concern import validate_boolean
@@ -161,14 +161,14 @@ class Collation:
     def __init__(
         self,
         locale: str,
-        caseLevel: Optional[bool] = None,
-        caseFirst: Optional[str] = None,
-        strength: Optional[int] = None,
-        numericOrdering: Optional[bool] = None,
-        alternate: Optional[str] = None,
-        maxVariable: Optional[str] = None,
-        normalization: Optional[bool] = None,
-        backwards: Optional[bool] = None,
+        caseLevel: bool | None = None,
+        caseFirst: str | None = None,
+        strength: int | None = None,
+        numericOrdering: bool | None = None,
+        alternate: str | None = None,
+        maxVariable: str | None = None,
+        normalization: bool | None = None,
+        backwards: bool | None = None,
         **kwargs: Any,
     ) -> None:
         locale = common.validate_string("locale", locale)
@@ -219,8 +219,8 @@ class Collation:
 
 
 def validate_collation_or_none(
-    value: Optional[Union[Mapping[str, Any], Collation]],
-) -> Optional[dict[str, Any]]:
+    value: Mapping[str, Any] | Collation | None,
+) -> dict[str, Any] | None:
     if value is None:
         return None
     if isinstance(value, Collation):

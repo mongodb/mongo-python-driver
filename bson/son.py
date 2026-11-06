@@ -29,9 +29,7 @@ from collections.abc import Mapping as _Mapping
 from re import Pattern
 from typing import (
     Any,
-    Optional,
     TypeVar,
-    Union,
     cast,
 )
 
@@ -56,7 +54,7 @@ class SON(dict[_Key, _Value]):
 
     def __init__(
         self,
-        data: Optional[Union[Mapping[_Key, _Value], Iterable[tuple[_Key, _Value]]]] = None,
+        data: Mapping[_Key, _Value] | Iterable[tuple[_Key, _Value]] | None = None,
         **kwargs: Any,
     ) -> None:
         self.__keys = []
@@ -135,7 +133,7 @@ class SON(dict[_Key, _Value]):
             self[key] = default
         return default
 
-    def pop(self, key: _Key, *args: Union[_Value, _T]) -> Union[_Value, _T]:
+    def pop(self, key: _Key, *args: _Value | _T) -> _Value | _T:
         if len(args) > 1:
             raise TypeError("pop expected at most 2 arguments, got " + repr(1 + len(args)))
         try:
@@ -155,7 +153,7 @@ class SON(dict[_Key, _Value]):
         del self[k]
         return (k, v)
 
-    def update(self, other: Optional[Any] = None, **kwargs: _Value) -> None:
+    def update(self, other: Any | None = None, **kwargs: _Value) -> None:
         # Make progressively weaker assumptions about "other"
         if other is None:
             pass
@@ -172,8 +170,8 @@ class SON(dict[_Key, _Value]):
             self.update(kwargs)
 
     def get(  # type: ignore[override]
-        self, key: _Key, default: Optional[Union[_Value, _T]] = None
-    ) -> Union[_Value, _T, None]:
+        self, key: _Key, default: _Value | _T | None = None
+    ) -> _Value | _T | None:
         try:
             return self[key]
         except KeyError:
