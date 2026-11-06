@@ -192,7 +192,7 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
             started.set()
             return True
 
-        executor = self._make_executor(target=target)
+        executor = self._make_executor(min_interval=0.5, target=target)
         executor.open()
         if _IS_SYNC:
             started.wait(timeout=2)
@@ -209,15 +209,33 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
             except BaseException as exc:
                 close_error = exc
 
-        thread = threading.Thread(target=close_off_loop)
-        thread.start()
-        thread.join(timeout=2)
+        real_task: Any = None
+        mock_task: Any = None
+        if not _IS_SYNC:
+            # Cancel a mock off the loop: cancelling the real task from
+            # another thread is not thread-safe under asyncio debug mode.
+            assert executor._task is not None
+            real_task = executor._task
+            mock_task = mock.MagicMock()
+            mock_task.cancelling.return_value = 0
+            executor._task = mock_task
+        try:
+            thread = threading.Thread(target=close_off_loop)
+            thread.start()
+            thread.join(timeout=2)
+        finally:
+            if not _IS_SYNC:
+                executor._task = real_task
         self.assertIsNone(close_error, "close() raised from a thread without a running event loop")
+        if not _IS_SYNC:
+            assert mock_task is not None and real_task is not None
+            mock_task.cancel.assert_called_once()
+            # Cancel the real executor on the event loop thread.
+            real_task.cancel()
         await executor.join(timeout=2)
         self.assertTrue(executor._stopped)
         if not _IS_SYNC:
-            assert executor._task is not None
-            self.assertTrue(executor._task.cancelled())
+            self.assertTrue(real_task.cancelled())
 
     async def test_target_exception_stops_executor(self):
         call_count = 0
