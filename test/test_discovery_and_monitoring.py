@@ -809,6 +809,27 @@ class TestServerRemovalHardening(UnitTest):
         self.assertNotIn(address_b, topology._servers)
         self.assertIn(victim._monitor, topology._monitor_tasks)
 
+    def test_pool_closes_when_monitor_close_is_cancelled(self):
+        # A cancelled monitor close must not leave the application pool open.
+        if _IS_SYNC:
+            self.skipTest("PYTHON-6226: task cancellation is async-only")
+
+        topology = create_mock_topology("mongodb://a:27017,b:27017")
+        victim = topology._servers[("a", 27017)]
+
+        def cancelling_monitor_close():
+            asyncio.current_task().cancel()
+
+        def close_victim():
+            with patch.object(victim._monitor, "close", cancelling_monitor_close):
+                victim.close()
+
+        task = asyncio.create_task(close_victim())
+        with self.assertRaises(asyncio.CancelledError):
+            task
+
+        self.assertTrue(victim.pool.closed)
+
 
 # Generate unified tests.
 globals().update(generate_test_classes(os.path.join(SDAM_PATH, "unified"), module=__name__))
