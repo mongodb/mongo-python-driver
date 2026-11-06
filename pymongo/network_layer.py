@@ -87,9 +87,9 @@ async def async_socket_sendall(sock: Union[socket.socket, _sslConn], buf: bytes)
                 await asyncio.wait_for(loop.sock_sendall(sock, buf), timeout=timeout)  # type: ignore[arg-type]
             finally:
                 sock.settimeout(timeout)
-    except asyncio.TimeoutError as exc:
-        # Convert the asyncio.wait_for timeout error to socket.timeout which pool.py understands.
-        raise socket.timeout("timed out") from exc
+    except TimeoutError as exc:
+        # asyncio.wait_for raises TimeoutError without a message.
+        raise TimeoutError("timed out") from exc
 
 
 if sys.platform != "win32":
@@ -195,7 +195,7 @@ async def _async_blocking_socket_call(
     fut = asyncio.shield(inner)
     try:
         return await asyncio.wait_for(fut, timeout=timeout)
-    except (asyncio.CancelledError, asyncio.TimeoutError):
+    except (asyncio.CancelledError, TimeoutError):
         # Wait for the worker, shielded from further cancellations, so the
         # caller does not close the socket under it.
         while True:
@@ -245,8 +245,9 @@ async def async_receive_data_socket(
                 _async_socket_receive(sock, length, loop),  # type: ignore[arg-type]
                 timeout=timeout,
             )
-    except asyncio.TimeoutError as err:
-        raise socket.timeout("timed out") from err
+    except TimeoutError as err:
+        # asyncio.wait_for raises TimeoutError without a message.
+        raise TimeoutError("timed out") from err
     finally:
         sock.settimeout(timeout)
 
@@ -298,7 +299,7 @@ def wait_for_read(conn: Connection, deadline: Optional[float]) -> None:
         if readable:
             return
         if timed_out:
-            raise socket.timeout("timed out")
+            raise TimeoutError("timed out")
 
 
 def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> memoryview:
@@ -333,8 +334,8 @@ def receive_data(conn: Connection, length: int, deadline: Optional[float]) -> me
                 if conn.cancel_context.cancelled:
                     raise _OperationCancelled("operation cancelled") from None
                 # We reached the true deadline.
-                raise socket.timeout("timed out") from None
-            except socket.timeout:
+                raise TimeoutError("timed out") from None
+            except TimeoutError:
                 if conn.cancel_context.cancelled:
                     raise _OperationCancelled("operation cancelled") from None
                 if _WINDOWS or (
@@ -676,9 +677,9 @@ class PyMongoProtocol(BufferedProtocol):
 async def async_sendall(conn: PyMongoProtocol, buf: bytes) -> None:
     try:
         await asyncio.wait_for(conn.write(buf), timeout=conn.gettimeout)
-    except asyncio.TimeoutError as exc:
-        # Convert the asyncio.wait_for timeout error to socket.timeout which pool.py understands.
-        raise socket.timeout("timed out") from exc
+    except TimeoutError as exc:
+        # asyncio.wait_for raises TimeoutError without a message.
+        raise TimeoutError("timed out") from exc
 
 
 async def async_receive_message(
@@ -714,7 +715,7 @@ async def async_receive_message(
         if pending:
             await asyncio.wait(pending)
         if len(done) == 0:
-            raise socket.timeout("timed out")
+            raise TimeoutError("timed out")
         if read_task in done:
             data, op_code = read_task.result()
             try:
