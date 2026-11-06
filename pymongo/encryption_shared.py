@@ -107,6 +107,10 @@ class Algorithm(str, enum.Enum):
 class QueryType(str, enum.Enum):
     """An enum that defines the supported values for explicit encryption query_type.
 
+    .. versionchanged:: 4.20
+       Removed the beta query types ``PREFIXPREVIEW``, ``SUFFIXPREVIEW``,
+       and ``SUBSTRINGPREVIEW``.
+
     .. versionadded:: 4.2
     """
 
@@ -141,36 +145,6 @@ class QueryType(str, enum.Enum):
     Used for the ``$encStrContains`` operator. Requires MongoDB 9.0+.
 
     .. versionadded:: 4.18
-    """
-
-    PREFIXPREVIEW = "prefixPreview"
-    """**BETA** - Used to encrypt a value for a prefixPreview query.
-
-    .. note:: The preview query types are for experimental workloads only and
-       are only supported by MongoDB versions before 9.0. Use
-       :attr:`QueryType.PREFIX` instead.
-
-    .. versionadded:: 4.15
-    """
-
-    SUFFIXPREVIEW = "suffixPreview"
-    """**BETA** - Used to encrypt a value for a suffixPreview query.
-
-    .. note:: The preview query types are for experimental workloads only and
-       are only supported by MongoDB versions before 9.0. Use
-       :attr:`QueryType.SUFFIX` instead.
-
-    .. versionadded:: 4.15
-    """
-
-    SUBSTRINGPREVIEW = "substringPreview"
-    """**BETA** - Used to encrypt a value for a substringPreview query.
-
-    .. note:: The preview query types are for experimental workloads only and
-       are only supported by MongoDB versions before 9.0. Use
-       :attr:`QueryType.SUBSTRING` instead.
-
-    .. versionadded:: 4.15
     """
 
 

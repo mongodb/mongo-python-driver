@@ -248,9 +248,8 @@ class TestClientOptions(PyMongoTestCase):
 def _string_opts_kwargs(**kwargs: Any) -> dict[str, StringOpts]:
     """Pass StringOpts under the name the installed pymongocrypt accepts.
 
-    pymongocrypt renamed ``text_opts`` to ``string_opts`` in 1.19 and takes only
-    one of the two, and the preview query types still run against pymongocrypt
-    before 1.19, so both spellings are in play across the matrix.
+    pymongocrypt renamed ``text_opts`` to ``string_opts`` in 1.19 and accepts
+    only one of the two names per release, so the tests follow the binding.
     """
     return {encryption._string_opts_kwarg(): StringOpts(**kwargs)}
 
@@ -300,6 +299,16 @@ class TestStringOptsDeprecation(PyMongoTestCase):
         # without a server, rather than only in the prose suite.
         params = inspect.signature(encryption.ExplicitEncrypter.encrypt).parameters
         self.assertIn(encryption._string_opts_kwarg(), params)
+
+
+class TestPreviewQueryTypesRemoved(PyMongoTestCase):
+    def test_preview_query_types_removed(self):
+        # PYTHON-5959: the beta preview query types were removed in 4.20.
+        for name in ("PREFIXPREVIEW", "SUFFIXPREVIEW", "SUBSTRINGPREVIEW"):
+            self.assertFalse(hasattr(QueryType, name), name)
+        for value in ("prefixPreview", "suffixPreview", "substringPreview"):
+            with self.assertRaises(ValueError):
+                QueryType(value)
 
 
 class EncryptionIntegrationTest(IntegrationTest):
@@ -3391,43 +3400,30 @@ def _libmongocrypt_at_least(*version):
     return Version.from_string(libmongocrypt_version()) >= Version(*version)
 
 
-# The minimum libmongocrypt version required by each string query type, declared
-# in one place so the test gates and the changelog agree. Support landed per
-# query type rather than all at once (see the libmongocrypt changelog):
-#   1.18.1 - fixes caseSensitive/diacriticSensitive handling for "textPreview".
-#   1.19.0 - the "string" algorithm replaces "textPreview"; prefix and suffix go
-#            stable; prefixPreview and suffixPreview are removed.
-#   1.19.1 - prefixPreview and suffixPreview are restored.
+# The minimum libmongocrypt version required by each GA string query type,
+# declared in one place so the test gates and the changelog agree. Support
+# landed per query type rather than all at once (see the libmongocrypt
+# changelog):
+#   1.19.0 - the "string" algorithm replaces "textPreview"; prefix and suffix
+#            go stable.
 #   1.20.0 - substring goes stable.
+#   1.21.0 - the beta prefixPreview/suffixPreview/substringPreview query types
+#            became a runtime error (MONGOCRYPT-938) and were dropped in
+#            PYTHON-5959.
 _STRING_QUERY_MIN_LIBMONGOCRYPT = {
     "prefix": (1, 19, 0),
     "suffix": (1, 19, 0),
     "substring": (1, 20, 0),
-    "prefixPreview": (1, 18, 1),
-    "suffixPreview": (1, 18, 1),
-    "substringPreview": (1, 18, 1),
 }
-
-# prefixPreview and suffixPreview were removed in 1.19.0 and restored in 1.19.1,
-# so that one release is a hole rather than a floor.
-_PREVIEW_REMOVED_IN = (1, 19, 0)
-
-# No pymongocrypt release ships libmongocrypt 1.19.0+, so the GA query types can
-# only run against a master build; setup_tests.py pins the released binding for
-# the 8.x preview tasks alone. Do not collapse that gate: the released binding
-# still spells the parameter text_opts, and dropping back to it would silently
-# stop exercising the GA path.
 
 
 # https://github.com/mongodb/specifications/blob/master/source/client-side-encryption/tests/README.md#27-string-explicit-encryption
 class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
-    # The GA collections require server 9.0+, the preview collections require
-    # server pre-9.0. Setup encrypts with the "String" algorithm on 9.0+ and the
-    # deprecated "textPreview" algorithm on earlier servers, since "String" was
-    # only introduced in libmongocrypt 1.19.0.
+    # The GA collections require server 9.0+, where the "String" algorithm and
+    # the GA query types are supported.
     @client_context.require_no_standalone
-    @client_context.require_version_min(8, 2, -1)
-    @client_context.require_libmongocrypt_min(1, 18, 1)
+    @client_context.require_version_min(9, 0, -1)
+    @client_context.require_libmongocrypt_min(1, 19, 0)
     @client_context.require_pymongocrypt_min(1, 16, 0)
     def setUp(self):
         super().setUp()
@@ -3463,39 +3459,18 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
             )
         )
 
-        # The GA query types ("prefix", "suffix", "substring") require server
-        # 9.0+, which in turn dropped the preview query types.
-        self.is_ga = client_context.version.at_least(9, 0, -1)
-        # The "String" algorithm was added in libmongocrypt 1.19.0. Servers
-        # before 9.0 are tested against libmongocrypt 1.18.x, where the preview
-        # query types are only usable via the deprecated "textPreview"
-        # algorithm, so pick whichever the running combination supports.
-        self.algorithm = (
-            Algorithm.STRING if _libmongocrypt_at_least(1, 19, 0) else Algorithm.TEXTPREVIEW
-        )
-        # The GA query types need the "String" algorithm, so skip before setup
-        # encrypts anything rather than erroring on an unsupported combination.
-        if self.is_ga and not _libmongocrypt_at_least(1, 19, 0):
-            raise unittest.SkipTest("server 9.0+ string queries require libmongocrypt 1.19.0+")
         # Substring went stable in a later libmongocrypt than prefix and suffix,
         # so its fixture is only built where the query type exists. Otherwise
         # setup would fail before the substring cases could skip, taking the
         # prefix and suffix cases down with it.
-        self.has_substring = _libmongocrypt_at_least(
-            *_STRING_QUERY_MIN_LIBMONGOCRYPT["substring" if self.is_ga else "substringPreview"]
-        )
+        self.has_substring = _libmongocrypt_at_least(*_STRING_QUERY_MIN_LIBMONGOCRYPT["substring"])
 
         # Using QE CreateCollection() and Collection.Drop(), drop and create the
         # collections with majority write concern.
         db = self.client_encrypted.db
-        if self.is_ga:
-            collections = ["prefix-suffix", "prefix-suffix-ci-di"]
-            if self.has_substring:
-                collections += ["substring", "substring-ci-di"]
-        else:
-            collections = ["prefix-suffix-preview"]
-            if self.has_substring:
-                collections += ["substring-preview"]
+        collections = ["prefix-suffix", "prefix-suffix-ci-di"]
+        if self.has_substring:
+            collections += ["substring", "substring-ci-di"]
         for name in collections:
             db.drop_collection(name)
             self.client_encryption.create_encrypted_collection(
@@ -3509,7 +3484,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         encrypted_value = self.client_encryption.encrypt(
             "foobarbaz",
             key_id=self.key1_id,
-            algorithm=self.algorithm,
+            algorithm=Algorithm.STRING,
             contention_factor=0,
             **_string_opts_kwargs(
                 case_sensitive=True,
@@ -3519,19 +3494,15 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
             ),
         )
         # Use explicitEncryptedClient to insert the following document into
-        # db.prefix-suffix (if created) and db.prefix-suffix-preview (if created)
-        # with majority write concern.
-        self._insert(
-            "prefix-suffix" if self.is_ga else "prefix-suffix-preview",
-            {"_id": 0, "encryptedText": encrypted_value},
-        )
+        # db.prefix-suffix with majority write concern.
+        self._insert("prefix-suffix", {"_id": 0, "encryptedText": encrypted_value})
 
         if self.has_substring:
             # Use clientEncryption to encrypt the string "foobarbaz" with the following EncryptOpts.
             encrypted_value = self.client_encryption.encrypt(
                 "foobarbaz",
                 key_id=self.key1_id,
-                algorithm=self.algorithm,
+                algorithm=Algorithm.STRING,
                 contention_factor=0,
                 **_string_opts_kwargs(
                     case_sensitive=True,
@@ -3540,12 +3511,8 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
                 ),
             )
             # Use explicitEncryptedClient to insert the following document into
-            # db.substring (if created) and db.substring-preview (if created) with
-            # majority write concern.
-            self._insert(
-                "substring" if self.is_ga else "substring-preview",
-                {"_id": 0, "encryptedText": encrypted_value},
-            )
+            # db.substring with majority write concern.
+            self._insert("substring", {"_id": 0, "encryptedText": encrypted_value})
 
     def _insert(self, collection, document, client=None):
         """Insert a document with majority write concern."""
@@ -3560,42 +3527,12 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
             raise unittest.SkipTest(
                 f"queryType={query_type} requires libmongocrypt {'.'.join(map(str, required))}+"
             )
-        if query_type in ("prefixPreview", "suffixPreview") and (
-            _libmongocrypt_at_least(*_PREVIEW_REMOVED_IN) and not _libmongocrypt_at_least(1, 19, 1)
-        ):
-            raise unittest.SkipTest(f"queryType={query_type} was removed in libmongocrypt 1.19.0")
-
-    def _params(self, kind):
-        """Return the (query_type, collection) pair to run a case against.
-
-        Each case runs against the GA query type on server 9.0+ and against the
-        preview query type on earlier servers, skipping when the installed
-        libmongocrypt is too old for the applicable variant.
-        """
-        base = "substring" if kind == "substring" else "prefix-suffix"
-        if self.is_ga:
-            query_type, collection = kind, base
-        else:
-            query_type, collection = f"{kind}Preview", f"{base}-preview"
-        self._require_query_type(query_type)
-        return query_type, collection
-
-    def _require_ga(self, *query_types):
-        """Skip a case that only applies to the GA query types.
-
-        Gates on each query type the case exercises, since substring support
-        landed in a later libmongocrypt than prefix and suffix.
-        """
-        if not self.is_ga:
-            raise unittest.SkipTest("requires server 9.0+")
-        for query_type in query_types:
-            self._require_query_type(query_type)
 
     def _encrypt(self, value, query_type=None, **string_opts):
         return self.client_encryption.encrypt(
             value,
             key_id=self.key1_id,
-            algorithm=self.algorithm,
+            algorithm=Algorithm.STRING,
             query_type=query_type,
             contention_factor=0,
             **_string_opts_kwargs(**string_opts),
@@ -3608,18 +3545,19 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         return value
 
     def test_01_can_find_a_document_by_prefix(self):
-        query_type, collection = self._params("prefix")
+        # Requires MongoDB server 9.0.0+ and libmongocrypt 1.19.0+.
+        self._require_query_type("prefix")
         # Use clientEncryption.encrypt() to encrypt the string "foo".
         encrypted_value = self._encrypt(
             "foo",
-            query_type=query_type,
+            query_type=QueryType.PREFIX,
             case_sensitive=True,
             diacritic_sensitive=True,
             prefix=dict(strMaxQueryLength=10, strMinQueryLength=2),
         )
         # Use explicitEncryptedClient to run a "find" operation.
         value = self._find(
-            collection,
+            "prefix-suffix",
             {
                 "$expr": {
                     "$encStrStartsWith": {"input": "$encryptedText", "prefix": encrypted_value}
@@ -3630,36 +3568,38 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         self.assertEqual(value, {"_id": 0, "encryptedText": "foobarbaz"})
 
     def test_02_can_find_a_document_by_suffix(self):
-        query_type, collection = self._params("suffix")
+        # Requires MongoDB server 9.0.0+ and libmongocrypt 1.19.0+.
+        self._require_query_type("suffix")
         # Use clientEncryption.encrypt() to encrypt the string "baz".
         encrypted_value = self._encrypt(
             "baz",
-            query_type=query_type,
+            query_type=QueryType.SUFFIX,
             case_sensitive=True,
             diacritic_sensitive=True,
             suffix=dict(strMaxQueryLength=10, strMinQueryLength=2),
         )
         # Use explicitEncryptedClient to run a "find" operation.
         value = self._find(
-            collection,
+            "prefix-suffix",
             {"$expr": {"$encStrEndsWith": {"input": "$encryptedText", "suffix": encrypted_value}}},
         )
         # Assert the following document is returned.
         self.assertEqual(value, {"_id": 0, "encryptedText": "foobarbaz"})
 
     def test_03_no_document_found_by_prefix(self):
-        query_type, collection = self._params("prefix")
+        # Requires MongoDB server 9.0.0+ and libmongocrypt 1.19.0+.
+        self._require_query_type("prefix")
         # Use clientEncryption.encrypt() to encrypt the string "baz".
         encrypted_value = self._encrypt(
             "baz",
-            query_type=query_type,
+            query_type=QueryType.PREFIX,
             case_sensitive=True,
             diacritic_sensitive=True,
             prefix=dict(strMaxQueryLength=10, strMinQueryLength=2),
         )
         # Use explicitEncryptedClient to run a "find" operation.
         value = self._find(
-            collection,
+            "prefix-suffix",
             {
                 "$expr": {
                     "$encStrStartsWith": {"input": "$encryptedText", "prefix": encrypted_value}
@@ -3670,36 +3610,38 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         self.assertIsNone(value)
 
     def test_04_no_document_found_by_suffix(self):
-        query_type, collection = self._params("suffix")
+        # Requires MongoDB server 9.0.0+ and libmongocrypt 1.19.0+.
+        self._require_query_type("suffix")
         # Use clientEncryption.encrypt() to encrypt the string "foo".
         encrypted_value = self._encrypt(
             "foo",
-            query_type=query_type,
+            query_type=QueryType.SUFFIX,
             case_sensitive=True,
             diacritic_sensitive=True,
             suffix=dict(strMaxQueryLength=10, strMinQueryLength=2),
         )
         # Use explicitEncryptedClient to run a "find" operation.
         value = self._find(
-            collection,
+            "prefix-suffix",
             {"$expr": {"$encStrEndsWith": {"input": "$encryptedText", "suffix": encrypted_value}}},
         )
         # Assert that no documents are returned.
         self.assertIsNone(value)
 
     def test_05_can_find_a_document_by_substring(self):
-        query_type, collection = self._params("substring")
+        # Requires MongoDB server 9.0.0+ and libmongocrypt 1.20.0+.
+        self._require_query_type("substring")
         # Use clientEncryption.encrypt() to encrypt the string "bar".
         encrypted_value = self._encrypt(
             "bar",
-            query_type=query_type,
+            query_type=QueryType.SUBSTRING,
             case_sensitive=True,
             diacritic_sensitive=True,
             substring=dict(strMaxLength=10, strMaxQueryLength=6, strMinQueryLength=2),
         )
         # Use explicitEncryptedClient to run a "find" operation.
         value = self._find(
-            collection,
+            "substring",
             {
                 "$expr": {
                     "$encStrContains": {"input": "$encryptedText", "substring": encrypted_value}
@@ -3710,18 +3652,19 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
         self.assertEqual(value, {"_id": 0, "encryptedText": "foobarbaz"})
 
     def test_06_no_document_found_by_substring(self):
-        query_type, collection = self._params("substring")
+        # Requires MongoDB server 9.0.0+ and libmongocrypt 1.20.0+.
+        self._require_query_type("substring")
         # Use clientEncryption.encrypt() to encrypt the string "qux".
         encrypted_value = self._encrypt(
             "qux",
-            query_type=query_type,
+            query_type=QueryType.SUBSTRING,
             case_sensitive=True,
             diacritic_sensitive=True,
             substring=dict(strMaxLength=10, strMaxQueryLength=6, strMinQueryLength=2),
         )
         # Use explicitEncryptedClient to run a "find" operation.
         value = self._find(
-            collection,
+            "substring",
             {
                 "$expr": {
                     "$encStrContains": {"input": "$encryptedText", "substring": encrypted_value}
@@ -3734,7 +3677,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
     def test_07_contentionFactor_is_required(self):
         from pymongocrypt.errors import MongoCryptError
 
-        self._require_ga("prefix")
+        self._require_query_type("prefix")
         # Use clientEncryption.encrypt() to encrypt the string "foo" without contentionFactor.
         with self.assertRaises(EncryptionError) as ctx:
             self.client_encryption.encrypt(
@@ -3755,7 +3698,8 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
 
     def test_08_case_insensitive_prefix_and_suffix(self):
         # This is a regression test for DRIVERS-3470.
-        self._require_ga("prefix", "suffix")
+        self._require_query_type("prefix")
+        self._require_query_type("suffix")
         # Use autoEncryptedClient to insert the following document.
         self._insert(
             "prefix-suffix-ci-di", {"encryptedText": "BingQiLin"}, self.client_auto_encrypted
@@ -3798,7 +3742,8 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
 
     def test_09_diacritic_insensitive_prefix_and_suffix(self):
         # This is a regression test for DRIVERS-3470.
-        self._require_ga("prefix", "suffix")
+        self._require_query_type("prefix")
+        self._require_query_type("suffix")
         # Use autoEncryptedClient to insert the following document.
         self._insert(
             "prefix-suffix-ci-di", {"encryptedText": "cafébarbäz"}, self.client_auto_encrypted
@@ -3841,7 +3786,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
 
     def test_10_case_insensitive_substring(self):
         # This is a regression test for DRIVERS-3470.
-        self._require_ga("substring")
+        self._require_query_type("substring")
         # Use autoEncryptedClient to insert the following document.
         self._insert("substring-ci-di", {"encryptedText": "FooBarBaz"}, self.client_auto_encrypted)
         # Use clientEncryption.encrypt() to encrypt the string "bar".
@@ -3866,7 +3811,7 @@ class TestStringExplicitEncryptionProse(EncryptionIntegrationTest):
 
     def test_11_diacritic_insensitive_substring(self):
         # This is a regression test for DRIVERS-3470.
-        self._require_ga("substring")
+        self._require_query_type("substring")
         # Use autoEncryptedClient to insert the following document.
         self._insert("substring-ci-di", {"encryptedText": "foocafébaz"}, self.client_auto_encrypted)
         # Use clientEncryption.encrypt() to encrypt the string "cafe".
