@@ -337,6 +337,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             Defaults to ``20000`` (20 seconds).
           - `proxyHost` (string): The hostname or IP address of a SOCKS5 proxy.
             IPv6 literals may be enclosed in brackets. Defaults to no proxy.
+            Routes MongoDB and automatic encryption KMS connections through
+            the proxy. Cannot be combined with ``kms_connect_callback`` in
+            ``auto_encryption_opts``; doing so raises
+            :class:`~pymongo.errors.ConfigurationError`.
           - `proxyPort` (integer): The TCP port of the SOCKS5 proxy. Defaults
             to ``1080`` when ``proxyHost`` is specified.
           - `proxyUsername` (string): The username for SOCKS5 username/password

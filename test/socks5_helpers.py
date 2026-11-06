@@ -21,17 +21,37 @@ import socket
 import threading
 from typing import Optional
 
+from pymongo.socks5_shared import (
+    _SOCKS5_ATYP_DOMAIN,
+    _SOCKS5_ATYP_IPV4,
+    _SOCKS5_ATYP_IPV6,
+    _SOCKS5_AUTH_NO_AUTH,
+    _SOCKS5_AUTH_REPLY_LEN,
+    _SOCKS5_AUTH_SUCCESS,
+    _SOCKS5_AUTH_USER_PASS,
+    _SOCKS5_AUTH_VERSION,
+    _SOCKS5_CONNECT_REPLY_LEN,
+    _SOCKS5_DOMAIN_LENGTH_LEN,
+    _SOCKS5_GREETING_REPLY_LEN,
+    _SOCKS5_IPV4_BOUND_LEN,
+    _SOCKS5_IPV6_BOUND_LEN,
+    _SOCKS5_PORT_LEN,
+    _SOCKS5_REPLY_SUCCESS,
+    _SOCKS5_RESERVED,
+    _SOCKS5_VERSION,
+)
+
 
 class _Socks5Server:
     def __init__(
         self,
-        method: int = 0,
-        auth_status: int = 0,
-        reply: int = 0,
-        bound_atyp: int = 1,
+        method: int = _SOCKS5_AUTH_NO_AUTH,
+        auth_status: int = _SOCKS5_AUTH_SUCCESS,
+        reply: int = _SOCKS5_REPLY_SUCCESS,
+        bound_atyp: int = _SOCKS5_ATYP_IPV4,
         payload: bytes = b"",
-        method_version: int = 5,
-        reply_version: int = 5,
+        method_version: int = _SOCKS5_VERSION,
+        reply_version: int = _SOCKS5_VERSION,
         eof_stage: Optional[str] = None,
         stall: bool = False,
         target: Optional[tuple[str, int]] = None,
@@ -75,20 +95,20 @@ class _Socks5Server:
         try:
             with self.listener.accept()[0] as conn:
                 conn.settimeout(3)
-                version, nmethods = self._read(conn, 2)
+                version, nmethods = self._read(conn, _SOCKS5_GREETING_REPLY_LEN)
                 self.greeting = bytes((version, nmethods)) + self._read(conn, nmethods)
                 self.started.set()
                 if self.stall:
                     conn.recv(1)
                     return
                 if self.eof_stage == "greeting":
-                    conn.sendall(b"\x05")
+                    conn.sendall(bytes((_SOCKS5_VERSION,)))
                     return
                 conn.sendall(bytes((self.method_version, self.method)))
-                if self.method == 2:
-                    auth_version, username_length = self._read(conn, 2)
+                if self.method == _SOCKS5_AUTH_USER_PASS:
+                    auth_version, username_length = self._read(conn, _SOCKS5_AUTH_REPLY_LEN)
                     username = self._read(conn, username_length)
-                    password_length = self._read(conn, 1)[0]
+                    password_length = self._read(conn, _SOCKS5_DOMAIN_LENGTH_LEN)[0]
                     password = self._read(conn, password_length)
                     self.auth = (
                         bytes((auth_version, username_length))
@@ -97,34 +117,47 @@ class _Socks5Server:
                         + password
                     )
                     if self.eof_stage == "auth":
-                        conn.sendall(b"\x01")
+                        conn.sendall(bytes((_SOCKS5_AUTH_VERSION,)))
                         return
-                    conn.sendall(bytes((1, self.auth_status)))
+                    conn.sendall(bytes((_SOCKS5_AUTH_VERSION, self.auth_status)))
                     if self.auth_status:
                         return
-                version, command, reserved, atyp = self._read(conn, 4)
-                if atyp == 1:
-                    addr = self._read(conn, 4)
-                elif atyp == 4:
-                    addr = self._read(conn, 16)
+                version, command, reserved, atyp = self._read(conn, _SOCKS5_CONNECT_REPLY_LEN)
+                if atyp == _SOCKS5_ATYP_IPV4:
+                    addr = self._read(conn, _SOCKS5_IPV4_BOUND_LEN - _SOCKS5_PORT_LEN)
+                elif atyp == _SOCKS5_ATYP_IPV6:
+                    addr = self._read(conn, _SOCKS5_IPV6_BOUND_LEN - _SOCKS5_PORT_LEN)
                 else:
-                    length = self._read(conn, 1)
+                    length = self._read(conn, _SOCKS5_DOMAIN_LENGTH_LEN)
                     addr = length + self._read(conn, length[0])
                 self.request = (
-                    bytes((version, command, reserved, atyp)) + addr + self._read(conn, 2)
+                    bytes((version, command, reserved, atyp))
+                    + addr
+                    + self._read(conn, _SOCKS5_PORT_LEN)
                 )
                 if self.eof_stage == "connect":
-                    conn.sendall(b"\x05\x00")
+                    conn.sendall(bytes((_SOCKS5_VERSION, _SOCKS5_REPLY_SUCCESS)))
                     return
                 if self.target is not None:
                     upstream = socket.create_connection(self.target, timeout=3)
-                if self.bound_atyp == 1:
-                    bound = b"\x01\x7f\x00\x00\x01\x00\x00"
-                elif self.bound_atyp == 4:
-                    bound = b"\x04" + (b"\x00" * 16) + b"\x00\x00"
+                if self.bound_atyp == _SOCKS5_ATYP_IPV4:
+                    bound = (
+                        bytes((_SOCKS5_ATYP_IPV4,))
+                        + socket.inet_aton("127.0.0.1")
+                        + bytes(_SOCKS5_PORT_LEN)
+                    )
+                elif self.bound_atyp == _SOCKS5_ATYP_IPV6:
+                    bound = (
+                        bytes((_SOCKS5_ATYP_IPV6,))
+                        + socket.inet_pton(socket.AF_INET6, "::1")
+                        + bytes(_SOCKS5_PORT_LEN)
+                    )
                 else:
-                    bound = b"\x03\x01x\x00\x00"
-                conn.sendall(bytes((self.reply_version, self.reply, 0)) + bound + self.payload)
+                    host = b"x"
+                    bound = bytes((_SOCKS5_ATYP_DOMAIN, len(host))) + host + bytes(_SOCKS5_PORT_LEN)
+                conn.sendall(
+                    bytes((self.reply_version, self.reply, _SOCKS5_RESERVED)) + bound + self.payload
+                )
                 if self.payload:
                     return
                 if upstream is not None:

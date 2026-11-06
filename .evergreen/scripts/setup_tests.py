@@ -12,6 +12,7 @@ import time
 import zipfile
 from pathlib import Path
 from urllib import request
+from urllib.parse import urlsplit
 
 from utils import (
     DRIVERS_TOOLS,
@@ -54,6 +55,12 @@ EXTRAS_MAP = {
     "ocsp": "ocsp",
     "pyopenssl": "ocsp",
 }
+
+SOCKS5_AUTH_PORT = 1080
+SOCKS5_NOAUTH_PORT = 1081
+SOCKS5_MAPPED_PORT = 12345
+SOCKS5_PROXY_STARTUP_TIMEOUT = 10
+SOCKS5_PROXY_POLL_INTERVAL = 0.1
 
 
 # Map the test name to test group.
@@ -180,56 +187,69 @@ def get_secrets(name: str) -> dict[str, str]:
     return load_config_from_file(secrets_dir / "secrets-export.sh")
 
 
+def _first_seed(uri: str) -> str:
+    authority = urlsplit(uri).netloc.rsplit("@", 1)[-1]
+    seed = urlsplit(f"mongodb://{authority.split(',', 1)[0]}")
+    host = seed.hostname
+    if not host:
+        raise ValueError(f"Invalid seed in MONGODB_URI: {authority}")
+    port = seed.port if seed.port is not None else 27017
+    return f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
+
+
+def _wait_for_socks5_proxy(process: subprocess.Popen[bytes], port: int, log_path: Path) -> None:
+    """Wait for a SOCKS5 proxy to accept connections.
+
+    :param process: The proxy process to monitor.
+    :param port: The local port on which the proxy should listen.
+    :param log_path: The proxy's log file, included in errors.
+    :raises RuntimeError: If the process exits or does not become ready in time.
+    """
+    deadline = time.monotonic() + SOCKS5_PROXY_STARTUP_TIMEOUT
+    while True:
+        if process.poll() is not None:
+            raise RuntimeError(f"SOCKS5 proxy on port {port} exited; see {log_path}")
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=SOCKS5_PROXY_POLL_INTERVAL):
+                return
+        except OSError as exc:
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    f"SOCKS5 proxy on port {port} did not start; see {log_path}"
+                ) from exc
+            time.sleep(SOCKS5_PROXY_POLL_INTERVAL)
+
+
 def setup_socks5() -> None:
     """Start and verify the authenticated and unauthenticated test proxies.
 
-    :raises ValueError: If ``MONGODB_URI`` is unset.
-    :raises OSError: If a proxy port is already in use.
+    :raises ValueError: If ``MONGODB_URI`` is unset or invalid.
     :raises RuntimeError: If the tools checkout is missing or a proxy fails to start.
     """
     check_drivers_tools()
     if not os.environ.get("MONGODB_URI"):
         raise ValueError("MONGODB_URI must point to the replica set for SOCKS5 tests")
 
-    ports = (1080, 1081)
-    for port in ports:
-        with socket.socket() as sock:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.bind(("127.0.0.1", port))
-
-    env = os.environ.copy()
-    env["DRIVERS_TOOLS"] = DRIVERS_TOOLS
+    script = (Path(DRIVERS_TOOLS) / ".evergreen" / "socks5srv.py").absolute()
+    mapping = f"localhost:{SOCKS5_MAPPED_PORT} to {_first_seed(os.environ['MONGODB_URI'])}"
     processes: list[subprocess.Popen[bytes]] = []
     started = False
     try:
-        for port in ports:
-            args = [sys.executable, str(HERE / "run_socks5_proxy.py"), "--port", str(port)]
-            if port == 1080:
+        for port in (SOCKS5_AUTH_PORT, SOCKS5_NOAUTH_PORT):
+            args = [sys.executable, str(script), "--port", str(port), "--map", mapping]
+            if port == SOCKS5_AUTH_PORT:
                 args.extend(("--auth", "username:p4ssw0rd"))
             log_path = HERE / f"socks5-proxy-{port}.log"
             LOGGER.info("Starting SOCKS5 proxy on port %s; log: %s", port, log_path)
             with log_path.open("wb") as log:
                 process = subprocess.Popen(  # noqa: S603
                     args,
-                    env=env,
                     stdout=log,
                     stderr=subprocess.STDOUT,
                     start_new_session=True,
                 )
             processes.append(process)
-            deadline = time.monotonic() + 10
-            while True:
-                if process.poll() is not None:
-                    raise RuntimeError(f"SOCKS5 proxy on port {port} exited; see {log_path}")
-                try:
-                    with socket.create_connection(("127.0.0.1", port), timeout=0.1):
-                        break
-                except OSError as exc:
-                    if time.monotonic() >= deadline:
-                        raise RuntimeError(
-                            f"SOCKS5 proxy on port {port} did not start; see {log_path}"
-                        ) from exc
-                    time.sleep(0.1)
+            _wait_for_socks5_proxy(process, port, log_path)
         write_env("SOCKS5_PROXY_PIDS", " ".join(str(process.pid) for process in processes))
         write_env("SOCKS5_PROXIES_STARTED")
         started = True

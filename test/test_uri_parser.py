@@ -700,6 +700,37 @@ class TestURI(unittest.TestCase):
             with self.subTest(option=option), self.assertRaises(InvalidURI):
                 parse_uri(uri)
 
+    def test_socks5_skips_individual_validation_when_disabled(self):
+        username = "é" * 128
+        parsed = parse_uri(
+            "mongodb://localhost/?proxyHost=%5B%3A%3A1%5D&proxyPort=invalid"
+            f"&proxyUsername={username}&proxyPassword=pass",
+            validate=False,
+        )
+        self.assertEqual(
+            parsed["options"],
+            {
+                "proxyHost": "[::1]",
+                "proxyPort": "invalid",
+                "proxyUsername": username,
+                "proxyPassword": "pass",
+            },
+        )
+        self.assertEqual(
+            parse_uri("mongodb://localhost/?proxyHost=invalid%2Fhost", validate=False)["options"],
+            {"proxyHost": "invalid/host"},
+        )
+
+    def test_socks5_empty_credentials_without_normalization(self):
+        for validate in (True, False):
+            with self.subTest(validate=validate):
+                parsed = parse_uri(
+                    "mongodb://localhost/?proxyUsername=&proxyPassword=",
+                    validate=validate,
+                    normalize=False,
+                )
+                self.assertEqual(parsed["options"], {"proxyUsername": "", "proxyPassword": ""})
+
     def test_socks5_proxy_rejects_unix_socket(self):
         with self.assertRaises(ConfigurationError):
             parse_uri("mongodb://%2Ftmp%2Fmongodb.sock/?proxyHost=localhost")

@@ -35,13 +35,11 @@ from urllib.parse import unquote_plus
 
 from pymongo.client_options import _parse_ssl_options
 from pymongo.common import (
-    _SOCKS5_MAX_STR_LEN,
     _URI_OPTS_MUST_RAISE,
     INTERNAL_URI_OPTION_NAME_MAP,
     URI_OPTIONS_DEPRECATION_MAP,
     _CaseInsensitiveDictionary,
     get_validated_options,
-    validate_proxy_host,
 )
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.typings import _Address
@@ -493,27 +491,15 @@ def _check_proxy_options(nodes: Iterable[_Address], options: Mapping[str, Any]) 
     proxy_port = options.get("proxyport")
     proxy_username = options.get("proxyusername")
     proxy_password = options.get("proxypassword")
-    if proxy_username == "":
-        proxy_username = None
-    if proxy_password == "":
-        proxy_password = None
     if proxy_host is None:
-        if proxy_port is not None or proxy_username is not None or proxy_password is not None:
+        if proxy_port is not None or proxy_username or proxy_password:
             raise ConfigurationError(
                 "Cannot specify proxyPort, proxyUsername, or proxyPassword without proxyHost"
             )
         return
 
-    # Validate here as well as in the option validator because this function is
-    # also used by callers that disable URI option validation.
-    validate_proxy_host("proxyHost", proxy_host)
     if bool(proxy_username) != bool(proxy_password):
         raise ConfigurationError("Both proxyUsername and proxyPassword must be specified together")
-    for name, value in (("proxyUsername", proxy_username), ("proxyPassword", proxy_password)):
-        if value is not None and len(value.encode("utf-8")) > _SOCKS5_MAX_STR_LEN:
-            raise ConfigurationError(
-                f"{name} must be no more than {_SOCKS5_MAX_STR_LEN} UTF-8 bytes"
-            )
     if any(host.endswith(".sock") for host, _ in nodes):
         raise ConfigurationError("Cannot specify proxyHost with Unix domain sockets")
 

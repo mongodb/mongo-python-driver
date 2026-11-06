@@ -32,9 +32,12 @@ import time
 import urllib.parse
 from collections.abc import Awaitable, Mapping
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from pymongo.errors import ConfigurationError
+
+if TYPE_CHECKING:
+    from pymongo.pool_options import _ProxyOptions
 
 
 @dataclass(frozen=True)
@@ -69,6 +72,14 @@ class KMSConnectContext:
 # A callback that opens a connection to a KMS host.
 AsyncKMSConnectCallback = Callable[[KMSConnectContext], Awaitable[socket.socket]]
 KMSConnectCallback = Callable[[KMSConnectContext], socket.socket]
+
+
+def _check_kms_proxy_options(
+    proxy_options: Optional[_ProxyOptions],
+    kms_connect_callback: Optional[Callable[[KMSConnectContext], Any]],
+) -> None:
+    if proxy_options is not None and kms_connect_callback is not None:
+        raise ConfigurationError("Cannot specify kms_connect_callback with proxyHost")
 
 
 def _close_rejected_kms_socket(obj: Any) -> None:

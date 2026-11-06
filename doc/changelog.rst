@@ -9,7 +9,8 @@ Changes in Version 4.20.0 (2026/XX/XX)
   ``proxyPort``, ``proxyUsername``, and ``proxyPassword`` URI and keyword
   options on :class:`~pymongo.synchronous.mongo_client.MongoClient` and
   :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`
-  (`PYTHON-2943`_).
+  (`PYTHON-2943`_). SOCKS5 proxy options cannot be combined with
+  ``kms_connect_callback``.
 - The client handshake metadata now reports a detected coding agent in
   ``client.env.agent`` (`PYTHON-5929`_).
 

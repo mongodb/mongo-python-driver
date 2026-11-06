@@ -228,7 +228,10 @@ class AutoEncryptionOpts:
             :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` and a
             regular function for
             :class:`~pymongo.synchronous.mongo_client.MongoClient`. Defaults
-            to ``None``, meaning the driver connects to KMS hosts directly.
+            to ``None``, meaning the driver uses the encrypted client's SOCKS5
+            proxy, or connects directly if none is configured. Cannot be
+            combined with ``proxyHost`` on the encrypted client; doing so
+            raises :class:`~pymongo.errors.ConfigurationError`.
 
         .. versionchanged:: 4.19
            Added the `kms_connect_callback` parameter.

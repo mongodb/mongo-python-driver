@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import socket
-import time
 from typing import TYPE_CHECKING, Optional
 
 from pymongo.pool_shared import _configure_tcp_socket, _new_tcp_socket
@@ -33,6 +32,7 @@ from pymongo.socks5_shared import (
     _async_socks5_recv,
     _async_socks5_sendall,
     _proxy_deadline,
+    _proxy_remaining,
     _proxy_socket_timeout,
     _socks5_auth_request,
     _socks5_bound_address_size,
@@ -100,7 +100,7 @@ async def _async_create_proxy_connection(
     try:
         results = await _async_proxy_getaddrinfo(proxy, family, deadline)
     except TimeoutError as exc:
-        raise _Socks5Timeout("timed out") from exc
+        raise _Socks5Timeout("SOCKS5 proxy timed out") from exc
     except OSError as exc:
         raise _Socks5Error(f"SOCKS5 proxy connection failed: {exc}") from exc
 
@@ -117,14 +117,19 @@ async def _async_create_proxy_connection(
             return sock
         except TimeoutError as exc:
             sock.close()
-            if connected or (deadline is not None and deadline - time.monotonic() <= 0):
-                raise _Socks5Timeout("timed out") from exc
-            err = _Socks5Timeout("timed out")
+            if connected:
+                raise _Socks5Timeout("SOCKS5 proxy timed out") from exc
+            try:
+                _proxy_remaining(deadline)
+            except _Socks5Timeout as timeout:
+                raise timeout from exc
+            err = _Socks5Timeout("SOCKS5 proxy timed out")
             err.__cause__ = exc
+        except _Socks5Error:
+            sock.close()
+            raise
         except OSError as exc:
             sock.close()
-            if isinstance(exc, _Socks5Error):
-                raise
             err = exc
             # A connected proxy's handshake failure must not try a different
             # resolved proxy address; the failure is specific to the endpoint.

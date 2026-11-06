@@ -236,7 +236,11 @@ def validate_non_negative_integer(option: str, value: Any) -> int:
 
 
 def validate_proxy_host(option: str, value: Any) -> Optional[str]:
-    """Validate and normalize a SOCKS5 proxy host."""
+    """Validate and normalize a SOCKS5 proxy host.
+
+    :raises TypeError: If ``value`` is not a string or ``None``.
+    :raises ValueError: If ``value`` is an invalid host.
+    """
     if value is None:
         return None
     host = validate_string(option, value)
@@ -264,7 +268,11 @@ def validate_proxy_host(option: str, value: Any) -> Optional[str]:
 
 
 def validate_proxy_port(option: str, value: Any) -> Optional[int]:
-    """Validate a SOCKS5 proxy TCP port."""
+    """Validate a SOCKS5 proxy TCP port.
+
+    :raises TypeError: If ``value`` is not an integer or string.
+    :raises ValueError: If ``value`` is not an integer or is outside the valid port range.
+    """
     if value is None:
         return None
     if isinstance(value, bool):
@@ -273,6 +281,18 @@ def validate_proxy_port(option: str, value: Any) -> Optional[int]:
     if not 1 <= port <= 65535:
         raise ValueError(f"{option} must be an integer between 1 and 65535")
     return port
+
+
+def validate_proxy_credential(option: str, value: Any) -> Optional[str]:
+    """Validate a SOCKS5 username or password and its UTF-8 byte length.
+
+    :raises TypeError: If ``value`` is not a string or ``None``.
+    :raises ValueError: If the UTF-8 byte length exceeds the SOCKS5 limit.
+    """
+    credential = validate_string_or_none(option, value)
+    if credential is not None and len(credential.encode("utf-8")) > _SOCKS5_MAX_STR_LEN:
+        raise ValueError(f"{option} must be no more than {_SOCKS5_MAX_STR_LEN} UTF-8 bytes")
+    return credential
 
 
 def validate_readable(option: str, value: Any) -> Optional[str]:
@@ -774,8 +794,8 @@ URI_OPTIONS_VALIDATOR_MAP: dict[str, Callable[[Any, Any], Any]] = {
     "maxstalenessseconds": validate_max_staleness,
     "proxyhost": validate_proxy_host,
     "proxyport": validate_proxy_port,
-    "proxyusername": validate_string_or_none,
-    "proxypassword": validate_string_or_none,
+    "proxyusername": validate_proxy_credential,
+    "proxypassword": validate_proxy_credential,
     "readconcernlevel": validate_string_or_none,
     "readpreference": validate_read_preference_mode,
     "readpreferencetags": validate_read_preference_tags,

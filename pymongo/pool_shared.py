@@ -42,12 +42,7 @@ from pymongo import _csot
 from pymongo._telemetry import _CmapTelemetry
 from pymongo.asynchronous.helpers import _getaddrinfo
 from pymongo.auth_shared import _AuthContext
-from pymongo.common import (
-    MAX_BSON_SIZE,
-    MAX_MESSAGE_SIZE,
-    MAX_WIRE_VERSION,
-    MAX_WRITE_BATCH_SIZE,
-)
+from pymongo.common import MAX_BSON_SIZE, MAX_MESSAGE_SIZE, MAX_WIRE_VERSION, MAX_WRITE_BATCH_SIZE
 from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
     ConnectionFailure,
@@ -346,7 +341,7 @@ class _AgnosticBasePool(Generic[_ConnT]):
         if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
             return
         assert isinstance(error, AutoReconnect)  # Appease type checker.
-        # If the original error was a DNS, certificate, or SSL error, ignore it.
+        # Ignore DNS, certificate, SSL, and SOCKS5 proxy errors.
         if isinstance(
             error.__cause__,
             (_CertificateError, SSLErrors, socket.gaierror, _Socks5Error, _Socks5Timeout),
@@ -632,6 +627,7 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
     host, port = address
 
     if options._proxy_options is not None:
+        # Import locally to avoid a circular import; socks5_support imports pool_shared.
         from pymongo.asynchronous.socks5_support import _async_create_proxy_connection
 
         return await _async_create_proxy_connection(address, options, options._proxy_options)
@@ -641,6 +637,7 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
         if not hasattr(socket, "AF_UNIX"):
             raise ConnectionFailure("UNIX-sockets are not supported on this system")
         sock = socket.socket(socket.AF_UNIX)
+        # SOCK_CLOEXEC not supported for Unix sockets.
         _set_non_inheritable_non_atomic(sock.fileno())
         try:
             sock.setblocking(False)
@@ -669,7 +666,6 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
                 timeout = options.connect_timeout
             elif timeout <= 0:
                 raise socket.timeout("timed out")
-            # Socket needs to be non-blocking during connection to not block the event loop
             await asyncio.wait_for(
                 asyncio.get_running_loop().sock_connect(sock, sa), timeout=timeout
             )
@@ -870,6 +866,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
     host, port = address
 
     if options._proxy_options is not None:
+        # Import locally to avoid a circular import; socks5_support imports pool_shared.
         from pymongo.synchronous.socks5_support import _create_proxy_connection
 
         return _create_proxy_connection(address, options, options._proxy_options)

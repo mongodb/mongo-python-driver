@@ -40,6 +40,7 @@ _SOCKS5_RESERVED = 0x00
 _SOCKS5_AUTH_METHOD_COUNT_NO_CREDENTIALS = 1
 _SOCKS5_AUTH_METHOD_COUNT_WITH_CREDENTIALS = 2
 _SOCKS5_CMD_CONNECT = 0x01
+_SOCKS5_REPLY_SUCCESS = 0x00
 _SOCKS5_REPLY_GENERAL_FAILURE = 0x01
 _SOCKS5_REPLY_RULESET_DENIED = 0x02
 _SOCKS5_REPLY_NETWORK_UNREACHABLE = 0x03
@@ -83,20 +84,18 @@ class _Socks5Timeout(socket.timeout):
 
 
 def _proxy_deadline(options: PoolOptions) -> Optional[float]:
-    timeout = _csot.remaining()
-    if timeout is None:
-        timeout = options.connect_timeout
-    elif timeout <= 0:
-        raise _Socks5Timeout("timed out")
+    timeout = _proxy_socket_timeout(options)
     if timeout is None:
         return None
     return time.monotonic() + timeout
 
 
 def _proxy_socket_timeout(options: PoolOptions) -> Optional[float]:
-    timeout = _csot.remaining() if _csot.get_timeout() else options.connect_timeout
+    timeout = _csot.remaining()
+    if timeout is None:
+        timeout = options.connect_timeout
     if timeout is not None and timeout <= 0:
-        raise _Socks5Timeout("timed out")
+        raise _Socks5Timeout("SOCKS5 proxy timed out")
     return timeout
 
 
@@ -105,7 +104,7 @@ def _proxy_remaining(deadline: Optional[float]) -> Optional[float]:
         return None
     remaining = deadline - time.monotonic()
     if remaining <= 0:
-        raise _Socks5Timeout("timed out")
+        raise _Socks5Timeout("SOCKS5 proxy timed out")
     return remaining
 
 
@@ -199,7 +198,7 @@ def _socks5_check_connect_reply(data: bytes) -> int:
         raise _Socks5Error(f"SOCKS5 connect failed: unexpected version {version:#04x}")
     if reserved != _SOCKS5_RESERVED:
         raise _Socks5Error(f"SOCKS5 connect failed: invalid reserved byte {reserved:#04x}")
-    if reply:
+    if reply != _SOCKS5_REPLY_SUCCESS:
         reason = _SOCKS5_REPLY_REASONS.get(reply, f"unknown error {reply:#04x}")
         raise _Socks5Error(f"SOCKS5 connect failed: {reason}")
     if atyp not in (_SOCKS5_ATYP_IPV4, _SOCKS5_ATYP_DOMAIN, _SOCKS5_ATYP_IPV6):

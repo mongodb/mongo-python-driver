@@ -53,7 +53,7 @@ from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot, _op_id
-from pymongo._kms_connect_shared import AsyncKMSConnectCallback
+from pymongo._kms_connect_shared import AsyncKMSConnectCallback, _check_kms_proxy_options
 from pymongo.asynchronous._kms_connect import _KMS_CONNECT_TIMEOUT, _connect_kms
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
@@ -365,6 +365,9 @@ class _Encrypter:
         :param client: The encrypted AsyncMongoClient.
         :param opts: The encrypted client's :class:`AutoEncryptionOpts`.
         """
+        _check_kms_proxy_options(
+            client.options.pool_options._proxy_options, opts._kms_connect_callback
+        )
         if opts._schema_map is None:
             schema_map = None
         else:
@@ -578,7 +581,8 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             collection. Data keys are protected with encryption by a KMS
             provider.
         :param key_vault_client: An AsyncMongoClient connected to a MongoDB cluster
-            containing the `key_vault_namespace` collection.
+            containing the `key_vault_namespace` collection. Its SOCKS5 proxy
+            options are also used for KMS requests.
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions` to use when encoding a
             value for encryption and decoding the decrypted BSON value. This
@@ -610,8 +614,11 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             deadline and closes any socket the callback yields later. For an
             ordinary HTTP proxy, pass
             :class:`~pymongo.encryption_options.AsyncHTTPProxyKMSConnect`.
-            Defaults to ``None``, meaning the driver connects to KMS hosts
-            directly.
+            Defaults to ``None``, meaning the driver uses the SOCKS5 proxy
+            configured on ``key_vault_client``, or connects directly if none
+            is configured. Cannot be combined with ``proxyHost`` on
+            ``key_vault_client``; doing so raises
+            :class:`~pymongo.errors.ConfigurationError`.
 
         .. versionchanged:: 4.19
            Added the `kms_connect_callback` parameter.
@@ -645,6 +652,9 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                     f"AsyncMongoClient required but given {type(key_vault_client).__name__}"
                 )
 
+        _check_kms_proxy_options(
+            key_vault_client.options.pool_options._proxy_options, kms_connect_callback
+        )
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
         self._key_vault_client = key_vault_client

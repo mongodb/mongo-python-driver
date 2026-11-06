@@ -55,7 +55,7 @@ from pymongo.encryption_options import (
     KMSConnectContext,
 )
 from pymongo.errors import ConfigurationError, ConnectionFailure, EncryptionError, NetworkTimeout
-from pymongo.pool_options import PoolOptions
+from pymongo.pool_options import PoolOptions, _ProxyOptions
 from pymongo.ssl_support import get_ssl_context
 from test.helpers_shared import CA_PEM, CERT_PATH, CLIENT_PEM
 
@@ -1059,6 +1059,17 @@ async def test_datagram_socket_from_callback_is_rejected(api):
 
 
 @both_apis
+async def test_encrypter_rejects_callback_with_socks5_proxy(api):
+    callback = mock.Mock()
+    opts = AutoEncryptionOpts({}, "keyvault.datakeys", kms_connect_callback=callback)
+    client = mock.Mock(
+        options=mock.Mock(pool_options=PoolOptions(proxy_options=_ProxyOptions("proxy.example")))
+    )
+    with pytest.raises(ConfigurationError, match="kms_connect_callback with proxyHost"):
+        api.encryption()._Encrypter(client, opts)
+
+
+@both_apis
 async def test_kms_request_does_not_retry_a_contract_violation(api):
     # The no-retry guarantee lives in kms_request, not _connect_kms.
     calls = []
@@ -1068,9 +1079,7 @@ async def test_kms_request_does_not_retry_a_contract_violation(api):
         return "not-a-socket"
 
     opts = AutoEncryptionOpts({}, "k.d", kms_connect_callback=api.callback(action))
-    proxy_client = mock.MagicMock()
-    proxy_client.options.pool_options._proxy_options = None
-    io = api.encryption()._EncryptionIO(None, mock.MagicMock(), None, opts, proxy_client)
+    io = api.encryption()._EncryptionIO(None, mock.MagicMock(), None, opts, None)
 
     class StubKmsContext:
         endpoint = "kms.example.com:443"
