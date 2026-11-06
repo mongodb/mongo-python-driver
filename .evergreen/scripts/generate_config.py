@@ -49,7 +49,7 @@ from shrub.v3.evg_task import EvgTask, EvgTaskDependency, EvgTaskRef
 
 # Re-exported so the writer scans and the tests discover the per-suite
 # family creators alongside this module's own creators.
-from suite_families import (  # noqa: F401
+from task_suite_families import (  # noqa: F401
     create_standard_tasks,
     create_test_compression_tasks,
     create_test_disable_test_commands_tasks,

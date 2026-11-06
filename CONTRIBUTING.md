@@ -475,7 +475,7 @@ wheels (CPython 3.12-3.14).
 - If there are any special test considerations, including not running `pytest` at all, handle it in `.evergreen/scripts/run_tests.py`.
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
 - Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`;
-  the per-suite task families live in `.evergreen/scripts/suite_families.py` (re-exported by
+  the per-suite task families live in `.evergreen/scripts/task_suite_families.py` (re-exported by
   `generate_config.py`).
 - There are some considerations about the Python version used in the test:
     - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10` or `UV_PYTHON=3.14t`).
