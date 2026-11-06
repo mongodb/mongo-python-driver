@@ -766,6 +766,9 @@ class TestMonitorRecoversAfterSelfRemoval(AsyncUnitTest):
             # Both monitors self-removed; the client must recover.
             await client.admin.command("ping")
         finally:
+            # Close the client first: on Python 3.12+ Server.wait_closed()
+            # waits for accepted connections to disconnect (PYTHON-6226).
+            await client.close()
             for server in servers:
                 server.close()
             await asyncio.gather(*[server.wait_closed() for server in servers])
@@ -773,10 +776,8 @@ class TestMonitorRecoversAfterSelfRemoval(AsyncUnitTest):
 
 class TestServerRemovalHardening(AsyncUnitTest):
     async def test_removal_bookkeeping_survives_close_cancellation(self):
-        # Extra hardening for PYTHON-6226: _update_servers() must record the
-        # monitor and pop the server before awaiting server.close(), so a
-        # cancellation raised during close() cannot strand a stale server in
-        # _servers.
+        # Hardening for PYTHON-6226: record the monitor and pop the server
+        # before close(), so cancellation during close() cannot strand it.
         if _IS_SYNC:
             self.skipTest("PYTHON-6226: task cancellation is async-only")
 
@@ -785,8 +786,7 @@ class TestServerRemovalHardening(AsyncUnitTest):
         victim = topology._servers[address_b]
 
         async def cancelling_close():
-            # Simulate an executor cancelling the task that is closing it,
-            # as AsyncPeriodicExecutor.close() did before PYTHON-6226.
+            # Simulate an executor cancelling the task that closes it.
             asyncio.current_task().cancel()
             await asyncio.sleep(0)
 
@@ -810,8 +810,6 @@ class TestServerRemovalHardening(AsyncUnitTest):
         with self.assertRaises(asyncio.CancelledError):
             await task
 
-        # The stale server must be gone despite the cancellation, and its
-        # monitor must be queued for cleanup.
         self.assertNotIn(address_b, topology._servers)
         self.assertIn(victim._monitor, topology._monitor_tasks)
 
