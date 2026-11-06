@@ -20,11 +20,13 @@ import asyncio
 import os
 import platform
 import socketserver
+import struct
 import sys
 import threading
 import time
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
+from typing import Any
 
 from pymongo.asynchronous.pool import AsyncConnection
 from pymongo.errors import ConnectionFailure
@@ -38,6 +40,8 @@ sys.path[0:0] = [""]
 from unittest.mock import patch
 
 from bson import Timestamp, json_util
+from bson import decode as bson_decode
+from bson import encode as bson_encode
 from pymongo import common, monitoring
 from pymongo.asynchronous.settings import TopologySettings
 from pymongo.asynchronous.topology import Topology
@@ -677,6 +681,94 @@ class TestHeartbeatStartOrdering(AsyncPyMongoTestCase):
                 "serverHeartbeatFailedEvent",
             ],
         )
+
+
+class TestMonitorRecoversAfterSelfRemoval(AsyncUnitTest):
+    async def test_monitor_recovers_after_self_removal(self):
+        # Regression test for PYTHON-6226: a monitor that closed its own
+        # server used to cancel itself, leaving the client stuck in
+        # ReplicaSetNoPrimary. The client must recover.
+        if _IS_SYNC:
+            self.skipTest("PYTHON-6226: monitor task self-cancellation is async-only")
+
+        # Fake two-node replica set on ephemeral ports.
+        role: dict[int, str] = {}
+        hosts: list[str] = []
+
+        def make_handler(port_box):
+            async def handle(reader: StreamReader, writer: StreamWriter):
+                port = port_box["port"]
+                try:
+                    while True:
+                        length, req_id, _, _ = struct.unpack(
+                            # The ignore is for the sync mirror, where
+                            # unasync turns this read into a bare call.
+                            "<iiii",
+                            await reader.readexactly(16),  # type: ignore[arg-type]
+                        )
+                        body = await reader.readexactly(length - 16)
+                        cmd = next(iter(bson_decode(body[5:]))).lower()
+                        if cmd in ("hello", "ismaster"):
+                            reply: dict[str, Any] = {
+                                "ok": 1,
+                                "minWireVersion": 0,
+                                "maxWireVersion": 21,
+                            }
+                            if role[port] != "standalone":
+                                reply |= {
+                                    "setName": "rs",
+                                    "hosts": hosts,
+                                    "me": f"127.0.0.1:{port}",
+                                    "primary": hosts[1],
+                                    "secondary": role[port] == "secondary",
+                                    "isWritablePrimary": role[port] == "primary",
+                                }
+                        else:
+                            reply = {"ok": 1}
+                        data = b"\0" * 5 + bson_encode(reply)
+                        writer.write(struct.pack("<iiii", 16 + len(data), 0, req_id, 2013) + data)
+                except (asyncio.IncompleteReadError, ConnectionError):
+                    writer.close()
+
+            return handle
+
+        servers = []
+        ports = []
+        for _ in range(2):
+            port_box: dict[str, int] = {}
+            server = await asyncio.start_server(make_handler(port_box), "127.0.0.1", 0)
+            port_box["port"] = server.sockets[0].getsockname()[1]
+            ports.append(port_box["port"])
+            servers.append(server)
+
+        hosts[:] = [f"127.0.0.1:{p}" for p in ports]
+        role[ports[0]] = "secondary"
+        role[ports[1]] = "primary"
+
+        client = self.simple_client(
+            f"mongodb://{','.join(hosts)}",
+            replicaSet="rs",
+            heartbeatFrequencyMS=500,  # driver minimum
+            serverMonitoringMode="poll",
+            serverSelectionTimeoutMS=2000,
+        )
+        try:
+            await client.admin.command("ping")
+
+            # Each node briefly removes itself from the topology, then
+            # recovers.
+            for port, original in list(role.items()):
+                role[port] = "standalone"
+                await asyncio.sleep(2.0)
+                role[port] = original
+                await asyncio.sleep(2.0)
+
+            # Both monitors self-removed; the client must recover.
+            await client.admin.command("ping")
+        finally:
+            for server in servers:
+                server.close()
+            await asyncio.gather(*[server.wait_closed() for server in servers])
 
 
 # Generate unified tests.

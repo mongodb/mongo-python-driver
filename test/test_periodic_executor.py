@@ -23,7 +23,7 @@ import sys
 import textwrap
 import threading
 import time
-from typing import Any
+from typing import Any, Optional
 from unittest import mock
 
 _interpreters: Any = None
@@ -154,6 +154,69 @@ class TestPeriodicExecutor(UnitTest):
         executor.open()
         executor.join(timeout=2)
         self.assertGreaterEqual(called, 2)
+
+    def test_close_from_own_task_does_not_cancel(self):
+        # Closing the executor from its own task must not cancel it
+        # (PYTHON-6226).
+        runs = 0
+
+        def target():
+            nonlocal runs
+            executor.close()
+            # Raises CancelledError here if close() cancelled this task.
+            runs += 1
+            return False
+
+        executor = self._make_executor(target=target)
+        executor.open()
+        executor.join(timeout=2)
+        self.assertEqual(runs, 1, "target did not finish after close() from its own task")
+        if not _IS_SYNC:
+            assert executor._task is not None
+            self.assertFalse(executor._task.cancelled(), "executor task cancelled itself")
+        # The executor can be restarted after a self-close.
+        executor.open()
+        executor.join(timeout=2)
+        self.assertEqual(runs, 2, "executor did not restart after a self-close")
+
+    def test_close_from_thread_without_event_loop(self):
+        # close() can run off the event loop as a weakref callback, where
+        # asyncio.current_task() raises RuntimeError.
+        if _IS_SYNC:
+            started = threading.Event()
+        else:
+            started = asyncio.Event()
+
+        def target():
+            started.set()
+            return True
+
+        executor = self._make_executor(target=target)
+        executor.open()
+        if _IS_SYNC:
+            started.wait(timeout=2)
+        else:
+            assert isinstance(started, asyncio.Event)
+            asyncio.wait_for(started.wait(), timeout=2)
+
+        close_error: Optional[BaseException] = None
+
+        def close_off_loop():
+            nonlocal close_error
+            try:
+                executor.close()
+            except BaseException as exc:
+                close_error = exc
+
+        thread = threading.Thread(target=close_off_loop)
+        thread.start()
+        thread.join(timeout=2)
+        self.assertIsNone(close_error, "close() raised from a thread without a running event loop")
+        executor.join(timeout=2)
+        self.assertTrue(executor._stopped)
+        if not _IS_SYNC:
+            assert executor._task is not None
+            self.assertTrue(executor._task.cancelled())
 
     def test_target_exception_stops_executor(self):
         call_count = 0
