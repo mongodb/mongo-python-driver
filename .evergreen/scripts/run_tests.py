@@ -156,8 +156,7 @@ def handle_fuzz() -> None:
         if not inputs:
             raise RuntimeError("No fuzz regression inputs found in fuzz/regression/")
         corpus_dir = os.environ.get("FUZZ_CORPUS_DIR", str(ROOT / "fuzz-scratch" / "corpus"))
-        # Fail fast on a missing or empty corpus; libFuzzer would silently
-        # skip it.
+        # Fail fast on a missing or empty corpus; libFuzzer would silently skip it.
         corpus_files = sorted(
             str(p) for p in Path(corpus_dir).glob("*") if not p.name.startswith(".")
         )
@@ -166,8 +165,8 @@ def handle_fuzz() -> None:
                 f"No fuzz seed corpus found in {corpus_dir}; was setup_tests.py run?"
             )
         inputs.extend(corpus_files)
-        # Each input runs exactly once without random fuzzing; the -atheris_runs
-        # budget equals the file count so atheris exits cleanly after the last.
+        # Each input runs once: -atheris_runs equals the file count, so
+        # atheris exits cleanly after the last one.
         runs = len(inputs)
         for target in targets:
             run_command(
@@ -177,9 +176,7 @@ def handle_fuzz() -> None:
 
     # Time-boxed fuzzing against the generated seed corpus.
     corpus_dir = os.environ.get("FUZZ_CORPUS_DIR", str(ROOT / "fuzz-scratch" / "corpus"))
-    # Fail fast on a missing or empty corpus: libFuzzer would only log
-    # "starting from an empty corpus" and burn the whole time budget
-    # without the seeds the task exists to exercise.
+    # Fail fast: libFuzzer would burn the whole budget without the seeds.
     if not any(Path(corpus_dir).glob("*")):
         raise RuntimeError(f"No fuzz seed corpus found in {corpus_dir}; was setup_tests.py run?")
     # Keep libFuzzer artifacts (crash-*, leak-*, ...) under the scratch dir.

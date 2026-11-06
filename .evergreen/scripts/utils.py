@@ -45,8 +45,7 @@ TEST_SUITE_MAP = {
     "enterprise_auth": "auth",
     "search_index": "search_index",
     "kms": "kms",
-    # No marker: the load balancer tasks run the full default suite, whose
-    # load-balancer-marked tests are part of it.
+    # No marker: the load balancer tasks run the full default suite, LB tests included.
     "load_balancer": "",
     "mockupdb": "mockupdb",
     "ocsp": "ocsp",
@@ -310,17 +309,16 @@ def read_env(path: Path | str) -> dict[str, str]:
 def shell_escape(value: str) -> str:
     """Escape a value for a double-quoted shell context.
 
-    Backslashes are escaped first: a backslash-prefixed `$(...)` in the
-    value would otherwise consume the escape written for the `$` and re-arm
-    the substitution when the file is sourced (PYTHON-6167)."""
+    Backslashes are escaped first or a backslash-prefixed substitution
+    re-arms when the file is sourced (PYTHON-6167)."""
     return value.replace("\\", "\\\\").replace("$", "\\$").replace("`", "\\`")
 
 
 def write_env(name: str, value: Any = "1", escape: bool = True) -> None:
     """Append an export line for the value to the test environment file.
 
-    The value is persisted literally; pass escape=False for values that must
-    keep live expansions, like a trailing `$PATH` (PYTHON-6167)."""
+    The value persists literally; pass escape=False to keep live expansions,
+    like a trailing `$PATH` (PYTHON-6167)."""
     with ENV_FILE.open("a", newline="\n") as fid:
         value = str(value).replace('"', "")
         if escape:
