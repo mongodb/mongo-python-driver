@@ -528,7 +528,7 @@ def _raise_connection_failure(
         msg = msg_prefix + msg
     if "configured timeouts" not in msg:
         msg += format_timeout_details(timeout_details)
-    if isinstance(error, socket.timeout) or (
+    if isinstance(error, TimeoutError) or (
         isinstance(error, SSLErrors) and "timed out" in str(error)
     ):
         raise NetworkTimeout(msg) from error
@@ -645,7 +645,7 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
             if timeout is None:
                 timeout = options.connect_timeout
             elif timeout <= 0:
-                raise socket.timeout("timed out")
+                raise TimeoutError("timed out")
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
             # Socket needs to be non-blocking during connection to not block the event loop
@@ -655,9 +655,9 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
             )
             sock.settimeout(timeout)
             return sock
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             sock.close()
-            err = socket.timeout("timed out")
+            err = TimeoutError("timed out")
             err.__cause__ = e
         except OSError as e:
             sock.close()
@@ -891,7 +891,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
             if timeout is None:
                 timeout = options.connect_timeout
             elif timeout <= 0:
-                raise socket.timeout("timed out")
+                raise TimeoutError("timed out")
             sock.settimeout(timeout)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)

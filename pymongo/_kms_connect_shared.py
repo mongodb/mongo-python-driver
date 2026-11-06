@@ -94,7 +94,7 @@ def _remaining(deadline: float) -> float:
     """Seconds left before ``deadline``."""
     left = deadline - time.monotonic()
     if left <= 0:
-        raise socket.timeout("timed out connecting through the proxy")
+        raise TimeoutError("timed out connecting through the proxy")
     return left
 
 
@@ -423,12 +423,12 @@ class HTTPProxyKMSConnect:
                 # Propagate the timeout from _remaining rather than report a
                 # connect error.
                 sock.settimeout(_remaining(deadline))
-            except socket.timeout:
+            except TimeoutError:
                 sock.close()
                 raise
             try:
                 sock.connect(sockaddr)
-            except socket.timeout:
+            except TimeoutError:
                 # Preserve the timeout type rather than report a generic
                 # connect error.
                 sock.close()
@@ -476,13 +476,13 @@ class AsyncHTTPProxyKMSConnect(HTTPProxyKMSConnect):
                     raise exc from None
                 # The task succeeded right at the deadline.
                 _close_late_bridge_sockets(late_sockets, future)
-                raise socket.timeout("timed out connecting through the proxy") from None
+                raise TimeoutError("timed out connecting through the proxy") from None
             if not future.done():
                 # The thread runs on regardless; close its late sockets.
                 future.add_done_callback(
                     functools.partial(_close_late_bridge_sockets, late_sockets)
                 )
-            raise socket.timeout("timed out connecting through the proxy") from None
+            raise TimeoutError("timed out connecting through the proxy") from None
 
 
 # Sphinx documents these classes under pymongo.encryption_options, the public

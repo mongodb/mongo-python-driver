@@ -243,7 +243,6 @@ ignore = [
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
   "UP045", # Use `X | Y` for union annotation (Enable when we drop 3.9 support)
   "PLC0415", # `import` should be at the top-level of a file
-  "UP041",   # `asyncio.TimeoutError` is an alias of `TimeoutError` on 3.11+
   "ASYNC109", # Async function with a `timeout` parameter (CSOT timeouts are not `asyncio.timeout`)
   "UP042",   # `str, Enum` should be `StrEnum` (changes `__str__` semantics)
   "UP017",   # `timezone.utc` preferred over `datetime.UTC` (keep existing style)

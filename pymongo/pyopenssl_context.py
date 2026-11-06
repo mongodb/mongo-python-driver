@@ -135,7 +135,7 @@ class _sslConn(_SSL.Connection):
                 # Check for closed socket.
                 if self.fileno() == -1:
                     if timeout and _time.monotonic() - start > timeout:
-                        raise _socket.timeout("timed out") from None
+                        raise TimeoutError("timed out") from None
                     raise SSLError("Underlying socket has been closed") from None
                 if isinstance(exc, _SSL.WantReadError):
                     want_read = True
@@ -148,7 +148,7 @@ class _sslConn(_SSL.Connection):
                     want_write = True
                 self.socket_checker.select(self, want_read, want_write, timeout)
                 if timeout and _time.monotonic() - start > timeout:
-                    raise _socket.timeout("timed out") from None
+                    raise TimeoutError("timed out") from None
                 continue
 
     def do_handshake(self, *args: Any, **kwargs: Any) -> None:
