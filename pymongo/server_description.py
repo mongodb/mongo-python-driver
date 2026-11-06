@@ -22,7 +22,7 @@ from __future__ import annotations
 import time
 import warnings
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from bson import EPOCH_NAIVE
 from bson.objectid import ObjectId
@@ -71,9 +71,9 @@ class ServerDescription:
     def __init__(
         self,
         address: _Address,
-        hello: Optional[Hello[dict[str, Any]]] = None,
-        round_trip_time: Optional[float] = None,
-        error: Optional[Exception] = None,
+        hello: Hello[dict[str, Any]] | None = None,
+        round_trip_time: float | None = None,
+        error: Exception | None = None,
         min_round_trip_time: float = 0.0,
     ) -> None:
         self._address = address
@@ -107,7 +107,7 @@ class ServerDescription:
             if isinstance(details, dict):
                 self._topology_version = details.get("topologyVersion")
 
-        self._last_write_date: Optional[float]
+        self._last_write_date: float | None
         if hello.last_write_date:
             # Convert from datetime to seconds.
             delta = hello.last_write_date - EPOCH_NAIVE
@@ -143,12 +143,12 @@ class ServerDescription:
         return self._tags
 
     @property
-    def replica_set_name(self) -> Optional[str]:
+    def replica_set_name(self) -> str | None:
         """Replica set name or None."""
         return self._replica_set_name
 
     @property
-    def primary(self) -> Optional[tuple[str, int]]:
+    def primary(self) -> tuple[str, int] | None:
         """This server's opinion about who the primary is, or None."""
         return self._primary
 
@@ -173,19 +173,19 @@ class ServerDescription:
         return self._max_wire_version
 
     @property
-    def set_version(self) -> Optional[int]:
+    def set_version(self) -> int | None:
         return self._set_version
 
     @property
-    def election_id(self) -> Optional[ObjectId]:
+    def election_id(self) -> ObjectId | None:
         return self._election_id
 
     @property
-    def cluster_time(self) -> Optional[ClusterTime]:
+    def cluster_time(self) -> ClusterTime | None:
         return self._cluster_time
 
     @property
-    def election_tuple(self) -> tuple[Optional[int], Optional[ObjectId]]:
+    def election_tuple(self) -> tuple[int | None, ObjectId | None]:
         warnings.warn(
             "'election_tuple' is deprecated, use  'set_version' and 'election_id' instead",
             DeprecationWarning,
@@ -194,15 +194,15 @@ class ServerDescription:
         return self._set_version, self._election_id
 
     @property
-    def me(self) -> Optional[tuple[str, int]]:
+    def me(self) -> tuple[str, int] | None:
         return self._me
 
     @property
-    def logical_session_timeout_minutes(self) -> Optional[int]:
+    def logical_session_timeout_minutes(self) -> int | None:
         return self._ls_timeout_minutes
 
     @property
-    def last_write_date(self) -> Optional[float]:
+    def last_write_date(self) -> float | None:
         return self._last_write_date
 
     @property
@@ -210,7 +210,7 @@ class ServerDescription:
         return self._last_update_time
 
     @property
-    def round_trip_time(self) -> Optional[float]:
+    def round_trip_time(self) -> float | None:
         """The current average latency or None."""
         # This override is for unittesting only!
         if self._address in self._host_to_round_trip_time:
@@ -224,7 +224,7 @@ class ServerDescription:
         return self._min_round_trip_time
 
     @property
-    def error(self) -> Optional[Exception]:
+    def error(self) -> Exception | None:
         """The last error attempting to connect to the server, or None."""
         return self._error
 
@@ -257,10 +257,10 @@ class ServerDescription:
         return self._max_wire_version >= 6
 
     @property
-    def topology_version(self) -> Optional[Mapping[str, Any]]:
+    def topology_version(self) -> Mapping[str, Any] | None:
         return self._topology_version
 
-    def to_unknown(self, error: Optional[Exception] = None) -> ServerDescription:
+    def to_unknown(self, error: Exception | None = None) -> ServerDescription:
         unknown = ServerDescription(self.address, error=error)
         unknown._topology_version = self.topology_version
         return unknown

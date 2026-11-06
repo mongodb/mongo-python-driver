@@ -20,7 +20,7 @@ import copy
 import datetime
 import itertools
 from collections.abc import Mapping
-from typing import Any, Generic, Optional
+from typing import Any, Generic
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -117,7 +117,7 @@ class Hello(Generic[_DocumentType]):
         return self._doc.get("tags", {})
 
     @property
-    def primary(self) -> Optional[tuple[str, int]]:
+    def primary(self) -> tuple[str, int] | None:
         """This server's opinion about who the primary is, or None."""
         if self._doc.get("primary"):
             return common.partition_node(self._doc["primary"])
@@ -125,7 +125,7 @@ class Hello(Generic[_DocumentType]):
             return None
 
     @property
-    def replica_set_name(self) -> Optional[str]:
+    def replica_set_name(self) -> str | None:
         """Replica set name or None."""
         return self._doc.get("setName")
 
@@ -150,19 +150,19 @@ class Hello(Generic[_DocumentType]):
         return self._doc.get("maxWireVersion", common.MAX_WIRE_VERSION)
 
     @property
-    def set_version(self) -> Optional[int]:
+    def set_version(self) -> int | None:
         return self._doc.get("setVersion")
 
     @property
-    def election_id(self) -> Optional[ObjectId]:
+    def election_id(self) -> ObjectId | None:
         return self._doc.get("electionId")
 
     @property
-    def cluster_time(self) -> Optional[ClusterTime]:
+    def cluster_time(self) -> ClusterTime | None:
         return self._doc.get("$clusterTime")
 
     @property
-    def logical_session_timeout_minutes(self) -> Optional[int]:
+    def logical_session_timeout_minutes(self) -> int | None:
         return self._doc.get("logicalSessionTimeoutMinutes")
 
     @property
@@ -174,18 +174,18 @@ class Hello(Generic[_DocumentType]):
         return self._is_readable
 
     @property
-    def me(self) -> Optional[tuple[str, int]]:
+    def me(self) -> tuple[str, int] | None:
         me = self._doc.get("me")
         if me:
             return common.clean_node(me)
         return None
 
     @property
-    def last_write_date(self) -> Optional[datetime.datetime]:
+    def last_write_date(self) -> datetime.datetime | None:
         return self._doc.get("lastWrite", {}).get("lastWriteDate")
 
     @property
-    def compressors(self) -> Optional[list[str]]:
+    def compressors(self) -> list[str] | None:
         return self._doc.get("compression")
 
     @property
@@ -201,12 +201,12 @@ class Hello(Generic[_DocumentType]):
         return self._doc.get("saslSupportedMechs", [])
 
     @property
-    def speculative_authenticate(self) -> Optional[Mapping[str, Any]]:
+    def speculative_authenticate(self) -> Mapping[str, Any] | None:
         """The speculativeAuthenticate field."""
         return self._doc.get("speculativeAuthenticate")
 
     @property
-    def topology_version(self) -> Optional[Mapping[str, Any]]:
+    def topology_version(self) -> Mapping[str, Any] | None:
         return self._doc.get("topologyVersion")
 
     @property
@@ -214,7 +214,7 @@ class Hello(Generic[_DocumentType]):
         return self._awaitable
 
     @property
-    def service_id(self) -> Optional[ObjectId]:
+    def service_id(self) -> ObjectId | None:
         return self._doc.get("serviceId")
 
     @property
@@ -222,5 +222,5 @@ class Hello(Generic[_DocumentType]):
         return self._doc.get("helloOk", False)
 
     @property
-    def connection_id(self) -> Optional[int]:
+    def connection_id(self) -> int | None:
         return self._doc.get("connectionId")

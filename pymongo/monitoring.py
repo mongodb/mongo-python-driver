@@ -191,7 +191,7 @@ from __future__ import annotations
 import datetime
 from collections import abc, namedtuple
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from bson.objectid import ObjectId
 from pymongo.hello import Hello, HelloCompat
@@ -541,10 +541,10 @@ class _CommandEvent:
         command_name: str,
         request_id: int,
         connection_id: _Address,
-        operation_id: Optional[int],
-        service_id: Optional[ObjectId] = None,
+        operation_id: int | None,
+        service_id: ObjectId | None = None,
         database_name: str = "",
-        server_connection_id: Optional[int] = None,
+        server_connection_id: int | None = None,
     ) -> None:
         self.__cmd_name = command_name
         self.__rqst_id = request_id
@@ -570,7 +570,7 @@ class _CommandEvent:
         return self.__conn_id
 
     @property
-    def service_id(self) -> Optional[ObjectId]:
+    def service_id(self) -> ObjectId | None:
         """The service_id this command was sent to, or ``None``.
 
         .. versionadded:: 3.12
@@ -578,7 +578,7 @@ class _CommandEvent:
         return self.__service_id
 
     @property
-    def operation_id(self) -> Optional[int]:
+    def operation_id(self) -> int | None:
         """An id for this series of events or None."""
         return self.__op_id
 
@@ -591,7 +591,7 @@ class _CommandEvent:
         return self.__db
 
     @property
-    def server_connection_id(self) -> Optional[int]:
+    def server_connection_id(self) -> int | None:
         """The server-side connection id for the connection this command was sent on, or ``None``.
 
         .. versionadded:: 4.7
@@ -619,9 +619,9 @@ class CommandStartedEvent(_CommandEvent):
         database_name: str,
         request_id: int,
         connection_id: _Address,
-        operation_id: Optional[int],
-        service_id: Optional[ObjectId] = None,
-        server_connection_id: Optional[int] = None,
+        operation_id: int | None,
+        service_id: ObjectId | None = None,
+        server_connection_id: int | None = None,
     ) -> None:
         if not command:
             raise ValueError(f"{command!r} is not a valid command")
@@ -679,10 +679,10 @@ class CommandSucceededEvent(_CommandEvent):
         command_name: str,
         request_id: int,
         connection_id: _Address,
-        operation_id: Optional[int],
-        service_id: Optional[ObjectId] = None,
+        operation_id: int | None,
+        service_id: ObjectId | None = None,
         database_name: str = "",
-        server_connection_id: Optional[int] = None,
+        server_connection_id: int | None = None,
     ) -> None:
         super().__init__(
             command_name,
@@ -737,10 +737,10 @@ class CommandFailedEvent(_CommandEvent):
         command_name: str,
         request_id: int,
         connection_id: _Address,
-        operation_id: Optional[int],
-        service_id: Optional[ObjectId] = None,
+        operation_id: int | None,
+        service_id: ObjectId | None = None,
         database_name: str = "",
-        server_connection_id: Optional[int] = None,
+        server_connection_id: int | None = None,
     ) -> None:
         super().__init__(
             command_name,
@@ -842,7 +842,7 @@ class PoolClearedEvent(_PoolEvent):
     def __init__(
         self,
         address: _Address,
-        service_id: Optional[ObjectId] = None,
+        service_id: ObjectId | None = None,
         interrupt_connections: bool = False,
     ) -> None:
         super().__init__(address)
@@ -850,7 +850,7 @@ class PoolClearedEvent(_PoolEvent):
         self.__interrupt_connections = interrupt_connections
 
     @property
-    def service_id(self) -> Optional[ObjectId]:
+    def service_id(self) -> ObjectId | None:
         """Connections with this service_id are cleared.
 
         When service_id is ``None``, all connections in the pool are cleared.
@@ -965,12 +965,12 @@ class _ConnectionDurationEvent(_ConnectionIdEvent):
 
     __slots__ = ("__duration",)
 
-    def __init__(self, address: _Address, connection_id: int, duration: Optional[float]) -> None:
+    def __init__(self, address: _Address, connection_id: int, duration: float | None) -> None:
         super().__init__(address, connection_id)
         self.__duration = duration
 
     @property
-    def duration(self) -> Optional[float]:
+    def duration(self) -> float | None:
         """The duration of the connection event.
 
         .. versionadded:: 4.7
@@ -1064,7 +1064,7 @@ class ConnectionCheckOutFailedEvent(_ConnectionDurationEvent):
 
     __slots__ = ("__reason",)
 
-    def __init__(self, address: _Address, reason: str, duration: Optional[float]) -> None:
+    def __init__(self, address: _Address, reason: str, duration: float | None) -> None:
         super().__init__(address=address, connection_id=0, duration=duration)
         self.__reason = reason
 
@@ -1387,7 +1387,7 @@ class _EventListeners:
     :param listeners: A list of event listeners.
     """
 
-    def __init__(self, listeners: Optional[Sequence[_EventListener]]):
+    def __init__(self, listeners: Sequence[_EventListener] | None):
         self.__command_listeners = _LISTENERS.command_listeners[:]
         self.__server_listeners = _LISTENERS.server_listeners[:]
         lst = _LISTENERS.server_heartbeat_listeners
@@ -1453,9 +1453,9 @@ class _EventListeners:
         database_name: str,
         request_id: int,
         connection_id: _Address,
-        server_connection_id: Optional[int],
-        op_id: Optional[int] = None,
-        service_id: Optional[ObjectId] = None,
+        server_connection_id: int | None,
+        op_id: int | None = None,
+        service_id: ObjectId | None = None,
     ) -> None:
         """Publish a CommandStartedEvent to all command listeners.
 
@@ -1492,9 +1492,9 @@ class _EventListeners:
         command_name: str,
         request_id: int,
         connection_id: _Address,
-        server_connection_id: Optional[int],
-        op_id: Optional[int] = None,
-        service_id: Optional[ObjectId] = None,
+        server_connection_id: int | None,
+        op_id: int | None = None,
+        service_id: ObjectId | None = None,
         speculative_hello: bool = False,
         database_name: str = "",
     ) -> None:
@@ -1541,9 +1541,9 @@ class _EventListeners:
         command_name: str,
         request_id: int,
         connection_id: _Address,
-        server_connection_id: Optional[int],
-        op_id: Optional[int] = None,
-        service_id: Optional[ObjectId] = None,
+        server_connection_id: int | None,
+        op_id: int | None = None,
+        service_id: ObjectId | None = None,
         database_name: str = "",
     ) -> None:
         """Publish a CommandFailedEvent to all command listeners.
@@ -1749,7 +1749,7 @@ class _EventListeners:
     def publish_pool_cleared(
         self,
         address: _Address,
-        service_id: Optional[ObjectId],
+        service_id: ObjectId | None,
         interrupt_connections: bool = False,
     ) -> None:
         """Publish a :class:`PoolClearedEvent` to all pool listeners."""

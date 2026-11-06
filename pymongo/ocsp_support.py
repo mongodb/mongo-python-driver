@@ -21,7 +21,7 @@ import re as _re
 from collections.abc import Iterable
 from datetime import datetime as _datetime
 from datetime import timezone
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING
 
 from cryptography.exceptions import InvalidSignature as _InvalidSignature
 from cryptography.hazmat.backends import default_backend as _default_backend
@@ -92,20 +92,20 @@ if TYPE_CHECKING:
     # Must stay in step with cryptography's CertificatePublicKeyTypes, the
     # return type of Certificate.public_key(). cryptography does not export a
     # public alias for it, so it is spelled out here.
-    CertificateIssuerPublicKeyTypes = Union[
-        dsa.DSAPublicKey,
-        rsa.RSAPublicKey,
-        ec.EllipticCurvePublicKey,
-        ed25519.Ed25519PublicKey,
-        ed448.Ed448PublicKey,
-        mldsa.MLDSA44PublicKey,
-        mldsa.MLDSA65PublicKey,
-        mldsa.MLDSA87PublicKey,
-        mlkem.MLKEM768PublicKey,
-        mlkem.MLKEM1024PublicKey,
-        x25519.X25519PublicKey,
-        x448.X448PublicKey,
-    ]
+    CertificateIssuerPublicKeyTypes = (
+        dsa.DSAPublicKey
+        | rsa.RSAPublicKey
+        | ec.EllipticCurvePublicKey
+        | ed25519.Ed25519PublicKey
+        | ed448.Ed448PublicKey
+        | mldsa.MLDSA44PublicKey
+        | mldsa.MLDSA65PublicKey
+        | mldsa.MLDSA87PublicKey
+        | mlkem.MLKEM768PublicKey
+        | mlkem.MLKEM1024PublicKey
+        | x25519.X25519PublicKey
+        | x448.X448PublicKey
+    )
 
 # Note: the functions in this module generally return 1 or 0. The reason
 # is simple. The entry point, ocsp_callback, is registered as a callback
@@ -120,8 +120,8 @@ _CERT_REGEX = _re.compile(
 
 
 def _get_issuer_cert(
-    cert: Certificate, chain: Iterable[Certificate], trusted_ca_certs: Optional[list[Certificate]]
-) -> Optional[Certificate]:
+    cert: Certificate, chain: Iterable[Certificate], trusted_ca_certs: list[Certificate] | None
+) -> Certificate | None:
     issuer_name = cert.issuer
     for candidate in chain:
         if candidate.subject == issuer_name:
@@ -141,7 +141,7 @@ def _get_issuer_cert(
 def _verify_signature(
     key: CertificateIssuerPublicKeyTypes,
     signature: bytes,
-    algorithm: Union[Prehashed, HashAlgorithm, None],
+    algorithm: Prehashed | HashAlgorithm | None,
     data: bytes,
 ) -> int:
     # See cryptography.x509.Certificate.public_key
@@ -173,7 +173,7 @@ def _verify_signature(
 
 def _get_extension(
     cert: Certificate, klass: type[ExtensionTypeVar]
-) -> Optional[Extension[ExtensionTypeVar]]:
+) -> Extension[ExtensionTypeVar] | None:
     try:
         return cert.extensions.get_extension_for_class(klass)
     except _ExtensionNotFound:
@@ -198,7 +198,7 @@ def _public_key_hash(cert: Certificate) -> bytes:
 
 
 def _get_certs_by_key_hash(
-    certificates: Iterable[Certificate], issuer: Certificate, responder_key_hash: Optional[bytes]
+    certificates: Iterable[Certificate], issuer: Certificate, responder_key_hash: bytes | None
 ) -> list[Certificate]:
     return [
         cert
@@ -208,7 +208,7 @@ def _get_certs_by_key_hash(
 
 
 def _get_certs_by_name(
-    certificates: Iterable[Certificate], issuer: Certificate, responder_name: Optional[Name]
+    certificates: Iterable[Certificate], issuer: Certificate, responder_name: Name | None
 ) -> list[Certificate]:
     return [
         cert
@@ -305,8 +305,8 @@ def _verify_response(issuer: Certificate, response: OCSPResponse) -> int:
 
 
 def _get_ocsp_response(
-    cert: Certificate, issuer: Certificate, uri: Union[str, bytes], ocsp_response_cache: _OCSPCache
-) -> Optional[OCSPResponse]:
+    cert: Certificate, issuer: Certificate, uri: str | bytes, ocsp_response_cache: _OCSPCache
+) -> OCSPResponse | None:
     ocsp_request = _build_ocsp_request(cert, issuer)
     try:
         ocsp_response = ocsp_response_cache[ocsp_request]
@@ -349,7 +349,7 @@ def _get_ocsp_response(
     return ocsp_response
 
 
-def _ocsp_callback(conn: Connection, ocsp_bytes: bytes, user_data: Optional[_CallbackData]) -> bool:
+def _ocsp_callback(conn: Connection, ocsp_bytes: bytes, user_data: _CallbackData | None) -> bool:
     """Callback for use with OpenSSL.SSL.Context.set_ocsp_client_callback."""
     # always pass in user_data but OpenSSL requires it be optional
     assert user_data

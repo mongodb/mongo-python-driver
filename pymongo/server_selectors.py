@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from pymongo.server_type import SERVER_TYPE
 
@@ -54,8 +54,8 @@ class Selection:
         self,
         topology_description: TopologyDescription,
         server_descriptions: list[ServerDescription],
-        common_wire_version: Optional[int],
-        primary: Optional[ServerDescription],
+        common_wire_version: int | None,
+        primary: ServerDescription | None,
     ):
         self.topology_description = topology_description
         self.server_descriptions = server_descriptions
@@ -67,7 +67,7 @@ class Selection:
             self.topology_description, server_descriptions, self.common_wire_version, self.primary
         )
 
-    def secondary_with_max_last_write_date(self) -> Optional[ServerDescription]:
+    def secondary_with_max_last_write_date(self) -> ServerDescription | None:
         secondaries = secondary_server_selector(self)
         if secondaries.server_descriptions:
             return max(

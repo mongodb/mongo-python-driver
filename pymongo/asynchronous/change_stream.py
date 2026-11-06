@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from bson import _bson_to_dict
 from pymongo import _csot
@@ -60,15 +60,13 @@ class AsyncChangeStream(_AgnosticChangeStream[_DocumentType, "AsyncMongoClient[_
     .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
     """
 
-    _session: Optional[AsyncClientSession]
+    _session: AsyncClientSession | None
 
     async def _initialize_cursor(self) -> None:
         # Initialize cursor.
         self._cursor = await self._create_cursor()
 
-    async def _run_aggregation_cmd(
-        self, session: Optional[AsyncClientSession]
-    ) -> AsyncCommandCursor:  # type: ignore[type-arg]
+    async def _run_aggregation_cmd(self, session: AsyncClientSession | None) -> AsyncCommandCursor:  # type: ignore[type-arg]
         """Run the full aggregation pipeline for this AsyncChangeStream and return
         the corresponding AsyncCommandCursor.
         """
@@ -150,7 +148,7 @@ class AsyncChangeStream(_AgnosticChangeStream[_DocumentType, "AsyncMongoClient[_
     __anext__ = next
 
     @_csot.apply
-    async def try_next(self) -> Optional[_DocumentType]:
+    async def try_next(self) -> _DocumentType | None:
         """Advance the cursor without blocking indefinitely.
 
         This method returns the next change document without waiting

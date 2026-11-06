@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from bson import CodecOptions
 from bson.raw_bson import RawBSONDocument
@@ -60,23 +60,21 @@ class _AgnosticChangeStream(Generic[_DocumentType, _ClientT]):
 
     def __init__(
         self,
-        target: Union[
-            _AgnosticMongoClient,
-            _AgnosticDatabase[_DocumentType],
-            _AgnosticCollection[_DocumentType],
-        ],
-        pipeline: Optional[_Pipeline],
-        full_document: Optional[str],
-        resume_after: Optional[Mapping[str, Any]],
-        max_await_time_ms: Optional[int],
-        batch_size: Optional[int],
-        collation: Optional[_CollationIn],
-        start_at_operation_time: Optional[Timestamp],
-        session: Optional[_AgnosticClientSession],
-        start_after: Optional[Mapping[str, Any]],
-        comment: Optional[Any] = None,
-        full_document_before_change: Optional[str] = None,
-        show_expanded_events: Optional[bool] = None,
+        target: _AgnosticMongoClient
+        | _AgnosticDatabase[_DocumentType]
+        | _AgnosticCollection[_DocumentType],
+        pipeline: _Pipeline | None,
+        full_document: str | None,
+        resume_after: Mapping[str, Any] | None,
+        max_await_time_ms: int | None,
+        batch_size: int | None,
+        collation: _CollationIn | None,
+        start_at_operation_time: Timestamp | None,
+        session: _AgnosticClientSession | None,
+        start_after: Mapping[str, Any] | None,
+        comment: Any | None = None,
+        full_document_before_change: str | None = None,
+        show_expanded_events: bool | None = None,
     ) -> None:
         if pipeline is None:
             pipeline = []
@@ -187,7 +185,7 @@ class _AgnosticChangeStream(Generic[_DocumentType, _ClientT]):
                     )
 
     @property
-    def resume_token(self) -> Optional[Mapping[str, Any]]:
+    def resume_token(self) -> Mapping[str, Any] | None:
         """The cached resume token that will be used to resume after the most
         recently returned change.
 

@@ -222,7 +222,6 @@ select = [
 ignore = [
   "PLR",    # Design related pylint codes
   "E501",   # Line too long
-  "UP007",  # Use `X | Y` for type annotation
   "EM101",  # Exception must not use a string literal, assign to variable first
   "EM102",  # Exception must not use an f-string literal, assign to variable first
   "G004",   # Logging statement uses f-string"
@@ -241,7 +240,6 @@ ignore = [
   "EM103",  # Exception must not use a `.format()` string directly, assign to variable first
   "C408",   # Unnecessary `dict` call (rewrite as a literal)
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
-  "UP045", # Use `X | Y` for union annotation (Enable when we drop 3.9 support)
   "PLC0415", # `import` should be at the top-level of a file
   "UP035",   # Deprecated import (e.g. `typing.Callable` instead of `collections.abc.Callable`)
   "UP041",   # `asyncio.TimeoutError` is an alias of `TimeoutError` on 3.11+

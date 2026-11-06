@@ -22,7 +22,7 @@ import struct
 import threading
 import time
 from random import SystemRandom
-from typing import Any, NoReturn, Optional, Union
+from typing import Any, NoReturn
 
 from bson.datetime_ms import _datetime_to_millis
 from bson.errors import InvalidId
@@ -59,7 +59,7 @@ class ObjectId:
 
     _type_marker = 7
 
-    def __init__(self, oid: Optional[Union[str, ObjectId, bytes]] = None) -> None:
+    def __init__(self, oid: str | ObjectId | bytes | None = None) -> None:
         """Initialize a new ObjectId.
 
         An ObjectId is a 12-byte unique identifier consisting of:
