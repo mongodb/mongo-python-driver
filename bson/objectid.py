@@ -98,12 +98,7 @@ class ObjectId:
         """
         if oid is None:
             # Generate a new value for this ObjectId.
-            with ObjectId._inc_lock:
-                inc = ObjectId._inc
-                ObjectId._inc = (inc + 1) % (_MAX_COUNTER_VALUE + 1)
-
-            # 4 bytes current time, 5 bytes random, 3 bytes inc.
-            self.__id = _PACK_INT_RANDOM(int(time.time()), ObjectId._random()) + _PACK_INT(inc)[1:4]
+            self.__id = ObjectId._generate(int(time.time()))
         elif isinstance(oid, bytes) and len(oid) == 12:
             self.__id = oid
         elif isinstance(oid, str):
@@ -124,18 +119,26 @@ class ObjectId:
             raise TypeError(f"id must be an instance of (bytes, str, ObjectId), not {type(oid)}")
 
     @classmethod
-    def from_datetime(cls: type[ObjectId], generation_time: datetime.datetime) -> ObjectId:
-        """Create a dummy ObjectId instance with a specific generation time.
+    def from_datetime(
+        cls: type[ObjectId], generation_time: datetime.datetime, *, unique: bool = False
+    ) -> ObjectId:
+        """Create an ObjectId instance with a specific generation time.
 
-        This method is useful for doing range queries on a field
-        containing :class:`ObjectId` instances.
+        By default this creates a dummy ObjectId whose 8 bytes after the
+        timestamp are all zero. This is useful for doing range queries on
+        a field containing :class:`ObjectId` instances.
 
         .. warning::
-           It is not safe to insert a document containing an ObjectId
-           generated using this method. This method deliberately
-           eliminates the uniqueness guarantee that ObjectIds
-           generally provide. ObjectIds generated with this method
+           With the default ``unique=False`` it is not safe to insert a
+           document containing an ObjectId generated using this method.
+           Such an ObjectId deliberately has no uniqueness guarantee and
            should be used exclusively in queries.
+
+        With ``unique=True`` the bytes after the timestamp are filled in
+        the same way as for ``ObjectId()``: the 5-byte random value of
+        this process followed by the 3-byte counter. The result is a
+        unique ObjectId that can be inserted, which is useful when the
+        timestamp comes from an external source.
 
         `generation_time` will be converted to UTC. Naive datetime
         instances will be treated as though they already contain UTC.
@@ -149,12 +152,26 @@ class ObjectId:
 
         :param generation_time: :class:`~datetime.datetime` to be used
             as the generation time for the resulting ObjectId.
+        :param unique: If ``True``, create a unique ObjectId that is safe
+            to insert, instead of a dummy ObjectId for queries.
+
+        .. versionchanged:: 4.20
+           Added the ``unique`` parameter.
         """
-        oid = (
-            _PACK_INT(_datetime_to_millis(generation_time) // 1000)
-            + b"\x00\x00\x00\x00\x00\x00\x00\x00"
-        )
-        return cls(oid)
+        timestamp = _datetime_to_millis(generation_time) // 1000
+        if unique:
+            return cls(cls._generate(timestamp))
+        return cls(_PACK_INT(timestamp) + b"\x00\x00\x00\x00\x00\x00\x00\x00")
+
+    @classmethod
+    def _generate(cls, timestamp: int) -> bytes:
+        """Return the 12 bytes of a new ObjectId with the given timestamp."""
+        with ObjectId._inc_lock:
+            inc = ObjectId._inc
+            ObjectId._inc = (inc + 1) % (_MAX_COUNTER_VALUE + 1)
+
+        # 4 bytes timestamp, 5 bytes random, 3 bytes inc.
+        return _PACK_INT_RANDOM(timestamp, ObjectId._random()) + _PACK_INT(inc)[1:4]
 
     @classmethod
     def is_valid(cls: type[ObjectId], oid: Any) -> bool:

@@ -115,6 +115,35 @@ class TestObjectId(unittest.TestCase):
         oid = ObjectId.from_datetime(aware)
         self.assertEqual(as_utc, oid.generation_time)
 
+    def test_from_datetime_unique(self):
+        d = datetime.datetime(2020, 5, 17, 10, 30, 15)
+        oid1 = ObjectId.from_datetime(d, unique=True)
+        oid2 = ObjectId.from_datetime(d, unique=True)
+
+        # Same timestamp, but unique and not the zero-filled dummy.
+        self.assertEqual(d, oid1.generation_time.replace(tzinfo=None))
+        self.assertEqual(d, oid2.generation_time.replace(tzinfo=None))
+        self.assertNotEqual(oid1, oid2)
+        self.assertNotEqual("0" * 16, str(oid1)[8:])
+
+        # Same layout as ObjectId(): 5-byte process random, then the counter.
+        self.assertEqual(oid1.binary[4:9], ObjectId._random())
+        self.assertEqual(oid1.binary[4:9], ObjectId().binary[4:9])
+        inc1 = struct.unpack(">I", b"\x00" + oid1.binary[9:12])[0]
+        inc2 = struct.unpack(">I", b"\x00" + oid2.binary[9:12])[0]
+        self.assertEqual((inc1 + 1) % (_MAX_COUNTER_VALUE + 1), inc2)
+
+        # Aware datetimes are converted to UTC, as with unique=False.
+        aware = datetime.datetime(1993, 4, 4, 2, tzinfo=FixedOffset(555, "SomeZone"))
+        self.assertEqual(
+            ObjectId.from_datetime(aware).generation_time,
+            ObjectId.from_datetime(aware, unique=True).generation_time,
+        )
+
+    def test_from_datetime_unique_is_keyword_only(self):
+        with self.assertRaises(TypeError):
+            ObjectId.from_datetime(datetime.datetime(2020, 1, 1), True)  # type: ignore[misc]
+
     def test_pickling(self):
         orig = ObjectId()
         for protocol in [0, 1, 2, -1]:
