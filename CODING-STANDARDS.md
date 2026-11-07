@@ -171,7 +171,28 @@ if TYPE_CHECKING:
 # Changelog
 
 1. All user-facing changes require a changelog entry.
-2. Changelog entries are concise summaries of their described changes.
+2. Changelog entries are concise summaries of their described changes written using proper English grammar and in the past tense.
+3. Changelog entries must start with one of the following words that categorize the type of change:
+   1. `Added`: new features.
+   2. `Changed`: changes in existing functionality.
+   3. `Deprecated`: features to be removed in a future version.
+   4. `Removed`: features removed in the described version.
+   5. `Fixed`: bug fixes.
+   6. `Security`: patched vulnerabilities.
+4. Group all entries of the same type together in each version.
+5. Changelog entries do not contain implementation details.
+6. Use the guiding principle of "what would a user want to know about this" when describing a change.
+7. Changelog entries must end with a link to the JIRA ticket that implemented their changes.
+8. Cross-references to code must use one of the following Sphinx roles:
+   1. `:meth:`: methods.
+   2. `:class:`: classes.
+   3. `:attr:`: attributes and properties.
+   4. `:mod:`: modules.
+   5. `:exc:`: exceptions.
+   6. `:func:`: functions.
+   7. `:data:`: module-level variables.
+   8. `:const:`: constants.
+9. Code snippets that do not fit any of the above roles must be contained within double backticks: ``text``.
 
 # Git
 
