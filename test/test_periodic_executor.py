@@ -221,7 +221,11 @@ class TestPeriodicExecutor(UnitTest):
         try:
             thread = threading.Thread(target=close_off_loop)
             thread.start()
-            thread.join(timeout=2)
+            if _IS_SYNC:
+                thread.join(timeout=2)
+            else:
+                # Do not block the event loop while joining the thread.
+                asyncio.to_thread(thread.join, 2)
         finally:
             if not _IS_SYNC:
                 executor._task = real_task
