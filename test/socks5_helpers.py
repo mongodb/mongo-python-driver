@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import select
 import socket
+import ssl
 import threading
 from typing import Optional
 
@@ -40,6 +41,37 @@ from pymongo.socks5_shared import (
     _SOCKS5_RESERVED,
     _SOCKS5_VERSION,
 )
+from test.helpers_shared import CERT_PATH
+
+
+class _TLSServer:
+    def __init__(self, sni_names: list[Optional[str]]) -> None:
+        self.sni_names = sni_names
+        self.listener = socket.socket()
+        self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+        self.listener.bind(("127.0.0.1", 0))
+        self.listener.listen(1)
+        self.listener.settimeout(3)
+        self.address = self.listener.getsockname()
+        self.thread = threading.Thread(target=self._serve, daemon=True)
+        self.thread.start()
+
+    def _serve(self) -> None:
+        try:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(f"{CERT_PATH}/server.pem")
+            context.set_servername_callback(lambda _sock, name, _ctx: self.sni_names.append(name))
+            with self.listener.accept()[0] as raw:
+                with context.wrap_socket(raw, server_side=True) as conn:
+                    conn.recv(1)
+        except OSError:
+            pass
+        finally:
+            self.listener.close()
+
+    def close(self) -> None:
+        self.listener.close()
+        self.thread.join(timeout=3)
 
 
 class _Socks5Server:

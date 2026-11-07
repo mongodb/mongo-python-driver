@@ -30,7 +30,19 @@ from unittest.mock import patch
 
 from bson.binary import JAVA_LEGACY
 from pymongo import ReadPreference
+from pymongo.common import validate_proxy_credential, validate_proxy_host, validate_proxy_port
 from pymongo.errors import ConfigurationError, InvalidURI
+from pymongo.pool_options import PoolOptions
+from pymongo.socks5_shared import (
+    _proxy_deadline,
+    _proxy_remaining,
+    _proxy_socket_timeout,
+    _socks5_bound_address_size,
+    _socks5_check_connect_reply,
+    _socks5_request,
+    _Socks5Error,
+    _Socks5Timeout,
+)
 from pymongo.synchronous.uri_parser import parse_uri
 from pymongo.uri_parser_shared import (
     _unquoted_percent,
@@ -730,6 +742,72 @@ class TestURI(unittest.TestCase):
                     normalize=False,
                 )
                 self.assertEqual(parsed["options"], {"proxyUsername": "", "proxyPassword": ""})
+
+    def test_socks5_validator_functions(self):
+        self.assertIsNone(validate_proxy_host("proxyHost", None))
+        self.assertEqual(validate_proxy_host("proxyHost", "::1"), "::1")
+        with self.assertRaises(ValueError):
+            validate_proxy_host("proxyHost", "[not-ipv6]")
+        with self.assertRaises(ValueError):
+            validate_proxy_host("proxyHost", "bad/host")
+
+        self.assertIsNone(validate_proxy_port("proxyPort", None))
+        self.assertEqual(validate_proxy_port("proxyPort", 1080), 1080)
+        with self.assertRaises(TypeError):
+            validate_proxy_port("proxyPort", True)
+
+        valid = "é" * 127 + "a"
+        for option in ("proxyUsername", "proxyPassword"):
+            with self.subTest(option=option):
+                self.assertIsNone(validate_proxy_credential(option, None))
+                self.assertEqual(validate_proxy_credential(option, ""), "")
+                self.assertEqual(validate_proxy_credential(option, valid), valid)
+                with self.assertRaisesRegex(ValueError, "no more than 255 UTF-8 bytes"):
+                    validate_proxy_credential(option, "é" * 128)
+                with self.assertRaises(TypeError):
+                    validate_proxy_credential(option, 1)
+
+    def test_socks5_deadline_helpers(self):
+        self.assertIsNone(_proxy_deadline(PoolOptions(connect_timeout=None)))
+        self.assertIsNone(_proxy_remaining(None))
+        with self.assertRaises(_Socks5Timeout):
+            _proxy_remaining(0.0)
+        with (
+            patch("pymongo.socks5_shared._csot.remaining", return_value=0.0),
+            self.assertRaises(_Socks5Timeout),
+        ):
+            _proxy_deadline(PoolOptions(connect_timeout=1))
+        with (
+            patch("pymongo.socks5_shared._csot.remaining", return_value=-0.1),
+            self.assertRaises(_Socks5Timeout),
+        ):
+            _proxy_socket_timeout(PoolOptions(connect_timeout=1))
+        for remaining, expected in ((None, 2), (0.5, 0.5)):
+            with (
+                self.subTest(remaining=remaining),
+                patch("pymongo.socks5_shared._csot.remaining", return_value=remaining),
+                patch("pymongo.socks5_shared.time.monotonic", return_value=100),
+            ):
+                options = PoolOptions(connect_timeout=2)
+                self.assertEqual(_proxy_socket_timeout(options), expected)
+                self.assertEqual(_proxy_deadline(options), 100 + expected)
+
+    def test_socks5_protocol_validation(self):
+        with self.assertRaisesRegex(_Socks5Error, "missing bound domain length"):
+            _socks5_bound_address_size(3)
+        for address, message in (
+            (("a" * 256, 27017), "invalid domain name length"),
+            ((".münich.example", 27017), "invalid domain name"),
+            (("a" * 256, None), "destination port is required"),
+        ):
+            with self.subTest(address=address), self.assertRaisesRegex(_Socks5Error, message):
+                _socks5_request(address)  # type: ignore[arg-type]
+        for reply, message in (
+            (b"\x05\x00\x01\x01", "invalid reserved byte"),
+            (b"\x05\x00\x00\x09", "invalid address type"),
+        ):
+            with self.subTest(reply=reply), self.assertRaisesRegex(_Socks5Error, message):
+                _socks5_check_connect_reply(reply)
 
     def test_socks5_proxy_rejects_unix_socket(self):
         with self.assertRaises(ConfigurationError):
