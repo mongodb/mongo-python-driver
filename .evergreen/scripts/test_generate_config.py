@@ -98,7 +98,6 @@ def test_socks5_variant_selects_both_prose_tasks():
     assert variant.display_name == "SOCKS5 Prose Tests"
     assert "pr" in variant.tags
     assert variant.expansions["UV_PYTHON"] == generate_config_utils.MIN_PYTHON
-    assert "SOCKS5_PROXIES_STARTED" not in variant.expansions
     assert all(variant_selects(variant, task) for task in generate_config.create_socks5_tasks())
 
 

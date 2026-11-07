@@ -22,11 +22,7 @@ from typing import TYPE_CHECKING, Optional
 from pymongo.pool_shared import _configure_tcp_socket, _new_tcp_socket
 from pymongo.socks5_shared import (
     _SOCKS5_ATYP_DOMAIN,
-    _SOCKS5_AUTH_REPLY_LEN,
     _SOCKS5_AUTH_USER_PASS,
-    _SOCKS5_CONNECT_REPLY_LEN,
-    _SOCKS5_DOMAIN_LENGTH_LEN,
-    _SOCKS5_GREETING_REPLY_LEN,
     _proxy_connect,
     _proxy_deadline,
     _proxy_getaddrinfo,
@@ -67,21 +63,13 @@ def _socks5_handshake(
 ) -> None:
     greeting, allowed = _socks5_greeting(proxy)
     _socks5_sendall(sock, greeting, deadline)
-    method = _socks5_check_greeting_reply(
-        _socks5_read_exact(sock, _SOCKS5_GREETING_REPLY_LEN, deadline), allowed
-    )
+    method = _socks5_check_greeting_reply(_socks5_read_exact(sock, 2, deadline), allowed)
     if method == _SOCKS5_AUTH_USER_PASS:
         _socks5_sendall(sock, _socks5_auth_request(proxy), deadline)
-        _socks5_check_auth_reply(_socks5_read_exact(sock, _SOCKS5_AUTH_REPLY_LEN, deadline))
+        _socks5_check_auth_reply(_socks5_read_exact(sock, 2, deadline))
     _socks5_sendall(sock, _socks5_request(address), deadline)
-    atyp = _socks5_check_connect_reply(
-        _socks5_read_exact(sock, _SOCKS5_CONNECT_REPLY_LEN, deadline)
-    )
-    domain_length = (
-        (_socks5_read_exact(sock, _SOCKS5_DOMAIN_LENGTH_LEN, deadline))[0]
-        if atyp == _SOCKS5_ATYP_DOMAIN
-        else None
-    )
+    atyp = _socks5_check_connect_reply(_socks5_read_exact(sock, 4, deadline))
+    domain_length = (_socks5_read_exact(sock, 1, deadline))[0] if atyp == _SOCKS5_ATYP_DOMAIN else 0
     bound_size = _socks5_bound_address_size(atyp, domain_length)
     _socks5_read_exact(sock, bound_size, deadline)
 

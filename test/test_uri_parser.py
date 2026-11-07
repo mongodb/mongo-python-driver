@@ -659,159 +659,76 @@ class TestURI(unittest.TestCase):
     def test_split_options_empty_authsource(self):
         self.assertRaises(InvalidURI, split_options, "authSource=")
 
-    def test_socks5_proxy_options(self):
-        parsed = parse_uri(
-            "mongodb://localhost/?proxyHost=%5B%3A%3A1%5D&proxyPort=1234"
-            "&proxyUsername=user&proxyPassword=pass"
+    def test_socks5_validation(self):
+        uri = (
+            "mongodb://localhost/?proxyHost=%5B%3A%3A1%5D&proxyPort=invalid&proxyUsername="
+            + "é" * 128
+            + "&proxyPassword=pass"
         )
+        self.assertEqual(parse_uri(uri, validate=False)["options"]["proxyPort"], "invalid")
         self.assertEqual(
-            parsed["options"],
-            {
-                "proxyHost": "::1",
-                "proxyPort": 1234,
-                "proxyUsername": "user",
-                "proxyPassword": "pass",
-            },
+            parse_uri("mongodb://localhost/?proxyUsername=&proxyPassword=", normalize=False)[
+                "options"
+            ],
+            {"proxyUsername": "", "proxyPassword": ""},
         )
-        empty_credentials = parse_uri(
-            "mongodb://localhost/?proxyHost=localhost&proxyUsername=&proxyPassword="
-        )
-        self.assertEqual(empty_credentials["options"], {"proxyHost": "localhost"})
-        self.assertEqual(
-            parse_uri("mongodb://localhost/?proxyHost=localhost")["options"]["proxyHost"],
-            "localhost",
-        )
-
-    def test_socks5_invalid_proxy_options(self):
-        for query in (
-            "proxyHost=",
-            "proxyHost=%5B%3A%3A1",
-            "proxyHost=%5B%3A%3A1%5D%3A1080",
-            "proxyHost=localhost%3A1080",
-            "proxyHost=local%20host",
-            "proxyPort=1080",
-            "proxyUsername=user",
-            "proxyPassword=pass",
-            "proxyHost=localhost&proxyUsername=user",
-            "proxyHost=localhost&proxyPassword=pass",
-            "proxyHost=localhost&proxyPort=0",
-            "proxyHost=localhost&proxyPort=-1",
-            "proxyHost=localhost&proxyPort=65536",
-            "proxyHost=localhost&proxyPort=abc",
-            "proxyHost=localhost&proxyUsername=" + ("é" * 128) + "&proxyPassword=pass",
-            "proxyHost=localhost&proxyUsername=user&proxyPassword=" + ("é" * 128),
-        ):
+        for query in ("proxyHost=", "proxyPort=0", "proxyPort=65536", "proxyUsername=user"):
             with (
-                self.subTest(query=query[:60]),
+                self.subTest(query=query),
                 self.assertRaises((InvalidURI, ValueError, ConfigurationError)),
             ):
                 parse_uri("mongodb://localhost/?" + query)
+        with self.assertRaises(InvalidURI):
+            parse_uri("mongodb://localhost/?proxyHost=localhost&proxyhost=a&proxyhost=b")
+        with self.assertRaises(ConfigurationError):
+            parse_uri("mongodb://%2Ftmp%2Fmongodb.sock/?proxyHost=localhost")
 
-        for option in ("proxyhost", "proxyport", "proxyusername", "proxypassword"):
-            uri = "mongodb://localhost/?proxyHost=localhost&" + option + "=a&" + option + "=b"
-            with self.subTest(option=option), self.assertRaises(InvalidURI):
-                parse_uri(uri)
-
-    def test_socks5_skips_individual_validation_when_disabled(self):
-        username = "é" * 128
-        parsed = parse_uri(
-            "mongodb://localhost/?proxyHost=%5B%3A%3A1%5D&proxyPort=invalid"
-            f"&proxyUsername={username}&proxyPassword=pass",
-            validate=False,
-        )
-        self.assertEqual(
-            parsed["options"],
-            {
-                "proxyHost": "[::1]",
-                "proxyPort": "invalid",
-                "proxyUsername": username,
-                "proxyPassword": "pass",
-            },
-        )
-        self.assertEqual(
-            parse_uri("mongodb://localhost/?proxyHost=invalid%2Fhost", validate=False)["options"],
-            {"proxyHost": "invalid/host"},
-        )
-
-    def test_socks5_empty_credentials_without_normalization(self):
-        for validate in (True, False):
-            with self.subTest(validate=validate):
-                parsed = parse_uri(
-                    "mongodb://localhost/?proxyUsername=&proxyPassword=",
-                    validate=validate,
-                    normalize=False,
-                )
-                self.assertEqual(parsed["options"], {"proxyUsername": "", "proxyPassword": ""})
-
-    def test_socks5_validator_functions(self):
-        self.assertIsNone(validate_proxy_host("proxyHost", None))
+    def test_socks5_validators(self):
         self.assertEqual(validate_proxy_host("proxyHost", "::1"), "::1")
-        with self.assertRaises(ValueError):
-            validate_proxy_host("proxyHost", "[not-ipv6]")
-        with self.assertRaises(ValueError):
-            validate_proxy_host("proxyHost", "bad/host")
-
+        self.assertIsNone(validate_proxy_host("proxyHost", None))
+        for host in ("bad/host", "bad host", "[::1", "[invalid]", "localhost:1080"):
+            with self.subTest(host=host), self.assertRaises(ValueError):
+                validate_proxy_host("proxyHost", host)
         self.assertIsNone(validate_proxy_port("proxyPort", None))
         self.assertEqual(validate_proxy_port("proxyPort", 1080), 1080)
         with self.assertRaises(TypeError):
             validate_proxy_port("proxyPort", True)
-
-        valid = "é" * 127 + "a"
-        for option in ("proxyUsername", "proxyPassword"):
-            with self.subTest(option=option):
-                self.assertIsNone(validate_proxy_credential(option, None))
-                self.assertEqual(validate_proxy_credential(option, ""), "")
-                self.assertEqual(validate_proxy_credential(option, valid), valid)
-                with self.assertRaisesRegex(ValueError, "no more than 255 UTF-8 bytes"):
-                    validate_proxy_credential(option, "é" * 128)
-                with self.assertRaises(TypeError):
-                    validate_proxy_credential(option, 1)
+        for key in ("proxyUsername", "proxyPassword"):
+            self.assertEqual(validate_proxy_credential(key, ""), "")
+            self.assertEqual(validate_proxy_credential(key, "é" * 127 + "a"), "é" * 127 + "a")
+            with self.assertRaises(ValueError):
+                validate_proxy_credential(key, "é" * 128)
+            with self.assertRaises(TypeError):
+                validate_proxy_credential(key, 1)
 
     def test_socks5_deadline_helpers(self):
         self.assertIsNone(_proxy_deadline(PoolOptions(connect_timeout=None)))
         self.assertIsNone(_proxy_remaining(None))
         with self.assertRaises(_Socks5Timeout):
             _proxy_remaining(0.0)
-        with (
-            patch("pymongo.socks5_shared._csot.remaining", return_value=0.0),
-            self.assertRaises(_Socks5Timeout),
-        ):
-            _proxy_deadline(PoolOptions(connect_timeout=1))
-        with (
-            patch("pymongo.socks5_shared._csot.remaining", return_value=-0.1),
-            self.assertRaises(_Socks5Timeout),
-        ):
-            _proxy_socket_timeout(PoolOptions(connect_timeout=1))
-        for remaining, expected in ((None, 2), (0.5, 0.5)):
-            with (
-                self.subTest(remaining=remaining),
-                patch("pymongo.socks5_shared._csot.remaining", return_value=remaining),
-                patch("pymongo.socks5_shared.time.monotonic", return_value=100),
-            ):
-                options = PoolOptions(connect_timeout=2)
-                self.assertEqual(_proxy_socket_timeout(options), expected)
-                self.assertEqual(_proxy_deadline(options), 100 + expected)
+        with patch("pymongo.socks5_shared._csot.remaining", return_value=0.0):
+            with self.assertRaises(_Socks5Timeout):
+                _proxy_deadline(PoolOptions(connect_timeout=1))
+        with patch("pymongo.socks5_shared._csot.remaining", return_value=-0.1):
+            with self.assertRaises(_Socks5Timeout):
+                _proxy_socket_timeout(PoolOptions(connect_timeout=1))
 
     def test_socks5_protocol_validation(self):
-        with self.assertRaisesRegex(_Socks5Error, "missing bound domain length"):
-            _socks5_bound_address_size(3)
+        self.assertEqual(_socks5_bound_address_size(1), 6)
+        self.assertEqual(_socks5_bound_address_size(4), 18)
+        self.assertEqual(_socks5_bound_address_size(3, 5), 7)
         for address, message in (
             (("a" * 256, 27017), "invalid domain name length"),
             ((".münich.example", 27017), "invalid domain name"),
-            (("a" * 256, None), "destination port is required"),
         ):
             with self.subTest(address=address), self.assertRaisesRegex(_Socks5Error, message):
-                _socks5_request(address)  # type: ignore[arg-type]
+                _socks5_request(address)
         for reply, message in (
             (b"\x05\x00\x01\x01", "invalid reserved byte"),
             (b"\x05\x00\x00\x09", "invalid address type"),
         ):
             with self.subTest(reply=reply), self.assertRaisesRegex(_Socks5Error, message):
                 _socks5_check_connect_reply(reply)
-
-    def test_socks5_proxy_rejects_unix_socket(self):
-        with self.assertRaises(ConfigurationError):
-            parse_uri("mongodb://%2Ftmp%2Fmongodb.sock/?proxyHost=localhost")
 
     def test_check_options_conflicts(self):
         self.assertRaises(

@@ -20,7 +20,7 @@ import asyncio
 import ipaddress
 import socket
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, cast
 
 from pymongo import _csot
 from pymongo.asynchronous.helpers import _getaddrinfo
@@ -37,8 +37,6 @@ _SOCKS5_AUTH_USER_PASS = 0x02
 _SOCKS5_AUTH_NO_ACCEPTABLE = 0xFF
 _SOCKS5_AUTH_SUCCESS = 0x00
 _SOCKS5_RESERVED = 0x00
-_SOCKS5_AUTH_METHOD_COUNT_NO_CREDENTIALS = 1
-_SOCKS5_AUTH_METHOD_COUNT_WITH_CREDENTIALS = 2
 _SOCKS5_CMD_CONNECT = 0x01
 _SOCKS5_REPLY_SUCCESS = 0x00
 _SOCKS5_REPLY_GENERAL_FAILURE = 0x01
@@ -52,13 +50,6 @@ _SOCKS5_REPLY_ADDRESS_UNSUPPORTED = 0x08
 _SOCKS5_ATYP_IPV4 = 0x01
 _SOCKS5_ATYP_DOMAIN = 0x03
 _SOCKS5_ATYP_IPV6 = 0x04
-_SOCKS5_IPV4_BOUND_LEN = 6
-_SOCKS5_IPV6_BOUND_LEN = 18
-_SOCKS5_PORT_LEN = 2
-_SOCKS5_GREETING_REPLY_LEN = 2
-_SOCKS5_AUTH_REPLY_LEN = 2
-_SOCKS5_CONNECT_REPLY_LEN = 4
-_SOCKS5_DOMAIN_LENGTH_LEN = 1
 
 _SOCKS5_REPLY_REASONS = {
     _SOCKS5_REPLY_GENERAL_FAILURE: "general SOCKS server failure",
@@ -108,14 +99,12 @@ def _proxy_remaining(deadline: Optional[float]) -> Optional[float]:
     return remaining
 
 
-def _socks5_bound_address_size(atyp: int, domain_length: Optional[int] = None) -> int:
+def _socks5_bound_address_size(atyp: int, domain_length: int = 0) -> int:
     if atyp == _SOCKS5_ATYP_IPV4:
-        return _SOCKS5_IPV4_BOUND_LEN
+        return 6
     if atyp == _SOCKS5_ATYP_IPV6:
-        return _SOCKS5_IPV6_BOUND_LEN
-    if domain_length is None:
-        raise _Socks5Error("SOCKS5 connect failed: missing bound domain length")
-    return domain_length + _SOCKS5_PORT_LEN
+        return 18
+    return domain_length + 2
 
 
 def _socks5_greeting(proxy: _ProxyOptions) -> tuple[bytes, tuple[int, ...]]:
@@ -123,7 +112,7 @@ def _socks5_greeting(proxy: _ProxyOptions) -> tuple[bytes, tuple[int, ...]]:
         return bytes(
             (
                 _SOCKS5_VERSION,
-                _SOCKS5_AUTH_METHOD_COUNT_WITH_CREDENTIALS,
+                2,
                 _SOCKS5_AUTH_NO_AUTH,
                 _SOCKS5_AUTH_USER_PASS,
             )
@@ -131,9 +120,7 @@ def _socks5_greeting(proxy: _ProxyOptions) -> tuple[bytes, tuple[int, ...]]:
             _SOCKS5_AUTH_NO_AUTH,
             _SOCKS5_AUTH_USER_PASS,
         )
-    return bytes(
-        (_SOCKS5_VERSION, _SOCKS5_AUTH_METHOD_COUNT_NO_CREDENTIALS, _SOCKS5_AUTH_NO_AUTH)
-    ), (_SOCKS5_AUTH_NO_AUTH,)
+    return bytes((_SOCKS5_VERSION, 1, _SOCKS5_AUTH_NO_AUTH)), (_SOCKS5_AUTH_NO_AUTH,)
 
 
 def _socks5_check_greeting_reply(data: bytes, allowed: tuple[int, ...]) -> int:
@@ -169,8 +156,7 @@ def _socks5_check_auth_reply(data: bytes) -> None:
 
 def _socks5_request(address: _Address) -> bytes:
     host, port = address
-    if port is None:
-        raise _Socks5Error("SOCKS5 connect failed: destination port is required")
+    port = cast(int, port)
     try:
         ip = ipaddress.ip_address(host.split("%", 1)[0])
     except ValueError:
@@ -188,7 +174,7 @@ def _socks5_request(address: _Address) -> bytes:
     return (
         bytes((_SOCKS5_VERSION, _SOCKS5_CMD_CONNECT, _SOCKS5_RESERVED))
         + encoded_host
-        + port.to_bytes(_SOCKS5_PORT_LEN, "big")
+        + port.to_bytes(2, "big")
     )
 
 
