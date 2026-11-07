@@ -776,9 +776,9 @@ def _parse_canonical_minkey(doc: Any, dummy0: Any) -> MinKey:
 def _parse_canonical_maxkey(doc: Any, dummy0: Any) -> MaxKey:
     """Decode a JSON MaxKey to bson.max_key.MaxKey."""
     if type(doc["$maxKey"]) is not int or doc["$maxKey"] != 1:
-        raise TypeError("$maxKey value must be 1: %s", (doc,))
+        raise TypeError(f"$maxKey value must be 1: {doc}")
     if len(doc) != 1:
-        raise TypeError(f"Bad $minKey, extra field(s): {doc}")
+        raise TypeError(f"Bad $maxKey, extra field(s): {doc}")
     return MaxKey()
 
 

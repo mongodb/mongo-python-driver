@@ -398,6 +398,13 @@ class TestJsonUtil(unittest.TestCase):
     def test_maxkey(self):
         self.round_trip({"m": MaxKey()})
 
+    def test_minkey_maxkey_errors(self):
+        for key in ("$minKey", "$maxKey"):
+            with self.assertRaisesRegex(TypeError, rf"^\{key} value must be 1: "):
+                json_util.loads(json.dumps({key: 2}))
+            with self.assertRaisesRegex(TypeError, rf"^Bad \{key}, extra field\(s\): "):
+                json_util.loads(json.dumps({key: 1, "x": 1}))
+
     def test_timestamp(self):
         dct = {"ts": Timestamp(4, 13)}
         res = json_util.dumps(dct, default=json_util.default)
