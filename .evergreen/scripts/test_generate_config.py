@@ -72,6 +72,35 @@ def variant_selects(variant, task):
     return False
 
 
+def test_socks5_tasks_use_standard_setup_and_execution():
+    tasks = generate_config.create_socks5_tasks()
+    assert {task.name for task in tasks} == {
+        "test-socks5-prose-noauth-nossl",
+        "test-socks5-prose-noauth-ssl",
+    }
+    assert {task_vars(task)["SSL"] for task in tasks} == {"nossl", "ssl"}
+    for task in tasks:
+        assert {"socks5", "pr"} <= set(task.tags)
+        assert [command.func for command in task.commands] == ["run server", "run tests"]
+        assert task.commands[0].vars == dict(
+            TEST_NAME="socks5",
+            VERSION=generate_config_utils.MAX_VERSION,
+            TOPOLOGY="replica_set",
+            AUTH="noauth",
+            SSL=task_vars(task)["SSL"],
+        )
+        assert task.commands[1].vars == dict(TEST_NAME="socks5", COVERAGE="1")
+
+
+def test_socks5_variant_selects_both_prose_tasks():
+    (variant,) = generate_config.create_socks5_variants()
+    assert variant.name == "socks5-prose"
+    assert variant.display_name == "SOCKS5 Prose Tests"
+    assert "pr" in variant.tags
+    assert variant.expansions["UV_PYTHON"] == generate_config_utils.MIN_PYTHON
+    assert all(variant_selects(variant, task) for task in generate_config.create_socks5_tasks())
+
+
 def test_pr_tasks_pin_max_version():
     """Task-level pins: pr tasks pin MAX_VERSION (the "latest" nightly is
     unstable); the explicit 4.4 min-deps pin is the exception. Variant-merged

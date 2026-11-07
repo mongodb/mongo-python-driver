@@ -52,7 +52,6 @@ EXTRAS_MAP = {
     "pyopenssl": "ocsp",
 }
 
-
 # Map the test name to test group.
 GROUP_MAP = dict(fuzz="fuzz", mockupdb="mockupdb", perf="perf")
 

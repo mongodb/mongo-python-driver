@@ -49,6 +49,7 @@ TEST_SUITE_MAP = {
     "ocsp": "ocsp",
     "perf": "perf",
     "sfp": "sfp",
+    "socks5": "",
     "numpy": "",
 }
 

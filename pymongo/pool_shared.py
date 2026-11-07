@@ -66,6 +66,7 @@ from pymongo.network_layer import (
 from pymongo.pool_options import PoolOptions
 from pymongo.server_api import _add_to_command
 from pymongo.socket_checker import SocketChecker
+from pymongo.socks5_shared import _Socks5Error, _Socks5Timeout
 from pymongo.ssl_support import SSL_EOF_ERRORS, PYSSLError, SSLError, _has_sni
 
 SSLErrors = (PYSSLError, SSLError)
@@ -340,8 +341,11 @@ class _AgnosticBasePool(Generic[_ConnT]):
         if self.is_sdam or type(error) not in (AutoReconnect, NetworkTimeout):
             return
         assert isinstance(error, AutoReconnect)  # Appease type checker.
-        # If the original error was a DNS, certificate, or SSL error, ignore it.
-        if isinstance(error.__cause__, (_CertificateError, SSLErrors, socket.gaierror)):
+        # Ignore DNS, certificate, SSL, and SOCKS5 proxy errors.
+        if isinstance(
+            error.__cause__,
+            (_CertificateError, SSLErrors, socket.gaierror, _Socks5Error, _Socks5Timeout),
+        ):
             # End of file errors are excluded, because the server may have disconnected
             # during the handshake.
             if not isinstance(error.__cause__, SSL_EOF_ERRORS):
@@ -593,6 +597,26 @@ class PoolState:
     CLOSED = 3
 
 
+def _new_tcp_socket(af: int, socktype: int, proto: int) -> socket.socket:
+    # SOCK_CLOEXEC was added in CPython 3.2 and is not available on all
+    # platforms or kernels. PEP 446 makes descriptors non-inheritable by
+    # default starting in CPython 3.4.
+    try:
+        sock = socket.socket(af, socktype | getattr(socket, "SOCK_CLOEXEC", 0), proto)
+    except OSError:
+        sock = socket.socket(af, socktype, proto)
+    _set_non_inheritable_non_atomic(sock.fileno())
+    return sock
+
+
+def _configure_tcp_socket(sock: socket.socket, *, non_blocking: bool = False) -> None:
+    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
+    _set_keepalive_times(sock)
+    if non_blocking:
+        sock.setblocking(False)
+
+
 async def _async_create_connection(address: _Address, options: PoolOptions) -> socket.socket:
     """Given (host, port) and PoolOptions, connect and return a raw socket object.
 
@@ -601,6 +625,12 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
     This is a modified version of create_connection from CPython >= 2.7.
     """
     host, port = address
+
+    if options._proxy_options is not None:
+        # Import locally to avoid a circular import; socks5_support imports pool_shared.
+        from pymongo.asynchronous.socks5_support import _async_create_proxy_connection
+
+        return await _async_create_proxy_connection(address, options, options._proxy_options)
 
     # Check if dealing with a unix domain socket
     if host.endswith(".sock"):
@@ -627,29 +657,15 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
     err = None
     for res in await _getaddrinfo(host, port, family=family, type=socket.SOCK_STREAM):
         af, socktype, proto, dummy, sa = res
-        # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
-        # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
-        # all file descriptors are created non-inheritable. See PEP 446.
+        sock = _new_tcp_socket(af, socktype, proto)
         try:
-            sock = socket.socket(af, socktype | getattr(socket, "SOCK_CLOEXEC", 0), proto)
-        except OSError:
-            # Can SOCK_CLOEXEC be defined even if the kernel doesn't support
-            # it?
-            sock = socket.socket(af, socktype, proto)
-        # Fallback when SOCK_CLOEXEC isn't available.
-        _set_non_inheritable_non_atomic(sock.fileno())
-        try:
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            _configure_tcp_socket(sock, non_blocking=True)
             # CSOT: apply timeout to socket connect.
             timeout = _csot.remaining()
             if timeout is None:
                 timeout = options.connect_timeout
             elif timeout <= 0:
                 raise socket.timeout("timed out")
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
-            _set_keepalive_times(sock)
-            # Socket needs to be non-blocking during connection to not block the event loop
-            sock.setblocking(False)
             await asyncio.wait_for(
                 asyncio.get_running_loop().sock_connect(sock, sa), timeout=timeout
             )
@@ -849,6 +865,12 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
     """
     host, port = address
 
+    if options._proxy_options is not None:
+        # Import locally to avoid a circular import; socks5_support imports pool_shared.
+        from pymongo.synchronous.socks5_support import _create_proxy_connection
+
+        return _create_proxy_connection(address, options, options._proxy_options)
+
     # Check if dealing with a unix domain socket
     if host.endswith(".sock"):
         if not hasattr(socket, "AF_UNIX"):
@@ -873,19 +895,9 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
     err = None
     for res in socket.getaddrinfo(host, port, family=family, type=socket.SOCK_STREAM):  # type: ignore[attr-defined, unused-ignore]
         af, socktype, proto, dummy, sa = res
-        # SOCK_CLOEXEC was new in CPython 3.2, and only available on a limited
-        # number of platforms (newer Linux and *BSD). Starting with CPython 3.4
-        # all file descriptors are created non-inheritable. See PEP 446.
+        sock = _new_tcp_socket(af, socktype, proto)
         try:
-            sock = socket.socket(af, socktype | getattr(socket, "SOCK_CLOEXEC", 0), proto)
-        except OSError:
-            # Can SOCK_CLOEXEC be defined even if the kernel doesn't support
-            # it?
-            sock = socket.socket(af, socktype, proto)
-        # Fallback when SOCK_CLOEXEC isn't available.
-        _set_non_inheritable_non_atomic(sock.fileno())
-        try:
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            _configure_tcp_socket(sock)
             # CSOT: apply timeout to socket connect.
             timeout = _csot.remaining()
             if timeout is None:
@@ -893,8 +905,6 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
             elif timeout <= 0:
                 raise socket.timeout("timed out")
             sock.settimeout(timeout)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
-            _set_keepalive_times(sock)
             sock.connect(sa)
             return sock
         except OSError as e:

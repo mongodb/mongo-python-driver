@@ -262,6 +262,7 @@ class _AgnosticTopologyBase(Generic[_PoolT, _ServerT]):
             driver=options.driver,
             pause_enabled=False,
             server_api=options.server_api,
+            proxy_options=options._proxy_options,
         )
 
         return self._settings.pool_class(

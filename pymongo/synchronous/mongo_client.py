@@ -99,6 +99,7 @@ from pymongo.operations import (
     UpdateOne,
     _Op,
 )
+from pymongo.pool_options import _ProxyOptions
 from pymongo.read_preferences import ReadPreference, _ServerMode
 from pymongo.results import ClientBulkWriteResult
 from pymongo.server_description import ServerDescription
@@ -155,6 +156,8 @@ _ReadCall = Callable[
     [Optional["ClientSession"], "Server", "Connection", _ServerMode],
     T,
 ]
+
+_REDACTED_REPR_OPTS = frozenset(["username", "password", "proxyusername", "proxypassword"])
 
 _IS_SYNC = True
 
@@ -338,6 +341,18 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             connecting a new socket to a server before concluding the server
             is unavailable. ``0`` or ``None`` means no timeout.
             Defaults to ``20000`` (20 seconds).
+          - `proxyHost` (string): The hostname or IP address of a SOCKS5 proxy.
+            IPv6 literals may be enclosed in brackets. Defaults to no proxy.
+            Routes MongoDB and automatic encryption KMS connections through
+            the proxy. Cannot be combined with ``kms_connect_callback`` in
+            ``auto_encryption_opts``; doing so raises
+            :class:`~pymongo.errors.ConfigurationError`.
+          - `proxyPort` (integer): The TCP port of the SOCKS5 proxy. Defaults
+            to ``1080`` when ``proxyHost`` is specified.
+          - `proxyUsername` (string): The username for SOCKS5 username/password
+            authentication. Must be specified together with ``proxyPassword``.
+          - `proxyPassword` (string): The password for SOCKS5 username/password
+            authentication. Must be specified together with ``proxyUsername``.
           - `server_selector`: (callable or None) Optional, user-provided
             function that augments server selection rules. The function should
             accept as an argument a list of
@@ -671,6 +686,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
 
+        .. versionchanged:: 4.20
+           Added the ``proxyHost``, ``proxyPort``, ``proxyUsername``, and
+           ``proxyPassword`` keyword arguments and URI options.
+
         .. versionchanged:: 4.19
            Added the ``srv_host_validator`` keyword argument.
 
@@ -878,6 +897,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     warn=True,
                     normalize=False,
                     srv_max_hosts=srv_max_hosts,
+                    validate_proxy=False,
                 )
                 is_srv = entity.startswith(SRV_SCHEME)
                 self._seeds.update(res["nodelist"])
@@ -1003,6 +1023,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     srv_max_hosts=srv_max_hosts,
                     srv_allowed_hosts_suffix=srv_allowed_hosts_suffix,
                     srv_host_validator=srv_host_validator,
+                    validate_proxy=False,
                 )
                 seeds.update(res["nodelist"])
                 opts = res["options"]
@@ -1378,12 +1399,15 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """
         return self._options
 
-    def eq_props(self) -> tuple[tuple[_Address, ...], Optional[str], Optional[str], str]:
+    def eq_props(
+        self,
+    ) -> tuple[tuple[_Address, ...], Optional[str], Optional[str], str, Optional[_ProxyOptions]]:
         return (
             tuple(sorted(self._resolve_srv_info["seeds"])),
             self._options.replica_set_name,
             self._resolve_srv_info["fqdn"],
             self._resolve_srv_info["srv_service_name"],
+            self._options.pool_options._proxy_options,
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -1432,7 +1456,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         options.extend(
             option_repr(key, self._options._options[key])
             for key in self._options._options
-            if key not in set(self._constructor_args) and key != "username" and key != "password"
+            if key not in set(self._constructor_args) and key not in _REDACTED_REPR_OPTS
         )
         return ", ".join(options)
 

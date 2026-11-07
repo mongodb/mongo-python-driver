@@ -631,6 +631,17 @@ buildvariants:
       TEST_NAME: sfp
     tags: [pr]
 
+  # Socks5 tests
+  - name: socks5-prose
+    tasks:
+      - name: .socks5
+    display_name: SOCKS5 Prose Tests
+    run_on:
+      - rhel8.10-small
+    expansions:
+      UV_PYTHON: "3.11"
+    tags: [pr]
+
   # Stable api tests
   - name: stable-api-require-v1-rhel8-auth
     tasks:

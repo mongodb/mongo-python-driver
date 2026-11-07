@@ -27,7 +27,7 @@ from pymongo import common
 from pymongo.compression_support import CompressionSettings
 from pymongo.errors import ConfigurationError
 from pymongo.monitoring import _EventListener, _EventListeners
-from pymongo.pool_options import PoolOptions
+from pymongo.pool_options import _DEFAULT_PROXY_PORT, PoolOptions, _ProxyOptions
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import (
     _ServerMode,
@@ -174,6 +174,17 @@ def _parse_pool_options(
         options.get("compressors", []), options.get("zlibcompressionlevel", -1)
     )
     ssl_context, tls_allow_invalid_hostnames = _parse_ssl_options(options, is_sync)
+    proxy_host = options.get("proxyhost")
+    proxy_options = (
+        _ProxyOptions(
+            proxy_host,
+            options.get("proxyport") or _DEFAULT_PROXY_PORT,
+            options.get("proxyusername"),
+            options.get("proxypassword"),
+        )
+        if proxy_host is not None
+        else None
+    )
     load_balanced = options.get("loadbalanced")
     max_connecting = options.get("maxconnecting", common.MAX_CONNECTING)
     return PoolOptions(
@@ -194,6 +205,7 @@ def _parse_pool_options(
         load_balanced=load_balanced,
         credentials=credentials,
         is_sync=is_sync,
+        proxy_options=proxy_options,
     )
 
 

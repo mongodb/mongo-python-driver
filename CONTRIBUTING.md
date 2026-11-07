@@ -458,6 +458,16 @@ wheels (CPython 3.12-3.14).
   then `just run-tests`.  Set `FUZZ_MAX_TIME` (seconds, default 300) to change
   the per-target budget.
 
+## SOCKS5 proxy tests
+
+With a local replica set running and `MONGODB_URI` set to its connection string,
+run `just setup-tests socks5`, then `just run-tests`, and finally
+`just teardown-tests`. Setup requires the drivers-evergreen-tools checkout and
+starts authenticated and unauthenticated proxies on ports 1080 and 1081. The
+runner exercises the synchronous and asynchronous SOCKS5 prose tests; teardown
+stops the proxies. For a TLS-enabled replica set, use
+`just setup-tests socks5 --ssl` instead.
+
 ## Testing time-dependent operations
 
 - `test.utils_shared.delay` - One can trigger an arbitrarily long-running operation on the server using this delay utility

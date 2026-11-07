@@ -18,6 +18,8 @@
 from __future__ import annotations
 
 import datetime
+import ipaddress
+import unicodedata
 import warnings
 from collections import OrderedDict, abc
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
@@ -148,6 +150,11 @@ ENABLE_OVERLOAD_RETARGETING = False
 # Auth mechanism properties that must raise an error instead of warning if they invalidate.
 _MECH_PROP_MUST_RAISE = ["CANONICALIZE_HOST_NAME"]
 
+# URI options that must raise an error instead of warning if they invalidate,
+# so a malformed proxy option never silently falls back to a direct connection.
+_URI_OPTS_MUST_RAISE = frozenset(["proxyhost", "proxyport", "proxyusername", "proxypassword"])
+_SOCKS5_MAX_STR_LEN = 255
+
 
 def partition_node(node: str) -> tuple[str, int]:
     """Split a host:port string into (host, int(port)) pair."""
@@ -225,6 +232,66 @@ def validate_non_negative_integer(option: str, value: Any) -> int:
     if val < 0:
         raise ValueError(f"The value of {option} must be a non negative integer")
     return val
+
+
+def validate_proxy_host(option: str, value: Any) -> Optional[str]:
+    """Validate and normalize a SOCKS5 proxy host.
+
+    :raises TypeError: If ``value`` is not a string or ``None``.
+    :raises ValueError: If ``value`` is an invalid host.
+    """
+    if value is None:
+        return None
+    host = validate_string(option, value)
+    if not host:
+        raise ValueError(f"{option} cannot be an empty string")
+    if any(char.isspace() or unicodedata.category(char) == "Cc" for char in host):
+        raise ValueError(f"{option} must not contain whitespace or control characters")
+    if host.startswith("[") or host.endswith("]"):
+        if not (host.startswith("[") and host.endswith("]")):
+            raise ValueError(f"{option} has invalid bracket syntax")
+        literal = host[1:-1]
+        try:
+            ipaddress.IPv6Address(literal.split("%", 1)[0])
+        except ipaddress.AddressValueError:
+            raise ValueError(f"{option} must contain a bracketed IPv6 address") from None
+        return literal
+    if "[" in host or "]" in host or "/" in host:
+        raise ValueError(f"{option} has invalid host syntax")
+    if ":" in host:
+        try:
+            ipaddress.IPv6Address(host.split("%", 1)[0])
+        except ipaddress.AddressValueError:
+            raise ValueError(f"{option} must not include a port") from None
+    return host
+
+
+def validate_proxy_port(option: str, value: Any) -> Optional[int]:
+    """Validate a SOCKS5 proxy TCP port.
+
+    :raises TypeError: If ``value`` is not an integer or string.
+    :raises ValueError: If ``value`` is not an integer or is outside the valid port range.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise TypeError(f"Wrong type for {option}, value must be an integer, not bool")
+    port = validate_integer(option, value)
+    if not 1 <= port <= 65535:
+        raise ValueError(f"{option} must be an integer between 1 and 65535")
+    return port
+
+
+def validate_proxy_credential(option: str, value: Any) -> Optional[str]:
+    """Validate a SOCKS5 username or password and its UTF-8 byte length.
+
+    :raises TypeError: If ``value`` is not a string or ``None``.
+    :raises ValueError: If the UTF-8 byte length exceeds the SOCKS5 limit.
+    """
+    credential = validate_string_or_none(option, value)
+    if credential is not None and len(credential.encode("utf-8")) > _SOCKS5_MAX_STR_LEN:
+        raise ValueError(f"{option} must be no more than {_SOCKS5_MAX_STR_LEN} UTF-8 bytes")
+    return credential
 
 
 def validate_readable(option: str, value: Any) -> Optional[str]:
@@ -724,6 +791,10 @@ URI_OPTIONS_VALIDATOR_MAP: dict[str, Callable[[Any, Any], Any]] = {
     "maxconnecting": validate_positive_integer,
     "maxpoolsize": validate_non_negative_integer_or_none,
     "maxstalenessseconds": validate_max_staleness,
+    "proxyhost": validate_proxy_host,
+    "proxyport": validate_proxy_port,
+    "proxyusername": validate_proxy_credential,
+    "proxypassword": validate_proxy_credential,
     "readconcernlevel": validate_string_or_none,
     "readpreference": validate_read_preference_mode,
     "readpreferencetags": validate_read_preference_tags,
@@ -888,7 +959,7 @@ def get_validated_options(
             validator = _get_validator(opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key)
             validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
-            if (
+            if normed_key in _URI_OPTS_MUST_RAISE or (
                 normed_key == "authmechanismproperties"
                 and any(p in str(exc) for p in _MECH_PROP_MUST_RAISE)
                 and "is not a supported auth mechanism property" not in str(exc)

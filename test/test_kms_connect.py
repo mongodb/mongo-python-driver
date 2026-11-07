@@ -40,6 +40,7 @@ from asyncio.trsock import TransportSocket
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from types import SimpleNamespace
 from typing import Any
 from unittest import mock
 
@@ -55,9 +56,9 @@ from pymongo.encryption_options import (
     KMSConnectContext,
 )
 from pymongo.errors import ConfigurationError, ConnectionFailure, EncryptionError, NetworkTimeout
-from pymongo.pool_options import PoolOptions
+from pymongo.pool_options import PoolOptions, _ProxyOptions
 from pymongo.ssl_support import get_ssl_context
-from test.helpers_shared import CA_PEM, CERT_PATH, CLIENT_PEM
+from test.helpers_shared import CA_PEM, CERT_PATH, CLIENT_PEM, LOCAL_MASTER_KEY
 
 pytestmark = [pytest.mark.encryption, pytest.mark.asyncio]
 
@@ -167,15 +168,15 @@ class Facade:
             kms_connect_callback=kms_connect_callback,
         )
 
-    def simple_client(self):
+    def simple_client(self, *args, **kwargs):
         """A lazily-connecting client for this API."""
         if self.is_async:
             from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
-            return AsyncMongoClient()
+            return AsyncMongoClient(*args, **kwargs)
         from pymongo import MongoClient
 
-        return MongoClient()
+        return MongoClient(*args, **kwargs)
 
 
 ASYNC = Facade(is_async=True)
@@ -1056,6 +1057,86 @@ async def test_datagram_socket_from_callback_is_rejected(api):
 
             with pytest.raises(ConfigurationError, match="stream socket"):
                 await api.connect(_KMS_ADDRESS, _pool_options(), api.callback_returning(left), 10.0)
+
+
+@both_apis
+@pytest.mark.skipif(not _HAVE_PYMONGOCRYPT, reason="pymongocrypt is not installed")
+async def test_socks5_proxy_options_flow_to_kms(api):
+    module = api.encryption()
+    proxy = _ProxyOptions("10.0.0.2")
+    client = api.simple_client("mongodb://localhost/?proxyHost=10.0.0.2", connect=False)
+    clients = []
+    explicit = None
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        opts = mock.Mock(
+            _kms_connect_callback=None,
+            _kms_ssl_contexts=mock.Mock(return_value={"aws": object()}),
+        )
+        io = module._EncryptionIO(client, client.keyvault.datakeys, None, opts, proxy_options=proxy)
+        connection = mock.MagicMock()
+
+        def connect(_address, options, _callback, _timeout):
+            assert options._proxy_options == proxy
+            return connection
+
+        patched_connect = (
+            mock.AsyncMock(side_effect=connect) if api.is_async else mock.Mock(side_effect=connect)
+        )
+        monkeypatch.setattr(module, "_connect_kms", patched_connect)
+        if api.is_async:
+            monkeypatch.setattr(module, "async_socket_sendall", mock.AsyncMock())
+        request = SimpleNamespace(
+            endpoint="kms.example:443",
+            message=b"request",
+            kms_provider="aws",
+            usleep=0,
+            bytes_needed=0,
+        )
+        await api.maybe_await(io.kms_request(request))
+        connection.close.assert_called_once_with()
+
+        for bypass in (False, True):
+            encrypted = api.simple_client(
+                "mongodb://localhost/?proxyHost=10.0.0.1",
+                auto_encryption_opts=AutoEncryptionOpts(
+                    {"local": {"key": LOCAL_MASTER_KEY}},
+                    "keyvault.datakeys",
+                    key_vault_client=client,
+                    bypass_auto_encryption=bypass,
+                ),
+                connect=False,
+            )
+            clients.append(encrypted)
+            callbacks = encrypted._encrypter._auto_encrypter.callback
+            assert callbacks._proxy_options == _ProxyOptions("10.0.0.1")
+            assert (callbacks.client_ref is None) is bypass
+            assert callbacks.mongocryptd_client.options.pool_options._proxy_options is None
+
+        explicit = api.client_encryption(
+            {"local": {"key": LOCAL_MASTER_KEY}}, "keyvault.datakeys", client, None
+        )
+        assert explicit._io_callbacks._proxy_options == proxy
+        callback = api.callback(lambda _context: None)
+        opts = AutoEncryptionOpts({}, "keyvault.datakeys", kms_connect_callback=callback)
+        client_with_proxy = mock.Mock(
+            options=mock.Mock(pool_options=PoolOptions(proxy_options=proxy))
+        )
+        for create in (
+            lambda: module._Encrypter(client_with_proxy, opts),
+            lambda: api.client_encryption(
+                {"local": {"key": LOCAL_MASTER_KEY}}, "keyvault.datakeys", client, callback
+            ),
+        ):
+            with pytest.raises(ConfigurationError, match="kms_connect_callback with proxyHost"):
+                create()
+    finally:
+        monkeypatch.undo()
+        if explicit is not None:
+            await api.maybe_await(explicit.close())
+        for encrypted in clients:
+            await api.maybe_await(encrypted.close())
+        await api.maybe_await(client.close())
 
 
 @both_apis

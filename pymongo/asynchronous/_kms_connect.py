@@ -63,7 +63,8 @@ async def _connect_kms(
     """Connect to a KMS host and perform the TLS handshake over the socket.
 
     Uses ``kms_connect_callback`` when one is provided, otherwise connects
-    directly, and always verifies against ``address`` (the KMS host).
+    using the configured SOCKS5 proxy or directly. Always verifies against
+    ``address`` (the KMS host).
     """
     if kms_connect_callback is None:
         try:

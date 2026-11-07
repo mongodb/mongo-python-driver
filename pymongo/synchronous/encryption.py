@@ -52,7 +52,7 @@ from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot, _op_id
-from pymongo._kms_connect_shared import KMSConnectCallback
+from pymongo._kms_connect_shared import KMSConnectCallback, _check_kms_proxy_options
 from pymongo.daemon import _spawn_daemon
 from pymongo.encryption_options import (
     AutoEncryptionOpts,
@@ -101,6 +101,8 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
 
+    from pymongo.pool_options import _ProxyOptions
+
 
 _IS_SYNC = True
 
@@ -122,6 +124,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         key_vault_coll: Collection[_DocumentTypeArg],
         mongocryptd_client: Optional[MongoClient[_DocumentTypeArg]],
         opts: AutoEncryptionOpts,
+        proxy_options: Optional[_ProxyOptions] = None,
     ):
         """Internal class to perform I/O on behalf of pymongocrypt."""
         self.client_ref: Any
@@ -139,6 +142,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             ),
         )
         self.mongocryptd_client = mongocryptd_client
+        self._proxy_options = proxy_options
         self.opts = opts
         self._spawned = False
         self._kms_ssl_contexts = opts._kms_ssl_contexts(_IS_SYNC)
@@ -181,6 +185,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             connect_timeout=connect_timeout,
             socket_timeout=connect_timeout,
             ssl_context=ctx,
+            proxy_options=self._proxy_options,
         )
         try:
             conn = _connect_kms(
@@ -357,6 +362,9 @@ class _Encrypter:
         :param client: The encrypted MongoClient.
         :param opts: The encrypted client's :class:`AutoEncryptionOpts`.
         """
+        _check_kms_proxy_options(
+            client.options.pool_options._proxy_options, opts._kms_connect_callback
+        )
         if opts._schema_map is None:
             schema_map = None
         else:
@@ -384,6 +392,7 @@ class _Encrypter:
             encrypter._internal_client = internal_client
             return internal_client
 
+        # KMS requests use the encrypted client's SOCKS5 proxy options, not the key vault client's.
         if opts._key_vault_client is not None:
             key_vault_client = opts._key_vault_client
         else:
@@ -406,6 +415,7 @@ class _Encrypter:
             key_vault_coll,  # type:ignore[arg-type]
             mongocryptd_client,
             opts,
+            proxy_options=client.options.pool_options._proxy_options,
         )
         self._auto_encrypter = AutoEncrypter(
             io_callbacks,
@@ -569,7 +579,8 @@ class ClientEncryption(Generic[_DocumentType]):
             collection. Data keys are protected with encryption by a KMS
             provider.
         :param key_vault_client: A MongoClient connected to a MongoDB cluster
-            containing the `key_vault_namespace` collection.
+            containing the `key_vault_namespace` collection. Its SOCKS5 proxy
+            options are also used for KMS requests.
         :param codec_options: An instance of
             :class:`~bson.codec_options.CodecOptions` to use when encoding a
             value for encryption and decoding the decrypted BSON value. This
@@ -601,8 +612,11 @@ class ClientEncryption(Generic[_DocumentType]):
             deadline and closes any socket the callback yields later. For an
             ordinary HTTP proxy, pass
             :class:`~pymongo.encryption_options.HTTPProxyKMSConnect`.
-            Defaults to ``None``, meaning the driver connects to KMS hosts
-            directly.
+            Defaults to ``None``, meaning the driver uses the SOCKS5 proxy
+            configured on ``key_vault_client``, or connects directly if none
+            is configured. Cannot be combined with ``proxyHost`` on
+            ``key_vault_client``; doing so raises
+            :class:`~pymongo.errors.ConfigurationError`.
 
         .. versionchanged:: 4.19
            Added the `kms_connect_callback` parameter.
@@ -632,6 +646,9 @@ class ClientEncryption(Generic[_DocumentType]):
             if not any(cls.__name__ == "MongoClient" for cls in type(key_vault_client).__mro__):
                 raise TypeError(f"MongoClient required but given {type(key_vault_client).__name__}")
 
+        _check_kms_proxy_options(
+            key_vault_client.options.pool_options._proxy_options, kms_connect_callback
+        )
         self._kms_providers = kms_providers
         self._key_vault_namespace = key_vault_namespace
         self._key_vault_client = key_vault_client
@@ -649,7 +666,11 @@ class ClientEncryption(Generic[_DocumentType]):
         )
         self._kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
         self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
-            None, key_vault_coll, None, opts
+            None,
+            key_vault_coll,
+            None,
+            opts,
+            proxy_options=key_vault_client.options.pool_options._proxy_options,
         )
         self._encryption = ExplicitEncrypter(
             self._io_callbacks,

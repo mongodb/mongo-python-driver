@@ -185,6 +185,9 @@ def handle_fuzz() -> None:
 
 
 def run() -> None:
+    if TEST_NAME == "socks5":
+        TEST_ARGS.extend(["test/test_socks5.py", "-k", "TestSocks5Prose"])
+
     # Add diagnostic for python version.
     print("Running with python", sys.version)
 
