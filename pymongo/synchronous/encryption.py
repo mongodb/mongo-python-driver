@@ -124,7 +124,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
         key_vault_coll: Collection[_DocumentTypeArg],
         mongocryptd_client: Optional[MongoClient[_DocumentTypeArg]],
         opts: AutoEncryptionOpts,
-        proxy_options: Optional[_ProxyOptions],
+        proxy_options: Optional[_ProxyOptions] = None,
     ):
         """Internal class to perform I/O on behalf of pymongocrypt."""
         self.client_ref: Any
@@ -392,6 +392,7 @@ class _Encrypter:
             encrypter._internal_client = internal_client
             return internal_client
 
+        # KMS requests use the encrypted client's SOCKS5 proxy options, not the key vault client's.
         if opts._key_vault_client is not None:
             key_vault_client = opts._key_vault_client
         else:

@@ -49,9 +49,11 @@ from pymongo.socks5_shared import (
     _SOCKS5_ATYP_IPV6,
     _SOCKS5_AUTH_NO_ACCEPTABLE,
     _SOCKS5_AUTH_NO_AUTH,
+    _SOCKS5_AUTH_SUCCESS,
     _SOCKS5_AUTH_USER_PASS,
     _SOCKS5_AUTH_VERSION,
     _SOCKS5_CMD_CONNECT,
+    _SOCKS5_REPLY_SUCCESS,
     _SOCKS5_RESERVED,
     _SOCKS5_VERSION,
     _Socks5Error,
@@ -583,13 +585,13 @@ class _TLSServer:
 class _Socks5Server:
     def __init__(
         self,
-        method: int = 0x00,
-        auth_status: int = 0x00,
-        reply: int = 0x00,
-        bound_atyp: int = 0x01,
+        method: int = _SOCKS5_AUTH_NO_AUTH,
+        auth_status: int = _SOCKS5_AUTH_SUCCESS,
+        reply: int = _SOCKS5_REPLY_SUCCESS,
+        bound_atyp: int = _SOCKS5_ATYP_IPV4,
         payload: bytes = b"",
-        method_version: int = 0x05,
-        reply_version: int = 0x05,
+        method_version: int = _SOCKS5_VERSION,
+        reply_version: int = _SOCKS5_VERSION,
         eof_stage: Optional[str] = None,
         stall: bool = False,
         target: Optional[tuple[str, int]] = None,
@@ -640,10 +642,10 @@ class _Socks5Server:
                     conn.recv(1)
                     return
                 if self.eof_stage == "greeting":
-                    conn.sendall(bytes((0x05,)))
+                    conn.sendall(bytes((_SOCKS5_VERSION,)))
                     return
                 conn.sendall(bytes((self.method_version, self.method)))
-                if self.method == 0x02:
+                if self.method == _SOCKS5_AUTH_USER_PASS:
                     auth_version, username_length = self._read(conn, 2)
                     username = self._read(conn, username_length)
                     password_length = self._read(conn, 1)[0]
@@ -655,15 +657,15 @@ class _Socks5Server:
                         + password
                     )
                     if self.eof_stage == "auth":
-                        conn.sendall(bytes((0x01,)))
+                        conn.sendall(bytes((_SOCKS5_AUTH_VERSION,)))
                         return
-                    conn.sendall(bytes((0x01, self.auth_status)))
+                    conn.sendall(bytes((_SOCKS5_AUTH_VERSION, self.auth_status)))
                     if self.auth_status:
                         return
                 version, command, reserved, atyp = self._read(conn, 4)
-                if atyp == 0x01:
+                if atyp == _SOCKS5_ATYP_IPV4:
                     addr = self._read(conn, 4)
-                elif atyp == 0x04:
+                elif atyp == _SOCKS5_ATYP_IPV6:
                     addr = self._read(conn, 16)
                 else:
                     length = self._read(conn, 1)
@@ -672,18 +674,24 @@ class _Socks5Server:
                     bytes((version, command, reserved, atyp)) + addr + self._read(conn, 2)
                 )
                 if self.eof_stage == "connect":
-                    conn.sendall(bytes((0x05, 0x00)))
+                    conn.sendall(bytes((_SOCKS5_VERSION, _SOCKS5_REPLY_SUCCESS)))
                     return
                 if self.target is not None:
                     upstream = socket.create_connection(self.target, timeout=3)
-                if self.bound_atyp == 0x01:
-                    bound = bytes((0x01,)) + socket.inet_aton("127.0.0.1") + bytes(2)
-                elif self.bound_atyp == 0x04:
-                    bound = bytes((0x04,)) + socket.inet_pton(socket.AF_INET6, "::1") + bytes(2)
+                if self.bound_atyp == _SOCKS5_ATYP_IPV4:
+                    bound = bytes((_SOCKS5_ATYP_IPV4,)) + socket.inet_aton("127.0.0.1") + bytes(2)
+                elif self.bound_atyp == _SOCKS5_ATYP_IPV6:
+                    bound = (
+                        bytes((_SOCKS5_ATYP_IPV6,))
+                        + socket.inet_pton(socket.AF_INET6, "::1")
+                        + bytes(2)
+                    )
                 else:
                     host = b"x"
-                    bound = bytes((0x03, len(host))) + host + bytes(2)
-                conn.sendall(bytes((self.reply_version, self.reply, 0x00)) + bound + self.payload)
+                    bound = bytes((_SOCKS5_ATYP_DOMAIN, len(host))) + host + bytes(2)
+                conn.sendall(
+                    bytes((self.reply_version, self.reply, _SOCKS5_RESERVED)) + bound + self.payload
+                )
                 if self.payload:
                     return
                 if upstream is not None:
@@ -746,25 +754,31 @@ class TestAsyncSocks5(AsyncPyMongoTestCase):
         return sock
 
     async def test_protocol_and_connection_errors(self) -> None:
-        for host, atyp in (("127.0.0.1", 1), ("2001:db8::1", 4), ("münich.example", 3)):
+        for host, atyp in (
+            ("127.0.0.1", _SOCKS5_ATYP_IPV4),
+            ("2001:db8::1", _SOCKS5_ATYP_IPV6),
+            ("münich.example", _SOCKS5_ATYP_DOMAIN),
+        ):
             server = self._create_server()
             sock = await self._connect(server, (host, 27017))
             sock.close()
             server.close()
             self.assertEqual(server.request[3], atyp)
 
-        server = self._create_server(method=2)
+        server = self._create_server(method=_SOCKS5_AUTH_USER_PASS)
         sock = await self._connect(server, username="üser", password="påss")
         sock.close()
         server.close()
         self.assertIn("üser".encode(), server.auth)
 
-        for method in (1, 0xFF):
+        for method in (_SOCKS5_AUTH_GSSAPI_METHOD, _SOCKS5_AUTH_NO_ACCEPTABLE):
             server = self._create_server(method=method)
             with self.assertRaises(_Socks5Error):
                 await self._connect(server)
             server.close()
-        server = self._create_server(method=2, auth_status=1)
+        server = self._create_server(
+            method=_SOCKS5_AUTH_USER_PASS, auth_status=_SOCKS5_AUTH_FAILURE_STATUS
+        )
         with self.assertRaises(_Socks5Error):
             await self._connect(server, username="u", password="p")
         server.close()
