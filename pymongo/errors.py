@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from ssl import SSLCertVerificationError as _CertificateError  # noqa: F401
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from bson.errors import InvalidDocument
 
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""
 
-    def __init__(self, message: str = "", error_labels: Optional[Iterable[str]] = None) -> None:
+    def __init__(self, message: str = "", error_labels: Iterable[str] | None = None) -> None:
         super().__init__(message)
         self._message = message
         self._error_labels = set(error_labels or [])
@@ -96,11 +96,11 @@ class AutoReconnect(ConnectionFailure):
     Subclass of :exc:`~pymongo.errors.ConnectionFailure`.
     """
 
-    errors: Union[Mapping[str, Any], Sequence[Any]]
-    details: Union[Mapping[str, Any], Sequence[Any]]
+    errors: Mapping[str, Any] | Sequence[Any]
+    details: Mapping[str, Any] | Sequence[Any]
 
     def __init__(
-        self, message: str = "", errors: Optional[Union[Mapping[str, Any], Sequence[Any]]] = None
+        self, message: str = "", errors: Mapping[str, Any] | Sequence[Any] | None = None
     ) -> None:
         error_labels = None
         if errors is not None:
@@ -124,9 +124,7 @@ class NetworkTimeout(AutoReconnect):
         return True
 
 
-def _format_detailed_error(
-    message: str, details: Optional[Union[Mapping[str, Any], list[Any]]]
-) -> str:
+def _format_detailed_error(message: str, details: Mapping[str, Any] | list[Any] | None) -> str:
     if details is not None:
         message = f"{message}, full error: {details}"
     return message
@@ -149,7 +147,7 @@ class NotPrimaryError(AutoReconnect):
     """
 
     def __init__(
-        self, message: str = "", errors: Optional[Union[Mapping[str, Any], list[Any]]] = None
+        self, message: str = "", errors: Mapping[str, Any] | list[Any] | None = None
     ) -> None:
         super().__init__(_format_detailed_error(message, errors), errors=errors)
 
@@ -185,9 +183,9 @@ class OperationFailure(PyMongoError):
     def __init__(
         self,
         error: str,
-        code: Optional[int] = None,
-        details: Optional[Mapping[str, Any]] = None,
-        max_wire_version: Optional[int] = None,
+        code: int | None = None,
+        details: Mapping[str, Any] | None = None,
+        max_wire_version: int | None = None,
     ) -> None:
         error_labels = None
         base_backoff_ms = None
@@ -201,16 +199,16 @@ class OperationFailure(PyMongoError):
         self.__base_backoff_ms = base_backoff_ms
 
     @property
-    def _max_wire_version(self) -> Optional[int]:
+    def _max_wire_version(self) -> int | None:
         return self.__max_wire_version
 
     @property
-    def code(self) -> Optional[int]:
+    def code(self) -> int | None:
         """The error code returned by the server, if any."""
         return self.__code
 
     @property
-    def details(self) -> Optional[Mapping[str, Any]]:
+    def details(self) -> Mapping[str, Any] | None:
         """The complete error document returned by the server.
 
         Depending on the error that occurred, the error document
@@ -226,7 +224,7 @@ class OperationFailure(PyMongoError):
         return self.__code in (50,)
 
     @property
-    def _base_backoff_ms(self) -> Optional[float]:
+    def _base_backoff_ms(self) -> float | None:
         return self.__base_backoff_ms
 
 
@@ -330,7 +328,7 @@ class ClientBulkWriteException(OperationFailure):
         return self.__class__, (self.details,)
 
     @property
-    def error(self) -> Optional[Any]:
+    def error(self) -> Any | None:
         """A top-level error that occurred when attempting to
         communicate with the server or execute the bulk write.
 
@@ -340,7 +338,7 @@ class ClientBulkWriteException(OperationFailure):
         return self.details.get("error", None)
 
     @property
-    def write_concern_errors(self) -> Optional[list[WriteConcernError]]:
+    def write_concern_errors(self) -> list[WriteConcernError] | None:
         """Write concern errors that occurred during the bulk write.
 
         This list may have multiple items if more than one
@@ -349,7 +347,7 @@ class ClientBulkWriteException(OperationFailure):
         return self.details.get("writeConcernErrors", [])
 
     @property
-    def write_errors(self) -> Optional[list[WriteError]]:
+    def write_errors(self) -> list[WriteError] | None:
         """Errors that occurred during the execution of individual write operations.
 
         This list will contain at most one entry if the bulk write was ordered.
@@ -357,7 +355,7 @@ class ClientBulkWriteException(OperationFailure):
         return self.details.get("writeErrors", {})
 
     @property
-    def partial_result(self) -> Optional[ClientBulkWriteResult]:
+    def partial_result(self) -> ClientBulkWriteResult | None:
         """The results of any successful operations that were
         performed before the error was encountered.
         """

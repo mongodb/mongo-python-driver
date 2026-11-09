@@ -19,7 +19,7 @@ from __future__ import annotations
 import ipaddress
 import random
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from pymongo._psl import SPECIAL_USE_LABELS, _to_punycode, is_public_suffix
 from pymongo._telemetry import log_srv_monitor_invalid_host
@@ -34,7 +34,7 @@ _IS_SYNC = True
 
 # dnspython can return bytes or str from various parts
 # of its API depending on version. We always want str.
-def maybe_decode(text: Union[str, bytes]) -> str:
+def maybe_decode(text: str | bytes) -> str:
     if isinstance(text, bytes):
         return text.decode()
     return text
@@ -62,11 +62,11 @@ class _SrvResolver:
     def __init__(
         self,
         fqdn: str,
-        connect_timeout: Optional[float],
+        connect_timeout: float | None,
         srv_service_name: str,
         srv_max_hosts: int = 0,
-        srv_allowed_hosts_suffix: Optional[str] = None,
-        srv_host_validator: Optional[Callable[[str], bool]] = None,
+        srv_allowed_hosts_suffix: str | None = None,
+        srv_host_validator: Callable[[str], bool] | None = None,
     ):
         self.__fqdn = fqdn.lower()
         self.__srv = srv_service_name
@@ -113,7 +113,7 @@ class _SrvResolver:
         self.__slen = len(self.__plist)
         self.nparts = len(split_fqdn)
 
-    def get_options(self) -> Optional[str]:
+    def get_options(self) -> str | None:
         from dns import resolver
 
         try:

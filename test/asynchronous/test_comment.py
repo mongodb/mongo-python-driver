@@ -55,7 +55,7 @@ class AsyncTestComment(AsyncIntegrationTest):
                         "signature of function %s" % (h.__name__),
                     )
                     self.assertEqual(
-                        inspect.signature(h).parameters["comment"].annotation, "Optional[Any]"
+                        inspect.signature(h).parameters["comment"].annotation, "Any | None"
                     )
                     if isinstance(maybe_cursor, AsyncCommandCursor):
                         await maybe_cursor.close()

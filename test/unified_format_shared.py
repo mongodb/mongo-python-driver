@@ -27,7 +27,7 @@ import time
 import types
 from collections import abc
 from collections.abc import MutableMapping
-from typing import Any, Union
+from typing import Any
 
 from bson import (
     RE_TYPE,
@@ -336,18 +336,18 @@ class EventListenerUtil(
         else:
             self.add_event(event)
 
-    def opened(self, event: Union[ServerOpeningEvent, TopologyOpenedEvent]) -> None:
+    def opened(self, event: ServerOpeningEvent | TopologyOpenedEvent) -> None:
         self.add_event(event)
 
     def description_changed(
-        self, event: Union[ServerDescriptionChangedEvent, TopologyDescriptionChangedEvent]
+        self, event: ServerDescriptionChangedEvent | TopologyDescriptionChangedEvent
     ) -> None:
         self.add_event(event)
 
     def topology_changed(self, event: TopologyDescriptionChangedEvent) -> None:
         self.add_event(event)
 
-    def closed(self, event: Union[ServerClosedEvent, TopologyClosedEvent]) -> None:
+    def closed(self, event: ServerClosedEvent | TopologyClosedEvent) -> None:
         self.add_event(event)
 
 

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import calendar
 import datetime
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, DatetimeConversion
 from bson.errors import InvalidBSON
@@ -41,7 +41,7 @@ class DatetimeMS:
 
     __slots__ = ("_value",)
 
-    def __init__(self, value: Union[int, datetime.datetime]):
+    def __init__(self, value: int | datetime.datetime):
         """Represents a BSON UTC datetime.
 
         BSON UTC datetimes are defined as an int64 of milliseconds since the
@@ -74,10 +74,10 @@ class DatetimeMS:
     def __repr__(self) -> str:
         return type(self).__name__ + "(" + str(self._value) + ")"
 
-    def __lt__(self, other: Union[DatetimeMS, int]) -> bool:
+    def __lt__(self, other: DatetimeMS | int) -> bool:
         return self._value < other
 
-    def __le__(self, other: Union[DatetimeMS, int]) -> bool:
+    def __le__(self, other: DatetimeMS | int) -> bool:
         return self._value <= other
 
     def __eq__(self, other: Any) -> bool:
@@ -90,10 +90,10 @@ class DatetimeMS:
             return self._value != other._value
         return True
 
-    def __gt__(self, other: Union[DatetimeMS, int]) -> bool:
+    def __gt__(self, other: DatetimeMS | int) -> bool:
         return self._value > other
 
-    def __ge__(self, other: Union[DatetimeMS, int]) -> bool:
+    def __ge__(self, other: DatetimeMS | int) -> bool:
         return self._value >= other
 
     _type_marker = 9
@@ -146,9 +146,7 @@ def _max_datetime_ms(tz: datetime.tzinfo = utc) -> int:
     return min(_MAX_UTC_MS, _MAX_UTC_MS - offset_millis)
 
 
-def _millis_to_datetime(
-    millis: int, opts: CodecOptions[Any]
-) -> Union[datetime.datetime, DatetimeMS]:
+def _millis_to_datetime(millis: int, opts: CodecOptions[Any]) -> datetime.datetime | DatetimeMS:
     """Convert milliseconds since epoch UTC to datetime."""
     if (
         opts.datetime_conversion == DatetimeConversion.DATETIME

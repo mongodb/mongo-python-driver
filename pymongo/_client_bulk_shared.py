@@ -18,7 +18,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableMapping
-from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
+from typing import TYPE_CHECKING, Any, NoReturn
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -98,9 +98,9 @@ class _AgnosticClientBulkBase:
         client: _AgnosticMongoClient,
         write_concern: WriteConcern,
         ordered: bool = True,
-        bypass_document_validation: Optional[bool] = None,
-        comment: Optional[str] = None,
-        let: Optional[Any] = None,
+        bypass_document_validation: bool | None = None,
+        comment: str | None = None,
+        let: Any | None = None,
         verbose_results: bool = False,
     ) -> None:
         """Initialize a _AgnosticClientBulkBase instance."""
@@ -143,13 +143,13 @@ class _AgnosticClientBulkBase:
         self,
         namespace: str,
         selector: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
+        update: Mapping[str, Any] | _Pipeline,
         multi: bool,
-        upsert: Optional[bool] = None,
-        collation: Optional[Mapping[str, Any]] = None,
-        array_filters: Optional[list[Mapping[str, Any]]] = None,
-        hint: Union[str, dict[str, Any], None] = None,
-        sort: Optional[Mapping[str, Any]] = None,
+        upsert: bool | None = None,
+        collation: Mapping[str, Any] | None = None,
+        array_filters: list[Mapping[str, Any]] | None = None,
+        hint: str | dict[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
@@ -183,10 +183,10 @@ class _AgnosticClientBulkBase:
         namespace: str,
         selector: Mapping[str, Any],
         replacement: Mapping[str, Any],
-        upsert: Optional[bool] = None,
-        collation: Optional[Mapping[str, Any]] = None,
-        hint: Union[str, dict[str, Any], None] = None,
-        sort: Optional[Mapping[str, Any]] = None,
+        upsert: bool | None = None,
+        collation: Mapping[str, Any] | None = None,
+        hint: str | dict[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
@@ -214,8 +214,8 @@ class _AgnosticClientBulkBase:
         namespace: str,
         selector: Mapping[str, Any],
         multi: bool,
-        collation: Optional[Mapping[str, Any]] = None,
-        hint: Union[str, dict[str, Any], None] = None,
+        collation: Mapping[str, Any] | None = None,
+        hint: str | dict[str, Any] | None = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
         cmd = {"delete": -1, "filter": selector, "multi": multi}

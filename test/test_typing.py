@@ -27,7 +27,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     TypeVar,
-    Union,
     cast,
 )
 
@@ -175,8 +174,8 @@ class TestPymongo(IntegrationTest):
         coll: Collection[Movie] = self.coll
         requests: list[InsertOne[Movie]] = [InsertOne(Movie(name="American Graffiti", year=1973))]
         self.assertTrue(coll.bulk_write(requests).acknowledged)
-        new_requests: list[Union[InsertOne[Movie], ReplaceOne[Movie]]] = []
-        input_list: list[Union[InsertOne[Movie], ReplaceOne[Movie]]] = [
+        new_requests: list[InsertOne[Movie] | ReplaceOne[Movie]] = []
+        input_list: list[InsertOne[Movie] | ReplaceOne[Movie]] = [
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne({}, Movie(name="American Graffiti", year=1973)),
         ]
@@ -188,13 +187,13 @@ class TestPymongo(IntegrationTest):
     @only_type_check
     def test_bulk_write_heterogeneous(self):
         coll: Collection[Movie] = self.coll
-        requests: list[Union[InsertOne[Movie], ReplaceOne, DeleteOne]] = [
+        requests: list[InsertOne[Movie] | ReplaceOne | DeleteOne] = [
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne({}, {"name": "American Graffiti", "year": "WRONG_TYPE"}),
             DeleteOne({}),
         ]
         self.assertTrue(coll.bulk_write(requests).acknowledged)
-        requests_two: list[Union[InsertOne[Movie], ReplaceOne[Movie], DeleteOne]] = [
+        requests_two: list[InsertOne[Movie] | ReplaceOne[Movie] | DeleteOne] = [
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne(
                 {},

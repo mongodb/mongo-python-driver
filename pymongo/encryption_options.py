@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, Optional, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 
@@ -69,20 +69,20 @@ class AutoEncryptionOpts:
         self,
         kms_providers: Mapping[str, Any],
         key_vault_namespace: str,
-        key_vault_client: Optional[_AgnosticMongoClient] = None,
-        schema_map: Optional[Mapping[str, Any]] = None,
+        key_vault_client: _AgnosticMongoClient | None = None,
+        schema_map: Mapping[str, Any] | None = None,
         bypass_auto_encryption: bool = False,
         mongocryptd_uri: str = "mongodb://localhost:27020",
         mongocryptd_bypass_spawn: bool = False,
         mongocryptd_spawn_path: str = "mongocryptd",
-        mongocryptd_spawn_args: Optional[list[str]] = None,
-        kms_tls_options: Optional[Mapping[str, Any]] = None,
-        crypt_shared_lib_path: Optional[str] = None,
+        mongocryptd_spawn_args: list[str] | None = None,
+        kms_tls_options: Mapping[str, Any] | None = None,
+        crypt_shared_lib_path: str | None = None,
         crypt_shared_lib_required: bool = False,
         bypass_query_analysis: bool = False,
-        encrypted_fields_map: Optional[Mapping[str, Any]] = None,
-        key_expiration_ms: Optional[int] = None,
-        kms_connect_callback: Optional[Callable[[KMSConnectContext], Any]] = None,
+        encrypted_fields_map: Mapping[str, Any] | None = None,
+        key_expiration_ms: int | None = None,
+        kms_connect_callback: Callable[[KMSConnectContext], Any] | None = None,
     ) -> None:
         """Options to configure automatic client-side field level encryption.
 
@@ -274,8 +274,8 @@ class AutoEncryptionOpts:
             self._mongocryptd_spawn_args.append("--idleShutdownTimeoutSecs=60")
         # Maps KMS provider name to a SSLContext.
         self._kms_tls_options = kms_tls_options
-        self._sync_kms_ssl_contexts: Optional[dict[str, SSLContext]] = None
-        self._async_kms_ssl_contexts: Optional[dict[str, SSLContext]] = None
+        self._sync_kms_ssl_contexts: dict[str, SSLContext] | None = None
+        self._async_kms_ssl_contexts: dict[str, SSLContext] | None = None
         self._bypass_query_analysis = bypass_query_analysis
         self._key_expiration_ms = key_expiration_ms
         if kms_connect_callback is not None and not callable(kms_connect_callback):
@@ -300,11 +300,11 @@ class RangeOpts:
 
     def __init__(
         self,
-        sparsity: Optional[int] = None,
-        trim_factor: Optional[int] = None,
-        min: Optional[Any] = None,
-        max: Optional[Any] = None,
-        precision: Optional[int] = None,
+        sparsity: int | None = None,
+        trim_factor: int | None = None,
+        min: Any | None = None,
+        max: Any | None = None,
+        precision: int | None = None,
     ) -> None:
         """Options to configure encrypted queries using the range algorithm.
 
@@ -342,11 +342,11 @@ class StringOpts:
 
     def __init__(
         self,
-        substring: Optional[SubstringOpts] = None,
-        prefix: Optional[PrefixOpts] = None,
-        suffix: Optional[SuffixOpts] = None,
-        case_sensitive: Optional[bool] = None,
-        diacritic_sensitive: Optional[bool] = None,
+        substring: SubstringOpts | None = None,
+        prefix: PrefixOpts | None = None,
+        suffix: SuffixOpts | None = None,
+        case_sensitive: bool | None = None,
+        diacritic_sensitive: bool | None = None,
     ) -> None:
         """Options to configure encrypted queries using the string algorithm.
 

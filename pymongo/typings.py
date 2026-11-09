@@ -20,7 +20,6 @@ from collections.abc import Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
     TypeVar,
     Union,
 )
@@ -49,7 +48,7 @@ if TYPE_CHECKING:
 
 
 # Common Shared Types.
-_Address = tuple[str, Optional[int]]
+_Address = tuple[str, int | None]
 _CollationIn = Union[Mapping[str, Any], "Collation"]
 _Pipeline = Sequence[Mapping[str, Any]]
 ClusterTime = Mapping[str, Any]
@@ -68,7 +67,7 @@ _AgnosticBulk = Union["_AsyncBulk", "_Bulk"]
 _AgnosticClientBulk = Union["_AsyncClientBulk", "_ClientBulk"]
 
 
-def strip_optional(elem: Optional[_T]) -> _T:
+def strip_optional(elem: _T | None) -> _T:
     """This function is to allow us to cast all the elements of an iterator from Optional[_T] to _T
     while inside a list comprehension.
     """

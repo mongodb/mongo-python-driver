@@ -144,7 +144,6 @@ from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
     TypeVar,
 )
 
@@ -183,7 +182,7 @@ if TYPE_CHECKING:
 
 _IS_SYNC = False
 
-_SESSION: ContextVar[Optional[AsyncClientSession]] = ContextVar("SESSION", default=None)
+_SESSION: ContextVar[AsyncClientSession | None] = ContextVar("SESSION", default=None)
 
 
 class _AsyncBoundSessionContext:
@@ -191,7 +190,7 @@ class _AsyncBoundSessionContext:
 
     def __init__(self, session: AsyncClientSession, end_session: bool) -> None:
         self._session = session
-        self._session_token: Optional[Token[AsyncClientSession]] = None
+        self._session_token: Token[AsyncClientSession] | None = None
         self._end_session = end_session
 
     async def __aenter__(self) -> AsyncClientSession:
@@ -217,9 +216,9 @@ class _TransactionContext:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         if self.__session.in_transaction:
             if exc_val is None:
@@ -232,7 +231,7 @@ class _Transaction(_TransactionBase["AsyncConnection"]):
     """Internal class to hold transaction information in a AsyncClientSession."""
 
     _conn_mgr_cls = _ConnectionManager
-    conn_mgr: Optional[_ConnectionManager]
+    conn_mgr: _ConnectionManager | None
 
     async def unpin(self) -> None:
         self.pinned_address = None
@@ -302,10 +301,10 @@ class AsyncClientSession(
     async def with_transaction(
         self,
         callback: Callable[[AsyncClientSession], Awaitable[_T]],
-        read_concern: Optional[ReadConcern] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_preference: Optional[_ServerMode] = None,
-        max_commit_time_ms: Optional[int] = None,
+        read_concern: ReadConcern | None = None,
+        write_concern: WriteConcern | None = None,
+        read_preference: _ServerMode | None = None,
+        max_commit_time_ms: int | None = None,
     ) -> _T:
         """Execute a callback in a transaction.
 
@@ -401,7 +400,7 @@ class AsyncClientSession(
         """
         start_time = time.monotonic()
         retry = 0
-        last_error: Optional[BaseException] = None
+        last_error: BaseException | None = None
         while True:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
@@ -459,10 +458,10 @@ class AsyncClientSession(
 
     async def start_transaction(
         self,
-        read_concern: Optional[ReadConcern] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_preference: Optional[_ServerMode] = None,
-        max_commit_time_ms: Optional[int] = None,
+        read_concern: ReadConcern | None = None,
+        write_concern: WriteConcern | None = None,
+        read_preference: _ServerMode | None = None,
+        max_commit_time_ms: int | None = None,
     ) -> AbstractAsyncContextManager[Any]:
         """Start a multi-statement transaction.
 
@@ -575,7 +574,7 @@ class AsyncClientSession(
         """
 
         async def func(
-            _session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable: bool
+            _session: AsyncClientSession | None, conn: AsyncConnection, _retryable: bool
         ) -> dict[str, Any]:
             return await self._finish_transaction(conn, command_name)
 

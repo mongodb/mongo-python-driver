@@ -8,8 +8,6 @@ compares their results when both are present.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import atheris
 from fuzz_shared import OTHER_ERRORS, load_pure_python_bson, main, normalize
 
@@ -25,7 +23,7 @@ with atheris.instrument_imports():
 _BOTH_IMPLS = _bson_c.has_c()
 
 
-def _decode_with(bson_mod, data: bytes) -> Optional[dict]:
+def _decode_with(bson_mod, data: bytes) -> dict | None:
     """Run bson_mod.decode(data), returning the document or None on expected errors."""
     try:
         return bson_mod.decode(data)
