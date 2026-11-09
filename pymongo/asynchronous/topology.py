@@ -24,9 +24,9 @@ import sys
 import time
 import warnings
 import weakref
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo._telemetry import (

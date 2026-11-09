@@ -241,7 +241,6 @@ ignore = [
   "C408",   # Unnecessary `dict` call (rewrite as a literal)
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
   "PLC0415", # `import` should be at the top-level of a file
-  "UP035",   # Deprecated import (e.g. `typing.Callable` instead of `collections.abc.Callable`)
   "UP041",   # `asyncio.TimeoutError` is an alias of `TimeoutError` on 3.11+
   "ASYNC109", # Async function with a `timeout` parameter (CSOT timeouts are not `asyncio.timeout`)
   "UP042",   # `str, Enum` should be `StrEnum` (changes `__str__` semantics)

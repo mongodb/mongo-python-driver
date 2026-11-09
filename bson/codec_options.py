@@ -19,12 +19,11 @@ from __future__ import annotations
 import abc
 import datetime
 import enum
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from collections.abc import MutableMapping as _MutableMapping
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Generic,
     NamedTuple,
     cast,

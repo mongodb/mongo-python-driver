@@ -18,11 +18,17 @@ from __future__ import annotations
 
 import warnings
 from collections import abc
-from collections.abc import Iterable, Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import (
+    Callable,
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Generic,
     NoReturn,
     TypeVar,

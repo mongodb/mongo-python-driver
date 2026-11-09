@@ -82,13 +82,12 @@ import uuid
 from codecs import utf_8_decode as _utf_8_decode
 from codecs import utf_8_encode as _utf_8_encode
 from collections import abc as _abc
-from collections.abc import Generator, Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Callable, Generator, Iterator, Mapping, MutableMapping, Sequence
 from typing import (
     IO,
     TYPE_CHECKING,
     Any,
     BinaryIO,
-    Callable,
     NoReturn,
     TypeVar,
     cast,

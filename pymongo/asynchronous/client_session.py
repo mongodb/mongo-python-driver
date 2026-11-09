@@ -138,13 +138,12 @@ from __future__ import annotations
 import asyncio
 import random
 import time
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
 from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     TypeVar,
 )
 

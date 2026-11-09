@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import queue
 import weakref
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from pymongo import _csot
 from pymongo._telemetry import _SdamTelemetry

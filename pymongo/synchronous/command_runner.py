@@ -37,11 +37,10 @@ from __future__ import annotations
 
 import datetime
 import time
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     cast,
 )
 

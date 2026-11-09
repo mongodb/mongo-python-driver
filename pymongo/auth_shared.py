@@ -22,8 +22,8 @@ import os
 import typing
 from base64 import standard_b64encode
 from collections import namedtuple
-from collections.abc import Mapping, MutableMapping
-from typing import TYPE_CHECKING, Any, Callable, cast
+from collections.abc import Callable, Mapping, MutableMapping
+from typing import TYPE_CHECKING, Any, cast
 
 from bson import Binary
 from pymongo.auth_oidc_shared import (

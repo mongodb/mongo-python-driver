@@ -24,12 +24,11 @@ from __future__ import annotations
 
 import random
 import struct
-from collections.abc import Iterable, Mapping, MutableMapping
+from collections.abc import Callable, Iterable, Mapping, MutableMapping
 from io import BytesIO as _BytesIO
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     NoReturn,
 )
 

@@ -22,18 +22,18 @@ import os
 import sys
 import tempfile
 import unittest
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     TypeVar,
-    Union,
     cast,
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import NotRequired, TypedDict
+    from typing import NotRequired
+
+    from typing_extensions import TypedDict
 
     from bson import Binary, ObjectId
     from bson.binary import BinaryVector, BinaryVectorDtype

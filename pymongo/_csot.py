@@ -20,10 +20,10 @@ import functools
 import inspect
 import time
 from collections import deque
-from collections.abc import MutableMapping
+from collections.abc import Callable, MutableMapping
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 if TYPE_CHECKING:
     from pymongo.write_concern import WriteConcern

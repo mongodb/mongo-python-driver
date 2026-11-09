@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import threading
 import traceback
-from collections.abc import Collection
-from typing import Any, Callable, Generic, TypeVar
+from collections.abc import Callable, Collection
+from typing import Any, Generic, TypeVar
 
 from bson.objectid import ObjectId
 from pymongo import common

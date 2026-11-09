@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import ipaddress
 import random
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from pymongo._psl import SPECIAL_USE_LABELS, _to_punycode, is_public_suffix
 from pymongo._telemetry import log_srv_monitor_invalid_host

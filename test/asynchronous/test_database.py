@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 import sys
 from collections.abc import Iterable, Mapping
-from typing import Any, Union
+from typing import Any
 
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 

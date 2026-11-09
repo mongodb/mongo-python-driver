@@ -30,9 +30,9 @@ import ssl
 import threading
 import time
 import urllib.parse
-from collections.abc import Awaitable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from pymongo.errors import ConfigurationError
 

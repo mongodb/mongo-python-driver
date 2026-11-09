@@ -40,11 +40,18 @@ import time as time  # noqa: PLC0414 # needed in sync version
 import warnings
 import weakref
 from collections import defaultdict
-from collections.abc import AsyncGenerator, Collection, Coroutine, Mapping, MutableMapping, Sequence
+from collections.abc import (
+    AsyncGenerator,
+    Callable,
+    Collection,
+    Coroutine,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Generic,
     NoReturn,
     Optional,

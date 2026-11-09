@@ -137,12 +137,12 @@ from __future__ import annotations
 
 import random
 import time
+from collections.abc import Callable
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     TypeVar,
 )
 

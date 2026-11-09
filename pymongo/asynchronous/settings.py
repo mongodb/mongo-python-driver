@@ -17,8 +17,7 @@
 from __future__ import annotations
 
 import threading
-from collections.abc import Collection
-from typing import Callable
+from collections.abc import Callable, Collection
 
 from bson.objectid import ObjectId
 from pymongo import common

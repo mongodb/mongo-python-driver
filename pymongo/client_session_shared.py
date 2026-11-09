@@ -19,11 +19,10 @@ from __future__ import annotations
 import collections
 import time
 import uuid
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Generic,
     NoReturn,
     Protocol,

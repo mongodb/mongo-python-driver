@@ -20,8 +20,8 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Callable, TypedDict
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 

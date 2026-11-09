@@ -47,7 +47,7 @@ import tempfile
 import threading
 import time
 import warnings
-from typing import Any, Optional, Union
+from typing import Any
 
 import pytest
 

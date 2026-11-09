@@ -27,7 +27,7 @@ import time
 import types
 from collections import abc
 from collections.abc import MutableMapping
-from typing import Any, Union
+from typing import Any
 
 from bson import (
     RE_TYPE,

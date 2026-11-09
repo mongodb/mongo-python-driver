@@ -43,10 +43,9 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-import tempfile
 import time
 import warnings
-from typing import Any, Optional, Union
+from typing import Any
 
 import pytest
 
