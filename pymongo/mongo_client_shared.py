@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from pymongo import _csot
 from pymongo._telemetry import _generate_op_id_or_none, log_command_retry
@@ -54,7 +54,7 @@ _ServerT = TypeVar("_ServerT", bound="_AgnosticServer")
 _FuncT = TypeVar("_FuncT", bound=Callable[..., Any])
 
 
-def _retryable_error_doc(exc: PyMongoError) -> Optional[Mapping[str, Any]]:
+def _retryable_error_doc(exc: PyMongoError) -> Mapping[str, Any] | None:
     """Return the server response from PyMongo exception or None."""
     if isinstance(exc, (BulkWriteError, ClientBulkWriteException)):
         # Check the last writeConcernError to determine if this
@@ -162,18 +162,18 @@ class _AgnosticClientConnectionRetryableBase(Generic[T, _ServerT, _FuncT]):
         self,
         mongo_client: _AgnosticMongoClient,
         func: _FuncT,
-        bulk: Optional[Union[_AgnosticBulk, _AgnosticClientBulk]],
+        bulk: _AgnosticBulk | _AgnosticClientBulk | None,
         operation: str,
         is_read: bool = False,
-        session: Optional[_AgnosticClientSession] = None,
-        read_pref: Optional[_ServerMode] = None,
-        address: Optional[_Address] = None,
+        session: _AgnosticClientSession | None = None,
+        read_pref: _ServerMode | None = None,
+        address: _Address | None = None,
         retryable: bool = False,
-        operation_id: Optional[int] = None,
+        operation_id: int | None = None,
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
     ):
-        self._last_error: Optional[Exception] = None
+        self._last_error: Exception | None = None
         self._retrying = False
         self._always_retryable = False
         self._max_retries = float("inf") if _csot.get_timeout() is not None else 1
@@ -190,7 +190,7 @@ class _AgnosticClientConnectionRetryableBase(Generic[T, _ServerT, _FuncT]):
         )
         self._address = address
         self._server: _ServerT = None  # type: ignore
-        self._deprioritized_servers: Optional[list[_ServerT]] = None
+        self._deprioritized_servers: list[_ServerT] | None = None
         self._operation = operation
         # Only generate an operation id when APM/logging is enabled.
         if operation_id is None:
@@ -199,7 +199,7 @@ class _AgnosticClientConnectionRetryableBase(Generic[T, _ServerT, _FuncT]):
         self._attempt_number = 0
         self._is_run_command = is_run_command
         self._is_aggregate_write = is_aggregate_write
-        self._base_backoff_ms: Optional[float] = None
+        self._base_backoff_ms: float | None = None
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""

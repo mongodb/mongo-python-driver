@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import warnings
-from typing import Any, Optional
+from typing import Any
 
 from pymongo import ASCENDING
 from pymongo.common import MAX_MESSAGE_SIZE
@@ -33,8 +33,8 @@ _F_INDEX: dict[str, Any] = {"filename": ASCENDING, "uploadDate": ASCENDING}
 def _a_grid_in_property(
     field_name: str,
     docstring: str,
-    read_only: Optional[bool] = False,
-    closed_only: Optional[bool] = False,
+    read_only: bool | None = False,
+    closed_only: bool | None = False,
 ) -> Any:
     """Create a GridIn property."""
 
@@ -96,8 +96,8 @@ def _a_grid_out_property(field_name: str, docstring: str) -> Any:
 def _grid_in_property(
     field_name: str,
     docstring: str,
-    read_only: Optional[bool] = False,
-    closed_only: Optional[bool] = False,
+    read_only: bool | None = False,
+    closed_only: bool | None = False,
 ) -> Any:
     """Create a GridIn property."""
     warn_str = ""

@@ -47,7 +47,7 @@ import tempfile
 import threading
 import time
 import warnings
-from typing import Any, Optional, Union
+from typing import Any
 
 import pytest
 
@@ -478,7 +478,7 @@ class TestSmallDocClientBulkInsert(SmallDocInsertTest, unittest.TestCase):
 class TestSmallDocBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
     def setUp(self):
         super().setUp()
-        self.models: list[Union[InsertOne, ReplaceOne, DeleteOne]] = []
+        self.models: list[InsertOne | ReplaceOne | DeleteOne] = []
         for doc in self.documents:
             self.models.append(InsertOne(document=doc))
             self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))
@@ -492,7 +492,7 @@ class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, unittest.TestCase):
     @client_context.require_version_min(8, 0, 0, -24)
     def setUp(self):
         super().setUp()
-        self.models: list[Union[InsertOne, ReplaceOne, DeleteOne]] = []
+        self.models: list[InsertOne | ReplaceOne | DeleteOne] = []
         for doc in self.documents:
             self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
             self.models.append(
@@ -573,7 +573,7 @@ class TestGridFsDownload(GridFsTest, unittest.TestCase):
         self.bucket.open_download_stream(self.uploaded_id).read()
 
 
-proc_client: Optional[MongoClient] = None
+proc_client: MongoClient | None = None
 
 
 def proc_init(client_kwargs):

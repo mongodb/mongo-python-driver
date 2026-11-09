@@ -27,8 +27,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     NoReturn,
-    Optional,
-    Union,
     overload,
 )
 from urllib.parse import unquote_plus
@@ -106,13 +104,13 @@ MIN_POOL_SIZE = 0
 MAX_CONNECTING = 2
 
 # Default value for maxIdleTimeMS.
-MAX_IDLE_TIME_MS: Optional[int] = None
+MAX_IDLE_TIME_MS: int | None = None
 
 # Default value for maxIdleTimeMS in seconds.
-MAX_IDLE_TIME_SEC: Optional[int] = None
+MAX_IDLE_TIME_SEC: int | None = None
 
 # Default value for waitQueueTimeoutMS in seconds.
-WAIT_QUEUE_TIMEOUT: Optional[int] = None
+WAIT_QUEUE_TIMEOUT: int | None = None
 
 # Default value for localThresholdMS.
 LOCAL_THRESHOLD_MS = 15
@@ -172,7 +170,7 @@ def clean_node(node: str) -> tuple[str, int]:
     return host.lower(), port
 
 
-def raise_config_error(key: str, suggestions: Optional[list[str]] = None) -> NoReturn:
+def raise_config_error(key: str, suggestions: list[str] | None = None) -> NoReturn:
     """Raise ConfigurationError with the given key name."""
     msg = f"Unknown option: {key}."
     if suggestions:
@@ -227,7 +225,7 @@ def validate_non_negative_integer(option: str, value: Any) -> int:
     return val
 
 
-def validate_readable(option: str, value: Any) -> Optional[str]:
+def validate_readable(option: str, value: Any) -> str | None:
     """Validates that 'value' is file-like and readable."""
     if value is None:
         return value
@@ -238,7 +236,7 @@ def validate_readable(option: str, value: Any) -> Optional[str]:
     return value
 
 
-def validate_non_negative_integer_or_none(option: str, value: Any) -> Optional[int]:
+def validate_non_negative_integer_or_none(option: str, value: Any) -> int | None:
     """Validate that 'value' is a positive integer or 0 or None."""
     if value is None:
         return value
@@ -252,14 +250,14 @@ def validate_string(option: str, value: Any) -> str:
     raise TypeError(f"Wrong type for {option}, value must be an instance of str, not {type(value)}")
 
 
-def validate_string_or_none(option: str, value: Any) -> Optional[str]:
+def validate_string_or_none(option: str, value: Any) -> str | None:
     """Validates that 'value' is an instance of `basestring` or `None`."""
     if value is None:
         return value
     return validate_string(option, value)
 
 
-def validate_non_negative_int_or_basestring(option: Any, value: Any) -> Union[int, str]:
+def validate_non_negative_int_or_basestring(option: Any, value: Any) -> int | str:
     """Validates that 'value' is an integer or string."""
     if isinstance(value, int):
         return value
@@ -302,7 +300,7 @@ def validate_positive_float_or_zero(option: str, value: Any) -> float:
     return validate_positive_float(option, value)
 
 
-def validate_timeout_or_none(option: str, value: Any) -> Optional[float]:
+def validate_timeout_or_none(option: str, value: Any) -> float | None:
     """Validates a timeout specified in milliseconds returning
     a value in floating point seconds.
     """
@@ -324,7 +322,7 @@ def validate_timeout_or_zero(option: str, value: Any) -> float:
     return validate_positive_float(option, value) / 1000.0
 
 
-def validate_timeout_or_none_or_zero(option: Any, value: Any) -> Optional[float]:
+def validate_timeout_or_none_or_zero(option: Any, value: Any) -> float | None:
     """Validates a timeout specified in milliseconds returning
     a value in floating point seconds. value=0 and value="0" are treated the
     same as value=None which means unlimited timeout.
@@ -334,7 +332,7 @@ def validate_timeout_or_none_or_zero(option: Any, value: Any) -> Optional[float]
     return validate_positive_float(option, value) / 1000.0
 
 
-def validate_timeoutms(option: Any, value: Any) -> Optional[float]:
+def validate_timeoutms(option: Any, value: Any) -> float | None:
     """Validates a timeout specified in milliseconds returning
     a value in floating point seconds.
     """
@@ -450,7 +448,7 @@ def redact_auth_mechanism_properties_for_repr(value: Any) -> Any:
     return redacted
 
 
-def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Union[bool, str]]:
+def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, bool | str]:
     """Validate authMechanismProperties."""
     props: dict[str, Any] = {}
     if not isinstance(value, str):
@@ -507,7 +505,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, Uni
 
 def validate_document_class(
     option: str, value: Any
-) -> Union[type[MutableMapping[str, Any]], type[RawBSONDocument]]:
+) -> type[MutableMapping[str, Any]] | type[RawBSONDocument]:
     """Validate the document_class option."""
     # Generic aliases like SON[str, Any] or dict[str, Any] aren't classes, so
     # resolve to their origin before the subclass check. issubclass() raises
@@ -527,7 +525,7 @@ def validate_document_class(
     return value
 
 
-def validate_type_registry(option: Any, value: Any) -> Optional[TypeRegistry]:
+def validate_type_registry(option: Any, value: Any) -> TypeRegistry | None:
     """Validate the type_registry option."""
     if value is not None and not isinstance(value, TypeRegistry):
         raise TypeError(f"{option} must be an instance of {TypeRegistry}")
@@ -541,7 +539,7 @@ def validate_list(option: str, value: Any) -> list[Any]:
     return value
 
 
-def validate_list_or_none(option: Any, value: Any) -> Optional[list[Any]]:
+def validate_list_or_none(option: Any, value: Any) -> list[Any] | None:
     """Validates that 'value' is a list or None."""
     if value is None:
         return value
@@ -579,7 +577,7 @@ def validate_is_document_type(option: str, value: Any) -> None:
         )
 
 
-def validate_appname_or_none(option: str, value: Any) -> Optional[str]:
+def validate_appname_or_none(option: str, value: Any) -> str | None:
     """Validate the appname option."""
     if value is None:
         return value
@@ -590,7 +588,7 @@ def validate_appname_or_none(option: str, value: Any) -> Optional[str]:
     return value
 
 
-def validate_driver_or_none(option: Any, value: Any) -> Optional[DriverInfo]:
+def validate_driver_or_none(option: Any, value: Any) -> DriverInfo | None:
     """Validate the driver keyword arg."""
     if value is None:
         return value
@@ -599,7 +597,7 @@ def validate_driver_or_none(option: Any, value: Any) -> Optional[DriverInfo]:
     return value
 
 
-def validate_server_api_or_none(option: Any, value: Any) -> Optional[ServerApi]:
+def validate_server_api_or_none(option: Any, value: Any) -> ServerApi | None:
     """Validate the server_api keyword arg."""
     if value is None:
         return value
@@ -608,7 +606,7 @@ def validate_server_api_or_none(option: Any, value: Any) -> Optional[ServerApi]:
     return value
 
 
-def validate_is_callable_or_none(option: Any, value: Any) -> Optional[Callable[..., Any]]:
+def validate_is_callable_or_none(option: Any, value: Any) -> Callable[..., Any] | None:
     """Validates that 'value' is a callable."""
     if value is None:
         return value
@@ -654,14 +652,14 @@ def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
     return value
 
 
-def validate_tzinfo(dummy: Any, value: Any) -> Optional[datetime.tzinfo]:
+def validate_tzinfo(dummy: Any, value: Any) -> datetime.tzinfo | None:
     """Validate the tzinfo option"""
     if value is not None and not isinstance(value, datetime.tzinfo):
         raise TypeError(f"{value} must be an instance of datetime.tzinfo")
     return value
 
 
-def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[Any]:
+def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Any | None:
     """Validate the driver keyword arg."""
     if value is None:
         return value
@@ -673,7 +671,7 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Optional[A
     return value
 
 
-def validate_datetime_conversion(option: Any, value: Any) -> Optional[DatetimeConversion]:
+def validate_datetime_conversion(option: Any, value: Any) -> DatetimeConversion | None:
     """Validate a DatetimeConversion string."""
     if value is None:
         return DatetimeConversion.DATETIME
@@ -835,7 +833,7 @@ TIMEOUT_OPTIONS: list[str] = [
 
 
 def _get_validator(
-    key: str, validators: dict[str, Callable[[Any, Any], Any]], normed_key: Optional[str] = None
+    key: str, validators: dict[str, Callable[[Any, Any], Any]], normed_key: str | None = None
 ) -> Callable[[Any, Any], Any]:
     normed_key = normed_key or key
     try:
@@ -970,7 +968,7 @@ class BaseObject:
         """
         return self._write_concern
 
-    def _write_concern_for(self, session: Optional[_AgnosticClientSession]) -> WriteConcern:
+    def _write_concern_for(self, session: _AgnosticClientSession | None) -> WriteConcern:
         """Read only access to the write concern of this instance or session."""
         # Override this operation's write concern with the transaction's.
         if session and session.in_transaction:
@@ -978,7 +976,7 @@ class BaseObject:
         return self.write_concern
 
     def _write_concern_for_cmd(
-        self, cmd: Mapping[str, Any], session: Optional[_AgnosticClientSession]
+        self, cmd: Mapping[str, Any], session: _AgnosticClientSession | None
     ) -> WriteConcern:
         raw_wc = cmd.get("writeConcern")
         if raw_wc is not None:
@@ -995,7 +993,7 @@ class BaseObject:
         """
         return self._read_preference
 
-    def _read_preference_for(self, session: Optional[_AgnosticClientSession]) -> _ServerMode:
+    def _read_preference_for(self, session: _AgnosticClientSession | None) -> _ServerMode:
         """Read only access to the read preference of this instance or session."""
         # Override this operation's read preference with the transaction's.
         if session:
@@ -1056,7 +1054,7 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
 
     __hash__ = None  # type: ignore[assignment]
 
-    def get(self, key: str, default: Optional[Any] = None) -> Any:
+    def get(self, key: str, default: Any | None = None) -> Any:
         return self.__data.get(key.lower(), default)
 
     def pop(self, key: str, *args: Any, **kwargs: Any) -> Any:
@@ -1074,12 +1072,12 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
         self.__data.clear()
 
     @overload
-    def setdefault(self, key: str, default: None = None) -> Optional[Any]: ...
+    def setdefault(self, key: str, default: None = None) -> Any | None: ...
 
     @overload
     def setdefault(self, key: str, default: Any) -> Any: ...
 
-    def setdefault(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
+    def setdefault(self, key: str, default: Any | None = None) -> Any | None:
         lc_key = key.lower()
         if key in self:
             return self.__data[lc_key]

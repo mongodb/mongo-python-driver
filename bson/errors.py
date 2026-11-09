@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 
 class BSONError(Exception):
@@ -34,7 +34,7 @@ class InvalidStringData(BSONError):
 class InvalidDocument(BSONError):
     """Raised when trying to create a BSON object from an invalid document."""
 
-    def __init__(self, message: str, document: Optional[Any] = None) -> None:
+    def __init__(self, message: str, document: Any | None = None) -> None:
         super().__init__(message)
         self._document = document
 

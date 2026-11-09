@@ -18,7 +18,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 
 from pymongo.common import SRV_SERVICE_NAME, _CaseInsensitiveDictionary
 from pymongo.errors import ConfigurationError, InvalidURI
@@ -41,15 +41,15 @@ _IS_SYNC = True
 
 def parse_uri(
     uri: str,
-    default_port: Optional[int] = DEFAULT_PORT,
+    default_port: int | None = DEFAULT_PORT,
     validate: bool = True,
     warn: bool = False,
     normalize: bool = True,
-    connect_timeout: Optional[float] = None,
-    srv_service_name: Optional[str] = None,
-    srv_max_hosts: Optional[int] = None,
-    srv_allowed_hosts_suffix: Optional[str] = None,
-    srv_host_validator: Optional[Callable[[str], bool]] = None,
+    connect_timeout: float | None = None,
+    srv_service_name: str | None = None,
+    srv_max_hosts: int | None = None,
+    srv_allowed_hosts_suffix: str | None = None,
+    srv_host_validator: Callable[[str], bool] | None = None,
 ) -> dict[str, Any]:
     """Parse and validate a MongoDB URI.
 
@@ -128,15 +128,15 @@ def parse_uri(
 
 def _parse_srv(
     uri: str,
-    default_port: Optional[int] = DEFAULT_PORT,
+    default_port: int | None = DEFAULT_PORT,
     validate: bool = True,
     warn: bool = False,
     normalize: bool = True,
-    connect_timeout: Optional[float] = None,
-    srv_service_name: Optional[str] = None,
-    srv_max_hosts: Optional[int] = None,
-    srv_allowed_hosts_suffix: Optional[str] = None,
-    srv_host_validator: Optional[Callable[[str], bool]] = None,
+    connect_timeout: float | None = None,
+    srv_service_name: str | None = None,
+    srv_max_hosts: int | None = None,
+    srv_allowed_hosts_suffix: str | None = None,
+    srv_host_validator: Callable[[str], bool] | None = None,
 ) -> dict[str, Any]:
     if uri.startswith(SCHEME):
         is_srv = False

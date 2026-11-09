@@ -20,7 +20,7 @@ import datetime
 import queue
 import time
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pymongo import _op_id
 from pymongo.logger import (
@@ -57,7 +57,7 @@ def _monotonic_duration(start: float) -> float:
     return max(0.0, time.monotonic() - start)
 
 
-def _generate_op_id_or_none(listeners: Optional[_EventListeners]) -> Optional[int]:
+def _generate_op_id_or_none(listeners: _EventListeners | None) -> int | None:
     """Return a random operation id if it would be consumed by APM events or logging, else None."""
     return (
         _randint()
@@ -100,14 +100,14 @@ class _CommandTelemetry:
 
     def __init__(
         self,
-        topology_id: Optional[ObjectId],
+        topology_id: ObjectId | None,
         conn: _ConnectionTelemetryInfo,
-        listeners: Optional[_EventListeners],
+        listeners: _EventListeners | None,
         cmd: MutableMapping[str, Any],
         dbname: str,
         request_id: int,
-        op_id: Optional[int],
-        name: Optional[str] = None,
+        op_id: int | None,
+        name: str | None = None,
     ) -> None:
         # NOTE: the _run_command fast path in command_runner.py inline this gate for performance
         # They must be kept in sync with any gating changes
@@ -249,9 +249,9 @@ class _CmapTelemetry:
 
     def __init__(
         self,
-        client_id: Optional[ObjectId],
+        client_id: ObjectId | None,
         address: _Address,
-        listeners: Optional[_EventListeners],
+        listeners: _EventListeners | None,
         publish: bool,
         log: bool,
     ) -> None:
@@ -299,7 +299,7 @@ class _CmapTelemetry:
             assert self._listeners is not None
             self._listeners.publish_pool_ready(self._address)
 
-    def pool_cleared(self, service_id: Optional[ObjectId], interrupt_connections: bool) -> None:
+    def pool_cleared(self, service_id: ObjectId | None, interrupt_connections: bool) -> None:
         """Emit the pool cleared log entry and APM event."""
         # Log before publishing to prevent potential listener preemption in tests.
         if self._should_log:
@@ -439,7 +439,7 @@ class _HeartbeatTelemetry:
         self,
         topology_id: ObjectId,
         address: _Address,
-        listeners: Optional[_EventListeners],
+        listeners: _EventListeners | None,
     ) -> None:
         self._topology_id = topology_id
         self._address = address
@@ -469,7 +469,7 @@ class _HeartbeatTelemetry:
             assert self._listeners is not None
             self._listeners.publish_server_heartbeat_started(self._address, awaited)
 
-    def emit_started_log(self, conn_id: int, server_conn_id: Optional[int], awaited: bool) -> None:
+    def emit_started_log(self, conn_id: int, server_conn_id: int | None, awaited: bool) -> None:
         """Emit the log entry for heartbeat started (after connection checkout)."""
         if self._should_log:
             self._emit_log(
@@ -484,7 +484,7 @@ class _HeartbeatTelemetry:
         round_trip_time: float,
         response: Hello[Any],
         conn_id: int,
-        server_conn_id: Optional[int],
+        server_conn_id: int | None,
     ) -> None:
         """Emit the SUCCEEDED log entry and APM event."""
         if self._should_publish:
@@ -502,7 +502,7 @@ class _HeartbeatTelemetry:
                 reply=response.document,
             )
 
-    def failed(self, error: Exception, conn_id: Optional[int], awaited: bool) -> None:
+    def failed(self, error: Exception, conn_id: int | None, awaited: bool) -> None:
         """Emit the FAILED log entry and APM event."""
         should_publish = self._should_publish
         should_log = self._should_log
@@ -533,8 +533,8 @@ class _SdamTelemetry:
     def __init__(
         self,
         topology_id: ObjectId,
-        listeners: Optional[_EventListeners],
-        events: Optional[queue.Queue[Any]],
+        listeners: _EventListeners | None,
+        events: queue.Queue[Any] | None,
     ) -> None:
         self._topology_id = topology_id
         self._listeners = listeners
@@ -663,7 +663,7 @@ class _ServerSelectionTelemetry:
         topology_id: ObjectId,
         selector: Any,
         operation: str,
-        operation_id: Optional[int],
+        operation_id: int | None,
         topology_description: TopologyDescription,
     ) -> None:
         self._topology_id = topology_id
@@ -720,10 +720,10 @@ def log_server_selection_succeeded(
     topology_id: ObjectId,
     selector: Any,
     operation: str,
-    operation_id: Optional[int],
+    operation_id: int | None,
     topology_description: TopologyDescription,
     server_host: str,
-    server_port: Optional[int],
+    server_port: int | None,
 ) -> None:
     """Emit the server selection SUCCEEDED log entry."""
     if _is_debug_enabled(_SERVER_SELECTION_LOGGER):
@@ -758,9 +758,9 @@ def log_srv_monitor_invalid_host(host: str, failure: Exception) -> None:
 
 
 def log_command_retry(
-    topology_id: Optional[ObjectId],
+    topology_id: ObjectId | None,
     command_name: str,
-    operation_id: Optional[int],
+    operation_id: int | None,
     attempt_number: int,
     is_write: bool,
 ) -> None:

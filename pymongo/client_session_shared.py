@@ -25,7 +25,6 @@ from typing import (
     Any,
     Generic,
     NoReturn,
-    Optional,
     Protocol,
     TypeVar,
     cast,
@@ -86,9 +85,9 @@ class SessionOptions:
 
     def __init__(
         self,
-        causal_consistency: Optional[bool] = None,
-        default_transaction_options: Optional[TransactionOptions] = None,
-        snapshot: Optional[bool] = False,
+        causal_consistency: bool | None = None,
+        default_transaction_options: TransactionOptions | None = None,
+        snapshot: bool | None = False,
     ) -> None:
         if snapshot:
             if causal_consistency:
@@ -112,7 +111,7 @@ class SessionOptions:
         return self._causal_consistency
 
     @property
-    def default_transaction_options(self) -> Optional[TransactionOptions]:
+    def default_transaction_options(self) -> TransactionOptions | None:
         """The default TransactionOptions to use for transactions started on
         this session.
 
@@ -121,7 +120,7 @@ class SessionOptions:
         return self._default_transaction_options
 
     @property
-    def snapshot(self) -> Optional[bool]:
+    def snapshot(self) -> bool | None:
         """Whether snapshot reads are configured.
 
         .. versionadded:: 3.12
@@ -159,10 +158,10 @@ class TransactionOptions:
 
     def __init__(
         self,
-        read_concern: Optional[ReadConcern] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_preference: Optional[_ServerMode] = None,
-        max_commit_time_ms: Optional[int] = None,
+        read_concern: ReadConcern | None = None,
+        write_concern: WriteConcern | None = None,
+        read_preference: _ServerMode | None = None,
+        max_commit_time_ms: int | None = None,
     ) -> None:
         self._read_concern = read_concern
         self._write_concern = write_concern
@@ -198,22 +197,22 @@ class TransactionOptions:
                 )
 
     @property
-    def read_concern(self) -> Optional[ReadConcern]:
+    def read_concern(self) -> ReadConcern | None:
         """This transaction's :class:`~pymongo.read_concern.ReadConcern`."""
         return self._read_concern
 
     @property
-    def write_concern(self) -> Optional[WriteConcern]:
+    def write_concern(self) -> WriteConcern | None:
         """This transaction's :class:`~pymongo.write_concern.WriteConcern`."""
         return self._write_concern
 
     @property
-    def read_preference(self) -> Optional[_ServerMode]:
+    def read_preference(self) -> _ServerMode | None:
         """This transaction's :class:`~pymongo.read_preferences.ReadPreference`."""
         return self._read_preference
 
     @property
-    def max_commit_time_ms(self) -> Optional[int]:
+    def max_commit_time_ms(self) -> int | None:
         """The maxTimeMS to use when running a commitTransaction command.
 
         .. versionadded:: 3.9
@@ -222,8 +221,8 @@ class TransactionOptions:
 
 
 def _validate_session_write_concern(
-    session: Optional[_ClientSessionT], write_concern: Optional[WriteConcern]
-) -> Optional[_ClientSessionT]:
+    session: _ClientSessionT | None, write_concern: WriteConcern | None
+) -> _ClientSessionT | None:
     """Validate that an explicit session is not used with an unack'ed write.
 
     Returns the session to use for the next operation.
@@ -335,7 +334,7 @@ class _ServerSession:
         """
         self.dirty = True
 
-    def timed_out(self, session_timeout_minutes: Optional[int]) -> bool:
+    def timed_out(self, session_timeout_minutes: int | None) -> bool:
         if session_timeout_minutes is None:
             return False
 
@@ -376,7 +375,7 @@ class _ServerSessionPool(collections.deque):  # type: ignore[type-arg]
                 break
         return ids
 
-    def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
+    def get_server_session(self, session_timeout_minutes: int | None) -> _ServerSession:
         # Although the Driver Sessions Spec says we only clear stale sessions
         # in return_server_session, PyMongo can't take a lock when returning
         # sessions from a __del__ method (like in Cursor.__die), so it can't
@@ -401,7 +400,7 @@ class _ServerSessionPool(collections.deque):  # type: ignore[type-arg]
         if server_session.generation == self.generation and not server_session.dirty:
             self.appendleft(server_session)
 
-    def _clear_stale(self, session_timeout_minutes: Optional[int]) -> None:
+    def _clear_stale(self, session_timeout_minutes: int | None) -> None:
         # Clear stale sessions. The least recently used are on the right.
         while True:
             try:
@@ -440,8 +439,8 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
         self._client: _ClientT = client
         self._server_session = server_session
         self._options = options
-        self._cluster_time: Optional[Mapping[str, Any]] = None
-        self._operation_time: Optional[Timestamp] = None
+        self._cluster_time: Mapping[str, Any] | None = None
+        self._operation_time: Timestamp | None = None
         self._snapshot_time = None
         # Is this an implicitly created session?
         self._implicit = implicit
@@ -514,14 +513,14 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
         return self._server_session.transaction_id
 
     @property
-    def cluster_time(self) -> Optional[ClusterTime]:
+    def cluster_time(self) -> ClusterTime | None:
         """The cluster time returned by the last operation executed
         in this session.
         """
         return self._cluster_time
 
     @property
-    def operation_time(self) -> Optional[Timestamp]:
+    def operation_time(self) -> Timestamp | None:
         """The operation time returned by the last operation executed
         in this session.
         """
@@ -537,7 +536,7 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
             return parent_val
         return getattr(self.client, name)
 
-    def _advance_cluster_time(self, cluster_time: Optional[Mapping[str, Any]]) -> None:
+    def _advance_cluster_time(self, cluster_time: Mapping[str, Any] | None) -> None:
         """Internal cluster time helper."""
         if self._cluster_time is None:
             self._cluster_time = cluster_time
@@ -561,7 +560,7 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
             raise ValueError("Invalid cluster_time")
         self._advance_cluster_time(cluster_time)
 
-    def _advance_operation_time(self, operation_time: Optional[Timestamp]) -> None:
+    def _advance_operation_time(self, operation_time: Timestamp | None) -> None:
         """Internal operation time helper."""
         if self._operation_time is None:
             self._operation_time = operation_time
@@ -617,14 +616,14 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
         return self._transaction.starting()
 
     @property
-    def _pinned_address(self) -> Optional[_Address]:
+    def _pinned_address(self) -> _Address | None:
         """The mongos address this transaction was created on."""
         if self._transaction.active():
             return self._transaction.pinned_address
         return None
 
     @property
-    def _pinned_connection(self) -> Optional[_ConnectionT]:
+    def _pinned_connection(self) -> _ConnectionT | None:
         """The connection this transaction was started on."""
         return self._transaction.pinned_conn
 
@@ -632,14 +631,14 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
         """Pin this session to the given Server or to the given connection."""
         self._transaction.pin(server, conn)
 
-    def _txn_read_preference(self) -> Optional[_ServerMode]:
+    def _txn_read_preference(self) -> _ServerMode | None:
         """Return read preference of this transaction or None."""
         if self.in_transaction:
             assert self._transaction.opts
             return self._transaction.opts.read_preference
         return None
 
-    def _materialize(self, logical_session_timeout_minutes: Optional[int] = None) -> None:
+    def _materialize(self, logical_session_timeout_minutes: int | None = None) -> None:
         if isinstance(self._server_session, _EmptyServerSession):
             old = self._server_session
             self._server_session = self._client._topology.get_server_session(
@@ -724,7 +723,7 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
 class _ConnectionManagerProtocol(Protocol[_ConnectionT]):
     """Protocol for the connection manager used to pin a connection to a transaction."""
 
-    conn: Optional[_ConnectionT]
+    conn: _ConnectionT | None
 
 
 class _TransactionBase(Generic[_ConnectionT]):
@@ -733,12 +732,12 @@ class _TransactionBase(Generic[_ConnectionT]):
     # Set by the async/sync subclasses to the correct _ConnectionManager class.
     _conn_mgr_cls: Callable[[_ConnectionT, bool], _ConnectionManagerProtocol[_ConnectionT]]
 
-    def __init__(self, opts: Optional[TransactionOptions], client: _AgnosticMongoClient):
+    def __init__(self, opts: TransactionOptions | None, client: _AgnosticMongoClient):
         self.opts = opts
         self.state = _TxnState.NONE
         self.sharded = False
-        self.pinned_address: Optional[_Address] = None
-        self.conn_mgr: Optional[_ConnectionManagerProtocol[_ConnectionT]] = None
+        self.pinned_address: _Address | None = None
+        self.conn_mgr: _ConnectionManagerProtocol[_ConnectionT] | None = None
         self.recovery_token = None
         self.attempt = 0
         self.client = client
@@ -758,7 +757,7 @@ class _TransactionBase(Generic[_ConnectionT]):
             self.state = _TxnState.IN_PROGRESS
 
     @property
-    def pinned_conn(self) -> Optional[_ConnectionT]:
+    def pinned_conn(self) -> _ConnectionT | None:
         if self.active() and self.conn_mgr:
             return self.conn_mgr.conn
         return None

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 from re import Pattern
-from typing import Any, Generic, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 from bson._helpers import _getstate_slots, _setstate_slots
 from bson.son import RE_TYPE
@@ -84,7 +84,7 @@ class Regex(Generic[_T]):
 
         return Regex(regex.pattern, regex.flags)
 
-    def __init__(self, pattern: _T, flags: Union[str, int] = 0) -> None:
+    def __init__(self, pattern: _T, flags: str | int = 0) -> None:
         """BSON regular expression data.
 
         This class is useful to store and retrieve regular expressions that are
