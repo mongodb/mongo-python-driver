@@ -14,8 +14,9 @@ Changes in Version 4.20.0 (2026/XX/XX)
   9.0+ and pymongocrypt 1.21.0+) (`PYTHON-5959`_).
 - Removed the deprecated ``text_opts`` parameter of
   :meth:`~pymongo.encryption.ClientEncryption.encrypt` and
-  :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.encrypt`.
-  Use ``string_opts`` (`PYTHON-5959`_).
+  :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.encrypt`, and
+  the ``TextOpts`` class. Use ``string_opts`` and
+  :class:`~pymongo.encryption_options.StringOpts` instead (`PYTHON-5959`_).
 
 Bug fixes
 .........

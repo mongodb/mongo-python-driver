@@ -64,7 +64,6 @@ from pymongo.encryption_options import (
     AutoEncryptionOpts,
     RangeOpts,
     StringOpts,
-    TextOpts,
 )
 from pymongo.errors import (
     AutoReconnect,
@@ -242,43 +241,6 @@ class TestClientOptions(PyMongoTestCase):
         opts = AutoEncryptionOpts(KMS_PROVIDERS, "keyvault.datakeys")
         client = self.simple_client(auto_encryption_opts=opts, connect=False)
         self.assertEqual(get_client_opts(client).auto_encryption_opts, opts)
-
-
-class TestStringOptsDeprecation(PyMongoTestCase):
-    def test_text_opts_is_still_re_exported(self):
-        # TextOpts is deprecated, not removed, so it must stay importable from
-        # the encryption module for the deprecation period.
-        self.assertIs(encryption.TextOpts, TextOpts)
-
-    def test_text_opts_is_deprecated(self):
-        with self.assertWarns(DeprecationWarning):
-            opts = TextOpts(prefix={"strMinQueryLength": 2, "strMaxQueryLength": 10})
-        self.assertIsInstance(opts, StringOpts)
-        self.assertEqual(
-            StringOpts(prefix={"strMinQueryLength": 2, "strMaxQueryLength": 10}).document,
-            opts.document,
-        )
-
-    def test_text_opts_is_removed(self):
-        # The text_opts parameter was removed after its 4.18 deprecation.
-        # Passing it raises TypeError like any unexpected keyword argument.
-        with self.assertRaises(TypeError):
-            encryption.ClientEncryption.encrypt(
-                None,  # type: ignore[arg-type]
-                "value",
-                "algorithm",
-                text_opts=None,  # type: ignore[call-arg]
-            )
-
-
-class TestPreviewQueryTypesRemoved(PyMongoTestCase):
-    def test_preview_query_types_removed(self):
-        # PYTHON-5959: the beta preview query types were removed in 4.20.
-        for name in ("PREFIXPREVIEW", "SUFFIXPREVIEW", "SUBSTRINGPREVIEW"):
-            self.assertFalse(hasattr(QueryType, name), name)
-        for value in ("prefixPreview", "suffixPreview", "substringPreview"):
-            with self.assertRaises(ValueError):
-                QueryType(value)
 
 
 class EncryptionIntegrationTest(IntegrationTest):

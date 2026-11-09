@@ -63,9 +63,6 @@ from pymongo.encryption_options import (
     AutoEncryptionOpts,
     RangeOpts,
     StringOpts,
-    # Re-exported for backwards compatibility: TextOpts is deprecated but must
-    # remain importable from this module until it is removed.
-    TextOpts,  # noqa: F401
     check_min_pymongocrypt,
 )
 from pymongo.encryption_shared import (
