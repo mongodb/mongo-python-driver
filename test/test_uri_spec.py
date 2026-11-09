@@ -135,7 +135,7 @@ def create_test(test, test_workdir):
                 "Incorrect number of hosts parsed from URI",
             )
 
-            for exp, actual in zip(test["hosts"], options["nodelist"]):
+            for exp, actual in zip(test["hosts"], options["nodelist"], strict=True):
                 self.assertEqual(
                     exp["host"],
                     actual[0],

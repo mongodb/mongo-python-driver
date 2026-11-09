@@ -255,7 +255,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         # Generate unique ping times.
         while len(ping_times) < len(self.client.nodes):
             ping_times.add(random.random())
-        for ping_time, host in zip(ping_times, self.client.nodes):
+        for ping_time, host in zip(ping_times, self.client.nodes, strict=True):
             ServerDescription._host_to_round_trip_time[host] = ping_time
         try:
             client = await connected(

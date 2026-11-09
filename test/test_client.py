@@ -1287,7 +1287,7 @@ class TestClient(IntegrationTest):
         self.assertGreater(len(helper_docs), 0)
         self.assertEqual(len(helper_docs), len(cmd_docs))
         # PYTHON-3529 Some fields may change between calls, just compare names.
-        for helper_doc, cmd_doc in zip(helper_docs, cmd_docs):
+        for helper_doc, cmd_doc in zip(helper_docs, cmd_docs, strict=True):
             self.assertIs(type(helper_doc), dict)
             self.assertEqual(helper_doc.keys(), cmd_doc.keys())
         client = self.rs_or_single_client(document_class=SON)

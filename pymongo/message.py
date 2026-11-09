@@ -831,7 +831,9 @@ def _client_batched_op_msg_impl(
     total_ops_length = 0
     total_ns_length = 0
 
-    for idx, ((real_op_type, op_doc), namespace) in enumerate(zip(operations, namespaces)):
+    for idx, ((real_op_type, op_doc), namespace) in enumerate(
+        zip(operations, namespaces, strict=True)
+    ):
         op_type = real_op_type
         # Check insert/replace document size if unacknowledged.
         if real_op_type == "insert":

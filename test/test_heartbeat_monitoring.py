@@ -59,7 +59,7 @@ class TestHeartbeatMonitoring(IntegrationTest):
             wait_until(lambda: len(listener.events) >= expected_len, "publish all events")
 
         # zip gives us len(expected_results) pairs.
-        for expected, actual in zip(expected_results, listener.events):
+        for expected, actual in zip(expected_results, listener.events, strict=False):
             self.assertEqual(expected, actual.__class__.__name__)
             self.assertEqual(actual.connection_id, responses[0])
             if expected != "ServerHeartbeatStartedEvent":

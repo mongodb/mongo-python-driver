@@ -85,6 +85,7 @@ for name, run_on in zip(
         "rhel82-arm64-small",
         "amazon2023-arm64-latest-large-m8g",
     ],
+    strict=True,
 ):
     HOSTS[name] = Host(name, run_on, name, dict())
 

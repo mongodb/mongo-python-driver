@@ -333,7 +333,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         # driver) are dropped first since they cost nothing.
         name_str = driver.get("name", "")
         version_str = driver.get("version", "")
-        raw_pairs = list(zip(name_str.split("|"), version_str.split("|")))
+        raw_pairs = list(zip(name_str.split("|"), version_str.split("|"), strict=True))
         pairs = [(name, version) for name, version in raw_pairs if name or version]
         new_name = "|".join(name for name, _ in pairs)
         new_version = "|".join(version for _, version in pairs)
