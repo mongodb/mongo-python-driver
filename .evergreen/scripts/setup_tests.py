@@ -57,8 +57,9 @@ EXTRAS_MAP = {
 GROUP_MAP = dict(fuzz="fuzz", mockupdb="mockupdb", perf="perf")
 
 # The libmongocrypt release used when LIBMONGOCRYPT_URL is not set. Must be at
-# least 1.20.0 for the GA "substring" query type.
-LIBMONGOCRYPT_VERSION = "1.20.2"
+# least 1.21.0; the beta preview string query types were removed in 1.21.0
+# (MONGOCRYPT-938).
+LIBMONGOCRYPT_VERSION = "1.21.0"
 
 
 def is_set(var: str) -> bool:
@@ -390,44 +391,33 @@ def handle_test_env() -> None:
         UV_ARGS.append("--extra zstd")
 
     if test_name in ["encryption", "kms"]:
-        # The "String" algorithm and the GA prefix/suffix/substring query types
-        # need libmongocrypt 1.19.0+, which is only exercised against MongoDB
-        # 9.0+. Servers before 9.0 test the preview query types instead, which
-        # need the "textPreview" algorithm, so pin to the released pymongocrypt
-        # and use the libmongocrypt bundled in its wheel rather than the
-        # unreleased master build.
-        # Evergreen exposes the server version as VERSION, not MONGODB_VERSION
-        # (which is only set inside the separate run_server.py process).
-        use_pymongocrypt_text_preview = os.environ.get("VERSION", "").startswith("8.")
-
-        if not use_pymongocrypt_text_preview:
-            # Check for libmongocrypt download.
-            if not (ROOT / "libmongocrypt").exists():
-                setup_libmongocrypt()
+        # The GA string query types need libmongocrypt 1.19.0+ and the beta
+        # preview query types were removed in 1.21.0 (PYTHON-5959), so always
+        # use the master pymongocrypt build against the pinned libmongocrypt
+        # rather than the lib bundled in the released wheel.
+        # Check for libmongocrypt download.
+        if not (ROOT / "libmongocrypt").exists():
+            setup_libmongocrypt()
 
         if not opts.test_min_deps:
-            if use_pymongocrypt_text_preview:
-                UV_ARGS.append("--with pymongocrypt<1.19")
-            else:
-                UV_ARGS.append(
-                    "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
-                )
+            UV_ARGS.append(
+                "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
+            )
 
-        if not use_pymongocrypt_text_preview:
-            # Use the nocrypto build to avoid dependency issues with older windows/python versions.
-            BASE = get_libmongocrypt_base()
-            if PLATFORM == "linux":
-                if (BASE / "lib/libmongocrypt.so").exists():
-                    PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.so"
-                else:
-                    PYMONGOCRYPT_LIB = BASE / "lib64/libmongocrypt.so"
-            elif PLATFORM == "darwin":
-                PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.dylib"
+        # Use the nocrypto build to avoid dependency issues with older windows/python versions.
+        BASE = get_libmongocrypt_base()
+        if PLATFORM == "linux":
+            if (BASE / "lib/libmongocrypt.so").exists():
+                PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.so"
             else:
-                PYMONGOCRYPT_LIB = BASE / "bin/mongocrypt.dll"
-            if not PYMONGOCRYPT_LIB.exists():
-                raise RuntimeError("Cannot find libmongocrypt shared object file")
-            write_env("PYMONGOCRYPT_LIB", PYMONGOCRYPT_LIB.as_posix())
+                PYMONGOCRYPT_LIB = BASE / "lib64/libmongocrypt.so"
+        elif PLATFORM == "darwin":
+            PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.dylib"
+        else:
+            PYMONGOCRYPT_LIB = BASE / "bin/mongocrypt.dll"
+        if not PYMONGOCRYPT_LIB.exists():
+            raise RuntimeError("Cannot find libmongocrypt shared object file")
+        write_env("PYMONGOCRYPT_LIB", PYMONGOCRYPT_LIB.as_posix())
         # PATH is updated by configure-env.sh for access to mongocryptd.
 
     if test_name == "encryption":

@@ -704,10 +704,13 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
 
         for address, server in list(self._servers.items()):
             if not self._description.has_server(address):
-                await server.close()
+                # Update our state before closing: close() can cancel the
+                # calling task, so the stale server must be recorded as
+                # removed before close() runs, not after (PYTHON-6226).
                 if not _IS_SYNC:
                     self._monitor_tasks.append(server._monitor)
                 self._servers.pop(address)
+                await server.close()
 
     async def cleanup_monitors(self) -> None:
         tasks = []
