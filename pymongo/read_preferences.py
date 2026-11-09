@@ -22,7 +22,7 @@ from __future__ import annotations
 import warnings
 from collections import abc
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pymongo import max_staleness_selectors
 from pymongo.errors import ConfigurationError
@@ -55,7 +55,7 @@ _Hedge = Mapping[str, Any]
 _TagSets = Sequence[Mapping[str, Any]]
 
 
-def _validate_tag_sets(tag_sets: Optional[_TagSets]) -> Optional[_TagSets]:
+def _validate_tag_sets(tag_sets: _TagSets | None) -> _TagSets | None:
     """Validate tag sets for a MongoClient."""
     if tag_sets is None:
         return tag_sets
@@ -97,7 +97,7 @@ def _validate_max_staleness(max_staleness: Any) -> int:
     return max_staleness
 
 
-def _validate_hedge(hedge: Optional[_Hedge]) -> Optional[_Hedge]:
+def _validate_hedge(hedge: _Hedge | None) -> _Hedge | None:
     """Validate hedge."""
     if hedge is None:
         return None
@@ -121,9 +121,9 @@ class _ServerMode:
     def __init__(
         self,
         mode: int,
-        tag_sets: Optional[_TagSets] = None,
+        tag_sets: _TagSets | None = None,
         max_staleness: int = -1,
-        hedge: Optional[_Hedge] = None,
+        hedge: _Hedge | None = None,
     ) -> None:
         self.__mongos_mode = _MONGOS_MODES[mode]
         self.__mode = mode
@@ -189,7 +189,7 @@ class _ServerMode:
         return self.__max_staleness
 
     @property
-    def hedge(self) -> Optional[_Hedge]:
+    def hedge(self) -> _Hedge | None:
         """**DEPRECATED** - The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.
 
         The read preference ``hedge`` parameter.
@@ -336,9 +336,9 @@ class PrimaryPreferred(_ServerMode):
 
     def __init__(
         self,
-        tag_sets: Optional[_TagSets] = None,
+        tag_sets: _TagSets | None = None,
         max_staleness: int = -1,
-        hedge: Optional[_Hedge] = None,
+        hedge: _Hedge | None = None,
     ) -> None:
         super().__init__(_PRIMARY_PREFERRED, tag_sets, max_staleness, hedge)
 
@@ -378,9 +378,9 @@ class Secondary(_ServerMode):
 
     def __init__(
         self,
-        tag_sets: Optional[_TagSets] = None,
+        tag_sets: _TagSets | None = None,
         max_staleness: int = -1,
-        hedge: Optional[_Hedge] = None,
+        hedge: _Hedge | None = None,
     ) -> None:
         super().__init__(_SECONDARY, tag_sets, max_staleness, hedge)
 
@@ -421,9 +421,9 @@ class SecondaryPreferred(_ServerMode):
 
     def __init__(
         self,
-        tag_sets: Optional[_TagSets] = None,
+        tag_sets: _TagSets | None = None,
         max_staleness: int = -1,
-        hedge: Optional[_Hedge] = None,
+        hedge: _Hedge | None = None,
     ) -> None:
         super().__init__(_SECONDARY_PREFERRED, tag_sets, max_staleness, hedge)
 
@@ -465,9 +465,9 @@ class Nearest(_ServerMode):
 
     def __init__(
         self,
-        tag_sets: Optional[_TagSets] = None,
+        tag_sets: _TagSets | None = None,
         max_staleness: int = -1,
-        hedge: Optional[_Hedge] = None,
+        hedge: _Hedge | None = None,
     ) -> None:
         super().__init__(_NEAREST, tag_sets, max_staleness, hedge)
 
@@ -522,7 +522,7 @@ _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred, Secondary, SecondaryPreferre
 
 
 def make_read_preference(
-    mode: int, tag_sets: Optional[_TagSets], max_staleness: int = -1
+    mode: int, tag_sets: _TagSets | None, max_staleness: int = -1
 ) -> _ServerMode:
     if mode == _PRIMARY:
         if tag_sets not in (None, [{}]):
@@ -614,7 +614,7 @@ def read_pref_mode_from_name(name: str) -> int:
 class MovingAverage:
     """Tracks an exponentially-weighted moving average."""
 
-    average: Optional[float]
+    average: float | None
 
     def __init__(self) -> None:
         self.average = None
@@ -629,7 +629,7 @@ class MovingAverage:
             # average with alpha = 0.2.
             self.average = 0.8 * self.average + 0.2 * sample
 
-    def get(self) -> Optional[float]:
+    def get(self) -> float | None:
         """Get the calculated average, or None if no samples yet."""
         return self.average
 

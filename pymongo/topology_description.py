@@ -24,7 +24,6 @@ from random import sample
 from typing import (
     Any,
     NamedTuple,
-    Optional,
     cast,
 )
 
@@ -63,9 +62,9 @@ class TopologyDescription:
         self,
         topology_type: int,
         server_descriptions: dict[_Address, ServerDescription],
-        replica_set_name: Optional[str],
-        max_set_version: Optional[int],
-        max_election_id: Optional[ObjectId],
+        replica_set_name: str | None,
+        max_set_version: int | None,
+        max_election_id: ObjectId | None,
         topology_settings: Any,
     ) -> None:
         """Representation of a deployment of MongoDB servers.
@@ -203,22 +202,22 @@ class TopologyDescription:
         return TOPOLOGY_TYPE._fields[self._topology_type]
 
     @property
-    def replica_set_name(self) -> Optional[str]:
+    def replica_set_name(self) -> str | None:
         """The replica set name."""
         return self._replica_set_name
 
     @property
-    def max_set_version(self) -> Optional[int]:
+    def max_set_version(self) -> int | None:
         """Greatest setVersion seen from a primary, or None."""
         return self._max_set_version
 
     @property
-    def max_election_id(self) -> Optional[ObjectId]:
+    def max_election_id(self) -> ObjectId | None:
         """Greatest electionId seen from a primary, or None."""
         return self._max_election_id
 
     @property
-    def logical_session_timeout_minutes(self) -> Optional[int]:
+    def logical_session_timeout_minutes(self) -> int | None:
         """Minimum logical session timeout, or None."""
         return self._ls_timeout_minutes
 
@@ -243,7 +242,7 @@ class TopologyDescription:
         return self._candidate_servers
 
     @property
-    def common_wire_version(self) -> Optional[int]:
+    def common_wire_version(self) -> int | None:
         """Minimum of all servers' max wire versions, or None."""
         servers = self.known_servers
         if servers:
@@ -259,7 +258,7 @@ class TopologyDescription:
     def srv_max_hosts(self) -> int:
         return self._topology_settings._srv_max_hosts
 
-    def _apply_local_threshold(self, selection: Optional[Selection]) -> list[ServerDescription]:
+    def _apply_local_threshold(self, selection: Selection | None) -> list[ServerDescription]:
         if not selection:
             return []
         round_trip_times: list[float] = []
@@ -277,9 +276,7 @@ class TopologyDescription:
             if (cast(float, s.round_trip_time) - fastest) <= threshold
         ]
 
-    def _filter_servers(
-        self, deprioritized_servers: Optional[list[ServerDescription]] = None
-    ) -> None:
+    def _filter_servers(self, deprioritized_servers: list[ServerDescription] | None = None) -> None:
         """Filter out deprioritized servers from a list of server candidates."""
         if not deprioritized_servers:
             self._candidate_servers = self.known_servers
@@ -295,9 +292,9 @@ class TopologyDescription:
     def apply_selector(
         self,
         selector: Any,
-        address: Optional[_Address] = None,
-        custom_selector: Optional[_ServerSelector] = None,
-        deprioritized_servers: Optional[list[ServerDescription]] = None,
+        address: _Address | None = None,
+        custom_selector: _ServerSelector | None = None,
+        deprioritized_servers: list[ServerDescription] | None = None,
     ) -> list[ServerDescription]:
         """List of servers matching the provided selector(s).
 
@@ -562,11 +559,11 @@ def _updated_topology_description_srv_polling(
 
 def _update_rs_from_primary(
     sds: MutableMapping[_Address, ServerDescription],
-    replica_set_name: Optional[str],
+    replica_set_name: str | None,
     server_description: ServerDescription,
-    max_set_version: Optional[int],
-    max_election_id: Optional[ObjectId],
-) -> tuple[int, Optional[str], Optional[int], Optional[ObjectId]]:
+    max_set_version: int | None,
+    max_election_id: ObjectId | None,
+) -> tuple[int, str | None, int | None, ObjectId | None]:
     """Update topology description from a primary's hello response.
 
     Pass in a dict of ServerDescriptions, current replica set name, the
@@ -650,7 +647,7 @@ def _update_rs_from_primary(
 
 def _update_rs_with_primary_from_member(
     sds: MutableMapping[_Address, ServerDescription],
-    replica_set_name: Optional[str],
+    replica_set_name: str | None,
     server_description: ServerDescription,
 ) -> int:
     """RS with known primary. Process a response from a non-primary.
@@ -673,9 +670,9 @@ def _update_rs_with_primary_from_member(
 
 def _update_rs_no_primary_from_member(
     sds: MutableMapping[_Address, ServerDescription],
-    replica_set_name: Optional[str],
+    replica_set_name: str | None,
     server_description: ServerDescription,
-) -> tuple[int, Optional[str]]:
+) -> tuple[int, str | None]:
     """RS without known primary. Update from a non-primary's response.
 
     Pass in a dict of ServerDescriptions, current replica set name, and the

@@ -1280,7 +1280,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         old_description: TopologyDescription = self.entity_map[spec["priorTopologyDescription"]]
         timeout = spec["timeoutMS"] / 1000.0
 
-        def get_primary(td: TopologyDescription) -> Optional[_Address]:
+        def get_primary(td: TopologyDescription) -> _Address | None:
             servers = writable_server_selector(Selection.from_topology_description(td))
             if servers and servers[0].server_type == SERVER_TYPE.RSPrimary:
                 return servers[0].address

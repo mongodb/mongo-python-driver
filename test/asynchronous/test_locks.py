@@ -296,7 +296,7 @@ if sys.version_info < (3, 13):
         async def test_timeout_in_block(self):
             condition = _async_create_condition(_async_create_lock())
             async with condition:
-                with self.assertRaises(asyncio.TimeoutError):
+                with self.assertRaises(TimeoutError):
                     await asyncio.wait_for(condition.wait(), timeout=0.5)
 
         async def test_cancelled_error_wakeup(self):

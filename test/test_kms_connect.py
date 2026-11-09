@@ -839,7 +839,7 @@ async def test_async_proxy_connect_wait_is_bounded_by_the_deadline(api):
         task = asyncio.create_task(callback(_kms_context(timeout=1.0)))
         await asyncio.sleep(0.2)  # Let the coroutine queue its connect.
         assert not task.done(), "connect finished before the deadline"
-        with pytest.raises(socket.timeout, match="timed out connecting through the proxy"):
+        with pytest.raises(TimeoutError, match="timed out connecting through the proxy"):
             await task
         elapsed = time.monotonic() - start
         assert elapsed < 2.5, f"the wait outlived the deadline: {elapsed:.1f}s"
@@ -928,7 +928,7 @@ async def test_async_proxy_connect_closes_a_socket_returned_at_the_deadline(api)
         with mock.patch.object(HTTPProxyKMSConnect, "_tunnel", spy_tunnel):
             with mock.patch("asyncio.wait_for", raced_wait_for):
                 callback = api.proxy(f"https://{host}:{port}", _insecure_client_context())
-                with pytest.raises(socket.timeout, match="timed out connecting through the proxy"):
+                with pytest.raises(TimeoutError, match="timed out connecting through the proxy"):
                     await callback(_kms_context())
 
         assert len(tunneled) == 1
@@ -937,12 +937,11 @@ async def test_async_proxy_connect_closes_a_socket_returned_at_the_deadline(api)
 
 @both_apis
 async def test_connect_timeout_is_not_reclassified(api):
-    # A timed-out connect keeps its socket.timeout type.
     def timeout_connect(self, address):
-        raise socket.timeout("timed out")
+        raise TimeoutError("timed out")
 
     with mock.patch.object(socket.socket, "connect", timeout_connect):
-        with pytest.raises(socket.timeout):
+        with pytest.raises(TimeoutError):
             HTTPProxyKMSConnect("http://127.0.0.1:9999")._connect_proxy(time.monotonic() + 10)
 
 
@@ -991,7 +990,7 @@ async def test_remaining_raises_once_the_deadline_passes(api):
     from pymongo._kms_connect_shared import _remaining
 
     assert _remaining(time.monotonic() + 5) > 0
-    with pytest.raises(socket.timeout):
+    with pytest.raises(TimeoutError):
         _remaining(time.monotonic() - 1)
 
 

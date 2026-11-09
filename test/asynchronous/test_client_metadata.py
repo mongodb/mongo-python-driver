@@ -67,10 +67,10 @@ class TestClientMetadataProse(AsyncIntegrationTest):
 
     async def send_ping_and_get_metadata(
         self, client: AsyncMongoClient, is_handshake: bool
-    ) -> tuple[str, Optional[str], Optional[str], dict[str, Any]]:
+    ) -> tuple[str, str | None, str | None, dict[str, Any]]:
         # reset if handshake request
         if is_handshake:
-            self.handshake_req: Optional[dict] = None
+            self.handshake_req: dict | None = None
 
         await client.admin.command("ping")
         metadata = _get_handshake_driver_info(self.handshake_req)
@@ -86,8 +86,8 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         self,
         client: AsyncMongoClient,
         add_name: str,
-        add_version: Optional[str],
-        add_platform: Optional[str],
+        add_version: str | None,
+        add_platform: str | None,
     ) -> None:
         # send initial metadata
         name, version, platform, metadata = await self.send_ping_and_get_metadata(client, True)
@@ -196,7 +196,7 @@ class TestClientMetadataProse(AsyncIntegrationTest):
         add_name, add_version, add_platform = "framework", "2.0", "Framework Platform"
         client.append_metadata(DriverInfo(add_name, add_version, add_platform))
         # check new data isn't sent
-        self.handshake_req: Optional[dict] = None
+        self.handshake_req: dict | None = None
         await client.admin.command("ping")
         self.assertIsNone(self.handshake_req)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 0)
@@ -299,7 +299,7 @@ class TestClientMetadataProse(AsyncIntegrationTest):
                 driver_name = name0.split("|")[0]
                 driver_version = version0.split("|")[0]
 
-                def resolve(value: Optional[str]) -> Optional[str]:
+                def resolve(value: str | None) -> str | None:
                     if value is None:
                         return None
                     return value.format(driver_name=driver_name, driver_version=driver_version)

@@ -17,7 +17,7 @@ import struct
 import warnings
 from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Union, overload
+from typing import TYPE_CHECKING, Any, overload
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -240,7 +240,7 @@ class BinaryVector:
 
     def __init__(
         self,
-        data: Union[Sequence[float | int], npt.NDArray[np.number]],
+        data: Sequence[float | int] | npt.NDArray[np.number],
         dtype: BinaryVectorDtype,
         padding: int = 0,
     ):
@@ -311,7 +311,7 @@ class Binary(bytes):
 
     def __new__(
         cls: type[Binary],
-        data: Union[memoryview, bytes, bytearray, _mmap, _array[Any]],
+        data: memoryview | bytes | bytearray | _mmap | _array[Any],
         subtype: int = BINARY_SUBTYPE,
     ) -> Binary:
         if not isinstance(subtype, int):
@@ -434,7 +434,7 @@ class Binary(bytes):
     @overload
     def from_vector(
         cls: type[Binary],
-        vector: Union[list[int], list[float]],
+        vector: list[int] | list[float],
         dtype: BinaryVectorDtype,
         padding: int = 0,
     ) -> Binary: ...
@@ -451,9 +451,9 @@ class Binary(bytes):
     @classmethod
     def from_vector(
         cls: type[Binary],
-        vector: Union[BinaryVector, list[int], list[float], npt.NDArray[np.number]],
-        dtype: Optional[BinaryVectorDtype] = None,
-        padding: Optional[int] = None,
+        vector: BinaryVector | list[int] | list[float] | npt.NDArray[np.number],
+        dtype: BinaryVectorDtype | None = None,
+        padding: int | None = None,
     ) -> Binary:
         """Create a BSON :class:`~bson.binary.Binary` of Vector subtype.
 

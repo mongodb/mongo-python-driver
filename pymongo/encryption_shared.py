@@ -19,7 +19,7 @@ from __future__ import annotations
 import contextlib
 import enum
 from collections.abc import Iterator
-from typing import Any, Optional
+from typing import Any
 
 try:
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import-untyped]
@@ -51,11 +51,11 @@ class RewrapManyDataKeyResult:
     .. versionadded:: 4.2
     """
 
-    def __init__(self, bulk_write_result: Optional[BulkWriteResult] = None) -> None:
+    def __init__(self, bulk_write_result: BulkWriteResult | None = None) -> None:
         self._bulk_write_result = bulk_write_result
 
     @property
-    def bulk_write_result(self) -> Optional[BulkWriteResult]:
+    def bulk_write_result(self) -> BulkWriteResult | None:
         """The result of the bulk write operation used to update the key vault
         collection with one or more rewrapped data keys. If
         :meth:`~pymongo.encryption.ClientEncryption.rewrap_many_data_key` or :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.rewrap_many_data_key` does not

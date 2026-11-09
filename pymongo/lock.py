@@ -22,7 +22,7 @@ import sys
 import threading
 import weakref
 from asyncio import wait_for
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
 import pymongo._asyncio_lock
 
@@ -59,7 +59,7 @@ def _async_create_lock() -> Lock:
 
 
 def _create_condition(
-    lock: threading.Lock, condition_class: Optional[Any] = None
+    lock: threading.Lock, condition_class: Any | None = None
 ) -> threading.Condition:
     """Represents a threading.Condition."""
     if condition_class:
@@ -67,7 +67,7 @@ def _create_condition(
     return threading.Condition(lock)
 
 
-def _async_create_condition(lock: Lock, condition_class: Optional[Any] = None) -> Condition:
+def _async_create_condition(lock: Lock, condition_class: Any | None = None) -> Condition:
     """Represents an asyncio.Condition."""
     if condition_class:
         return condition_class(lock)
@@ -81,12 +81,12 @@ def _release_locks() -> None:
             lock.release()
 
 
-async def _async_cond_wait(condition: Condition, timeout: Optional[float]) -> bool:
+async def _async_cond_wait(condition: Condition, timeout: float | None) -> bool:
     try:
         return await wait_for(condition.wait(), timeout)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return False
 
 
-def _cond_wait(condition: threading.Condition, timeout: Optional[float]) -> bool:
+def _cond_wait(condition: threading.Condition, timeout: float | None) -> bool:
     return condition.wait(timeout)

@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import functools
-import socket
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
@@ -27,8 +26,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
-    Optional,
-    Union,
     cast,
 )
 
@@ -118,9 +115,9 @@ _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
     def __init__(
         self,
-        client: Optional[MongoClient[_DocumentTypeArg]],
+        client: MongoClient[_DocumentTypeArg] | None,
         key_vault_coll: Collection[_DocumentTypeArg],
-        mongocryptd_client: Optional[MongoClient[_DocumentTypeArg]],
+        mongocryptd_client: MongoClient[_DocumentTypeArg] | None,
         opts: AutoEncryptionOpts,
     ):
         """Internal class to perform I/O on behalf of pymongocrypt."""
@@ -130,7 +127,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             self.client_ref = weakref.ref(client)
         else:
             self.client_ref = None
-        self.key_vault_coll: Optional[Collection[RawBSONDocument]] = cast(
+        self.key_vault_coll: Collection[RawBSONDocument] | None = cast(
             Collection[RawBSONDocument],
             key_vault_coll.with_options(
                 codec_options=_KEY_VAULT_OPTS,
@@ -211,7 +208,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
             except Exception as exc:
                 # Wrap I/O errors in PyMongo exceptions.
                 if isinstance(exc, BLOCKING_IO_ERRORS):
-                    exc = socket.timeout("timed out")
+                    exc = TimeoutError("timed out")
                 # Async raises an OSError instead of returning empty bytes.
                 if isinstance(exc, OSError):
                     msg_prefix = "KMS connection closed"
@@ -239,7 +236,7 @@ class _EncryptionIO(MongoCryptCallback):  # type: ignore[misc]
                 )
                 raise exc from final_err
 
-    def collection_info(self, database: str, filter: bytes) -> Optional[list[bytes]]:
+    def collection_info(self, database: str, filter: bytes) -> list[bytes] | None:
         """Get the collection info for a namespace.
 
         The returned collection info is passed to libmongocrypt which reads
@@ -442,7 +439,7 @@ class _Encrypter:
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
             return _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
 
-    def decrypt(self, response: bytes | memoryview) -> Optional[bytes]:
+    def decrypt(self, response: bytes | memoryview) -> bytes | None:
         """Decrypt a MongoDB command response.
 
         :param response: A MongoDB command response as BSON.
@@ -485,8 +482,8 @@ def _string_opts_kwarg() -> str:
 
 
 def _resolve_string_opts(
-    string_opts: Optional[StringOpts], text_opts: Optional[StringOpts]
-) -> Optional[StringOpts]:
+    string_opts: StringOpts | None, text_opts: StringOpts | None
+) -> StringOpts | None:
     """Resolve string_opts and its former name, text_opts.
 
     pymongocrypt accepts only one of the two names per release, so passing the
@@ -518,9 +515,9 @@ class ClientEncryption(Generic[_DocumentType]):
         key_vault_namespace: str,
         key_vault_client: MongoClient[_DocumentTypeArg],
         codec_options: CodecOptions[_DocumentTypeArg],
-        kms_tls_options: Optional[Mapping[str, Any]] = None,
-        key_expiration_ms: Optional[int] = None,
-        kms_connect_callback: Optional[KMSConnectCallback] = None,
+        kms_tls_options: Mapping[str, Any] | None = None,
+        key_expiration_ms: int | None = None,
+        kms_connect_callback: KMSConnectCallback | None = None,
     ) -> None:
         """Explicit client-side field level encryption.
 
@@ -648,9 +645,7 @@ class ClientEncryption(Generic[_DocumentType]):
             kms_connect_callback=kms_connect_callback,
         )
         self._kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
-        self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
-            None, key_vault_coll, None, opts
-        )
+        self._io_callbacks: _EncryptionIO | None = _EncryptionIO(None, key_vault_coll, None, opts)
         self._encryption = ExplicitEncrypter(
             self._io_callbacks,
             _create_mongocrypt_options(
@@ -669,8 +664,8 @@ class ClientEncryption(Generic[_DocumentType]):
         database: Database[_DocumentTypeArg],
         name: str,
         encrypted_fields: Mapping[str, Any],
-        kms_provider: Optional[str] = None,
-        master_key: Optional[Mapping[str, Any]] = None,
+        kms_provider: str | None = None,
+        master_key: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> tuple[Collection[_DocumentTypeArg], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
@@ -756,9 +751,9 @@ class ClientEncryption(Generic[_DocumentType]):
     def create_data_key(
         self,
         kms_provider: str,
-        master_key: Optional[Mapping[str, Any]] = None,
-        key_alt_names: Optional[Sequence[str]] = None,
-        key_material: Optional[bytes] = None,
+        master_key: Mapping[str, Any] | None = None,
+        key_alt_names: Sequence[str] | None = None,
+        key_material: bytes | None = None,
     ) -> Binary:
         """Create and insert a new data key into the key vault collection.
 
@@ -848,13 +843,13 @@ class ClientEncryption(Generic[_DocumentType]):
         self,
         value: Any,
         algorithm: str,
-        key_id: Optional[Union[Binary, uuid.UUID]] = None,
-        key_alt_name: Optional[str] = None,
-        query_type: Optional[str] = None,
-        contention_factor: Optional[int] = None,
-        range_opts: Optional[RangeOpts] = None,
+        key_id: Binary | uuid.UUID | None = None,
+        key_alt_name: str | None = None,
+        query_type: str | None = None,
+        contention_factor: int | None = None,
+        range_opts: RangeOpts | None = None,
         is_expression: bool = False,
-        string_opts: Optional[StringOpts] = None,
+        string_opts: StringOpts | None = None,
     ) -> Any:
         self._check_closed()
         if isinstance(key_id, uuid.UUID):
@@ -898,13 +893,13 @@ class ClientEncryption(Generic[_DocumentType]):
         self,
         value: Any,
         algorithm: str,
-        key_id: Optional[Union[Binary, uuid.UUID]] = None,
-        key_alt_name: Optional[str] = None,
-        query_type: Optional[str] = None,
-        contention_factor: Optional[int] = None,
-        range_opts: Optional[RangeOpts] = None,
-        string_opts: Optional[StringOpts] = None,
-        text_opts: Optional[StringOpts] = None,
+        key_id: Binary | uuid.UUID | None = None,
+        key_alt_name: str | None = None,
+        query_type: str | None = None,
+        contention_factor: int | None = None,
+        range_opts: RangeOpts | None = None,
+        string_opts: StringOpts | None = None,
+        text_opts: StringOpts | None = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -969,11 +964,11 @@ class ClientEncryption(Generic[_DocumentType]):
         self,
         expression: Mapping[str, Any],
         algorithm: str,
-        key_id: Optional[Union[Binary, uuid.UUID]] = None,
-        key_alt_name: Optional[str] = None,
-        query_type: Optional[str] = None,
-        contention_factor: Optional[int] = None,
-        range_opts: Optional[RangeOpts] = None,
+        key_id: Binary | uuid.UUID | None = None,
+        key_alt_name: str | None = None,
+        query_type: str | None = None,
+        contention_factor: int | None = None,
+        range_opts: RangeOpts | None = None,
     ) -> RawBSONDocument:
         """Encrypt a BSON expression with a given key and algorithm.
 
@@ -1037,7 +1032,7 @@ class ClientEncryption(Generic[_DocumentType]):
             decrypted_doc = self._encryption.decrypt(doc)
             return decode(decrypted_doc, codec_options=self._codec_options)["v"]
 
-    def get_key(self, id: Binary) -> Optional[RawBSONDocument]:
+    def get_key(self, id: Binary) -> RawBSONDocument | None:
         """Get a data key by id.
 
         :param id` (Binary): The UUID of a key a which must be a
@@ -1096,7 +1091,7 @@ class ClientEncryption(Generic[_DocumentType]):
         assert self._key_vault_coll is not None
         return self._key_vault_coll.find_one_and_update({"_id": id}, update)
 
-    def get_key_by_alt_name(self, key_alt_name: str) -> Optional[RawBSONDocument]:
+    def get_key_by_alt_name(self, key_alt_name: str) -> RawBSONDocument | None:
         """Get a key document in the key vault collection that has the given ``key_alt_name``.
 
         :param key_alt_name: (str): The key alternate name of the key to get.
@@ -1109,7 +1104,7 @@ class ClientEncryption(Generic[_DocumentType]):
         assert self._key_vault_coll is not None
         return self._key_vault_coll.find_one({"keyAltNames": key_alt_name})
 
-    def remove_key_alt_name(self, id: Binary, key_alt_name: str) -> Optional[RawBSONDocument]:
+    def remove_key_alt_name(self, id: Binary, key_alt_name: str) -> RawBSONDocument | None:
         """Remove ``key_alt_name`` from the set of keyAltNames in the key document with UUID ``id``.
 
         Also removes the ``keyAltNames`` field from the key document if it would otherwise be empty.
@@ -1148,8 +1143,8 @@ class ClientEncryption(Generic[_DocumentType]):
     def rewrap_many_data_key(
         self,
         filter: Mapping[str, Any],
-        provider: Optional[str] = None,
-        master_key: Optional[Mapping[str, Any]] = None,
+        provider: str | None = None,
+        master_key: Mapping[str, Any] | None = None,
     ) -> RewrapManyDataKeyResult:
         """Decrypts and encrypts all matching data keys in the key vault with a possibly new `master_key` value.
 

@@ -31,9 +31,7 @@ from typing import (
     Any,
     Generic,
     NoReturn,
-    Optional,
     TypeVar,
-    Union,
     cast,
     overload,
 )
@@ -100,14 +98,14 @@ T = TypeVar("T")
 _FIND_AND_MODIFY_DOC_FIELDS = {"value": 1}
 
 
-_WriteOp = Union[
-    InsertOne[_DocumentType],
-    DeleteOne,
-    DeleteMany,
-    ReplaceOne[_DocumentType],
-    UpdateOne,
-    UpdateMany,
-]
+_WriteOp = (
+    InsertOne[_DocumentType]
+    | DeleteOne
+    | DeleteMany
+    | ReplaceOne[_DocumentType]
+    | UpdateOne
+    | UpdateMany
+)
 
 
 class ReturnDocument:
@@ -142,12 +140,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         database: Database[_DocumentType],
         name: str,
-        create: Optional[bool] = False,
-        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-        session: Optional[ClientSession] = None,
+        create: bool | None = False,
+        codec_options: CodecOptions[_DocumentTypeArg] | None = None,
+        read_preference: _ServerMode | None = None,
+        write_concern: WriteConcern | None = None,
+        read_concern: ReadConcern | None = None,
+        session: ClientSession | None = None,
         **kwargs: Any,
     ) -> None:
         """Get / create a Mongo collection.
@@ -339,26 +337,26 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def with_options(
         self,
         codec_options: None = None,
-        read_preference: Optional[_ServerMode] = ...,
-        write_concern: Optional[WriteConcern] = ...,
-        read_concern: Optional[ReadConcern] = ...,
+        read_preference: _ServerMode | None = ...,
+        write_concern: WriteConcern | None = ...,
+        read_concern: ReadConcern | None = ...,
     ) -> Collection[_DocumentType]: ...
 
     @overload
     def with_options(
         self,
         codec_options: bson.CodecOptions[_DocumentTypeArg],
-        read_preference: Optional[_ServerMode] = ...,
-        write_concern: Optional[WriteConcern] = ...,
-        read_concern: Optional[ReadConcern] = ...,
+        read_preference: _ServerMode | None = ...,
+        write_concern: WriteConcern | None = ...,
+        read_concern: ReadConcern | None = ...,
     ) -> Collection[_DocumentTypeArg]: ...
 
     def with_options(
         self,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
+        codec_options: bson.CodecOptions[_DocumentTypeArg] | None = None,
+        read_preference: _ServerMode | None = None,
+        write_concern: WriteConcern | None = None,
+        read_concern: ReadConcern | None = None,
     ) -> Collection[_DocumentType] | Collection[_DocumentTypeArg]:
         """Get a clone of this collection changing the specified settings.
 
@@ -423,18 +421,18 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def watch(
         self,
-        pipeline: Optional[_Pipeline] = None,
-        full_document: Optional[str] = None,
-        resume_after: Optional[Mapping[str, Any]] = None,
-        max_await_time_ms: Optional[int] = None,
-        batch_size: Optional[int] = None,
-        collation: Optional[_CollationIn] = None,
-        start_at_operation_time: Optional[Timestamp] = None,
-        session: Optional[ClientSession] = None,
-        start_after: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        full_document_before_change: Optional[str] = None,
-        show_expanded_events: Optional[bool] = None,
+        pipeline: _Pipeline | None = None,
+        full_document: str | None = None,
+        resume_after: Mapping[str, Any] | None = None,
+        max_await_time_ms: int | None = None,
+        batch_size: int | None = None,
+        collation: _CollationIn | None = None,
+        start_at_operation_time: Timestamp | None = None,
+        session: ClientSession | None = None,
+        start_after: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
+        full_document_before_change: str | None = None,
+        show_expanded_events: bool | None = None,
     ) -> CollectionChangeStream[_DocumentType]:
         """Watch changes on this collection.
 
@@ -566,16 +564,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         conn: Connection,
         command: MutableMapping[str, Any],
-        read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions[Mapping[str, Any]]] = None,
+        read_preference: _ServerMode | None = None,
+        codec_options: CodecOptions[Mapping[str, Any]] | None = None,
         check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_concern: Optional[ReadConcern] = None,
-        write_concern: Optional[WriteConcern] = None,
-        collation: Optional[_CollationIn] = None,
-        session: Optional[ClientSession] = None,
+        allowable_errors: Sequence[str | int] | None = None,
+        read_concern: ReadConcern | None = None,
+        write_concern: WriteConcern | None = None,
+        collation: _CollationIn | None = None,
+        session: ClientSession | None = None,
         retryable_write: bool = False,
-        user_fields: Optional[Any] = None,
+        user_fields: Any | None = None,
     ) -> Mapping[str, Any]:
         """Internal command helper.
 
@@ -624,9 +622,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         name: str,
         options: MutableMapping[str, Any],
-        collation: Optional[_CollationIn],
-        session: Optional[ClientSession],
-        encrypted_fields: Optional[Mapping[str, Any]] = None,
+        collation: _CollationIn | None,
+        session: ClientSession | None,
+        encrypted_fields: Mapping[str, Any] | None = None,
         qev2_required: bool = False,
     ) -> None:
         """Sends a create command with the given options."""
@@ -639,9 +637,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 options["size"] = float(options["size"])
             cmd.update(options)
 
-        def inner(
-            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
-        ) -> None:
+        def inner(session: ClientSession | None, conn: Connection, _retryable_write: bool) -> None:
             if qev2_required and conn.max_wire_version < 21:
                 raise ConfigurationError(
                     "Driver support of Queryable Encryption is incompatible with server. "
@@ -663,7 +659,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _create(
         self,
         options: MutableMapping[str, Any],
-        session: Optional[ClientSession],
+        session: ClientSession | None,
     ) -> None:
         collation = validate_collation_or_none(options.pop("collation", None))
         encrypted_fields = options.pop("encryptedFields", None)
@@ -690,10 +686,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         requests: Sequence[_WriteOp[_DocumentType]],
         ordered: bool = True,
-        bypass_document_validation: Optional[bool] = None,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        let: Optional[Mapping[str, Any]] = None,
+        bypass_document_validation: bool | None = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
+        let: Mapping[str, Any] | None = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -788,10 +784,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         doc: Mapping[str, Any],
         ordered: bool,
         write_concern: WriteConcern,
-        op_id: Optional[int],
-        bypass_doc_val: Optional[bool],
-        session: Optional[ClientSession],
-        comment: Optional[Any] = None,
+        op_id: int | None,
+        bypass_doc_val: bool | None,
+        session: ClientSession | None,
+        comment: Any | None = None,
     ) -> Any:
         """Internal helper for inserting a single document."""
         write_concern = write_concern or self.write_concern
@@ -801,7 +797,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command["comment"] = comment
 
         def _insert_command(
-            session: Optional[ClientSession], conn: Connection, retryable_write: bool
+            session: ClientSession | None, conn: Connection, retryable_write: bool
         ) -> None:
             if bypass_doc_val is not None:
                 command["bypassDocumentValidation"] = bypass_doc_val
@@ -828,10 +824,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def insert_one(
         self,
-        document: Union[_DocumentType, RawBSONDocument],
-        bypass_document_validation: Optional[bool] = None,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        document: _DocumentType | RawBSONDocument,
+        bypass_document_validation: bool | None = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
     ) -> InsertOneResult:
         """Insert a single document.
 
@@ -893,11 +889,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     def insert_many(
         self,
-        documents: Iterable[Union[_DocumentType, RawBSONDocument]],
+        documents: Iterable[_DocumentType | RawBSONDocument],
         ordered: bool = True,
-        bypass_document_validation: Optional[bool] = None,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        bypass_document_validation: bool | None = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
     ) -> InsertManyResult:
         """Insert an iterable of documents.
 
@@ -969,22 +965,22 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         conn: Connection,
         criteria: Mapping[str, Any],
-        document: Union[Mapping[str, Any], _Pipeline],
+        document: Mapping[str, Any] | _Pipeline,
         upsert: bool = False,
         multi: bool = False,
-        write_concern: Optional[WriteConcern] = None,
-        op_id: Optional[int] = None,
+        write_concern: WriteConcern | None = None,
+        op_id: int | None = None,
         ordered: bool = True,
-        bypass_doc_val: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
+        bypass_doc_val: bool | None = None,
+        collation: _CollationIn | None = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
         retryable_write: bool = False,
-        let: Optional[Mapping[str, Any]] = None,
-        sort: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-    ) -> Optional[Mapping[str, Any]]:
+        let: Mapping[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
+    ) -> Mapping[str, Any] | None:
         """Internal update / replace helper."""
         validate_boolean("upsert", upsert)
         collation = validate_collation_or_none(collation)
@@ -1060,27 +1056,27 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _update_retryable(
         self,
         criteria: Mapping[str, Any],
-        document: Union[Mapping[str, Any], _Pipeline],
+        document: Mapping[str, Any] | _Pipeline,
         operation: str,
         upsert: bool = False,
         multi: bool = False,
-        write_concern: Optional[WriteConcern] = None,
-        op_id: Optional[int] = None,
+        write_concern: WriteConcern | None = None,
+        op_id: int | None = None,
         ordered: bool = True,
-        bypass_doc_val: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        sort: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-    ) -> Optional[Mapping[str, Any]]:
+        bypass_doc_val: bool | None = None,
+        collation: _CollationIn | None = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
+    ) -> Mapping[str, Any] | None:
         """Internal update / replace helper."""
 
         def _update(
-            session: Optional[ClientSession], conn: Connection, retryable_write: bool
-        ) -> Optional[Mapping[str, Any]]:
+            session: ClientSession | None, conn: Connection, retryable_write: bool
+        ) -> Mapping[str, Any] | None:
             return self._update(
                 conn,
                 criteria,
@@ -1113,13 +1109,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         filter: Mapping[str, Any],
         replacement: Mapping[str, Any],
         upsert: bool = False,
-        bypass_document_validation: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        sort: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        bypass_document_validation: bool | None = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> UpdateResult:
         """Replace a single document matching the filter.
 
@@ -1219,16 +1215,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def update_one(
         self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
+        update: Mapping[str, Any] | _Pipeline,
         upsert: bool = False,
-        bypass_document_validation: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        sort: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        bypass_document_validation: bool | None = None,
+        collation: _CollationIn | None = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> UpdateResult:
         """Update a single document matching the filter.
 
@@ -1338,15 +1334,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def update_many(
         self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
+        update: Mapping[str, Any] | _Pipeline,
         upsert: bool = False,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        bypass_document_validation: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        bypass_document_validation: bool | None = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> UpdateResult:
         """Update one or more documents that match the filter.
 
@@ -1437,9 +1433,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def drop(
         self,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        encrypted_fields: Optional[Mapping[str, Any]] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
+        encrypted_fields: Mapping[str, Any] | None = None,
     ) -> None:
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
 
@@ -1483,15 +1479,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         conn: Connection,
         criteria: Mapping[str, Any],
         multi: bool,
-        write_concern: Optional[WriteConcern] = None,
-        op_id: Optional[int] = None,
+        write_concern: WriteConcern | None = None,
+        op_id: int | None = None,
         ordered: bool = True,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
         retryable_write: bool = False,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> Mapping[str, Any]:
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
@@ -1534,19 +1530,19 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         criteria: Mapping[str, Any],
         multi: bool,
-        write_concern: Optional[WriteConcern] = None,
-        op_id: Optional[int] = None,
+        write_concern: WriteConcern | None = None,
+        op_id: int | None = None,
         ordered: bool = True,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> Mapping[str, Any]:
         """Internal delete helper."""
 
         def _delete(
-            session: Optional[ClientSession], conn: Connection, retryable_write: bool
+            session: ClientSession | None, conn: Connection, retryable_write: bool
         ) -> Mapping[str, Any]:
             return self._delete(
                 conn,
@@ -1573,11 +1569,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def delete_one(
         self,
         filter: Mapping[str, Any],
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> DeleteResult:
         """Delete a single document matching the filter.
 
@@ -1638,11 +1634,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def delete_many(
         self,
         filter: Mapping[str, Any],
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> DeleteResult:
         """Delete one or more documents matching the filter.
 
@@ -1701,8 +1697,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         )
 
     def find_one(
-        self, filter: Optional[Any] = None, *args: Any, **kwargs: Any
-    ) -> Optional[_DocumentType]:
+        self, filter: Any | None = None, *args: Any, **kwargs: Any
+    ) -> _DocumentType | None:
         """Get a single document from the database.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -1977,11 +1973,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _count_cmd(
         self,
-        session: Optional[ClientSession],
+        session: ClientSession | None,
         conn: Connection,
-        read_preference: Optional[_ServerMode],
+        read_preference: _ServerMode | None,
         cmd: dict[str, Any],
-        collation: Optional[Collation],
+        collation: Collation | None,
     ) -> int:
         """Internal count command helper."""
         res = self._command(
@@ -1998,11 +1994,11 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _aggregate_one_result(
         self,
         conn: Connection,
-        read_preference: Optional[_ServerMode],
+        read_preference: _ServerMode | None,
         cmd: dict[str, Any],
-        collation: Optional[_CollationIn],
-        session: Optional[ClientSession],
-    ) -> Optional[Mapping[str, Any]]:
+        collation: _CollationIn | None,
+        session: ClientSession | None,
+    ) -> Mapping[str, Any] | None:
         """Internal helper to run an aggregate that returns a single result."""
         result = self._command(
             conn,
@@ -2020,7 +2016,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         batch = result["cursor"]["firstBatch"]
         return batch[0] if batch else None
 
-    def estimated_document_count(self, comment: Optional[Any] = None, **kwargs: Any) -> int:
+    def estimated_document_count(self, comment: Any | None = None, **kwargs: Any) -> int:
         """Get an estimate of the number of documents in this collection using
         collection metadata.
 
@@ -2053,10 +2049,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
 
         def _cmd(
-            session: Optional[ClientSession],
+            session: ClientSession | None,
             _server: Server,
             conn: Connection,
-            read_preference: Optional[_ServerMode],
+            read_preference: _ServerMode | None,
         ) -> int:
             cmd: dict[str, Any] = {"count": self._name}
             cmd.update(kwargs)
@@ -2067,8 +2063,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def count_documents(
         self,
         filter: Mapping[str, Any],
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> int:
         """Count the number of documents in this collection.
@@ -2139,10 +2135,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation = validate_collation_or_none(kwargs.pop("collation", None))
 
         def _cmd(
-            session: Optional[ClientSession],
+            session: ClientSession | None,
             _server: Server,
             conn: Connection,
-            read_preference: Optional[_ServerMode],
+            read_preference: _ServerMode | None,
         ) -> int:
             cmd: dict[str, Any] = {"aggregate": self._name, "pipeline": pipeline, "cursor": {}}
             cmd.update(kwargs)
@@ -2156,10 +2152,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _retryable_non_cursor_read(
         self,
         func: Callable[
-            [Optional[ClientSession], Server, Connection, Optional[_ServerMode]],
+            [ClientSession | None, Server, Connection, _ServerMode | None],
             T,
         ],
-        session: Optional[ClientSession],
+        session: ClientSession | None,
         operation: str,
     ) -> T:
         """Non-cursor read helper to handle implicit session creation."""
@@ -2170,8 +2166,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def create_indexes(
         self,
         indexes: Sequence[IndexModel],
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> list[str]:
         """Create one or more indexes on this collection.
@@ -2216,7 +2212,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     @_csot.apply
     def _create_indexes(
-        self, indexes: Sequence[IndexModel], session: Optional[ClientSession], **kwargs: Any
+        self, indexes: Sequence[IndexModel], session: ClientSession | None, **kwargs: Any
     ) -> list[str]:
         """Internal createIndexes helper.
 
@@ -2230,7 +2226,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         names = []
 
         def inner(
-            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+            session: ClientSession | None, conn: Connection, _retryable_write: bool
         ) -> list[str]:
             def gen_indexes() -> Iterator[Mapping[str, Any]]:
                 for index in indexes:
@@ -2259,8 +2255,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def create_index(
         self,
         keys: _IndexKeyHint,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> str:
         """Creates an index on this collection.
@@ -2376,8 +2372,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def drop_indexes(
         self,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
         """Drops all indexes on this collection.
@@ -2410,8 +2406,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def drop_index(
         self,
         index_or_name: _IndexKeyHint,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
         """Drops the specified index on this collection.
@@ -2459,8 +2455,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _drop_index(
         self,
         index_or_name: _IndexKeyHint,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
         name = index_or_name
@@ -2475,9 +2471,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
 
-        def inner(
-            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
-        ) -> None:
+        def inner(session: ClientSession | None, conn: Connection, _retryable_write: bool) -> None:
             self._command(
                 conn,
                 cmd,
@@ -2491,8 +2485,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def list_indexes(
         self,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
     ) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
@@ -2529,8 +2523,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def _list_indexes(
         self,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
     ) -> CommandCursor[MutableMapping[str, Any]]:
         codec_options: CodecOptions[Mapping[str, Any]] = CodecOptions(SON)
         coll = cast(
@@ -2540,7 +2534,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
         def _cmd(
-            session: Optional[ClientSession],
+            session: ClientSession | None,
             _server: Server,
             conn: Connection,
             read_preference: _ServerMode,
@@ -2576,8 +2570,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def index_information(
         self,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
     ) -> MutableMapping[str, Any]:
         """Get information on this collection's indexes.
 
@@ -2618,9 +2612,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def list_search_indexes(
         self,
-        name: Optional[str] = None,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        name: str | None = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> CommandCursor[Mapping[str, Any]]:
         """Return a cursor over search indexes for the current collection.
@@ -2679,8 +2673,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def create_search_index(
         self,
-        model: Union[Mapping[str, Any], SearchIndexModel],
-        session: Optional[ClientSession] = None,
+        model: Mapping[str, Any] | SearchIndexModel,
+        session: ClientSession | None = None,
         comment: Any = None,
         **kwargs: Any,
     ) -> str:
@@ -2710,8 +2704,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def create_search_indexes(
         self,
         models: list[SearchIndexModel],
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> list[str]:
         """Create multiple search indexes for the current collection.
@@ -2734,8 +2728,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _create_search_indexes(
         self,
         models: list[SearchIndexModel],
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> list[str]:
         if comment is not None:
@@ -2753,7 +2747,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
 
         def inner(
-            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+            session: ClientSession | None, conn: Connection, _retryable_write: bool
         ) -> list[str]:
             resp = self._command(
                 conn,
@@ -2771,8 +2765,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def drop_search_index(
         self,
         name: str,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
         """Delete a search index by index name.
@@ -2794,9 +2788,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
 
-        def inner(
-            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
-        ) -> None:
+        def inner(session: ClientSession | None, conn: Connection, _retryable_write: bool) -> None:
             self._command(
                 conn,
                 cmd,
@@ -2812,8 +2804,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         name: str,
         definition: Mapping[str, Any],
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
         """Update a search index by replacing the existing index definition with the provided definition.
@@ -2836,9 +2828,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if comment is not None:
             cmd["comment"] = comment
 
-        def inner(
-            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
-        ) -> None:
+        def inner(session: ClientSession | None, conn: Connection, _retryable_write: bool) -> None:
             self._command(
                 conn,
                 cmd,
@@ -2852,8 +2842,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     def options(
         self,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
     ) -> MutableMapping[str, Any]:
         """Get the options set on this collection.
 
@@ -2900,9 +2890,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         aggregation_command: type[_AggregationCommand],
         pipeline: _Pipeline,
         cursor_class: type[CommandCursor],  # type: ignore[type-arg]
-        session: Optional[ClientSession],
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> CommandCursor[_DocumentType]:
         if comment is not None:
@@ -2928,9 +2918,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def aggregate(
         self,
         pipeline: _Pipeline,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> CommandCursor[_DocumentType]:
         """Perform an aggregation using the aggregation framework on this
@@ -3032,8 +3022,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def aggregate_raw_batches(
         self,
         pipeline: _Pipeline,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> RawBatchCursor[_DocumentType]:
         """Perform an aggregation and retrieve batches of raw BSON.
@@ -3080,8 +3070,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def rename(
         self,
         new_name: str,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> MutableMapping[str, Any]:
         """Rename this collection.
@@ -3131,7 +3121,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         client = self._database.client
 
         def inner(
-            session: Optional[ClientSession], conn: Connection, _retryable_write: bool
+            session: ClientSession | None, conn: Connection, _retryable_write: bool
         ) -> MutableMapping[str, Any]:
             return conn.command(
                 "admin",
@@ -3147,10 +3137,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def distinct(
         self,
         key: str,
-        filter: Optional[Mapping[str, Any]] = None,
-        session: Optional[ClientSession] = None,
-        comment: Optional[Any] = None,
-        hint: Optional[_IndexKeyHint] = None,
+        filter: Mapping[str, Any] | None = None,
+        session: ClientSession | None = None,
+        comment: Any | None = None,
+        hint: _IndexKeyHint | None = None,
         **kwargs: Any,
     ) -> list[Any]:
         """Get a list of distinct values for `key` among all documents
@@ -3206,10 +3196,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 hint = helpers_shared._index_document(hint)
 
         def _cmd(
-            session: Optional[ClientSession],
+            session: ClientSession | None,
             _server: Server,
             conn: Connection,
-            read_preference: Optional[_ServerMode],
+            read_preference: _ServerMode | None,
         ) -> list:  # type: ignore[type-arg]
             cmd = {"distinct": self._name, "key": key}
             cmd.update(kwargs)
@@ -3234,14 +3224,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _find_and_modify(
         self,
         filter: Mapping[str, Any],
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]],
-        sort: Optional[_IndexList],
-        upsert: Optional[bool] = None,
+        projection: Mapping[str, Any] | Iterable[str] | None,
+        sort: _IndexList | None,
+        upsert: bool | None = None,
         return_document: bool = ReturnDocument.BEFORE,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> Any:
         """Internal findAndModify helper."""
@@ -3257,7 +3247,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         write_concern = self._write_concern_for_cmd(kwargs, session)
 
         def _find_and_modify_helper(
-            session: Optional[ClientSession], conn: Connection, retryable_write: bool
+            session: ClientSession | None, conn: Connection, retryable_write: bool
         ) -> Any:
             cmd = {"findAndModify": self._name, "query": filter, "new": return_document}
             if let is not None:
@@ -3304,14 +3294,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def find_one_and_delete(
         self,
         filter: Mapping[str, Any],
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
-        sort: Optional[_IndexList] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        projection: Mapping[str, Any] | Iterable[str] | None = None,
+        sort: _IndexList | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
-    ) -> Optional[_DocumentType]:
+    ) -> _DocumentType | None:
         """Finds a single document and deletes it, returning the document.
 
           >>> db.test.count_documents({'x': 1})
@@ -3398,16 +3388,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         self,
         filter: Mapping[str, Any],
         replacement: Mapping[str, Any],
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
-        sort: Optional[_IndexList] = None,
+        projection: Mapping[str, Any] | Iterable[str] | None = None,
+        sort: _IndexList | None = None,
         upsert: bool = False,
         return_document: bool = ReturnDocument.BEFORE,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
-    ) -> Optional[_DocumentType]:
+    ) -> _DocumentType | None:
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
 
@@ -3516,18 +3506,18 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def find_one_and_update(
         self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
-        sort: Optional[_IndexList] = None,
+        update: Mapping[str, Any] | _Pipeline,
+        projection: Mapping[str, Any] | Iterable[str] | None = None,
+        sort: _IndexList | None = None,
         upsert: bool = False,
         return_document: bool = ReturnDocument.BEFORE,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[ClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: ClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
-    ) -> Optional[_DocumentType]:
+    ) -> _DocumentType | None:
         """Finds a single document and updates it, returning either the
         original or the updated document.
 

@@ -32,10 +32,8 @@ from typing import (
     Any,
     Generic,
     NoReturn,
-    Optional,
     Protocol,
     TypeVar,
-    Union,
 )
 
 from pymongo import _csot
@@ -96,9 +94,9 @@ class _ConnectionTelemetryInfo(Protocol):
     """Protocol for connection fields consumed by :class:`~pymongo._telemetry._CommandTelemetry`."""
 
     id: int
-    server_connection_id: Optional[int]
+    server_connection_id: int | None
     address: tuple[str, int]
-    service_id: Optional[ObjectId]
+    service_id: ObjectId | None
 
 
 class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
@@ -132,12 +130,12 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
         self.listeners = pool.opts._event_listeners
         self._telemetry = pool._telemetry
         self.compression_settings = pool.opts._compression_settings
-        self.compression_context: Union[SnappyContext, ZlibContext, ZstdContext, None] = None
+        self.compression_context: SnappyContext | ZlibContext | ZstdContext | None = None
         self.socket_checker: SocketChecker = SocketChecker()
-        self.oidc_token_gen_id: Optional[int] = None
+        self.oidc_token_gen_id: int | None = None
         # Support for mechanism negotiation on the initial handshake.
-        self.negotiated_mechs: Optional[list[str]] = None
-        self.auth_ctx: Optional[_AuthContext] = None
+        self.negotiated_mechs: list[str] | None = None
+        self.auth_ctx: _AuthContext | None = None
 
         # The pool's generation changes with each reset() so we can close
         # sockets created before the last reset.
@@ -148,8 +146,8 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
         self.opts = pool.opts
         self.more_to_come: bool = False
         # For load balancer support.
-        self.service_id: Optional[ObjectId] = None
-        self.server_connection_id: Optional[int] = None
+        self.service_id: ObjectId | None = None
+        self.server_connection_id: int | None = None
         # When executing a transaction in load balancing mode, this flag is
         # set to true to indicate that the session now owns the connection.
         self.pinned_txn = False
@@ -160,14 +158,14 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
         # For gossiping $clusterTime from the connection handshake to the client.
         self._cluster_time = None
 
-    def set_conn_timeout(self, timeout: Optional[float]) -> None:
+    def set_conn_timeout(self, timeout: float | None) -> None:
         """Cache last timeout to avoid duplicate calls to conn.settimeout."""
         if timeout == self.last_timeout:
             return
         self.last_timeout = timeout
         self.conn.get_conn.settimeout(timeout)
 
-    def apply_timeout(self, cmd: Optional[MutableMapping[str, Any]]) -> Optional[float]:
+    def apply_timeout(self, cmd: MutableMapping[str, Any] | None) -> float | None:
         # CSOT: use remaining timeout when set.
         timeout = _csot.remaining()
         if timeout is None:
@@ -217,7 +215,7 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
             raise NotPrimaryError("not primary", {"ok": 0, "errmsg": "not primary", "code": 10107})
 
     def validate_session(
-        self, client: Optional[_AgnosticMongoClient], session: Optional[_AgnosticClientSession]
+        self, client: _AgnosticMongoClient | None, session: _AgnosticClientSession | None
     ) -> None:
         """Validate this session before use with client.
 
@@ -232,8 +230,8 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
     def send_cluster_time(
         self,
         command: MutableMapping[str, Any],
-        session: Optional[_AgnosticClientSession],
-        client: Optional[_AgnosticMongoClient],
+        session: _AgnosticClientSession | None,
+        client: _AgnosticMongoClient | None,
     ) -> None:
         """Add $clusterTime."""
         if client:
@@ -272,7 +270,7 @@ class _AgnosticBasePool(Generic[_ConnT]):
         address: _Address,
         options: PoolOptions,
         is_sdam: bool = False,
-        client_id: Optional[ObjectId] = None,
+        client_id: ObjectId | None = None,
     ):
         """
         :param address: a (hostname, port) tuple
@@ -295,7 +293,7 @@ class _AgnosticBasePool(Generic[_ConnT]):
         # Monotonically increasing connection ID required for CMAP Events.
         self.next_connection_id = 1
         # Track whether the sockets in this pool are writeable or not.
-        self.is_writable: Optional[bool] = None
+        self.is_writable: bool | None = None
 
         # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
@@ -311,7 +309,7 @@ class _AgnosticBasePool(Generic[_ConnT]):
             self.max_pool_size = float("inf")
         self._pending = 0
         self._max_connecting = self.opts.max_connecting
-        self._ssl_session_cache: Optional[list[Any]] = (
+        self._ssl_session_cache: list[Any] | None = (
             [None] if self.opts._ssl_context is not None and not _TLS_SESSION_REUSE_LEAKS else None
         )
         self._telemetry = _CmapTelemetry(
@@ -331,7 +329,7 @@ class _AgnosticBasePool(Generic[_ConnT]):
     def closed(self) -> bool:
         return self.state == PoolState.CLOSED
 
-    def stale_generation(self, gen: int, service_id: Optional[ObjectId]) -> bool:
+    def stale_generation(self, gen: int, service_id: ObjectId | None) -> bool:
         return self.gen.stale(gen, service_id)
 
     def _handle_connection_error(self, error: BaseException) -> None:
@@ -376,7 +374,7 @@ class _AgnosticBasePool(Generic[_ConnT]):
 
     def _checkin_apply(
         self, conn: _ConnT, txn: bool, cursor: bool, forked: bool
-    ) -> tuple[Optional[str], bool, bool]:
+    ) -> tuple[str | None, bool, bool]:
         """Apply checkin accounting; caller holds ``size_cond``.
 
         No cooperative I/O, so safe while a gevent greenlet unwinds. Returns
@@ -390,7 +388,7 @@ class _AgnosticBasePool(Generic[_ConnT]):
         self.requests -= 1
         self.active_sockets -= 1
         self.operation_count -= 1
-        close_conn_reason: Optional[str] = None
+        close_conn_reason: str | None = None
         emit_closed = False
         appended = False
         if not forked:
@@ -429,7 +427,7 @@ class _AgnosticBasePool(Generic[_ConnT]):
         )
 
 
-def _get_ssl_session(ssl_sock: Any) -> Optional[Any]:
+def _get_ssl_session(ssl_sock: Any) -> Any | None:
     """Return the TLS session from an SSL socket, handling both PyOpenSSL and stdlib ssl."""
     if hasattr(ssl_sock, "get_session"):
         return ssl_sock.get_session()
@@ -514,8 +512,8 @@ else:
 def _raise_connection_failure(
     address: Any,
     error: Exception,
-    msg_prefix: Optional[str] = None,
-    timeout_details: Optional[dict[str, float]] = None,
+    msg_prefix: str | None = None,
+    timeout_details: dict[str, float] | None = None,
 ) -> NoReturn:
     """Convert a socket.error to ConnectionFailure and raise it."""
     host, port = address
@@ -528,7 +526,7 @@ def _raise_connection_failure(
         msg = msg_prefix + msg
     if "configured timeouts" not in msg:
         msg += format_timeout_details(timeout_details)
-    if isinstance(error, socket.timeout) or (
+    if isinstance(error, TimeoutError) or (
         isinstance(error, SSLErrors) and "timed out" in str(error)
     ):
         raise NetworkTimeout(msg) from error
@@ -563,7 +561,7 @@ class _PoolGeneration:
         # Overall pool generation.
         self._generation = 0
 
-    def get(self, service_id: Optional[ObjectId]) -> int:
+    def get(self, service_id: ObjectId | None) -> int:
         """Get the generation for the given service_id."""
         if service_id is None:
             return self._generation
@@ -573,7 +571,7 @@ class _PoolGeneration:
         """Get the Pool's overall generation."""
         return self._generation
 
-    def inc(self, service_id: Optional[ObjectId]) -> None:
+    def inc(self, service_id: ObjectId | None) -> None:
         """Increment the generation for the given service_id."""
         self._generation += 1
         if service_id is None:
@@ -582,7 +580,7 @@ class _PoolGeneration:
         else:
             self._generations[service_id] += 1
 
-    def stale(self, gen: int, service_id: Optional[ObjectId]) -> bool:
+    def stale(self, gen: int, service_id: ObjectId | None) -> bool:
         """Return if the given generation for a given service_id is stale."""
         return gen != self.get(service_id)
 
@@ -645,7 +643,7 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
             if timeout is None:
                 timeout = options.connect_timeout
             elif timeout <= 0:
-                raise socket.timeout("timed out")
+                raise TimeoutError("timed out")
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
             # Socket needs to be non-blocking during connection to not block the event loop
@@ -655,9 +653,9 @@ async def _async_create_connection(address: _Address, options: PoolOptions) -> s
             )
             sock.settimeout(timeout)
             return sock
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             sock.close()
-            err = socket.timeout("timed out")
+            err = TimeoutError("timed out")
             err.__cause__ = e
         except OSError as e:
             sock.close()
@@ -684,7 +682,7 @@ def _close_late_socket(future: asyncio.Future[Any]) -> None:
 
 async def _async_wrap_socket_tls(
     sock: socket.socket, address: _Address, options: PoolOptions
-) -> Union[socket.socket, _sslConn]:
+) -> socket.socket | _sslConn:
     """Given a connected socket, (host, port), and PoolOptions, apply TLS.
 
     The handshake, SNI, and certificate/hostname verification all target
@@ -749,7 +747,7 @@ async def _async_wrap_socket_tls(
 
 async def _async_configured_socket(
     address: _Address, options: PoolOptions
-) -> Union[socket.socket, _sslConn]:
+) -> socket.socket | _sslConn:
     """Given (host, port) and PoolOptions, return a raw configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
@@ -763,7 +761,7 @@ async def _async_configured_socket(
 async def _configured_protocol_interface(
     address: _Address,
     options: PoolOptions,
-    ssl_session_cache: Optional[list[Any]] = None,
+    ssl_session_cache: list[Any] | None = None,
 ) -> AsyncNetworkingInterface:
     """Given (host, port) and PoolOptions, return a configured AsyncNetworkingInterface.
 
@@ -891,7 +889,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
             if timeout is None:
                 timeout = options.connect_timeout
             elif timeout <= 0:
-                raise socket.timeout("timed out")
+                raise TimeoutError("timed out")
             sock.settimeout(timeout)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
             _set_keepalive_times(sock)
@@ -912,7 +910,7 @@ def _create_connection(address: _Address, options: PoolOptions) -> socket.socket
 
 def _wrap_socket_tls(
     sock: socket.socket, address: _Address, options: PoolOptions
-) -> Union[socket.socket, _sslConn]:
+) -> socket.socket | _sslConn:
     """Given a connected socket, (host, port), and PoolOptions, apply TLS.
 
     The handshake, SNI, and certificate/hostname verification all target
@@ -964,7 +962,7 @@ def _wrap_socket_tls(
     return ssl_sock
 
 
-def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.socket, _sslConn]:
+def _configured_socket(address: _Address, options: PoolOptions) -> socket.socket | _sslConn:
     """Given (host, port) and PoolOptions, return a raw configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
@@ -978,7 +976,7 @@ def _configured_socket(address: _Address, options: PoolOptions) -> Union[socket.
 def _configured_socket_interface(
     address: _Address,
     options: PoolOptions,
-    ssl_session_cache: Optional[list[Any]] = None,
+    ssl_session_cache: list[Any] | None = None,
 ) -> NetworkingInterface:
     """Given (host, port) and PoolOptions, return a NetworkingInterface wrapping a configured socket.
 

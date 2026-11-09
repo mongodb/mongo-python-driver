@@ -41,8 +41,6 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
-    Union,
     cast,
 )
 
@@ -79,19 +77,19 @@ async def _run_command(
     request_id: int,
     msg: bytes,
     *,
-    client: Optional[AsyncMongoClient[Any]],
-    session: Optional[AsyncClientSession],
-    listeners: Optional[_EventListeners],
-    topology_id: Optional[ObjectId],
+    client: AsyncMongoClient[Any] | None,
+    session: AsyncClientSession | None,
+    listeners: _EventListeners | None,
+    topology_id: ObjectId | None,
     codec_options: CodecOptions[_DocumentType],
-    user_fields: Optional[Mapping[str, Any]] = None,
-    orig: Optional[MutableMapping[str, Any]] = None,
-    op_id: Optional[int] = None,
-    command_name: Optional[str] = None,
+    user_fields: Mapping[str, Any] | None = None,
+    orig: MutableMapping[str, Any] | None = None,
+    op_id: int | None = None,
+    command_name: str | None = None,
     check: bool = True,
-    allowable_errors: Optional[Sequence[Union[str, int]]] = None,
+    allowable_errors: Sequence[str | int] | None = None,
     parse_write_concern_error: bool = False,
-    pool_opts: Optional[PoolOptions] = None,
+    pool_opts: PoolOptions | None = None,
     unacknowledged: bool = False,
     speculative_hello: bool = False,
     ensure_db: bool = False,
@@ -99,9 +97,9 @@ async def _run_command(
     max_doc_size: int = 0,
     more_to_come: bool = False,
     set_conn_more_to_come: bool = False,
-    unpack_res: Optional[Callable[..., Any]] = None,
-    cursor_id: Optional[int] = None,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], float]:
+    unpack_res: Callable[..., Any] | None = None,
+    cursor_id: int | None = None,
+) -> tuple[list[dict[str, Any]], _OpMsg | None, float]:
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration_s)``,
     where ``duration_s`` is the round-trip duration in seconds.
 
@@ -164,7 +162,7 @@ async def _run_command(
 
     # Fast path: skip telemetry construction when logging and APM are disabled
     # Inline enabled check here for performance
-    telemetry: Optional[_CommandTelemetry] = None
+    telemetry: _CommandTelemetry | None = None
     if (topology_id is not None and _is_debug_enabled(_COMMAND_LOGGER)) or (
         listeners is not None and listeners.enabled_for_commands
     ):
@@ -176,7 +174,7 @@ async def _run_command(
     else:
         start = time.monotonic()
 
-    reply: Optional[_OpMsg] = None
+    reply: _OpMsg | None = None
     docs: list[dict[str, Any]] = [{"ok": 1}]
     try:
         if more_to_come:
@@ -247,11 +245,11 @@ async def run_bulk_write_command(
     request_id: int,
     msg: bytes,
     *,
-    client: Optional[AsyncMongoClient[Any]],
-    orig: Optional[MutableMapping[str, Any]] = None,
+    client: AsyncMongoClient[Any] | None,
+    orig: MutableMapping[str, Any] | None = None,
     max_doc_size: int = 0,
     unacknowledged: bool = False,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], float]:
+) -> tuple[list[dict[str, Any]], _OpMsg | None, float]:
     """Send a bulk write batch and return ``(docs, reply, duration_s)``.
 
     :param bwc: Bulk write context supplying the connection, session, listeners, etc.
@@ -292,18 +290,18 @@ async def run_cursor_command(
     request_id: int,
     msg: bytes,
     *,
-    client: Optional[AsyncMongoClient[Any]],
-    session: Optional[AsyncClientSession],
-    listeners: Optional[_EventListeners],
+    client: AsyncMongoClient[Any] | None,
+    session: AsyncClientSession | None,
+    listeners: _EventListeners | None,
     codec_options: CodecOptions[_DocumentType],
     command_name: str,
-    user_fields: Optional[Mapping[str, Any]] = None,
-    pool_opts: Optional[PoolOptions] = None,
+    user_fields: Mapping[str, Any] | None = None,
+    pool_opts: PoolOptions | None = None,
     max_doc_size: int = 0,
     more_to_come: bool = False,
-    unpack_res: Optional[Callable[..., Any]] = None,
-    cursor_id: Optional[int] = None,
-) -> tuple[list[dict[str, Any]], Optional[_OpMsg], datetime.timedelta]:
+    unpack_res: Callable[..., Any] | None = None,
+    cursor_id: int | None = None,
+) -> tuple[list[dict[str, Any]], _OpMsg | None, datetime.timedelta]:
     """Run a cursor ``find``/``getMore`` operation over ``conn``.
 
     :param conn: The AsyncConnection to send on.
@@ -353,22 +351,22 @@ async def run_command(
     conn: AsyncConnection,
     dbname: str,
     spec: MutableMapping[str, Any],
-    read_preference: Optional[_ServerMode],
+    read_preference: _ServerMode | None,
     codec_options: CodecOptions[_DocumentType],
-    session: Optional[AsyncClientSession],
-    client: Optional[AsyncMongoClient[Any]],
+    session: AsyncClientSession | None,
+    client: AsyncMongoClient[Any] | None,
     check: bool = True,
-    allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-    listeners: Optional[_EventListeners] = None,
-    max_bson_size: Optional[int] = None,
-    read_concern: Optional[ReadConcern] = None,
+    allowable_errors: Sequence[str | int] | None = None,
+    listeners: _EventListeners | None = None,
+    max_bson_size: int | None = None,
+    read_concern: ReadConcern | None = None,
     parse_write_concern_error: bool = False,
-    collation: Optional[_CollationIn] = None,
-    compression_ctx: Union[SnappyContext, ZlibContext, ZstdContext, None] = None,
+    collation: _CollationIn | None = None,
+    compression_ctx: SnappyContext | ZlibContext | ZstdContext | None = None,
     unacknowledged: bool = False,
-    user_fields: Optional[Mapping[str, Any]] = None,
+    user_fields: Mapping[str, Any] | None = None,
     exhaust_allowed: bool = False,
-    write_concern: Optional[WriteConcern] = None,
+    write_concern: WriteConcern | None = None,
 ) -> _DocumentType:
     """Encode and execute a command over ``conn``, or raise socket.error.
 

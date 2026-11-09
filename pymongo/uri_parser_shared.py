@@ -27,8 +27,6 @@ from collections.abc import Mapping, MutableMapping, Sized
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
-    Union,
     cast,
 )
 from urllib.parse import unquote_plus
@@ -155,9 +153,7 @@ def parse_userinfo(userinfo: str) -> tuple[str, str]:
     return unquote_plus(user), unquote_plus(passwd)
 
 
-def parse_ipv6_literal_host(
-    entity: str, default_port: Optional[int]
-) -> tuple[str, Optional[Union[str, int]]]:
+def parse_ipv6_literal_host(entity: str, default_port: int | None) -> tuple[str, str | int | None]:
     """Validates an IPv6 literal host:port string.
 
     Returns a 2-tuple of IPv6 literal followed by port where
@@ -178,7 +174,7 @@ def parse_ipv6_literal_host(
     return entity[1:i], entity[i + 2 :]
 
 
-def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> _Address:
+def parse_host(entity: str, default_port: int | None = DEFAULT_PORT) -> _Address:
     """Validates a host string
 
     Returns a 2-tuple of host followed by port where port is default_port
@@ -190,7 +186,7 @@ def parse_host(entity: str, default_port: Optional[int] = DEFAULT_PORT) -> _Addr
                           specified in entity.
     """
     host = entity
-    port: Optional[Union[str, int]] = default_port
+    port: str | int | None = default_port
     if entity[0] == "[":
         host, port = parse_ipv6_literal_host(entity, default_port)
     elif entity.endswith(".sock"):
@@ -237,7 +233,7 @@ _IMPLICIT_TLSINSECURE_OPTS = {
 }
 
 
-def _parse_options(opts: str, delim: Optional[str]) -> _CaseInsensitiveDictionary:
+def _parse_options(opts: str, delim: str | None) -> _CaseInsensitiveDictionary:
     """Helper method for split_options which creates the options dict.
     Also handles the creation of a list for the URI tag_sets/
     readpreferencetags portion, and the use of a unicode options string.
@@ -433,7 +429,7 @@ def split_options(
     return options
 
 
-def split_hosts(hosts: str, default_port: Optional[int] = DEFAULT_PORT) -> list[_Address]:
+def split_hosts(hosts: str, default_port: int | None = DEFAULT_PORT) -> list[_Address]:
     """Takes a string of the form host1[:port],host2[:port]... and
     splits it into (host, port) tuples. If [:port] isn't present the
     default_port is used.
@@ -494,7 +490,7 @@ def _check_options(nodes: Sized, options: Mapping[str, Any]) -> None:
 
 
 def _parse_kms_tls_options(
-    kms_tls_options: Optional[Mapping[str, Any]],
+    kms_tls_options: Mapping[str, Any] | None,
     is_sync: bool,
 ) -> dict[str, SSLContext]:
     """Parse KMS TLS connection options."""
@@ -531,11 +527,11 @@ def _parse_kms_tls_options(
 
 def _validate_uri(
     uri: str,
-    default_port: Optional[int] = DEFAULT_PORT,
+    default_port: int | None = DEFAULT_PORT,
     validate: bool = True,
     warn: bool = False,
     normalize: bool = True,
-    srv_max_hosts: Optional[int] = None,
+    srv_max_hosts: int | None = None,
 ) -> dict[str, Any]:
     if uri.startswith(SCHEME):
         is_srv = False

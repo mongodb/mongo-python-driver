@@ -27,7 +27,7 @@ import time as _time
 from collections.abc import Callable
 from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
-from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import cryptography.x509 as x509
 import service_identity
@@ -114,7 +114,7 @@ class _sslConn(_SSL.Connection):
     def __init__(
         self,
         ctx: _SSL.Context,
-        sock: Optional[_socket.socket],
+        sock: _socket.socket | None,
         suppress_ragged_eofs: bool,
     ):
         self.socket_checker = _SocketChecker()
@@ -135,7 +135,7 @@ class _sslConn(_SSL.Connection):
                 # Check for closed socket.
                 if self.fileno() == -1:
                     if timeout and _time.monotonic() - start > timeout:
-                        raise _socket.timeout("timed out") from None
+                        raise TimeoutError("timed out") from None
                     raise SSLError("Underlying socket has been closed") from None
                 if isinstance(exc, _SSL.WantReadError):
                     want_read = True
@@ -148,7 +148,7 @@ class _sslConn(_SSL.Connection):
                     want_write = True
                 self.socket_checker.select(self, want_read, want_write, timeout)
                 if timeout and _time.monotonic() - start > timeout:
-                    raise _socket.timeout("timed out") from None
+                    raise TimeoutError("timed out") from None
                 continue
 
     def do_handshake(self, *args: Any, **kwargs: Any) -> None:
@@ -197,8 +197,8 @@ class _CallbackData:
     """Data class which is passed to the OCSP callback."""
 
     def __init__(self) -> None:
-        self.trusted_ca_certs: Optional[list[x509.Certificate]] = None
-        self.check_ocsp_endpoint: Optional[bool] = None
+        self.trusted_ca_certs: list[x509.Certificate] | None = None
+        self.check_ocsp_endpoint: bool | None = None
         self.ocsp_response_cache = _OCSPCache()
 
 
@@ -253,7 +253,7 @@ class SSLContext:
 
     check_hostname = property(__get_check_hostname, __set_check_hostname)
 
-    def __get_check_ocsp_endpoint(self) -> Optional[bool]:
+    def __get_check_ocsp_endpoint(self) -> bool | None:
         return self._callback_data.check_ocsp_endpoint
 
     def __set_check_ocsp_endpoint(self, value: bool) -> None:
@@ -276,9 +276,9 @@ class SSLContext:
 
     def load_cert_chain(
         self,
-        certfile: Union[str, bytes],
-        keyfile: Union[str, bytes, None] = None,
-        password: Optional[str] = None,
+        certfile: str | bytes,
+        keyfile: str | bytes | None = None,
+        password: str | None = None,
     ) -> None:
         """Load a private key and the corresponding certificate. The certfile
         string must be the path to a single file in PEM format containing the
@@ -292,7 +292,7 @@ class SSLContext:
         # Password callback MUST be set first or it will be ignored.
         if password:
 
-            def _pwcb(_max_length: int, _prompt_twice: bool, _user_data: Optional[bytes]) -> bytes:
+            def _pwcb(_max_length: int, _prompt_twice: bool, _user_data: bytes | None) -> bytes:
                 # XXX:We could check the password length against what OpenSSL
                 # tells us is the max, but we can't raise an exception, so...
                 # warn?
@@ -304,9 +304,7 @@ class SSLContext:
         self._ctx.use_privatekey_file(keyfile or certfile)
         self._ctx.check_privatekey()
 
-    def load_verify_locations(
-        self, cafile: Optional[str] = None, capath: Optional[str] = None
-    ) -> None:
+    def load_verify_locations(self, cafile: str | None = None, capath: str | None = None) -> None:
         """Load a set of "certification authority"(CA) certificates used to
         validate other peers' certificates when `~verify_mode` is other than
         ssl.CERT_NONE.
@@ -368,8 +366,8 @@ class SSLContext:
         server_side: bool = False,
         do_handshake_on_connect: bool = True,
         suppress_ragged_eofs: bool = True,
-        server_hostname: Optional[str] = None,
-        session: Optional[_SSL.Session] = None,
+        server_hostname: str | None = None,
+        session: _SSL.Session | None = None,
     ) -> _sslConn:
         """Wrap an existing Python socket connection and return a TLS socket
         object.
