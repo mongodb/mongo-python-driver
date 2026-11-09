@@ -922,7 +922,7 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
 
 
 class TestBulkWriteConcern(BulkTestBase):
-    w: Optional[int]
+    w: int | None
     secondary: MongoClient
 
     def setUp(self):

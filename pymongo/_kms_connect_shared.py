@@ -30,9 +30,9 @@ import ssl
 import threading
 import time
 import urllib.parse
-from collections.abc import Awaitable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any
 
 from pymongo.errors import ConfigurationError
 
@@ -187,8 +187,8 @@ class HTTPProxyKMSConnect:
     def __init__(
         self,
         proxy_url: str,
-        ssl_context: Optional[ssl.SSLContext] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        ssl_context: ssl.SSLContext | None = None,
+        headers: Mapping[str, str] | None = None,
     ):
         if not isinstance(proxy_url, str):
             raise TypeError(f"proxy_url must be a string, not {type(proxy_url)}")
@@ -226,7 +226,7 @@ class HTTPProxyKMSConnect:
             raise ConfigurationError(f"invalid proxy_url: {_redact_proxy_url(proxy_url)!r}")
         self.port = port
         if split.scheme == "https":
-            self.ssl_context: Optional[ssl.SSLContext] = (
+            self.ssl_context: ssl.SSLContext | None = (
                 ssl.create_default_context() if ssl_context is None else ssl_context
             )
         else:
@@ -294,7 +294,7 @@ class HTTPProxyKMSConnect:
             raise OSError(f"proxy refused CONNECT to {target}: {status!r}")
 
     def _bridge(
-        self, proxy: socket.socket, late_sockets: Optional[list[socket.socket]] = None
+        self, proxy: socket.socket, late_sockets: list[socket.socket] | None = None
     ) -> socket.socket:
         """Relay a TLS proxy connection through a socketpair.
 
@@ -368,7 +368,7 @@ class HTTPProxyKMSConnect:
         return driver_side
 
     def __call__(
-        self, context: KMSConnectContext, *, deadline: Optional[float] = None
+        self, context: KMSConnectContext, *, deadline: float | None = None
     ) -> socket.socket:
         # One deadline for all three phases; per-phase timeouts would multiply
         # the caller's budget.
@@ -380,7 +380,7 @@ class HTTPProxyKMSConnect:
         self,
         context: KMSConnectContext,
         deadline: float,
-        late_sockets: Optional[list[socket.socket]] = None,
+        late_sockets: list[socket.socket] | None = None,
     ) -> socket.socket:
         # A configurable KMS host could inject CR/LF into, or split the
         # request line of, the CONNECT request.
@@ -414,7 +414,7 @@ class HTTPProxyKMSConnect:
         #
         # DNS resolution is not bounded by the deadline; a slow lookup can
         # exceed the budget, as in the driver's own connect path.
-        last_error: Optional[OSError] = None
+        last_error: OSError | None = None
         for family, socktype, proto, _, sockaddr in socket.getaddrinfo(
             self.host, self.port, type=socket.SOCK_STREAM
         ):

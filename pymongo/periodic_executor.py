@@ -21,7 +21,7 @@ import sys
 import threading
 import time
 import weakref
-from typing import Any, Optional
+from typing import Any
 
 from pymongo import _csot, _op_id
 from pymongo.lock import _create_lock
@@ -35,7 +35,7 @@ class AsyncPeriodicExecutor:
         interval: float,
         min_interval: float,
         target: Any,
-        name: Optional[str] = None,
+        name: str | None = None,
     ):
         """Run a target function periodically on a background task.
 
@@ -52,7 +52,7 @@ class AsyncPeriodicExecutor:
         self._min_interval = min_interval
         self._target = target
         self._stopped = False
-        self._task: Optional[asyncio.Task[Any]] = None
+        self._task: asyncio.Task[Any] | None = None
         self._name = name
         self._skip_sleep = False
 
@@ -78,7 +78,7 @@ class AsyncPeriodicExecutor:
         if self._task is not None:
             self._task.cancel()
 
-    async def join(self, timeout: Optional[int] = None) -> None:
+    async def join(self, timeout: int | None = None) -> None:
         if self._task is not None:
             await asyncio.wait([self._task], timeout=timeout)  # type-ignore: [arg-type]
 
@@ -143,7 +143,7 @@ class PeriodicExecutor:
         interval: float,
         min_interval: float,
         target: Any,
-        name: Optional[str] = None,
+        name: str | None = None,
     ):
         """Run a target function periodically on a background thread.
 
@@ -164,7 +164,7 @@ class PeriodicExecutor:
         self._min_interval = min_interval
         self._target = target
         self._stopped = False
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._name = name
         self._skip_sleep = False
         self._thread_will_exit = False
@@ -236,7 +236,7 @@ class PeriodicExecutor:
         """
         self._stopped = True
 
-    def join(self, timeout: Optional[int] = None) -> None:
+    def join(self, timeout: int | None = None) -> None:
         if self._thread is not None:
             try:
                 self._thread.join(timeout)

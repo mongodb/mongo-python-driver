@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pymongo import _csot
 from pymongo.cursor_shared import _CURSOR_DOC_FIELDS, _AgnosticCursorBase, _split_message
@@ -38,7 +38,7 @@ _IS_SYNC = True
 
 
 def _operation_to_command(
-    operation: Union[_Query, _GetMore],
+    operation: _Query | _GetMore,
     conn: Connection,
     apply_timeout: bool,
 ) -> tuple[dict[str, Any], str]:
@@ -55,7 +55,7 @@ class _ConnectionManager:
     """Used with exhaust cursors to ensure the connection is returned."""
 
     def __init__(self, conn: Connection, more_to_come: bool):
-        self.conn: Optional[Connection] = conn
+        self.conn: Connection | None = conn
         self.more_to_come = more_to_come
         self._lock = _create_lock()
 
@@ -73,24 +73,24 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
     """Synchronous cursor base class."""
 
     @property
-    def session(self) -> Optional[ClientSession]:
+    def session(self) -> ClientSession | None:
         """The cursor's :class:`~pymongo.client_session.ClientSession`, or None.
 
         .. versionadded:: 3.6
         """
-        return cast("Optional[ClientSession]", super().session)
+        return cast("ClientSession | None", super().session)
 
     @abstractmethod
-    def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]
+    def _next_batch(self, result: list, total: int | None = None) -> bool:  # type: ignore[type-arg]
         ...
 
     @abstractmethod
     def _unpack_response(
         self,
         response: _OpMsg,
-        cursor_id: Optional[int],
+        cursor_id: int | None,
         codec_options: Any,
-        user_fields: Optional[Mapping[str, Any]] = None,
+        user_fields: Mapping[str, Any] | None = None,
         legacy_response: bool = False,
     ) -> Sequence[_DocumentOut]: ...
 
@@ -98,7 +98,7 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
     def _run_with_conn(
         self,
         conn: Connection,
-        operation: Union[_Query, _GetMore],
+        operation: _Query | _GetMore,
         read_preference: _ServerMode,
     ) -> Response:
         """Execute a cursor operation on the given connection and return a Response.
@@ -191,7 +191,7 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
         self.close()
 
     @_csot.apply
-    def to_list(self, length: Optional[int] = None) -> list[_DocumentType]:
+    def to_list(self, length: int | None = None) -> list[_DocumentType]:
         """Converts the contents of this cursor to a list more efficiently than ``[doc for doc in cursor]``.
 
         To use::

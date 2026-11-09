@@ -141,7 +141,7 @@ class ConcurrentRunner(PARENT):
         async def start(self):
             self.task = asyncio.create_task(self.run(), name=self.name)
 
-        async def join(self, timeout: Optional[float] = None):  # type: ignore[override]
+        async def join(self, timeout: float | None = None):  # type: ignore[override]
             if self.task is not None:
                 await asyncio.wait([self.task], timeout=timeout)
 

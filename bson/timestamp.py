@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import calendar
 import datetime
-from typing import Any, Union
+from typing import Any
 
 from bson._helpers import _getstate_slots, _setstate_slots
 from bson.tz_util import utc
@@ -36,7 +36,7 @@ class Timestamp:
 
     _type_marker = 17
 
-    def __init__(self, time: Union[datetime.datetime, int], inc: int) -> None:
+    def __init__(self, time: datetime.datetime | int, inc: int) -> None:
         """Create a new :class:`Timestamp`.
 
         This class is only for use with the MongoDB opLog. If you need

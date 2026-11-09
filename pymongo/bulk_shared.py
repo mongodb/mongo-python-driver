@@ -18,7 +18,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, MutableMapping
-from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
+from typing import TYPE_CHECKING, Any, NoReturn
 
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
@@ -149,9 +149,9 @@ class _AgnosticBulkBase:
         self,
         collection: _AgnosticCollection[_DocumentType],
         ordered: bool,
-        bypass_document_validation: Optional[bool],
-        comment: Optional[str] = None,
-        let: Optional[Any] = None,
+        bypass_document_validation: bool | None,
+        comment: str | None = None,
+        let: Any | None = None,
     ) -> None:
         """Initialize an _AgnosticBulkBase instance."""
         self.collection = collection.with_options(
@@ -162,7 +162,7 @@ class _AgnosticBulkBase:
         self.let = let
         if self.let is not None:
             validate_is_document_type("let", self.let)
-        self.comment: Optional[str] = comment
+        self.comment: str | None = comment
         self.ordered = ordered
         self.ops: list[tuple[int, Mapping[str, Any]]] = []
         self.executed = False
@@ -199,13 +199,13 @@ class _AgnosticBulkBase:
     def add_update(
         self,
         selector: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
+        update: Mapping[str, Any] | _Pipeline,
         multi: bool,
-        upsert: Optional[bool],
-        collation: Optional[Mapping[str, Any]] = None,
-        array_filters: Optional[list[Mapping[str, Any]]] = None,
-        hint: Union[str, dict[str, Any], None] = None,
-        sort: Optional[Mapping[str, Any]] = None,
+        upsert: bool | None,
+        collation: Mapping[str, Any] | None = None,
+        array_filters: list[Mapping[str, Any]] | None = None,
+        hint: str | dict[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
     ) -> None:
         """Create an update document and add it to the list of ops."""
         validate_ok_for_update(update)
@@ -232,10 +232,10 @@ class _AgnosticBulkBase:
         self,
         selector: Mapping[str, Any],
         replacement: Mapping[str, Any],
-        upsert: Optional[bool],
-        collation: Optional[Mapping[str, Any]] = None,
-        hint: Union[str, dict[str, Any], None] = None,
-        sort: Optional[Mapping[str, Any]] = None,
+        upsert: bool | None,
+        collation: Mapping[str, Any] | None = None,
+        hint: str | dict[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
     ) -> None:
         """Create a replace document and add it to the list of ops."""
         validate_ok_for_replace(replacement)
@@ -256,8 +256,8 @@ class _AgnosticBulkBase:
         self,
         selector: Mapping[str, Any],
         limit: int,
-        collation: Optional[Mapping[str, Any]] = None,
-        hint: Union[str, dict[str, Any], None] = None,
+        collation: Mapping[str, Any] | None = None,
+        hint: str | dict[str, Any] | None = None,
     ) -> None:
         """Create a delete document and add it to the list of ops."""
         cmd: dict[str, Any] = {"q": selector, "limit": limit}
@@ -271,7 +271,7 @@ class _AgnosticBulkBase:
             self.is_retryable = False
         self.ops.append((_DELETE, cmd))
 
-    def gen_ordered(self) -> Iterator[Optional[_Run]]:
+    def gen_ordered(self) -> Iterator[_Run | None]:
         """Generate batches of operations, batched by type of
         operation, in the order **provided**.
         """

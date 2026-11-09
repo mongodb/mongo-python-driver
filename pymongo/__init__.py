@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 from contextlib import AbstractContextManager
-from typing import Optional
 
 __all__ = [
     "ASCENDING",
@@ -121,7 +120,7 @@ version = __version__
 """Current version of PyMongo."""
 
 
-def timeout(seconds: Optional[float]) -> AbstractContextManager[None]:
+def timeout(seconds: float | None) -> AbstractContextManager[None]:
     """**(Provisional)** Apply the given timeout for a block of operations.
 
     .. note:: :func:`~pymongo.timeout` is currently provisional. Backwards
