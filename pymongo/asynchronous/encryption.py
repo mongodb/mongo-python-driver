@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import asyncio
-import functools
 import socket
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
@@ -471,47 +470,6 @@ class _Encrypter:
             self._internal_client = None
 
 
-@functools.lru_cache(maxsize=1)
-def _string_opts_kwarg() -> str:
-    """The name the installed pymongocrypt gives the string index options.
-
-    pymongocrypt renamed ``text_opts`` to ``string_opts`` in 1.19 and accepts
-    only one name per release. The rename landed on master before any release
-    carried it, so resolve the name from the installed signature rather than
-    from a version comparison. Resolved lazily and cached because importing
-    :mod:`inspect` is too expensive to do on the import path.
-    """
-    import inspect
-
-    params = inspect.signature(AsyncExplicitEncrypter.encrypt).parameters
-    return "string_opts" if "string_opts" in params else "text_opts"
-
-
-def _resolve_string_opts(
-    string_opts: Optional[StringOpts], text_opts: Optional[StringOpts]
-) -> Optional[StringOpts]:
-    """Resolve string_opts and its former name, text_opts.
-
-    pymongocrypt accepts only one of the two names per release, so passing the
-    name the installed pymongocrypt does not support is an error.
-    """
-    if string_opts is not None and text_opts is not None:
-        raise ConfigurationError("Cannot set both string_opts and text_opts")
-    if string_opts is None and text_opts is None:
-        return None
-    if text_opts is not None and _string_opts_kwarg() == "string_opts":
-        raise ConfigurationError(
-            "text_opts is not supported by the installed pymongocrypt "
-            "(1.19 or later). Use string_opts instead."
-        )
-    if string_opts is not None and _string_opts_kwarg() == "text_opts":
-        raise ConfigurationError(
-            "string_opts requires pymongocrypt 1.19 or later. Use text_opts "
-            "with the installed pymongocrypt, or upgrade pymongocrypt."
-        )
-    return string_opts if string_opts is not None else text_opts
-
-
 class AsyncClientEncryption(Generic[_DocumentType]):
     """Explicit client-side field level encryption."""
 
@@ -897,7 +855,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts_bytes,
                 is_expression=is_expression,
-                **({_string_opts_kwarg(): string_opts_bytes} if string_opts_bytes else {}),
+                string_opts=string_opts_bytes,
             )
             return decode(encrypted_doc)["v"]
 
@@ -911,7 +869,6 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         contention_factor: Optional[int] = None,
         range_opts: Optional[RangeOpts] = None,
         string_opts: Optional[StringOpts] = None,
-        text_opts: Optional[StringOpts] = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -934,12 +891,11 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             :class:`RangeOpts` for some valid options.
         :param string_opts: Index options for `prefix`, `suffix`, and
             `substring` queries. See :class:`StringOpts` for some valid options.
-        :param text_opts: **DEPRECATED** - The former name of `string_opts`,
-            added in pymongocrypt 1.16 and accepted only through pymongocrypt
-            1.18. Passing it to pymongocrypt 1.19 or later, or passing both
-            names, raises :exc:`~pymongo.errors.ConfigurationError`.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+
+        .. versionchanged:: 4.20
+           Removed the `text_opts` parameter.
 
         .. versionchanged:: 4.18
            Added the `string_opts` parameter, replacing the deprecated
@@ -968,7 +924,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts,
                 is_expression=False,
-                string_opts=_resolve_string_opts(string_opts, text_opts),
+                string_opts=string_opts,
             ),
         )
 

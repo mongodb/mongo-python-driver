@@ -7,9 +7,15 @@ Changes in Version 4.20.0 (2026/XX/XX)
 - The client handshake metadata now reports a detected coding agent in
   ``client.env.agent`` (`PYTHON-5929`_).
 - Removed the beta ``QueryType.PREFIXPREVIEW``, ``QueryType.SUFFIXPREVIEW``,
-  and ``QueryType.SUBSTRINGPREVIEW`` query types. Use ``QueryType.PREFIX``,
-  ``QueryType.SUFFIX``, and ``QueryType.SUBSTRING`` instead (requires MongoDB
+  and ``QueryType.SUBSTRINGPREVIEW`` query types. Use
+  :attr:`~pymongo.encryption.QueryType.PREFIX`,
+  :attr:`~pymongo.encryption.QueryType.SUFFIX`, and
+  :attr:`~pymongo.encryption.QueryType.SUBSTRING` instead (requires MongoDB
   9.0+ and pymongocrypt 1.21.0+) (`PYTHON-5959`_).
+- Removed the deprecated ``text_opts`` parameter of
+  :meth:`~pymongo.encryption.ClientEncryption.encrypt` and
+  :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.encrypt`.
+  Use ``string_opts`` (`PYTHON-5959`_).
 
 Bug fixes
 .........
