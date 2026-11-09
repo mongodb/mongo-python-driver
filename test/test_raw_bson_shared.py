@@ -303,7 +303,7 @@ class TestRawBSONDocument(UnitTest):
         ]
         rawdoc = RawBSONDocument(encode(SON(keyvaluepairs)))
 
-        for rkey, elt in zip(rawdoc, keyvaluepairs):
+        for rkey, elt in zip(rawdoc, keyvaluepairs, strict=True):
             self.assertEqual(rkey, elt[0])
 
     def test_contains_code_with_scope(self):
