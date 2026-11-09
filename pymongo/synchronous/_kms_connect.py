@@ -102,11 +102,11 @@ def _connect_kms(
         except asyncio.CancelledError:
             task.add_done_callback(_close_late_socket)
             raise
-        except asyncio.TimeoutError:
+        except TimeoutError:
             task.add_done_callback(_close_late_socket)
             _raise_connection_failure(
                 address,
-                socket.timeout("timed out"),
+                TimeoutError("timed out"),
                 timeout_details=_get_timeout_details(opts),
             )
     if not isinstance(sock, socket.socket) or isinstance(sock, ssl.SSLSocket):

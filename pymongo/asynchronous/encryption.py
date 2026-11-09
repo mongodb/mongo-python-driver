@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import socket
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
@@ -210,7 +209,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             except Exception as exc:
                 # Wrap I/O errors in PyMongo exceptions.
                 if isinstance(exc, BLOCKING_IO_ERRORS):
-                    exc = socket.timeout("timed out")
+                    exc = TimeoutError("timed out")
                 # Async raises an OSError instead of returning empty bytes.
                 if isinstance(exc, OSError):
                     msg_prefix = "KMS connection closed"
