@@ -80,12 +80,12 @@ class DatetimeMS:
     def __le__(self, other: DatetimeMS | int) -> bool:
         return self._value <= other
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, DatetimeMS):
             return self._value == other._value
         return False
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         if isinstance(other, DatetimeMS):
             return self._value != other._value
         return True

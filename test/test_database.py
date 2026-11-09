@@ -211,7 +211,7 @@ class TestDatabase(IntegrationTest):
         db.capped.insert_one({})
         db.non_capped.insert_one({})
         self.addCleanup(client.drop_database, db.name)
-        filter: None | Mapping[str, Any]
+        filter: Mapping[str, Any] | None
         # Should not send nameOnly.
         for filter in ({"options.capped": True}, {"options.capped": True, "name": "capped"}):
             listener.reset()

@@ -32,13 +32,13 @@ class MaxKey:
     def __setstate__(self, state: Any) -> None:
         pass
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, MaxKey)
 
     def __hash__(self) -> int:
         return hash(self._type_marker)
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __le__(self, other: Any) -> bool:

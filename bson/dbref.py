@@ -109,14 +109,14 @@ class DBRef:
             return f"DBRef({self.collection!r}, {self.id!r}{extra})"
         return f"DBRef({self.collection!r}, {self.id!r}, {self.database!r}{extra})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, DBRef):
             us = (self.__database, self.__collection, self.__id, self.__kwargs)
             them = (other.__database, other.__collection, other.__id, other.__kwargs)
             return us == them
         return NotImplemented
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __hash__(self) -> int:

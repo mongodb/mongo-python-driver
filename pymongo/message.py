@@ -754,8 +754,7 @@ def _client_construct_op_msg(
     buf.write(b"\x00\x00\x00\x00")
     buf.write(b"ops\x00")
     # Write all the ops documents
-    for op_encoded in to_send_ops_encoded:
-        buf.write(op_encoded)
+    buf.writelines(to_send_ops_encoded)
     resume_location = buf.tell()
     # Write type 1 section size
     length = buf.tell()
@@ -770,8 +769,7 @@ def _client_construct_op_msg(
     buf.write(b"\x00\x00\x00\x00")
     buf.write(b"nsInfo\x00")
     # Write all the nsInfo documents
-    for ns_encoded in to_send_ns_encoded:
-        buf.write(ns_encoded)
+    buf.writelines(to_send_ns_encoded)
     # Write type 1 section size
     length = buf.tell()
     buf.seek(size_location)

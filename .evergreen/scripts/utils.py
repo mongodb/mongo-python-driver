@@ -281,7 +281,7 @@ def handle_env_overrides(parser: argparse.ArgumentParser, opts: argparse.Namespa
 def read_env(path: Path | str) -> dict[str, str]:
     config = dict()
     with Path(path).open() as fid:
-        for line in fid.readlines():
+        for line in fid:
             if "=" not in line:
                 continue
             name, _, value = line.strip().partition("=")

@@ -294,12 +294,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._database!r}, {self._name!r})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, AsyncCollection):
             return self._database == other.database and self._name == other.name
         return NotImplemented
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __hash__(self) -> int:

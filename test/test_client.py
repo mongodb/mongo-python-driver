@@ -853,7 +853,7 @@ class ClientUnitTest(UnitTest):
     @skipIf(os.environ.get("DEBUG_LOG"), "Enabling debug logs breaks this test")
     @patch("pymongo.synchronous.srv_resolver._SrvResolver.get_hosts")
     def test_detected_environment_warning(self, mock_get_hosts):
-        with self._caplog.at_level(logging.WARN):
+        with self._caplog.at_level(logging.WARNING):
             normal_hosts = [
                 "host.cosmos.azure.com",
                 "host.docdb.amazonaws.com",
