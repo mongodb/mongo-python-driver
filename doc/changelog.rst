@@ -6,6 +6,17 @@ Changes in Version 4.20.0 (2026/XX/XX)
 
 - The client handshake metadata now reports a detected coding agent in
   ``client.env.agent`` (`PYTHON-5929`_).
+- Removed the beta ``QueryType.PREFIXPREVIEW``, ``QueryType.SUFFIXPREVIEW``,
+  and ``QueryType.SUBSTRINGPREVIEW`` query types. Use
+  :attr:`~pymongo.encryption.QueryType.PREFIX`,
+  :attr:`~pymongo.encryption.QueryType.SUFFIX`, and
+  :attr:`~pymongo.encryption.QueryType.SUBSTRING` instead (requires MongoDB
+  9.0+ and pymongocrypt 1.21.0+) (`PYTHON-5959`_).
+- Removed the deprecated ``text_opts`` parameter of
+  :meth:`~pymongo.encryption.ClientEncryption.encrypt` and
+  :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.encrypt`, and
+  the ``TextOpts`` class. Use ``string_opts`` and
+  :class:`~pymongo.encryption_options.StringOpts` instead (`PYTHON-5959`_).
 
 Bug fixes
 .........
@@ -36,6 +47,7 @@ Bug fixes
   Users of Python 3.12 and 3.13 should upgrade to at least those versions (`PYTHON-6182`_).
 
 .. _PYTHON-5929: https://jira.mongodb.org/browse/PYTHON-5929
+.. _PYTHON-5959: https://jira.mongodb.org/browse/PYTHON-5959
 .. _PYTHON-6172: https://jira.mongodb.org/browse/PYTHON-6172
 .. _PYTHON-6149: https://jira.mongodb.org/browse/PYTHON-6149
 .. _PYTHON-5873: https://jira.mongodb.org/browse/PYTHON-5873

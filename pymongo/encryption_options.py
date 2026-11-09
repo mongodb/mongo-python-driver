@@ -19,7 +19,6 @@
 
 from __future__ import annotations
 
-import warnings
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any, TypedDict
 
@@ -357,7 +356,6 @@ class StringOpts:
         :param diacritic_sensitive: Whether string indexes for this field are diacritic sensitive.
 
         .. versionadded:: 4.18
-           ``StringOpts`` replaces ``TextOpts``, which is deprecated.
         """
         self.substring = substring
         self.prefix = prefix
@@ -416,29 +414,3 @@ class SuffixOpts(TypedDict):
     strMinQueryLength: int
     # strMaxQueryLength is the maximum allowed query length. Querying with a longer string will error.
     strMaxQueryLength: int
-
-
-class TextOpts(StringOpts):
-    """**DEPRECATED** Options to configure encrypted queries using the text algorithm.
-
-    .. note:: ``TextOpts`` is deprecated. Use :class:`StringOpts` instead.
-       ``TextOpts`` corresponds to the ``text_opts`` parameter of
-       :meth:`~pymongo.encryption.ClientEncryption.encrypt`, which pymongocrypt
-       added in 1.16 and renamed to ``string_opts`` in 1.19. Passing
-       ``TextOpts`` as ``text_opts`` therefore only works with pymongocrypt
-       1.16 through 1.18; with pymongocrypt 1.19 or later, pass
-       :class:`StringOpts` as ``string_opts``.
-
-    .. versionadded:: 4.15
-
-    .. versionchanged:: 4.18
-       Deprecated in favor of :class:`StringOpts`.
-    """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        warnings.warn(
-            "TextOpts is deprecated. Use StringOpts instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super().__init__(*args, **kwargs)
