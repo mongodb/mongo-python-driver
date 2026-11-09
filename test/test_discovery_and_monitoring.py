@@ -24,6 +24,7 @@ import struct
 import sys
 import threading
 import time
+import unittest
 from asyncio import StreamReader, StreamWriter
 from pathlib import Path
 from typing import Any
@@ -681,12 +682,11 @@ class TestHeartbeatStartOrdering(PyMongoTestCase):
 
 
 class TestMonitorRecoversAfterSelfRemoval(UnitTest):
+    @unittest.skipUnless(not _IS_SYNC, "PYTHON-6226: monitor task self-cancellation is async-only")
     def test_monitor_recovers_after_self_removal(self):
         # Regression test for PYTHON-6226: a monitor that closed its own
         # server used to cancel itself, leaving the client stuck in
         # ReplicaSetNoPrimary. The client must recover.
-        if _IS_SYNC:
-            self.skipTest("PYTHON-6226: monitor task self-cancellation is async-only")
 
         # Fake two-node replica set on ephemeral ports.
         role: dict[int, str] = {}
@@ -772,11 +772,10 @@ class TestMonitorRecoversAfterSelfRemoval(UnitTest):
 
 
 class TestServerRemovalHardening(UnitTest):
+    @unittest.skipUnless(not _IS_SYNC, "PYTHON-6226: task cancellation is async-only")
     def test_removal_bookkeeping_survives_close_cancellation(self):
         # Hardening for PYTHON-6226: record the monitor and pop the server
         # before close(), so cancellation during close() cannot strand it.
-        if _IS_SYNC:
-            self.skipTest("PYTHON-6226: task cancellation is async-only")
 
         topology = create_mock_topology("mongodb://a:27017,b:27017")
         address_b = ("b", 27017)
@@ -809,10 +808,9 @@ class TestServerRemovalHardening(UnitTest):
         self.assertNotIn(address_b, topology._servers)
         self.assertIn(victim._monitor, topology._monitor_tasks)
 
+    @unittest.skipUnless(not _IS_SYNC, "PYTHON-6226: task cancellation is async-only")
     def test_pool_closes_when_monitor_close_is_cancelled(self):
         # A cancelled monitor close must not leave the application pool open.
-        if _IS_SYNC:
-            self.skipTest("PYTHON-6226: task cancellation is async-only")
 
         topology = create_mock_topology("mongodb://a:27017,b:27017")
         victim = topology._servers[("a", 27017)]
