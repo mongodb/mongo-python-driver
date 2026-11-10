@@ -75,6 +75,9 @@ def create_ocsp_variants() -> list[BuildVariant]:
     # OCSP tests on default host with all servers v4.4+.
     # MongoDB servers on Windows and MacOS do not staple OCSP responses and only support RSA.
     # Only test with MongoDB 4.4 and latest.
+    # The stapled OCSP tasks (tagged "pr") run in the rhel8 variant on every PR
+    # so cryptography-backend regressions, like the min-deps ML-KEM breakage in
+    # PYTHON-6032, are caught before merge instead of on the next weekly batch run.
     for host_name in ["rhel8", "win64", "macos"]:
         host = HOSTS[host_name]
         if host == DEFAULT_HOST:
@@ -88,18 +91,6 @@ def create_ocsp_variants() -> list[BuildVariant]:
             batchtime=BATCHTIME_WEEK,
         )
         variants.append(variant)
-        # Run the stapled OCSP tasks (tagged "pr") on every PR so cryptography-backend
-        # regressions, like the min-deps ML-KEM breakage in PYTHON-6032, are caught before merge
-        # instead of on the next weekly batch run.
-        if host == DEFAULT_HOST:
-            variants.append(
-                create_variant(
-                    [".ocsp-staple .pr"],
-                    get_variant_name("OCSP Staples", host),
-                    tags=["pr"],
-                    host=host,
-                )
-            )
     return variants
 
 
@@ -289,7 +280,8 @@ def create_test_numpy_tasks():
             else:
                 tags.append("test-numpy")
                 if python == MIN_MAX_PYTHON[-1]:
-                    tags.append("pr")
+                    # PRs run numpy on Linux only.
+                    tags.extend(["pr", "rhel8"])
                     vars["COVERAGE"] = "1"
             task_name = get_task_name(name_base, python=python, **vars)
             test_func = FunctionCall(func="test numpy", vars=vars)
@@ -308,12 +300,14 @@ def create_test_numpy_variants() -> list[BuildVariant]:
         ("win64", f"{base_display_name} Windows"),
         ("macos-arm64", None),
     ):
-        tasks = [".test-numpy"]
+        # The pr-pinned numpy task runs on Linux only.
+        tasks = [".test-numpy !.rhel8"]
         if host_name == "win64":
             tasks.append(".test-numpy-win32")
         host = HOSTS[host_name]
         tags = ["binary", "vector"]
         if host_name == "rhel8":
+            tasks = [".test-numpy"]
             tags.append("pr")
         if display_name is None:
             display_name = get_variant_name(base_display_name, host)  # noqa: PLW2901
@@ -459,19 +453,17 @@ def create_aws_auth_variants():
 
     for host_name in ["rhel8", "win64", "macos"]:
         expansions = dict()
-        tasks = [".auth-aws"]
-        tags = []
+        # The pr-pinned auth-aws tasks run on Linux only.
+        tasks = [".auth-aws !.rhel8"]
         if host_name == "macos":
-            tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ec2"]
-            tags = ["pr"]
-        elif host_name == "win64":
+            tasks = [".auth-aws !.auth-aws-web-identity !.auth-aws-ec2 !.rhel8"]
+        elif host_name == "rhel8":
             tasks = [".auth-aws"]
         host = HOSTS[host_name]
         variant = create_variant(
             tasks,
             get_variant_name("Auth AWS", host),
             host=host,
-            tags=tags,
             expansions=expansions,
         )
         variants.append(variant)
@@ -764,7 +756,8 @@ def create_aws_tasks():
         if python == MIN_MAX_PYTHON[0]:
             test_vars["TEST_MIN_DEPS"] = "1"
         if pr:
-            tags.append("pr")
+            # PRs run the auth-aws pins on Linux only.
+            tags.extend(["pr", "rhel8"])
         if pr or python == MIN_MAX_PYTHON[-1]:
             test_vars["COVERAGE"] = "1"
         name = get_task_name(f"{base_name}-{test_type}", **test_vars)

@@ -199,7 +199,7 @@ class TestPeriodicExecutor(UnitTest):
             assert isinstance(started, asyncio.Event)
             asyncio.wait_for(started.wait(), timeout=2)
 
-        close_error: Optional[BaseException] = None
+        close_error: BaseException | None = None
 
         def close_off_loop():
             nonlocal close_error
