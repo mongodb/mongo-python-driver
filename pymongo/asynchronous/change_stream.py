@@ -16,7 +16,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from types import TracebackType
+from typing import TYPE_CHECKING
 
 from bson import _bson_to_dict
 from pymongo import _csot
@@ -246,7 +247,12 @@ class AsyncChangeStream(_AgnosticChangeStream[_DocumentType, "AsyncMongoClient[_
     async def __aenter__(self) -> AsyncChangeStream[_DocumentType]:
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self.close()
 
 

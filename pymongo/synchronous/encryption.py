@@ -21,6 +21,7 @@ import uuid
 import weakref
 from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from copy import deepcopy
+from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -1153,7 +1154,12 @@ class ClientEncryption(Generic[_DocumentType]):
     def __enter__(self) -> ClientEncryption[_DocumentType]:
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.close()
 
     def _check_closed(self) -> None:

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
+from types import TracebackType
 from typing import TYPE_CHECKING, Any, cast
 
 from pymongo import _csot
@@ -187,7 +188,12 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
         """Explicitly close / kill this cursor."""
         self._die_lock()
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.close()
 
     @_csot.apply

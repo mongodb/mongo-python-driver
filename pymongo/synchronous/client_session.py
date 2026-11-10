@@ -143,6 +143,7 @@ from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
     Any,
+    Self,
     TypeVar,
 )
 
@@ -196,7 +197,12 @@ class _BoundSessionContext:
         self._session_token = _SESSION.set(self._session)  # type: ignore[assignment]
         return self._session
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         if self._session_token:
             _SESSION.reset(self._session_token)  # type: ignore[arg-type]
             self._session_token = None
@@ -210,7 +216,7 @@ class _TransactionContext:
     def __init__(self, session: ClientSession):
         self.__session = session
 
-    def __enter__(self) -> _TransactionContext:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
@@ -289,10 +295,15 @@ class ClientSession(
                 self._client._return_server_session(self._server_session)
                 self._server_session = None
 
-    def __enter__(self) -> ClientSession:
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self._end_session(lock=True)
 
     def with_transaction(

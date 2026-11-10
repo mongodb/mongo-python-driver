@@ -10,6 +10,7 @@ import collections
 import threading
 from asyncio import events, exceptions
 from collections.abc import Coroutine
+from types import TracebackType
 from typing import Any
 
 _global_lock = threading.Lock()
@@ -37,7 +38,12 @@ class _ContextManagerMixin:
         # statement for locks.
         return
 
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         self.release()  # type: ignore[attr-defined]
 
 

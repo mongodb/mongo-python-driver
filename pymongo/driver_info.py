@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 from collections import namedtuple
+from typing import Self
 
 
 class DriverInfo(namedtuple("DriverInfo", ["name", "version", "platform"])):
@@ -38,9 +39,7 @@ class DriverInfo(namedtuple("DriverInfo", ["name", "version", "platform"])):
     :class:`ValueError` is raised if it does.
     """
 
-    def __new__(
-        cls, name: str, version: str | None = None, platform: str | None = None
-    ) -> DriverInfo:
+    def __new__(cls, name: str, version: str | None = None, platform: str | None = None) -> Self:
         self = super().__new__(cls, name, version, platform)
         for key, value in self._asdict().items():
             if value is not None and not isinstance(value, str):

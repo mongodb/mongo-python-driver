@@ -27,6 +27,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     NoReturn,
+    Self,
     overload,
 )
 from urllib.parse import unquote_plus
@@ -1111,7 +1112,7 @@ def has_c() -> bool:
 class Version(tuple[int, ...]):
     """A class that can be used to compare version strings."""
 
-    def __new__(cls, *version: int) -> Version:
+    def __new__(cls, *version: int) -> Self:
         padded_version = cls._padded(version, 4)
         return super().__new__(cls, tuple(padded_version))
 
