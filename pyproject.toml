@@ -245,8 +245,8 @@ ignore = [
   "UP042",   # `str, Enum` should be `StrEnum` (changes `__str__` semantics)
   "UP017",   # `timezone.utc` preferred over `datetime.UTC` (keep existing style)
   "ICN001", # Use standard import naming conventions (pandas as pd, datetime as dt...)
+  "BLE",    # Broad `Except` exception catches (intentional)
   # These are all new defaults added in ruff 0.16.0. Individual tickets linked from PYTHON-5964 track enabling each one.
-  "BLE",    # flake8-blind-except
   "LOG",    # flake8-logging
   "PERF",   # Perflint
   "PYI",    # flake8-pyi
