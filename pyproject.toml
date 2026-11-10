@@ -248,7 +248,6 @@ ignore = [
   "BLE",    # Broad `Except` exception catches (intentional)
   # These are all new defaults added in ruff 0.16.0. Individual tickets linked from PYTHON-5964 track enabling each one.
   "FURB",   # refurb
-  "PERF",   # Perflint
   "TC",     # flake8-type-checking
   "TRY",    # tryceratops
   "INT",    # flake8-gettext

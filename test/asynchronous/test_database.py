@@ -487,7 +487,7 @@ class TestDatabase(AsyncIntegrationTest):
         )
         cursor = db.coll.find()
         async for x in cursor:
-            for k, _v in x.items():
+            for k in x.keys():
                 self.assertEqual(k, "_id")
                 break
 
