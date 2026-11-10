@@ -66,7 +66,7 @@ class ReadConcern:
             doc["level"] = self.level
         return doc
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, ReadConcern):
             return self.document == other.document
         return NotImplemented

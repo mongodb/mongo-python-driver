@@ -1283,8 +1283,8 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(doc1, decode(doc1_bson))
 
         # Valid Python regex, with flags.
-        re2 = re.compile(".*", re.I | re.M | re.S | re.U | re.X)
-        bson_re2 = Regex(".*", re.I | re.M | re.S | re.U | re.X)
+        re2 = re.compile(".*", re.IGNORECASE | re.MULTILINE | re.DOTALL | re.UNICODE | re.VERBOSE)
+        bson_re2 = Regex(".*", re.IGNORECASE | re.MULTILINE | re.DOTALL | re.UNICODE | re.VERBOSE)
 
         doc2_with_re = {"r": re2}
         doc2_with_bson_re = {"r": bson_re2}
@@ -1300,11 +1300,14 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(".*", Regex.from_native(re.compile(".*")).pattern)
         self.assertEqual(0, Regex.from_native(re.compile(b"")).flags)
 
-        regex = re.compile(b"", re.I | re.L | re.M | re.S | re.X)
-        self.assertEqual(re.I | re.L | re.M | re.S | re.X, Regex.from_native(regex).flags)
+        regex = re.compile(b"", re.IGNORECASE | re.LOCALE | re.MULTILINE | re.DOTALL | re.VERBOSE)
+        self.assertEqual(
+            re.IGNORECASE | re.LOCALE | re.MULTILINE | re.DOTALL | re.VERBOSE,
+            Regex.from_native(regex).flags,
+        )
 
-        unicode_regex = re.compile("", re.U)
-        self.assertEqual(re.U, Regex.from_native(unicode_regex).flags)
+        unicode_regex = re.compile("", re.UNICODE)
+        self.assertEqual(re.UNICODE, Regex.from_native(unicode_regex).flags)
 
     def test_regex_hash(self):
         self.assertRaises(TypeError, hash, Regex("hello"))
@@ -1313,11 +1316,11 @@ class TestBSON(unittest.TestCase):
         re1 = Regex("a")
         re2 = Regex("b")
         self.assertNotEqual(re1, re2)
-        re1 = Regex("a", re.I)
-        re2 = Regex("a", re.M)
+        re1 = Regex("a", re.IGNORECASE)
+        re2 = Regex("a", re.MULTILINE)
         self.assertNotEqual(re1, re2)
-        re1 = Regex("a", re.I)
-        re2 = Regex("a", re.I)
+        re1 = Regex("a", re.IGNORECASE)
+        re2 = Regex("a", re.IGNORECASE)
         self.assertEqual(re1, re2)
 
     def test_exception_wrapping(self):

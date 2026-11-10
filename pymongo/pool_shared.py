@@ -252,10 +252,10 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
         """Seconds since this socket was last checked into its pool."""
         return time.monotonic() - self.last_checkin_time
 
-    def __eq__(self, other: Any) -> bool:
-        return self.conn == other.conn
+    def __eq__(self, other: object) -> bool:
+        return self.conn == other.conn  # type: ignore[attr-defined]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __hash__(self) -> int:

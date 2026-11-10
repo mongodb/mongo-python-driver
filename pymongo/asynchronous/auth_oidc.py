@@ -130,7 +130,7 @@ class _OIDCAuthenticator(_OIDCAuthenticatorBase):
 
     async def _get_access_token(self) -> str | None:
         properties = self.properties
-        cb: None | OIDCCallback
+        cb: OIDCCallback | None
         resp: OIDCCallbackResult
 
         is_human = properties.human_callback is not None
