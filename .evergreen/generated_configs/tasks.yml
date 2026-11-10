@@ -5408,6 +5408,7 @@ tasks:
       - macos
       - win64
       - async
+      - pr
   - name: test-encryption-v9.0-python3.15-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
@@ -5700,6 +5701,7 @@ tasks:
       - macos
       - win64
       - async
+      - pr
       - crypt-shared
   - name: test-encryption-crypt-shared-v9.0-python3.15-async-auth-ssl-sharded-cluster-cov
     commands:

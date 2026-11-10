@@ -142,7 +142,16 @@ def _create_encryption_tasks(family, sub_test=None, crypt_shared=False, distros=
     add(MIDDLE_VERSION, "replica_set", FREE_THREADED_PYTHON, "sync", distros=distros)
     # Async, max CPython, max stable MongoDB, auth, SSL, sharded cluster.
     if split_coverage:
-        add(MAX_VERSION, "sharded_cluster", MAX_PYTHON, "async", distros=["macos", "win64"])
+        # The macos/win64 cell carries the pr pin without coverage: the suites
+        # exceed the 60-minute timeout with coverage on macOS/Win64.
+        add(
+            MAX_VERSION,
+            "sharded_cluster",
+            MAX_PYTHON,
+            "async",
+            distros=["macos", "win64"],
+            pr=True,
+        )
         add(
             MAX_VERSION,
             "sharded_cluster",
