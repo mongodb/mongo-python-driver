@@ -248,7 +248,6 @@ ignore = [
   "BLE",    # Broad `Except` exception catches (intentional)
   # These are all new defaults added in ruff 0.16.0. Individual tickets linked from PYTHON-5964 track enabling each one.
   "FURB",   # refurb
-  "LOG",    # flake8-logging
   "PYI",    # flake8-pyi
   "TC",     # flake8-type-checking
   "TRY",    # tryceratops
@@ -275,12 +274,13 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
 ".evergreen/scripts/setup-uv.py" = ["I002"]
 "test/*.py" = ["PT", "E402", "PLW", "SIM", "E741", "PTH", "S", "B904", "E722", "T201",
     "RET", "ARG", "F405", "B028", "PGH001", "B018", "F403", "RUF015", "E731", "B007",
-    "UP031", "F401", "B023", "F811", "DTZ002"]
+    "UP031", "F401", "B023", "F811", "DTZ002", "LOG"]
 "tools/*.py" = ["T201"]
 "tools/test_*.py" = ["E402", "S"]
 "fuzz/*.py" = ["T201", "E402"]
 "hatch_build.py" = ["S"]
 "_setup.py" = ["SIM112"]
+"pymongo/event_loggers.py" = ["LOG"]
 
 [tool.coverage.run]
 branch = true
