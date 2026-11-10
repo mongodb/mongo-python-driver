@@ -98,7 +98,7 @@ class ObjectId:
         """
         if oid is None:
             # Generate a new value for this ObjectId.
-            self.__id = ObjectId._generate(int(time.time()))
+            self.__id = ObjectId._generate_bytes(int(time.time()))
         elif isinstance(oid, bytes) and len(oid) == 12:
             self.__id = oid
         elif isinstance(oid, str):
@@ -160,11 +160,11 @@ class ObjectId:
         """
         timestamp = _datetime_to_millis(generation_time) // 1000
         if unique:
-            return cls(cls._generate(timestamp))
+            return cls(cls._generate_bytes(timestamp))
         return cls(_PACK_INT(timestamp) + b"\x00\x00\x00\x00\x00\x00\x00\x00")
 
-    @classmethod
-    def _generate(cls, timestamp: int) -> bytes:
+    @staticmethod
+    def _generate_bytes(timestamp: int) -> bytes:
         """Return the 12 bytes of a new ObjectId with the given timestamp."""
         with ObjectId._inc_lock:
             inc = ObjectId._inc
