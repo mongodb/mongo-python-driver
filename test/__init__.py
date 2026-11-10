@@ -43,10 +43,10 @@ try:
     HAVE_IPADDRESS = True
 except ImportError:
     HAVE_IPADDRESS = False
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from functools import partial, wraps
-from typing import Any, Callable, overload
+from typing import Any, overload
 from unittest import SkipTest
 from urllib.parse import quote_plus
 

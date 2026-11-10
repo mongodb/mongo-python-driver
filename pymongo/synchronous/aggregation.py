@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, MutableMapping
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from pymongo import common
 from pymongo.collation import validate_collation_or_none
@@ -47,13 +47,13 @@ class _AggregationCommand:
 
     def __init__(
         self,
-        target: Union[Database[Any], Collection[Any]],
+        target: Database[Any] | Collection[Any],
         cursor_class: type[CommandCursor[Any]],
         pipeline: _Pipeline,
         options: MutableMapping[str, Any],
-        let: Optional[Mapping[str, Any]] = None,
-        user_fields: Optional[MutableMapping[str, Any]] = None,
-        result_processor: Optional[Callable[[Mapping[str, Any]], None]] = None,
+        let: Mapping[str, Any] | None = None,
+        user_fields: MutableMapping[str, Any] | None = None,
+        result_processor: Callable[[Mapping[str, Any]], None] | None = None,
         comment: Any = None,
     ) -> None:
         if "explain" in options:
@@ -103,10 +103,10 @@ class _AggregationCommand:
         self._collation = validate_collation_or_none(options.pop("collation", None))
 
         self._max_await_time_ms = options.pop("maxAwaitTimeMS", None)
-        self._write_preference: Optional[_AggWritePref] = None
+        self._write_preference: _AggWritePref | None = None
 
     @property
-    def _aggregation_target(self) -> Union[str, int]:
+    def _aggregation_target(self) -> str | int:
         """The argument to pass to the aggregate command."""
         raise NotImplementedError
 
@@ -124,9 +124,7 @@ class _AggregationCommand:
         """The database against which the aggregation command is run."""
         raise NotImplementedError
 
-    def get_read_preference(
-        self, session: Optional[ClientSession]
-    ) -> Union[_AggWritePref, _ServerMode]:
+    def get_read_preference(self, session: ClientSession | None) -> _AggWritePref | _ServerMode:
         if self._write_preference:
             return self._write_preference
         pref = self._target._read_preference_for(session)
@@ -136,7 +134,7 @@ class _AggregationCommand:
 
     def get_cursor(
         self,
-        session: Optional[ClientSession],
+        session: ClientSession | None,
         server: Server,
         conn: Connection,
         read_preference: _ServerMode,

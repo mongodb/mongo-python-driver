@@ -63,7 +63,7 @@ class AsyncBulkTestBase(AsyncIntegrationTest):
                     % (len(expected_upserts), len(actual_upserts)),
                 )
 
-                for e, a in zip(expected_upserts, actual_upserts):
+                for e, a in zip(expected_upserts, actual_upserts, strict=True):
                     self.assertEqualUpsert(e, a)
 
             elif key == "writeErrors":
@@ -76,7 +76,7 @@ class AsyncBulkTestBase(AsyncIntegrationTest):
                     % (len(expected_errors), len(actual_errors)),
                 )
 
-                for e, a in zip(expected_errors, actual_errors):
+                for e, a in zip(expected_errors, actual_errors, strict=True):
                     self.assertEqualWriteError(e, a)
 
             else:
@@ -924,7 +924,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
 
 
 class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
-    w: Optional[int]
+    w: int | None
     secondary: AsyncMongoClient
 
     async def asyncSetUp(self):

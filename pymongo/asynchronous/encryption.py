@@ -17,8 +17,6 @@
 from __future__ import annotations
 
 import asyncio
-import functools
-import socket
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
@@ -28,8 +26,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
-    Optional,
-    Union,
     cast,
 )
 
@@ -64,9 +60,6 @@ from pymongo.encryption_options import (
     AutoEncryptionOpts,
     RangeOpts,
     StringOpts,
-    # Re-exported for backwards compatibility: TextOpts is deprecated but must
-    # remain importable from this module until it is removed.
-    TextOpts,  # noqa: F401
     check_min_pymongocrypt,
 )
 from pymongo.encryption_shared import (
@@ -119,9 +112,9 @@ _KEY_VAULT_OPTS = CodecOptions(document_class=RawBSONDocument)
 class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
     def __init__(
         self,
-        client: Optional[AsyncMongoClient[_DocumentTypeArg]],
+        client: AsyncMongoClient[_DocumentTypeArg] | None,
         key_vault_coll: AsyncCollection[_DocumentTypeArg],
-        mongocryptd_client: Optional[AsyncMongoClient[_DocumentTypeArg]],
+        mongocryptd_client: AsyncMongoClient[_DocumentTypeArg] | None,
         opts: AutoEncryptionOpts,
     ):
         """Internal class to perform I/O on behalf of pymongocrypt."""
@@ -131,7 +124,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             self.client_ref = weakref.ref(client)
         else:
             self.client_ref = None
-        self.key_vault_coll: Optional[AsyncCollection[RawBSONDocument]] = cast(
+        self.key_vault_coll: AsyncCollection[RawBSONDocument] | None = cast(
             AsyncCollection[RawBSONDocument],
             key_vault_coll.with_options(
                 codec_options=_KEY_VAULT_OPTS,
@@ -212,7 +205,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
             except Exception as exc:
                 # Wrap I/O errors in PyMongo exceptions.
                 if isinstance(exc, BLOCKING_IO_ERRORS):
-                    exc = socket.timeout("timed out")
+                    exc = TimeoutError("timed out")
                 # Async raises an OSError instead of returning empty bytes.
                 if isinstance(exc, OSError):
                     msg_prefix = "KMS connection closed"
@@ -240,7 +233,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
                 )
                 raise exc from final_err
 
-    async def collection_info(self, database: str, filter: bytes) -> Optional[list[bytes]]:
+    async def collection_info(self, database: str, filter: bytes) -> list[bytes] | None:
         """Get the collection info for a namespace.
 
         The returned collection info is passed to libmongocrypt which reads
@@ -445,7 +438,7 @@ class _Encrypter:
             # TODO: PYTHON-1922 avoid decoding the encrypted_cmd.
             return _inflate_bson(encrypted_cmd, DEFAULT_RAW_BSON_OPTIONS)
 
-    async def decrypt(self, response: bytes | memoryview) -> Optional[bytes]:
+    async def decrypt(self, response: bytes | memoryview) -> bytes | None:
         """Decrypt a MongoDB command response.
 
         :param response: A MongoDB command response as BSON.
@@ -471,47 +464,6 @@ class _Encrypter:
             self._internal_client = None
 
 
-@functools.lru_cache(maxsize=1)
-def _string_opts_kwarg() -> str:
-    """The name the installed pymongocrypt gives the string index options.
-
-    pymongocrypt renamed ``text_opts`` to ``string_opts`` in 1.19 and accepts
-    only one name per release. The rename landed on master before any release
-    carried it, so resolve the name from the installed signature rather than
-    from a version comparison. Resolved lazily and cached because importing
-    :mod:`inspect` is too expensive to do on the import path.
-    """
-    import inspect
-
-    params = inspect.signature(AsyncExplicitEncrypter.encrypt).parameters
-    return "string_opts" if "string_opts" in params else "text_opts"
-
-
-def _resolve_string_opts(
-    string_opts: Optional[StringOpts], text_opts: Optional[StringOpts]
-) -> Optional[StringOpts]:
-    """Resolve string_opts and its former name, text_opts.
-
-    pymongocrypt accepts only one of the two names per release, so passing the
-    name the installed pymongocrypt does not support is an error.
-    """
-    if string_opts is not None and text_opts is not None:
-        raise ConfigurationError("Cannot set both string_opts and text_opts")
-    if string_opts is None and text_opts is None:
-        return None
-    if text_opts is not None and _string_opts_kwarg() == "string_opts":
-        raise ConfigurationError(
-            "text_opts is not supported by the installed pymongocrypt "
-            "(1.19 or later). Use string_opts instead."
-        )
-    if string_opts is not None and _string_opts_kwarg() == "text_opts":
-        raise ConfigurationError(
-            "string_opts requires pymongocrypt 1.19 or later. Use text_opts "
-            "with the installed pymongocrypt, or upgrade pymongocrypt."
-        )
-    return string_opts if string_opts is not None else text_opts
-
-
 class AsyncClientEncryption(Generic[_DocumentType]):
     """Explicit client-side field level encryption."""
 
@@ -521,9 +473,9 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         key_vault_namespace: str,
         key_vault_client: AsyncMongoClient[_DocumentTypeArg],
         codec_options: CodecOptions[_DocumentTypeArg],
-        kms_tls_options: Optional[Mapping[str, Any]] = None,
-        key_expiration_ms: Optional[int] = None,
-        kms_connect_callback: Optional[AsyncKMSConnectCallback] = None,
+        kms_tls_options: Mapping[str, Any] | None = None,
+        key_expiration_ms: int | None = None,
+        kms_connect_callback: AsyncKMSConnectCallback | None = None,
     ) -> None:
         """Explicit client-side field level encryption.
 
@@ -655,9 +607,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             kms_connect_callback=kms_connect_callback,
         )
         self._kms_ssl_contexts = _parse_kms_tls_options(opts._kms_tls_options, _IS_SYNC)
-        self._io_callbacks: Optional[_EncryptionIO] = _EncryptionIO(
-            None, key_vault_coll, None, opts
-        )
+        self._io_callbacks: _EncryptionIO | None = _EncryptionIO(None, key_vault_coll, None, opts)
         self._encryption = AsyncExplicitEncrypter(
             self._io_callbacks,
             _create_mongocrypt_options(
@@ -676,8 +626,8 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         database: AsyncDatabase[_DocumentTypeArg],
         name: str,
         encrypted_fields: Mapping[str, Any],
-        kms_provider: Optional[str] = None,
-        master_key: Optional[Mapping[str, Any]] = None,
+        kms_provider: str | None = None,
+        master_key: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> tuple[AsyncCollection[_DocumentTypeArg], Mapping[str, Any]]:
         """Create a collection with encryptedFields.
@@ -763,9 +713,9 @@ class AsyncClientEncryption(Generic[_DocumentType]):
     async def create_data_key(
         self,
         kms_provider: str,
-        master_key: Optional[Mapping[str, Any]] = None,
-        key_alt_names: Optional[Sequence[str]] = None,
-        key_material: Optional[bytes] = None,
+        master_key: Mapping[str, Any] | None = None,
+        key_alt_names: Sequence[str] | None = None,
+        key_material: bytes | None = None,
     ) -> Binary:
         """Create and insert a new data key into the key vault collection.
 
@@ -855,13 +805,13 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         self,
         value: Any,
         algorithm: str,
-        key_id: Optional[Union[Binary, uuid.UUID]] = None,
-        key_alt_name: Optional[str] = None,
-        query_type: Optional[str] = None,
-        contention_factor: Optional[int] = None,
-        range_opts: Optional[RangeOpts] = None,
+        key_id: Binary | uuid.UUID | None = None,
+        key_alt_name: str | None = None,
+        query_type: str | None = None,
+        contention_factor: int | None = None,
+        range_opts: RangeOpts | None = None,
         is_expression: bool = False,
-        string_opts: Optional[StringOpts] = None,
+        string_opts: StringOpts | None = None,
     ) -> Any:
         self._check_closed()
         if isinstance(key_id, uuid.UUID):
@@ -897,7 +847,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts_bytes,
                 is_expression=is_expression,
-                **({_string_opts_kwarg(): string_opts_bytes} if string_opts_bytes else {}),
+                string_opts=string_opts_bytes,
             )
             return decode(encrypted_doc)["v"]
 
@@ -905,13 +855,12 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         self,
         value: Any,
         algorithm: str,
-        key_id: Optional[Union[Binary, uuid.UUID]] = None,
-        key_alt_name: Optional[str] = None,
-        query_type: Optional[str] = None,
-        contention_factor: Optional[int] = None,
-        range_opts: Optional[RangeOpts] = None,
-        string_opts: Optional[StringOpts] = None,
-        text_opts: Optional[StringOpts] = None,
+        key_id: Binary | uuid.UUID | None = None,
+        key_alt_name: str | None = None,
+        query_type: str | None = None,
+        contention_factor: int | None = None,
+        range_opts: RangeOpts | None = None,
+        string_opts: StringOpts | None = None,
     ) -> Binary:
         """Encrypt a BSON value with a given key and algorithm.
 
@@ -934,12 +883,11 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             :class:`RangeOpts` for some valid options.
         :param string_opts: Index options for `prefix`, `suffix`, and
             `substring` queries. See :class:`StringOpts` for some valid options.
-        :param text_opts: **DEPRECATED** - The former name of `string_opts`,
-            added in pymongocrypt 1.16 and accepted only through pymongocrypt
-            1.18. Passing it to pymongocrypt 1.19 or later, or passing both
-            names, raises :exc:`~pymongo.errors.ConfigurationError`.
 
         :return: The encrypted value, a :class:`~bson.binary.Binary` with subtype 6.
+
+        .. versionchanged:: 4.20
+           Removed the `text_opts` parameter.
 
         .. versionchanged:: 4.18
            Added the `string_opts` parameter, replacing the deprecated
@@ -968,7 +916,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
                 contention_factor=contention_factor,
                 range_opts=range_opts,
                 is_expression=False,
-                string_opts=_resolve_string_opts(string_opts, text_opts),
+                string_opts=string_opts,
             ),
         )
 
@@ -976,11 +924,11 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         self,
         expression: Mapping[str, Any],
         algorithm: str,
-        key_id: Optional[Union[Binary, uuid.UUID]] = None,
-        key_alt_name: Optional[str] = None,
-        query_type: Optional[str] = None,
-        contention_factor: Optional[int] = None,
-        range_opts: Optional[RangeOpts] = None,
+        key_id: Binary | uuid.UUID | None = None,
+        key_alt_name: str | None = None,
+        query_type: str | None = None,
+        contention_factor: int | None = None,
+        range_opts: RangeOpts | None = None,
     ) -> RawBSONDocument:
         """Encrypt a BSON expression with a given key and algorithm.
 
@@ -1044,7 +992,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             decrypted_doc = await self._encryption.decrypt(doc)
             return decode(decrypted_doc, codec_options=self._codec_options)["v"]
 
-    async def get_key(self, id: Binary) -> Optional[RawBSONDocument]:
+    async def get_key(self, id: Binary) -> RawBSONDocument | None:
         """Get a data key by id.
 
         :param id` (Binary): The UUID of a key a which must be a
@@ -1103,7 +1051,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         assert self._key_vault_coll is not None
         return await self._key_vault_coll.find_one_and_update({"_id": id}, update)
 
-    async def get_key_by_alt_name(self, key_alt_name: str) -> Optional[RawBSONDocument]:
+    async def get_key_by_alt_name(self, key_alt_name: str) -> RawBSONDocument | None:
         """Get a key document in the key vault collection that has the given ``key_alt_name``.
 
         :param key_alt_name: (str): The key alternate name of the key to get.
@@ -1116,7 +1064,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         assert self._key_vault_coll is not None
         return await self._key_vault_coll.find_one({"keyAltNames": key_alt_name})
 
-    async def remove_key_alt_name(self, id: Binary, key_alt_name: str) -> Optional[RawBSONDocument]:
+    async def remove_key_alt_name(self, id: Binary, key_alt_name: str) -> RawBSONDocument | None:
         """Remove ``key_alt_name`` from the set of keyAltNames in the key document with UUID ``id``.
 
         Also removes the ``keyAltNames`` field from the key document if it would otherwise be empty.
@@ -1155,8 +1103,8 @@ class AsyncClientEncryption(Generic[_DocumentType]):
     async def rewrap_many_data_key(
         self,
         filter: Mapping[str, Any],
-        provider: Optional[str] = None,
-        master_key: Optional[Mapping[str, Any]] = None,
+        provider: str | None = None,
+        master_key: Mapping[str, Any] | None = None,
     ) -> RewrapManyDataKeyResult:
         """Decrypts and encrypts all matching data keys in the key vault with a possibly new `master_key` value.
 

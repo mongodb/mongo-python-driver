@@ -3838,7 +3838,7 @@ tasks:
       - win64
       - sync
       - free-threaded
-  - name: test-standard-v9.0-python3.15-async-auth-ssl-sharded-cluster
+  - name: test-standard-v9.0-python3.15-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -3847,6 +3847,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
+          COVERAGE: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -3855,6 +3856,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
+          COVERAGE: "1"
           SYNC: async
     tags:
       - test-standard
@@ -3867,6 +3869,8 @@ tasks:
       - win32
       - win64
       - async
+      - pr
+      - cov
   - name: test-standard-v5.0-python3.15-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -4014,29 +4018,6 @@ tasks:
       - win64
       - async
       - cov
-
-  # String query preview tests
-  - name: test-string-query-preview-v8.2-python3.15-noauth-ssl-replica-set
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "8.2"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "8.2"
-          UV_PYTHON: "3.15"
-    tags:
-      - test-string-query-preview
-      - server-8.2
-      - python-3.15
-      - replica_set-noauth-ssl
-      - noauth
 
   # Test compression tests
   - name: test-compression-snappy-latest-python3.15-sync-noauth-ssl-replica-set
@@ -4250,7 +4231,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - async
-  - name: test-compression-snappy-v9.0-python3.15t-async-auth-ssl-sharded-cluster
+  - name: test-compression-snappy-v9.0-python3.15t-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -4259,6 +4240,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
+          COVERAGE: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -4267,6 +4249,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
+          COVERAGE: "1"
           SYNC: async
           COMPRESSORS: snappy
     tags:
@@ -4277,6 +4260,8 @@ tasks:
       - auth
       - async
       - free-threaded
+      - pr
+      - cov
   - name: test-compression-snappy-rapid-python3.15-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -4815,7 +4800,7 @@ tasks:
       - replica_set-noauth-ssl
       - noauth
       - sync
-  - name: test-disable-test-commands-v9.0-python3.15t-async-auth-ssl-sharded-cluster
+  - name: test-disable-test-commands-v9.0-python3.15t-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -4825,6 +4810,7 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
           DISABLE_TEST_COMMANDS: "1"
+          COVERAGE: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -4834,6 +4820,7 @@ tasks:
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
           DISABLE_TEST_COMMANDS: "1"
+          COVERAGE: "1"
           SYNC: async
     tags:
       - test-disable-test-commands
@@ -4843,6 +4830,8 @@ tasks:
       - auth
       - async
       - free-threaded
+      - pr
+      - cov
   - name: test-disable-test-commands-rapid-python3.15-sync-noauth-nossl-standalone
     commands:
       - func: run server
@@ -5019,7 +5008,7 @@ tasks:
       - python-3.14
       - standalone-noauth-nossl
       - noauth
-  - name: test-doctest-v9.0-python3.15t-noauth-nossl-standalone
+  - name: test-doctest-v9.0-python3.15t-noauth-nossl-standalone-cov
     commands:
       - func: run server
         vars:
@@ -5028,6 +5017,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "9.0"
+          COVERAGE: "1"
       - func: run tests
         vars:
           TEST_NAME: doctest
@@ -5036,6 +5026,7 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           VERSION: "9.0"
+          COVERAGE: "1"
     tags:
       - test-doctest
       - server-9.0
@@ -5043,6 +5034,8 @@ tasks:
       - standalone-noauth-nossl
       - noauth
       - free-threaded
+      - pr
+      - cov
   - name: test-doctest-rapid-python3.15-noauth-nossl-standalone
     commands:
       - func: run server
@@ -6133,6 +6126,37 @@ tasks:
       - replica_set-noauth-ssl
       - noauth
       - sync
+  - name: test-gevent-v9.0-python3.15-sync-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: default
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          TEST_NAME: default
+          UV_PYTHON: "3.15"
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          COVERAGE: "1"
+          SYNC: sync
+          GREEN_FRAMEWORK: gevent
+    tags:
+      - test-gevent
+      - server-9.0
+      - python-3.15
+      - sharded_cluster-auth-ssl
+      - auth
+      - rhel8
+      - sync
+      - pr
+      - cov
 
   # Test load balancer tests
   - name: test-load-balancer-v6.0-python3.11-sync-auth-ssl-sharded-cluster-min-deps
@@ -6212,7 +6236,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - sync
-  - name: test-load-balancer-v9.0-python3.14t-sync-auth-ssl-sharded-cluster
+  - name: test-load-balancer-v9.0-python3.14t-sync-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -6221,6 +6245,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
+          COVERAGE: "1"
       - func: run tests
         vars:
           TEST_NAME: load_balancer
@@ -6229,6 +6254,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
+          COVERAGE: "1"
           SYNC: sync
     tags:
       - test-load-balancer
@@ -6238,6 +6264,8 @@ tasks:
       - auth
       - sync
       - free-threaded
+      - pr
+      - cov
   - name: test-load-balancer-rapid-python3.14-sync-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -6369,7 +6397,7 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - async
-  - name: test-load-balancer-v9.0-python3.14t-async-auth-ssl-sharded-cluster
+  - name: test-load-balancer-v9.0-python3.14t-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -6378,6 +6406,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
+          COVERAGE: "1"
       - func: run tests
         vars:
           TEST_NAME: load_balancer
@@ -6386,6 +6415,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
+          COVERAGE: "1"
           SYNC: async
     tags:
       - test-load-balancer
@@ -6395,6 +6425,8 @@ tasks:
       - auth
       - async
       - free-threaded
+      - pr
+      - cov
   - name: test-load-balancer-rapid-python3.14-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -6584,7 +6616,7 @@ tasks:
       - replica_set-noauth-ssl
       - noauth
       - sync
-  - name: test-no-c-ext-v9.0-python3.15t-async-auth-ssl-sharded-cluster
+  - name: test-no-c-ext-v9.0-python3.15t-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -6593,6 +6625,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
+          COVERAGE: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -6601,6 +6634,7 @@ tasks:
           SSL: ssl
           TOPOLOGY: sharded_cluster
           VERSION: "9.0"
+          COVERAGE: "1"
           SYNC: async
           NO_EXT: "1"
     tags:
@@ -6611,6 +6645,8 @@ tasks:
       - auth
       - async
       - free-threaded
+      - pr
+      - cov
   - name: test-no-c-ext-rapid-python3.15-sync-noauth-nossl-standalone
     commands:
       - func: run server
@@ -6949,6 +6985,37 @@ tasks:
       - macos
       - win64
       - sync
+  - name: test-pyopenssl-v9.0-python3.15-async-auth-ssl-sharded-cluster-cov
+    commands:
+      - func: run server
+        vars:
+          TEST_NAME: default
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          COVERAGE: "1"
+      - func: run tests
+        vars:
+          TEST_NAME: default
+          UV_PYTHON: "3.15"
+          AUTH: auth
+          SSL: ssl
+          TOPOLOGY: sharded_cluster
+          VERSION: "9.0"
+          COVERAGE: "1"
+          SUB_TEST_NAME: pyopenssl
+          SYNC: async
+    tags:
+      - test-pyopenssl
+      - server-9.0
+      - python-3.15
+      - sharded_cluster-auth-ssl
+      - auth
+      - rhel8
+      - async
+      - pr
+      - cov
 
   # Test stable api tests
   - name: test-stable-api-require-v1-v5.0-python3.11-async-auth-ssl-sharded-cluster-min-deps
@@ -7181,7 +7248,7 @@ tasks:
       - noauth
       - sync
       - free-threaded
-  - name: test-stable-api-require-v1-v9.0-python3.14-async-auth-ssl-sharded-cluster
+  - name: test-stable-api-require-v1-v9.0-python3.14-async-auth-ssl-sharded-cluster-cov
     commands:
       - func: run server
         vars:
@@ -7192,6 +7259,7 @@ tasks:
           VERSION: "9.0"
           REQUIRE_API_VERSION: "1"
           MONGODB_API_VERSION: "1"
+          COVERAGE: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -7202,6 +7270,7 @@ tasks:
           VERSION: "9.0"
           REQUIRE_API_VERSION: "1"
           MONGODB_API_VERSION: "1"
+          COVERAGE: "1"
           SYNC: async
     tags:
       - test-stable-api
@@ -7210,7 +7279,9 @@ tasks:
       - sharded_cluster-auth-ssl
       - auth
       - async
-  - name: test-stable-api-accept-v2-v9.0-python3.14-sync-noauth-nossl-standalone
+      - pr
+      - cov
+  - name: test-stable-api-accept-v2-v9.0-python3.14-sync-noauth-nossl-standalone-cov
     commands:
       - func: run server
         vars:
@@ -7220,6 +7291,7 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "9.0"
           ORCHESTRATION_FILE: versioned-api-testing.json
+          COVERAGE: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -7229,6 +7301,7 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "9.0"
           ORCHESTRATION_FILE: versioned-api-testing.json
+          COVERAGE: "1"
           SYNC: sync
     tags:
       - test-stable-api
@@ -7237,6 +7310,8 @@ tasks:
       - standalone-noauth-nossl
       - noauth
       - sync
+      - pr
+      - cov
   - name: test-stable-api-require-v1-rapid-python3.15t-async-auth-ssl-sharded-cluster
     commands:
       - func: run server
@@ -7720,7 +7795,7 @@ tasks:
       - standalone-noauth-nossl
       - noauth
       - sync
-  - name: test-storage-inmemory-v9.0-python3.15t-sync-noauth-nossl-standalone
+  - name: test-storage-inmemory-v9.0-python3.15t-sync-noauth-nossl-standalone-cov
     commands:
       - func: run server
         vars:
@@ -7730,6 +7805,7 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "9.0"
           STORAGE_ENGINE: inmemory
+          COVERAGE: "1"
       - func: run tests
         vars:
           TEST_NAME: default
@@ -7739,6 +7815,7 @@ tasks:
           TOPOLOGY: standalone
           VERSION: "9.0"
           STORAGE_ENGINE: inmemory
+          COVERAGE: "1"
           SYNC: sync
     tags:
       - test-storage-inmemory
@@ -7748,6 +7825,8 @@ tasks:
       - noauth
       - sync
       - free-threaded
+      - pr
+      - cov
   - name: test-storage-inmemory-rapid-python3.15-sync-noauth-nossl-standalone
     commands:
       - func: run server

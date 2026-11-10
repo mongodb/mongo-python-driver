@@ -43,10 +43,9 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-import tempfile
 import time
 import warnings
-from typing import Any, Optional, Union
+from typing import Any
 
 import pytest
 
@@ -397,7 +396,7 @@ class TestSmallDocClientBulkInsert(SmallDocInsertTest, AsyncPyMongoTestCase):
 class TestSmallDocBulkMixedOps(SmallDocMixedTest, AsyncPyMongoTestCase):
     async def asyncSetUp(self):
         await super().asyncSetUp()
-        self.models: list[Union[InsertOne, ReplaceOne, DeleteOne]] = []
+        self.models: list[InsertOne | ReplaceOne | DeleteOne] = []
         for doc in self.documents:
             self.models.append(InsertOne(document=doc))
             self.models.append(ReplaceOne(filter={}, replacement=doc.copy(), upsert=True))
@@ -411,7 +410,7 @@ class TestSmallDocClientBulkMixedOps(SmallDocMixedTest, AsyncPyMongoTestCase):
     @async_client_context.require_version_min(8, 0, 0, -24)
     async def asyncSetUp(self):
         await super().asyncSetUp()
-        self.models: list[Union[InsertOne, ReplaceOne, DeleteOne]] = []
+        self.models: list[InsertOne | ReplaceOne | DeleteOne] = []
         for doc in self.documents:
             self.models.append(InsertOne(namespace="perftest.corpus", document=doc))
             self.models.append(

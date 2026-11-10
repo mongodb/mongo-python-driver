@@ -25,7 +25,7 @@ import asyncio
 import inspect
 import socket
 import ssl
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pymongo import _csot
 from pymongo._kms_connect_shared import (
@@ -57,9 +57,9 @@ _KMS_CONNECT_TIMEOUT = CONNECT_TIMEOUT  # CDRIVER-3262 redefined this value to C
 def _connect_kms(
     address: _Address,
     opts: PoolOptions,
-    kms_connect_callback: Optional[KMSConnectCallback],
+    kms_connect_callback: KMSConnectCallback | None,
     timeout: float,
-) -> Union[socket.socket, _sslConn]:
+) -> socket.socket | _sslConn:
     """Connect to a KMS host and perform the TLS handshake over the socket.
 
     Uses ``kms_connect_callback`` when one is provided, otherwise connects
@@ -102,11 +102,11 @@ def _connect_kms(
         except asyncio.CancelledError:
             task.add_done_callback(_close_late_socket)
             raise
-        except asyncio.TimeoutError:
+        except TimeoutError:
             task.add_done_callback(_close_late_socket)
             _raise_connection_failure(
                 address,
-                socket.timeout("timed out"),
+                TimeoutError("timed out"),
                 timeout_details=_get_timeout_details(opts),
             )
     if not isinstance(sock, socket.socket) or isinstance(sock, ssl.SSLSocket):

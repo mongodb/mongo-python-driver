@@ -144,6 +144,21 @@ def test_pr_tasks_pin_max_version():
     assert not offenders, f"PR tasks not pinned to MAX_VERSION: {offenders}"
 
 
+def test_suite_families_have_pr_pins():
+    """Every suite family runs at least one task on PR patches, with
+    coverage, so a restructure cannot silently drop a family from the patch
+    build or the codecov report (PYTHON-6167)."""
+    for family in SUITE_FAMILIES:
+        pinned = [
+            task
+            for task in all_tasks()
+            if family in (task.tags or []) and "pr" in (task.tags or [])
+        ]
+        assert pinned, f"no pr task in the {family} family"
+        covd = [task for task in pinned if task_vars(task).get("COVERAGE") == "1"]
+        assert covd, f"no pr task with coverage in the {family} family"
+
+
 def test_numpy_win32_tasks_run_on_windows_only():
     """The win32 numpy tasks use the 32-bit toolchain (IS_WIN32) and are
     selected only by the windows variant (PYTHON-6167)."""

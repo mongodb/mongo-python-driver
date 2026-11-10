@@ -174,6 +174,25 @@ def _create_encryption_tasks(family, sub_test=None, crypt_shared=False, distros=
     return tasks
 
 
+def _create_cov_pr_twin(family, sync, sub_test=None, extra_test_vars=None):
+    """Rhel8-only max-stable coverage twin carrying the pr pin: the rotated
+    max-stable cell can land on the min-deps Python, and coverage stays off
+    macOS/Win64 (PYTHON-6167)."""
+    return _create_suite_task(
+        family,
+        MAX_VERSION,
+        "sharded_cluster",
+        MAX_PYTHON,
+        sync,
+        "default",
+        sub_test=sub_test,
+        distros=["rhel8"],
+        pr=True,
+        cov=True,
+        extra_test_vars=extra_test_vars,
+    )
+
+
 def create_test_encryption_tasks():
     """Encryption tasks, plus crypt_shared variants of every task."""
     return _create_encryption_tasks("test-encryption") + _create_encryption_tasks(
@@ -191,22 +210,46 @@ def create_test_encryption_pyopenssl_tasks():
 def create_test_load_balancer_tasks():
     """Load balancer tasks: one sync and one async task per MongoDB version
     6.0+ on a load-balanced auth SSL sharded cluster, running the full
-    default suite (PYTHON-6167)."""
-    return [
-        _create_suite_task(
-            "test-load-balancer", version, "sharded_cluster", python, sync, "load_balancer"
-        )
-        for sync in SYNCS
-        for version, python in zip(get_versions_from("6.0"), CPYTHONS)
-    ]
+    default suite (PYTHON-6167). The v9.0 pair carries the pr pin and
+    coverage."""
+    tasks = []
+    for sync in SYNCS:
+        # One CPython per version (6.0→3.11 … latest→3.15t); the trailing 3.15 is unused.
+        for version, python in zip(get_versions_from("6.0"), CPYTHONS, strict=False):
+            is_pin = version == MAX_VERSION
+            tasks.append(
+                _create_suite_task(
+                    "test-load-balancer",
+                    version,
+                    "sharded_cluster",
+                    python,
+                    sync,
+                    "load_balancer",
+                    pr=is_pin,
+                    cov=True if is_pin else None,
+                )
+            )
+    return tasks
 
 
 def create_test_doctest_tasks():
     """Doctest tasks: one task per MongoDB version on a standalone server."""
-    return [
-        _create_suite_task("test-doctest", version, "standalone", python, "", "doctest")
-        for version, python in zip_cycle(ALL_VERSIONS, CPYTHONS)
-    ]
+    tasks = []
+    for version, python in zip_cycle(ALL_VERSIONS, CPYTHONS):
+        is_pin = version == MAX_VERSION
+        tasks.append(
+            _create_suite_task(
+                "test-doctest",
+                version,
+                "standalone",
+                python,
+                "",
+                "doctest",
+                pr=is_pin,
+                cov=True if is_pin else None,
+            )
+        )
+    return tasks
 
 
 def create_test_compression_tasks():
@@ -230,7 +273,10 @@ def create_test_compression_tasks():
         )
     cells = list(product(COMPRESSORS, [v for v in ALL_VERSIONS if v != "latest"]))
     for (compressor, version), python in zip_cycle(cells, CPYTHONS):
-        # Async, auth, SSL, sharded cluster.
+        # Async, auth, SSL, sharded cluster. The first compressor's max-stable
+        # cell carries the pr pin and coverage; the primaries ride "latest",
+        # which PRs skip.
+        is_pin = compressor == COMPRESSORS[0] and version == MAX_VERSION
         tasks.append(
             _create_suite_task(
                 "test-compression",
@@ -240,6 +286,8 @@ def create_test_compression_tasks():
                 "async",
                 "default",
                 suffix=compressor,
+                pr=is_pin,
+                cov=True if is_pin else None,
                 extra_test_vars=dict(COMPRESSORS=compressor),
             )
         )
@@ -257,7 +305,8 @@ def _per_version_cells():
 def create_test_pyopenssl_tasks():
     """PyOpenSSL tasks: one task per MongoDB version, running the default
     suite with the PyOpenSSL extra. Free-threaded CPython is covered by the
-    encryption-pyopenssl family (PYTHON-6167)."""
+    encryption-pyopenssl family, and the rhel8 max-stable twin carries the
+    pr pin and coverage (PYTHON-6167)."""
     return [
         _create_suite_task(
             "test-pyopenssl",
@@ -272,39 +321,55 @@ def create_test_pyopenssl_tasks():
         for (version, topology), python in zip_cycle(
             _per_version_cells(), CPYTHONS_NO_FREE_THREADED
         )
+    ] + [
+        _create_cov_pr_twin(
+            "test-pyopenssl", get_suite_mode("sharded_cluster"), sub_test="pyopenssl"
+        )
     ]
 
 
 def _create_rotation_tasks(
-    family, extra_test_vars=None, extra_expansions=None, pythons=CPYTHONS, sync=None
+    family, extra_test_vars=None, extra_expansions=None, pythons=CPYTHONS, sync=None, pin=None
 ):
     """One task per MongoDB version, the topology cycling through standalone,
-    replica set, and sharded cluster (PYTHON-6167)."""
-    return [
-        _create_suite_task(
-            family,
-            version,
-            topology,
-            python,
-            sync if sync else get_suite_mode(topology),
-            "default",
-            extra_test_vars=extra_test_vars,
-            extra_expansions=extra_expansions,
+    replica set, and sharded cluster (PYTHON-6167). The max-stable cell
+    carries the pr pin when pin is set, with coverage for "pr+cov"."""
+    tasks = []
+    for version, topology, python in zip_cycle(ALL_VERSIONS, TOPOLOGIES, pythons):
+        is_pin = bool(pin) and version == MAX_VERSION
+        kwargs = dict(pr=True) if is_pin else {}
+        if is_pin and pin == "pr+cov":
+            kwargs["cov"] = True
+        tasks.append(
+            _create_suite_task(
+                family,
+                version,
+                topology,
+                python,
+                sync if sync else get_suite_mode(topology),
+                "default",
+                extra_test_vars=extra_test_vars,
+                extra_expansions=extra_expansions,
+                **kwargs,
+            )
         )
-        for version, topology, python in zip_cycle(ALL_VERSIONS, TOPOLOGIES, pythons)
-    ]
+    return tasks
 
 
 def create_test_gevent_tasks():
     """Gevent tasks: one task per MongoDB version running the sync default
     suite (async tests are excluded under the framework; free-threaded
-    CPython is unsupported) (PYTHON-6167)."""
-    return _create_rotation_tasks(
-        "test-gevent",
-        extra_test_vars=dict(GREEN_FRAMEWORK="gevent"),
-        pythons=CPYTHONS_NO_FREE_THREADED,
-        sync="sync",
-    )
+    CPython is unsupported), plus the rhel8 max-stable pr twin with coverage
+    (PYTHON-6167)."""
+    return [
+        *_create_rotation_tasks(
+            "test-gevent",
+            extra_test_vars=dict(GREEN_FRAMEWORK="gevent"),
+            pythons=CPYTHONS_NO_FREE_THREADED,
+            sync="sync",
+        ),
+        _create_cov_pr_twin("test-gevent", "sync", extra_test_vars=dict(GREEN_FRAMEWORK="gevent")),
+    ]
 
 
 def create_test_disable_test_commands_tasks():
@@ -315,6 +380,7 @@ def create_test_disable_test_commands_tasks():
         # Shared with the run server call, whose orchestration picks the
         # disableTestCommands config from it.
         extra_expansions=dict(DISABLE_TEST_COMMANDS="1"),
+        pin="pr+cov",
     )
 
 
@@ -322,7 +388,7 @@ def create_test_no_c_ext_tasks():
     """No-c-ext tasks: one task per MongoDB version, the topology cycling
     through all three, without the C extensions (NO_EXT feeds run_tests.py)
     (PYTHON-6167)."""
-    return _create_rotation_tasks("test-no-c-ext", extra_test_vars=dict(NO_EXT="1"))
+    return _create_rotation_tasks("test-no-c-ext", extra_test_vars=dict(NO_EXT="1"), pin="pr+cov")
 
 
 def create_test_stable_api_tasks():
@@ -340,37 +406,47 @@ def create_test_stable_api_tasks():
         # Sync, noauth, no SSL, standalone from the versioned-api orchestration.
         ("accept-v2", "standalone", "sync", dict(ORCHESTRATION_FILE="versioned-api-testing.json")),
     ]
-    return [
-        _create_suite_task(
-            "test-stable-api",
-            version,
-            topology,
-            python,
-            sync,
-            "default",
-            suffix=suffix,
-            extra_expansions=extra_expansions,
-        )
-        for version, python in zip_cycle(get_versions_from("5.0"), CPYTHONS)
-        for suffix, topology, sync, extra_expansions in cells
-    ]
+    tasks = []
+    for version, python in zip_cycle(get_versions_from("5.0"), CPYTHONS):
+        is_pin = version == MAX_VERSION
+        for suffix, topology, sync, extra_expansions in cells:
+            tasks.append(
+                _create_suite_task(
+                    "test-stable-api",
+                    version,
+                    topology,
+                    python,
+                    sync,
+                    "default",
+                    suffix=suffix,
+                    extra_expansions=extra_expansions,
+                    pr=is_pin,
+                    cov=True if is_pin else None,
+                )
+            )
+    return tasks
 
 
 def create_test_storage_inmemory_tasks():
     """InMemory storage engine tasks: one sync standalone task per MongoDB
     version (PYTHON-6167)."""
-    return [
-        _create_suite_task(
-            "test-storage-inmemory",
-            version,
-            "standalone",
-            python,
-            "sync",
-            "default",
-            extra_expansions=dict(STORAGE_ENGINE="inmemory"),
+    tasks = []
+    for version, python in zip_cycle(ALL_VERSIONS, CPYTHONS):
+        is_pin = version == MAX_VERSION
+        tasks.append(
+            _create_suite_task(
+                "test-storage-inmemory",
+                version,
+                "standalone",
+                python,
+                "sync",
+                "default",
+                extra_expansions=dict(STORAGE_ENGINE="inmemory"),
+                pr=is_pin,
+                cov=True if is_pin else None,
+            )
         )
-        for version, python in zip_cycle(ALL_VERSIONS, CPYTHONS)
-    ]
+    return tasks
 
 
 def create_standard_tasks():
@@ -398,8 +474,16 @@ def create_standard_tasks():
             ["macos", "macos-arm64", "win64"],
             {},
         ),
-        # Async, max CPython, max stable MongoDB, auth, SSL, sharded cluster.
-        (MAX_VERSION, "sharded_cluster", MAX_PYTHON, "async", all_platforms, {}),
+        # Async, max CPython, max stable MongoDB, auth, SSL, sharded cluster;
+        # carries the pr pin and coverage.
+        (
+            MAX_VERSION,
+            "sharded_cluster",
+            MAX_PYTHON,
+            "async",
+            all_platforms,
+            {"pr": True, "cov": True},
+        ),
         # The max-CPython sharded task across the remaining MongoDB versions;
         # the latest cell collects coverage.
         *[

@@ -833,7 +833,7 @@ class TestCommandMonitoring(IntegrationTest):
         count = 0
         operation_id = started[0].operation_id
         self.assertIsInstance(operation_id, int)
-        for start, succeed in zip(started, succeeded):
+        for start, succeed in zip(started, succeeded, strict=True):
             self.assertIsInstance(start, monitoring.CommandStartedEvent)
             cmd = sanitize_cmd(start.command)
             self.assertEqual(["insert", "ordered", "documents"], list(cmd.keys()))
@@ -873,7 +873,7 @@ class TestCommandMonitoring(IntegrationTest):
         documents = []
         operation_id = started[0].operation_id
         self.assertIsInstance(operation_id, int)
-        for start, succeed in zip(started, succeeded):
+        for start, succeed in zip(started, succeeded, strict=True):
             self.assertIsInstance(start, monitoring.CommandStartedEvent)
             cmd = sanitize_cmd(start.command)
             cmd.pop("writeConcern", None)
@@ -916,7 +916,7 @@ class TestCommandMonitoring(IntegrationTest):
         succeeded = self.listener.succeeded_events
         self.assertEqual(0, len(self.listener.failed_events))
         operation_id = started[0].operation_id
-        pairs = list(zip(started, succeeded))
+        pairs = list(zip(started, succeeded, strict=True))
         self.assertEqual(3, len(pairs))
         for start, succeed in pairs:
             self.assertIsInstance(start, monitoring.CommandStartedEvent)
@@ -1032,7 +1032,7 @@ class TestCommandMonitoring(IntegrationTest):
         succeeded = self.listener.succeeded_events
         self.assertEqual(0, len(self.listener.failed_events))
         operation_id = started[0].operation_id
-        pairs = list(zip(started, succeeded))
+        pairs = list(zip(started, succeeded, strict=True))
         errors = []
         for start, succeed in pairs:
             self.assertIsInstance(start, monitoring.CommandStartedEvent)

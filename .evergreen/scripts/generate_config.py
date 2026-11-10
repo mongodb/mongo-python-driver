@@ -154,7 +154,7 @@ def create_encryption_variants() -> list[BuildVariant]:
 
     # Each variant picks its distro group(s).
     for host in ["rhel8", "macos", "win64"]:
-        tasks = [f".test-encryption .{host}", ".test-string-query-preview"]
+        tasks = [f".test-encryption .{host}"]
         if host == "rhel8":
             tasks.append(".test-encryption-pyopenssl .rhel8")
         display_name = get_variant_name("Encryption", host)
@@ -635,33 +635,6 @@ def create_no_toolchain_tasks():
         test_func = FunctionCall(func="run tests", vars=test_vars)
         tasks.append(EvgTask(name=name, tags=tags, commands=[server_func, test_func]))
     return tasks
-
-
-def create_string_query_preview_tasks():
-    """Tasks for the preview Queryable Encryption string query types.
-
-    The preview types need a server >= 8.2 and < 9.0; ALL_VERSIONS jumps from
-    8.0 to 9.0, so they need a dedicated task. setup_tests.py pins the
-    released pymongocrypt for 8.x, which bundles a libmongocrypt still
-    carrying the preview types.
-    """
-    python = CPYTHONS[-1]
-    topology = "replica_set"
-    auth, ssl = get_standard_auth_ssl(topology)
-    expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION="8.2")
-    tags = [
-        "test-string-query-preview",
-        "server-8.2",
-        f"python-{python}",
-        f"{topology}-{auth}-{ssl}",
-        auth,
-    ]
-    name = get_task_name("test-string-query-preview", python=python, **expansions)
-    server_func = FunctionCall(func="run server", vars=expansions)
-    test_vars = expansions.copy()
-    test_vars["UV_PYTHON"] = python
-    test_func = FunctionCall(func="run tests", vars=test_vars)
-    return [EvgTask(name=name, tags=tags, commands=[server_func, test_func])]
 
 
 def create_test_standard_auth_tasks():

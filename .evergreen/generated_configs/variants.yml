@@ -151,7 +151,6 @@ buildvariants:
   - name: encryption-rhel8
     tasks:
       - name: .test-encryption .rhel8
-      - name: .test-string-query-preview
       - name: .test-encryption-pyopenssl .rhel8
     display_name: Encryption RHEL8
     run_on:
@@ -161,7 +160,6 @@ buildvariants:
   - name: encryption-macos
     tasks:
       - name: .test-encryption .macos
-      - name: .test-string-query-preview
     display_name: Encryption macOS
     run_on:
       - macos-14
@@ -170,7 +168,6 @@ buildvariants:
   - name: encryption-win64
     tasks:
       - name: .test-encryption .win64
-      - name: .test-string-query-preview
     display_name: Encryption Win64
     run_on:
       - windows-2022-latest-small

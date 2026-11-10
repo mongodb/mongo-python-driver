@@ -63,7 +63,7 @@ class BulkTestBase(IntegrationTest):
                     % (len(expected_upserts), len(actual_upserts)),
                 )
 
-                for e, a in zip(expected_upserts, actual_upserts):
+                for e, a in zip(expected_upserts, actual_upserts, strict=True):
                     self.assertEqualUpsert(e, a)
 
             elif key == "writeErrors":
@@ -76,7 +76,7 @@ class BulkTestBase(IntegrationTest):
                     % (len(expected_errors), len(actual_errors)),
                 )
 
-                for e, a in zip(expected_errors, actual_errors):
+                for e, a in zip(expected_errors, actual_errors, strict=True):
                     self.assertEqualWriteError(e, a)
 
             else:
@@ -922,7 +922,7 @@ class TestBulkAuthorization(BulkAuthorizationTestBase):
 
 
 class TestBulkWriteConcern(BulkTestBase):
-    w: Optional[int]
+    w: int | None
     secondary: MongoClient
 
     def setUp(self):
