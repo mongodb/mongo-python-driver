@@ -482,7 +482,7 @@ class TestDatabase(IntegrationTest):
         )
         cursor = db.coll.find()
         for x in cursor:
-            for k, _v in x.items():
+            for k in x.keys():
                 self.assertEqual(k, "_id")
                 break
 

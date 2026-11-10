@@ -504,7 +504,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.coll.drop_indexes()
         self.assertEqual("geo_2dsphere", await db.coll.create_index([("geo", GEOSPHERE)]))
 
-        for dummy, info in (await db.coll.index_information()).items():
+        for info in (await db.coll.index_information()).values():
             field, idx_type = info["key"][0]
             if field == "geo" and idx_type == "2dsphere":
                 break
@@ -523,7 +523,7 @@ class AsyncTestCollection(AsyncIntegrationTest):
         await db.coll.drop_indexes()
         self.assertEqual("a_hashed", await db.coll.create_index([("a", HASHED)]))
 
-        for dummy, info in (await db.coll.index_information()).items():
+        for info in (await db.coll.index_information()).values():
             field, idx_type = info["key"][0]
             if field == "a" and idx_type == "hashed":
                 break

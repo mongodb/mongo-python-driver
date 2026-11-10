@@ -1412,7 +1412,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
                 raise CollectionInvalid(f"{name} invalid: {info}")
         # Sharded results
         elif "raw" in result:
-            for _, res in result["raw"].items():
+            for res in result["raw"].values():
                 if "result" in res:
                     info = res["result"]
                     if info.find("exception") != -1 or info.find("corrupt") != -1:

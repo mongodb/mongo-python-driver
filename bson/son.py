@@ -116,7 +116,7 @@ class SON(dict[_Key, _Value]):
             DeprecationWarning,
             stacklevel=2,
         )
-        for _, v in self.items():
+        for _, v in self.items():  # noqa: PERF102
             yield v
 
     def values(self) -> list[_Value]:  # type: ignore[override]
