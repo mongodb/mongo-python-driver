@@ -113,16 +113,13 @@ def test_pr_tasks_effectively_pin_max_version():
 
 def test_server_version_pr_tasks_selected_once():
     """A pr server-version task must be selected only by the variant running
-    the server version it pins. The comparison is scoped to the
-    server-version family: variants outside it may carry a VERSION expansion
-    without selecting its tasks (the sanitizer variant pins MAX_VERSION for
-    its own mongod). The reverse is not enforced."""
+    the server version it pins. The expected family comes from
+    create_server_version_variants(), not from the selections: a variant
+    missing its PR selector would otherwise drop from both sides and the
+    comparison would pass. Variants outside the family must not select these
+    tasks (the sanitizer variant pins MAX_VERSION for its own mongod)."""
     sv_tasks = [task for task in pr_tasks() if "server-version" in (task.tags or [])]
-    sv_variants = [
-        variant
-        for variant in all_variants()
-        if any(variant_selects(variant, task) for task in sv_tasks)
-    ]
+    sv_variants = generate_config.create_server_version_variants()
     offenders = {}
     for task in sv_tasks:
         own = task_vars(task).get("VERSION")
