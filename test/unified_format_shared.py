@@ -538,7 +538,7 @@ class MatchEvaluatorUtil:
 
         if isinstance(expectation, abc.MutableSequence):
             self.test.assertIsInstance(actual, abc.MutableSequence)
-            for e, a in zip(expectation, actual):
+            for e, a in zip(expectation, actual, strict=False):
                 if isinstance(e, abc.Mapping):
                     res = self._match_document(e, a, is_root=not in_recursive_call, test=test)
                 else:

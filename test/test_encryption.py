@@ -2833,7 +2833,7 @@ class TestRangeQueryProse(EncryptionIntegrationTest):
             self.encrypted_client.db.explicit_encryption.find(find_payload).to_list(),
             key=lambda x: x["_id"],
         )
-        for elem, expected in zip(sorted_find, expected_elems):
+        for elem, expected in zip(sorted_find, expected_elems, strict=True):
             self.assertEqual(elem[f"encrypted{name}"], expected)
 
     def run_test_cases(self, name, range_opts, cast_func):
@@ -3236,6 +3236,7 @@ class TestAutomaticDecryptionKeys(EncryptionIntegrationTest):
             for val, key in zip(
                 ["123-45-6789", "11/22/1963", "My secret", "New Mexico, 87104"],
                 [field["keyId"] for field in ef["fields"]],
+                strict=True,
             )
         ]
         coll.insert_one(

@@ -747,7 +747,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                 )
             actual_write_concern_errors = exception.details.get("writeConcernErrors", [])
             self.assertEqual(len(write_concern_errors), len(actual_write_concern_errors))
-            for expected_wce, actual_wce in zip(write_concern_errors, actual_write_concern_errors):
+            for expected_wce, actual_wce in zip(
+                write_concern_errors, actual_write_concern_errors, strict=True
+            ):
                 # Use the spec's WriteConcernError field names.
                 formatted_actual_wce = {
                     "code": actual_wce.get("code", ""),
@@ -1453,7 +1455,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
                     len(actual_logs),
                     f"expected {client['messages']} but got {actual_logs}",
                 )
-                for expected_msg, actual_msg in zip(client["messages"], actual_logs):
+                for expected_msg, actual_msg in zip(client["messages"], actual_logs, strict=True):
                     expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
 
                     if "failureIsRedacted" in expected_msg:
