@@ -249,7 +249,6 @@ ignore = [
   # These are all new defaults added in ruff 0.16.0. Individual tickets linked from PYTHON-5964 track enabling each one.
   "FURB",   # refurb
   "LOG",    # flake8-logging
-  "PERF",   # Perflint
   "PYI",    # flake8-pyi
   "TC",     # flake8-type-checking
   "TRY",    # tryceratops
