@@ -247,7 +247,6 @@ ignore = [
   "ICN001", # Use standard import naming conventions (pandas as pd, datetime as dt...)
   # These are all new defaults added in ruff 0.16.0. Individual tickets linked from PYTHON-5964 track enabling each one.
   "BLE",    # flake8-blind-except
-  "FURB",   # refurb
   "LOG",    # flake8-logging
   "PERF",   # Perflint
   "PYI",    # flake8-pyi
