@@ -85,7 +85,7 @@ def get_distro() -> Distro:
     version_id = ""
     arch = platform.machine()
     with open("/etc/os-release") as fid:
-        for line in fid.readlines():
+        for line in fid:
             line = line.replace('"', "")  # noqa: PLW2901
             if line.startswith("NAME="):
                 _, _, name = line.strip().partition("=")

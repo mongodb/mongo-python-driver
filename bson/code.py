@@ -91,12 +91,12 @@ class Code(str):
     def __repr__(self) -> str:
         return f"Code({str.__repr__(self)}, {self.__scope!r})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Code):
             return (self.__scope, str(self)) == (other.__scope, str(other))
         return False
 
     __hash__: Any = None
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other

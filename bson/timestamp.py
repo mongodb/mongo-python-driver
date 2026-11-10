@@ -80,7 +80,7 @@ class Timestamp:
         """Get the inc portion of this :class:`Timestamp`."""
         return self.__inc
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Timestamp):
             return self.__time == other.time and self.__inc == other.inc
         else:
@@ -89,7 +89,7 @@ class Timestamp:
     def __hash__(self) -> int:
         return hash(self.time) ^ hash(self.inc)
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __lt__(self, other: Any) -> bool:

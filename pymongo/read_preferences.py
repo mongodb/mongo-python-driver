@@ -236,7 +236,7 @@ class _ServerMode:
     def __repr__(self) -> str:
         return f"{self.name}(tag_sets={self.__tag_sets!r}, max_staleness={self.__max_staleness!r}, hedge={self.__hedge!r})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, _ServerMode):
             return (
                 self.mode == other.mode
@@ -248,7 +248,7 @@ class _ServerMode:
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __getstate__(self) -> dict[str, Any]:
@@ -297,7 +297,7 @@ class Primary(_ServerMode):
     def __repr__(self) -> str:
         return "Primary()"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, _ServerMode):
             return other.mode == _PRIMARY
         return NotImplemented

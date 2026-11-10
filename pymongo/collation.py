@@ -207,14 +207,14 @@ class Collation:
         document = self.document
         return "Collation({})".format(", ".join(f"{key}={document[key]!r}" for key in document))
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Collation):
             return self.document == other.document
         return NotImplemented
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
 

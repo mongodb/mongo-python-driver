@@ -350,12 +350,12 @@ class Decimal128:
     def __getstate__(self) -> tuple[int, int]:
         return self.__high, self.__low
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Decimal128):
             return self.bid == other.bid
         return NotImplemented
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other

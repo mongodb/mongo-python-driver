@@ -131,14 +131,14 @@ class WriteConcern:
             ", ".join(f"{k}={v!r}" for k, v in self.__document.items())
         )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, WriteConcern):
             return self.__document == other.document
         return NotImplemented
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         if isinstance(other, WriteConcern):
             return self.__document != other.document
         return NotImplemented

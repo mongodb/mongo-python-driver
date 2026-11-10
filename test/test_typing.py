@@ -156,12 +156,12 @@ class TestPymongo(IntegrationTest):
 
         def collection_distinct(
             collection: Collection,
-        ) -> list[None | int | str | ObjectId | bool]:
+        ) -> list[int | str | ObjectId | bool | None]:
             return collection.distinct("_id")
 
         def cursor_distinct(
             collection: Collection,
-        ) -> list[None | int | str | ObjectId | bool]:
+        ) -> list[int | str | ObjectId | bool | None]:
             cursor = collection.find()
             return cursor.distinct("_id")
 
