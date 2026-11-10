@@ -571,7 +571,9 @@ def handle_test_env() -> None:
         # so no LD_PRELOAD: gcc's libasan.so is a linker script that ld.so
         # cannot preload, and preloading a mismatched runtime would mix two
         # sanitizers in one process.
-        TEST_ARGS = " ".join(SANITIZER_FILES) + " " + TEST_ARGS
+        # -s: with halt_on_error=1, a sanitizer failure exits the interpreter
+        # before pytest replays captured stderr, losing the report and trace.
+        TEST_ARGS = "-s " + " ".join(SANITIZER_FILES) + " " + TEST_ARGS
 
     # Add coverage if requested.
     if opts.cov:
