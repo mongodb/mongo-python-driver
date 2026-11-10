@@ -557,6 +557,12 @@ def handle_test_env() -> None:
                 f"Sanitizer interpreter not found at {SANITIZER_PYTHON}; "
                 "the task must run on a host with the ASan/UBSan toolchain Python."
             )
+        # Clear stale C artifacts: build_ext reuses them by mtime, and a
+        # plain same-version CPython build shares the ABI tag.
+        shutil.rmtree(ROOT / "build", ignore_errors=True)
+        for pkg in ["bson", "pymongo"]:
+            for ext in (ROOT / pkg).glob("*.so"):
+                ext.unlink()
         # Build and run against the ASan/UBSan-instrumented toolchain CPython,
         # and fail loudly rather than silently skip the C extension build.
         write_env("UV_PYTHON", SANITIZER_PYTHON)
