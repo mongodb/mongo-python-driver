@@ -49,6 +49,12 @@ Bug fixes
   member removed itself from the topology with its own ``hello`` response (for
   example, during a node restart): the monitor's executor cancelled its own
   task, so the monitor never ran again (`PYTHON-6226`_).
+- Fixed undefined behavior in the C extension's BSON buffer growth. Growing
+  an encode buffer past 1GiB doubled a signed integer past its limit. An
+  existing guard corrected the wrapped value, so encoding worked as intended,
+  but the computation itself is undefined behavior. Buffers now grow to
+  exactly the required size past the doubling bound, and over-limit encodes
+  still raise ``ValueError`` (`PYTHON-6252`_).
 
 .. _PYTHON-5929: https://jira.mongodb.org/browse/PYTHON-5929
 .. _PYTHON-5959: https://jira.mongodb.org/browse/PYTHON-5959
@@ -58,6 +64,7 @@ Bug fixes
 .. _PYTHON-6145: https://jira.mongodb.org/browse/PYTHON-6145
 .. _PYTHON-6182: https://jira.mongodb.org/browse/PYTHON-6182
 .. _PYTHON-6226: https://jira.mongodb.org/browse/PYTHON-6226
+.. _PYTHON-6252: https://jira.mongodb.org/browse/PYTHON-6252
 
 Changes in Version 4.19.0 (2026/10/14)
 --------------------------------------

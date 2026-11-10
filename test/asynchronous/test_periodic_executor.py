@@ -200,7 +200,7 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
             assert isinstance(started, asyncio.Event)
             await asyncio.wait_for(started.wait(), timeout=2)
 
-        close_error: Optional[BaseException] = None
+        close_error: BaseException | None = None
 
         def close_off_loop():
             nonlocal close_error

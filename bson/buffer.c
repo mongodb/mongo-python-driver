@@ -85,11 +85,16 @@ static int buffer_grow(buffer_t buffer, int min_length) {
     }
     while (size < min_length) {
         old_size = size;
-        size *= 2;
-        if (size <= old_size) {
-           /* Size did not increase. Could be an overflow
-            * or size < 1. Just go with min_length. */
-           size = min_length;
+        if (size > INT_MAX / 2) {
+            /* Doubling `size` would overflow `int`; grow to exactly
+             * min_length instead. */
+            size = min_length;
+        } else {
+            size *= 2;
+            if (size <= old_size) {
+                /* Size did not increase. Could be size < 1. */
+                size = min_length;
+            }
         }
     }
     buffer->buffer = (char*)realloc(buffer->buffer, sizeof(char) * size);
