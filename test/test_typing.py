@@ -174,13 +174,11 @@ class TestPymongo(IntegrationTest):
         coll: Collection[Movie] = self.coll
         requests: list[InsertOne[Movie]] = [InsertOne(Movie(name="American Graffiti", year=1973))]
         self.assertTrue(coll.bulk_write(requests).acknowledged)
-        new_requests: list[InsertOne[Movie] | ReplaceOne[Movie]] = []
         input_list: list[InsertOne[Movie] | ReplaceOne[Movie]] = [
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne({}, Movie(name="American Graffiti", year=1973)),
         ]
-        for i in input_list:
-            new_requests.append(i)
+        new_requests: list[InsertOne[Movie] | ReplaceOne[Movie]] = list.copy(input_list)
         self.assertTrue(coll.bulk_write(new_requests).acknowledged)
 
     # Because ReplaceOne is not generic, type checking is not enforced for ReplaceOne in the first example.
