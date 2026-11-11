@@ -55,7 +55,7 @@ from __future__ import annotations
 
 import copyreg
 from collections.abc import ItemsView, Iterator, Mapping
-from typing import Any, Optional
+from typing import Any
 
 from bson import _get_object_size, _raw_as_bytes, _raw_to_dict
 from bson.codec_options import _RAW_BSON_DOCUMENT_MARKER, CodecOptions
@@ -92,7 +92,7 @@ class RawBSONDocument(Mapping[str, Any]):
     def __init__(
         self,
         bson_bytes: bytes | memoryview,
-        codec_options: Optional[CodecOptions[RawBSONDocument]] = None,
+        codec_options: CodecOptions[RawBSONDocument] | None = None,
     ) -> None:
         """Create a new :class:`RawBSONDocument`
 
@@ -127,7 +127,7 @@ class RawBSONDocument(Mapping[str, Any]):
           `document_class` must be :class:`RawBSONDocument`.
         """
         self.__raw = bson_bytes
-        self.__inflated_doc: Optional[Mapping[str, Any]] = None
+        self.__inflated_doc: Mapping[str, Any] | None = None
         # Can't default codec_options to DEFAULT_RAW_BSON_OPTIONS in signature,
         # it refers to this class RawBSONDocument.
         if codec_options is None:
@@ -182,14 +182,14 @@ class RawBSONDocument(Mapping[str, Any]):
     def __len__(self) -> int:
         return len(self.__inflated)
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, RawBSONDocument):
             return self.__raw == other.raw
         return NotImplemented
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __getstate__(self) -> tuple[Optional[dict[str, Any]], dict[str, Any]]:
+    def __getstate__(self) -> tuple[dict[str, Any] | None, dict[str, Any]]:
         slots_state: dict[str, Any] = {
             name: getattr(self, name)
             for name in copyreg._slotnames(type(self))  # type: ignore[attr-defined]

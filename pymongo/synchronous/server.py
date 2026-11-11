@@ -19,7 +19,6 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
 )
 
 from pymongo._telemetry import _SdamTelemetry
@@ -43,9 +42,9 @@ class Server:
         server_description: ServerDescription,
         pool: Pool,
         monitor: Monitor,
-        topology_id: Optional[ObjectId] = None,
-        listeners: Optional[_EventListeners] = None,
-        events: Optional[ReferenceType[Queue[Any]]] = None,
+        topology_id: ObjectId | None = None,
+        listeners: _EventListeners | None = None,
+        events: ReferenceType[Queue[Any]] | None = None,
     ) -> None:
         """Represent one MongoDB server."""
         self._description = server_description
@@ -62,7 +61,7 @@ class Server:
         if not self._pool.opts.load_balanced:
             self._monitor.open()
 
-    def reset(self, service_id: Optional[ObjectId] = None) -> None:
+    def reset(self, service_id: ObjectId | None = None) -> None:
         """Clear the connection pool."""
         self.pool.reset(service_id)
 
@@ -73,8 +72,12 @@ class Server:
         """
         self._sdam.server_closed(self._description.address)
 
-        self._monitor.close()
-        self._pool.close()
+        try:
+            self._monitor.close()
+        finally:
+            # The pool must close even if cancellation or an error
+            # interrupts the monitor close (PYTHON-6226).
+            self._pool.close()
 
     def request_check(self) -> None:
         """Check the server's state soon."""

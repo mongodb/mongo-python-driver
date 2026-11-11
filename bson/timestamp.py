@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import calendar
 import datetime
-from typing import Any, Union
+from typing import Any
 
 from bson._helpers import _getstate_slots, _setstate_slots
 from bson.tz_util import utc
@@ -36,7 +36,7 @@ class Timestamp:
 
     _type_marker = 17
 
-    def __init__(self, time: Union[datetime.datetime, int], inc: int) -> None:
+    def __init__(self, time: datetime.datetime | int, inc: int) -> None:
         """Create a new :class:`Timestamp`.
 
         This class is only for use with the MongoDB opLog. If you need
@@ -80,7 +80,7 @@ class Timestamp:
         """Get the inc portion of this :class:`Timestamp`."""
         return self.__inc
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Timestamp):
             return self.__time == other.time and self.__inc == other.inc
         else:
@@ -89,7 +89,7 @@ class Timestamp:
     def __hash__(self) -> int:
         return hash(self.time) ^ hash(self.inc)
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __lt__(self, other: Any) -> bool:

@@ -18,16 +18,18 @@ import os
 import pathlib
 import time
 import unittest
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from pymongo import MongoClient
 from pymongo.driver_info import DriverInfo
 from pymongo.monitoring import ConnectionClosedEvent
 from test import IntegrationTest
 from test.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import CMAPListener
+
+if TYPE_CHECKING:
+    from pymongo import MongoClient
 
 try:
     from mockupdb import MockupDB, OpMsgReply
@@ -67,10 +69,10 @@ class TestClientMetadataProse(IntegrationTest):
 
     def send_ping_and_get_metadata(
         self, client: MongoClient, is_handshake: bool
-    ) -> tuple[str, Optional[str], Optional[str], dict[str, Any]]:
+    ) -> tuple[str, str | None, str | None, dict[str, Any]]:
         # reset if handshake request
         if is_handshake:
-            self.handshake_req: Optional[dict] = None
+            self.handshake_req: dict | None = None
 
         client.admin.command("ping")
         metadata = _get_handshake_driver_info(self.handshake_req)
@@ -86,8 +88,8 @@ class TestClientMetadataProse(IntegrationTest):
         self,
         client: MongoClient,
         add_name: str,
-        add_version: Optional[str],
-        add_platform: Optional[str],
+        add_version: str | None,
+        add_platform: str | None,
     ) -> None:
         # send initial metadata
         name, version, platform, metadata = self.send_ping_and_get_metadata(client, True)
@@ -196,7 +198,7 @@ class TestClientMetadataProse(IntegrationTest):
         add_name, add_version, add_platform = "framework", "2.0", "Framework Platform"
         client.append_metadata(DriverInfo(add_name, add_version, add_platform))
         # check new data isn't sent
-        self.handshake_req: Optional[dict] = None
+        self.handshake_req: dict | None = None
         client.admin.command("ping")
         self.assertIsNone(self.handshake_req)
         self.assertEqual(listener.event_count(ConnectionClosedEvent), 0)
@@ -299,7 +301,7 @@ class TestClientMetadataProse(IntegrationTest):
                 driver_name = name0.split("|")[0]
                 driver_version = version0.split("|")[0]
 
-                def resolve(value: Optional[str]) -> Optional[str]:
+                def resolve(value: str | None) -> str | None:
                     if value is None:
                         return None
                     return value.format(driver_name=driver_name, driver_version=driver_version)

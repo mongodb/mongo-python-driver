@@ -23,9 +23,8 @@ import sys
 from codecs import utf_8_decode
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Any, no_type_check
+from typing import TYPE_CHECKING, Any, no_type_check
 
-from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
 from test.utils import get_pool
 
@@ -63,7 +62,6 @@ from pymongo.results import (
 )
 from pymongo.synchronous.collection import Collection, ReturnDocument
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 from test import (  # TODO: fix sync imports in PYTHON-4528
     IntegrationTest,
@@ -78,6 +76,10 @@ from test.utils_shared import (
     wait_until,
 )
 from test.version import Version
+
+if TYPE_CHECKING:
+    from pymongo.synchronous.database import Database
+    from pymongo.synchronous.mongo_client import MongoClient
 
 _IS_SYNC = True
 
@@ -494,7 +496,7 @@ class TestCollection(IntegrationTest):
         db.coll.drop_indexes()
         self.assertEqual("geo_2dsphere", db.coll.create_index([("geo", GEOSPHERE)]))
 
-        for dummy, info in (db.coll.index_information()).items():
+        for info in (db.coll.index_information()).values():
             field, idx_type = info["key"][0]
             if field == "geo" and idx_type == "2dsphere":
                 break
@@ -513,7 +515,7 @@ class TestCollection(IntegrationTest):
         db.coll.drop_indexes()
         self.assertEqual("a_hashed", db.coll.create_index([("a", HASHED)]))
 
-        for dummy, info in (db.coll.index_information()).items():
+        for info in (db.coll.index_information()).values():
             field, idx_type = info["key"][0]
             if field == "a" and idx_type == "hashed":
                 break

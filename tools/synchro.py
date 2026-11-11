@@ -230,11 +230,11 @@ def apply_is_sync(lines: list[str], file: str) -> list[str]:
         index = lines.index(is_sync)
         is_sync = is_sync.replace("False", "True")
         lines[index] = is_sync
-    except StopIteration as e:
+    except StopIteration:
         print(
             f"Missing _IS_SYNC at top of async file {file.replace('synchronous', 'asynchronous')}"
         )
-        raise e
+        raise
     return lines
 
 
@@ -418,14 +418,15 @@ def main() -> None:
         for f in generated_files:
             print(f"  {f}")
 
-    subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "ruff", "check", *generated_files, "--fix", *ruff_extra],
-        check=is_ci,
-    )
-    subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "ruff", "format", *generated_files, *ruff_extra],
-        check=is_ci,
-    )
+    if generated_files:
+        subprocess.run(  # noqa: S603
+            [sys.executable, "-m", "ruff", "check", *generated_files, "--fix", *ruff_extra],
+            check=is_ci,
+        )
+        subprocess.run(  # noqa: S603
+            [sys.executable, "-m", "ruff", "format", *generated_files, *ruff_extra],
+            check=is_ci,
+        )
 
     if is_ci and generated_files:
         result = subprocess.run(  # noqa: S603

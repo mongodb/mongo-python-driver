@@ -29,9 +29,7 @@ from collections.abc import Mapping as _Mapping
 from re import Pattern
 from typing import (
     Any,
-    Optional,
     TypeVar,
-    Union,
     cast,
 )
 
@@ -56,7 +54,7 @@ class SON(dict[_Key, _Value]):
 
     def __init__(
         self,
-        data: Optional[Union[Mapping[_Key, _Value], Iterable[tuple[_Key, _Value]]]] = None,
+        data: Mapping[_Key, _Value] | Iterable[tuple[_Key, _Value]] | None = None,
         **kwargs: Any,
     ) -> None:
         self.__keys = []
@@ -118,7 +116,7 @@ class SON(dict[_Key, _Value]):
             DeprecationWarning,
             stacklevel=2,
         )
-        for _, v in self.items():
+        for _, v in self.items():  # noqa: PERF102
             yield v
 
     def values(self) -> list[_Value]:  # type: ignore[override]
@@ -135,7 +133,7 @@ class SON(dict[_Key, _Value]):
             self[key] = default
         return default
 
-    def pop(self, key: _Key, *args: Union[_Value, _T]) -> Union[_Value, _T]:
+    def pop(self, key: _Key, *args: _Value | _T) -> _Value | _T:
         if len(args) > 1:
             raise TypeError("pop expected at most 2 arguments, got " + repr(1 + len(args)))
         try:
@@ -155,7 +153,7 @@ class SON(dict[_Key, _Value]):
         del self[k]
         return (k, v)
 
-    def update(self, other: Optional[Any] = None, **kwargs: _Value) -> None:
+    def update(self, other: Any | None = None, **kwargs: _Value) -> None:
         # Make progressively weaker assumptions about "other"
         if other is None:
             pass
@@ -172,24 +170,24 @@ class SON(dict[_Key, _Value]):
             self.update(kwargs)
 
     def get(  # type: ignore[override]
-        self, key: _Key, default: Optional[Union[_Value, _T]] = None
-    ) -> Union[_Value, _T, None]:
+        self, key: _Key, default: _Value | _T | None = None
+    ) -> _Value | _T | None:
         try:
             return self[key]
         except KeyError:
             return default
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Comparison to another SON is order-sensitive while comparison to a
         regular dictionary is order-insensitive.
         """
         if isinstance(other, SON):
             return len(self) == len(other) and list(self.items()) == list(other.items())
-        return cast(bool, self.to_dict() == other)
+        return self.to_dict() == other
 
     __hash__ = None
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __len__(self) -> int:

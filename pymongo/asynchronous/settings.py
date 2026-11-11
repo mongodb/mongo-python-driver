@@ -17,17 +17,19 @@
 from __future__ import annotations
 
 import threading
-from collections.abc import Collection
-from typing import Callable, Optional
+from collections.abc import Callable, Collection
+from typing import TYPE_CHECKING
 
-from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.asynchronous import monitor, pool
 from pymongo.asynchronous.pool import Pool
 from pymongo.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
-from pymongo.pool_options import PoolOptions
 from pymongo.settings_shared import _BaseTopologySettings
-from pymongo.topology_description import _ServerSelector
+
+if TYPE_CHECKING:
+    from bson.objectid import ObjectId
+    from pymongo.pool_options import PoolOptions
+    from pymongo.topology_description import _ServerSelector
 
 _IS_SYNC = False
 
@@ -35,25 +37,25 @@ _IS_SYNC = False
 class TopologySettings(_BaseTopologySettings[type[Pool], type[monitor.Monitor]]):
     def __init__(
         self,
-        seeds: Optional[Collection[tuple[str, int]]] = None,
-        replica_set_name: Optional[str] = None,
-        pool_class: Optional[type[Pool]] = None,
-        pool_options: Optional[PoolOptions] = None,
-        monitor_class: Optional[type[monitor.Monitor]] = None,
-        condition_class: Optional[type[threading.Condition]] = None,
+        seeds: Collection[tuple[str, int]] | None = None,
+        replica_set_name: str | None = None,
+        pool_class: type[Pool] | None = None,
+        pool_options: PoolOptions | None = None,
+        monitor_class: type[monitor.Monitor] | None = None,
+        condition_class: type[threading.Condition] | None = None,
         local_threshold_ms: int = LOCAL_THRESHOLD_MS,
         server_selection_timeout: int = SERVER_SELECTION_TIMEOUT,
         heartbeat_frequency: int = common.HEARTBEAT_FREQUENCY,
-        server_selector: Optional[_ServerSelector] = None,
-        fqdn: Optional[str] = None,
-        direct_connection: Optional[bool] = False,
-        load_balanced: Optional[bool] = None,
+        server_selector: _ServerSelector | None = None,
+        fqdn: str | None = None,
+        direct_connection: bool | None = False,
+        load_balanced: bool | None = None,
         srv_service_name: str = common.SRV_SERVICE_NAME,
         srv_max_hosts: int = 0,
-        srv_allowed_hosts_suffix: Optional[str] = None,
-        srv_host_validator: Optional[Callable[[str], bool]] = None,
+        srv_allowed_hosts_suffix: str | None = None,
+        srv_host_validator: Callable[[str], bool] | None = None,
         server_monitoring_mode: str = common.SERVER_MONITORING_MODE,
-        topology_id: Optional[ObjectId] = None,
+        topology_id: ObjectId | None = None,
     ):
         """Represent MongoClient's configuration.
 

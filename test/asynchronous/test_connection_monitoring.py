@@ -199,7 +199,7 @@ class AsyncTestCMAP(AsyncIntegrationTest):
     def check_events(self, events, ignore):
         """Check the events of a test."""
         actual_events = self.actual_events(ignore)
-        for actual, expected in zip(actual_events, events):
+        for actual, expected in zip(actual_events, events, strict=False):
             self.logs.append(f"Checking event actual: {actual!r} vs expected: {expected!r}")
             self.check_event(actual, expected)
 

@@ -26,7 +26,7 @@ import re
 import sys
 import threading
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pymongo
 
@@ -40,7 +40,6 @@ from pymongo.asynchronous.cursor import AsyncCursor, CursorType
 from pymongo.asynchronous.helpers import anext
 from pymongo.collation import Collation
 from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure, PyMongoError
-from pymongo.operations import _IndexList
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
@@ -54,6 +53,9 @@ from test.utils_shared import (
     delay,
     ignore_deprecations,
 )
+
+if TYPE_CHECKING:
+    from pymongo.operations import _IndexList
 
 _IS_SYNC = False
 
@@ -1037,18 +1039,18 @@ class TestCursor(AsyncIntegrationTest):
         self.assertRaises(IndexError, lambda: self.db.coll.find()[-1:])
         self.assertRaises(IndexError, lambda: self.db.coll.find()[1:2:2])
 
-        for a, b in zip(count(0), self.db.coll.find()):  # type: ignore[call-overload]
+        for a, b in zip(count(0), self.db.coll.find(), strict=False):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
         self.assertEqual(100, len(list(self.db.coll.find()[0:])))  # type: ignore[call-overload]
-        for a, b in zip(count(0), self.db.coll.find()[0:]):  # type: ignore[call-overload]
+        for a, b in zip(count(0), self.db.coll.find()[0:], strict=False):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
         self.assertEqual(80, len(list(self.db.coll.find()[20:])))  # type: ignore[call-overload]
-        for a, b in zip(count(20), self.db.coll.find()[20:]):  # type: ignore[call-overload]
+        for a, b in zip(count(20), self.db.coll.find()[20:], strict=False):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
-        for a, b in zip(count(99), self.db.coll.find()[99:]):  # type: ignore[call-overload]
+        for a, b in zip(count(99), self.db.coll.find()[99:], strict=False):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
         for _i in self.db.coll.find()[1000:]:
@@ -1056,19 +1058,19 @@ class TestCursor(AsyncIntegrationTest):
 
         self.assertEqual(5, len(list(self.db.coll.find()[20:25])))  # type: ignore[call-overload]
         self.assertEqual(5, len(list(self.db.coll.find()[20:25])))  # type: ignore[call-overload]
-        for a, b in zip(count(20), self.db.coll.find()[20:25]):  # type: ignore[call-overload]
+        for a, b in zip(count(20), self.db.coll.find()[20:25], strict=False):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
         self.assertEqual(80, len(list(self.db.coll.find()[40:45][20:])))  # type: ignore[call-overload]
-        for a, b in zip(count(20), self.db.coll.find()[40:45][20:]):  # type: ignore[call-overload]
+        for a, b in zip(count(20), self.db.coll.find()[40:45][20:], strict=False):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
         self.assertEqual(80, len(list(self.db.coll.find()[40:45].limit(0).skip(20))))  # type: ignore[call-overload]
-        for a, b in zip(count(20), self.db.coll.find()[40:45].limit(0).skip(20)):  # type: ignore[call-overload]
+        for a, b in zip(count(20), self.db.coll.find()[40:45].limit(0).skip(20), strict=False):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
         self.assertEqual(80, len(list(self.db.coll.find().limit(10).skip(40)[20:])))  # type: ignore[call-overload]
-        for a, b in zip(count(20), self.db.coll.find().limit(10).skip(40)[20:]):  # type: ignore[call-overload]
+        for a, b in zip(count(20), self.db.coll.find().limit(10).skip(40)[20:], strict=False):  # type: ignore[call-overload]
             self.assertEqual(a, b["i"])
 
         self.assertEqual(1, len(list(self.db.coll.find()[:1])))  # type: ignore[call-overload]

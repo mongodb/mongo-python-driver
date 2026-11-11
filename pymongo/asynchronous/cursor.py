@@ -22,8 +22,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     NoReturn,
-    Optional,
-    Union,
     cast,
     overload,
 )
@@ -87,9 +85,7 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
     @overload
     def __getitem__(self, index: slice) -> AsyncCursor[_DocumentType]: ...
 
-    def __getitem__(
-        self, index: Union[int, slice]
-    ) -> Union[_DocumentType, AsyncCursor[_DocumentType]]:
+    def __getitem__(self, index: int | slice) -> _DocumentType | AsyncCursor[_DocumentType]:
         """Get a single document or a slice of documents from this cursor.
 
         .. warning:: A :class:`~AsyncCursor` is not a Python :class:`list`. Each
@@ -221,7 +217,7 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
 
         return await self._collection.distinct(key, session=self._session, **options)
 
-    async def _send_message(self, operation: Union[_Query, _GetMore]) -> None:
+    async def _send_message(self, operation: _Query | _GetMore) -> None:
         """Send a query or getmore operation and handles the response.
 
         If operation is ``None`` this is an exhaust cursor, which reads
@@ -389,7 +385,7 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
         else:
             raise StopAsyncIteration
 
-    async def _next_batch(self, result: list, total: Optional[int] = None) -> bool:  # type: ignore[type-arg]
+    async def _next_batch(self, result: list, total: int | None = None) -> bool:  # type: ignore[type-arg]
         """Get all or some documents from the cursor."""
         if self._empty:
             return False
@@ -436,9 +432,9 @@ class AsyncRawBatchCursor(AsyncCursor[_DocumentType]):
     def _unpack_response(
         self,
         response: _OpMsg,
-        cursor_id: Optional[int],
+        cursor_id: int | None,
         codec_options: CodecOptions[Mapping[str, Any]],
-        user_fields: Optional[Mapping[str, Any]] = None,
+        user_fields: Mapping[str, Any] | None = None,
         legacy_response: bool = False,
     ) -> list[_DocumentOut]:
         raw_response = response.raw_response(cursor_id, user_fields=user_fields)

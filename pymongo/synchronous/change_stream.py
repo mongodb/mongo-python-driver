@@ -16,7 +16,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from types import TracebackType
+from typing import TYPE_CHECKING
 
 from bson import _bson_to_dict
 from pymongo import _csot
@@ -60,13 +61,13 @@ class ChangeStream(_AgnosticChangeStream[_DocumentType, "MongoClient[_DocumentTy
     .. seealso:: The MongoDB documentation on `changeStreams <https://mongodb.com/docs/manual/changeStreams/>`_.
     """
 
-    _session: Optional[ClientSession]
+    _session: ClientSession | None
 
     def _initialize_cursor(self) -> None:
         # Initialize cursor.
         self._cursor = self._create_cursor()
 
-    def _run_aggregation_cmd(self, session: Optional[ClientSession]) -> CommandCursor:  # type: ignore[type-arg]
+    def _run_aggregation_cmd(self, session: ClientSession | None) -> CommandCursor:  # type: ignore[type-arg]
         """Run the full aggregation pipeline for this ChangeStream and return
         the corresponding CommandCursor.
         """
@@ -148,7 +149,7 @@ class ChangeStream(_AgnosticChangeStream[_DocumentType, "MongoClient[_DocumentTy
     __next__ = next
 
     @_csot.apply
-    def try_next(self) -> Optional[_DocumentType]:
+    def try_next(self) -> _DocumentType | None:
         """Advance the cursor without blocking indefinitely.
 
         This method returns the next change document without waiting
@@ -246,7 +247,12 @@ class ChangeStream(_AgnosticChangeStream[_DocumentType, "MongoClient[_DocumentTy
     def __enter__(self) -> ChangeStream[_DocumentType]:
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.close()
 
 

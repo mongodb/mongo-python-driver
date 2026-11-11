@@ -18,22 +18,23 @@ from __future__ import annotations
 
 import sys
 import uuid
-from typing import Any, Optional
-
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from typing import TYPE_CHECKING, Any
 
 sys.path[0:0] = [""]
 
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
-from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.common import partition_node
 from pymongo.errors import BulkWriteError, ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import *
 from pymongo.write_concern import WriteConcern
 from test.asynchronous import AsyncIntegrationTest, async_client_context, remove_all_users, unittest
 from test.utils_shared import async_wait_until
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.collection import AsyncCollection
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 _IS_SYNC = False
 
@@ -63,7 +64,7 @@ class AsyncBulkTestBase(AsyncIntegrationTest):
                     % (len(expected_upserts), len(actual_upserts)),
                 )
 
-                for e, a in zip(expected_upserts, actual_upserts):
+                for e, a in zip(expected_upserts, actual_upserts, strict=True):
                     self.assertEqualUpsert(e, a)
 
             elif key == "writeErrors":
@@ -76,7 +77,7 @@ class AsyncBulkTestBase(AsyncIntegrationTest):
                     % (len(expected_errors), len(actual_errors)),
                 )
 
-                for e, a in zip(expected_errors, actual_errors):
+                for e, a in zip(expected_errors, actual_errors, strict=True):
                     self.assertEqualWriteError(e, a)
 
             else:
@@ -924,7 +925,7 @@ class AsyncTestBulkAuthorization(AsyncBulkAuthorizationTestBase):
 
 
 class AsyncTestBulkWriteConcern(AsyncBulkTestBase):
-    w: Optional[int]
+    w: int | None
     secondary: AsyncMongoClient
 
     async def asyncSetUp(self):

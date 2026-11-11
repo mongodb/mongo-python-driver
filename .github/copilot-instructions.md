@@ -38,6 +38,7 @@ if user.email and "@" in user.email and len(user.email) > 5:
 else:
     submit_button.enabled = False
 
+
 # Consider:
 def valid_email(email):
     return email and "@" in email and len(email) > 5

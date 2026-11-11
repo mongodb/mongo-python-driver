@@ -18,16 +18,21 @@ from __future__ import annotations
 
 import warnings
 from collections import abc
-from collections.abc import Coroutine, Iterable, Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import (
+    Callable,
+    Coroutine,
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Sequence,
+)
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Generic,
     NoReturn,
-    Optional,
     TypeVar,
-    Union,
     cast,
     overload,
 )
@@ -36,7 +41,6 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from bson.timestamp import Timestamp
 from pymongo import ASCENDING, _csot, common, helpers_shared, message
 from pymongo.asynchronous.aggregation import (
     _CollectionAggregationCommand,
@@ -94,14 +98,14 @@ T = TypeVar("T")
 _FIND_AND_MODIFY_DOC_FIELDS = {"value": 1}
 
 
-_WriteOp = Union[
-    InsertOne[_DocumentType],
-    DeleteOne,
-    DeleteMany,
-    ReplaceOne[_DocumentType],
-    UpdateOne,
-    UpdateMany,
-]
+_WriteOp = (
+    InsertOne[_DocumentType]
+    | DeleteOne
+    | DeleteMany
+    | ReplaceOne[_DocumentType]
+    | UpdateOne
+    | UpdateMany
+)
 
 
 class ReturnDocument:
@@ -120,6 +124,7 @@ class ReturnDocument:
 
 if TYPE_CHECKING:
     import bson
+    from bson.timestamp import Timestamp
     from pymongo.asynchronous.aggregation import _AggregationCommand
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.database import AsyncDatabase
@@ -136,12 +141,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         database: AsyncDatabase[_DocumentType],
         name: str,
-        create: Optional[bool] = False,
-        codec_options: Optional[CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
-        session: Optional[AsyncClientSession] = None,
+        create: bool | None = False,
+        codec_options: CodecOptions[_DocumentTypeArg] | None = None,
+        read_preference: _ServerMode | None = None,
+        write_concern: WriteConcern | None = None,
+        read_concern: ReadConcern | None = None,
+        session: AsyncClientSession | None = None,
         **kwargs: Any,
     ) -> None:
         """Get / create an asynchronous Mongo collection.
@@ -289,12 +294,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._database!r}, {self._name!r})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, AsyncCollection):
             return self._database == other.database and self._name == other.name
         return NotImplemented
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __hash__(self) -> int:
@@ -331,26 +336,26 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     def with_options(
         self,
         codec_options: None = None,
-        read_preference: Optional[_ServerMode] = ...,
-        write_concern: Optional[WriteConcern] = ...,
-        read_concern: Optional[ReadConcern] = ...,
+        read_preference: _ServerMode | None = ...,
+        write_concern: WriteConcern | None = ...,
+        read_concern: ReadConcern | None = ...,
     ) -> AsyncCollection[_DocumentType]: ...
 
     @overload
     def with_options(
         self,
         codec_options: bson.CodecOptions[_DocumentTypeArg],
-        read_preference: Optional[_ServerMode] = ...,
-        write_concern: Optional[WriteConcern] = ...,
-        read_concern: Optional[ReadConcern] = ...,
+        read_preference: _ServerMode | None = ...,
+        write_concern: WriteConcern | None = ...,
+        read_concern: ReadConcern | None = ...,
     ) -> AsyncCollection[_DocumentTypeArg]: ...
 
     def with_options(
         self,
-        codec_options: Optional[bson.CodecOptions[_DocumentTypeArg]] = None,
-        read_preference: Optional[_ServerMode] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_concern: Optional[ReadConcern] = None,
+        codec_options: bson.CodecOptions[_DocumentTypeArg] | None = None,
+        read_preference: _ServerMode | None = None,
+        write_concern: WriteConcern | None = None,
+        read_concern: ReadConcern | None = None,
     ) -> AsyncCollection[_DocumentType] | AsyncCollection[_DocumentTypeArg]:
         """Get a clone of this collection changing the specified settings.
 
@@ -415,18 +420,18 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def watch(
         self,
-        pipeline: Optional[_Pipeline] = None,
-        full_document: Optional[str] = None,
-        resume_after: Optional[Mapping[str, Any]] = None,
-        max_await_time_ms: Optional[int] = None,
-        batch_size: Optional[int] = None,
-        collation: Optional[_CollationIn] = None,
-        start_at_operation_time: Optional[Timestamp] = None,
-        session: Optional[AsyncClientSession] = None,
-        start_after: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-        full_document_before_change: Optional[str] = None,
-        show_expanded_events: Optional[bool] = None,
+        pipeline: _Pipeline | None = None,
+        full_document: str | None = None,
+        resume_after: Mapping[str, Any] | None = None,
+        max_await_time_ms: int | None = None,
+        batch_size: int | None = None,
+        collation: _CollationIn | None = None,
+        start_at_operation_time: Timestamp | None = None,
+        session: AsyncClientSession | None = None,
+        start_after: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
+        full_document_before_change: str | None = None,
+        show_expanded_events: bool | None = None,
     ) -> AsyncCollectionChangeStream[_DocumentType]:
         """Watch changes on this collection.
 
@@ -558,16 +563,16 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         conn: AsyncConnection,
         command: MutableMapping[str, Any],
-        read_preference: Optional[_ServerMode] = None,
-        codec_options: Optional[CodecOptions[Mapping[str, Any]]] = None,
+        read_preference: _ServerMode | None = None,
+        codec_options: CodecOptions[Mapping[str, Any]] | None = None,
         check: bool = True,
-        allowable_errors: Optional[Sequence[Union[str, int]]] = None,
-        read_concern: Optional[ReadConcern] = None,
-        write_concern: Optional[WriteConcern] = None,
-        collation: Optional[_CollationIn] = None,
-        session: Optional[AsyncClientSession] = None,
+        allowable_errors: Sequence[str | int] | None = None,
+        read_concern: ReadConcern | None = None,
+        write_concern: WriteConcern | None = None,
+        collation: _CollationIn | None = None,
+        session: AsyncClientSession | None = None,
         retryable_write: bool = False,
-        user_fields: Optional[Any] = None,
+        user_fields: Any | None = None,
     ) -> Mapping[str, Any]:
         """Internal command helper.
 
@@ -616,9 +621,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         name: str,
         options: MutableMapping[str, Any],
-        collation: Optional[_CollationIn],
-        session: Optional[AsyncClientSession],
-        encrypted_fields: Optional[Mapping[str, Any]] = None,
+        collation: _CollationIn | None,
+        session: AsyncClientSession | None,
+        encrypted_fields: Mapping[str, Any] | None = None,
         qev2_required: bool = False,
     ) -> None:
         """Sends a create command with the given options."""
@@ -632,7 +637,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             cmd.update(options)
 
         async def inner(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+            session: AsyncClientSession | None, conn: AsyncConnection, _retryable_write: bool
         ) -> None:
             if qev2_required and conn.max_wire_version < 21:
                 raise ConfigurationError(
@@ -655,7 +660,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def _create(
         self,
         options: MutableMapping[str, Any],
-        session: Optional[AsyncClientSession],
+        session: AsyncClientSession | None,
     ) -> None:
         collation = validate_collation_or_none(options.pop("collation", None))
         encrypted_fields = options.pop("encryptedFields", None)
@@ -684,10 +689,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         requests: Sequence[_WriteOp[_DocumentType]],
         ordered: bool = True,
-        bypass_document_validation: Optional[bool] = None,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
-        let: Optional[Mapping[str, Any]] = None,
+        bypass_document_validation: bool | None = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
+        let: Mapping[str, Any] | None = None,
     ) -> BulkWriteResult:
         """Send a batch of write operations to the server.
 
@@ -782,10 +787,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         doc: Mapping[str, Any],
         ordered: bool,
         write_concern: WriteConcern,
-        op_id: Optional[int],
-        bypass_doc_val: Optional[bool],
-        session: Optional[AsyncClientSession],
-        comment: Optional[Any] = None,
+        op_id: int | None,
+        bypass_doc_val: bool | None,
+        session: AsyncClientSession | None,
+        comment: Any | None = None,
     ) -> Any:
         """Internal helper for inserting a single document."""
         write_concern = write_concern or self.write_concern
@@ -795,7 +800,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             command["comment"] = comment
 
         async def _insert_command(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable_write: bool
+            session: AsyncClientSession | None, conn: AsyncConnection, retryable_write: bool
         ) -> None:
             if bypass_doc_val is not None:
                 command["bypassDocumentValidation"] = bypass_doc_val
@@ -822,10 +827,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def insert_one(
         self,
-        document: Union[_DocumentType, RawBSONDocument],
-        bypass_document_validation: Optional[bool] = None,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        document: _DocumentType | RawBSONDocument,
+        bypass_document_validation: bool | None = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
     ) -> InsertOneResult:
         """Insert a single document.
 
@@ -887,11 +892,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     @_csot.apply
     async def insert_many(
         self,
-        documents: Iterable[Union[_DocumentType, RawBSONDocument]],
+        documents: Iterable[_DocumentType | RawBSONDocument],
         ordered: bool = True,
-        bypass_document_validation: Optional[bool] = None,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        bypass_document_validation: bool | None = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
     ) -> InsertManyResult:
         """Insert an iterable of documents.
 
@@ -963,22 +968,22 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         conn: AsyncConnection,
         criteria: Mapping[str, Any],
-        document: Union[Mapping[str, Any], _Pipeline],
+        document: Mapping[str, Any] | _Pipeline,
         upsert: bool = False,
         multi: bool = False,
-        write_concern: Optional[WriteConcern] = None,
-        op_id: Optional[int] = None,
+        write_concern: WriteConcern | None = None,
+        op_id: int | None = None,
         ordered: bool = True,
-        bypass_doc_val: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
+        bypass_doc_val: bool | None = None,
+        collation: _CollationIn | None = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
         retryable_write: bool = False,
-        let: Optional[Mapping[str, Any]] = None,
-        sort: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-    ) -> Optional[Mapping[str, Any]]:
+        let: Mapping[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
+    ) -> Mapping[str, Any] | None:
         """Internal update / replace helper."""
         validate_boolean("upsert", upsert)
         collation = validate_collation_or_none(collation)
@@ -1054,27 +1059,27 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def _update_retryable(
         self,
         criteria: Mapping[str, Any],
-        document: Union[Mapping[str, Any], _Pipeline],
+        document: Mapping[str, Any] | _Pipeline,
         operation: str,
         upsert: bool = False,
         multi: bool = False,
-        write_concern: Optional[WriteConcern] = None,
-        op_id: Optional[int] = None,
+        write_concern: WriteConcern | None = None,
+        op_id: int | None = None,
         ordered: bool = True,
-        bypass_doc_val: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        sort: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
-    ) -> Optional[Mapping[str, Any]]:
+        bypass_doc_val: bool | None = None,
+        collation: _CollationIn | None = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
+    ) -> Mapping[str, Any] | None:
         """Internal update / replace helper."""
 
         async def _update(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable_write: bool
-        ) -> Optional[Mapping[str, Any]]:
+            session: AsyncClientSession | None, conn: AsyncConnection, retryable_write: bool
+        ) -> Mapping[str, Any] | None:
             return await self._update(
                 conn,
                 criteria,
@@ -1107,13 +1112,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         filter: Mapping[str, Any],
         replacement: Mapping[str, Any],
         upsert: bool = False,
-        bypass_document_validation: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        sort: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        bypass_document_validation: bool | None = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> UpdateResult:
         """Replace a single document matching the filter.
 
@@ -1213,16 +1218,16 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def update_one(
         self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
+        update: Mapping[str, Any] | _Pipeline,
         upsert: bool = False,
-        bypass_document_validation: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        sort: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        bypass_document_validation: bool | None = None,
+        collation: _CollationIn | None = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        sort: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> UpdateResult:
         """Update a single document matching the filter.
 
@@ -1332,15 +1337,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def update_many(
         self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
+        update: Mapping[str, Any] | _Pipeline,
         upsert: bool = False,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        bypass_document_validation: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        bypass_document_validation: bool | None = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> UpdateResult:
         """Update one or more documents that match the filter.
 
@@ -1431,9 +1436,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def drop(
         self,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
-        encrypted_fields: Optional[Mapping[str, Any]] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
+        encrypted_fields: Mapping[str, Any] | None = None,
     ) -> None:
         """Alias for :meth:`~pymongo.asynchronous.database.AsyncDatabase.drop_collection`.
 
@@ -1477,15 +1482,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         conn: AsyncConnection,
         criteria: Mapping[str, Any],
         multi: bool,
-        write_concern: Optional[WriteConcern] = None,
-        op_id: Optional[int] = None,
+        write_concern: WriteConcern | None = None,
+        op_id: int | None = None,
         ordered: bool = True,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
         retryable_write: bool = False,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> Mapping[str, Any]:
         """Internal delete helper."""
         common.validate_is_mapping("filter", criteria)
@@ -1528,19 +1533,19 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         criteria: Mapping[str, Any],
         multi: bool,
-        write_concern: Optional[WriteConcern] = None,
-        op_id: Optional[int] = None,
+        write_concern: WriteConcern | None = None,
+        op_id: int | None = None,
         ordered: bool = True,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> Mapping[str, Any]:
         """Internal delete helper."""
 
         async def _delete(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable_write: bool
+            session: AsyncClientSession | None, conn: AsyncConnection, retryable_write: bool
         ) -> Mapping[str, Any]:
             return await self._delete(
                 conn,
@@ -1567,11 +1572,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def delete_one(
         self,
         filter: Mapping[str, Any],
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> DeleteResult:
         """Delete a single document matching the filter.
 
@@ -1632,11 +1637,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def delete_many(
         self,
         filter: Mapping[str, Any],
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
     ) -> DeleteResult:
         """Delete one or more documents matching the filter.
 
@@ -1695,8 +1700,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         )
 
     async def find_one(
-        self, filter: Optional[Any] = None, *args: Any, **kwargs: Any
-    ) -> Optional[_DocumentType]:
+        self, filter: Any | None = None, *args: Any, **kwargs: Any
+    ) -> _DocumentType | None:
         """Get a single document from the database.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -1971,11 +1976,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def _count_cmd(
         self,
-        session: Optional[AsyncClientSession],
+        session: AsyncClientSession | None,
         conn: AsyncConnection,
-        read_preference: Optional[_ServerMode],
+        read_preference: _ServerMode | None,
         cmd: dict[str, Any],
-        collation: Optional[Collation],
+        collation: Collation | None,
     ) -> int:
         """Internal count command helper."""
         res = await self._command(
@@ -1992,11 +1997,11 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def _aggregate_one_result(
         self,
         conn: AsyncConnection,
-        read_preference: Optional[_ServerMode],
+        read_preference: _ServerMode | None,
         cmd: dict[str, Any],
-        collation: Optional[_CollationIn],
-        session: Optional[AsyncClientSession],
-    ) -> Optional[Mapping[str, Any]]:
+        collation: _CollationIn | None,
+        session: AsyncClientSession | None,
+    ) -> Mapping[str, Any] | None:
         """Internal helper to run an aggregate that returns a single result."""
         result = await self._command(
             conn,
@@ -2014,7 +2019,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         batch = result["cursor"]["firstBatch"]
         return batch[0] if batch else None
 
-    async def estimated_document_count(self, comment: Optional[Any] = None, **kwargs: Any) -> int:
+    async def estimated_document_count(self, comment: Any | None = None, **kwargs: Any) -> int:
         """Get an estimate of the number of documents in this collection using
         collection metadata.
 
@@ -2047,10 +2052,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
 
         async def _cmd(
-            session: Optional[AsyncClientSession],
+            session: AsyncClientSession | None,
             _server: Server,
             conn: AsyncConnection,
-            read_preference: Optional[_ServerMode],
+            read_preference: _ServerMode | None,
         ) -> int:
             cmd: dict[str, Any] = {"count": self._name}
             cmd.update(kwargs)
@@ -2061,8 +2066,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def count_documents(
         self,
         filter: Mapping[str, Any],
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> int:
         """Count the number of documents in this collection.
@@ -2133,10 +2138,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         collation = validate_collation_or_none(kwargs.pop("collation", None))
 
         async def _cmd(
-            session: Optional[AsyncClientSession],
+            session: AsyncClientSession | None,
             _server: Server,
             conn: AsyncConnection,
-            read_preference: Optional[_ServerMode],
+            read_preference: _ServerMode | None,
         ) -> int:
             cmd: dict[str, Any] = {"aggregate": self._name, "pipeline": pipeline, "cursor": {}}
             cmd.update(kwargs)
@@ -2152,10 +2157,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def _retryable_non_cursor_read(
         self,
         func: Callable[
-            [Optional[AsyncClientSession], Server, AsyncConnection, Optional[_ServerMode]],
+            [AsyncClientSession | None, Server, AsyncConnection, _ServerMode | None],
             Coroutine[Any, Any, T],
         ],
-        session: Optional[AsyncClientSession],
+        session: AsyncClientSession | None,
         operation: str,
     ) -> T:
         """Non-cursor read helper to handle implicit session creation."""
@@ -2166,8 +2171,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def create_indexes(
         self,
         indexes: Sequence[IndexModel],
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> list[str]:
         """Create one or more indexes on this collection.
@@ -2212,7 +2217,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     @_csot.apply
     async def _create_indexes(
-        self, indexes: Sequence[IndexModel], session: Optional[AsyncClientSession], **kwargs: Any
+        self, indexes: Sequence[IndexModel], session: AsyncClientSession | None, **kwargs: Any
     ) -> list[str]:
         """Internal createIndexes helper.
 
@@ -2226,7 +2231,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         names = []
 
         async def inner(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+            session: AsyncClientSession | None, conn: AsyncConnection, _retryable_write: bool
         ) -> list[str]:
             def gen_indexes() -> Iterator[Mapping[str, Any]]:
                 for index in indexes:
@@ -2257,8 +2262,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def create_index(
         self,
         keys: _IndexKeyHint,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> str:
         """Creates an index on this collection.
@@ -2374,8 +2379,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def drop_indexes(
         self,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
         """Drops all indexes on this collection.
@@ -2408,8 +2413,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def drop_index(
         self,
         index_or_name: _IndexKeyHint,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
         """Drops the specified index on this collection.
@@ -2457,8 +2462,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def _drop_index(
         self,
         index_or_name: _IndexKeyHint,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
         name = index_or_name
@@ -2474,7 +2479,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             cmd["comment"] = comment
 
         async def inner(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+            session: AsyncClientSession | None, conn: AsyncConnection, _retryable_write: bool
         ) -> None:
             await self._command(
                 conn,
@@ -2489,8 +2494,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def list_indexes(
         self,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
     ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the index documents for this collection.
 
@@ -2527,8 +2532,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def _list_indexes(
         self,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
     ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
         codec_options: CodecOptions[Mapping[str, Any]] = CodecOptions(SON)
         coll = cast(
@@ -2538,7 +2543,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
         async def _cmd(
-            session: Optional[AsyncClientSession],
+            session: AsyncClientSession | None,
             _server: Server,
             conn: AsyncConnection,
             read_preference: _ServerMode,
@@ -2574,8 +2579,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def index_information(
         self,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
     ) -> MutableMapping[str, Any]:
         """Get information on this collection's indexes.
 
@@ -2616,9 +2621,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def list_search_indexes(
         self,
-        name: Optional[str] = None,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        name: str | None = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> AsyncCommandCursor[Mapping[str, Any]]:
         """Return a cursor over search indexes for the current collection.
@@ -2677,8 +2682,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def create_search_index(
         self,
-        model: Union[Mapping[str, Any], SearchIndexModel],
-        session: Optional[AsyncClientSession] = None,
+        model: Mapping[str, Any] | SearchIndexModel,
+        session: AsyncClientSession | None = None,
         comment: Any = None,
         **kwargs: Any,
     ) -> str:
@@ -2708,8 +2713,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def create_search_indexes(
         self,
         models: list[SearchIndexModel],
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> list[str]:
         """Create multiple search indexes for the current collection.
@@ -2732,8 +2737,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def _create_search_indexes(
         self,
         models: list[SearchIndexModel],
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> list[str]:
         if comment is not None:
@@ -2751,7 +2756,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd.update(kwargs)
 
         async def inner(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+            session: AsyncClientSession | None, conn: AsyncConnection, _retryable_write: bool
         ) -> list[str]:
             resp = await self._command(
                 conn,
@@ -2769,8 +2774,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def drop_search_index(
         self,
         name: str,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
         """Delete a search index by index name.
@@ -2793,7 +2798,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             cmd["comment"] = comment
 
         async def inner(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+            session: AsyncClientSession | None, conn: AsyncConnection, _retryable_write: bool
         ) -> None:
             await self._command(
                 conn,
@@ -2810,8 +2815,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         name: str,
         definition: Mapping[str, Any],
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
         """Update a search index by replacing the existing index definition with the provided definition.
@@ -2835,7 +2840,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             cmd["comment"] = comment
 
         async def inner(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+            session: AsyncClientSession | None, conn: AsyncConnection, _retryable_write: bool
         ) -> None:
             await self._command(
                 conn,
@@ -2850,8 +2855,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     async def options(
         self,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
     ) -> MutableMapping[str, Any]:
         """Get the options set on this collection.
 
@@ -2900,9 +2905,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         aggregation_command: type[_AggregationCommand],
         pipeline: _Pipeline,
         cursor_class: type[AsyncCommandCursor],  # type: ignore[type-arg]
-        session: Optional[AsyncClientSession],
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> AsyncCommandCursor[_DocumentType]:
         if comment is not None:
@@ -2928,9 +2933,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def aggregate(
         self,
         pipeline: _Pipeline,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> AsyncCommandCursor[_DocumentType]:
         """Perform an aggregation using the aggregation framework on this
@@ -3032,8 +3037,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def aggregate_raw_batches(
         self,
         pipeline: _Pipeline,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> AsyncRawBatchCursor[_DocumentType]:
         """Perform an aggregation and retrieve batches of raw BSON.
@@ -3080,8 +3085,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def rename(
         self,
         new_name: str,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
     ) -> MutableMapping[str, Any]:
         """Rename this collection.
@@ -3131,7 +3136,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         client = self._database.client
 
         async def inner(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, _retryable_write: bool
+            session: AsyncClientSession | None, conn: AsyncConnection, _retryable_write: bool
         ) -> MutableMapping[str, Any]:
             return await conn.command(
                 "admin",
@@ -3147,10 +3152,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def distinct(
         self,
         key: str,
-        filter: Optional[Mapping[str, Any]] = None,
-        session: Optional[AsyncClientSession] = None,
-        comment: Optional[Any] = None,
-        hint: Optional[_IndexKeyHint] = None,
+        filter: Mapping[str, Any] | None = None,
+        session: AsyncClientSession | None = None,
+        comment: Any | None = None,
+        hint: _IndexKeyHint | None = None,
         **kwargs: Any,
     ) -> list[Any]:
         """Get a list of distinct values for `key` among all documents
@@ -3206,10 +3211,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 hint = helpers_shared._index_document(hint)
 
         async def _cmd(
-            session: Optional[AsyncClientSession],
+            session: AsyncClientSession | None,
             _server: Server,
             conn: AsyncConnection,
-            read_preference: Optional[_ServerMode],
+            read_preference: _ServerMode | None,
         ) -> list:  # type: ignore[type-arg]
             cmd = {"distinct": self._name, "key": key}
             cmd.update(kwargs)
@@ -3234,20 +3239,20 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def _find_and_modify(
         self,
         filter: Mapping[str, Any],
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]],
-        sort: Optional[_IndexList],
-        upsert: Optional[bool] = None,
+        projection: Mapping[str, Any] | Iterable[str] | None,
+        sort: _IndexList | None,
+        upsert: bool | None = None,
         return_document: bool = ReturnDocument.BEFORE,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> Any:
         """Internal findAndModify helper."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
-            raise ValueError(
+            raise TypeError(
                 f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, not {type(return_document)}"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
@@ -3257,7 +3262,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         write_concern = self._write_concern_for_cmd(kwargs, session)
 
         async def _find_and_modify_helper(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable_write: bool
+            session: AsyncClientSession | None, conn: AsyncConnection, retryable_write: bool
         ) -> Any:
             cmd = {"findAndModify": self._name, "query": filter, "new": return_document}
             if let is not None:
@@ -3304,14 +3309,14 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def find_one_and_delete(
         self,
         filter: Mapping[str, Any],
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
-        sort: Optional[_IndexList] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        projection: Mapping[str, Any] | Iterable[str] | None = None,
+        sort: _IndexList | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
-    ) -> Optional[_DocumentType]:
+    ) -> _DocumentType | None:
         """Finds a single document and deletes it, returning the document.
 
           >>> await db.test.count_documents({'x': 1})
@@ -3398,16 +3403,16 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         self,
         filter: Mapping[str, Any],
         replacement: Mapping[str, Any],
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
-        sort: Optional[_IndexList] = None,
+        projection: Mapping[str, Any] | Iterable[str] | None = None,
+        sort: _IndexList | None = None,
         upsert: bool = False,
         return_document: bool = ReturnDocument.BEFORE,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
-    ) -> Optional[_DocumentType]:
+    ) -> _DocumentType | None:
         """Finds a single document and replaces it, returning either the
         original or the replaced document.
 
@@ -3516,18 +3521,18 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def find_one_and_update(
         self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
-        projection: Optional[Union[Mapping[str, Any], Iterable[str]]] = None,
-        sort: Optional[_IndexList] = None,
+        update: Mapping[str, Any] | _Pipeline,
+        projection: Mapping[str, Any] | Iterable[str] | None = None,
+        sort: _IndexList | None = None,
         upsert: bool = False,
         return_document: bool = ReturnDocument.BEFORE,
-        array_filters: Optional[Sequence[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        session: Optional[AsyncClientSession] = None,
-        let: Optional[Mapping[str, Any]] = None,
-        comment: Optional[Any] = None,
+        array_filters: Sequence[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        session: AsyncClientSession | None = None,
+        let: Mapping[str, Any] | None = None,
+        comment: Any | None = None,
         **kwargs: Any,
-    ) -> Optional[_DocumentType]:
+    ) -> _DocumentType | None:
         """Finds a single document and updates it, returning either the
         original or the updated document.
 

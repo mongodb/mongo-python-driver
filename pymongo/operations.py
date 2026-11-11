@@ -25,11 +25,9 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
-    Optional,
-    Union,
+    cast,
 )
 
-from bson.raw_bson import RawBSONDocument
 from pymongo import helpers_shared
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import validate_is_mapping, validate_list
@@ -39,14 +37,13 @@ from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
+    from bson.raw_bson import RawBSONDocument
     from pymongo.typings import _AgnosticBulk, _AgnosticClientBulk
 
 
 # Hint supports index name, "myIndex", a list of either strings or index pairs: [('x', 1), ('y', -1), 'z''], or a dictionary
-_IndexList = Union[
-    Sequence[Union[str, tuple[str, Union[int, str, Mapping[str, Any]]]]], Mapping[str, Any]
-]
-_IndexKeyHint = Union[str, _IndexList]
+_IndexList = Sequence[str | tuple[str, int | str | Mapping[str, Any]]] | Mapping[str, Any]
+_IndexKeyHint = str | _IndexList
 
 
 class _Op(str, enum.Enum):
@@ -105,7 +102,7 @@ class InsertOne(Generic[_DocumentType]):
         "_namespace",
     )
 
-    def __init__(self, document: _DocumentType, namespace: Optional[str] = None) -> None:
+    def __init__(self, document: _DocumentType, namespace: str | None = None) -> None:
         """Create an InsertOne instance.
 
         For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`, :meth:`~pymongo.collection.Collection.bulk_write`,
@@ -141,14 +138,15 @@ class InsertOne(Generic[_DocumentType]):
             return f"{self.__class__.__name__}({self._doc!r}, {self._namespace!r})"
         return f"{self.__class__.__name__}({self._doc!r})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if type(other) is type(self):
-            return other._doc == self._doc and other._namespace == self._namespace
+            _other = cast("InsertOne[_DocumentType]", other)
+            return _other._doc == self._doc and _other._namespace == self._namespace
         return NotImplemented
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
 
@@ -165,14 +163,14 @@ class _DeleteOp:
     def __init__(
         self,
         filter: Mapping[str, Any],
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        namespace: Optional[str] = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        namespace: str | None = None,
     ) -> None:
         if filter is not None:
             validate_is_mapping("filter", filter)
         if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, dict[str, Any], None] = helpers_shared._index_document(hint)
+            self._hint: str | dict[str, Any] | None = helpers_shared._index_document(hint)
         else:
             self._hint = hint
 
@@ -180,13 +178,14 @@ class _DeleteOp:
         self._collation = collation
         self._namespace = namespace
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if type(other) is type(self):
+            _other = cast("_DeleteOp", other)
             return (
-                other._filter,
-                other._collation,
-                other._hint,
-                other._namespace,
+                _other._filter,
+                _other._collation,
+                _other._hint,
+                _other._namespace,
             ) == (
                 self._filter,
                 self._collation,
@@ -197,7 +196,7 @@ class _DeleteOp:
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __repr__(self) -> str:
@@ -214,9 +213,9 @@ class DeleteOne(_DeleteOp):
     def __init__(
         self,
         filter: Mapping[str, Any],
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        namespace: Optional[str] = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        namespace: str | None = None,
     ) -> None:
         """Create a DeleteOne instance.
 
@@ -275,9 +274,9 @@ class DeleteMany(_DeleteOp):
     def __init__(
         self,
         filter: Mapping[str, Any],
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        namespace: Optional[str] = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        namespace: str | None = None,
     ) -> None:
         """Create a DeleteMany instance.
 
@@ -344,12 +343,12 @@ class ReplaceOne(Generic[_DocumentType]):
     def __init__(
         self,
         filter: Mapping[str, Any],
-        replacement: Union[_DocumentType, RawBSONDocument],
-        upsert: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        namespace: Optional[str] = None,
-        sort: Optional[Mapping[str, Any]] = None,
+        replacement: _DocumentType | RawBSONDocument,
+        upsert: bool | None = None,
+        collation: _CollationIn | None = None,
+        hint: _IndexKeyHint | None = None,
+        namespace: str | None = None,
+        sort: Mapping[str, Any] | None = None,
     ) -> None:
         """Create a ReplaceOne instance.
 
@@ -385,7 +384,7 @@ class ReplaceOne(Generic[_DocumentType]):
         if upsert is not None:
             validate_boolean("upsert", upsert)
         if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, dict[str, Any], None] = helpers_shared._index_document(hint)
+            self._hint: str | dict[str, Any] | None = helpers_shared._index_document(hint)
         else:
             self._hint = hint
 
@@ -423,16 +422,17 @@ class ReplaceOne(Generic[_DocumentType]):
             sort=self._sort,
         )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if type(other) is type(self):
+            _other = cast("ReplaceOne[_DocumentType]", other)
             return (
-                other._filter,
-                other._doc,
-                other._upsert,
-                other._collation,
-                other._hint,
-                other._namespace,
-                other._sort,
+                _other._filter,
+                _other._doc,
+                _other._upsert,
+                _other._collation,
+                _other._hint,
+                _other._namespace,
+                _other._sort,
             ) == (
                 self._filter,
                 self._doc,
@@ -446,7 +446,7 @@ class ReplaceOne(Generic[_DocumentType]):
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __repr__(self) -> str:
@@ -472,13 +472,13 @@ class _UpdateOp:
     def __init__(
         self,
         filter: Mapping[str, Any],
-        doc: Union[Mapping[str, Any], _Pipeline],
-        upsert: Optional[bool],
-        collation: Optional[_CollationIn],
-        array_filters: Optional[list[Mapping[str, Any]]],
-        hint: Optional[_IndexKeyHint],
-        namespace: Optional[str],
-        sort: Optional[Mapping[str, Any]],
+        doc: Mapping[str, Any] | _Pipeline,
+        upsert: bool | None,
+        collation: _CollationIn | None,
+        array_filters: list[Mapping[str, Any]] | None,
+        hint: _IndexKeyHint | None,
+        namespace: str | None,
+        sort: Mapping[str, Any] | None,
     ):
         if filter is not None:
             validate_is_mapping("filter", filter)
@@ -487,7 +487,7 @@ class _UpdateOp:
         if array_filters is not None:
             validate_list("array_filters", array_filters)
         if hint is not None and not isinstance(hint, str):
-            self._hint: Union[str, dict[str, Any], None] = helpers_shared._index_document(hint)
+            self._hint: str | dict[str, Any] | None = helpers_shared._index_document(hint)
         else:
             self._hint = hint
         self._filter = filter
@@ -523,7 +523,7 @@ class _UpdateOp:
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __repr__(self) -> str:
@@ -540,13 +540,13 @@ class UpdateOne(_UpdateOp):
     def __init__(
         self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
-        upsert: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        array_filters: Optional[list[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        namespace: Optional[str] = None,
-        sort: Optional[Mapping[str, Any]] = None,
+        update: Mapping[str, Any] | _Pipeline,
+        upsert: bool | None = None,
+        collation: _CollationIn | None = None,
+        array_filters: list[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        namespace: str | None = None,
+        sort: Mapping[str, Any] | None = None,
     ) -> None:
         """Represents an update_one operation.
 
@@ -625,12 +625,12 @@ class UpdateMany(_UpdateOp):
     def __init__(
         self,
         filter: Mapping[str, Any],
-        update: Union[Mapping[str, Any], _Pipeline],
-        upsert: Optional[bool] = None,
-        collation: Optional[_CollationIn] = None,
-        array_filters: Optional[list[Mapping[str, Any]]] = None,
-        hint: Optional[_IndexKeyHint] = None,
-        namespace: Optional[str] = None,
+        update: Mapping[str, Any] | _Pipeline,
+        upsert: bool | None = None,
+        collation: _CollationIn | None = None,
+        array_filters: list[Mapping[str, Any]] | None = None,
+        hint: _IndexKeyHint | None = None,
+        namespace: str | None = None,
     ) -> None:
         """Create an UpdateMany instance.
 
@@ -793,8 +793,8 @@ class SearchIndexModel:
     def __init__(
         self,
         definition: Mapping[str, Any],
-        name: Optional[str] = None,
-        type: Optional[str] = None,
+        name: str | None = None,
+        type: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Create a Search Index instance.

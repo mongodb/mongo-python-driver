@@ -34,14 +34,13 @@ from collections import defaultdict
 from collections.abc import Mapping
 from inspect import iscoroutinefunction
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pytest
 
 import pymongo
 from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
-from bson.objectid import ObjectId
 from gridfs import AsyncGridFSBucket, GridOut, NoFile
 from gridfs.errors import CorruptGridFile
 from pymongo import ASCENDING, AsyncMongoClient, CursorType, _csot
@@ -79,7 +78,6 @@ from pymongo.server_api import ServerApi
 from pymongo.server_selectors import Selection, writable_server_selector
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology_description import TopologyDescription
-from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 from test.asynchronous import (
     AsyncIntegrationTest,
@@ -112,6 +110,10 @@ from test.utils_shared import (
     wait_until,
 )
 from test.version import Version
+
+if TYPE_CHECKING:
+    from bson.objectid import ObjectId
+    from pymongo.typings import _Address
 
 _IS_SYNC = False
 
@@ -748,7 +750,9 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 )
             actual_write_concern_errors = exception.details.get("writeConcernErrors", [])
             self.assertEqual(len(write_concern_errors), len(actual_write_concern_errors))
-            for expected_wce, actual_wce in zip(write_concern_errors, actual_write_concern_errors):
+            for expected_wce, actual_wce in zip(
+                write_concern_errors, actual_write_concern_errors, strict=True
+            ):
                 # Use the spec's WriteConcernError field names.
                 formatted_actual_wce = {
                     "code": actual_wce.get("code", ""),
@@ -1280,7 +1284,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         old_description: TopologyDescription = self.entity_map[spec["priorTopologyDescription"]]
         timeout = spec["timeoutMS"] / 1000.0
 
-        def get_primary(td: TopologyDescription) -> Optional[_Address]:
+        def get_primary(td: TopologyDescription) -> _Address | None:
             servers = writable_server_selector(Selection.from_topology_description(td))
             if servers and servers[0].server_type == SERVER_TYPE.RSPrimary:
                 return servers[0].address
@@ -1466,7 +1470,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                     len(actual_logs),
                     f"expected {client['messages']} but got {actual_logs}",
                 )
-                for expected_msg, actual_msg in zip(client["messages"], actual_logs):
+                for expected_msg, actual_msg in zip(client["messages"], actual_logs, strict=True):
                     expected_data, actual_data = expected_msg.pop("data"), actual_msg.pop("data")
 
                     if "failureIsRedacted" in expected_msg:

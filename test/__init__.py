@@ -43,10 +43,10 @@ try:
     HAVE_IPADDRESS = True
 except ImportError:
     HAVE_IPADDRESS = False
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from functools import partial, wraps
-from typing import Any, Callable, overload
+from typing import TYPE_CHECKING, Any, overload
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
@@ -57,7 +57,6 @@ from pymongo.common import partition_node
 from pymongo.hello import HelloCompat
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
-from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
@@ -83,6 +82,9 @@ from test.helpers_shared import (
     sanitize_reply,
 )
 from test.version import Version
+
+if TYPE_CHECKING:
+    from pymongo.synchronous.database import Database
 
 _IS_SYNC = True
 

@@ -113,7 +113,7 @@ class client_knobs:
                 f"EVENTS_QUEUE_FREQUENCY={common.EVENTS_QUEUE_FREQUENCY}, stack:\n{self._stack}"
             )
             self.disable()
-            raise Exception(msg)
+            raise RuntimeError(msg)
 
 
 # Global knobs to speed up the test suite.
@@ -141,7 +141,7 @@ class ConcurrentRunner(PARENT):
         async def start(self):
             self.task = asyncio.create_task(self.run(), name=self.name)
 
-        async def join(self, timeout: Optional[float] = None):  # type: ignore[override]
+        async def join(self, timeout: float | None = None):  # type: ignore[override]
             if self.task is not None:
                 await asyncio.wait([self.task], timeout=timeout)
 

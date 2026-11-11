@@ -10,7 +10,8 @@ import collections
 import threading
 from asyncio import events, exceptions
 from collections.abc import Coroutine
-from typing import Any, Optional
+from types import TracebackType
+from typing import Any
 
 _global_lock = threading.Lock()
 
@@ -37,7 +38,12 @@ class _ContextManagerMixin:
         # statement for locks.
         return
 
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         self.release()  # type: ignore[attr-defined]
 
 
@@ -94,7 +100,7 @@ class Lock(_ContextManagerMixin, _LoopBoundMixin):
     """
 
     def __init__(self) -> None:
-        self._waiters: Optional[collections.deque[Any]] = None
+        self._waiters: collections.deque[Any] | None = None
         self._locked = False
 
     def __repr__(self) -> str:
@@ -187,7 +193,7 @@ class Condition(_ContextManagerMixin, _LoopBoundMixin):
     A new Lock object is created and used as the underlying lock.
     """
 
-    def __init__(self, lock: Optional[Lock] = None) -> None:
+    def __init__(self, lock: Lock | None = None) -> None:
         if lock is None:
             lock = Lock()
 

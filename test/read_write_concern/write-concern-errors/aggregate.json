@@ -50,7 +50,8 @@
                 ],
                 "writeConcernError": {
                   "code": 79,
-                  "codeName": "UnknownReplWriteConcern"
+                  "codeName": "UnknownReplWriteConcern",
+                  "errmsg": "Triggered by failpoint"
                 }
               }
             }
@@ -98,7 +99,8 @@
                 ],
                 "writeConcernError": {
                   "code": 79,
-                  "codeName": "UnknownReplWriteConcern"
+                  "codeName": "UnknownReplWriteConcern",
+                  "errmsg": "Triggered by failpoint"
                 }
               }
             }

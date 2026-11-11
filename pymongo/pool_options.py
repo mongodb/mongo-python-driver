@@ -26,7 +26,7 @@ import sys
 from collections.abc import MutableMapping
 from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import bson
 from pymongo import __version__
@@ -165,7 +165,7 @@ _GENERIC_AGENT_ENV_VAR = "AI_AGENT"
 _MAX_AGENT_SIZE = 64
 
 
-def _metadata_agent() -> Optional[str]:
+def _metadata_agent() -> str | None:
     """Detect a coding agent from the environment for client.env.agent."""
     for var, name in _AGENT_ENV_VARS:
         if (os.getenv(var) or "").strip():
@@ -181,7 +181,7 @@ def _metadata_agent() -> Optional[str]:
     return agent.encode(errors="ignore")[:_MAX_AGENT_SIZE].decode(errors="ignore")
 
 
-def _getenv_int(key: str) -> Optional[int]:
+def _getenv_int(key: str) -> int | None:
     """Like os.getenv but returns an int, or None if the value is missing/malformed."""
     val = os.getenv(key)
     if not val:
@@ -333,7 +333,7 @@ def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
         # driver) are dropped first since they cost nothing.
         name_str = driver.get("name", "")
         version_str = driver.get("version", "")
-        raw_pairs = list(zip(name_str.split("|"), version_str.split("|")))
+        raw_pairs = list(zip(name_str.split("|"), version_str.split("|"), strict=True))
         pairs = [(name, version) for name, version in raw_pairs if name or version]
         new_name = "|".join(name for name, _ in pairs)
         new_version = "|".join(version for _, version in pairs)
@@ -409,22 +409,22 @@ class PoolOptions:
         self,
         max_pool_size: int = MAX_POOL_SIZE,
         min_pool_size: int = MIN_POOL_SIZE,
-        max_idle_time_seconds: Optional[int] = MAX_IDLE_TIME_SEC,
-        connect_timeout: Optional[float] = None,
-        socket_timeout: Optional[float] = None,
-        wait_queue_timeout: Optional[int] = WAIT_QUEUE_TIMEOUT,
-        ssl_context: Optional[SSLContext] = None,
+        max_idle_time_seconds: int | None = MAX_IDLE_TIME_SEC,
+        connect_timeout: float | None = None,
+        socket_timeout: float | None = None,
+        wait_queue_timeout: int | None = WAIT_QUEUE_TIMEOUT,
+        ssl_context: SSLContext | None = None,
         tls_allow_invalid_hostnames: bool = False,
-        event_listeners: Optional[_EventListeners] = None,
-        appname: Optional[str] = None,
-        driver: Optional[DriverInfo] = None,
-        compression_settings: Optional[CompressionSettings] = None,
+        event_listeners: _EventListeners | None = None,
+        appname: str | None = None,
+        driver: DriverInfo | None = None,
+        compression_settings: CompressionSettings | None = None,
         max_connecting: int = MAX_CONNECTING,
         pause_enabled: bool = True,
-        server_api: Optional[ServerApi] = None,
-        load_balanced: Optional[bool] = None,
-        credentials: Optional[MongoCredential] = None,
-        is_sync: Optional[bool] = True,
+        server_api: ServerApi | None = None,
+        load_balanced: bool | None = None,
+        credentials: MongoCredential | None = None,
+        is_sync: bool | None = True,
     ):
         self.__max_pool_size = max_pool_size
         self.__min_pool_size = min_pool_size
@@ -524,7 +524,7 @@ class PoolOptions:
                 self.__appended_drivers.add(driver)
 
     @property
-    def _credentials(self) -> Optional[MongoCredential]:
+    def _credentials(self) -> MongoCredential | None:
         """A :class:`~pymongo.auth.MongoCredentials` instance or None."""
         return self.__credentials
 
@@ -583,7 +583,7 @@ class PoolOptions:
         return self.__pause_enabled
 
     @property
-    def max_idle_time_seconds(self) -> Optional[int]:
+    def max_idle_time_seconds(self) -> int | None:
         """The maximum number of seconds that a connection can remain
         idle in the pool before being removed and replaced. Defaults to
         `None` (no limit).
@@ -591,24 +591,24 @@ class PoolOptions:
         return self.__max_idle_time_seconds
 
     @property
-    def connect_timeout(self) -> Optional[float]:
+    def connect_timeout(self) -> float | None:
         """How long a connection can take to be opened before timing out."""
         return self.__connect_timeout
 
     @property
-    def socket_timeout(self) -> Optional[float]:
+    def socket_timeout(self) -> float | None:
         """How long a send or receive on a socket can take before timing out."""
         return self.__socket_timeout
 
     @property
-    def wait_queue_timeout(self) -> Optional[int]:
+    def wait_queue_timeout(self) -> int | None:
         """How long a thread will wait for a socket from the pool if the pool
         has no free sockets.
         """
         return self.__wait_queue_timeout
 
     @property
-    def _ssl_context(self) -> Optional[SSLContext]:
+    def _ssl_context(self) -> SSLContext | None:
         """An SSLContext instance or None."""
         return self.__ssl_context
 
@@ -618,22 +618,22 @@ class PoolOptions:
         return self.__tls_allow_invalid_hostnames
 
     @property
-    def _event_listeners(self) -> Optional[_EventListeners]:
+    def _event_listeners(self) -> _EventListeners | None:
         """An instance of pymongo.monitoring._EventListeners."""
         return self.__event_listeners
 
     @property
-    def appname(self) -> Optional[str]:
+    def appname(self) -> str | None:
         """The application name, for sending with hello in server handshake."""
         return self.__appname
 
     @property
-    def driver(self) -> Optional[DriverInfo]:
+    def driver(self) -> DriverInfo | None:
         """Driver name and version, for sending with hello in handshake."""
         return self.__driver
 
     @property
-    def _compression_settings(self) -> Optional[CompressionSettings]:
+    def _compression_settings(self) -> CompressionSettings | None:
         return self.__compression_settings
 
     @property
@@ -642,11 +642,11 @@ class PoolOptions:
         return self.__metadata.copy()
 
     @property
-    def server_api(self) -> Optional[ServerApi]:
+    def server_api(self) -> ServerApi | None:
         """A pymongo.server_api.ServerApi or None."""
         return self.__server_api
 
     @property
-    def load_balanced(self) -> Optional[bool]:
+    def load_balanced(self) -> bool | None:
         """True if this Pool is configured in load balanced mode."""
         return self.__load_balanced

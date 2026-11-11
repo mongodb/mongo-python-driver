@@ -25,13 +25,10 @@ from itertools import islice
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
-    Union,
 )
 
 from pymongo import _csot
 from pymongo._telemetry import _generate_op_id_or_none
-from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.command_runner import (
@@ -41,8 +38,10 @@ from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import _handle_reauth
 
 if TYPE_CHECKING:
+    from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
+    from pymongo.write_concern import WriteConcern
 from pymongo._client_bulk_shared import (
     _AgnosticClientBulkBase,
     _merge_command,
@@ -70,7 +69,6 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
-from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
 
@@ -86,7 +84,7 @@ class _ClientBulk(_AgnosticClientBulkBase):
         bwc: _ClientBulkWriteContext,
         cmd: MutableMapping[str, Any],
         request_id: int,
-        msg: Union[bytes, dict[str, Any]],
+        msg: bytes | dict[str, Any],
         op_docs: list[Mapping[str, Any]],
         ns_docs: list[Mapping[str, Any]],
         client: MongoClient[Any],
@@ -117,7 +115,7 @@ class _ClientBulk(_AgnosticClientBulkBase):
         op_docs: list[Mapping[str, Any]],
         ns_docs: list[Mapping[str, Any]],
         client: MongoClient[Any],
-    ) -> Optional[Mapping[str, Any]]:
+    ) -> Mapping[str, Any] | None:
         """Send an unacknowledged client-level batch write command."""
         # Historically the STARTED log omits the ops/nsInfo while the published
         # CommandStartedEvent includes them, so log ``cmd`` but publish a copy
@@ -171,7 +169,7 @@ class _ClientBulk(_AgnosticClientBulkBase):
         full_result: MutableMapping[str, Any],
         result: MutableMapping[str, Any],
         conn: Connection,
-        session: Optional[ClientSession],
+        session: ClientSession | None,
     ) -> None:
         """Internal helper for processing the server reply command cursor."""
         if result.get("cursor"):
@@ -221,12 +219,12 @@ class _ClientBulk(_AgnosticClientBulkBase):
     def _execute_command(
         self,
         write_concern: WriteConcern,
-        session: Optional[ClientSession],
+        session: ClientSession | None,
         conn: Connection,
-        op_id: Optional[int],
+        op_id: int | None,
         retryable: bool,
         full_result: MutableMapping[str, Any],
-        final_write_concern: Optional[WriteConcern] = None,
+        final_write_concern: WriteConcern | None = None,
     ) -> None:
         """Internal helper for executing batches of bulkWrite commands."""
         db_name = "admin"
@@ -359,7 +357,7 @@ class _ClientBulk(_AgnosticClientBulkBase):
 
     def execute_command(
         self,
-        session: Optional[ClientSession],
+        session: ClientSession | None,
         operation: str,
     ) -> MutableMapping[str, Any]:
         """Execute commands with w=1 WriteConcern."""
@@ -380,7 +378,7 @@ class _ClientBulk(_AgnosticClientBulkBase):
         op_id = _generate_op_id_or_none(self.client._event_listeners)
 
         def retryable_bulk(
-            session: Optional[ClientSession],
+            session: ClientSession | None,
             conn: Connection,
             retryable: bool,
         ) -> None:
@@ -471,7 +469,7 @@ class _ClientBulk(_AgnosticClientBulkBase):
 
     def execute(
         self,
-        session: Optional[ClientSession],
+        session: ClientSession | None,
         operation: str,
     ) -> Any:
         """Execute operations."""

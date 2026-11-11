@@ -27,7 +27,7 @@ import time
 import types
 from collections import abc
 from collections.abc import MutableMapping
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any
 
 from bson import (
     RE_TYPE,
@@ -79,8 +79,6 @@ from pymongo.monitoring import (
     _ServerHeartbeatEvent,
 )
 from pymongo.results import BulkWriteResult
-from pymongo.server_description import ServerDescription
-from pymongo.topology_description import TopologyDescription
 from test.helpers_shared import (
     AWS_CREDS,
     AWS_CREDS_2,
@@ -93,6 +91,10 @@ from test.helpers_shared import (
     LOCAL_MASTER_KEY,
 )
 from test.utils_shared import CMAPListener, camel_to_snake, parse_collection_options
+
+if TYPE_CHECKING:
+    from pymongo.server_description import ServerDescription
+    from pymongo.topology_description import TopologyDescription
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
 
@@ -336,18 +338,18 @@ class EventListenerUtil(
         else:
             self.add_event(event)
 
-    def opened(self, event: Union[ServerOpeningEvent, TopologyOpenedEvent]) -> None:
+    def opened(self, event: ServerOpeningEvent | TopologyOpenedEvent) -> None:
         self.add_event(event)
 
     def description_changed(
-        self, event: Union[ServerDescriptionChangedEvent, TopologyDescriptionChangedEvent]
+        self, event: ServerDescriptionChangedEvent | TopologyDescriptionChangedEvent
     ) -> None:
         self.add_event(event)
 
     def topology_changed(self, event: TopologyDescriptionChangedEvent) -> None:
         self.add_event(event)
 
-    def closed(self, event: Union[ServerClosedEvent, TopologyClosedEvent]) -> None:
+    def closed(self, event: ServerClosedEvent | TopologyClosedEvent) -> None:
         self.add_event(event)
 
 
@@ -538,7 +540,7 @@ class MatchEvaluatorUtil:
 
         if isinstance(expectation, abc.MutableSequence):
             self.test.assertIsInstance(actual, abc.MutableSequence)
-            for e, a in zip(expectation, actual):
+            for e, a in zip(expectation, actual, strict=False):
                 if isinstance(e, abc.Mapping):
                     res = self._match_document(e, a, is_root=not in_recursive_call, test=test)
                 else:
@@ -665,7 +667,7 @@ class MatchEvaluatorUtil:
         elif name == "topologyClosedEvent":
             self.test.assertIsInstance(actual, TopologyClosedEvent)
         else:
-            raise Exception(f"Unsupported event type {name}")
+            raise ValueError(f"Unsupported event type {name}")
 
         self.match_event_fields(actual, spec)
 

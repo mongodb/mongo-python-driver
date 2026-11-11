@@ -21,11 +21,10 @@ import hashlib
 import hmac
 import socket
 from base64 import standard_b64decode, standard_b64encode
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
 )
 from urllib.parse import quote
 
