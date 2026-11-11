@@ -1392,7 +1392,7 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
         await self._setup()
         client_encryption = self.create_client_encryption(
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
-            ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL]),
+            f"{self.KEYVAULT_DB}.{self.KEYVAULT_COLL}",
             async_client_context.client,
             OPTS,
         )
@@ -1410,7 +1410,7 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
         await self._setup()
         encrypted_db = "db"
         encrypted_coll = "coll"
-        keyvault_namespace = ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL])
+        keyvault_namespace = f"{self.KEYVAULT_DB}.{self.KEYVAULT_COLL}"
 
         encryption_opts = AutoEncryptionOpts(
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
