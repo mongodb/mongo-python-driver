@@ -31,9 +31,8 @@ import textwrap
 import traceback
 import uuid
 import warnings
-from collections.abc import Mapping
 from threading import Thread
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pytest
 
@@ -114,6 +113,9 @@ from test.utils_shared import (
     wait_until,
 )
 from test.version import Version
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 _IS_SYNC = True
 

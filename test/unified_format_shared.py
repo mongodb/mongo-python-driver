@@ -26,8 +26,7 @@ import os
 import time
 import types
 from collections import abc
-from collections.abc import MutableMapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from bson import (
     RE_TYPE,
@@ -93,6 +92,9 @@ from test.helpers_shared import (
     LOCAL_MASTER_KEY,
 )
 from test.utils_shared import CMAPListener, camel_to_snake, parse_collection_options
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
 

@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -47,6 +46,8 @@ from pymongo.response import PinnedResponse
 from pymongo.typings import _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from bson.codec_options import CodecOptions
     from pymongo.asynchronous.collection import AsyncCollection
 

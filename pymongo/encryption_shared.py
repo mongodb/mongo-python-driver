@@ -18,8 +18,7 @@ from __future__ import annotations
 
 import contextlib
 import enum
-from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 try:
     from pymongocrypt.mongocrypt import MongoCryptOptions  # type:ignore[import-untyped]
@@ -29,6 +28,9 @@ except ImportError:
 from bson.errors import BSONError
 from pymongo.errors import EncryptionError
 from pymongo.results import BulkWriteResult
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @contextlib.contextmanager

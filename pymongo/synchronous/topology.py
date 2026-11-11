@@ -18,13 +18,11 @@ from __future__ import annotations
 
 import asyncio
 import os
-import queue
 import random
 import sys
 import time
 import warnings
 import weakref
-from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -73,6 +71,9 @@ from pymongo.topology_shared import (
 )
 
 if TYPE_CHECKING:
+    import queue
+    from collections.abc import Callable, Mapping
+
     from pymongo.synchronous.settings import TopologySettings
     from pymongo.typings import _Address
 

@@ -24,8 +24,10 @@ from __future__ import annotations
 
 from contextlib import AbstractContextManager
 from contextvars import ContextVar
-from types import TracebackType
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 OP_ID: ContextVar[int | None] = ContextVar("OP_ID", default=None)
 

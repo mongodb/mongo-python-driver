@@ -21,9 +21,7 @@ import inspect
 import io
 import math
 from collections import abc
-from collections.abc import Iterable, Mapping
-from types import TracebackType
-from typing import Any, NoReturn, Self, cast
+from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -61,6 +59,10 @@ from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+    from types import TracebackType
 
 _IS_SYNC = True
 

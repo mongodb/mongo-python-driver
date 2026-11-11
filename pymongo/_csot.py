@@ -23,10 +23,11 @@ from collections import deque
 from collections.abc import Callable, MutableMapping
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
-from types import TracebackType
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from pymongo.write_concern import WriteConcern
 
 TIMEOUT: ContextVar[float | None] = ContextVar("TIMEOUT", default=None)

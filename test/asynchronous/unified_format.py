@@ -31,10 +31,9 @@ import sys
 import time
 import traceback
 from collections import defaultdict
-from collections.abc import Mapping
 from inspect import iscoroutinefunction
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pytest
 
@@ -112,6 +111,9 @@ from test.utils_shared import (
     wait_until,
 )
 from test.version import Version
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 _IS_SYNC = False
 

@@ -17,7 +17,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
 from typing import TYPE_CHECKING, Any, NoReturn
 
 from bson.objectid import ObjectId
@@ -33,6 +32,8 @@ from pymongo.message import _ClientBulkWriteContext
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, MutableMapping
+
     from pymongo.typings import _AgnosticMongoClient, _DocumentOut, _Pipeline
 
 

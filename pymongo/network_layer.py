@@ -19,12 +19,10 @@ from __future__ import annotations
 import asyncio
 import collections
 import errno
-import socket
 import struct
 import sys
 import time
 from asyncio import AbstractEventLoop, BaseTransport, BufferedProtocol, Future, Transport
-from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -59,6 +57,9 @@ from pymongo.ssl_support import (
 )
 
 if TYPE_CHECKING:
+    import socket
+    from collections.abc import Callable
+
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.synchronous.pool import Connection
 

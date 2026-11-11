@@ -16,8 +16,7 @@
 
 from __future__ import annotations
 
-import threading
-from collections.abc import Callable, Collection
+from typing import TYPE_CHECKING
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -27,6 +26,10 @@ from pymongo.settings_shared import _BaseTopologySettings
 from pymongo.synchronous import monitor, pool
 from pymongo.synchronous.pool import Pool
 from pymongo.topology_description import _ServerSelector
+
+if TYPE_CHECKING:
+    import threading
+    from collections.abc import Callable, Collection
 
 _IS_SYNC = True
 

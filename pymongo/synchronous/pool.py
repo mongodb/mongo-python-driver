@@ -18,7 +18,6 @@ import asyncio
 import collections
 import os
 import time
-from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -74,6 +73,7 @@ from pymongo.synchronous.command_runner import run_command
 from pymongo.synchronous.helpers import _handle_reauth
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, MutableMapping, Sequence
     from types import TracebackType
 
     from bson import CodecOptions

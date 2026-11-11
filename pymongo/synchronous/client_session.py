@@ -137,8 +137,6 @@ from __future__ import annotations
 
 import random
 import time
-from collections.abc import Callable
-from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
@@ -175,6 +173,8 @@ from pymongo.synchronous.cursor_base import _ConnectionManager
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from contextlib import AbstractContextManager
     from types import TracebackType
 
     from pymongo.synchronous.mongo_client import MongoClient

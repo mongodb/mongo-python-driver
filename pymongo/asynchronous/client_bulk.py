@@ -20,7 +20,6 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Mapping, MutableMapping
 from itertools import islice
 from typing import (
     TYPE_CHECKING,
@@ -39,6 +38,8 @@ from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import _handle_reauth
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, MutableMapping
+
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
 from pymongo._client_bulk_shared import (

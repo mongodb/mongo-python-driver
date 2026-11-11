@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from bson import CodecOptions
@@ -34,6 +33,8 @@ from pymongo.errors import (
 from pymongo.typings import _DocumentType
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from pymongo.typings import (
         _AgnosticClientSession,
         _AgnosticCollection,

@@ -17,15 +17,17 @@
 from __future__ import annotations
 
 import copy
-import datetime
 import itertools
-from collections.abc import Mapping
-from typing import Any, Generic
+from typing import TYPE_CHECKING, Any, Generic
 
 from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import ClusterTime, _DocumentType
+
+if TYPE_CHECKING:
+    import datetime
+    from collections.abc import Mapping
 
 
 def _get_server_type(doc: Mapping[str, Any]) -> int:

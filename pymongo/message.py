@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import random
 import struct
-from collections.abc import Callable, Iterable, Mapping, MutableMapping
 from io import BytesIO as _BytesIO
 from typing import (
     TYPE_CHECKING,
@@ -58,6 +57,8 @@ from pymongo.errors import (
 from pymongo.read_preferences import ReadPreference, _ServerMode
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Mapping, MutableMapping
+
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
     from pymongo.read_concern import ReadConcern
     from pymongo.typings import (

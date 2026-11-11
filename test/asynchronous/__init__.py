@@ -43,10 +43,9 @@ try:
     HAVE_IPADDRESS = True
 except ImportError:
     HAVE_IPADDRESS = False
-from collections.abc import Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial, wraps
-from typing import Any, overload
+from typing import TYPE_CHECKING, Any, overload
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
@@ -83,6 +82,9 @@ from test.helpers_shared import (
     sanitize_reply,
 )
 from test.version import Version
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
 
 _IS_SYNC = False
 

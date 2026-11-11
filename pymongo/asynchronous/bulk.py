@@ -20,7 +20,6 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Iterator, Mapping, MutableMapping
 from itertools import islice
 from typing import (
     TYPE_CHECKING,
@@ -57,6 +56,8 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping, MutableMapping
+
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
