@@ -35,7 +35,6 @@ from bson.binary import (
     UUID_REPRESENTATION_NAMES,
     UuidRepresentation,
 )
-from bson.typings import _DocumentType
 
 _RAW_BSON_DOCUMENT_MARKER = 101
 
@@ -242,6 +241,7 @@ class _BaseCodecOptions(NamedTuple):
 
 
 if TYPE_CHECKING:
+    from bson.typings import _DocumentType
 
     class CodecOptions(tuple[_DocumentType], Generic[_DocumentType]):
         document_class: type[_DocumentType]

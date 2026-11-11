@@ -33,12 +33,11 @@ import uuid
 import warnings
 from collections.abc import Mapping
 from threading import Thread
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from pymongo.daemon import _spawn_daemon
-from pymongo.synchronous.collection import Collection
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 from test import IntegrationTest, PyMongoTestCase, client_context
 from test.test_bulk import BulkTestBase
@@ -114,6 +113,9 @@ from test.utils_shared import (
     wait_until,
 )
 from test.version import Version
+
+if TYPE_CHECKING:
+    from pymongo.synchronous.collection import Collection
 
 _IS_SYNC = True
 

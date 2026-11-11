@@ -18,15 +18,18 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable, Collection
+from typing import TYPE_CHECKING
 
-from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.asynchronous import monitor, pool
 from pymongo.asynchronous.pool import Pool
 from pymongo.common import LOCAL_THRESHOLD_MS, SERVER_SELECTION_TIMEOUT
-from pymongo.pool_options import PoolOptions
 from pymongo.settings_shared import _BaseTopologySettings
-from pymongo.topology_description import _ServerSelector
+
+if TYPE_CHECKING:
+    from bson.objectid import ObjectId
+    from pymongo.pool_options import PoolOptions
+    from pymongo.topology_description import _ServerSelector
 
 _IS_SYNC = False
 

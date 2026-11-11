@@ -55,7 +55,9 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
 )
 from pymongo.network_layer import AsyncNetworkingInterface, async_receive_message, async_sendall
-from pymongo.pool_options import PoolOptions
+
+# Needed for backwards-compatible imports from pool.py.
+from pymongo.pool_options import PoolOptions  # noqa: TC001
 from pymongo.pool_shared import (
     _UNDO_OPERATION_COUNT,
     _UNDO_PENDING,

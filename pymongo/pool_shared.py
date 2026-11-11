@@ -39,7 +39,6 @@ from typing import (
 from pymongo import _csot
 from pymongo._telemetry import _CmapTelemetry
 from pymongo.asynchronous.helpers import _getaddrinfo
-from pymongo.auth_shared import _AuthContext
 from pymongo.common import MAX_BSON_SIZE, MAX_MESSAGE_SIZE, MAX_WIRE_VERSION, MAX_WRITE_BATCH_SIZE
 from pymongo.errors import (  # type:ignore[attr-defined]
     AutoReconnect,
@@ -61,7 +60,6 @@ from pymongo.network_layer import (
     NetworkingInterfaceBase,
     PyMongoProtocol,
 )
-from pymongo.pool_options import PoolOptions
 from pymongo.server_api import _add_to_command
 from pymongo.socket_checker import SocketChecker
 from pymongo.ssl_support import SSL_EOF_ERRORS, PYSSLError, SSLError, _has_sni
@@ -69,7 +67,9 @@ from pymongo.ssl_support import SSL_EOF_ERRORS, PYSSLError, SSLError, _has_sni
 SSLErrors = (PYSSLError, SSLError)
 if TYPE_CHECKING:
     from bson.objectid import ObjectId
+    from pymongo.auth_shared import _AuthContext
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
+    from pymongo.pool_options import PoolOptions
     from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address, _AgnosticClientSession, _AgnosticMongoClient
 
