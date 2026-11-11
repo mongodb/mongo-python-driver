@@ -557,7 +557,7 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
                 f"cluster_time must be a subclass of collections.Mapping, not {type(cluster_time)}"
             )
         if not isinstance(cluster_time.get("clusterTime"), Timestamp):
-            raise ValueError("Invalid cluster_time")
+            raise TypeError("Invalid cluster_time")
         self._advance_cluster_time(cluster_time)
 
     def _advance_operation_time(self, operation_time: Timestamp | None) -> None:

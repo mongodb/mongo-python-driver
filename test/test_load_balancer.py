@@ -181,7 +181,7 @@ class PoolLocker(ExceptionCatchingTask):
             # Wait for the unlock flag.
             unlock_pool = self.wait(self.unlock, 10)
             if not unlock_pool:
-                raise Exception("timed out waiting for unlock signal: deadlock?")
+                raise TimeoutError("timed out waiting for unlock signal: deadlock?")
 
     def wait(self, event: Event, timeout: int):
         if _IS_SYNC:

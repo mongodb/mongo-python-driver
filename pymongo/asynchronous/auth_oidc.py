@@ -180,7 +180,7 @@ class _OIDCAuthenticator(_OIDCAuthenticatorBase):
                 else:
                     resp = cb.fetch(context)
                 if not isinstance(resp, OIDCCallbackResult):
-                    raise ValueError(
+                    raise TypeError(
                         f"Callback result must be of type OIDCCallbackResult, not {type(resp)}"
                     )
                 self.refresh_token = resp.refresh_token

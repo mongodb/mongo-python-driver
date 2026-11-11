@@ -2189,7 +2189,7 @@ class TestClient(IntegrationTest):
             pool = get_pool(client)
 
             def fail_connect(*args, **kwargs):
-                raise Exception("failed to connect")
+                raise ConnectionFailure("failed to connect")
 
             pool.connect = fail_connect
             # Un-patch Pool.connect to break the cyclic reference.

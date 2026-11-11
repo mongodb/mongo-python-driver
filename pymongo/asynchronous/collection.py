@@ -3252,7 +3252,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """Internal findAndModify helper."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
-            raise ValueError(
+            raise TypeError(
                 f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, not {type(return_document)}"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
