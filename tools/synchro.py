@@ -230,11 +230,11 @@ def apply_is_sync(lines: list[str], file: str) -> list[str]:
         index = lines.index(is_sync)
         is_sync = is_sync.replace("False", "True")
         lines[index] = is_sync
-    except StopIteration as e:
+    except StopIteration:
         print(
             f"Missing _IS_SYNC at top of async file {file.replace('synchronous', 'asynchronous')}"
         )
-        raise e
+        raise
     return lines
 
 

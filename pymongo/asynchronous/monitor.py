@@ -27,7 +27,7 @@ from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
 from pymongo._telemetry import _HeartbeatTelemetry, _monotonic_duration, log_srv_monitor_failure
 from pymongo.asynchronous.srv_resolver import _SrvResolver
-from pymongo.errors import NetworkTimeout, _OperationCancelled
+from pymongo.errors import ConfigurationError, NetworkTimeout, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _async_create_lock
 from pymongo.periodic_executor import _shutdown_executors
@@ -375,7 +375,7 @@ class SrvMonitor(MonitorBase):
             seedlist, ttl = await resolver.get_hosts_and_min_ttl()
             if len(seedlist) == 0:
                 # As per the spec: this should be treated as a failure.
-                raise Exception
+                raise ConfigurationError("SRV polling returned no valid hosts.")
         except Exception as exc:
             # As per the spec, upon encountering an error:
             # - An error must not be raised
@@ -451,7 +451,7 @@ class _RttMonitor(MonitorBase):
         """Run a "hello" command and return the RTT."""
         async with self._pool.checkout() as conn:
             if self._executor._stopped:
-                raise Exception("_RttMonitor closed")
+                raise Exception("_RttMonitor closed")  # noqa: TRY002
             start = time.monotonic()
             await conn.hello()
             return _monotonic_duration(start)

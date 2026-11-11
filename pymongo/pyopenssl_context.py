@@ -131,7 +131,7 @@ class _sslConn(_SSL.Connection):
             except BLOCKING_IO_ERRORS as exc:
                 # Do not retry if the connection is in non-blocking mode.
                 if timeout == 0:
-                    raise exc
+                    raise
                 # Check for closed socket.
                 if self.fileno() == -1:
                     if timeout and _time.monotonic() - start > timeout:

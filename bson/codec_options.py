@@ -401,7 +401,7 @@ else:
                     "uuid_representation must be a value from bson.binary.UuidRepresentation"
                 )
             if not isinstance(unicode_decode_error_handler, str):
-                raise ValueError(
+                raise TypeError(
                     f"unicode_decode_error_handler must be a string, not {type(unicode_decode_error_handler)}"
                 )
             if tzinfo is not None:

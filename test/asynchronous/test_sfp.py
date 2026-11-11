@@ -46,7 +46,7 @@ VARIATIONS: dict[str, dict[str, Any]] = {
 def _require_env(name: str) -> str:
     value = os.environ.get(name)
     if not value:
-        raise Exception(f"Must set {name} env variable to test.")
+        raise ValueError(f"Must set {name} env variable to test.")
     return value
 
 
