@@ -418,14 +418,15 @@ def main() -> None:
         for f in generated_files:
             print(f"  {f}")
 
-    subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "ruff", "check", *generated_files, "--fix", *ruff_extra],
-        check=is_ci,
-    )
-    subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "ruff", "format", *generated_files, *ruff_extra],
-        check=is_ci,
-    )
+    if generated_files:
+        subprocess.run(  # noqa: S603
+            [sys.executable, "-m", "ruff", "check", *generated_files, "--fix", *ruff_extra],
+            check=is_ci,
+        )
+        subprocess.run(  # noqa: S603
+            [sys.executable, "-m", "ruff", "format", *generated_files, *ruff_extra],
+            check=is_ci,
+        )
 
     if is_ci and generated_files:
         result = subprocess.run(  # noqa: S603
