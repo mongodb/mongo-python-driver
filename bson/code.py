@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from collections.abc import Mapping as _Mapping
-from typing import Any
+from typing import Any, Self
 
 
 class Code(str):
@@ -52,11 +52,11 @@ class Code(str):
     __scope: Mapping[str, Any] | None
 
     def __new__(
-        cls: type[Code],
+        cls,
         code: str | Code,
         scope: Mapping[str, Any] | None = None,
         **kwargs: Any,
-    ) -> Code:
+    ) -> Self:
         if not isinstance(code, str):
             raise TypeError(f"code must be an instance of str, not {type(code)}")
 

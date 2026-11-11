@@ -30,6 +30,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     NoReturn,
+    Self,
 )
 
 import bson
@@ -1433,7 +1434,7 @@ class _CursorAddress(tuple[Any, ...]):
 
     __namespace: Any
 
-    def __new__(cls, address: _Address, namespace: str) -> _CursorAddress:
+    def __new__(cls, address: _Address, namespace: str) -> Self:
         self = tuple.__new__(cls, address)
         self.__namespace = namespace
         return self
