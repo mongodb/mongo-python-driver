@@ -33,10 +33,10 @@ from typing import (
 if TYPE_CHECKING:
     from typing import NotRequired
 
-    from typing_extensions import TypedDict
+    from typing_extensions import TypedDict  # noqa: TC004
 
-    from bson import Binary, ObjectId
-    from bson.binary import BinaryVector, BinaryVectorDtype
+    from bson import Binary, ObjectId  # noqa: TC004
+    from bson.binary import BinaryVector, BinaryVectorDtype  # noqa: TC004
 
     class Movie(TypedDict):
         name: str
