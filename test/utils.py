@@ -215,9 +215,9 @@ def flaky(
                     passes += 1
                     if passes == min_passes:
                         return result
-                except Exception as e:
+                except Exception:
                     if i == max_runs - 1:
-                        raise e
+                        raise
                     print(
                         f"Retrying after attempt {i + 1} of {func_name or target_func.__name__} failed with ({reason})):\n"
                         f"{traceback.format_exc()}",

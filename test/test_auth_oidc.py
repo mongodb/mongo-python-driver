@@ -314,7 +314,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
 
         client = self.create_client(request_cb=CustomCB())
         # Perform a find operation that fails.
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             client.test.coll.find_one()
         # Close the client.
         client.close()
@@ -558,7 +558,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
                 return None
 
         client = self.create_client(request_cb=RequestTokenNull())
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             client.test.coll.find_one()
         client.close()
 
@@ -568,7 +568,7 @@ class TestAuthOIDCHuman(OIDCTestBase):
                 return {}
 
         client = self.create_client(request_cb=CallbackInvalidToken())
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             client.test.coll.find_one()
         client.close()
 
@@ -852,7 +852,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
         client = self.create_client(request_cb=CallbackNullToken())
         # Perform a find operation that fails.
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             client.test.coll.find_one()
 
     def test_2_3_oidc_callback_returns_missing_data(self):
@@ -866,7 +866,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
 
         client = self.create_client(request_cb=CustomCallback())
         # Perform a find operation that fails.
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             client.test.coll.find_one()
 
     def test_2_4_invalid_client_configuration_with_callback(self):

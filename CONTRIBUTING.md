@@ -587,10 +587,10 @@ git diff HEAD~1 path/to/file >> .evergreen/spec-patch/PYTHON-1234.patch
 ```
 
 #### Running Locally
-Both `resync-all-specs.sh` and `resync-all-specs.py` can be run locally (and won't generate a PR).
+Both `resync-all-specs.sh` and `resync_all_specs.py` can be run locally (and won't generate a PR).
 ```bash
 ./.evergreen/scripts/resync-all-specs.sh
-python3 ./.evergreen/scripts/resync-all-specs.py
+python3 ./.evergreen/scripts/resync_all_specs.py
 ```
 
 ## Making a Release

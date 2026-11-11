@@ -51,7 +51,7 @@ URIS = {
 class TestAtlasConnect(PyMongoTestCase):
     def connect(self, uri):
         if not uri:
-            raise Exception("Must set env variable to test.")
+            raise ValueError("Must set env variable to test.")
         client = self.simple_client(uri)
         # No TLS error
         client.admin.command("ping")
