@@ -233,7 +233,7 @@ def _build_credentials_tuple(
 
 def _xor(fir: bytes, sec: bytes) -> bytes:
     """XOR two byte strings together."""
-    return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec)])
+    return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec, strict=True)])
 
 
 def _parse_scram_response(response: bytes) -> dict[bytes, bytes]:

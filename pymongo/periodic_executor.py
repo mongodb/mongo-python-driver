@@ -75,7 +75,16 @@ class AsyncPeriodicExecutor:
         callback; see monitor.py.
         """
         self._stopped = True
-        if self._task is not None:
+        if self._task is None:
+            return
+        try:
+            current = asyncio.current_task()
+        except RuntimeError:
+            # close() also runs as a weakref callback, off the event loop.
+            current = None
+        # Never cancel the calling task: self-cancellation aborts close()
+        # mid-way and leaves the monitor dead (PYTHON-6226).
+        if self._task is not current:
             self._task.cancel()
 
     async def join(self, timeout: int | None = None) -> None:

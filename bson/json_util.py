@@ -115,6 +115,7 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
+    Self,
     cast,
 )
 
@@ -140,12 +141,12 @@ from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
 _RE_OPT_TABLE = {
-    "i": re.I,
-    "l": re.L,
-    "m": re.M,
-    "s": re.S,
-    "u": re.U,
-    "x": re.X,
+    "i": re.IGNORECASE,
+    "l": re.LOCALE,
+    "m": re.MULTILINE,
+    "s": re.DOTALL,
+    "u": re.UNICODE,
+    "x": re.VERBOSE,
 }
 
 
@@ -300,14 +301,14 @@ class JSONOptions(_BASE_CLASS):
         super().__init__()
 
     def __new__(
-        cls: type[JSONOptions],
+        cls,
         strict_number_long: bool | None = None,
         datetime_representation: int | None = None,
         strict_uuid: bool | None = None,
         json_mode: int = JSONMode.RELAXED,
         *args: Any,
         **kwargs: Any,
-    ) -> JSONOptions:
+    ) -> Self:
         kwargs["tz_aware"] = kwargs.get("tz_aware", False)
         if kwargs["tz_aware"]:
             kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
@@ -321,7 +322,7 @@ class JSONOptions(_BASE_CLASS):
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation."
             )
-        self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))
+        self = cast(Self, super().__new__(cls, *args, **kwargs))
         if json_mode not in (JSONMode.LEGACY, JSONMode.RELAXED, JSONMode.CANONICAL):
             raise ValueError(
                 "JSONOptions.json_mode must be one of LEGACY, RELAXED, or CANONICAL from JSONMode."

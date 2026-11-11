@@ -30,6 +30,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     NoReturn,
+    Self,
 )
 
 import bson
@@ -754,8 +755,7 @@ def _client_construct_op_msg(
     buf.write(b"\x00\x00\x00\x00")
     buf.write(b"ops\x00")
     # Write all the ops documents
-    for op_encoded in to_send_ops_encoded:
-        buf.write(op_encoded)
+    buf.writelines(to_send_ops_encoded)
     resume_location = buf.tell()
     # Write type 1 section size
     length = buf.tell()
@@ -770,8 +770,7 @@ def _client_construct_op_msg(
     buf.write(b"\x00\x00\x00\x00")
     buf.write(b"nsInfo\x00")
     # Write all the nsInfo documents
-    for ns_encoded in to_send_ns_encoded:
-        buf.write(ns_encoded)
+    buf.writelines(to_send_ns_encoded)
     # Write type 1 section size
     length = buf.tell()
     buf.seek(size_location)
@@ -831,7 +830,9 @@ def _client_batched_op_msg_impl(
     total_ops_length = 0
     total_ns_length = 0
 
-    for idx, ((real_op_type, op_doc), namespace) in enumerate(zip(operations, namespaces)):
+    for idx, ((real_op_type, op_doc), namespace) in enumerate(
+        zip(operations, namespaces, strict=True)
+    ):
         op_type = real_op_type
         # Check insert/replace document size if unacknowledged.
         if real_op_type == "insert":
@@ -1433,7 +1434,7 @@ class _CursorAddress(tuple[Any, ...]):
 
     __namespace: Any
 
-    def __new__(cls, address: _Address, namespace: str) -> _CursorAddress:
+    def __new__(cls, address: _Address, namespace: str) -> Self:
         self = tuple.__new__(cls, address)
         self.__namespace = namespace
         return self

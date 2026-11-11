@@ -241,7 +241,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         # Generate unique ping times.
         while len(ping_times) < len(self.client.nodes):
             ping_times.add(random.random())
-        for ping_time, host in zip(ping_times, self.client.nodes):
+        for ping_time, host in zip(ping_times, self.client.nodes, strict=True):
             ServerDescription._host_to_round_trip_time[host] = ping_time
         try:
             client = connected(self.rs_client(readPreference="nearest", localThresholdMS=0))
@@ -558,7 +558,7 @@ class TestMongosAndReadPreference(IntegrationTest):
             "secondaryPreferred": SecondaryPreferred,
             "nearest": Nearest,
         }
-        for _, cls in cases.items():
+        for cls in cases.values():
             with self.assertRaises(DeprecationWarning):
                 cls(hedge={"enabled": True})
 
@@ -573,7 +573,7 @@ class TestMongosAndReadPreference(IntegrationTest):
         listener = OvertCommandListener()
         client = self.rs_client(event_listeners=[listener])
         client.admin.command("ping")
-        for _mode, cls in cases.items():
+        for cls in cases.values():
             with _ignore_deprecations():
                 pref = cls(hedge={"enabled": True})
             coll = client.test.get_collection("coll", read_preference=pref)

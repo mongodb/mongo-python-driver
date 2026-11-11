@@ -72,8 +72,12 @@ class Server:
         """
         self._sdam.server_closed(self._description.address)
 
-        await self._monitor.close()
-        await self._pool.close()
+        try:
+            await self._monitor.close()
+        finally:
+            # The pool must close even if cancellation or an error
+            # interrupts the monitor close (PYTHON-6226).
+            await self._pool.close()
 
     def request_check(self) -> None:
         """Check the server's state soon."""

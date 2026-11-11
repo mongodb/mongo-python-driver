@@ -22,7 +22,8 @@ import io
 import math
 from collections import abc
 from collections.abc import Iterable, Mapping
-from typing import Any, NoReturn, cast
+from types import TracebackType
+from typing import Any, NoReturn, Self, cast
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -1438,11 +1439,16 @@ class AsyncGridIn:
     def writeable(self) -> bool:
         return True
 
-    async def __aenter__(self) -> AsyncGridIn:
+    async def __aenter__(self) -> Self:
         """Support for the context manager protocol."""
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Any:
         """Support for the context manager protocol.
 
         Close the file if no exceptions occur and allow exceptions to propagate.
@@ -1796,13 +1802,18 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
     def writable(self) -> bool:
         return False
 
-    async def __aenter__(self) -> AsyncGridOut:
+    async def __aenter__(self) -> Self:
         """Makes it possible to use :class:`AsyncGridOut` files
         with the async context manager protocol.
         """
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Any:
         """Makes it possible to use :class:`AsyncGridOut` files
         with the async context manager protocol.
         """

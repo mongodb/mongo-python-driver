@@ -265,7 +265,7 @@ class ServerDescription:
         unknown._topology_version = self.topology_version
         return unknown
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, ServerDescription):
             return (
                 (self._address == other.address)
@@ -287,7 +287,7 @@ class ServerDescription:
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __repr__(self) -> str:

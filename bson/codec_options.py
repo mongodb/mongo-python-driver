@@ -26,6 +26,7 @@ from typing import (
     Any,
     Generic,
     NamedTuple,
+    Self,
     cast,
 )
 
@@ -183,7 +184,7 @@ class TypeRegistry:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(type_codecs={self.__type_codecs!r}, fallback_encoder={self._fallback_encoder!r})"
 
-    def __eq__(self, other: Any) -> Any:
+    def __eq__(self, other: object) -> Any:
         if not isinstance(other, type(self)):
             return NotImplemented
         return (
@@ -368,7 +369,7 @@ else:
             super().__init__()
 
         def __new__(
-            cls: type[CodecOptions],
+            cls,
             document_class: type[Mapping[str, Any]] | None = None,
             tz_aware: bool = False,
             uuid_representation: int | None = UuidRepresentation.UNSPECIFIED,
@@ -376,7 +377,7 @@ else:
             tzinfo: datetime.tzinfo | None = None,
             type_registry: TypeRegistry | None = None,
             datetime_conversion: DatetimeConversion | None = DatetimeConversion.DATETIME,
-        ) -> CodecOptions:
+        ) -> Self:
             doc_class = document_class or dict
             # Generic aliases like SON[str, Any] or dict[str, Any] aren't classes, so
             # resolve to their origin before the subclass check. issubclass() raises

@@ -2844,6 +2844,22 @@ tasks:
       - func: send dashboard data
     tags: [perf]
 
+  # Sanitizer tests
+  - name: test-sanitizer
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          TEST_NAME: sanitizer
+    tags: [sanitizer, pr]
+
   # Search index tests
   - name: test-search-index-helpers
     commands:
@@ -4815,29 +4831,6 @@ tasks:
       - standalone-noauth-nossl
       - sync
       - free-threaded
-
-  # String query preview tests
-  - name: test-string-query-preview-v8.2-python3.15-noauth-ssl-replica-set
-    commands:
-      - func: run server
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "8.2"
-      - func: run tests
-        vars:
-          AUTH: noauth
-          SSL: ssl
-          TOPOLOGY: replica_set
-          VERSION: "8.2"
-          UV_PYTHON: "3.15"
-    tags:
-      - test-string-query-preview
-      - server-8.2
-      - python-3.15
-      - replica_set-noauth-ssl
-      - noauth
 
   # Test non standard tests
   - name: test-non-standard-v4.4-python3.12-noauth-ssl-replica-set

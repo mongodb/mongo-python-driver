@@ -343,7 +343,7 @@ class TestJsonUtil(unittest.TestCase):
         loaded = json_util.object_hook(json.loads(json_re))
         self.assertIsInstance(loaded, Regex)
         self.assertEqual(pat, loaded.pattern)
-        self.assertEqual(re.U, loaded.flags)
+        self.assertEqual(re.UNICODE, loaded.flags)
 
     def test_regex(self):
         for regex_instance in (re.compile("a*b", re.IGNORECASE), Regex("a*b", re.IGNORECASE)):
@@ -354,7 +354,7 @@ class TestJsonUtil(unittest.TestCase):
             self.assertEqual("a*b", res.pattern)
             self.assertEqual(re.IGNORECASE, res.flags)
 
-        unicode_options = re.I | re.M | re.S | re.U | re.X
+        unicode_options = re.IGNORECASE | re.MULTILINE | re.DOTALL | re.UNICODE | re.VERBOSE
         regex = re.compile("a*b", unicode_options)
         res = self.round_tripped({"r": regex})["r"]
         self.assertEqual(unicode_options, res.flags)
@@ -370,17 +370,19 @@ class TestJsonUtil(unittest.TestCase):
         # Check order.
         self.assertEqual(
             '{"$regularExpression": {"pattern": ".*", "options": "mx"}}',
-            json_util.dumps(Regex(".*", re.M | re.X)),
+            json_util.dumps(Regex(".*", re.MULTILINE | re.VERBOSE)),
         )
 
         self.assertEqual(
             '{"$regularExpression": {"pattern": ".*", "options": "mx"}}',
-            json_util.dumps(re.compile(b".*", re.M | re.X)),
+            json_util.dumps(re.compile(b".*", re.MULTILINE | re.VERBOSE)),
         )
 
         self.assertEqual(
             '{"$regex": ".*", "$options": "mx"}',
-            json_util.dumps(Regex(".*", re.M | re.X), json_options=LEGACY_JSON_OPTIONS),
+            json_util.dumps(
+                Regex(".*", re.MULTILINE | re.VERBOSE), json_options=LEGACY_JSON_OPTIONS
+            ),
         )
 
     def test_regex_validation(self):

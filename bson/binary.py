@@ -17,7 +17,7 @@ import struct
 import warnings
 from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any, Self, overload
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -260,7 +260,7 @@ class BinaryVector:
     def __repr__(self) -> str:
         return f"BinaryVector(dtype={self.dtype}, padding={self.padding}, data={self.data})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, BinaryVector):
             return False
         return (
@@ -310,10 +310,10 @@ class Binary(bytes):
     __subtype: int
 
     def __new__(
-        cls: type[Binary],
+        cls,
         data: memoryview | bytes | bytearray | _mmap | _array[Any],
         subtype: int = BINARY_SUBTYPE,
-    ) -> Binary:
+    ) -> Self:
         if not isinstance(subtype, int):
             raise TypeError(f"subtype must be an instance of int, not {type(subtype)}")
         if subtype >= 256 or subtype < 0:
@@ -648,7 +648,7 @@ class Binary(bytes):
             data = data.encode("latin-1")
         return data, self.__subtype
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Binary):
             return (self.__subtype, bytes(self)) == (other.subtype, bytes(other))
         # We don't return NotImplemented here because if we did then
@@ -659,7 +659,7 @@ class Binary(bytes):
     def __hash__(self) -> int:
         return super().__hash__() ^ hash(self.__subtype)
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __repr__(self) -> str:

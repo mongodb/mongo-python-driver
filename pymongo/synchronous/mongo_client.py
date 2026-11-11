@@ -1385,12 +1385,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             self._resolve_srv_info["srv_service_name"],
         )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, self.__class__):
             return self.eq_props() == other.eq_props()
         return NotImplemented
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __hash__(self) -> int:
@@ -1682,7 +1682,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     def __enter__(self) -> MongoClient[_DocumentType]:
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.close()
 
     # See PYTHON-3084.
