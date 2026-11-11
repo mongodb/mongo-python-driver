@@ -8,6 +8,7 @@ alongside the other task creators.
 from __future__ import annotations
 
 from itertools import product
+from typing import Any
 
 from generate_config_utils import (
     ALL_PYTHONS,
@@ -42,21 +43,21 @@ MIDDLE_VERSION = STABLE_VERSIONS[len(STABLE_VERSIONS) // 2]
 
 
 def _create_suite_task(
-    family,
-    version,
-    topology,
-    python,
-    sync,
-    suite,
-    sub_test=None,
-    crypt_shared=False,
-    suffix=None,
-    extra_test_vars=None,
-    extra_expansions=None,
-    distros=None,
-    pr=False,
-    cov=None,
-):
+    family: str,
+    version: str,
+    topology: str,
+    python: str,
+    sync: str,
+    suite: str,
+    sub_test: str | None = None,
+    crypt_shared: bool = False,
+    suffix: str | None = None,
+    extra_test_vars: dict[str, str] | None = None,
+    extra_expansions: dict[str, str] | None = None,
+    distros: list[str] | None = None,
+    pr: bool = False,
+    cov: bool | None = None,
+) -> EvgTask:
     """One task of a per-suite family: the name carries no distro, so every
     distro variant lists the same definition, tagged with its distros
     (PYTHON-6167)."""
@@ -110,18 +111,23 @@ def _create_suite_task(
     return EvgTask(name=name, tags=tags, commands=[server_func, test_func])
 
 
-def _create_encryption_tasks(family, sub_test=None, crypt_shared=False, distros=None):
+def _create_encryption_tasks(
+    family: str,
+    sub_test: str | None = None,
+    crypt_shared: bool = False,
+    distros: list[str] | None = None,
+) -> list[EvgTask]:
     """Encryption tasks for one test type (PYTHON-6167).
 
-    Coverage and the pr pin ride rhel8-only twins: the max-stable and
-    latest cells exceed the 60-minute timeout with coverage on
-    macOS/Win64."""
+    The pr pin rides the max-stable cell on every distro; coverage rides
+    rhel8-only twins: the max-stable and latest cells exceed the
+    60-minute timeout with coverage on macOS/Win64."""
     all_distros = ALL_DISTROS
     distros = distros or all_distros
     split_coverage = distros == all_distros
     tasks = []
 
-    def add(version, topology, python, sync, **kwargs):
+    def add(version: str, topology: str, python: str, sync: str, **kwargs: Any) -> None:
         tasks.append(
             _create_suite_task(
                 family,
@@ -183,7 +189,12 @@ def _create_encryption_tasks(family, sub_test=None, crypt_shared=False, distros=
     return tasks
 
 
-def _create_cov_pr_twin(family, sync, sub_test=None, extra_test_vars=None):
+def _create_cov_pr_twin(
+    family: str,
+    sync: str,
+    sub_test: str | None = None,
+    extra_test_vars: dict[str, str] | None = None,
+) -> EvgTask:
     """Rhel8-only max-stable coverage twin carrying the pr pin: the rotated
     max-stable cell can land on the min-deps Python, and coverage stays off
     macOS/Win64 (PYTHON-6167)."""
@@ -202,21 +213,21 @@ def _create_cov_pr_twin(family, sync, sub_test=None, extra_test_vars=None):
     )
 
 
-def create_test_encryption_tasks():
+def create_test_encryption_tasks() -> list[EvgTask]:
     """Encryption tasks, plus crypt_shared variants of every task."""
     return _create_encryption_tasks("test-encryption") + _create_encryption_tasks(
         "test-encryption", crypt_shared=True
     )
 
 
-def create_test_encryption_pyopenssl_tasks():
+def create_test_encryption_pyopenssl_tasks() -> list[EvgTask]:
     """PyOpenSSL tasks on RHEL 8 only (setup_tests.py builds OpenSSL 3 there)."""
     return _create_encryption_tasks(
         "test-encryption-pyopenssl", sub_test="pyopenssl", distros=["rhel8"]
     )
 
 
-def create_test_load_balancer_tasks():
+def create_test_load_balancer_tasks() -> list[EvgTask]:
     """Load balancer tasks: one sync and one async task per MongoDB version
     6.0+ on a load-balanced auth SSL sharded cluster, running the full
     default suite (PYTHON-6167). The v9.0 pair carries the pr pin and
@@ -241,7 +252,7 @@ def create_test_load_balancer_tasks():
     return tasks
 
 
-def create_test_doctest_tasks():
+def create_test_doctest_tasks() -> list[EvgTask]:
     """Doctest tasks: one task per MongoDB version on a standalone server."""
     tasks = []
     for version, python in zip_cycle(ALL_VERSIONS, CPYTHONS):
@@ -261,7 +272,7 @@ def create_test_doctest_tasks():
     return tasks
 
 
-def create_test_compression_tasks():
+def create_test_compression_tasks() -> list[EvgTask]:
     """Compression tasks: one sync task per compressor on the latest replica
     set plus async sharded-cluster cells on every other MongoDB version, so
     each compressor meets every server version (PYTHON-6167)."""
@@ -303,7 +314,7 @@ def create_test_compression_tasks():
     return tasks
 
 
-def _per_version_cells():
+def _per_version_cells() -> list[tuple[str, str]]:
     """One cell per MongoDB version: a sharded cluster for every stable and
     rapid version, a replica set for latest, all with SSL."""
     return [(version, "sharded_cluster") for version in ALL_VERSIONS if version != "latest"] + [
@@ -311,7 +322,7 @@ def _per_version_cells():
     ]
 
 
-def create_test_pyopenssl_tasks():
+def create_test_pyopenssl_tasks() -> list[EvgTask]:
     """PyOpenSSL tasks: one task per MongoDB version, running the default
     suite with the PyOpenSSL extra. Free-threaded CPython is covered by the
     encryption-pyopenssl family, and the rhel8 max-stable twin carries the
@@ -338,17 +349,19 @@ def create_test_pyopenssl_tasks():
 
 
 def _create_rotation_tasks(
-    family, extra_test_vars=None, extra_expansions=None, pythons=CPYTHONS, sync=None, pin=None
-):
+    family: str,
+    extra_test_vars: dict[str, str] | None = None,
+    extra_expansions: dict[str, str] | None = None,
+    pythons: list[str] = CPYTHONS,
+    sync: str | None = None,
+    pin: str | None = None,
+) -> list[EvgTask]:
     """One task per MongoDB version, the topology cycling through standalone,
     replica set, and sharded cluster (PYTHON-6167). The max-stable cell
     carries the pr pin when pin is set, with coverage for "pr+cov"."""
     tasks = []
     for version, topology, python in zip_cycle(ALL_VERSIONS, TOPOLOGIES, pythons):
         is_pin = bool(pin) and version == MAX_VERSION
-        kwargs = dict(pr=True) if is_pin else {}
-        if is_pin and pin == "pr+cov":
-            kwargs["cov"] = True
         tasks.append(
             _create_suite_task(
                 family,
@@ -359,13 +372,14 @@ def _create_rotation_tasks(
                 "default",
                 extra_test_vars=extra_test_vars,
                 extra_expansions=extra_expansions,
-                **kwargs,
+                pr=is_pin,
+                cov=True if is_pin and pin == "pr+cov" else None,
             )
         )
     return tasks
 
 
-def create_test_gevent_tasks():
+def create_test_gevent_tasks() -> list[EvgTask]:
     """Gevent tasks: one task per MongoDB version running the sync default
     suite (async tests are excluded under the framework; free-threaded
     CPython is unsupported), plus the rhel8 max-stable pr twin with coverage
@@ -381,7 +395,7 @@ def create_test_gevent_tasks():
     ]
 
 
-def create_test_disable_test_commands_tasks():
+def create_test_disable_test_commands_tasks() -> list[EvgTask]:
     """Disable-test-commands tasks: one task per MongoDB version, the
     topology cycling through all three (PYTHON-6167)."""
     return _create_rotation_tasks(
@@ -393,14 +407,14 @@ def create_test_disable_test_commands_tasks():
     )
 
 
-def create_test_no_c_ext_tasks():
+def create_test_no_c_ext_tasks() -> list[EvgTask]:
     """No-c-ext tasks: one task per MongoDB version, the topology cycling
     through all three, without the C extensions (NO_EXT feeds run_tests.py)
     (PYTHON-6167)."""
     return _create_rotation_tasks("test-no-c-ext", extra_test_vars=dict(NO_EXT="1"), pin="pr+cov")
 
 
-def create_test_stable_api_tasks():
+def create_test_stable_api_tasks() -> list[EvgTask]:
     """Stable API tasks: one require-v1 task per MongoDB version 5.0+ on a
     sharded cluster, and one accept-v2 standalone task per version
     (PYTHON-6167)."""
@@ -436,7 +450,7 @@ def create_test_stable_api_tasks():
     return tasks
 
 
-def create_test_storage_inmemory_tasks():
+def create_test_storage_inmemory_tasks() -> list[EvgTask]:
     """InMemory storage engine tasks: one sync standalone task per MongoDB
     version (PYTHON-6167)."""
     tasks = []
@@ -458,8 +472,8 @@ def create_test_storage_inmemory_tasks():
     return tasks
 
 
-def create_standard_tasks():
-    """The standard suite on the non-linux platforms, one task per MongoDB
+def create_standard_tasks() -> list[EvgTask]:
+    """The standard suite on the non-Linux platforms, one task per MongoDB
     version following the encryption corners; the platform tags restrict the
     cells (macOS arm64 starts at 6.0, win32 has no free-threaded CPython)
     (PYTHON-6167)."""
@@ -472,7 +486,8 @@ def create_standard_tasks():
             MIN_PYTHON,
             "sync",
             ["macos", "win32", "win64"],
-            {},
+            False,
+            None,
         ),
         # Sync, max free-threaded CPython, middle MongoDB, noauth, SSL, replica set.
         (
@@ -481,7 +496,8 @@ def create_standard_tasks():
             FREE_THREADED_PYTHON,
             "sync",
             ["macos", "macos-arm64", "win64"],
-            {},
+            False,
+            None,
         ),
         # Async, max CPython, max stable MongoDB, auth, SSL, sharded cluster;
         # carries the pr pin and coverage.
@@ -491,7 +507,8 @@ def create_standard_tasks():
             MAX_PYTHON,
             "async",
             all_platforms,
-            {"pr": True, "cov": True},
+            True,
+            True,
         ),
         # The max-CPython sharded task across the remaining MongoDB versions;
         # the latest cell collects coverage.
@@ -503,7 +520,8 @@ def create_standard_tasks():
                 "async",
                 # macOS arm64 only works on server versions 6.0+.
                 ["macos", "win32", "win64"] if version == "5.0" else all_platforms,
-                {},
+                False,
+                None,
             )
             for version in ALL_VERSIONS
             if version not in (MIN_VERSION, MIDDLE_VERSION, MAX_VERSION)
@@ -518,7 +536,8 @@ def create_standard_tasks():
             sync,
             "default",
             distros=platforms,
-            **kwargs,
+            pr=pr,
+            cov=cov,
         )
-        for version, topology, python, sync, platforms, kwargs in corners
+        for version, topology, python, sync, platforms, pr, cov in corners
     ]

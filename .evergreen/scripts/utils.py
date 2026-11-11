@@ -50,6 +50,7 @@ TEST_SUITE_MAP = {
     "mockupdb": "mockupdb",
     "ocsp": "ocsp",
     "perf": "perf",
+    "sanitizer": "",
     "sfp": "sfp",
     "numpy": "",
 }
@@ -90,6 +91,10 @@ EXTRA_TESTS = ["aws_lambda", "doctest", "fuzz"]
 
 # The managed Python version used for perf tests (PYTHON-6135).
 PERF_PYTHON_VERSION = "3.11.9"
+
+# The ASan/UBSan-instrumented toolchain CPython used by the sanitizer task
+# (PYTHON-6048), built by mongo-python-toolchain (PYTHON-6067). Linux only.
+SANITIZER_PYTHON = "/opt/python/3.14-asan-ubsan/bin/python3"
 
 # Tests that do not use run-mongodb directly.
 NO_RUN_ORCHESTRATION = [
@@ -291,7 +296,7 @@ def handle_env_overrides(parser: argparse.ArgumentParser, opts: argparse.Namespa
 def read_env(path: Path | str) -> dict[str, str]:
     config = dict()
     with Path(path).open() as fid:
-        for line in fid.readlines():
+        for line in fid:
             if "=" not in line:
                 continue
             name, _, value = line.strip().partition("=")
@@ -309,8 +314,8 @@ def read_env(path: Path | str) -> dict[str, str]:
 def shell_escape(value: str) -> str:
     """Escape a value for a double-quoted shell context.
 
-    Backslashes are escaped first or a backslash-prefixed substitution
-    re-arms when the file is sourced (PYTHON-6167)."""
+    Backslashes are escaped first; otherwise a backslash-prefixed
+    substitution re-arms when the file is sourced (PYTHON-6167)."""
     return value.replace("\\", "\\\\").replace("$", "\\$").replace("`", "\\`")
 
 

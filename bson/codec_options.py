@@ -183,7 +183,7 @@ class TypeRegistry:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(type_codecs={self.__type_codecs!r}, fallback_encoder={self._fallback_encoder!r})"
 
-    def __eq__(self, other: Any) -> Any:
+    def __eq__(self, other: object) -> Any:
         if not isinstance(other, type(self)):
             return NotImplemented
         return (

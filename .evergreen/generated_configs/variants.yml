@@ -380,6 +380,17 @@ buildvariants:
       - windows-2022-latest-small
     batchtime: 1440
 
+  # Sanitizer tests
+  - name: sanitizer-rhel8
+    tasks:
+      - name: .sanitizer
+    display_name: Sanitizer RHEL8
+    run_on:
+      - rhel8.10-large
+    expansions:
+      VERSION: "9.0"
+    tags: [pr]
+
   # Search index tests
   - name: search-index-helpers-rhel8
     tasks:

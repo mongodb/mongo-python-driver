@@ -105,7 +105,7 @@ class Regex(Generic[_T]):
         else:
             raise TypeError(f"flags must be a string or int, not {type(flags)}")
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Regex):
             return self.pattern == other.pattern and self.flags == other.flags
         else:
@@ -113,7 +113,7 @@ class Regex(Generic[_T]):
 
     __hash__ = None  # type: ignore
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __repr__(self) -> str:

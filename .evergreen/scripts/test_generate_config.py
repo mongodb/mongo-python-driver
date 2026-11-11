@@ -219,7 +219,7 @@ def test_ensure_openssl3_escapes_persisted_values(monkeypatch, tmp_path):
     monkeypatch.setattr(utils, "ENV_FILE", env_file)
     monkeypatch.setattr(setup_tests, "ENV_FILE", env_file)
 
-    # A system openssl older than 3.0 forces the source path.
+    # A system OpenSSL older than 3.0 forces the source path.
     fake_openssl = tmp_path / "openssl"
     fake_openssl.write_text('#!/bin/sh\necho "OpenSSL 1.1.1w  11 Sep 2023"\n')
     fake_openssl.chmod(0o755)
@@ -420,3 +420,26 @@ def test_sync_option_env_override(monkeypatch):
     monkeypatch.setenv("SYNC", "async")
     opts, _ = utils.get_test_options("Set up the test environment.")
     assert opts.sync == "async"
+
+
+def test_sanitizer_task_wiring():
+    """PYTHON-6048: one pr-tagged sanitizer task, selected by exactly one
+    variant that pins MAX_VERSION and runs on a large host for ASan's memory
+    headroom. VERSION stays off the task so it is exempt
+    from the pr COVERAGE rule (coverage under ASan is not useful)."""
+    tasks = [task for task in all_tasks() if "sanitizer" in (task.tags or [])]
+    assert len(tasks) == 1
+    task = tasks[0]
+    assert "pr" in task.tags
+    funcs = [getattr(cmd, "func", None) for cmd in task.commands]
+    assert funcs == ["run server", "run tests"]
+    vars_ = task_vars(task)
+    assert vars_["TEST_NAME"] == "sanitizer"
+    assert vars_["TOPOLOGY"] == "standalone"
+    assert vars_["AUTH"] == "noauth"
+    assert vars_["SSL"] == "nossl"
+    assert "VERSION" not in vars_
+    variants = [v for v in all_variants() if variant_selects(v, task)]
+    assert len(variants) == 1
+    assert variants[0].run_on == ["rhel8.10-large"]
+    assert (variants[0].expansions or {}).get("VERSION") == generate_config_utils.MAX_VERSION

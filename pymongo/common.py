@@ -505,7 +505,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
 
 def validate_document_class(
     option: str, value: Any
-) -> type[MutableMapping[str, Any]] | type[RawBSONDocument]:
+) -> type[MutableMapping[str, Any] | RawBSONDocument]:
     """Validate the document_class option."""
     # Generic aliases like SON[str, Any] or dict[str, Any] aren't classes, so
     # resolve to their origin before the subclass check. issubclass() raises
@@ -1041,7 +1041,7 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
         del self.__casedkeys[lc_key]
         del self.__data[lc_key]
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, abc.Mapping):
             return NotImplemented
         if len(self) != len(other):

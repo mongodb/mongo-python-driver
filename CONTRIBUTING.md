@@ -250,9 +250,7 @@ for local testing):
 ```python
 from pymongo import MongoClient
 
-client = MongoClient(
-    "mongodb://localhost:27017?tls=true&tlsAllowInvalidCertificates=true"
-)
+client = MongoClient("mongodb://localhost:27017?tls=true&tlsAllowInvalidCertificates=true")
 ```
 
 If you want to use the actual certificate file then set `tlsCertificateKeyFile` to the local path
@@ -501,6 +499,20 @@ CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at
   re-bind them rather than reshuffle the set. Check the regenerated `generated_configs/tasks.yml`
   diff to confirm the `pr` tags.
 - Make sure to add instructions for running the test suite to `CONTRIBUTING.md`.
+
+### Sanitizer tests
+
+The `sanitizer` test suite (PYTHON-6048) builds the C extensions with
+`-fsanitize=address,undefined` against the toolchain's ASan/UBSan-instrumented
+CPython (`SANITIZER_PYTHON` in `.evergreen/scripts/utils.py`) and runs the
+files listed in `SANITIZER_FILES` in `.evergreen/scripts/setup_tests.py`. The
+toolchain interpreter initializes the sanitizer runtimes itself. It runs on
+PRs via the "Sanitizer RHEL8" variant. To run it on a Linux host with the
+toolchain:
+
+    just run-server
+    just setup-tests sanitizer
+    just run-tests
 
 ## Handling flaky tests
 

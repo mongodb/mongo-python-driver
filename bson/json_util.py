@@ -140,12 +140,12 @@ from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
 _RE_OPT_TABLE = {
-    "i": re.I,
-    "l": re.L,
-    "m": re.M,
-    "s": re.S,
-    "u": re.U,
-    "x": re.X,
+    "i": re.IGNORECASE,
+    "l": re.LOCALE,
+    "m": re.MULTILINE,
+    "s": re.DOTALL,
+    "u": re.UNICODE,
+    "x": re.VERBOSE,
 }
 
 
