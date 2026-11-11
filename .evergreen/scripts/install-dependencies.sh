@@ -30,7 +30,7 @@ if [ "Windows_NT" = "${OS:-}" ]; then
 else
   export PYMONGO_BIN_DIR_POSIX="$PYMONGO_BIN_DIR"
 fi
-# UV_TOOL_BIN_DIR is uv's name for the same dir (setup-uv.py reads both).
+# UV_TOOL_BIN_DIR is uv's name for the same dir (setup_uv.py reads both).
 # UV_TOOL_DIR is left to ensure_uv.sh.
 export UV_TOOL_BIN_DIR="${UV_TOOL_BIN_DIR:-$PYMONGO_BIN_DIR}"
 
@@ -43,12 +43,12 @@ case ":$PATH:" in
 esac
 
 # Compute the setup script path once (native Windows path on cygwin).
-_uv_setup_script="$HERE/setup-uv.py"
+_uv_setup_script="$HERE/setup_uv.py"
 if [ "Windows_NT" = "${OS:-}" ]; then
   _uv_setup_script="$(cygpath -m "$_uv_setup_script")"
 fi
 
-# Skip setup when the pinned uv is already installed: `setup-uv.py --check`
+# Skip setup when the pinned uv is already installed: `setup_uv.py --check`
 # compares the uv on PATH with the required-version pin, without side effects.
 # A full `uv sync` here would download Python and install/build dependencies
 # just to make this decision, and would run before setup-uv-python.sh sets
@@ -79,7 +79,7 @@ if [ "$_need_setup" = "1" ]; then
   # and no required-version check is triggered.
   python3 "$_uv_setup_script"
 
-  # Re-source env.sh so the values setup-uv.py wrote are available.
+  # Re-source env.sh so the values setup_uv.py wrote are available.
   if [ -f $HERE/env.sh ]; then
     . $HERE/env.sh
   fi

@@ -182,7 +182,7 @@ class RawBSONDocument(Mapping[str, Any]):
     def __len__(self) -> int:
         return len(self.__inflated)
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, RawBSONDocument):
             return self.__raw == other.raw
         return NotImplemented

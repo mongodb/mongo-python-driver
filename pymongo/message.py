@@ -30,6 +30,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     NoReturn,
+    Self,
 )
 
 import bson
@@ -41,7 +42,6 @@ from bson.raw_bson import (
     _inflate_bson,
 )
 from pymongo.common import MONGOS_EXHAUST_WIRE_VERSION
-from pymongo.monitoring import _EventListeners
 
 try:
     from pymongo import _cmessage  # type: ignore[attr-defined]
@@ -58,6 +58,7 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 
 if TYPE_CHECKING:
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
+    from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
     from pymongo.typings import (
         _Address,
@@ -754,8 +755,7 @@ def _client_construct_op_msg(
     buf.write(b"\x00\x00\x00\x00")
     buf.write(b"ops\x00")
     # Write all the ops documents
-    for op_encoded in to_send_ops_encoded:
-        buf.write(op_encoded)
+    buf.writelines(to_send_ops_encoded)
     resume_location = buf.tell()
     # Write type 1 section size
     length = buf.tell()
@@ -770,8 +770,7 @@ def _client_construct_op_msg(
     buf.write(b"\x00\x00\x00\x00")
     buf.write(b"nsInfo\x00")
     # Write all the nsInfo documents
-    for ns_encoded in to_send_ns_encoded:
-        buf.write(ns_encoded)
+    buf.writelines(to_send_ns_encoded)
     # Write type 1 section size
     length = buf.tell()
     buf.seek(size_location)
@@ -1435,7 +1434,7 @@ class _CursorAddress(tuple[Any, ...]):
 
     __namespace: Any
 
-    def __new__(cls, address: _Address, namespace: str) -> _CursorAddress:
+    def __new__(cls, address: _Address, namespace: str) -> Self:
         self = tuple.__new__(cls, address)
         self.__namespace = namespace
         return self

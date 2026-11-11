@@ -23,6 +23,7 @@ from collections import deque
 from collections.abc import Callable, MutableMapping
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
+from types import TracebackType
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 if TYPE_CHECKING:
@@ -90,7 +91,12 @@ class _TimeoutContext(AbstractContextManager[Any]):
         rtt_token = RTT.set(0.0)
         self._tokens = (timeout_token, deadline_token, rtt_token)
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         if self._tokens:
             timeout_token, deadline_token, rtt_token = self._tokens
             TIMEOUT.reset(timeout_token)

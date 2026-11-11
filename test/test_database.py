@@ -211,7 +211,7 @@ class TestDatabase(IntegrationTest):
         db.capped.insert_one({})
         db.non_capped.insert_one({})
         self.addCleanup(client.drop_database, db.name)
-        filter: None | Mapping[str, Any]
+        filter: Mapping[str, Any] | None
         # Should not send nameOnly.
         for filter in ({"options.capped": True}, {"options.capped": True, "name": "capped"}):
             listener.reset()
@@ -482,7 +482,7 @@ class TestDatabase(IntegrationTest):
         )
         cursor = db.coll.find()
         for x in cursor:
-            for k, _v in x.items():
+            for k in x.keys():
                 self.assertEqual(k, "_id")
                 break
 

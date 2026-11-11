@@ -41,7 +41,6 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from bson.timestamp import Timestamp
 from pymongo import ASCENDING, _csot, common, helpers_shared, message
 from pymongo.asynchronous.aggregation import (
     _CollectionAggregationCommand,
@@ -125,6 +124,7 @@ class ReturnDocument:
 
 if TYPE_CHECKING:
     import bson
+    from bson.timestamp import Timestamp
     from pymongo.asynchronous.aggregation import _AggregationCommand
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.database import AsyncDatabase
@@ -294,12 +294,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._database!r}, {self._name!r})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, AsyncCollection):
             return self._database == other.database and self._name == other.name
         return NotImplemented
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __hash__(self) -> int:
@@ -3252,7 +3252,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """Internal findAndModify helper."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
-            raise ValueError(
+            raise TypeError(
                 f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, not {type(return_document)}"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))

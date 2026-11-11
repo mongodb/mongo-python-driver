@@ -22,7 +22,8 @@ import io
 import math
 from collections import abc
 from collections.abc import Iterable, Mapping
-from typing import Any, NoReturn, cast
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -44,7 +45,6 @@ from gridfs.grid_file_shared import (
     _clear_entity_type_registry,
 )
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
-from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
@@ -60,6 +60,9 @@ from pymongo.errors import (
 )
 from pymongo.helpers_shared import _check_write_command_response
 from pymongo.read_preferences import ReadPreference, _ServerMode
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.client_session import AsyncClientSession
 
 _IS_SYNC = False
 
@@ -1438,11 +1441,16 @@ class AsyncGridIn:
     def writeable(self) -> bool:
         return True
 
-    async def __aenter__(self) -> AsyncGridIn:
+    async def __aenter__(self) -> Self:
         """Support for the context manager protocol."""
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Any:
         """Support for the context manager protocol.
 
         Close the file if no exceptions occur and allow exceptions to propagate.
@@ -1796,13 +1804,18 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
     def writable(self) -> bool:
         return False
 
-    async def __aenter__(self) -> AsyncGridOut:
+    async def __aenter__(self) -> Self:
         """Makes it possible to use :class:`AsyncGridOut` files
         with the async context manager protocol.
         """
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Any:
         """Makes it possible to use :class:`AsyncGridOut` files
         with the async context manager protocol.
         """

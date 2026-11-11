@@ -27,6 +27,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     NoReturn,
+    Self,
     overload,
 )
 from urllib.parse import unquote_plus
@@ -453,7 +454,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
     props: dict[str, Any] = {}
     if not isinstance(value, str):
         if not isinstance(value, dict):
-            raise ValueError(
+            raise TypeError(
                 f"Auth mechanism properties must be given as a string or a dictionary, not {type(value)}"
             )
         for key, value in value.items():  # noqa: B020
@@ -467,10 +468,10 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
                 from pymongo.auth_oidc_shared import OIDCCallback
 
                 if not isinstance(value, OIDCCallback):
-                    raise ValueError(f"callback must be an OIDCCallback object, not {type(value)}")
+                    raise TypeError(f"callback must be an OIDCCallback object, not {type(value)}")
                 props[key] = value
             else:
-                raise ValueError(f"Invalid type for auth mechanism property {key}, {type(value)}")
+                raise TypeError(f"Invalid type for auth mechanism property {key}, {type(value)}")
         return props
 
     value = validate_string(option, value)
@@ -505,7 +506,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
 
 def validate_document_class(
     option: str, value: Any
-) -> type[MutableMapping[str, Any]] | type[RawBSONDocument]:
+) -> type[MutableMapping[str, Any] | RawBSONDocument]:
     """Validate the document_class option."""
     # Generic aliases like SON[str, Any] or dict[str, Any] aren't classes, so
     # resolve to their origin before the subclass check. issubclass() raises
@@ -611,7 +612,7 @@ def validate_is_callable_or_none(option: Any, value: Any) -> Callable[..., Any] 
     if value is None:
         return value
     if not callable(value):
-        raise ValueError(f"{option} must be a callable, not {type(value)}")
+        raise TypeError(f"{option} must be a callable, not {type(value)}")
     return value
 
 
@@ -1041,7 +1042,7 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
         del self.__casedkeys[lc_key]
         del self.__data[lc_key]
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, abc.Mapping):
             return NotImplemented
         if len(self) != len(other):
@@ -1111,7 +1112,7 @@ def has_c() -> bool:
 class Version(tuple[int, ...]):
     """A class that can be used to compare version strings."""
 
-    def __new__(cls, *version: int) -> Version:
+    def __new__(cls, *version: int) -> Self:
         padded_version = cls._padded(version, 4)
         return super().__new__(cls, tuple(padded_version))
 

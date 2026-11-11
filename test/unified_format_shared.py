@@ -27,7 +27,7 @@ import time
 import types
 from collections import abc
 from collections.abc import MutableMapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from bson import (
     RE_TYPE,
@@ -79,8 +79,6 @@ from pymongo.monitoring import (
     _ServerHeartbeatEvent,
 )
 from pymongo.results import BulkWriteResult
-from pymongo.server_description import ServerDescription
-from pymongo.topology_description import TopologyDescription
 from test.helpers_shared import (
     AWS_CREDS,
     AWS_CREDS_2,
@@ -93,6 +91,10 @@ from test.helpers_shared import (
     LOCAL_MASTER_KEY,
 )
 from test.utils_shared import CMAPListener, camel_to_snake, parse_collection_options
+
+if TYPE_CHECKING:
+    from pymongo.server_description import ServerDescription
+    from pymongo.topology_description import TopologyDescription
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
 
@@ -665,7 +667,7 @@ class MatchEvaluatorUtil:
         elif name == "topologyClosedEvent":
             self.test.assertIsInstance(actual, TopologyClosedEvent)
         else:
-            raise Exception(f"Unsupported event type {name}")
+            raise ValueError(f"Unsupported event type {name}")
 
         self.match_event_fields(actual, spec)
 

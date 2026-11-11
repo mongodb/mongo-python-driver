@@ -25,9 +25,9 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
+    cast,
 )
 
-from bson.raw_bson import RawBSONDocument
 from pymongo import helpers_shared
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import validate_is_mapping, validate_list
@@ -37,6 +37,7 @@ from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
+    from bson.raw_bson import RawBSONDocument
     from pymongo.typings import _AgnosticBulk, _AgnosticClientBulk
 
 
@@ -137,14 +138,15 @@ class InsertOne(Generic[_DocumentType]):
             return f"{self.__class__.__name__}({self._doc!r}, {self._namespace!r})"
         return f"{self.__class__.__name__}({self._doc!r})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if type(other) is type(self):
-            return other._doc == self._doc and other._namespace == self._namespace
+            _other = cast("InsertOne[_DocumentType]", other)
+            return _other._doc == self._doc and _other._namespace == self._namespace
         return NotImplemented
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
 
@@ -176,13 +178,14 @@ class _DeleteOp:
         self._collation = collation
         self._namespace = namespace
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if type(other) is type(self):
+            _other = cast("_DeleteOp", other)
             return (
-                other._filter,
-                other._collation,
-                other._hint,
-                other._namespace,
+                _other._filter,
+                _other._collation,
+                _other._hint,
+                _other._namespace,
             ) == (
                 self._filter,
                 self._collation,
@@ -193,7 +196,7 @@ class _DeleteOp:
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __repr__(self) -> str:
@@ -419,16 +422,17 @@ class ReplaceOne(Generic[_DocumentType]):
             sort=self._sort,
         )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if type(other) is type(self):
+            _other = cast("ReplaceOne[_DocumentType]", other)
             return (
-                other._filter,
-                other._doc,
-                other._upsert,
-                other._collation,
-                other._hint,
-                other._namespace,
-                other._sort,
+                _other._filter,
+                _other._doc,
+                _other._upsert,
+                _other._collation,
+                _other._hint,
+                _other._namespace,
+                _other._sort,
             ) == (
                 self._filter,
                 self._doc,
@@ -442,7 +446,7 @@ class ReplaceOne(Generic[_DocumentType]):
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __repr__(self) -> str:
@@ -519,7 +523,7 @@ class _UpdateOp:
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __repr__(self) -> str:

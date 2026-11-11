@@ -561,7 +561,7 @@ class TestServerMonitoringMode(AsyncIntegrationTest):
         await client.admin.command("ping")
 
         def predicate():
-            for _, server in client._topology._servers.items():
+            for server in client._topology._servers.values():
                 monitor = server._monitor
                 if not monitor._stream:
                     return False
@@ -603,7 +603,7 @@ class TestServerMonitoringMode(AsyncIntegrationTest):
 
     async def assert_rtt_connection_is_disabled(self, client):
         await client.admin.command("ping")
-        for _, server in client._topology._servers.items():
+        for server in client._topology._servers.values():
             monitor = server._monitor
             self.assertFalse(monitor._stream)
             if _IS_SYNC:

@@ -130,7 +130,7 @@ class _OIDCAuthenticator(_OIDCAuthenticatorBase):
 
     async def _get_access_token(self) -> str | None:
         properties = self.properties
-        cb: None | OIDCCallback
+        cb: OIDCCallback | None
         resp: OIDCCallbackResult
 
         is_human = properties.human_callback is not None
@@ -180,7 +180,7 @@ class _OIDCAuthenticator(_OIDCAuthenticatorBase):
                 else:
                     resp = cb.fetch(context)
                 if not isinstance(resp, OIDCCallbackResult):
-                    raise ValueError(
+                    raise TypeError(
                         f"Callback result must be of type OIDCCallbackResult, not {type(resp)}"
                     )
                 self.refresh_token = resp.refresh_token

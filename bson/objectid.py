@@ -227,12 +227,12 @@ class ObjectId:
     def __repr__(self) -> str:
         return f"ObjectId('{self!s}')"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, ObjectId):
             return self.__id == other.binary
         return NotImplemented
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         if isinstance(other, ObjectId):
             return self.__id != other.binary
         return NotImplemented

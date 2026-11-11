@@ -68,7 +68,7 @@ def _split_message(
     return request_id, data, 0
 
 
-class _AgnosticCursorBase(Generic[_DocumentType], ABC):
+class _AgnosticCursorBase(ABC, Generic[_DocumentType]):
     """
     Shared IO-agnostic cursor base used by both async and sync cursor classes.
     All IO-specific behavior is implemented in subclasses.

@@ -26,7 +26,7 @@ import re
 import sys
 import threading
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pymongo
 
@@ -38,7 +38,6 @@ from bson.raw_bson import RawBSONDocument
 from pymongo import ASCENDING, DESCENDING
 from pymongo.collation import Collation
 from pymongo.errors import ExecutionTimeout, InvalidOperation, OperationFailure, PyMongoError
-from pymongo.operations import _IndexList
 from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference
 from pymongo.synchronous.cursor import Cursor, CursorType
@@ -54,6 +53,9 @@ from test.utils_shared import (
     ignore_deprecations,
     wait_until,
 )
+
+if TYPE_CHECKING:
+    from pymongo.operations import _IndexList
 
 _IS_SYNC = True
 

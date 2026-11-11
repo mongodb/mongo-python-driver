@@ -18,16 +18,18 @@ import os
 import pathlib
 import time
 import unittest
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from pymongo import MongoClient
 from pymongo.driver_info import DriverInfo
 from pymongo.monitoring import ConnectionClosedEvent
 from test import IntegrationTest
 from test.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import CMAPListener
+
+if TYPE_CHECKING:
+    from pymongo import MongoClient
 
 try:
     from mockupdb import MockupDB, OpMsgReply

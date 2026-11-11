@@ -101,7 +101,7 @@ def _after_fork_child(clients: Mapping[Any, Any]) -> None:
     _release_locks()
 
     # Perform cleanup in clients (i.e. get rid of topology)
-    for _, client in clients.items():
+    for client in clients.values():
         client._after_fork()
 
 

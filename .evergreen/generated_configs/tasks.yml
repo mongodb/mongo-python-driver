@@ -2844,6 +2844,22 @@ tasks:
       - func: send dashboard data
     tags: [perf]
 
+  # Sanitizer tests
+  - name: test-sanitizer
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          TEST_NAME: sanitizer
+    tags: [sanitizer, pr]
+
   # Search index tests
   - name: test-search-index-helpers
     commands:

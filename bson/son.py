@@ -116,7 +116,7 @@ class SON(dict[_Key, _Value]):
             DeprecationWarning,
             stacklevel=2,
         )
-        for _, v in self.items():
+        for _, v in self.items():  # noqa: PERF102
             yield v
 
     def values(self) -> list[_Value]:  # type: ignore[override]
@@ -177,17 +177,17 @@ class SON(dict[_Key, _Value]):
         except KeyError:
             return default
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Comparison to another SON is order-sensitive while comparison to a
         regular dictionary is order-insensitive.
         """
         if isinstance(other, SON):
             return len(self) == len(other) and list(self.items()) == list(other.items())
-        return cast(bool, self.to_dict() == other)
+        return self.to_dict() == other
 
     __hash__ = None
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __len__(self) -> int:

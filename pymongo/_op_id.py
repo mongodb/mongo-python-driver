@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from contextlib import AbstractContextManager
 from contextvars import ContextVar
+from types import TracebackType
 from typing import Any
 
 OP_ID: ContextVar[int | None] = ContextVar("OP_ID", default=None)
@@ -42,5 +43,10 @@ class _OpIdContext(AbstractContextManager[Any]):
     def __enter__(self) -> None:
         self._token = OP_ID.set(self._op_id)
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         OP_ID.reset(self._token)

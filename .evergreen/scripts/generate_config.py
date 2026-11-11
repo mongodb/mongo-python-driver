@@ -527,6 +527,24 @@ def create_fuzz_variants():
     return [pr_variant, nightly]
 
 
+def create_sanitizer_variants() -> list[BuildVariant]:
+    # ASan/UBSan checks on every PR (PYTHON-6048).  The rhel8 toolchain
+    # provides the instrumented CPython (utils.SANITIZER_PYTHON), and the
+    # large distro gives ASan's shadow memory and redzones room for the
+    # ~6GiB test_encode_size_limit allocation, so no test is skipped.
+    host = DEFAULT_HOST
+    return [
+        create_variant(
+            [".sanitizer"],
+            get_variant_name("Sanitizer", host),
+            host=host,
+            run_on="rhel8.10-large",
+            version=MAX_VERSION,
+            tags=["pr"],
+        )
+    ]
+
+
 def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [
@@ -941,6 +959,19 @@ def create_fuzz_tasks():
     test_func = FunctionCall(func="run tests", vars=test_vars)
     tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func]))
     return tasks
+
+
+def create_sanitizer_tasks():
+    # VERSION comes from the variant: a task-level VERSION would trip the
+    # pr-tasks-run-coverage rule, and coverage under ASan is not useful.
+    tags = ["sanitizer", "pr"]
+    expansions = dict(AUTH="noauth", SSL="nossl", TOPOLOGY="standalone")
+    server_func = FunctionCall(func="run server", vars=expansions)
+    test_vars = expansions.copy()
+    test_vars["TEST_NAME"] = "sanitizer"
+    test_func = FunctionCall(func="run tests", vars=test_vars)
+    name = get_task_name("test-sanitizer")
+    return [EvgTask(name=name, tags=tags, commands=[server_func, test_func])]
 
 
 def create_kms_tasks():

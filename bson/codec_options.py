@@ -26,6 +26,7 @@ from typing import (
     Any,
     Generic,
     NamedTuple,
+    Self,
     cast,
 )
 
@@ -34,7 +35,6 @@ from bson.binary import (
     UUID_REPRESENTATION_NAMES,
     UuidRepresentation,
 )
-from bson.typings import _DocumentType
 
 _RAW_BSON_DOCUMENT_MARKER = 101
 
@@ -183,7 +183,7 @@ class TypeRegistry:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(type_codecs={self.__type_codecs!r}, fallback_encoder={self._fallback_encoder!r})"
 
-    def __eq__(self, other: Any) -> Any:
+    def __eq__(self, other: object) -> Any:
         if not isinstance(other, type(self)):
             return NotImplemented
         return (
@@ -241,6 +241,7 @@ class _BaseCodecOptions(NamedTuple):
 
 
 if TYPE_CHECKING:
+    from bson.typings import _DocumentType
 
     class CodecOptions(tuple[_DocumentType], Generic[_DocumentType]):
         document_class: type[_DocumentType]
@@ -368,7 +369,7 @@ else:
             super().__init__()
 
         def __new__(
-            cls: type[CodecOptions],
+            cls,
             document_class: type[Mapping[str, Any]] | None = None,
             tz_aware: bool = False,
             uuid_representation: int | None = UuidRepresentation.UNSPECIFIED,
@@ -376,7 +377,7 @@ else:
             tzinfo: datetime.tzinfo | None = None,
             type_registry: TypeRegistry | None = None,
             datetime_conversion: DatetimeConversion | None = DatetimeConversion.DATETIME,
-        ) -> CodecOptions:
+        ) -> Self:
             doc_class = document_class or dict
             # Generic aliases like SON[str, Any] or dict[str, Any] aren't classes, so
             # resolve to their origin before the subclass check. issubclass() raises
@@ -400,7 +401,7 @@ else:
                     "uuid_representation must be a value from bson.binary.UuidRepresentation"
                 )
             if not isinstance(unicode_decode_error_handler, str):
-                raise ValueError(
+                raise TypeError(
                     f"unicode_decode_error_handler must be a string, not {type(unicode_decode_error_handler)}"
                 )
             if tzinfo is not None:

@@ -386,7 +386,7 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
         self.assertEqual(["cluster.mongodb.com"], [node[0] for node in res["nodelist"]])
 
     async def test_11_throw_when_srv_host_validator_is_not_callable(self):
-        with self.assertRaisesRegex(ValueError, "must be a callable"):
+        with self.assertRaisesRegex(TypeError, "must be a callable"):
             self.simple_client("mongodb+srv://blogs.mongodb.com", srv_host_validator="notacallable")
 
     async def test_12_accept_a_reserved_single_label_as_srv_allowed_hosts_suffix(self):

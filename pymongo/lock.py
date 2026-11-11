@@ -22,7 +22,7 @@ import sys
 import threading
 import weakref
 from asyncio import wait_for
-from typing import Any, TypeVar
+from typing import Any
 
 import pymongo._asyncio_lock
 
@@ -30,8 +30,6 @@ _HAS_REGISTER_AT_FORK = hasattr(os, "register_at_fork")
 
 # References to instances of _create_lock
 _forkable_locks: weakref.WeakSet[threading.Lock] = weakref.WeakSet()
-
-_T = TypeVar("_T")
 
 # Needed to support 3.13 asyncio fixes (https://github.com/python/cpython/issues/112202)
 # in older versions of Python

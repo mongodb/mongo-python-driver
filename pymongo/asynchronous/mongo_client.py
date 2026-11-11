@@ -60,7 +60,6 @@ from typing import (
 )
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
-from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
@@ -107,7 +106,6 @@ from pymongo.operations import (
     _Op,
 )
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.results import ClientBulkWriteResult
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
@@ -136,6 +134,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from bson.objectid import ObjectId
+    from bson.timestamp import Timestamp
     from pymongo.asynchronous.bulk import _AsyncBulk
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.cursor_base import _ConnectionManager
@@ -145,6 +144,7 @@ if TYPE_CHECKING:
     from pymongo.client_session_shared import _ServerSession
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
+    from pymongo.results import ClientBulkWriteResult
     from pymongo.server_selectors import Selection
 
 
@@ -1385,12 +1385,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             self._resolve_srv_info["srv_service_name"],
         )
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, self.__class__):
             return self.eq_props() == other.eq_props()
         return NotImplemented
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __hash__(self) -> int:
@@ -1684,7 +1684,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     async def __aenter__(self) -> AsyncMongoClient[_DocumentType]:
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self.close()
 
     # See PYTHON-3084.

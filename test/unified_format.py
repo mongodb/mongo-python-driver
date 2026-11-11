@@ -34,14 +34,13 @@ from collections import defaultdict
 from collections.abc import Mapping
 from inspect import iscoroutinefunction
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pytest
 
 import pymongo
 from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
-from bson.objectid import ObjectId
 from gridfs import GridFSBucket, GridOut, NoFile
 from gridfs.errors import CorruptGridFile
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
@@ -79,7 +78,6 @@ from pymongo.synchronous.database import Database
 from pymongo.synchronous.encryption import ClientEncryption
 from pymongo.synchronous.helpers import next
 from pymongo.topology_description import TopologyDescription
-from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 from test import (
     IntegrationTest,
@@ -111,6 +109,10 @@ from test.utils_shared import (
 )
 from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
+
+if TYPE_CHECKING:
+    from bson.objectid import ObjectId
+    from pymongo.typings import _Address
 
 _IS_SYNC = True
 

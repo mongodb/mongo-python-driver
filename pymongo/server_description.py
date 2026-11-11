@@ -22,13 +22,15 @@ from __future__ import annotations
 import time
 import warnings
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from bson import EPOCH_NAIVE
-from bson.objectid import ObjectId
 from pymongo.hello import Hello
 from pymongo.server_type import SERVER_TYPE
-from pymongo.typings import ClusterTime, _Address
+
+if TYPE_CHECKING:
+    from bson.objectid import ObjectId
+    from pymongo.typings import ClusterTime, _Address
 
 
 class ServerDescription:
@@ -265,7 +267,7 @@ class ServerDescription:
         unknown._topology_version = self.topology_version
         return unknown
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, ServerDescription):
             return (
                 (self._address == other.address)
@@ -287,7 +289,7 @@ class ServerDescription:
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __repr__(self) -> str:
