@@ -19,16 +19,18 @@ from __future__ import annotations
 import os
 import sys
 import unittest
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 sys.path[0:0] = [""]
 
 from bson import ObjectId
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.server_api import ServerApi
 from test.asynchronous import AsyncPyMongoTestCase
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 _IS_SYNC = False
 

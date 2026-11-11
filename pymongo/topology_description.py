@@ -22,20 +22,23 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, MutableMapping
 from random import sample
 from typing import (
+    TYPE_CHECKING,
     Any,
     NamedTuple,
     cast,
 )
 
 from bson.min_key import MinKey
-from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.errors import ConfigurationError, PyMongoError
 from pymongo.read_preferences import Primary, ReadPreference, _AggWritePref, _ServerMode
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import Selection
 from pymongo.server_type import SERVER_TYPE
-from pymongo.typings import _Address
+
+if TYPE_CHECKING:
+    from bson.objectid import ObjectId
+    from pymongo.typings import _Address
 
 
 # Enumeration for various kinds of MongoDB cluster topologies.

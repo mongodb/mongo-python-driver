@@ -41,7 +41,6 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from bson.timestamp import Timestamp
 from pymongo import ASCENDING, _csot, common, helpers_shared, message
 from pymongo.asynchronous.aggregation import (
     _CollectionAggregationCommand,
@@ -125,6 +124,7 @@ class ReturnDocument:
 
 if TYPE_CHECKING:
     import bson
+    from bson.timestamp import Timestamp
     from pymongo.asynchronous.aggregation import _AggregationCommand
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.database import AsyncDatabase

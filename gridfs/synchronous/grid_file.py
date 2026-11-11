@@ -23,7 +23,7 @@ import math
 from collections import abc
 from collections.abc import Iterable, Mapping
 from types import TracebackType
-from typing import Any, NoReturn, Self, cast
+from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -56,11 +56,13 @@ from pymongo.errors import (
 )
 from pymongo.helpers_shared import _check_write_command_response
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
+
+if TYPE_CHECKING:
+    from pymongo.synchronous.client_session import ClientSession
 
 _IS_SYNC = True
 

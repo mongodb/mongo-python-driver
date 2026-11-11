@@ -42,7 +42,6 @@ from bson.raw_bson import (
     _inflate_bson,
 )
 from pymongo.common import MONGOS_EXHAUST_WIRE_VERSION
-from pymongo.monitoring import _EventListeners
 
 try:
     from pymongo import _cmessage  # type: ignore[attr-defined]
@@ -59,6 +58,7 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 
 if TYPE_CHECKING:
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext
+    from pymongo.monitoring import _EventListeners
     from pymongo.read_concern import ReadConcern
     from pymongo.typings import (
         _Address,

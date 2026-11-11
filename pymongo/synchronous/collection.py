@@ -40,7 +40,6 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from bson.timestamp import Timestamp
 from pymongo import ASCENDING, _csot, common, helpers_shared, message
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
@@ -124,6 +123,7 @@ class ReturnDocument:
 
 if TYPE_CHECKING:
     import bson
+    from bson.timestamp import Timestamp
     from pymongo.collation import Collation
     from pymongo.read_concern import ReadConcern
     from pymongo.synchronous.aggregation import _AggregationCommand

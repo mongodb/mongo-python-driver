@@ -29,6 +29,8 @@ from test.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
 
+from typing import TYPE_CHECKING
+
 import gridfs
 from bson.binary import Binary
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
@@ -39,11 +41,13 @@ from pymongo.errors import (
     ServerSelectionTimeoutError,
 )
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
 from test import IntegrationTest, client_context, unittest
 from test.utils import joinall
 from test.utils_shared import one
+
+if TYPE_CHECKING:
+    from pymongo.synchronous.database import Database
 
 _IS_SYNC = True
 
