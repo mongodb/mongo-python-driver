@@ -23,7 +23,7 @@ import decimal
 import struct
 from collections.abc import Sequence
 from decimal import Decimal
-from typing import Any, Union
+from typing import Any
 
 from bson.codec_options import TypeDecoder, TypeEncoder
 
@@ -61,7 +61,7 @@ _CTX_OPTIONS = {
 }
 
 _DEC128_CTX = decimal.Context(**_CTX_OPTIONS.copy())  # type: ignore
-_VALUE_OPTIONS = Union[decimal.Decimal, float, str, tuple[int, Sequence[int], int]]
+_VALUE_OPTIONS = decimal.Decimal | float | str | tuple[int, Sequence[int], int]
 
 
 class DecimalEncoder(TypeEncoder):
@@ -350,12 +350,12 @@ class Decimal128:
     def __getstate__(self) -> tuple[int, int]:
         return self.__high, self.__low
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Decimal128):
             return self.bid == other.bid
         return NotImplemented
 
     __hash__ = None  # type: ignore[assignment]
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other

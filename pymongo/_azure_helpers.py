@@ -17,12 +17,12 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import quote
 
 
 def _get_azure_response(
-    resource: str, client_id: Optional[str] = None, timeout: float = 5
+    resource: str, client_id: str | None = None, timeout: float = 5
 ) -> dict[str, Any]:
     # Deferred import to save overall import time.
     from urllib.request import Request, urlopen

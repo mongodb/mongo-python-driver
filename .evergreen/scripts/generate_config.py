@@ -151,7 +151,7 @@ def create_encryption_variants() -> list[BuildVariant]:
     ):
         expansions = get_encryption_expansions(encryption)
         display_name = get_variant_name(encryption, host, **expansions)
-        tasks = [".test-non-standard !.python-3.15t", ".test-string-query-preview"]
+        tasks = [".test-non-standard !.python-3.15t"]
         if host != "rhel8":
             # Exclude coverage tasks (encryption suites exceed the 60-min timeout with
             # coverage overhead on macOS/win64).
@@ -160,7 +160,6 @@ def create_encryption_variants() -> list[BuildVariant]:
             tasks = [
                 ".test-non-standard !.cov !.python-3.15t",
                 ".test-non-standard-no-cov !.python-3.15t",
-                ".test-string-query-preview",
             ]
         variant = create_variant(
             tasks,
@@ -528,6 +527,24 @@ def create_fuzz_variants():
     return [pr_variant, nightly]
 
 
+def create_sanitizer_variants() -> list[BuildVariant]:
+    # ASan/UBSan checks on every PR (PYTHON-6048).  The rhel8 toolchain
+    # provides the instrumented CPython (utils.SANITIZER_PYTHON), and the
+    # large distro gives ASan's shadow memory and redzones room for the
+    # ~6GiB test_encode_size_limit allocation, so no test is skipped.
+    host = DEFAULT_HOST
+    return [
+        create_variant(
+            [".sanitizer"],
+            get_variant_name("Sanitizer", host),
+            host=host,
+            run_on="rhel8.10-large",
+            version=MAX_VERSION,
+            tags=["pr"],
+        )
+    ]
+
+
 def create_atlas_connect_variants():
     host = DEFAULT_HOST
     return [
@@ -822,34 +839,6 @@ def create_test_non_standard_tasks():
     return tasks
 
 
-def create_string_query_preview_tasks():
-    """Tasks for the preview Queryable Encryption string query types.
-
-    The preview query types need a server that is at least 8.2 and older than
-    9.0, and ALL_VERSIONS jumps straight from 8.0 to 9.0, so they have nowhere
-    to run without a dedicated task. setup_tests.py pins the released
-    pymongocrypt for 8.x, which bundles a libmongocrypt still carrying the
-    preview types.
-    """
-    python = CPYTHONS[-1]
-    topology = "replica_set"
-    auth, ssl = get_standard_auth_ssl(topology)
-    expansions = dict(AUTH=auth, SSL=ssl, TOPOLOGY=topology, VERSION="8.2")
-    tags = [
-        "test-string-query-preview",
-        "server-8.2",
-        f"python-{python}",
-        f"{topology}-{auth}-{ssl}",
-        auth,
-    ]
-    name = get_task_name("test-string-query-preview", python=python, **expansions)
-    server_func = FunctionCall(func="run server", vars=expansions)
-    test_vars = expansions.copy()
-    test_vars["UV_PYTHON"] = python
-    test_func = FunctionCall(func="run tests", vars=test_vars)
-    return [EvgTask(name=name, tags=tags, commands=[server_func, test_func])]
-
-
 def create_test_standard_auth_tasks():
     """We only use auth on sharded clusters"""
     tasks = []
@@ -970,6 +959,19 @@ def create_fuzz_tasks():
     test_func = FunctionCall(func="run tests", vars=test_vars)
     tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func]))
     return tasks
+
+
+def create_sanitizer_tasks():
+    # VERSION comes from the variant: a task-level VERSION would trip the
+    # pr-tasks-run-coverage rule, and coverage under ASan is not useful.
+    tags = ["sanitizer", "pr"]
+    expansions = dict(AUTH="noauth", SSL="nossl", TOPOLOGY="standalone")
+    server_func = FunctionCall(func="run server", vars=expansions)
+    test_vars = expansions.copy()
+    test_vars["TEST_NAME"] = "sanitizer"
+    test_func = FunctionCall(func="run tests", vars=test_vars)
+    name = get_task_name("test-sanitizer")
+    return [EvgTask(name=name, tags=tags, commands=[server_func, test_func])]
 
 
 def create_kms_tasks():

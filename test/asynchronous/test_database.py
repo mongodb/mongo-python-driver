@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 import sys
 from collections.abc import Iterable, Mapping
-from typing import Any, Union
+from typing import Any
 
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
 
@@ -212,7 +212,7 @@ class TestDatabase(AsyncIntegrationTest):
         await db.capped.insert_one({})
         await db.non_capped.insert_one({})
         self.addAsyncCleanup(client.drop_database, db.name)
-        filter: Union[None, Mapping[str, Any]]
+        filter: Mapping[str, Any] | None
         # Should not send nameOnly.
         for filter in ({"options.capped": True}, {"options.capped": True, "name": "capped"}):
             listener.reset()
@@ -487,7 +487,7 @@ class TestDatabase(AsyncIntegrationTest):
         )
         cursor = db.coll.find()
         async for x in cursor:
-            for k, _v in x.items():
+            for k in x.keys():
                 self.assertEqual(k, "_id")
                 break
 

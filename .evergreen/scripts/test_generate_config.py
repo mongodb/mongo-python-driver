@@ -112,17 +112,21 @@ def test_pr_tasks_effectively_pin_max_version():
 
 
 def test_server_version_pr_tasks_selected_once():
-    """The mongodb-* variants differ only in server version, so a pr task
-    must be selected only by the variant running the server version it pins."""
+    """A pr server-version task must be selected only by the variant running
+    the server version it pins. The expected family comes from
+    create_server_version_variants(), not from the selections: a variant
+    missing its PR selector would otherwise drop from both sides and the
+    comparison would pass. Variants outside the family must not select these
+    tasks (the sanitizer variant pins MAX_VERSION for its own mongod)."""
+    sv_tasks = [task for task in pr_tasks() if "server-version" in (task.tags or [])]
+    sv_variants = generate_config.create_server_version_variants()
     offenders = {}
-    for task in pr_tasks():
-        if "server-version" not in (task.tags or []):
-            continue
+    for task in sv_tasks:
         own = task_vars(task).get("VERSION")
         selecting = [variant.name for variant in all_variants() if variant_selects(variant, task)]
         matching = [
             variant.name
-            for variant in all_variants()
+            for variant in sv_variants
             if (variant.expansions or {}).get("VERSION") == own
         ]
         if selecting != matching:
@@ -276,3 +280,26 @@ def test_non_standard_cov_tasks_have_no_cov_companions():
         elif "cov" in (task.tags or []) and "test-non-standard" in (task.tags or []):
             companion = task.name.removesuffix("-cov")
             assert companion in no_cov, f"missing no-cov companion for {task.name}"
+
+
+def test_sanitizer_task_wiring():
+    """PYTHON-6048: one pr-tagged sanitizer task, selected by exactly one
+    variant that pins MAX_VERSION and runs on a large host for ASan's memory
+    headroom. VERSION stays off the task so it is exempt
+    from the pr COVERAGE rule (coverage under ASan is not useful)."""
+    tasks = [task for task in all_tasks() if "sanitizer" in (task.tags or [])]
+    assert len(tasks) == 1
+    task = tasks[0]
+    assert "pr" in task.tags
+    funcs = [getattr(cmd, "func", None) for cmd in task.commands]
+    assert funcs == ["run server", "run tests"]
+    vars_ = task_vars(task)
+    assert vars_["TEST_NAME"] == "sanitizer"
+    assert vars_["TOPOLOGY"] == "standalone"
+    assert vars_["AUTH"] == "noauth"
+    assert vars_["SSL"] == "nossl"
+    assert "VERSION" not in vars_
+    variants = [v for v in all_variants() if variant_selects(v, task)]
+    assert len(variants) == 1
+    assert variants[0].run_on == ["rhel8.10-large"]
+    assert (variants[0].expansions or {}).get("VERSION") == generate_config_utils.MAX_VERSION

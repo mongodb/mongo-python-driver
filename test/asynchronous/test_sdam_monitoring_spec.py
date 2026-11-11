@@ -25,9 +25,10 @@ from pathlib import Path
 
 sys.path[0:0] = [""]
 
+from typing import TYPE_CHECKING
+
 from bson.json_util import object_hook
 from pymongo import AsyncMongoClient, monitoring
-from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.monitor import Monitor
 from pymongo.common import clean_node
 from pymongo.errors import ConnectionFailure, NotPrimaryError
@@ -40,6 +41,9 @@ from test.utils_shared import (
     async_wait_until,
     server_name_to_type,
 )
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.collection import AsyncCollection
 
 _IS_SYNC = False
 
@@ -67,7 +71,7 @@ def compare_topology_descriptions(expected, actual):
     if len(expected) != len(actual):
         return False
     for exp_server in expected:
-        for _address, actual_server in actual.items():
+        for actual_server in actual.values():
             if compare_server_descriptions(exp_server, actual_server):
                 break
         else:

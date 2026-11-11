@@ -21,12 +21,12 @@ import atexit
 import threading
 import time
 import weakref
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pymongo import common, periodic_executor
 from pymongo._csot import MovingMinimum
 from pymongo._telemetry import _HeartbeatTelemetry, _monotonic_duration, log_srv_monitor_failure
-from pymongo.errors import NetworkTimeout, _OperationCancelled
+from pymongo.errors import ConfigurationError, NetworkTimeout, _OperationCancelled
 from pymongo.hello import Hello
 from pymongo.lock import _create_lock
 from pymongo.periodic_executor import _shutdown_executors
@@ -77,7 +77,7 @@ class MonitorBase:
 
         self._executor = executor
 
-        def _on_topology_gc(dummy: Optional[Topology] = None) -> None:
+        def _on_topology_gc(dummy: Topology | None = None) -> None:
             # This prevents GC from waiting 10 seconds for hello to complete
             # See test_cleanup_executors_on_client_del.
             monitor = self_ref()
@@ -142,9 +142,9 @@ class Monitor(MonitorBase):
         self._pool = pool
         self._settings = topology_settings
         self._listeners = self._settings._pool_options._event_listeners
-        self._cancel_context: Optional[_CancellationContext] = None
-        self._conn_id: Optional[int] = None
-        self._current_hb: Optional[_HeartbeatTelemetry] = None
+        self._cancel_context: _CancellationContext | None = None
+        self._conn_id: int | None = None
+        self._current_hb: _HeartbeatTelemetry | None = None
         self._awaited: bool = False
         self._rtt_monitor = _RttMonitor(
             topology,
@@ -357,7 +357,7 @@ class SrvMonitor(MonitorBase):
                 # Topology was garbage-collected.
                 self.close()
 
-    def _get_seedlist(self) -> Optional[list[tuple[str, Any]]]:
+    def _get_seedlist(self) -> list[tuple[str, Any]] | None:
         """Poll SRV records for a seedlist.
 
         Returns a list of ServerDescriptions.
@@ -373,7 +373,7 @@ class SrvMonitor(MonitorBase):
             seedlist, ttl = resolver.get_hosts_and_min_ttl()
             if len(seedlist) == 0:
                 # As per the spec: this should be treated as a failure.
-                raise Exception
+                raise ConfigurationError("SRV polling returned no valid hosts.")
         except Exception as exc:
             # As per the spec, upon encountering an error:
             # - An error must not be raised
@@ -417,7 +417,7 @@ class _RttMonitor(MonitorBase):
             self._moving_average.add_sample(sample)
             self._moving_min.add_sample(sample)
 
-    def get(self) -> tuple[Optional[float], float]:
+    def get(self) -> tuple[float | None, float]:
         """Get the calculated average, or None if no samples yet and the min."""
         with self._lock:
             return self._moving_average.get(), self._moving_min.get()
@@ -449,7 +449,7 @@ class _RttMonitor(MonitorBase):
         """Run a "hello" command and return the RTT."""
         with self._pool.checkout() as conn:
             if self._executor._stopped:
-                raise Exception("_RttMonitor closed")
+                raise Exception("_RttMonitor closed")  # noqa: TRY002
             start = time.monotonic()
             conn.hello()
             return _monotonic_duration(start)

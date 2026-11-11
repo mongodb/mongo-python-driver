@@ -27,17 +27,17 @@ from typing import (
     TYPE_CHECKING,
     Any,
     TypeVar,
-    Union,
     cast,
 )
 
 if TYPE_CHECKING:
     from typing import NotRequired
 
-    from typing_extensions import TypedDict
+    from typing_extensions import TypedDict  # noqa: TC004
 
-    from bson import Binary, ObjectId
-    from bson.binary import BinaryVector, BinaryVectorDtype
+    from bson import Binary, ObjectId  # noqa: TC004
+    from bson.binary import BinaryVector, BinaryVectorDtype  # noqa: TC004
+    from pymongo.synchronous.collection import Collection
 
     class Movie(TypedDict):
         name: str
@@ -71,7 +71,6 @@ from bson.son import SON
 from pymongo import ASCENDING, MongoClient
 from pymongo.operations import DeleteOne, InsertOne, ReplaceOne
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from test import IntegrationTest, PyMongoTestCase, client_context
 
@@ -157,12 +156,12 @@ class TestPymongo(IntegrationTest):
 
         def collection_distinct(
             collection: Collection,
-        ) -> list[None | int | str | ObjectId | bool]:
+        ) -> list[int | str | ObjectId | bool | None]:
             return collection.distinct("_id")
 
         def cursor_distinct(
             collection: Collection,
-        ) -> list[None | int | str | ObjectId | bool]:
+        ) -> list[int | str | ObjectId | bool | None]:
             cursor = collection.find()
             return cursor.distinct("_id")
 
@@ -175,26 +174,24 @@ class TestPymongo(IntegrationTest):
         coll: Collection[Movie] = self.coll
         requests: list[InsertOne[Movie]] = [InsertOne(Movie(name="American Graffiti", year=1973))]
         self.assertTrue(coll.bulk_write(requests).acknowledged)
-        new_requests: list[Union[InsertOne[Movie], ReplaceOne[Movie]]] = []
-        input_list: list[Union[InsertOne[Movie], ReplaceOne[Movie]]] = [
+        input_list: list[InsertOne[Movie] | ReplaceOne[Movie]] = [
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne({}, Movie(name="American Graffiti", year=1973)),
         ]
-        for i in input_list:
-            new_requests.append(i)
+        new_requests: list[InsertOne[Movie] | ReplaceOne[Movie]] = list.copy(input_list)
         self.assertTrue(coll.bulk_write(new_requests).acknowledged)
 
     # Because ReplaceOne is not generic, type checking is not enforced for ReplaceOne in the first example.
     @only_type_check
     def test_bulk_write_heterogeneous(self):
         coll: Collection[Movie] = self.coll
-        requests: list[Union[InsertOne[Movie], ReplaceOne, DeleteOne]] = [
+        requests: list[InsertOne[Movie] | ReplaceOne | DeleteOne] = [
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne({}, {"name": "American Graffiti", "year": "WRONG_TYPE"}),
             DeleteOne({}),
         ]
         self.assertTrue(coll.bulk_write(requests).acknowledged)
-        requests_two: list[Union[InsertOne[Movie], ReplaceOne[Movie], DeleteOne]] = [
+        requests_two: list[InsertOne[Movie] | ReplaceOne[Movie] | DeleteOne] = [
             InsertOne(Movie(name="American Graffiti", year=1973)),
             ReplaceOne(
                 {},

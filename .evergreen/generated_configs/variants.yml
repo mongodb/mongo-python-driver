@@ -186,7 +186,6 @@ buildvariants:
   - name: encryption-rhel8
     tasks:
       - name: .test-non-standard !.python-3.15t
-      - name: .test-string-query-preview
     display_name: Encryption RHEL8
     run_on:
       - rhel8.10-small
@@ -198,7 +197,6 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.cov !.python-3.15t
       - name: .test-non-standard-no-cov !.python-3.15t
-      - name: .test-string-query-preview
     display_name: Encryption macOS
     run_on:
       - macos-14
@@ -210,7 +208,6 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.cov !.python-3.15t
       - name: .test-non-standard-no-cov !.python-3.15t
-      - name: .test-string-query-preview
     display_name: Encryption Win64
     run_on:
       - windows-2022-latest-small
@@ -221,7 +218,6 @@ buildvariants:
   - name: encryption-crypt_shared-rhel8
     tasks:
       - name: .test-non-standard !.python-3.15t
-      - name: .test-string-query-preview
     display_name: Encryption crypt_shared RHEL8
     run_on:
       - rhel8.10-small
@@ -234,7 +230,6 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.cov !.python-3.15t
       - name: .test-non-standard-no-cov !.python-3.15t
-      - name: .test-string-query-preview
     display_name: Encryption crypt_shared macOS
     run_on:
       - macos-14
@@ -247,7 +242,6 @@ buildvariants:
     tasks:
       - name: .test-non-standard !.cov !.python-3.15t
       - name: .test-non-standard-no-cov !.python-3.15t
-      - name: .test-string-query-preview
     display_name: Encryption crypt_shared Win64
     run_on:
       - windows-2022-latest-small
@@ -534,6 +528,17 @@ buildvariants:
     batchtime: 1440
     expansions:
       SUB_TEST_NAME: pyopenssl
+    tags: [pr]
+
+  # Sanitizer tests
+  - name: sanitizer-rhel8
+    tasks:
+      - name: .sanitizer
+    display_name: Sanitizer RHEL8
+    run_on:
+      - rhel8.10-large
+    expansions:
+      VERSION: "9.0"
     tags: [pr]
 
   # Search index tests

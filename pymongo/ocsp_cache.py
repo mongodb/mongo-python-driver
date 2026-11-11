@@ -19,7 +19,7 @@ from __future__ import annotations
 from collections import namedtuple
 from datetime import datetime as _datetime
 from datetime import timezone
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pymongo.lock import _create_lock
 
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from cryptography.x509.ocsp import OCSPRequest, OCSPResponse
 
 
-def _next_update(value: OCSPResponse) -> Optional[_datetime]:
+def _next_update(value: OCSPResponse) -> _datetime | None:
     """Compat helper to return the response's next_update_utc."""
     # Added in cryptography 43.0.0.
     if hasattr(value, "next_update_utc"):
@@ -35,7 +35,7 @@ def _next_update(value: OCSPResponse) -> Optional[_datetime]:
     return value.next_update
 
 
-def _this_update(value: OCSPResponse) -> Optional[_datetime]:
+def _this_update(value: OCSPResponse) -> _datetime | None:
     """Compat helper to return the response's this_update_utc."""
     # Added in cryptography 43.0.0.
     if hasattr(value, "this_update_utc"):

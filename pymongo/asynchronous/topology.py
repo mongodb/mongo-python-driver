@@ -26,7 +26,7 @@ import warnings
 import weakref
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pymongo import _csot, common, helpers_shared, periodic_executor
 from pymongo._telemetry import (
@@ -86,7 +86,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
 
     _settings: TopologySettings
     _events_executor: periodic_executor.AsyncPeriodicExecutor
-    _srv_monitor: Optional[SrvMonitor]
+    _srv_monitor: SrvMonitor | None
     _monitor_tasks: list[MonitorBase]
 
     def __init__(self, topology_settings: TopologySettings):
@@ -162,10 +162,10 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         self,
         selector: Callable[[Selection], Selection],
         operation: str,
-        server_selection_timeout: Optional[float] = None,
-        address: Optional[_Address] = None,
-        operation_id: Optional[int] = None,
-        deprioritized_servers: Optional[list[Server]] = None,
+        server_selection_timeout: float | None = None,
+        address: _Address | None = None,
+        operation_id: int | None = None,
+        deprioritized_servers: list[Server] | None = None,
     ) -> list[Server]:
         """Return a list of Servers matching selector, or time out.
 
@@ -210,16 +210,16 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         selector: Callable[[Selection], Selection],
         timeout: float,
         operation: str,
-        operation_id: Optional[int],
-        address: Optional[_Address],
-        deprioritized_servers: Optional[list[Server]] = None,
+        operation_id: int | None,
+        address: _Address | None,
+        deprioritized_servers: list[Server] | None = None,
     ) -> list[ServerDescription]:
         """select_servers() guts. Hold the lock when calling this."""
         now = time.monotonic()
         end_time = now + timeout
         logged_waiting = False
         # Server selection does not have APM events, gate only on logging
-        ss: Optional[_ServerSelectionTelemetry] = None
+        ss: _ServerSelectionTelemetry | None = None
         if _is_debug_enabled(_SERVER_SELECTION_LOGGER):
             ss = _ServerSelectionTelemetry(
                 self._topology_id, selector, operation, operation_id, self.description
@@ -269,10 +269,10 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         self,
         selector: Callable[[Selection], Selection],
         operation: str,
-        server_selection_timeout: Optional[float] = None,
-        address: Optional[_Address] = None,
-        deprioritized_servers: Optional[list[Server]] = None,
-        operation_id: Optional[int] = None,
+        server_selection_timeout: float | None = None,
+        address: _Address | None = None,
+        deprioritized_servers: list[Server] | None = None,
+        operation_id: int | None = None,
     ) -> Server:
         servers = await self.select_servers(
             selector,
@@ -294,10 +294,10 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         self,
         selector: Callable[[Selection], Selection],
         operation: str,
-        server_selection_timeout: Optional[float] = None,
-        address: Optional[_Address] = None,
-        deprioritized_servers: Optional[list[Server]] = None,
-        operation_id: Optional[int] = None,
+        server_selection_timeout: float | None = None,
+        address: _Address | None = None,
+        deprioritized_servers: list[Server] | None = None,
+        operation_id: int | None = None,
     ) -> Server:
         """Like select_servers, but choose a random server if several match."""
         server = await self._select_server(
@@ -326,8 +326,8 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         self,
         address: _Address,
         operation: str,
-        server_selection_timeout: Optional[int] = None,
-        operation_id: Optional[int] = None,
+        server_selection_timeout: int | None = None,
+        operation_id: int | None = None,
     ) -> Server:
         """Return a Server for "address", reconnecting if necessary.
 
@@ -450,7 +450,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             if self._opened:
                 await self._process_srv_update(seedlist)
 
-    async def get_primary(self) -> Optional[_Address]:
+    async def get_primary(self) -> _Address | None:
         """Return primary's address or None."""
         # Implemented here in Topology instead of AsyncMongoClient, so it can lock.
         async with self._lock:
@@ -483,7 +483,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         """Return set of arbiter addresses."""
         return await self._get_replica_set_members(arbiter_server_selector)
 
-    async def receive_cluster_time(self, cluster_time: Optional[Mapping[str, Any]]) -> None:
+    async def receive_cluster_time(self, cluster_time: Mapping[str, Any] | None) -> None:
         async with self._lock:
             self._receive_cluster_time_no_lock(cluster_time)
 
@@ -704,10 +704,13 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
 
         for address, server in list(self._servers.items()):
             if not self._description.has_server(address):
-                await server.close()
+                # Update our state before closing: close() can cancel the
+                # calling task, so the stale server must be recorded as
+                # removed before close() runs, not after (PYTHON-6226).
                 if not _IS_SYNC:
                     self._monitor_tasks.append(server._monitor)
                 self._servers.pop(address)
+                await server.close()
 
     async def cleanup_monitors(self) -> None:
         tasks = []

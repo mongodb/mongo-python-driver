@@ -23,7 +23,7 @@ import typing
 from base64 import standard_b64encode
 from collections import namedtuple
 from collections.abc import Callable, Mapping, MutableMapping
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from bson import Binary
 from pymongo.auth_oidc_shared import (
@@ -106,11 +106,11 @@ def _validate_canonicalize_host_name(value: str | bool) -> str | bool:
 
 def _build_credentials_tuple(
     mech: str,
-    source: Optional[str],
-    user: Optional[str],
-    passwd: Optional[str],
+    source: str | None,
+    user: str | None,
+    passwd: str | None,
     extra: Mapping[str, Any],
-    database: Optional[str],
+    database: str | None,
 ) -> MongoCredential:
     """Build and return a mechanism specific credentials tuple."""
     if mech not in ("MONGODB-X509", "MONGODB-AWS", "MONGODB-OIDC") and user is None:
@@ -233,7 +233,7 @@ def _build_credentials_tuple(
 
 def _xor(fir: bytes, sec: bytes) -> bytes:
     """XOR two byte strings together."""
-    return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec)])
+    return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec, strict=True)])
 
 
 def _parse_scram_response(response: bytes) -> dict[bytes, bytes]:
@@ -280,19 +280,19 @@ def _password_digest(username: str, password: str) -> str:
 class _AuthContext:
     def __init__(self, credentials: MongoCredential, address: tuple[str, int]) -> None:
         self.credentials = credentials
-        self.speculative_authenticate: Optional[Mapping[str, Any]] = None
+        self.speculative_authenticate: Mapping[str, Any] | None = None
         self.address = address
 
     @staticmethod
     def from_credentials(
         creds: MongoCredential, address: tuple[str, int], spec_auth_map: Mapping[str, Any]
-    ) -> Optional[_AuthContext]:
+    ) -> _AuthContext | None:
         spec_cls = spec_auth_map.get(creds.mechanism)
         if spec_cls:
             return cast(_AuthContext, spec_cls(creds, address))
         return None
 
-    def speculate_command(self) -> Optional[MutableMapping[str, Any]]:
+    def speculate_command(self) -> MutableMapping[str, Any] | None:
         raise NotImplementedError
 
     def parse_response(self, hello: Hello[Mapping[str, Any]]) -> None:
@@ -307,10 +307,10 @@ class _ScramContext(_AuthContext):
         self, credentials: MongoCredential, address: tuple[str, int], mechanism: str
     ) -> None:
         super().__init__(credentials, address)
-        self.scram_data: Optional[tuple[bytes, bytes]] = None
+        self.scram_data: tuple[bytes, bytes] | None = None
         self.mechanism = mechanism
 
-    def speculate_command(self) -> Optional[MutableMapping[str, Any]]:
+    def speculate_command(self) -> MutableMapping[str, Any] | None:
         nonce, first_bare, cmd = _authenticate_scram_start(self.credentials, self.mechanism)
         # The 'db' field is included only on the speculative command.
         cmd["db"] = self.credentials.source
@@ -337,7 +337,7 @@ class _OIDCContext(_AuthContext):
         super().__init__(credentials, address)
         self.authenticator_cls = authenticator_cls
 
-    def speculate_command(self) -> Optional[MutableMapping[str, Any]]:
+    def speculate_command(self) -> MutableMapping[str, Any] | None:
         authenticator = _get_authenticator(self.credentials, self.address, self.authenticator_cls)
         cmd = authenticator.get_spec_auth_cmd()
         if cmd is None:

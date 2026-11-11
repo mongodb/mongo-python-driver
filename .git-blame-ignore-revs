@@ -6,3 +6,7 @@
 d88aaa6cfdb05599a79f60a2cbea5513f3788f6c
 # Enable ruff rule UP035
 269a552da95439d38038f95794c5012428c07141
+# Enable ruff rules UP007 and UP045
+ce09d45acd3822235d433fde2d7f2f53ddb30dcd
+# Enable ruff rule B905
+16d94e2b6ba2e11f93d344b55e9ecb237451d35f

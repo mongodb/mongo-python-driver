@@ -115,8 +115,7 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
-    Union,
+    Self,
     cast,
 )
 
@@ -142,12 +141,12 @@ from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
 _RE_OPT_TABLE = {
-    "i": re.I,
-    "l": re.L,
-    "m": re.M,
-    "s": re.S,
-    "u": re.U,
-    "x": re.X,
+    "i": re.IGNORECASE,
+    "l": re.LOCALE,
+    "m": re.MULTILINE,
+    "s": re.DOTALL,
+    "u": re.UNICODE,
+    "x": re.VERBOSE,
 }
 
 
@@ -302,14 +301,14 @@ class JSONOptions(_BASE_CLASS):
         super().__init__()
 
     def __new__(
-        cls: type[JSONOptions],
-        strict_number_long: Optional[bool] = None,
-        datetime_representation: Optional[int] = None,
-        strict_uuid: Optional[bool] = None,
+        cls,
+        strict_number_long: bool | None = None,
+        datetime_representation: int | None = None,
+        strict_uuid: bool | None = None,
         json_mode: int = JSONMode.RELAXED,
         *args: Any,
         **kwargs: Any,
-    ) -> JSONOptions:
+    ) -> Self:
         kwargs["tz_aware"] = kwargs.get("tz_aware", False)
         if kwargs["tz_aware"]:
             kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
@@ -323,7 +322,7 @@ class JSONOptions(_BASE_CLASS):
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation."
             )
-        self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))
+        self = cast(Self, super().__new__(cls, *args, **kwargs))
         if json_mode not in (JSONMode.LEGACY, JSONMode.RELAXED, JSONMode.CANONICAL):
             raise ValueError(
                 "JSONOptions.json_mode must be one of LEGACY, RELAXED, or CANONICAL from JSONMode."
@@ -452,7 +451,7 @@ def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
     return json.dumps(_json_convert(obj, json_options), *args, **kwargs)
 
 
-def loads(s: Union[str, bytes, bytearray], *args: Any, **kwargs: Any) -> Any:
+def loads(s: str | bytes | bytearray, *args: Any, **kwargs: Any) -> Any:
     """Helper function that wraps :func:`json.loads`.
 
     Automatically passes the object_hook for BSON type conversion.
@@ -529,7 +528,7 @@ def _parse_legacy_regex(doc: Any, dummy0: Any) -> Any:
     return Regex(pattern, flags)
 
 
-def _parse_legacy_uuid(doc: Any, json_options: JSONOptions) -> Union[Binary, uuid.UUID]:
+def _parse_legacy_uuid(doc: Any, json_options: JSONOptions) -> Binary | uuid.UUID:
     """Decode a JSON legacy $uuid to Python UUID."""
     if len(doc) != 1:
         raise TypeError(f"Bad $uuid, extra field(s): {doc}")
@@ -541,7 +540,7 @@ def _parse_legacy_uuid(doc: Any, json_options: JSONOptions) -> Union[Binary, uui
         return uuid.UUID(doc["$uuid"])
 
 
-def _binary_or_uuid(data: Any, subtype: int, json_options: JSONOptions) -> Union[Binary, uuid.UUID]:
+def _binary_or_uuid(data: Any, subtype: int, json_options: JSONOptions) -> Binary | uuid.UUID:
     # special handling for UUID
     if subtype in ALL_UUID_SUBTYPES:
         uuid_representation = json_options.uuid_representation
@@ -562,7 +561,7 @@ def _binary_or_uuid(data: Any, subtype: int, json_options: JSONOptions) -> Union
     return Binary(data, subtype)
 
 
-def _parse_legacy_binary(doc: Any, json_options: JSONOptions) -> Union[Binary, uuid.UUID]:
+def _parse_legacy_binary(doc: Any, json_options: JSONOptions) -> Binary | uuid.UUID:
     if isinstance(doc["$type"], int):
         doc["$type"] = "{:02x}".format(doc["$type"])
     subtype = int(doc["$type"], 16)
@@ -572,7 +571,7 @@ def _parse_legacy_binary(doc: Any, json_options: JSONOptions) -> Union[Binary, u
     return _binary_or_uuid(data, subtype, json_options)
 
 
-def _parse_canonical_binary(doc: Any, json_options: JSONOptions) -> Union[Binary, uuid.UUID]:
+def _parse_canonical_binary(doc: Any, json_options: JSONOptions) -> Binary | uuid.UUID:
     binary = doc["$binary"]
     b64 = binary["base64"]
     subtype = binary["subType"]
@@ -589,7 +588,7 @@ def _parse_canonical_binary(doc: Any, json_options: JSONOptions) -> Union[Binary
 
 def _parse_canonical_datetime(
     doc: Any, json_options: JSONOptions
-) -> Union[datetime.datetime, DatetimeMS]:
+) -> datetime.datetime | DatetimeMS:
     """Decode a JSON datetime to python datetime.datetime."""
     dtm = doc["$date"]
     if len(doc) != 1:
@@ -782,7 +781,7 @@ def _parse_canonical_maxkey(doc: Any, dummy0: Any) -> MaxKey:
     return MaxKey()
 
 
-def _parse_binary(doc: Any, json_options: JSONOptions) -> Union[Binary, uuid.UUID]:
+def _parse_binary(doc: Any, json_options: JSONOptions) -> Binary | uuid.UUID:
     if "$type" in doc:
         return _parse_legacy_binary(doc, json_options)
     else:

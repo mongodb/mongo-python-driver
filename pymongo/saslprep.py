@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 try:
     import stringprep
@@ -25,7 +25,7 @@ except ImportError:
 
     def saslprep(
         data: Any,
-        prohibit_unassigned_code_points: Optional[bool] = True,  # noqa: ARG001
+        prohibit_unassigned_code_points: bool | None = True,  # noqa: ARG001
     ) -> Any:
         """SASLprep dummy"""
         if isinstance(data, str):
@@ -55,7 +55,7 @@ else:
         stringprep.in_table_c9,
     )
 
-    def saslprep(data: Any, prohibit_unassigned_code_points: Optional[bool] = True) -> Any:
+    def saslprep(data: Any, prohibit_unassigned_code_points: bool | None = True) -> Any:
         """An implementation of RFC4013 SASLprep.
 
         :param data: The string to SASLprep. Unicode strings

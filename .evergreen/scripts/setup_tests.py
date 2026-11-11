@@ -18,6 +18,7 @@ from utils import (
     PERF_PYTHON_VERSION,
     PLATFORM,
     ROOT,
+    SANITIZER_PYTHON,
     TEST_SUITE_MAP,
     Distro,
     check_drivers_tools,
@@ -56,9 +57,22 @@ EXTRAS_MAP = {
 # Map the test name to test group.
 GROUP_MAP = dict(fuzz="fuzz", mockupdb="mockupdb", perf="perf")
 
+# The test files run under ASan/UBSan (PYTHON-6048). They exercise the
+# buffer-protocol acquisition path in bson/_cbsonmodule.c
+# (_get_buffer/_prepare_input_buffer) and the wire-message builders in
+# pymongo/_cmessagemodule.c (_op_msg, _batched_op_msg,
+# _encode_batched_write_command).
+SANITIZER_FILES = [
+    "test/test_bson.py",
+    "test/test_raw_bson.py",
+    "test/test_raw_bson_shared.py",
+    "test/test_client.py",
+]
+
 # The libmongocrypt release used when LIBMONGOCRYPT_URL is not set. Must be at
-# least 1.20.0 for the GA "substring" query type.
-LIBMONGOCRYPT_VERSION = "1.20.2"
+# least 1.21.0; the beta preview string query types were removed in 1.21.0
+# (MONGOCRYPT-938).
+LIBMONGOCRYPT_VERSION = "1.21.0"
 
 
 def is_set(var: str) -> bool:
@@ -71,7 +85,7 @@ def get_distro() -> Distro:
     version_id = ""
     arch = platform.machine()
     with open("/etc/os-release") as fid:
-        for line in fid.readlines():
+        for line in fid:
             line = line.replace('"', "")  # noqa: PLW2901
             if line.startswith("NAME="):
                 _, _, name = line.strip().partition("=")
@@ -390,44 +404,33 @@ def handle_test_env() -> None:
         UV_ARGS.append("--extra zstd")
 
     if test_name in ["encryption", "kms"]:
-        # The "String" algorithm and the GA prefix/suffix/substring query types
-        # need libmongocrypt 1.19.0+, which is only exercised against MongoDB
-        # 9.0+. Servers before 9.0 test the preview query types instead, which
-        # need the "textPreview" algorithm, so pin to the released pymongocrypt
-        # and use the libmongocrypt bundled in its wheel rather than the
-        # unreleased master build.
-        # Evergreen exposes the server version as VERSION, not MONGODB_VERSION
-        # (which is only set inside the separate run_server.py process).
-        use_pymongocrypt_text_preview = os.environ.get("VERSION", "").startswith("8.")
-
-        if not use_pymongocrypt_text_preview:
-            # Check for libmongocrypt download.
-            if not (ROOT / "libmongocrypt").exists():
-                setup_libmongocrypt()
+        # The GA string query types need libmongocrypt 1.19.0+ and the beta
+        # preview query types were removed in 1.21.0 (PYTHON-5959), so always
+        # use the master pymongocrypt build against the pinned libmongocrypt
+        # rather than the lib bundled in the released wheel.
+        # Check for libmongocrypt download.
+        if not (ROOT / "libmongocrypt").exists():
+            setup_libmongocrypt()
 
         if not opts.test_min_deps:
-            if use_pymongocrypt_text_preview:
-                UV_ARGS.append("--with pymongocrypt<1.19")
-            else:
-                UV_ARGS.append(
-                    "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
-                )
+            UV_ARGS.append(
+                "--with pymongocrypt@git+https://github.com/mongodb/libmongocrypt@master#subdirectory=bindings/python"
+            )
 
-        if not use_pymongocrypt_text_preview:
-            # Use the nocrypto build to avoid dependency issues with older windows/python versions.
-            BASE = get_libmongocrypt_base()
-            if PLATFORM == "linux":
-                if (BASE / "lib/libmongocrypt.so").exists():
-                    PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.so"
-                else:
-                    PYMONGOCRYPT_LIB = BASE / "lib64/libmongocrypt.so"
-            elif PLATFORM == "darwin":
-                PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.dylib"
+        # Use the nocrypto build to avoid dependency issues with older windows/python versions.
+        BASE = get_libmongocrypt_base()
+        if PLATFORM == "linux":
+            if (BASE / "lib/libmongocrypt.so").exists():
+                PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.so"
             else:
-                PYMONGOCRYPT_LIB = BASE / "bin/mongocrypt.dll"
-            if not PYMONGOCRYPT_LIB.exists():
-                raise RuntimeError("Cannot find libmongocrypt shared object file")
-            write_env("PYMONGOCRYPT_LIB", PYMONGOCRYPT_LIB.as_posix())
+                PYMONGOCRYPT_LIB = BASE / "lib64/libmongocrypt.so"
+        elif PLATFORM == "darwin":
+            PYMONGOCRYPT_LIB = BASE / "lib/libmongocrypt.dylib"
+        else:
+            PYMONGOCRYPT_LIB = BASE / "bin/mongocrypt.dll"
+        if not PYMONGOCRYPT_LIB.exists():
+            raise RuntimeError("Cannot find libmongocrypt shared object file")
+        write_env("PYMONGOCRYPT_LIB", PYMONGOCRYPT_LIB.as_posix())
         # PATH is updated by configure-env.sh for access to mongocryptd.
 
     if test_name == "encryption":
@@ -545,6 +548,38 @@ def handle_test_env() -> None:
             zf.extractall(corpus_dir)
         zip_path.unlink()
         write_env("FUZZ_CORPUS_DIR", str(corpus_dir))
+
+    if test_name == "sanitizer":
+        if PLATFORM != "linux":
+            raise RuntimeError("The sanitizer tests require the Linux Python toolchain.")
+        if not Path(SANITIZER_PYTHON).is_file():
+            raise RuntimeError(
+                f"Sanitizer interpreter not found at {SANITIZER_PYTHON}; "
+                "the task must run on a host with the ASan/UBSan toolchain Python."
+            )
+        # Clear stale C artifacts: build_ext reuses them by mtime, and a
+        # plain same-version CPython build shares the ABI tag.
+        shutil.rmtree(ROOT / "build", ignore_errors=True)
+        for pkg in ["bson", "pymongo"]:
+            for ext in (ROOT / pkg).glob("*.so"):
+                ext.unlink()
+        # Build and run against the ASan/UBSan-instrumented toolchain CPython,
+        # and fail loudly rather than silently skip the C extension build.
+        write_env("UV_PYTHON", SANITIZER_PYTHON)
+        write_env("PYMONGO_C_EXT_MUST_BUILD")
+        write_env("CFLAGS", "-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1")
+        write_env("LDFLAGS", "-fsanitize=address,undefined")
+        # CPython's pymalloc trips LeakSanitizer with false positives.
+        write_env("ASAN_OPTIONS", "detect_leaks=0")
+        # UBSan only warns by default; make undefined behavior fail the task.
+        write_env("UBSAN_OPTIONS", "halt_on_error=1:print_stacktrace=1")
+        # The toolchain interpreter self-initializes the sanitizer runtimes,
+        # so no LD_PRELOAD: gcc's libasan.so is a linker script that ld.so
+        # cannot preload, and preloading a mismatched runtime would mix two
+        # sanitizers in one process.
+        # -s: with halt_on_error=1, a sanitizer failure exits the interpreter
+        # before pytest replays captured stderr, losing the report and trace.
+        TEST_ARGS = "-s " + " ".join(SANITIZER_FILES) + " " + TEST_ARGS
 
     # Add coverage if requested.
     if opts.cov:

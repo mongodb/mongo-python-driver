@@ -860,7 +860,7 @@ class AsyncClientUnitTest(AsyncUnitTest):
     @skipIf(os.environ.get("DEBUG_LOG"), "Enabling debug logs breaks this test")
     @patch("pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts")
     async def test_detected_environment_warning(self, mock_get_hosts):
-        with self._caplog.at_level(logging.WARN):
+        with self._caplog.at_level(logging.WARNING):
             normal_hosts = [
                 "host.cosmos.azure.com",
                 "host.docdb.amazonaws.com",
@@ -1318,7 +1318,7 @@ class TestClient(AsyncIntegrationTest):
         self.assertGreater(len(helper_docs), 0)
         self.assertEqual(len(helper_docs), len(cmd_docs))
         # PYTHON-3529 Some fields may change between calls, just compare names.
-        for helper_doc, cmd_doc in zip(helper_docs, cmd_docs):
+        for helper_doc, cmd_doc in zip(helper_docs, cmd_docs, strict=True):
             self.assertIs(type(helper_doc), dict)
             self.assertEqual(helper_doc.keys(), cmd_doc.keys())
         client = await self.async_rs_or_single_client(document_class=SON)
@@ -2236,7 +2236,7 @@ class TestClient(AsyncIntegrationTest):
             pool = await async_get_pool(client)
 
             async def fail_connect(*args, **kwargs):
-                raise Exception("failed to connect")
+                raise ConnectionFailure("failed to connect")
 
             pool.connect = fail_connect
             # Un-patch Pool.connect to break the cyclic reference.

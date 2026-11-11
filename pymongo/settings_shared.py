@@ -19,7 +19,7 @@ from __future__ import annotations
 import threading
 import traceback
 from collections.abc import Callable, Collection
-from typing import Any, Generic, Optional, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -38,23 +38,23 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
         self,
         pool_class: _PoolClassType,
         monitor_class: _MonitorClassType,
-        seeds: Optional[Collection[tuple[str, int]]] = None,
-        replica_set_name: Optional[str] = None,
-        pool_options: Optional[PoolOptions] = None,
-        condition_class: Optional[type[threading.Condition]] = None,
+        seeds: Collection[tuple[str, int]] | None = None,
+        replica_set_name: str | None = None,
+        pool_options: PoolOptions | None = None,
+        condition_class: type[threading.Condition] | None = None,
         local_threshold_ms: int = LOCAL_THRESHOLD_MS,
         server_selection_timeout: int = SERVER_SELECTION_TIMEOUT,
         heartbeat_frequency: int = common.HEARTBEAT_FREQUENCY,
-        server_selector: Optional[_ServerSelector] = None,
-        fqdn: Optional[str] = None,
-        direct_connection: Optional[bool] = False,
-        load_balanced: Optional[bool] = None,
+        server_selector: _ServerSelector | None = None,
+        fqdn: str | None = None,
+        direct_connection: bool | None = False,
+        load_balanced: bool | None = None,
         srv_service_name: str = common.SRV_SERVICE_NAME,
         srv_max_hosts: int = 0,
-        srv_allowed_hosts_suffix: Optional[str] = None,
-        srv_host_validator: Optional[Callable[[str], bool]] = None,
+        srv_allowed_hosts_suffix: str | None = None,
+        srv_host_validator: Callable[[str], bool] | None = None,
         server_monitoring_mode: str = common.SERVER_MONITORING_MODE,
-        topology_id: Optional[ObjectId] = None,
+        topology_id: ObjectId | None = None,
     ):
         """Represent MongoClient's configuration.
 
@@ -96,7 +96,7 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
         return self._seeds
 
     @property
-    def replica_set_name(self) -> Optional[str]:
+    def replica_set_name(self) -> str | None:
         return self._replica_set_name
 
     @property
@@ -124,7 +124,7 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
         return self._server_selection_timeout
 
     @property
-    def server_selector(self) -> Optional[_ServerSelector]:
+    def server_selector(self) -> _ServerSelector | None:
         return self._server_selector
 
     @property
@@ -132,11 +132,11 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
         return self._heartbeat_frequency
 
     @property
-    def fqdn(self) -> Optional[str]:
+    def fqdn(self) -> str | None:
         return self._fqdn
 
     @property
-    def direct(self) -> Optional[bool]:
+    def direct(self) -> bool | None:
         """Connect directly to a single server, or use a set of servers?
 
         True if there is one seed and no replica_set_name.
@@ -144,7 +144,7 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
         return self._direct
 
     @property
-    def load_balanced(self) -> Optional[bool]:
+    def load_balanced(self) -> bool | None:
         """True if the client was configured to connect to a load balancer."""
         return self._load_balanced
 
@@ -159,12 +159,12 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
         return self._srv_max_hosts
 
     @property
-    def srv_allowed_hosts_suffix(self) -> Optional[str]:
+    def srv_allowed_hosts_suffix(self) -> str | None:
         """The srvAllowedHostsSuffix."""
         return self._srv_allowed_hosts_suffix
 
     @property
-    def srv_host_validator(self) -> Optional[Callable[[str], bool]]:
+    def srv_host_validator(self) -> Callable[[str], bool] | None:
         """The srv_host_validator callback."""
         return self._srv_host_validator
 
@@ -183,6 +183,6 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
         else:
             return TOPOLOGY_TYPE.Unknown
 
-    def get_server_descriptions(self) -> dict[Union[tuple[str, int], Any], ServerDescription]:
+    def get_server_descriptions(self) -> dict[tuple[str, int] | Any, ServerDescription]:
         """Initial dict of (address, ServerDescription) for all seeds."""
         return {address: ServerDescription(address) for address in self.seeds}

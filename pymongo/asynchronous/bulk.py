@@ -25,13 +25,10 @@ from itertools import islice
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
-    Union,
 )
 
 from pymongo import _csot
 from pymongo._telemetry import _generate_op_id_or_none
-from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.command_runner import (
     run_bulk_write_command,
 )
@@ -59,6 +56,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
@@ -101,7 +99,7 @@ class _AsyncBulk(_AgnosticBulkBase):
         max_doc_size: int,
         docs: list[Mapping[str, Any]],
         client: AsyncMongoClient[Any],
-    ) -> Optional[Mapping[str, Any]]:
+    ) -> Mapping[str, Any] | None:
         """Send an unacknowledged batch write command."""
         # Historically the STARTED log omits the documents while the published
         # CommandStartedEvent includes them, so log ``cmd`` but publish a copy
@@ -122,7 +120,7 @@ class _AsyncBulk(_AgnosticBulkBase):
 
     async def _execute_batch_unack(
         self,
-        bwc: Union[_BulkWriteContext, _EncryptedBulkWriteContext],
+        bwc: _BulkWriteContext | _EncryptedBulkWriteContext,
         cmd: dict[str, Any],
         ops: list[Mapping[str, Any]],
         client: AsyncMongoClient[Any],
@@ -149,7 +147,7 @@ class _AsyncBulk(_AgnosticBulkBase):
 
     async def _execute_batch(
         self,
-        bwc: Union[_BulkWriteContext, _EncryptedBulkWriteContext],
+        bwc: _BulkWriteContext | _EncryptedBulkWriteContext,
         cmd: dict[str, Any],
         ops: list[Mapping[str, Any]],
         client: AsyncMongoClient[Any],
@@ -173,12 +171,12 @@ class _AsyncBulk(_AgnosticBulkBase):
         self,
         generator: Iterator[Any],
         write_concern: WriteConcern,
-        session: Optional[AsyncClientSession],
+        session: AsyncClientSession | None,
         conn: AsyncConnection,
-        op_id: Optional[int],
+        op_id: int | None,
         retryable: bool,
         full_result: MutableMapping[str, Any],
-        final_write_concern: Optional[WriteConcern] = None,
+        final_write_concern: WriteConcern | None = None,
     ) -> None:
         db_name = self.collection.database.name
         client = self.collection.database.client
@@ -276,7 +274,7 @@ class _AsyncBulk(_AgnosticBulkBase):
         self,
         generator: Iterator[Any],
         write_concern: WriteConcern,
-        session: Optional[AsyncClientSession],
+        session: AsyncClientSession | None,
         operation: str,
     ) -> dict[str, Any]:
         """Execute using write commands."""
@@ -295,7 +293,7 @@ class _AsyncBulk(_AgnosticBulkBase):
         op_id = _generate_op_id_or_none(client._event_listeners)
 
         async def retryable_bulk(
-            session: Optional[AsyncClientSession], conn: AsyncConnection, retryable: bool
+            session: AsyncClientSession | None, conn: AsyncConnection, retryable: bool
         ) -> None:
             await self._execute_command(
                 generator,
@@ -425,7 +423,7 @@ class _AsyncBulk(_AgnosticBulkBase):
     async def execute(
         self,
         write_concern: WriteConcern,
-        session: Optional[AsyncClientSession],
+        session: AsyncClientSession | None,
         operation: str,
     ) -> Any:
         """Execute operations."""

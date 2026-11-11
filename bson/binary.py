@@ -17,7 +17,7 @@ import struct
 import warnings
 from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Union, overload
+from typing import TYPE_CHECKING, Any, Self, overload
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -240,7 +240,7 @@ class BinaryVector:
 
     def __init__(
         self,
-        data: Union[Sequence[float | int], npt.NDArray[np.number]],
+        data: Sequence[float | int] | npt.NDArray[np.number],
         dtype: BinaryVectorDtype,
         padding: int = 0,
     ):
@@ -260,7 +260,7 @@ class BinaryVector:
     def __repr__(self) -> str:
         return f"BinaryVector(dtype={self.dtype}, padding={self.padding}, data={self.data})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, BinaryVector):
             return False
         return (
@@ -310,10 +310,10 @@ class Binary(bytes):
     __subtype: int
 
     def __new__(
-        cls: type[Binary],
-        data: Union[memoryview, bytes, bytearray, _mmap, _array[Any]],
+        cls,
+        data: memoryview | bytes | bytearray | _mmap | _array[Any],
         subtype: int = BINARY_SUBTYPE,
-    ) -> Binary:
+    ) -> Self:
         if not isinstance(subtype, int):
             raise TypeError(f"subtype must be an instance of int, not {type(subtype)}")
         if subtype >= 256 or subtype < 0:
@@ -434,7 +434,7 @@ class Binary(bytes):
     @overload
     def from_vector(
         cls: type[Binary],
-        vector: Union[list[int], list[float]],
+        vector: list[int] | list[float],
         dtype: BinaryVectorDtype,
         padding: int = 0,
     ) -> Binary: ...
@@ -451,9 +451,9 @@ class Binary(bytes):
     @classmethod
     def from_vector(
         cls: type[Binary],
-        vector: Union[BinaryVector, list[int], list[float], npt.NDArray[np.number]],
-        dtype: Optional[BinaryVectorDtype] = None,
-        padding: Optional[int] = None,
+        vector: BinaryVector | list[int] | list[float] | npt.NDArray[np.number],
+        dtype: BinaryVectorDtype | None = None,
+        padding: int | None = None,
     ) -> Binary:
         """Create a BSON :class:`~bson.binary.Binary` of Vector subtype.
 
@@ -648,7 +648,7 @@ class Binary(bytes):
             data = data.encode("latin-1")
         return data, self.__subtype
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Binary):
             return (self.__subtype, bytes(self)) == (other.subtype, bytes(other))
         # We don't return NotImplemented here because if we did then
@@ -659,7 +659,7 @@ class Binary(bytes):
     def __hash__(self) -> int:
         return super().__hash__() ^ hash(self.__subtype)
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __repr__(self) -> str:

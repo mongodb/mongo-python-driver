@@ -1070,7 +1070,7 @@ class TestAllLegacyScenarios(IntegrationTest):
         element in superlist.
         """
         self.assertEqual(len(superlist), len(sublist))
-        for sup, sub in zip(superlist, sublist):
+        for sup, sub in zip(superlist, sublist, strict=True):
             if isinstance(sub, dict):
                 self.assert_dict_is_subset(sup, sub)
                 continue

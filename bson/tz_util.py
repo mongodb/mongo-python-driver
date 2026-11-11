@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, tzinfo
-from typing import Optional, Union
 
 ZERO: timedelta = timedelta(0)
 
@@ -30,7 +29,7 @@ class FixedOffset(tzinfo):
     Defining __getinitargs__ enables pickling / copying.
     """
 
-    def __init__(self, offset: Union[float, timedelta], name: str) -> None:
+    def __init__(self, offset: float | timedelta, name: str) -> None:
         if isinstance(offset, timedelta):
             self.__offset = offset
         else:
@@ -43,13 +42,13 @@ class FixedOffset(tzinfo):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.__offset!r}, {self.__name!r})"
 
-    def utcoffset(self, dt: Optional[datetime]) -> timedelta:
+    def utcoffset(self, dt: datetime | None) -> timedelta:
         return self.__offset
 
-    def tzname(self, dt: Optional[datetime]) -> str:
+    def tzname(self, dt: datetime | None) -> str:
         return self.__name
 
-    def dst(self, dt: Optional[datetime]) -> timedelta:
+    def dst(self, dt: datetime | None) -> timedelta:
         return ZERO
 
 

@@ -46,14 +46,13 @@ except ImportError:
 from collections.abc import Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial, wraps
-from typing import Any, overload
+from typing import TYPE_CHECKING, Any, overload
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
 import pymongo
 import pymongo.errors
 from bson.son import SON
-from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.common import partition_node
 from pymongo.hello import HelloCompat
@@ -83,6 +82,9 @@ from test.helpers_shared import (
     sanitize_reply,
 )
 from test.version import Version
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.database import AsyncDatabase
 
 _IS_SYNC = False
 

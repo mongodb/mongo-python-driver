@@ -27,7 +27,7 @@ for dirname in ["pymongo", "bson", "gridfs"]:
             continue
         found = False
         with open(path) as fid:
-            for line in fid.readlines():
+            for line in fid:
                 if line.strip() == pattern:
                     found = True
                     break

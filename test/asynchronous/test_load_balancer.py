@@ -181,7 +181,7 @@ class PoolLocker(ExceptionCatchingTask):
             # Wait for the unlock flag.
             unlock_pool = await self.wait(self.unlock, 10)
             if not unlock_pool:
-                raise Exception("timed out waiting for unlock signal: deadlock?")
+                raise TimeoutError("timed out waiting for unlock signal: deadlock?")
 
     async def wait(self, event: Event, timeout: int):
         if _IS_SYNC:
@@ -189,7 +189,7 @@ class PoolLocker(ExceptionCatchingTask):
         else:
             try:
                 await asyncio.wait_for(event.wait(), timeout=timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 return False
             return True
 

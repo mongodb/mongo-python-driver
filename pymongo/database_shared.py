@@ -33,4 +33,4 @@ def _check_name(name: str) -> None:
             raise InvalidName(f"database names cannot contain the character {invalid_char!r}")
 
 
-_CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])
+_CodecDocumentType = TypeVar("_CodecDocumentType", bound=Mapping[str, Any])  # noqa: PYI018

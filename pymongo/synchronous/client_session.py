@@ -143,7 +143,7 @@ from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
+    Self,
     TypeVar,
 )
 
@@ -169,20 +169,20 @@ from pymongo.errors import (
     PyMongoError,
     WTimeoutError,
 )
-from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import _ServerMode
 from pymongo.synchronous.cursor_base import _ConnectionManager
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from types import TracebackType
 
+    from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
 
 _IS_SYNC = True
 
-_SESSION: ContextVar[Optional[ClientSession]] = ContextVar("SESSION", default=None)
+_SESSION: ContextVar[ClientSession | None] = ContextVar("SESSION", default=None)
 
 
 class _BoundSessionContext:
@@ -190,14 +190,19 @@ class _BoundSessionContext:
 
     def __init__(self, session: ClientSession, end_session: bool) -> None:
         self._session = session
-        self._session_token: Optional[Token[ClientSession]] = None
+        self._session_token: Token[ClientSession] | None = None
         self._end_session = end_session
 
     def __enter__(self) -> ClientSession:
         self._session_token = _SESSION.set(self._session)  # type: ignore[assignment]
         return self._session
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         if self._session_token:
             _SESSION.reset(self._session_token)  # type: ignore[arg-type]
             self._session_token = None
@@ -211,14 +216,14 @@ class _TransactionContext:
     def __init__(self, session: ClientSession):
         self.__session = session
 
-    def __enter__(self) -> _TransactionContext:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         if self.__session.in_transaction:
             if exc_val is None:
@@ -231,7 +236,7 @@ class _Transaction(_TransactionBase["Connection"]):
     """Internal class to hold transaction information in a ClientSession."""
 
     _conn_mgr_cls = _ConnectionManager
-    conn_mgr: Optional[_ConnectionManager]
+    conn_mgr: _ConnectionManager | None
 
     def unpin(self) -> None:
         self.pinned_address = None
@@ -290,19 +295,24 @@ class ClientSession(
                 self._client._return_server_session(self._server_session)
                 self._server_session = None
 
-    def __enter__(self) -> ClientSession:
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self._end_session(lock=True)
 
     def with_transaction(
         self,
         callback: Callable[[ClientSession], _T],
-        read_concern: Optional[ReadConcern] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_preference: Optional[_ServerMode] = None,
-        max_commit_time_ms: Optional[int] = None,
+        read_concern: ReadConcern | None = None,
+        write_concern: WriteConcern | None = None,
+        read_preference: _ServerMode | None = None,
+        max_commit_time_ms: int | None = None,
     ) -> _T:
         """Execute a callback in a transaction.
 
@@ -398,7 +408,7 @@ class ClientSession(
         """
         start_time = time.monotonic()
         retry = 0
-        last_error: Optional[BaseException] = None
+        last_error: BaseException | None = None
         while True:
             if retry:  # Implement exponential backoff on retry.
                 jitter = random.random()  # noqa: S311
@@ -454,10 +464,10 @@ class ClientSession(
 
     def start_transaction(
         self,
-        read_concern: Optional[ReadConcern] = None,
-        write_concern: Optional[WriteConcern] = None,
-        read_preference: Optional[_ServerMode] = None,
-        max_commit_time_ms: Optional[int] = None,
+        read_concern: ReadConcern | None = None,
+        write_concern: WriteConcern | None = None,
+        read_preference: _ServerMode | None = None,
+        max_commit_time_ms: int | None = None,
     ) -> AbstractContextManager[Any]:
         """Start a multi-statement transaction.
 
@@ -570,7 +580,7 @@ class ClientSession(
         """
 
         def func(
-            _session: Optional[ClientSession], conn: Connection, _retryable: bool
+            _session: ClientSession | None, conn: Connection, _retryable: bool
         ) -> dict[str, Any]:
             return self._finish_transaction(conn, command_name)
 

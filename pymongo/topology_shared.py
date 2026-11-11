@@ -19,7 +19,7 @@ from __future__ import annotations
 import queue
 import weakref
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from pymongo import _csot
 from pymongo._telemetry import _SdamTelemetry
@@ -64,7 +64,7 @@ class _ErrorContext:
         max_wire_version: int,
         sock_generation: int,
         completed_handshake: bool,
-        service_id: Optional[ObjectId],
+        service_id: ObjectId | None,
     ):
         self.error = error
         self.max_wire_version = max_wire_version
@@ -74,7 +74,7 @@ class _ErrorContext:
 
 
 def _is_stale_error_topology_version(
-    current_tv: Optional[Mapping[str, Any]], error_tv: Optional[Mapping[str, Any]]
+    current_tv: Mapping[str, Any] | None, error_tv: Mapping[str, Any] | None
 ) -> bool:
     """Return True if the error's topologyVersion is <= current."""
     if current_tv is None or error_tv is None:
@@ -137,8 +137,8 @@ class _AgnosticTopologyBase(Generic[_PoolT, _ServerT]):
         self._opened = False
         self._closed = False
         self._servers: dict[_Address, _ServerT] = {}
-        self._pid: Optional[int] = None
-        self._max_cluster_time: Optional[ClusterTime] = None
+        self._pid: int | None = None
+        self._max_cluster_time: ClusterTime | None = None
         self._session_pool = _ServerSessionPool()
         # The lock, condition, events executor, SRV monitor, and monitor tasks
         # are IO-specific and are created by the async/sync subclasses.
@@ -153,7 +153,7 @@ class _AgnosticTopologyBase(Generic[_PoolT, _ServerT]):
             return self._settings.server_selection_timeout
         return timeout
 
-    def get_server_by_address(self, address: _Address) -> Optional[_ServerT]:
+    def get_server_by_address(self, address: _Address) -> _ServerT | None:
         """Get a Server or None.
 
         Returns the current version of the server immediately, even if it's
@@ -166,11 +166,11 @@ class _AgnosticTopologyBase(Generic[_PoolT, _ServerT]):
     def has_server(self, address: _Address) -> bool:
         return address in self._servers
 
-    def max_cluster_time(self) -> Optional[ClusterTime]:
+    def max_cluster_time(self) -> ClusterTime | None:
         """Return a document, the highest seen $clusterTime."""
         return self._max_cluster_time
 
-    def _receive_cluster_time_no_lock(self, cluster_time: Optional[Mapping[str, Any]]) -> None:
+    def _receive_cluster_time_no_lock(self, cluster_time: Mapping[str, Any] | None) -> None:
         # Driver Sessions Spec: "Whenever a driver receives a cluster time from
         # a server it MUST compare it to the current highest seen cluster time
         # for the deployment. If the new cluster time is higher than the
@@ -202,7 +202,7 @@ class _AgnosticTopologyBase(Generic[_PoolT, _ServerT]):
         """Pop all session ids from the pool."""
         return self._session_pool.pop_all()
 
-    def get_server_session(self, session_timeout_minutes: Optional[int]) -> _ServerSession:
+    def get_server_session(self, session_timeout_minutes: int | None) -> _ServerSession:
         """Start or resume a server session, or raise ConfigurationError."""
         return self._session_pool.get_server_session(session_timeout_minutes)
 
@@ -329,7 +329,7 @@ class _AgnosticTopologyBase(Generic[_PoolT, _ServerT]):
             msg = "CLOSED "
         return f"<{self.__class__.__name__} {msg}{self._description!r}>"
 
-    def eq_props(self) -> tuple[tuple[_Address, ...], Optional[str], Optional[str], str]:
+    def eq_props(self) -> tuple[tuple[_Address, ...], str | None, str | None, str]:
         """The properties to use for MongoClient/AsyncMongoClient and Topology
         equality checks.
         """

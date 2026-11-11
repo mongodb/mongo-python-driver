@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -34,7 +34,7 @@ class Response:
         data: _OpMsg,
         address: _Address,
         request_id: int,
-        duration: Optional[timedelta],
+        duration: timedelta | None,
         docs: Sequence[Mapping[str, Any]],
     ):
         """Represent a response from the server.
@@ -66,7 +66,7 @@ class Response:
         return self._request_id
 
     @property
-    def duration(self) -> Optional[timedelta]:
+    def duration(self) -> timedelta | None:
         """The duration of the operation."""
         return self._duration
 
@@ -85,7 +85,7 @@ class PinnedResponse(Response):
         address: _Address,
         conn: _AgnosticConnection,
         request_id: int,
-        duration: Optional[timedelta],
+        duration: timedelta | None,
         docs: list[_DocumentOut],
         more_to_come: bool,
     ):

@@ -23,7 +23,6 @@ import sys
 import zipfile
 from io import BytesIO
 
-from pymongo.synchronous.database import Database
 from test import (
     IntegrationTest,
     UnitTest,
@@ -33,6 +32,8 @@ from test import (
 )
 
 sys.path[0:0] = [""]
+
+from typing import TYPE_CHECKING
 
 from bson.objectid import ObjectId
 from gridfs.errors import NoFile
@@ -50,6 +51,9 @@ from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress
 from pymongo.synchronous.helpers import iter, next
 from test.utils_shared import OvertCommandListener
+
+if TYPE_CHECKING:
+    from pymongo.synchronous.database import Database
 
 _IS_SYNC = True
 

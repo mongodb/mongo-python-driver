@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from collections.abc import Mapping as _Mapping
-from typing import Any, Optional, Union
+from typing import Any, Self
 
 
 class Code(str):
@@ -49,14 +49,14 @@ class Code(str):
     """
 
     _type_marker = 13
-    __scope: Union[Mapping[str, Any], None]
+    __scope: Mapping[str, Any] | None
 
     def __new__(
-        cls: type[Code],
-        code: Union[str, Code],
-        scope: Optional[Mapping[str, Any]] = None,
+        cls,
+        code: str | Code,
+        scope: Mapping[str, Any] | None = None,
         **kwargs: Any,
-    ) -> Code:
+    ) -> Self:
         if not isinstance(code, str):
             raise TypeError(f"code must be an instance of str, not {type(code)}")
 
@@ -84,19 +84,19 @@ class Code(str):
         return self
 
     @property
-    def scope(self) -> Optional[Mapping[str, Any]]:
+    def scope(self) -> Mapping[str, Any] | None:
         """Scope dictionary for this instance or ``None``."""
         return self.__scope
 
     def __repr__(self) -> str:
         return f"Code({str.__repr__(self)}, {self.__scope!r})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Code):
             return (self.__scope, str(self)) == (other.__scope, str(other))
         return False
 
     __hash__: Any = None
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other

@@ -265,7 +265,7 @@ class TestAsyncBlockingSocketCall(AsyncUnitTest):
             time.sleep(0.4)
             finished.set()
 
-        with self.assertRaises(asyncio.TimeoutError):
+        with self.assertRaises(TimeoutError):
             await _async_blocking_socket_call(asyncio.get_running_loop(), slow, None, 0.3)
         self.assertTrue(finished.is_set())
 

@@ -26,8 +26,7 @@ from typing import (
     Any,
     Generic,
     NamedTuple,
-    Optional,
-    Union,
+    Self,
     cast,
 )
 
@@ -36,7 +35,6 @@ from bson.binary import (
     UUID_REPRESENTATION_NAMES,
     UuidRepresentation,
 )
-from bson.typings import _DocumentType
 
 _RAW_BSON_DOCUMENT_MARKER = 101
 
@@ -103,7 +101,7 @@ class TypeCodec(TypeEncoder, TypeDecoder):
     """
 
 
-_Codec = Union[TypeEncoder, TypeDecoder, TypeCodec]
+_Codec = TypeEncoder | TypeDecoder | TypeCodec
 _Fallback = Callable[[Any], Any]
 
 
@@ -135,8 +133,8 @@ class TypeRegistry:
 
     def __init__(
         self,
-        type_codecs: Optional[Iterable[_Codec]] = None,
-        fallback_encoder: Optional[_Fallback] = None,
+        type_codecs: Iterable[_Codec] | None = None,
+        fallback_encoder: _Fallback | None = None,
     ) -> None:
         self.__type_codecs = list(type_codecs or [])
         self._fallback_encoder = fallback_encoder
@@ -167,7 +165,7 @@ class TypeRegistry:
         return self.__type_codecs
 
     @property
-    def fallback_encoder(self) -> Optional[_Fallback]:
+    def fallback_encoder(self) -> _Fallback | None:
         """The fallback encoder in this registry."""
         return self._fallback_encoder
 
@@ -185,7 +183,7 @@ class TypeRegistry:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(type_codecs={self.__type_codecs!r}, fallback_encoder={self._fallback_encoder!r})"
 
-    def __eq__(self, other: Any) -> Any:
+    def __eq__(self, other: object) -> Any:
         if not isinstance(other, type(self)):
             return NotImplemented
         return (
@@ -237,31 +235,32 @@ class _BaseCodecOptions(NamedTuple):
     tz_aware: bool
     uuid_representation: int
     unicode_decode_error_handler: str
-    tzinfo: Optional[datetime.tzinfo]
+    tzinfo: datetime.tzinfo | None
     type_registry: TypeRegistry
-    datetime_conversion: Optional[DatetimeConversion]
+    datetime_conversion: DatetimeConversion | None
 
 
 if TYPE_CHECKING:
+    from bson.typings import _DocumentType
 
     class CodecOptions(tuple[_DocumentType], Generic[_DocumentType]):
         document_class: type[_DocumentType]
         tz_aware: bool
         uuid_representation: int
-        unicode_decode_error_handler: Optional[str]
-        tzinfo: Optional[datetime.tzinfo]
+        unicode_decode_error_handler: str | None
+        tzinfo: datetime.tzinfo | None
         type_registry: TypeRegistry
-        datetime_conversion: Optional[int]
+        datetime_conversion: int | None
 
         def __new__(
             cls: type[CodecOptions[_DocumentType]],
-            document_class: Optional[type[_DocumentType]] = ...,
+            document_class: type[_DocumentType] | None = ...,
             tz_aware: bool = ...,
-            uuid_representation: Optional[int] = ...,
-            unicode_decode_error_handler: Optional[str] = ...,
-            tzinfo: Optional[datetime.tzinfo] = ...,
-            type_registry: Optional[TypeRegistry] = ...,
-            datetime_conversion: Optional[int] = ...,
+            uuid_representation: int | None = ...,
+            unicode_decode_error_handler: str | None = ...,
+            tzinfo: datetime.tzinfo | None = ...,
+            type_registry: TypeRegistry | None = ...,
+            datetime_conversion: int | None = ...,
         ) -> CodecOptions[_DocumentType]: ...
 
         # CodecOptions API
@@ -370,15 +369,15 @@ else:
             super().__init__()
 
         def __new__(
-            cls: type[CodecOptions],
-            document_class: Optional[type[Mapping[str, Any]]] = None,
+            cls,
+            document_class: type[Mapping[str, Any]] | None = None,
             tz_aware: bool = False,
-            uuid_representation: Optional[int] = UuidRepresentation.UNSPECIFIED,
+            uuid_representation: int | None = UuidRepresentation.UNSPECIFIED,
             unicode_decode_error_handler: str = "strict",
-            tzinfo: Optional[datetime.tzinfo] = None,
-            type_registry: Optional[TypeRegistry] = None,
-            datetime_conversion: Optional[DatetimeConversion] = DatetimeConversion.DATETIME,
-        ) -> CodecOptions:
+            tzinfo: datetime.tzinfo | None = None,
+            type_registry: TypeRegistry | None = None,
+            datetime_conversion: DatetimeConversion | None = DatetimeConversion.DATETIME,
+        ) -> Self:
             doc_class = document_class or dict
             # Generic aliases like SON[str, Any] or dict[str, Any] aren't classes, so
             # resolve to their origin before the subclass check. issubclass() raises
@@ -402,7 +401,7 @@ else:
                     "uuid_representation must be a value from bson.binary.UuidRepresentation"
                 )
             if not isinstance(unicode_decode_error_handler, str):
-                raise ValueError(
+                raise TypeError(
                     f"unicode_decode_error_handler must be a string, not {type(unicode_decode_error_handler)}"
                 )
             if tzinfo is not None:

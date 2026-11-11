@@ -19,7 +19,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 
 class ReadConcern:
@@ -35,14 +35,14 @@ class ReadConcern:
 
     """
 
-    def __init__(self, level: Optional[str] = None) -> None:
+    def __init__(self, level: str | None = None) -> None:
         if level is None or isinstance(level, str):
             self.__level = level
         else:
             raise TypeError(f"level must be a string or None, not {type(level)}")
 
     @property
-    def level(self) -> Optional[str]:
+    def level(self) -> str | None:
         """The read concern level."""
         return self.__level
 
@@ -66,7 +66,7 @@ class ReadConcern:
             doc["level"] = self.level
         return doc
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, ReadConcern):
             return self.document == other.document
         return NotImplemented

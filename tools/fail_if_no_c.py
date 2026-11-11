@@ -36,11 +36,11 @@ def main() -> None:
         try:
             from pymongo import _cmessage  # type:ignore[attr-defined] # noqa: F401
         except Exception as e:
-            LOGGER.exception(e)
+            LOGGER.exception(e)  # noqa: TRY401
         try:
             from bson import _cbson  # type:ignore[attr-defined] # noqa: F401
         except Exception as e:
-            LOGGER.exception(e)
+            LOGGER.exception(e)  # noqa: TRY401
         sys.exit("could not load C extensions")
 
 

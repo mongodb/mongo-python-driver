@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Any
 
 from bson._helpers import _getstate_slots, _setstate_slots
 from bson.son import SON
@@ -37,8 +37,8 @@ class DBRef:
         self,
         collection: str,
         id: Any,
-        database: Optional[str] = None,
-        _extra: Optional[Mapping[str, Any]] = None,
+        database: str | None = None,
+        _extra: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a new :class:`DBRef`.
@@ -79,7 +79,7 @@ class DBRef:
         return self.__id
 
     @property
-    def database(self) -> Optional[str]:
+    def database(self) -> str | None:
         """Get the name of this DBRef's database.
 
         Returns None if this DBRef doesn't specify a database.
@@ -109,14 +109,14 @@ class DBRef:
             return f"DBRef({self.collection!r}, {self.id!r}{extra})"
         return f"DBRef({self.collection!r}, {self.id!r}, {self.database!r}{extra})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, DBRef):
             us = (self.__database, self.__collection, self.__id, self.__kwargs)
             them = (other.__database, other.__collection, other.__id, other.__kwargs)
             return us == them
         return NotImplemented
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
     def __hash__(self) -> int:
