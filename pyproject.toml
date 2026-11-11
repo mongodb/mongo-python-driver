@@ -247,7 +247,6 @@ ignore = [
   "ICN001", # Use standard import naming conventions (pandas as pd, datetime as dt...)
   "BLE",    # Broad `Except` exception catches (intentional)
   # These are all new defaults added in ruff 0.16.0. Individual tickets linked from PYTHON-5964 track enabling each one.
-  "TC",     # flake8-type-checking
   "TRY",    # tryceratops
   "INT",    # flake8-gettext
   "ISC",    # flake8-implicit-str-concat
