@@ -247,10 +247,8 @@ ignore = [
   "ICN001", # Use standard import naming conventions (pandas as pd, datetime as dt...)
   "BLE",    # Broad `Except` exception catches (intentional)
   # These are all new defaults added in ruff 0.16.0. Individual tickets linked from PYTHON-5964 track enabling each one.
-  "TRY",    # tryceratops
   "INT",    # flake8-gettext
   "ISC",    # flake8-implicit-str-concat
-  "N",      # pep8-naming
 ]
 unfixable = [
   "RUF100", # Unused noqa
@@ -265,7 +263,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
 [tool.ruff.lint.per-file-ignores]
 "pymongo/__init__.py" = ["E402"]
 ".evergreen/scripts/*.py" = ["T201"]
-".evergreen/scripts/setup-uv.py" = ["I002"]
+".evergreen/scripts/setup_uv.py" = ["I002"]
 "test/*.py" = ["PT", "E402", "PLW", "SIM", "E741", "PTH", "S", "B904", "E722", "T201",
     "RET", "ARG", "F405", "B028", "PGH001", "B018", "F403", "RUF015", "E731", "B007",
     "UP031", "F401", "B023", "F811", "DTZ002", "LOG"]

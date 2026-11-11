@@ -2236,7 +2236,7 @@ class TestClient(AsyncIntegrationTest):
             pool = await async_get_pool(client)
 
             async def fail_connect(*args, **kwargs):
-                raise Exception("failed to connect")
+                raise ConnectionFailure("failed to connect")
 
             pool.connect = fail_connect
             # Un-patch Pool.connect to break the cyclic reference.

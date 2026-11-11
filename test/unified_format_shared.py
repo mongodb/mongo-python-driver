@@ -665,7 +665,7 @@ class MatchEvaluatorUtil:
         elif name == "topologyClosedEvent":
             self.test.assertIsInstance(actual, TopologyClosedEvent)
         else:
-            raise Exception(f"Unsupported event type {name}")
+            raise ValueError(f"Unsupported event type {name}")
 
         self.match_event_fields(actual, spec)
 
