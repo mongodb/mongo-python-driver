@@ -169,8 +169,6 @@ from pymongo.errors import (
     PyMongoError,
     WTimeoutError,
 )
-from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import _ServerMode
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
@@ -180,6 +178,8 @@ if TYPE_CHECKING:
 
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
 
 _IS_SYNC = False
 

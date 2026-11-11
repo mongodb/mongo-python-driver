@@ -38,7 +38,7 @@ from pymongo._kms_connect_shared import (  # noqa: F401
     AsyncKMSConnectCallback,
     HTTPProxyKMSConnect,
     KMSConnectCallback,
-    KMSConnectContext,
+    KMSConnectContext,  # noqa: TC001
 )
 from pymongo.common import check_for_min_version, validate_is_mapping
 from pymongo.errors import ConfigurationError

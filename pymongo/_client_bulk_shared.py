@@ -29,12 +29,12 @@ from pymongo.common import (
 from pymongo.errors import ClientBulkWriteException, OperationFailure
 from pymongo.helpers_shared import _get_wce_doc
 from pymongo.message import _ClientBulkWriteContext
-from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
 
     from pymongo.typings import _AgnosticMongoClient, _DocumentOut, _Pipeline
+    from pymongo.write_concern import WriteConcern
 
 
 def _merge_command(

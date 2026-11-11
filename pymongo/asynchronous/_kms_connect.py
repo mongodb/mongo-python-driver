@@ -36,7 +36,6 @@ from pymongo._kms_connect_shared import (
 from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 from pymongo.helpers_shared import _get_timeout_details
-from pymongo.pool_options import PoolOptions
 from pymongo.pool_shared import (
     _async_configured_socket,
     _async_wrap_socket_tls,
@@ -45,6 +44,7 @@ from pymongo.pool_shared import (
 )
 
 if TYPE_CHECKING:
+    from pymongo.pool_options import PoolOptions
     from pymongo.pyopenssl_context import _sslConn
     from pymongo.typings import _Address
 

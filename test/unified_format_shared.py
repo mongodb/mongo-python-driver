@@ -78,8 +78,6 @@ from pymongo.monitoring import (
     _ServerHeartbeatEvent,
 )
 from pymongo.results import BulkWriteResult
-from pymongo.server_description import ServerDescription
-from pymongo.topology_description import TopologyDescription
 from test.helpers_shared import (
     AWS_CREDS,
     AWS_CREDS_2,
@@ -95,6 +93,9 @@ from test.utils_shared import CMAPListener, camel_to_snake, parse_collection_opt
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
+
+    from pymongo.server_description import ServerDescription
+    from pymongo.topology_description import TopologyDescription
 
 JSON_OPTS = json_util.JSONOptions(tz_aware=False)
 

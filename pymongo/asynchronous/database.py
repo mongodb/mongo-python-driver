@@ -29,7 +29,6 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
-from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo.asynchronous.aggregation import _DatabaseAggregationCommand
 from pymongo.asynchronous.change_stream import AsyncDatabaseChangeStream
@@ -45,6 +44,7 @@ from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipe
 if TYPE_CHECKING:
     import bson
     import bson.codec_options
+    from bson.timestamp import Timestamp
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection

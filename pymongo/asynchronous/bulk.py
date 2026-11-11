@@ -28,7 +28,6 @@ from typing import (
 
 from pymongo import _csot
 from pymongo._telemetry import _generate_op_id_or_none
-from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.command_runner import (
     run_bulk_write_command,
 )
@@ -58,6 +57,7 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, MutableMapping
 
+    from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection

@@ -52,7 +52,6 @@ from urllib.parse import quote_plus
 import pymongo
 import pymongo.errors
 from bson.son import SON
-from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.common import partition_node
 from pymongo.hello import HelloCompat
@@ -85,6 +84,8 @@ from test.version import Version
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
+
+    from pymongo.asynchronous.database import AsyncDatabase
 
 _IS_SYNC = False
 

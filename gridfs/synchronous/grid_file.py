@@ -54,7 +54,6 @@ from pymongo.errors import (
 )
 from pymongo.helpers_shared import _check_write_command_response
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
@@ -63,6 +62,8 @@ from pymongo.synchronous.helpers import next
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from types import TracebackType
+
+    from pymongo.synchronous.client_session import ClientSession
 
 _IS_SYNC = True
 

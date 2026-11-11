@@ -22,10 +22,11 @@ from test.utils import ensure_all_connected
 
 sys.path[0:0] = [""]
 
+from typing import TYPE_CHECKING
+
 from bson import SON
 from pymongo import monitoring
 from pymongo.errors import NotPrimaryError
-from pymongo.synchronous.collection import Collection
 from pymongo.write_concern import WriteConcern
 from test import (
     IntegrationTest,
@@ -36,6 +37,9 @@ from test.helpers import repl_set_step_down
 from test.utils_shared import (
     CMAPListener,
 )
+
+if TYPE_CHECKING:
+    from pymongo.synchronous.collection import Collection
 
 _IS_SYNC = True
 

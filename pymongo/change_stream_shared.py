@@ -19,9 +19,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
-from bson import CodecOptions
 from bson.raw_bson import RawBSONDocument
-from bson.timestamp import Timestamp
 from pymongo import common
 from pymongo.collation import validate_collation_or_none
 from pymongo.errors import (
@@ -35,6 +33,8 @@ from pymongo.typings import _DocumentType
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from bson import CodecOptions
+    from bson.timestamp import Timestamp
     from pymongo.typings import (
         _AgnosticClientSession,
         _AgnosticCollection,

@@ -23,9 +23,8 @@ import sys
 from codecs import utf_8_decode
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Any, no_type_check
+from typing import TYPE_CHECKING, Any, no_type_check
 
-from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
 from test.utils import get_pool
 
@@ -63,7 +62,6 @@ from pymongo.results import (
 )
 from pymongo.synchronous.collection import Collection, ReturnDocument
 from pymongo.synchronous.command_cursor import CommandCursor
-from pymongo.synchronous.mongo_client import MongoClient
 from pymongo.write_concern import WriteConcern
 from test import (  # TODO: fix sync imports in PYTHON-4528
     IntegrationTest,
@@ -78,6 +76,10 @@ from test.utils_shared import (
     wait_until,
 )
 from test.version import Version
+
+if TYPE_CHECKING:
+    from pymongo.synchronous.database import Database
+    from pymongo.synchronous.mongo_client import MongoClient
 
 _IS_SYNC = True
 

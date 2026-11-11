@@ -20,7 +20,6 @@ import copy
 import itertools
 from typing import TYPE_CHECKING, Any, Generic
 
-from bson.objectid import ObjectId
 from pymongo import common
 from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import ClusterTime, _DocumentType
@@ -28,6 +27,8 @@ from pymongo.typings import ClusterTime, _DocumentType
 if TYPE_CHECKING:
     import datetime
     from collections.abc import Mapping
+
+    from bson.objectid import ObjectId
 
 
 def _get_server_type(doc: Mapping[str, Any]) -> int:

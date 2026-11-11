@@ -38,12 +38,12 @@ from pymongo.common import (
     get_validated_options,
 )
 from pymongo.errors import ConfigurationError, InvalidURI
-from pymongo.typings import _Address
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping, Sized
 
     from pymongo.pyopenssl_context import SSLContext
+    from pymongo.typings import _Address
 
 
 SCHEME = "mongodb://"

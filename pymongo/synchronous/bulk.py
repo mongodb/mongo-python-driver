@@ -48,7 +48,6 @@ from pymongo.message import (
     _EncryptedBulkWriteContext,
 )
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.command_runner import (
     run_bulk_write_command,
 )
@@ -58,6 +57,7 @@ from pymongo.write_concern import WriteConcern
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, MutableMapping
 
+    from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection

@@ -56,7 +56,6 @@ from pymongo.common import partition_node
 from pymongo.hello import HelloCompat
 from pymongo.server_api import ServerApi
 from pymongo.ssl_support import HAVE_SSL, _ssl  # type:ignore[attr-defined]
-from pymongo.synchronous.database import Database
 from pymongo.synchronous.mongo_client import MongoClient
 
 sys.path[0:0] = [""]
@@ -85,6 +84,8 @@ from test.version import Version
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
+
+    from pymongo.synchronous.database import Database
 
 _IS_SYNC = True
 

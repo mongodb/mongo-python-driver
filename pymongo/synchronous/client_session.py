@@ -167,8 +167,6 @@ from pymongo.errors import (
     PyMongoError,
     WTimeoutError,
 )
-from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import _ServerMode
 from pymongo.synchronous.cursor_base import _ConnectionManager
 from pymongo.write_concern import WriteConcern
 
@@ -177,6 +175,8 @@ if TYPE_CHECKING:
     from contextlib import AbstractContextManager
     from types import TracebackType
 
+    from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
 

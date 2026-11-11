@@ -218,7 +218,8 @@ extend-select = [
   "YTT",         # flake8-2020
   "EXE",         # flake8-executable
   "ASYNC",       # flake8-async
-  "TC003", # flake8-type-checking: stdlib imports used only for typing.
+  "TC001",       # flake8-type-checking: typing-only first-party imports
+  "TC003",       # flake8-type-checking: typing-only stdlib imports
 ]
 ignore = [
   "PLR",    # Design related pylint codes
@@ -249,8 +250,6 @@ ignore = [
   "BLE",    # Broad `Except` exception catches (intentional)
   # These are all new defaults added in ruff 0.16.0. Individual tickets linked from PYTHON-5964 track enabling each one.
   "INT",    # flake8-gettext
-  "ISC",    # flake8-implicit-str-concat
-  "FLY",    # flynt
 ]
 unfixable = [
   "RUF100", # Unused noqa

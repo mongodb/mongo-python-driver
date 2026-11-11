@@ -32,11 +32,10 @@ import traceback
 import uuid
 import warnings
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.daemon import _spawn_daemon
 from pymongo.uri_parser_shared import _parse_kms_tls_options
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, async_client_context
@@ -116,6 +115,8 @@ from test.version import Version
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+    from pymongo.asynchronous.collection import AsyncCollection
 
 _IS_SYNC = False
 
@@ -1394,7 +1395,7 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
         await self._setup()
         client_encryption = self.create_client_encryption(
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
-            ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL]),
+            f"{self.KEYVAULT_DB}.{self.KEYVAULT_COLL}",
             async_client_context.client,
             OPTS,
         )
@@ -1412,7 +1413,7 @@ class AzureGCPEncryptionTestMixin(AsyncEncryptionIntegrationTest):
         await self._setup()
         encrypted_db = "db"
         encrypted_coll = "coll"
-        keyvault_namespace = ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL])
+        keyvault_namespace = f"{self.KEYVAULT_DB}.{self.KEYVAULT_COLL}"
 
         encryption_opts = AutoEncryptionOpts(
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]

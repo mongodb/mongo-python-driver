@@ -43,7 +43,6 @@ from gridfs.grid_file_shared import (
     _clear_entity_type_registry,
 )
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
-from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
@@ -63,6 +62,8 @@ from pymongo.read_preferences import ReadPreference, _ServerMode
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from types import TracebackType
+
+    from pymongo.asynchronous.client_session import AsyncClientSession
 
 _IS_SYNC = False
 
