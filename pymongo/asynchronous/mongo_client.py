@@ -1684,7 +1684,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     async def __aenter__(self) -> AsyncMongoClient[_DocumentType]:
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self.close()
 
     # See PYTHON-3084.

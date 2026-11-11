@@ -17,7 +17,7 @@ import struct
 import warnings
 from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any, Self, overload
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -310,10 +310,10 @@ class Binary(bytes):
     __subtype: int
 
     def __new__(
-        cls: type[Binary],
+        cls,
         data: memoryview | bytes | bytearray | _mmap | _array[Any],
         subtype: int = BINARY_SUBTYPE,
-    ) -> Binary:
+    ) -> Self:
         if not isinstance(subtype, int):
             raise TypeError(f"subtype must be an instance of int, not {type(subtype)}")
         if subtype >= 256 or subtype < 0:
