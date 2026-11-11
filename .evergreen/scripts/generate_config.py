@@ -957,7 +957,19 @@ def create_fuzz_tasks():
     tags = ["fuzz", "fuzz-nightly"]
     test_vars = dict(TEST_NAME="fuzz", SUB_TEST_NAME="fuzz", UV_PYTHON="3.13")
     test_func = FunctionCall(func="run tests", vars=test_vars)
-    tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func]))
+    # PYTHON-6178: while the scratch corpus still exists, harvest the new
+    # coverage-increasing inputs and open an automated PR growing
+    # fuzz/corpus/. Runs only when the targets finished green, so crashing
+    # inputs never reach the corpus.
+    harvest_cmd = get_subprocess_exec(
+        args=[".evergreen/scripts/harvest-fuzz-corpus.sh"],
+        include_expansions_in_env=[
+            "is_patch",
+            "FUZZ_CORPUS_MAX_UNITS",
+            "FUZZ_CORPUS_MAX_UNIT_BYTES",
+        ],
+    )
+    tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func, harvest_cmd]))
     return tasks
 
 

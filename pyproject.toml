@@ -192,7 +192,15 @@ disable_error_code = ["unused-coroutine", "no-redef"]
 
 [tool.ruff]
 line-length = 100
-extend-exclude = ["drivers-evergreen-tools"]
+extend-exclude = [
+  "drivers-evergreen-tools",
+  # Temporary (PYTHON-6178): ruff's markdown formatter strips doctest
+  # "... " continuation lines that the blacken-docs hook re-adds, so the
+  # two disagree on README.md and CONTRIBUTING.md. Keep ruff format away
+  # from them until the formatters agree.
+  "README.md",
+  "CONTRIBUTING.md",
+]
 
 [tool.ruff.lint]
 extend-select = [
