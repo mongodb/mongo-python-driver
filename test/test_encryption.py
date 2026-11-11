@@ -1386,7 +1386,7 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
         self._setup()
         client_encryption = self.create_client_encryption(
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
-            ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL]),
+            f"{self.KEYVAULT_DB}.{self.KEYVAULT_COLL}",
             client_context.client,
             OPTS,
         )
@@ -1404,7 +1404,7 @@ class AzureGCPEncryptionTestMixin(EncryptionIntegrationTest):
         self._setup()
         encrypted_db = "db"
         encrypted_coll = "coll"
-        keyvault_namespace = ".".join([self.KEYVAULT_DB, self.KEYVAULT_COLL])
+        keyvault_namespace = f"{self.KEYVAULT_DB}.{self.KEYVAULT_COLL}"
 
         encryption_opts = AutoEncryptionOpts(
             self.KMS_PROVIDER_MAP,  # type: ignore[arg-type]
