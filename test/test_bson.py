@@ -1051,7 +1051,6 @@ class TestBSON(unittest.TestCase):
 
     def test_binaryvector_repr(self):
         """Tests of repr(BinaryVector)"""
-
         data = [1 / 127, -7 / 6]
         one = BinaryVector(data, BinaryVectorDtype.FLOAT32)
         self.assertEqual(

@@ -1745,9 +1745,9 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         return True
 
     def __iter__(self) -> GridOut:
-        """Return an iterator over all of this file's data.
+        r"""Return an iterator over all of this file's data.
 
-        The iterator will return lines (delimited by ``b'\\n'``) of
+        The iterator will return lines (delimited by ``b'\n'``) of
         :class:`bytes`. This can be useful when serving files
         using a webserver that handles such an iterator efficiently.
 

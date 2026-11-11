@@ -183,9 +183,7 @@ class TopologyDescription:
         )
 
     def server_descriptions(self) -> dict[_Address, ServerDescription]:
-        """dict of (address,
-        :class:`~pymongo.server_description.ServerDescription`).
-        """
+        """Return a dict of (address, :class:`~pymongo.server_description.ServerDescription`)."""
         return self._server_descriptions.copy()
 
     @property

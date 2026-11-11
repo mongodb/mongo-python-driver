@@ -675,7 +675,7 @@ _LIST_NAMES = tuple((str(i) + "\x00").encode("utf8") for i in range(1000))
 
 
 def gen_list_name() -> Generator[bytes, None, None]:
-    """Generate "keys" for encoded lists in the sequence
+    r"""Generate "keys" for encoded lists in the sequence
     b"0\x00", b"1\x00", b"2\x00", ...
 
     The first 1000 keys are returned from a pre-built cache. All
@@ -950,7 +950,6 @@ def _name_value_to_bson(
     in_fallback_call: bool = False,
 ) -> bytes:
     """Encode a single name, value pair."""
-
     was_integer_overflow = False
 
     # First see if the type is already cached. KeyError will only ever

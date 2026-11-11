@@ -106,7 +106,8 @@ ORCHESTRATOR_NAME_K8S = "kubernetes"
 
 def get_container_env_info() -> dict[str, str]:
     """Returns the runtime and orchestrator of a container.
-    If neither value is present, the metadata client.env.container field will be omitted."""
+    If neither value is present, the metadata client.env.container field will be omitted.
+    """
     container = {}
 
     if Path(DOCKER_ENV_PATH).exists():

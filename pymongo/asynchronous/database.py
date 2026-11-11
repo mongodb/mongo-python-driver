@@ -1219,11 +1219,11 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> list[str]:
-        """Get a list of all the collection names in this database.
+        r"""Get a list of all the collection names in this database.
 
         For example, to list all non-system collections::
 
-            filter = {"name": {"$regex": r"^(?!system\\.)"}}
+            filter = {"name": {"$regex": r"^(?!system\.)"}}
             db.list_collection_names(filter=filter)
 
         :param session: a
