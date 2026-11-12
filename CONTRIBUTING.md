@@ -457,6 +457,8 @@ wheels (CPython 3.12-3.14).
 - Time-boxed fuzzing (runs daily on Evergreen): `just setup-tests fuzz fuzz`
   then `just run-tests`.  Set `FUZZ_MAX_TIME` (seconds, default 300) to change
   the per-target budget.
+- Nightly fuzzing harvests coverage-increasing inputs into `fuzz/corpus/`
+  via an automated PR (PYTHON-6178); see [fuzz/README.md](fuzz/README.md).
 
 ## Testing time-dependent operations
 

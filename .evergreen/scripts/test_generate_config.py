@@ -282,6 +282,30 @@ def test_non_standard_cov_tasks_have_no_cov_companions():
             assert companion in no_cov, f"missing no-cov companion for {task.name}"
 
 
+def test_fuzz_task_wiring():
+    """One fuzz variant serving both flows: the pr-tagged regression task
+    runs on every PR, the untagged nightly task (which also harvests the
+    corpus) never runs in a patch build."""
+    tasks = [task for task in all_tasks() if "fuzz" in (task.tags or [])]
+    assert [task.name for task in tasks if "pr" in (task.tags or [])] == ["fuzz-regression"]
+    assert [task.name for task in tasks if "pr" not in (task.tags or [])] == ["fuzz"]
+    variants = generate_config.create_fuzz_variants()
+    assert len(variants) == 1
+    variant = variants[0]
+    for task in tasks:
+        assert variant_selects(variant, task)
+    assert "pr" in (variant.tags or [])
+    assert variant.batchtime == generate_config_utils.BATCHTIME_DAY
+    # The harvest subprocess bootstraps the comment-bot github app, whose
+    # secrets live in AWS Secrets Manager: it needs the assumed-role
+    # credentials (as resync_specs and backport-pr also pass them).
+    nightly = tasks[1]
+    harvest = nightly.commands[-1]
+    env_vars = harvest.params["include_expansions_in_env"]
+    for var in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"):
+        assert var in env_vars, f"harvest subprocess missing {var}"
+
+
 def test_sanitizer_task_wiring():
     """PYTHON-6048: one pr-tagged sanitizer task, selected by exactly one
     variant that pins MAX_VERSION and runs on a large host for ASan's memory

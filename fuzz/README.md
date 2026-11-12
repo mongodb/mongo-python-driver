@@ -95,6 +95,34 @@ after the corpus directory. The `Failed to find function __sanitizer_*`
 startup warnings are benign libFuzzer symbol probes on uninstrumented runs;
 native ASan-instrumented fuzzing is tracked separately (PYTHON-6169).
 
+### Harvested corpus (nightly)
+
+The nightly run seeds from the spec seed corpus plus every unit in
+`corpus/`, and libFuzzer writes each coverage-increasing ("interesting")
+input it discovers back into its corpus directory. After the targets
+finish, the `fuzz` task harvests those new units, replays them through
+every target once so a unit that fails any target is never published (it
+stays in `fuzz-scratch/` for triage), and opens an automated
+"[Fuzz Corpus]" PR against main (PYTHON-6178). Later nights
+build on prior discoveries instead of restarting from the spec seeds.
+
+Growth is bounded by per-unit and per-run caps, overridable on Evergreen:
+
+- `FUZZ_CORPUS_MAX_UNIT_BYTES` (default 65536): skip units larger than this.
+- `FUZZ_CORPUS_MAX_UNITS` (default 50): keep at most this many new units
+  per run, smallest first.
+
+Units over a cap are discarded, not deferred: they are never persisted, so
+the fuzzer may re-derive them on later nights. A run that finds nothing new
+opens no PR. The harvest deduplicates against `main` only, so while a
+`[Fuzz Corpus]` PR is open, later nights can re-harvest its still-pending
+units and the PRs overlap until one merges (digest-named files keep that
+conflict-free). Crashing inputs are excluded:
+they land in `fuzz-scratch/` as `crash-*` artifacts and follow the
+`regression/` triage flow above. Corpus entries are fuzzer-generated
+inputs, not code: skim the PR for size and for inputs that look like a
+bug rather than a plain coverage gain before merging.
+
 ## Coverage report
 
 Measure which lines the seed corpus reaches:
@@ -113,9 +141,11 @@ gives atheris a graceful exit so coverage.py can flush its report.
 
 ```
 build_corpus.py     Seed corpus builder (mirrors the Go driver's build-oss-fuzz-corpus)
+harvest_corpus.py   Nightly harvest of new coverage-increasing inputs (PYTHON-6178)
 fuzz_decode.py      Fuzz target: bson.decode()
 fuzz_decode_all.py  Fuzz target: bson.decode_all()
 fuzz_is_valid.py    Fuzz target: bson.is_valid()
 fuzz_shared.py      Code shared by the fuzz targets
+corpus/             Harvested coverage-increasing inputs; grown by automated nightly PRs
 regression/         Known bug reproducers; run with the seed corpus on PRs
 ```
