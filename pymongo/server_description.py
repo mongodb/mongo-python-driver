@@ -32,6 +32,9 @@ if TYPE_CHECKING:
     from bson.objectid import ObjectId
     from pymongo.typings import ClusterTime, _Address
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 
 class ServerDescription:
     """Immutable representation of one server.

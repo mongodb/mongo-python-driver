@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from bson import Binary, Code, DBRef, ObjectId, json_util
 from bson.binary import USER_DEFINED_SUBTYPE
 from test.asynchronous import AsyncIntegrationTest
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
 
 _IS_SYNC = False
 

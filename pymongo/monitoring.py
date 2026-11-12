@@ -188,15 +188,15 @@ will not add that listener to existing client instances.
 
 from __future__ import annotations
 
-import datetime
 from collections import abc, namedtuple
-from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from pymongo.hello import Hello, HelloCompat
 from pymongo.helpers_shared import _SENSITIVE_COMMANDS, _handle_exception
 
 if TYPE_CHECKING:
+    import datetime
+    from collections.abc import Mapping, Sequence
     from datetime import timedelta
 
     from bson.objectid import ObjectId

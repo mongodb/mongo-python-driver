@@ -17,8 +17,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pymongo.asynchronous.srv_resolver import _SrvResolver
 from pymongo.common import SRV_SERVICE_NAME, _CaseInsensitiveDictionary
@@ -35,6 +34,9 @@ from pymongo.uri_parser_shared import (
     split_hosts,
     split_options,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _IS_SYNC = False
 

@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Iterator, Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -33,6 +32,8 @@ from pymongo.synchronous.cursor_base import _ConnectionManager, _CursorBase
 from pymongo.typings import _Address, _DocumentType
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping
+
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.collection import Collection
     from pymongo.synchronous.pool import Connection

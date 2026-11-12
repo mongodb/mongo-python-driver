@@ -23,7 +23,6 @@ from __future__ import annotations
 import re
 import sys
 import warnings
-from collections.abc import Mapping, MutableMapping, Sized
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -41,6 +40,8 @@ from pymongo.common import (
 from pymongo.errors import ConfigurationError, InvalidURI
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, MutableMapping, Sized
+
     from pymongo.pyopenssl_context import SSLContext
     from pymongo.typings import _Address
 

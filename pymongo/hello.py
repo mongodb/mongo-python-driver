@@ -17,9 +17,7 @@
 from __future__ import annotations
 
 import copy
-import datetime
 import itertools
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Generic
 
 from pymongo import common
@@ -27,6 +25,9 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.typings import ClusterTime, _DocumentType
 
 if TYPE_CHECKING:
+    import datetime
+    from collections.abc import Mapping
+
     from bson.objectid import ObjectId
 
 

@@ -16,8 +16,6 @@
 
 from __future__ import annotations
 
-from contextlib import AbstractContextManager
-
 __all__ = [
     "ASCENDING",
     "DESCENDING",
@@ -114,6 +112,10 @@ from pymongo import client_session  # noqa: F401
 from pymongo import collection  # noqa: F401
 from pymongo import command_cursor  # noqa: F401
 from pymongo import database  # noqa: F401
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from contextlib import AbstractContextManager
 # isort: on
 
 version = __version__

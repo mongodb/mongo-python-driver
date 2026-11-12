@@ -31,7 +31,6 @@ import sys
 import time
 import traceback
 from collections import defaultdict
-from collections.abc import Mapping
 from inspect import iscoroutinefunction
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
@@ -111,6 +110,8 @@ from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from bson.objectid import ObjectId
     from pymongo.typings import _Address
 

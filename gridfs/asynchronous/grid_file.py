@@ -21,8 +21,6 @@ import inspect
 import io
 import math
 from collections import abc
-from collections.abc import Iterable, Mapping
-from types import TracebackType
 from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
 
 from bson.int64 import Int64
@@ -62,6 +60,9 @@ from pymongo.helpers_shared import _check_write_command_response
 from pymongo.read_preferences import ReadPreference, _ServerMode
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+    from types import TracebackType
+
     from pymongo.asynchronous.client_session import AsyncClientSession
 
 _IS_SYNC = False
