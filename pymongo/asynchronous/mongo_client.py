@@ -2943,6 +2943,11 @@ class _ClientConnectionRetryable(
                             )
                         ):
                             raise
+                        if self._conn_mgr is not None and self._conn_mgr.more_to_come:
+                            # A receive-only exhaust getMore has no request
+                            # in flight to retry: the error reply ends the
+                            # stream.
+                            raise
                         self._retrying = True
                         self._last_error = exc_to_check
                         self._attempt_number += 1

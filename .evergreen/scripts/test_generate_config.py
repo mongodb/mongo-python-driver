@@ -286,7 +286,8 @@ def test_load_balancer_marker_selection(monkeypatch):
     """The load balancer tasks select the load_balancer marker explicitly:
     pytest_conf.py only grants the implicit default markers to unmarked
     tests, so the marker expression must add the full default suite
-    alongside the load balancer tests (PYTHON-6262)."""
+    alongside the load balancer tests (PYTHON-6262).
+    """
     import run_tests
 
     monkeypatch.setattr(run_tests, "TEST_NAME", "load_balancer")
