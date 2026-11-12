@@ -219,6 +219,10 @@ extend-select = [
   "EXE",         # flake8-executable
   "ASYNC",       # flake8-async
   "TC",          # flake8-type-checking
+  "D202",        # pydocstyle: no blank lines between docstring and function body.
+  "D209",        # pydocstyle: closing quotes go on their own line.
+  "D301",        # pydocstyle: docstrings containing \ are defined as string literals.
+  "D403",        # pydocstyle: docstrings start with a capital letter.
 ]
 ignore = [
   "PLR",    # Design related pylint codes
@@ -257,6 +261,7 @@ exclude = []
 flake8-unused-arguments.ignore-variadic-names = true
 isort.required-imports = ["from __future__ import annotations"]
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
+pydocstyle.convention = "pep257"
 
 [tool.ruff.lint.per-file-ignores]
 "pymongo/__init__.py" = ["E402"]

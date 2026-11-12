@@ -553,7 +553,6 @@ class Binary(bytes):
 
         .. versionadded:: 4.10
         """
-
         if self.subtype != VECTOR_SUBTYPE:
             raise ValueError(f"Cannot decode subtype {self.subtype} as a vector")
 

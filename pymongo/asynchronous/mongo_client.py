@@ -1164,7 +1164,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
         .. versionadded:: 4.14
         """
-
         if not isinstance(driver_info, DriverInfo):
             raise TypeError(
                 f"driver_info must be an instance of DriverInfo, not {type(driver_info)}"
@@ -2122,7 +2121,6 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
         """
-
         # Ensure that the client supports retrying on reads and there is no session in
         # transaction, otherwise, we will not support retry behavior for this call.
         retryable = bool(

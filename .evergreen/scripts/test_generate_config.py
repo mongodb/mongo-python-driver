@@ -46,7 +46,8 @@ def all_variants():
 
 def variant_selects(variant, task):
     """Whether the variant's task selectors match the task: "." selects a
-    tag, "!" negates the token that follows, a bare token names a task."""
+    tag, "!" negates the token that follows, a bare token names a task.
+    """
     tags = task.tags or []
     for ref in variant.tasks:
         includes, excludes, names = [], [], []
@@ -75,7 +76,8 @@ def variant_selects(variant, task):
 def test_pr_tasks_pin_max_version():
     """Task-level pins: pr tasks pin MAX_VERSION (the "latest" nightly is
     unstable); the explicit 4.4 min-deps pin is the exception. Variant-merged
-    pins are checked by test_pr_tasks_effectively_pin_max_version."""
+    pins are checked by test_pr_tasks_effectively_pin_max_version.
+    """
     offenders = [
         (task.name, task_vars(task).get("VERSION"))
         for task in pr_tasks()
@@ -91,7 +93,8 @@ def test_pr_tasks_effectively_pin_max_version():
     """Effective pins: a pr task without its own VERSION var inherits the
     selecting variant's version, so every pr task that runs a server must
     resolve to MAX_VERSION once variant expansions merge in. The explicit
-    4.4 min-deps pin is the exception."""
+    4.4 min-deps pin is the exception.
+    """
     tasks = [task for task in all_tasks() if "pr" in (task.tags or [])]
     offenders = []
     for variant in all_variants():
@@ -117,7 +120,8 @@ def test_server_version_pr_tasks_selected_once():
     create_server_version_variants(), not from the selections: a variant
     missing its PR selector would otherwise drop from both sides and the
     comparison would pass. Variants outside the family must not select these
-    tasks (the sanitizer variant pins MAX_VERSION for its own mongod)."""
+    tasks (the sanitizer variant pins MAX_VERSION for its own mongod).
+    """
     sv_tasks = [task for task in pr_tasks() if "server-version" in (task.tags or [])]
     sv_variants = generate_config.create_server_version_variants()
     offenders = {}
@@ -138,7 +142,8 @@ def test_server_version_pr_tasks_selected_once():
 
 def test_pr_tasks_cover_version_boundaries():
     """PRs test the server version boundaries: the newest numbered server
-    with every Python boundary, the min server with its min-Python floor."""
+    with every Python boundary, the min server with its min-Python floor.
+    """
     for version, pythons in (
         (
             generate_config_utils.MAX_VERSION,
@@ -160,7 +165,8 @@ def test_pr_tasks_cover_version_boundaries():
 
 def test_server_version_rotated_tasks_keep_coverage():
     """Per-commit coverage for this family rides the rotated boundary-Python
-    tasks, not the pr tasks (which run only on MAX_VERSION)."""
+    tasks, not the pr tasks (which run only on MAX_VERSION).
+    """
     family = [task for task in all_tasks() if "server-version" in (task.tags or [])]
     cov = [task for task in family if task_vars(task).get("COVERAGE") == "1"]
     assert any("pr" not in (task.tags or []) for task in cov), (
@@ -194,7 +200,8 @@ def test_pr_min_deps_tasks_also_run_coverage():
 def test_standard_family_pr_budget():
     """Patch-build PR budget: at most 5 pr-tagged test-standard tasks (the
     pre-pin baseline), at most 3 on Python 3.14+ (the ubuntu22 compression
-    filter)."""
+    filter).
+    """
     tasks = [task for task in pr_tasks() if "test-standard" in (task.tags or [])]
     assert len(tasks) <= 5, f"too many test-standard PR tasks: {[t.name for t in tasks]}"
     newer = [
@@ -210,7 +217,8 @@ def test_standard_family_pr_budget():
 
 def test_pr_tasks_run_coverage():
     """Pr tasks that pin a server version run with COVERAGE=1; no-cov
-    companions and infrastructure tasks (no VERSION) are exempt."""
+    companions and infrastructure tasks (no VERSION) are exempt.
+    """
     offenders = [
         task.name
         for task in pr_tasks()
@@ -224,7 +232,8 @@ def test_pr_tasks_run_coverage():
 def test_rotated_tasks_keep_nightly_coverage():
     """Batch coverage rides the rotation independently of the pr tasks:
     rotated "latest" tasks and max-Python auth-aws tasks keep COVERAGE=1
-    (min-deps excepted)."""
+    (min-deps excepted).
+    """
     offenders = []
     for task in all_tasks():
         tags = task.tags or []
@@ -272,7 +281,8 @@ def test_rotated_tasks_keep_nightly_coverage():
 def test_non_standard_cov_tasks_have_no_cov_companions():
     """Each non-standard coverage task also emits a no-cov companion, so the
     macOS/Win64 encryption variants (which filter .cov) have a task to
-    activate in patch builds."""
+    activate in patch builds.
+    """
     no_cov = {task.name for task in all_tasks() if "test-non-standard-no-cov" in (task.tags or [])}
     for task in all_tasks():
         if "test-non-standard-no-cov" in (task.tags or []):
@@ -286,7 +296,8 @@ def test_sanitizer_task_wiring():
     """PYTHON-6048: one pr-tagged sanitizer task, selected by exactly one
     variant that pins MAX_VERSION and runs on a large host for ASan's memory
     headroom. VERSION stays off the task so it is exempt
-    from the pr COVERAGE rule (coverage under ASan is not useful)."""
+    from the pr COVERAGE rule (coverage under ASan is not useful).
+    """
     tasks = [task for task in all_tasks() if "sanitizer" in (task.tags or [])]
     assert len(tasks) == 1
     task = tasks[0]
