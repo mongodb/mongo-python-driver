@@ -517,14 +517,20 @@ def create_doctests_variants():
 
 
 def create_fuzz_variants():
+    # One variant for both fuzz flows: the regression reproducers run on
+    # every PR (pr-tagged task), the time-boxed fuzzing runs nightly. The
+    # host needs CPython, which the rhel8 toolchain provides.
     host = HOSTS["rhel8"]
-    # Regression test on every PR.
-    name = get_variant_name("Fuzz Regression", host)
-    pr_variant = create_variant([".fuzz-regression"], name, host=host, tags=["pr"])
-    # Fuzzing requires CPython on Linux/macOS; use a pinned CPython on RHEL8.
     name = get_variant_name("Fuzz", host)
-    nightly = create_variant([".fuzz-nightly"], name, host=host, batchtime=BATCHTIME_DAY)
-    return [pr_variant, nightly]
+    return [
+        create_variant(
+            [".fuzz-regression", ".fuzz-nightly"],
+            name,
+            host=host,
+            batchtime=BATCHTIME_DAY,
+            tags=["pr"],
+        )
+    ]
 
 
 def create_sanitizer_variants() -> list[BuildVariant]:
@@ -967,6 +973,12 @@ def create_fuzz_tasks():
             "is_patch",
             "FUZZ_CORPUS_MAX_UNITS",
             "FUZZ_CORPUS_MAX_UNIT_BYTES",
+            # The harvest bootstraps the comment-bot github app, whose
+            # secrets live in AWS Secrets Manager; pass the assumed-role
+            # credentials as resync_specs and backport-pr also do.
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SESSION_TOKEN",
         ],
     )
     tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func, harvest_cmd]))
