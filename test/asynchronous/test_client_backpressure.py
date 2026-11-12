@@ -162,6 +162,43 @@ class TestBackpressure(AsyncIntegrationTest):
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
+    @async_client_context.require_failCommand_appName
+    async def test_retry_overload_error_getMore_pinned_connection(self):
+        # PYTHON-6262: getMores on pinned (e.g. load-balanced) connections must
+        # retry retryable overload errors on the pinned connection.
+        coll = self.db.coll
+        await coll.delete_many({})
+        await coll.insert_many([{"x": 1} for _ in range(10)])
+        fail_many = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": MAX_ADAPTIVE_RETRIES},
+            "data": {
+                "failCommands": ["getMore"],
+                "errorCode": 462,  # IngressRequestRateLimitExceeded
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+            },
+        }
+        with patch.object(type(self.db.client), "_should_pin_cursor", return_value=True):
+            # Ensure pinned getMore is retried on overload error.
+            cursor = coll.find(batch_size=2)
+            await cursor.next()
+            # Verify the cursor actually pinned its connection.
+            self.assertIsNotNone(cursor._sock_mgr)
+            async with self.fail_point(fail_many):
+                self.assertEqual(len(await cursor.to_list()), 9)
+
+            # Ensure pinned getMore stops retrying after MAX_ADAPTIVE_RETRIES.
+            fail_too_many = fail_many.copy()
+            fail_too_many["mode"] = {"times": MAX_ADAPTIVE_RETRIES + 1}
+            cursor = coll.find(batch_size=2)
+            await cursor.next()
+            async with self.fail_point(fail_too_many):
+                with self.assertRaises(PyMongoError) as error:
+                    await cursor.to_list()
+
+        self.assertIn("RetryableError", str(error.exception))
+        self.assertIn("SystemOverloadedError", str(error.exception))
+
 
 # Prose tests.
 class AsyncTestClientBackpressure(AsyncIntegrationTest):

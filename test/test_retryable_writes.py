@@ -365,6 +365,9 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
             self.assertEqual(final_txn, expected_txn)
         self.assertEqual(coll.find_one(projection={"_id": True}), {"_id": 1})
 
+    # loadBalanced=true clients cannot use multiple seeds, and a retry routed to
+    # a different mongos is not observable through a load balancer (PYTHON-6262).
+    @client_context.require_no_load_balancer
     @client_context.require_multiple_mongoses
     @client_context.require_failCommand_fail_point
     def test_retryable_writes_in_sharded_cluster_multiple_available(self):
