@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 import bson
@@ -24,6 +23,8 @@ from bson.binary import Binary
 from pymongo.errors import ConfigurationError, OperationFailure
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from bson.typings import _ReadableBuffer
     from pymongo.auth_shared import MongoCredential
     from pymongo.synchronous.pool import Connection

@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import logging as _logging
 import re as _re
-from collections.abc import Iterable
 from datetime import datetime as _datetime
 from datetime import timezone
 from typing import TYPE_CHECKING
@@ -68,6 +67,8 @@ from pymongo import _csot
 from pymongo.ocsp_cache import _next_update, _this_update
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from cryptography.hazmat.primitives.asymmetric import (
         dsa,
         ec,

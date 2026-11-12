@@ -18,7 +18,6 @@ import asyncio
 import collections
 import os
 import time
-from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -76,6 +75,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_type import SERVER_TYPE
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, MutableMapping, Sequence
     from types import TracebackType
 
     from bson import CodecOptions

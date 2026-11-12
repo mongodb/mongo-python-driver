@@ -219,6 +219,7 @@ extend-select = [
   "EXE",         # flake8-executable
   "ASYNC",       # flake8-async
   "TC001",       # flake8-type-checking: typing-only first-party imports
+  "TC003",       # flake8-type-checking: typing-only stdlib imports
 ]
 ignore = [
   "PLR",    # Design related pylint codes

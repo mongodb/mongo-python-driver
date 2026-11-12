@@ -26,7 +26,6 @@ import os
 import time
 import types
 from collections import abc
-from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Any
 
 from bson import (
@@ -93,6 +92,8 @@ from test.helpers_shared import (
 from test.utils_shared import CMAPListener, camel_to_snake, parse_collection_options
 
 if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
     from pymongo.server_description import ServerDescription
     from pymongo.topology_description import TopologyDescription
 

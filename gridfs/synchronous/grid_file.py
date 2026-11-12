@@ -21,8 +21,6 @@ import inspect
 import io
 import math
 from collections import abc
-from collections.abc import Iterable, Mapping
-from types import TracebackType
 from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
 
 from bson.int64 import Int64
@@ -62,6 +60,9 @@ from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+    from types import TracebackType
+
     from pymongo.synchronous.client_session import ClientSession
 
 _IS_SYNC = True

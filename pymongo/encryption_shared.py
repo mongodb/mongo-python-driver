@@ -32,6 +32,9 @@ from pymongo.errors import EncryptionError
 if TYPE_CHECKING:
     from pymongo.results import BulkWriteResult
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 
 @contextlib.contextmanager
 def _wrap_encryption_errors() -> Iterator[None]:

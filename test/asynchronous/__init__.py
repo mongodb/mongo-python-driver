@@ -43,7 +43,6 @@ try:
     HAVE_IPADDRESS = True
 except ImportError:
     HAVE_IPADDRESS = False
-from collections.abc import Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial, wraps
 from typing import TYPE_CHECKING, Any, overload
@@ -84,6 +83,8 @@ from test.helpers_shared import (
 from test.version import Version
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
     from pymongo.asynchronous.database import AsyncDatabase
 
 _IS_SYNC = False

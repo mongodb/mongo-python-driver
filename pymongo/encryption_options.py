@@ -19,7 +19,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from pymongo.uri_parser_shared import _parse_kms_tls_options
@@ -45,6 +44,8 @@ from pymongo.common import check_for_min_version, validate_is_mapping
 from pymongo.errors import ConfigurationError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
+
     from pymongo.pyopenssl_context import SSLContext
     from pymongo.typings import _AgnosticMongoClient
 

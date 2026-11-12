@@ -26,7 +26,6 @@ import ssl
 import sys
 import time
 import weakref
-from collections.abc import MutableMapping
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -66,6 +65,8 @@ from pymongo.ssl_support import SSL_EOF_ERRORS, PYSSLError, SSLError, _has_sni
 
 SSLErrors = (PYSSLError, SSLError)
 if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
     from bson.objectid import ObjectId
     from pymongo.auth_shared import _AuthContext
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext

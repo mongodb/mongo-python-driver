@@ -31,6 +31,10 @@ if TYPE_CHECKING:
     from pymongo.pool_options import PoolOptions
     from pymongo.topology_description import _ServerSelector
 
+if TYPE_CHECKING:
+    import threading
+    from collections.abc import Callable, Collection
+
 _IS_SYNC = False
 
 

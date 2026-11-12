@@ -17,9 +17,7 @@
 from __future__ import annotations
 
 import asyncio
-import threading
 import time
-from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -41,6 +39,9 @@ from pymongo.errors import OperationFailure
 from pymongo.lock import Lock, _create_lock
 
 if TYPE_CHECKING:
+    import threading
+    from collections.abc import Mapping, MutableMapping
+
     from pymongo.auth_shared import MongoCredential
     from pymongo.synchronous.pool import Connection
 

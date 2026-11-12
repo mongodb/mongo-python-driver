@@ -17,8 +17,6 @@
 from __future__ import annotations
 
 import queue
-import weakref
-from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from pymongo import _csot
@@ -29,6 +27,9 @@ from pymongo.server_selectors import Selection, writable_server_selector
 from pymongo.topology_description import TOPOLOGY_TYPE, TopologyDescription
 
 if TYPE_CHECKING:
+    import weakref
+    from collections.abc import Callable, Mapping
+
     from bson import ObjectId
     from pymongo.server_description import ServerDescription
     from pymongo.settings_shared import _BaseTopologySettings
