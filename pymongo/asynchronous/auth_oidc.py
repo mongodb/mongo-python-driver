@@ -1,0 +1,231 @@
+# Copyright 2023-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""MONGODB-OIDC Authentication helpers."""
+
+from __future__ import annotations
+
+import asyncio
+import time
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
+
+import bson
+from pymongo._csot import remaining
+from pymongo.auth_oidc_shared import (
+    CALLBACK_VERSION,
+    HUMAN_CALLBACK_TIMEOUT_SECONDS,
+    MACHINE_CALLBACK_TIMEOUT_SECONDS,
+    TIME_BETWEEN_CALLS_SECONDS,
+    OIDCCallback,
+    OIDCCallbackContext,
+    OIDCCallbackResult,
+    OIDCIdPInfo,
+    _get_authenticator,
+    _OIDCAuthenticatorBase,
+)
+from pymongo.errors import OperationFailure
+from pymongo.lock import Lock, _async_create_lock
+
+if TYPE_CHECKING:
+    import threading
+    from collections.abc import Mapping, MutableMapping
+
+    from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.auth_shared import MongoCredential
+
+_IS_SYNC = False
+
+
+@dataclass
+class _OIDCAuthenticator(_OIDCAuthenticatorBase):
+    if not _IS_SYNC:
+        lock: Lock = field(default_factory=_async_create_lock)  # type: ignore[assignment]
+    else:
+        lock: threading.Lock = field(default_factory=_async_create_lock)  # type: ignore[assignment, no-redef]
+
+    async def reauthenticate(self, conn: AsyncConnection) -> Mapping[str, Any] | None:
+        """Handle a reauthenticate from the server."""
+        # Invalidate the token for the connection.
+        self._invalidate(conn.oidc_token_gen_id)
+        # Call the appropriate auth logic for the callback type.
+        if self.properties.callback:
+            return await self._authenticate_machine(conn)
+        return await self._authenticate_human(conn)
+
+    async def authenticate(self, conn: AsyncConnection) -> Mapping[str, Any] | None:
+        """Handle an initial authenticate request."""
+        # First handle speculative auth.
+        # If it succeeded, we are done.
+        ctx = conn.auth_ctx
+        if ctx and ctx.speculate_succeeded():
+            resp = ctx.speculative_authenticate
+            if resp and resp["done"]:
+                conn.oidc_token_gen_id = self.token_gen_id
+                return resp
+
+        # If spec auth failed, call the appropriate auth logic for the callback type.
+        # We cannot assume that the token is invalid, because a proxy may have been
+        # involved that stripped the speculative auth information.
+        if self.properties.callback:
+            return await self._authenticate_machine(conn)
+        return await self._authenticate_human(conn)
+
+    async def _authenticate_machine(self, conn: AsyncConnection) -> Mapping[str, Any]:
+        # If there is a cached access token, try to authenticate with it. If
+        # authentication fails with error code 18, invalidate the access token,
+        # fetch a new access token, and try to authenticate again. If authentication
+        # fails for any other reason, raise the error to the user.
+        if self.access_token:
+            try:
+                return await self._sasl_start_jwt(conn)
+            except OperationFailure as e:
+                if self._is_auth_error(e):
+                    return await self._authenticate_machine(conn)
+                raise
+        return await self._sasl_start_jwt(conn)
+
+    async def _authenticate_human(self, conn: AsyncConnection) -> Mapping[str, Any] | None:
+        # If we have a cached access token, try a JwtStepRequest.
+        # authentication fails with error code 18, invalidate the access token,
+        # and try to authenticate again.  If authentication fails for any other
+        # reason, raise the error to the user.
+        if self.access_token:
+            try:
+                return await self._sasl_start_jwt(conn)
+            except OperationFailure as e:
+                if self._is_auth_error(e):
+                    return await self._authenticate_human(conn)
+                raise
+
+        # If we have a cached refresh token, try a JwtStepRequest with that.
+        # If authentication fails with error code 18, invalidate the access and
+        # refresh tokens, and try to authenticate again. If authentication fails for
+        # any other reason, raise the error to the user.
+        if self.refresh_token:
+            try:
+                return await self._sasl_start_jwt(conn)
+            except OperationFailure as e:
+                if self._is_auth_error(e):
+                    self.refresh_token = None
+                    return await self._authenticate_human(conn)
+                raise
+
+        # Start a new Two-Step SASL conversation.
+        # Run a PrincipalStepRequest to get the IdpInfo.
+        cmd = self._get_start_command(None)
+        start_resp = await self._run_command(conn, cmd)
+        # Attempt to authenticate with a JwtStepRequest.
+        return await self._sasl_continue_jwt(conn, start_resp)
+
+    async def _get_access_token(self) -> str | None:
+        properties = self.properties
+        cb: OIDCCallback | None
+        resp: OIDCCallbackResult
+
+        is_human = properties.human_callback is not None
+        if is_human and self.idp_info is None:
+            return None
+
+        if properties.callback:
+            cb = properties.callback
+        if properties.human_callback:
+            cb = properties.human_callback
+
+        prev_token = self.access_token
+        if prev_token:
+            return prev_token
+
+        if cb is None and not prev_token:
+            return None
+
+        if not prev_token and cb is not None:
+            async with self.lock:  # type: ignore[attr-defined]
+                # See if the token was changed while we were waiting for the
+                # lock.
+                new_token = self.access_token
+                if new_token != prev_token:
+                    return new_token
+
+                # Ensure that we are waiting a min time between callback invocations.
+                delta = time.time() - self.last_call_time
+                if delta < TIME_BETWEEN_CALLS_SECONDS:
+                    await asyncio.sleep(TIME_BETWEEN_CALLS_SECONDS - delta)
+                self.last_call_time = time.time()
+
+                if is_human:
+                    timeout = HUMAN_CALLBACK_TIMEOUT_SECONDS
+                    assert self.idp_info is not None
+                else:
+                    timeout = int(remaining() or MACHINE_CALLBACK_TIMEOUT_SECONDS)
+                context = OIDCCallbackContext(
+                    timeout_seconds=timeout,
+                    version=CALLBACK_VERSION,
+                    refresh_token=self.refresh_token,
+                    idp_info=self.idp_info,
+                    username=self.properties.username,
+                )
+                if not _IS_SYNC:
+                    resp = await asyncio.get_running_loop().run_in_executor(None, cb.fetch, context)  # type: ignore[assignment]
+                else:
+                    resp = cb.fetch(context)
+                if not isinstance(resp, OIDCCallbackResult):
+                    raise TypeError(
+                        f"Callback result must be of type OIDCCallbackResult, not {type(resp)}"
+                    )
+                self.refresh_token = resp.refresh_token
+                self.access_token = resp.access_token
+                self.token_gen_id += 1
+
+        return self.access_token
+
+    async def _run_command(
+        self, conn: AsyncConnection, cmd: MutableMapping[str, Any]
+    ) -> Mapping[str, Any]:
+        try:
+            return await conn.command("$external", cmd, no_reauth=True)  # type: ignore[call-arg]
+        except OperationFailure as e:
+            if self._is_auth_error(e):
+                self._invalidate(conn.oidc_token_gen_id)
+            raise
+
+    async def _sasl_continue_jwt(
+        self, conn: AsyncConnection, start_resp: Mapping[str, Any]
+    ) -> Mapping[str, Any]:
+        self.access_token = None
+        self.refresh_token = None
+        start_payload: dict[str, Any] = bson.decode(start_resp["payload"])
+        if "issuer" in start_payload:
+            self.idp_info = OIDCIdPInfo(**start_payload)
+        access_token = await self._get_access_token()
+        conn.oidc_token_gen_id = self.token_gen_id
+        cmd = self._get_continue_command({"jwt": access_token}, start_resp)
+        return await self._run_command(conn, cmd)
+
+    async def _sasl_start_jwt(self, conn: AsyncConnection) -> Mapping[str, Any]:
+        access_token = await self._get_access_token()
+        conn.oidc_token_gen_id = self.token_gen_id
+        cmd = self._get_start_command({"jwt": access_token})
+        return await self._run_command(conn, cmd)
+
+
+async def _authenticate_oidc(
+    credentials: MongoCredential, conn: AsyncConnection, reauthenticate: bool
+) -> Mapping[str, Any] | None:
+    """Authenticate using MONGODB-OIDC."""
+    authenticator = _get_authenticator(credentials, conn.address, _OIDCAuthenticator)
+    if reauthenticate:
+        return await authenticator.reauthenticate(conn)
+    else:
+        return await authenticator.authenticate(conn)

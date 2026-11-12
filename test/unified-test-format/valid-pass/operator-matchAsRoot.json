@@ -1,0 +1,151 @@
+{
+  "description": "operator-matchAsRoot",
+  "schemaVersion": "1.13",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0"
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "test"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "coll0"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "coll0",
+      "databaseName": "test",
+      "documents": [
+        {
+          "_id": 1,
+          "x": {
+            "y": 2,
+            "z": 3
+          }
+        },
+        {
+          "_id": 2,
+          "json": "{ \"x\": 1, \"y\": 2 }"
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "matchAsRoot with nested document",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": {
+                "$$matchAsRoot": {
+                  "y": 2
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "matchAsRoot performs flexible numeric comparisons",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": {
+                "$$matchAsRoot": {
+                  "y": 2
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "matchAsRoot evaluates special operators",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": {
+                "$$matchAsRoot": {
+                  "y": 2,
+                  "z": {
+                    "$$exists": true
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "matchAsRoot with matchAsDocument",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 2
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 2,
+              "json": {
+                "$$matchAsDocument": {
+                  "$$matchAsRoot": {
+                    "x": 1
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

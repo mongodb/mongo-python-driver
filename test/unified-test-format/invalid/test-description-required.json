@@ -1,0 +1,9 @@
+{
+  "description": "test-description-required",
+  "schemaVersion": "1.0",
+  "tests": [
+    {
+      "operation": []
+    }
+  ]
+}

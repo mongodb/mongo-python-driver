@@ -1,0 +1,17 @@
+digraph "Monitor and PeriodicExecutor" {
+    // Strong references.
+    topology -> server
+    server -> monitor
+    monitor -> executor
+    executor -> "target()"
+    "target()" -> self_ref
+    thread -> "target()"
+
+    // Weak references
+    edge [style="dashed"];
+
+    self_ref -> monitor [curved=true]
+    monitor -> topology
+    executor -> thread
+    _EXECUTORS -> executor
+}

@@ -1,0 +1,50 @@
+diff --git a/test/connection_logging/connection-logging.json b/test/connection_logging/connection-logging.json
+index 5799e834..72103b3c 100644
+--- a/test/connection_logging/connection-logging.json
++++ b/test/connection_logging/connection-logging.json
+@@ -446,6 +446,22 @@
+                 }
+               }
+             },
++            {
++              "level": "debug",
++              "component": "connection",
++              "data": {
++                "message": "Connection pool cleared",
++                "serverHost": {
++                  "$$type": "string"
++                },
++                "serverPort": {
++                  "$$type": [
++                    "int",
++                    "long"
++                  ]
++                }
++              }
++            },
+             {
+               "level": "debug",
+               "component": "connection",
+@@ -498,22 +514,6 @@
+                   ]
+                 }
+               }
+-            },
+-            {
+-              "level": "debug",
+-              "component": "connection",
+-              "data": {
+-                "message": "Connection pool cleared",
+-                "serverHost": {
+-                  "$$type": "string"
+-                },
+-                "serverPort": {
+-                  "$$type": [
+-                    "int",
+-                    "long"
+-                  ]
+-                }
+-              }
+             }
+           ]
+         }

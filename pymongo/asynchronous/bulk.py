@@ -1,0 +1,450 @@
+# Copyright 2014-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""The bulk write operations interface.
+
+.. versionadded:: 2.7
+"""
+
+from __future__ import annotations
+
+import copy
+from itertools import islice
+from typing import (
+    TYPE_CHECKING,
+    Any,
+)
+
+from pymongo import _csot
+from pymongo._telemetry import _generate_op_id_or_none
+from pymongo.asynchronous.command_runner import (
+    run_bulk_write_command,
+)
+from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.bulk_shared import (
+    _COMMANDS,
+    _AgnosticBulkBase,
+    _merge_command,
+    _raise_bulk_write_error,
+)
+from pymongo.client_session_shared import _validate_session_write_concern
+from pymongo.errors import (
+    ConfigurationError,
+    InvalidOperation,
+    OperationFailure,
+)
+from pymongo.helpers_shared import _RETRYABLE_ERROR_CODES
+from pymongo.message import (
+    _DELETE,
+    _UPDATE,
+    _BulkWriteContext,
+    _EncryptedBulkWriteContext,
+)
+from pymongo.read_preferences import ReadPreference
+from pymongo.write_concern import WriteConcern
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping, MutableMapping
+
+    from pymongo.asynchronous.client_session import AsyncClientSession
+    from pymongo.asynchronous.collection import AsyncCollection
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient
+    from pymongo.asynchronous.pool import AsyncConnection
+
+_IS_SYNC = False
+
+
+class _AsyncBulk(_AgnosticBulkBase):
+    """The private guts of the bulk write API."""
+
+    collection: AsyncCollection[Any]
+
+    @_handle_reauth
+    async def write_command(
+        self,
+        bwc: _BulkWriteContext,
+        cmd: MutableMapping[str, Any],
+        request_id: int,
+        msg: bytes,
+        docs: list[Mapping[str, Any]],
+        client: AsyncMongoClient[Any],
+    ) -> dict[str, Any]:
+        """Run a batch write command, returning the response as a dict."""
+        cmd[bwc.field] = docs
+        result_docs, _, _ = await run_bulk_write_command(
+            bwc,
+            cmd,
+            request_id,
+            msg,
+            client=client,
+        )
+        return result_docs[0]
+
+    async def unack_write(
+        self,
+        bwc: _BulkWriteContext,
+        cmd: MutableMapping[str, Any],
+        request_id: int,
+        msg: bytes,
+        max_doc_size: int,
+        docs: list[Mapping[str, Any]],
+        client: AsyncMongoClient[Any],
+    ) -> Mapping[str, Any] | None:
+        """Send an unacknowledged batch write command."""
+        # Historically the STARTED log omits the documents while the published
+        # CommandStartedEvent includes them, so log ``cmd`` but publish a copy
+        # carrying the ``docs`` field.
+        published = dict(cmd)
+        published[bwc.field] = docs
+        await run_bulk_write_command(
+            bwc,
+            cmd,
+            request_id,
+            msg,
+            client=client,
+            orig=published,
+            max_doc_size=max_doc_size,
+            unacknowledged=True,
+        )
+        return None
+
+    async def _execute_batch_unack(
+        self,
+        bwc: _BulkWriteContext | _EncryptedBulkWriteContext,
+        cmd: dict[str, Any],
+        ops: list[Mapping[str, Any]],
+        client: AsyncMongoClient[Any],
+    ) -> list[Mapping[str, Any]]:
+        if self.is_encrypted:
+            _, batched_cmd, to_send = bwc.batch_command(cmd, ops)
+            await bwc.conn.command(  # type: ignore[misc]
+                bwc.db_name,
+                batched_cmd,  # type: ignore[arg-type]
+                write_concern=WriteConcern(w=0),
+                session=bwc.session,  # type: ignore[arg-type]
+                client=client,  # type: ignore[arg-type]
+            )
+        else:
+            request_id, msg, to_send = bwc.batch_command(cmd, ops)
+            # Though this isn't strictly a "legacy" write, the helper
+            # handles publishing commands and sending our message
+            # without receiving a result. Send 0 for max_doc_size
+            # to disable size checking. Size checking is handled while
+            # the documents are encoded to BSON.
+            await self.unack_write(bwc, cmd, request_id, msg, 0, to_send, client)  # type: ignore[arg-type]
+
+        return to_send
+
+    async def _execute_batch(
+        self,
+        bwc: _BulkWriteContext | _EncryptedBulkWriteContext,
+        cmd: dict[str, Any],
+        ops: list[Mapping[str, Any]],
+        client: AsyncMongoClient[Any],
+    ) -> tuple[dict[str, Any], list[Mapping[str, Any]]]:
+        if self.is_encrypted:
+            _, batched_cmd, to_send = bwc.batch_command(cmd, ops)
+            result = await bwc.conn.command(  # type: ignore[misc]
+                bwc.db_name,
+                batched_cmd,  # type: ignore[arg-type]
+                codec_options=bwc.codec,
+                session=bwc.session,  # type: ignore[arg-type]
+                client=client,  # type: ignore[arg-type]
+            )
+        else:
+            request_id, msg, to_send = bwc.batch_command(cmd, ops)
+            result = await self.write_command(bwc, cmd, request_id, msg, to_send, client)  # type: ignore[arg-type]
+
+        return result, to_send  # type: ignore[return-value]
+
+    async def _execute_command(
+        self,
+        generator: Iterator[Any],
+        write_concern: WriteConcern,
+        session: AsyncClientSession | None,
+        conn: AsyncConnection,
+        op_id: int | None,
+        retryable: bool,
+        full_result: MutableMapping[str, Any],
+        final_write_concern: WriteConcern | None = None,
+    ) -> None:
+        db_name = self.collection.database.name
+        client = self.collection.database.client
+        listeners = client._event_listeners
+
+        if not self.current_run:
+            self.current_run = next(generator)
+            self.next_run = None
+        run = self.current_run
+
+        # AsyncConnection.command validates the session, but we use
+        # run_bulk_write_command.
+        conn.validate_session(client, session)
+        last_run = False
+
+        while run:
+            if not self.retrying:
+                self.next_run = next(generator, None)
+                if self.next_run is None:
+                    last_run = True
+
+            cmd_name = _COMMANDS[run.op_type]
+            bwc = self.bulk_ctx_class(
+                db_name,
+                cmd_name,
+                conn,
+                op_id,
+                listeners,
+                session,
+                run.op_type,
+                self.collection.codec_options,
+            )
+
+            while run.idx_offset < len(run.ops):
+                # If this is the last possible operation, use the
+                # final write concern.
+                if last_run and (len(run.ops) - run.idx_offset) == 1:
+                    write_concern = final_write_concern or write_concern
+
+                cmd = {cmd_name: self.collection.name, "ordered": self.ordered}
+                if self.comment:
+                    cmd["comment"] = self.comment
+                _csot.apply_write_concern(cmd, write_concern)
+                if self.bypass_doc_val is not None:
+                    cmd["bypassDocumentValidation"] = self.bypass_doc_val
+                if self.let is not None and run.op_type in (_DELETE, _UPDATE):
+                    cmd["let"] = self.let
+                if session:
+                    # Start a new retryable write unless one was already
+                    # started for this command.
+                    if retryable and not self.started_retryable_write:
+                        session._start_retryable_write()
+                        self.started_retryable_write = True
+                    session._apply_to(cmd, retryable, ReadPreference.PRIMARY, conn)
+                conn.send_cluster_time(cmd, session, client)
+                conn.add_server_api(cmd)
+                # CSOT: apply timeout before encoding the command.
+                conn.apply_timeout(cmd)
+                ops = islice(run.ops, run.idx_offset, None)
+
+                # Run as many ops as possible in one command.
+                if write_concern.acknowledged:
+                    result, to_send = await self._execute_batch(bwc, cmd, ops, client)
+
+                    # Retryable writeConcernErrors halt the execution of this run.
+                    wce = result.get("writeConcernError", {})
+                    if wce.get("code", 0) in _RETRYABLE_ERROR_CODES:
+                        # Synthesize the full bulk result without modifying the
+                        # current one because this write operation may be retried.
+                        full = copy.deepcopy(full_result)
+                        _merge_command(run, full, run.idx_offset, result)
+                        _raise_bulk_write_error(full)
+
+                    _merge_command(run, full_result, run.idx_offset, result)
+
+                    # We're no longer in a retry once a command succeeds.
+                    self.retrying = False
+                    self.started_retryable_write = False
+
+                    if self.ordered and "writeErrors" in result:
+                        break
+                else:
+                    to_send = await self._execute_batch_unack(bwc, cmd, ops, client)
+
+                run.idx_offset += len(to_send)
+
+            # We're supposed to continue if errors are
+            # at the write concern level (e.g. wtimeout)
+            if self.ordered and full_result["writeErrors"]:
+                break
+            # Reset our state
+            self.current_run = run = self.next_run
+
+    async def execute_command(
+        self,
+        generator: Iterator[Any],
+        write_concern: WriteConcern,
+        session: AsyncClientSession | None,
+        operation: str,
+    ) -> dict[str, Any]:
+        """Execute using write commands."""
+        # nModified is only reported for write commands, not legacy ops.
+        full_result = {
+            "writeErrors": [],
+            "writeConcernErrors": [],
+            "nInserted": 0,
+            "nUpserted": 0,
+            "nMatched": 0,
+            "nModified": 0,
+            "nRemoved": 0,
+            "upserted": [],
+        }
+        client = self.collection.database.client
+        op_id = _generate_op_id_or_none(client._event_listeners)
+
+        async def retryable_bulk(
+            session: AsyncClientSession | None, conn: AsyncConnection, retryable: bool
+        ) -> None:
+            await self._execute_command(
+                generator,
+                write_concern,
+                session,
+                conn,
+                op_id,
+                retryable,
+                full_result,
+            )
+
+        _ = await client._retryable_write(
+            self.is_retryable,
+            retryable_bulk,
+            session,
+            operation,
+            bulk=self,  # type: ignore[arg-type]
+            operation_id=op_id,
+        )
+
+        if full_result["writeErrors"] or full_result["writeConcernErrors"]:
+            _raise_bulk_write_error(full_result)
+        return full_result
+
+    async def execute_op_msg_no_results(
+        self, conn: AsyncConnection, generator: Iterator[Any]
+    ) -> None:
+        """Execute write commands with OP_MSG and w=0 writeConcern, unordered."""
+        db_name = self.collection.database.name
+        client = self.collection.database.client
+        listeners = client._event_listeners
+        op_id = _generate_op_id_or_none(listeners)
+
+        if not self.current_run:
+            self.current_run = next(generator)
+        run = self.current_run
+
+        while run:
+            cmd_name = _COMMANDS[run.op_type]
+            bwc = self.bulk_ctx_class(
+                db_name,
+                cmd_name,
+                conn,
+                op_id,
+                listeners,
+                None,
+                run.op_type,
+                self.collection.codec_options,
+            )
+
+            while run.idx_offset < len(run.ops):
+                cmd = {
+                    cmd_name: self.collection.name,
+                    "ordered": False,
+                    "writeConcern": {"w": 0},
+                }
+                conn.add_server_api(cmd)
+                ops = islice(run.ops, run.idx_offset, None)
+                # Run as many ops as possible.
+                to_send = await self._execute_batch_unack(bwc, cmd, ops, client)
+                run.idx_offset += len(to_send)
+            self.current_run = run = next(generator, None)
+
+    async def execute_command_no_results(
+        self,
+        conn: AsyncConnection,
+        generator: Iterator[Any],
+        write_concern: WriteConcern,
+    ) -> None:
+        """Execute write commands with OP_MSG and w=0 WriteConcern, ordered."""
+        full_result = {
+            "writeErrors": [],
+            "writeConcernErrors": [],
+            "nInserted": 0,
+            "nUpserted": 0,
+            "nMatched": 0,
+            "nModified": 0,
+            "nRemoved": 0,
+            "upserted": [],
+        }
+        # Ordered bulk writes have to be acknowledged so that we stop
+        # processing at the first error, even when the application
+        # specified unacknowledged writeConcern.
+        initial_write_concern = WriteConcern()
+        op_id = _generate_op_id_or_none(self.collection.database.client._event_listeners)
+        try:
+            await self._execute_command(
+                generator,
+                initial_write_concern,
+                None,
+                conn,
+                op_id,
+                False,
+                full_result,
+                write_concern,
+            )
+        except OperationFailure:
+            pass
+
+    async def execute_no_results(
+        self,
+        conn: AsyncConnection,
+        generator: Iterator[Any],
+        write_concern: WriteConcern,
+    ) -> None:
+        """Execute all operations, returning no results (w=0)."""
+        if self.uses_collation:
+            raise ConfigurationError("Collation is unsupported for unacknowledged writes.")
+        if self.uses_array_filters:
+            raise ConfigurationError("arrayFilters is unsupported for unacknowledged writes.")
+        # Guard against unsupported unacknowledged writes.
+        unack = write_concern and not write_concern.acknowledged
+        if unack and self.uses_sort and conn.max_wire_version < 25:
+            raise ConfigurationError(
+                "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."
+            )
+        # Cannot have both unacknowledged writes and bypass document validation.
+        if self.bypass_doc_val:
+            raise OperationFailure(
+                "Cannot set bypass_document_validation with unacknowledged write concern"
+            )
+
+        if self.ordered:
+            return await self.execute_command_no_results(conn, generator, write_concern)
+        return await self.execute_op_msg_no_results(conn, generator)
+
+    async def execute(
+        self,
+        write_concern: WriteConcern,
+        session: AsyncClientSession | None,
+        operation: str,
+    ) -> Any:
+        """Execute operations."""
+        if not self.ops:
+            raise InvalidOperation("No operations to execute")
+        if self.executed:
+            raise InvalidOperation("Bulk operations can only be executed once.")
+        self.executed = True
+        write_concern = write_concern or self.collection.write_concern
+        session = _validate_session_write_concern(session, write_concern)
+
+        if self.ordered:
+            generator = self.gen_ordered()
+        else:
+            generator = self.gen_unordered()
+
+        client = self.collection.database.client
+        if not write_concern.acknowledged:
+            async with await client._conn_for_writes(session, operation) as connection:
+                await self.execute_no_results(connection, generator, write_concern)
+                return None
+        else:
+            return await self.execute_command(generator, write_concern, session, operation)

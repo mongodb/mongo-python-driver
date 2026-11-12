@@ -1,0 +1,77 @@
+name: Create Release Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+        branch_name:
+          description: The name of the new branch
+          required: true
+        version:
+          description: The version to set on the branch
+          required: true
+        base_ref:
+          description: The base reference for the branch
+        push_changes:
+          description: Whether to push the changes
+          default: "true"
+
+concurrency:
+  group: create-branch-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash -eux {0}
+
+jobs:
+  create-branch:
+    environment: release
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    outputs:
+      version: ${{ steps.pre-publish.outputs.version }}
+    steps:
+      - name: Create app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+      - name: Store token
+        shell: bash -eu {0}
+        # zizmor: ignore[template-injection] GH_TOKEN is a GitHub App installation token, not attacker-controllable
+        run: echo "GH_TOKEN=${{ steps.app-token.outputs.token }}" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.ref }}
+          token: ${{ env.GH_TOKEN }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Configure git auth for push
+        shell: bash -eu {0}
+        run: |
+          auth_header=$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)
+          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ${auth_header}"
+      - uses: mongodb-labs/drivers-github-tools/setup@99b1cbd729bc83bf7fc74e1b2a97fffad3d65d7b  # v3.1.1
+        with:
+          aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws_region_name: ${{ vars.AWS_REGION_NAME }}
+          aws_secret_id: ${{ secrets.AWS_SECRET_ID }}
+          artifactory_username: ${{ vars.ARTIFACTORY_USERNAME }}
+      - name: Get hatch
+        run: pip install hatch
+      - uses: mongodb-labs/drivers-github-tools/create-branch@99b1cbd729bc83bf7fc74e1b2a97fffad3d65d7b  # v3.1.1
+        id: create-branch
+        with:
+          branch_name: ${{ inputs.branch_name }}
+          version: ${{ inputs.version }}
+          base_ref: ${{ inputs.base_ref }}
+          push_changes: ${{ inputs.push_changes }}
+          version_bump_script: hatch version
+          evergreen_project: mongo-python-driver-release
+          release_workflow_path: ./.github/workflows/release-python.yml

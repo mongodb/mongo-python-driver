@@ -1,0 +1,14 @@
+{
+    "fields": [
+        {
+            "keyId": {
+                "$binary": {
+                    "base64": "LOCALAAAAAAAAAAAAAAAAA==",
+                    "subType": "04"
+                }
+            },
+            "path": "foo",
+            "bsonType": "string"
+        }
+    ]
+}

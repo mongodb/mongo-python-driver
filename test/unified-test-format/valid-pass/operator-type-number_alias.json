@@ -1,0 +1,174 @@
+{
+  "description": "operator-type-number_alias",
+  "schemaVersion": "1.0",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0"
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "test"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "coll0"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "coll0",
+      "databaseName": "test",
+      "documents": []
+    }
+  ],
+  "tests": [
+    {
+      "description": "type number alias matches int32",
+      "operations": [
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": {
+                "$numberInt": "2147483647"
+              }
+            }
+          }
+        },
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": {
+                "$$type": "number"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "type number alias matches int64",
+      "operations": [
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": {
+                "$numberLong": "9223372036854775807"
+              }
+            }
+          }
+        },
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": {
+                "$$type": "number"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "type number alias matches double",
+      "operations": [
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": {
+                "$numberDouble": "2.71828"
+              }
+            }
+          }
+        },
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": {
+                "$$type": "number"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "description": "type number alias matches decimal128",
+      "operations": [
+        {
+          "name": "insertOne",
+          "object": "collection0",
+          "arguments": {
+            "document": {
+              "_id": 1,
+              "x": {
+                "$numberDecimal": "3.14159"
+              }
+            }
+          }
+        },
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": {
+                "$$type": "number"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

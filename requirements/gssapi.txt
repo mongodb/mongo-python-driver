@@ -1,0 +1,2 @@
+pykerberos>=1.2.4;os.name!='nt'
+winkerberos>=0.12.2;os.name=='nt'

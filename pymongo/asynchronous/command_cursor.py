@@ -1,0 +1,259 @@
+# Copyright 2014-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""AsyncCommandCursor class to iterate over command results."""
+
+from __future__ import annotations
+
+from collections import deque
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    NoReturn,
+)
+
+from bson import CodecOptions, _convert_raw_document_lists_to_streams
+from pymongo.asynchronous.cursor_base import _AsyncCursorBase, _ConnectionManager
+from pymongo.cursor_shared import _CURSOR_CLOSED_ERRORS, _AgnosticCommandCursorBase
+from pymongo.errors import ConnectionFailure, InvalidOperation, OperationFailure
+from pymongo.message import _GetMore, _OpMsg, _RawBatchGetMore
+from pymongo.response import PinnedResponse
+from pymongo.typings import _Address, _DocumentType
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Mapping
+
+    from pymongo.asynchronous.client_session import AsyncClientSession
+    from pymongo.asynchronous.collection import AsyncCollection
+    from pymongo.asynchronous.pool import AsyncConnection
+
+_IS_SYNC = False
+
+
+class AsyncCommandCursor(
+    _AgnosticCommandCursorBase[_DocumentType], _AsyncCursorBase[_DocumentType]
+):
+    """An asynchronous cursor / iterator over command cursors.
+    Used by :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate`,
+    :meth:`~pymongo.asynchronous.database.AsyncDatabase.aggregate`,
+    :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_indexes`,
+    :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_search_indexes`
+    :meth:`~pymongo.asynchronous.database.AsyncDatabase.list_collections`,
+    :meth:`~pymongo.asynchronous.database.AsyncDatabase.cursor_command`,
+    and :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.list_databases`
+    to iterate MongoDB command results.
+
+    Should not be called directly by application developers.
+    """
+
+    _collection: AsyncCollection[_DocumentType]
+
+    async def _maybe_pin_connection(self, conn: AsyncConnection) -> None:
+        client = self._collection.database.client
+        if not client._should_pin_cursor(self._session):
+            return
+        if not self._sock_mgr:
+            conn.pin_cursor()
+            conn_mgr = _ConnectionManager(conn, False)
+            # Ensure the connection gets returned when the entire result is
+            # returned in the first batch.
+            if self._id == 0:
+                await conn_mgr.close()
+            else:
+                self._sock_mgr = conn_mgr
+
+    async def _send_message(self, operation: _GetMore) -> None:
+        """Send a getmore message and handle the response."""
+        client = self._collection.database.client
+        try:
+            response = await client._run_operation(
+                operation, self._run_with_conn, address=self._address
+            )
+        except OperationFailure as exc:
+            if exc.code in _CURSOR_CLOSED_ERRORS:
+                # Don't send killCursors because the cursor is already closed.
+                self._killed = True
+            if exc.timeout:
+                self._die_no_lock()
+            else:
+                # Return the session and pinned connection, if necessary.
+                await self.close()
+            raise
+        except ConnectionFailure:
+            # Don't send killCursors because the cursor is already closed.
+            self._killed = True
+            # Return the session and pinned connection, if necessary.
+            await self.close()
+            raise
+        except Exception:
+            await self.close()
+            raise
+
+        if isinstance(response, PinnedResponse):
+            if not self._sock_mgr:
+                self._sock_mgr = _ConnectionManager(response.conn, response.more_to_come)  # type: ignore[arg-type]
+        cursor = response.docs[0]["cursor"]
+        documents = cursor["nextBatch"]
+        self._postbatchresumetoken = cursor.get("postBatchResumeToken")
+        self._id = cursor["id"]
+
+        if self._id == 0:
+            await self.close()
+        self._data = deque(documents)
+
+    async def _refresh(self) -> int:
+        """Refreshes the cursor with more data from the server.
+
+        Returns the length of self._data after refresh. Will exit early if
+        self._data is already non-empty. Raises OperationFailure when the
+        cursor cannot be refreshed due to an error on the query.
+        """
+        if len(self._data) or self._killed:
+            return len(self._data)
+
+        if self._id:  # Get More
+            dbname, collname = self._ns.split(".", 1)
+            read_pref = self._collection._read_preference_for(self.session)
+            await self._send_message(
+                self._getmore_class(
+                    dbname,
+                    collname,
+                    self._batch_size,
+                    self._id,
+                    self._collection.codec_options,
+                    read_pref,
+                    self._session,
+                    self._collection.database.client,
+                    self._max_await_time_ms,
+                    self._sock_mgr,
+                    False,
+                    self._comment,
+                )
+            )
+        else:  # Cursor id is zero nothing else to return
+            await self._die_lock()
+
+        return len(self._data)
+
+    def __aiter__(self) -> AsyncIterator[_DocumentType]:
+        return self
+
+    async def __aenter__(self) -> AsyncCommandCursor[_DocumentType]:
+        return self
+
+    async def next(self) -> _DocumentType:
+        """Advance the cursor."""
+        # Block until a document is returnable.
+        while self.alive:
+            doc = await self._try_next(True)
+            if doc is not None:
+                return doc
+
+        raise StopAsyncIteration
+
+    async def __anext__(self) -> _DocumentType:
+        return await self.next()
+
+    async def _try_next(self, get_more_allowed: bool) -> _DocumentType | None:
+        """Advance the cursor blocking for at most one getMore command."""
+        if not len(self._data) and not self._killed and get_more_allowed:
+            await self._refresh()
+        if len(self._data):
+            return self._data.popleft()
+        else:
+            return None
+
+    async def _next_batch(self, result: list, total: int | None = None) -> bool:  # type: ignore[type-arg]
+        """Get all or some available documents from the cursor."""
+        if not len(self._data) and not self._killed:
+            await self._refresh()
+        if len(self._data):
+            if total is None:
+                result.extend(self._data)
+                self._data.clear()
+            else:
+                for _ in range(min(len(self._data), total)):
+                    result.append(self._data.popleft())
+            return True
+        else:
+            return False
+
+    async def try_next(self) -> _DocumentType | None:
+        """Advance the cursor without blocking indefinitely.
+
+        This method returns the next document without waiting
+        indefinitely for data.
+
+        If no document is cached locally then this method runs a single
+        getMore command. If the getMore yields any documents, the next
+        document is returned, otherwise, if the getMore returns no documents
+        (because there is no additional data) then ``None`` is returned.
+
+        :return: The next document or ``None`` when no document is available
+          after running a single getMore or when the cursor is closed.
+
+        .. versionadded:: 4.5
+        """
+        return await self._try_next(get_more_allowed=True)
+
+
+class AsyncRawBatchCommandCursor(AsyncCommandCursor[_DocumentType]):
+    _getmore_class = _RawBatchGetMore
+
+    def __init__(
+        self,
+        collection: AsyncCollection[_DocumentType],
+        cursor_info: Mapping[str, Any],
+        address: _Address | None,
+        batch_size: int = 0,
+        max_await_time_ms: int | None = None,
+        session: AsyncClientSession | None = None,
+        comment: Any = None,
+    ) -> None:
+        """Create a new cursor / iterator over raw batches of BSON data.
+
+        Should not be called directly by application developers -
+        see :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate_raw_batches`
+        instead.
+
+        .. seealso:: The MongoDB documentation on `cursors <https://dochub.mongodb.org/core/cursors>`_.
+        """
+        assert not cursor_info.get("firstBatch")
+        super().__init__(
+            collection,
+            cursor_info,
+            address,
+            batch_size,
+            max_await_time_ms,
+            session,
+            comment,
+        )
+
+    def _unpack_response(  # type: ignore[override]
+        self,
+        response: _OpMsg,
+        cursor_id: int | None,
+        codec_options: CodecOptions[dict[str, Any]],
+        user_fields: Mapping[str, Any] | None = None,
+        legacy_response: bool = False,
+    ) -> list[Mapping[str, Any]]:
+        raw_response = response.raw_response(cursor_id, user_fields=user_fields)
+        if not legacy_response:
+            # OP_MSG returns firstBatch/nextBatch documents as a BSON array
+            # Re-assemble the array of documents into a document stream
+            _convert_raw_document_lists_to_streams(raw_response[0])
+        return raw_response  # type: ignore[return-value]
+
+    def __getitem__(self, index: int) -> NoReturn:
+        raise InvalidOperation("Cannot call __getitem__ on AsyncRawBatchCommandCursor")

@@ -1,0 +1,84 @@
+########################################
+# Evergreen Template for MongoDB Drivers
+########################################
+
+# When a task that used to pass starts to fail
+# Go through all versions that may have been skipped to detect
+# when the task started failing
+stepback: true
+
+# Mark a failure as a system/bootstrap failure (purple box) rather then a task
+# failure by default.
+# Actual testing tasks are marked with `type: test`
+command_type: system
+
+# Protect ourselves against rogue test case, or curl gone wild, that runs forever
+# Good rule of thumb: the averageish length a task takes, times 5
+# That roughly accounts for variable system performance for various buildvariants
+exec_timeout_secs: 3600 # 60 minutes is the longest we'll ever run (primarily
+                        # for macos hosts)
+
+# What to do when evergreen hits the timeout (`post:` tasks are run automatically)
+timeout:
+  - command: subprocess.exec
+    params:
+      binary: ls -la
+
+include:
+  - filename: .evergreen/generated_configs/functions.yml
+  - filename: .evergreen/generated_configs/tasks.yml
+  - filename: .evergreen/generated_configs/variants.yml
+
+pre:
+  - func: "fetch source"
+  - func: "setup system"
+  - func: "assume ec2 role"
+
+post:
+  # Disabled, causing timeouts
+  # - func: "upload working dir"
+  - func: "teardown system"
+  - func: "upload codecov"
+  - func: "upload coverage"
+  - func: "upload mo artifacts"
+  - func: "upload test results"
+  - func: "cleanup"
+
+tasks:
+  - name: linkcheck
+    commands:
+      - command: subprocess.exec
+        type: test
+        params:
+          binary: bash
+          args:
+            - .evergreen/just.sh
+            - docs-linkcheck
+          working_dir: src
+
+  - name: resync_specs
+    commands:
+      - command: subprocess.exec
+        params:
+          binary: bash
+          include_expansions_in_env: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN]
+          args:
+            - .evergreen/scripts/resync-all-specs.sh
+          working_dir: src
+
+buildvariants:
+  - name: linkcheck
+    display_name: "Link Check"
+    run_on: rhel80-small
+    cron: '0 0 * * *'
+    patchable: true
+    tasks:
+      - name: linkcheck
+
+  - name: resync_specs
+    display_name: "Resync Specs"
+    run_on: rhel80-small
+    cron: '0 16 * * MON'
+    patchable: true
+    tasks:
+      - name: resync_specs

@@ -1,0 +1,11 @@
+{
+  "description": "test-expectLogMessages-type",
+  "schemaVersion": "1.13",
+  "tests": [
+    {
+      "description": "foo",
+      "operations": [],
+      "expectLogMessages": 0
+    }
+  ]
+}

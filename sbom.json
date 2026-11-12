@@ -1,0 +1,202 @@
+{
+  "components": [
+    {
+      "bom-ref": "dnspython==2.8.0",
+      "description": "DNS toolkit",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: documentation",
+          "type": "documentation",
+          "url": "https://dnspython.readthedocs.io/en/stable/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: issues",
+          "type": "issue-tracker",
+          "url": "https://github.com/rthalley/dnspython/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: repository",
+          "type": "vcs",
+          "url": "https://github.com/rthalley/dnspython.git"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: homepage",
+          "type": "website",
+          "url": "https://www.dnspython.org"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "name": "dnspython",
+      "purl": "pkg:pypi/dnspython@2.8.0",
+      "type": "library",
+      "version": "2.8.0"
+    },
+    {
+      "bom-ref": "pymongo==4.16.0.dev0",
+      "description": "PyMongo - the Official MongoDB Python driver",
+      "externalReferences": [
+        {
+          "comment": "PackageSource: Local",
+          "type": "distribution",
+          "url": "file:///home/runner/work/mongo-python-driver/mongo-python-driver"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://www.mongodb.com/docs/languages/python/pymongo-driver/current/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Tracker",
+          "type": "issue-tracker",
+          "url": "https://jira.mongodb.org/projects/PYTHON/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/mongodb/mongo-python-driver"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://www.mongodb.org"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "pymongo",
+      "type": "library",
+      "version": "4.16.0.dev0",
+      "purl": "pkg:pypi/pymongo@4.16.0.dev0"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "dnspython==2.8.0"
+    },
+    {
+      "dependsOn": [
+        "dnspython==2.8.0"
+      ],
+      "ref": "pymongo==4.16.0.dev0"
+    }
+  ],
+  "metadata": {
+    "timestamp": "2025-11-24T16:21:47.249880+00:00",
+    "tools": {
+      "components": [
+        {
+          "description": "CycloneDX Software Bill of Materials (SBOM) generator for Python projects and environments",
+          "externalReferences": [
+            {
+              "type": "build-system",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/actions"
+            },
+            {
+              "type": "distribution",
+              "url": "https://pypi.org/project/cyclonedx-bom/"
+            },
+            {
+              "type": "documentation",
+              "url": "https://cyclonedx-bom-tool.readthedocs.io/"
+            },
+            {
+              "type": "issue-tracker",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/issues"
+            },
+            {
+              "type": "license",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/blob/main/LICENSE"
+            },
+            {
+              "type": "release-notes",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/blob/main/CHANGELOG.md"
+            },
+            {
+              "type": "vcs",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/"
+            },
+            {
+              "type": "website",
+              "url": "https://github.com/CycloneDX/cyclonedx-python/#readme"
+            }
+          ],
+          "group": "CycloneDX",
+          "licenses": [
+            {
+              "license": {
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "name": "cyclonedx-py",
+          "type": "application",
+          "version": "7.2.1"
+        },
+        {
+          "description": "Python library for CycloneDX",
+          "externalReferences": [
+            {
+              "type": "build-system",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/actions"
+            },
+            {
+              "type": "distribution",
+              "url": "https://pypi.org/project/cyclonedx-python-lib/"
+            },
+            {
+              "type": "documentation",
+              "url": "https://cyclonedx-python-library.readthedocs.io/"
+            },
+            {
+              "type": "issue-tracker",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/issues"
+            },
+            {
+              "type": "license",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/blob/main/LICENSE"
+            },
+            {
+              "type": "release-notes",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/blob/main/CHANGELOG.md"
+            },
+            {
+              "type": "vcs",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib"
+            },
+            {
+              "type": "website",
+              "url": "https://github.com/CycloneDX/cyclonedx-python-lib/#readme"
+            }
+          ],
+          "group": "CycloneDX",
+          "licenses": [
+            {
+              "license": {
+                "id": "Apache-2.0"
+              }
+            }
+          ],
+          "name": "cyclonedx-python-lib",
+          "type": "library",
+          "version": "11.5.0"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:7a19d697-d41e-4e88-b953-4bccb5d79937",
+  "version": 1,
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5"
+}

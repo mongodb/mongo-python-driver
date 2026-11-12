@@ -1,0 +1,653 @@
+# Copyright 2024-present MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you
+# may not use this file except in compliance with the License.  You
+# may obtain a copy of the License at
+#
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.  See the License for the specific language governing
+# permissions and limitations under the License.
+
+"""Pool options for AsyncMongoClient/MongoClient.
+
+.. seealso:: This module is compatible with both the synchronous and asynchronous PyMongo APIs.
+"""
+
+from __future__ import annotations
+
+import copy
+import os
+import platform
+import sys
+from contextlib import AbstractContextManager, nullcontext
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+import bson
+from pymongo import __version__
+from pymongo.common import (
+    MAX_CONNECTING,
+    MAX_IDLE_TIME_SEC,
+    MAX_POOL_SIZE,
+    MIN_POOL_SIZE,
+    WAIT_QUEUE_TIMEOUT,
+    has_c,
+)
+from pymongo.lock import _create_lock
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
+    from pymongo.auth_shared import MongoCredential
+    from pymongo.compression_support import CompressionSettings
+    from pymongo.driver_info import DriverInfo
+    from pymongo.monitoring import _EventListeners
+    from pymongo.pyopenssl_context import SSLContext
+    from pymongo.server_api import ServerApi
+
+
+_METADATA: dict[str, Any] = {"driver": {"name": "PyMongo", "version": __version__}}
+
+if sys.platform.startswith("linux"):
+    # platform.linux_distribution was deprecated in Python 3.5
+    # and removed in Python 3.8. Starting in Python 3.5 it
+    # raises DeprecationWarning
+    # DeprecationWarning: dist() and linux_distribution() functions are deprecated in Python 3.5
+    _name = platform.system()
+    _METADATA["os"] = {
+        "type": _name,
+        "name": _name,
+        "architecture": platform.machine(),
+        # Kernel version (e.g. 4.4.0-17-generic).
+        "version": platform.release(),
+    }
+elif sys.platform == "darwin":
+    _METADATA["os"] = {
+        "type": platform.system(),
+        "name": platform.system(),
+        "architecture": platform.machine(),
+        # (mac|i|tv)OS(X) version (e.g. 10.11.6) instead of darwin
+        # kernel version.
+        "version": platform.mac_ver()[0],
+    }
+elif sys.platform == "win32":
+    _ver = sys.getwindowsversion()
+    _METADATA["os"] = {
+        "type": "Windows",
+        "name": "Windows",
+        # Avoid using platform calls, see PYTHON-4455.
+        "architecture": os.environ.get("PROCESSOR_ARCHITECTURE") or platform.machine(),
+        # Windows patch level (e.g. 10.0.17763-SP0).
+        "version": ".".join(map(str, _ver[:3])) + f"-SP{_ver[-1] or '0'}",
+    }
+else:
+    # Get potential alias (e.g. SunOS 5.11 becomes Solaris 2.11)
+    _aliased = platform.system_alias(platform.system(), platform.release(), platform.version())
+    _METADATA["os"] = {
+        "type": platform.system(),
+        "name": " ".join([part for part in _aliased[:2] if part]),
+        "architecture": platform.machine(),
+        "version": _aliased[2],
+    }
+
+_METADATA["platform"] = " ".join(
+    (platform.python_implementation(), ".".join(map(str, sys.version_info)))
+)
+
+DOCKER_ENV_PATH = "/.dockerenv"
+ENV_VAR_K8S = "KUBERNETES_SERVICE_HOST"
+
+RUNTIME_NAME_DOCKER = "docker"
+ORCHESTRATOR_NAME_K8S = "kubernetes"
+
+
+def get_container_env_info() -> dict[str, str]:
+    """Returns the runtime and orchestrator of a container.
+    If neither value is present, the metadata client.env.container field will be omitted."""
+    container = {}
+
+    if Path(DOCKER_ENV_PATH).exists():
+        container["runtime"] = RUNTIME_NAME_DOCKER
+    if os.getenv(ENV_VAR_K8S):
+        container["orchestrator"] = ORCHESTRATOR_NAME_K8S
+
+    return container
+
+
+def _is_lambda() -> bool:
+    if os.getenv("AWS_LAMBDA_RUNTIME_API"):
+        return True
+    env = os.getenv("AWS_EXECUTION_ENV")
+    if env:
+        return env.startswith("AWS_Lambda_")
+    return False
+
+
+def _is_azure_func() -> bool:
+    return bool(os.getenv("FUNCTIONS_WORKER_RUNTIME"))
+
+
+def _is_gcp_func() -> bool:
+    return bool(os.getenv("K_SERVICE") or os.getenv("FUNCTION_NAME"))
+
+
+def _is_vercel() -> bool:
+    return bool(os.getenv("VERCEL"))
+
+
+def _is_faas() -> bool:
+    return _is_lambda() or _is_azure_func() or _is_gcp_func() or _is_vercel()
+
+
+# Ordered per the handshake spec: the first populated variable
+# gives client.env.agent, whatever its value.
+_AGENT_ENV_VARS = [
+    ("CLAUDECODE", "claude_code"),
+    ("CLAUDE_CODE_ENTRYPOINT", "claude_code"),
+    ("CURSOR_AGENT", "cursor"),
+    ("CODEX_SANDBOX", "codex_cli"),
+    ("CLINE_ACTIVE", "cline"),
+    ("GEMINI_CLI", "gemini_cli"),
+    ("AUGMENT_AGENT", "auggie_cli"),
+    ("OPENCODE", "opencode_client"),
+    ("OPENCODE_CLIENT", "opencode_client"),
+    ("TRAE_AI_SHELL_ID", "trae_ai"),
+    ("GOOSE_TERMINAL", "goose"),
+    ("GOOSE_AGENT", "goose"),
+]
+
+# Evaluated last so a known agent keeps its fixed name.
+_GENERIC_AGENT_ENV_VAR = "AI_AGENT"
+
+_MAX_AGENT_SIZE = 64
+
+
+def _metadata_agent() -> str | None:
+    """Detect a coding agent from the environment for client.env.agent."""
+    for var, name in _AGENT_ENV_VARS:
+        if (os.getenv(var) or "").strip():
+            return name
+    agent = (os.getenv(_GENERIC_AGENT_ENV_VAR) or "").strip().lower()
+    if not agent:
+        return None
+    if agent in ("1", "true"):
+        return "ai_agent"
+    # Largest valid UTF-8 prefix of _MAX_AGENT_SIZE bytes. "ignore" drops a
+    # character split by the byte limit and surrogate-escaped bytes from a
+    # malformed value so detection never raises.
+    return agent.encode(errors="ignore")[:_MAX_AGENT_SIZE].decode(errors="ignore")
+
+
+def _getenv_int(key: str) -> int | None:
+    """Like os.getenv but returns an int, or None if the value is missing/malformed."""
+    val = os.getenv(key)
+    if not val:
+        return None
+    try:
+        return int(val)
+    except ValueError:
+        return None
+
+
+def _metadata_env() -> dict[str, Any]:
+    env: dict[str, Any] = {}
+    container = get_container_env_info()
+    if container:
+        env["container"] = container
+    agent = _metadata_agent()
+    if agent:
+        env["agent"] = agent
+    # Skip if multiple (or no) envs are matched.
+    if (_is_lambda(), _is_azure_func(), _is_gcp_func(), _is_vercel()).count(True) != 1:
+        return env
+    if _is_lambda():
+        env["name"] = "aws.lambda"
+        region = os.getenv("AWS_REGION")
+        if region:
+            env["region"] = region
+        memory_mb = _getenv_int("AWS_LAMBDA_FUNCTION_MEMORY_SIZE")
+        if memory_mb is not None:
+            env["memory_mb"] = memory_mb
+    elif _is_azure_func():
+        env["name"] = "azure.func"
+    elif _is_gcp_func():
+        env["name"] = "gcp.func"
+        region = os.getenv("FUNCTION_REGION")
+        if region:
+            env["region"] = region
+        memory_mb = _getenv_int("FUNCTION_MEMORY_MB")
+        if memory_mb is not None:
+            env["memory_mb"] = memory_mb
+        timeout_sec = _getenv_int("FUNCTION_TIMEOUT_SEC")
+        if timeout_sec is not None:
+            env["timeout_sec"] = timeout_sec
+    elif _is_vercel():
+        env["name"] = "vercel"
+        region = os.getenv("VERCEL_REGION")
+        if region:
+            env["region"] = region
+    return env
+
+
+_MAX_METADATA_SIZE = 512
+
+
+def _truncate_utf8(content: str, overflow: int) -> str:
+    """Trim `overflow` UTF-8 bytes from the end of content, keeping a valid prefix."""
+    if overflow <= 0:
+        return content
+    data = content.encode("utf-8")
+    if len(data) <= overflow:
+        return ""
+    return data[: len(data) - overflow].decode("utf-8", errors="ignore")
+
+
+def _normalize_driver(driver: DriverInfo) -> DriverInfo:
+    """Treat None and "" as equivalent unset fields for deduplication."""
+    return driver._replace(
+        name=driver.name or "",
+        version=driver.version or "",
+        platform=driver.platform or "",
+    )
+
+
+def _element_size(key: str, value: Any) -> int:
+    """Size in bytes of the BSON element for ``key``, excluding doc overhead."""
+    # bson.encode({key: value}) is 4 bytes of document header plus 1 byte of
+    # document terminator on top of the element itself.
+    return len(bson.encode({key: value})) - 5
+
+
+# See: https://github.com/mongodb/specifications/blob/master/source/mongodb-handshake/handshake.md#limitations
+def _truncate_metadata(metadata: MutableMapping[str, Any]) -> None:
+    """Perform metadata truncation."""
+    # The only full encode is the initial size check; each step then shrinks
+    # the tracked size by the exact bytes its change removes.
+    size = len(bson.encode(metadata))
+    if size <= _MAX_METADATA_SIZE:
+        return
+    # 1. Omit fields from env except env.name and env.agent.
+    env = metadata.get("env", {})
+    trimmed_env = {k: env[k] for k in ("name", "agent") if k in env}
+    if trimmed_env:
+        size += _element_size("env", trimmed_env) - _element_size("env", env)
+        metadata["env"] = trimmed_env
+    if size <= _MAX_METADATA_SIZE:
+        return
+    # 2. Omit env.agent. env.agent is omitted before env.name because drivers
+    # have reported env.name since before env.agent existed.
+    env = metadata.get("env")
+    if env is not None and "agent" in env:
+        old_size = _element_size("env", env)
+        new_env = {k: v for k, v in env.items() if k != "agent"}
+        if new_env:
+            size += _element_size("env", new_env) - old_size
+            metadata["env"] = new_env
+        else:
+            size -= old_size
+            del metadata["env"]
+    if size <= _MAX_METADATA_SIZE:
+        return
+    # 3. Omit fields from os except os.type.
+    os_type = metadata.get("os", {}).get("type")
+    if os_type:
+        old_os = metadata["os"]
+        new_os = {"type": os_type}
+        size += _element_size("os", new_os) - _element_size("os", old_os)
+        metadata["os"] = new_os
+    if size <= _MAX_METADATA_SIZE:
+        return
+    # 4. Omit the env document entirely.
+    env = metadata.pop("env", None)
+    if env is not None:
+        size -= _element_size("env", env)
+    if size <= _MAX_METADATA_SIZE:
+        return
+    # 5. Truncate platform.
+    overflow = size - _MAX_METADATA_SIZE
+    plat = metadata.get("platform", "")
+    if plat:
+        truncated = _truncate_utf8(plat, overflow)
+        if truncated:
+            size += _element_size("platform", truncated) - _element_size("platform", plat)
+        else:
+            size -= _element_size("platform", plat)
+        if truncated:
+            metadata["platform"] = truncated
+        else:
+            del metadata["platform"]
+    else:
+        # The platform field may be present but empty.
+        plat = metadata.pop("platform", None)
+        if plat is not None:
+            size -= _element_size("platform", plat)
+    # 6. Truncate driver info, keeping name and version 1:1 index-aligned.
+    driver = metadata.get("driver", {})
+    if driver:
+        # Keep the name and version segments paired so they stay 1:1 aligned,
+        # trimming wrapper content and dropping paired segments only as a
+        # last resort. Blank pairs (for example from a platform-only appended
+        # driver) are dropped first since they cost nothing.
+        name_str = driver.get("name", "")
+        version_str = driver.get("version", "")
+        raw_pairs = list(zip(name_str.split("|"), version_str.split("|"), strict=True))
+        pairs = [(name, version) for name, version in raw_pairs if name or version]
+        new_name = "|".join(name for name, _ in pairs)
+        new_version = "|".join(version for _, version in pairs)
+        size += (len(new_name.encode("utf-8")) - len(name_str.encode("utf-8"))) + (
+            len(new_version.encode("utf-8")) - len(version_str.encode("utf-8"))
+        )
+        driver["name"] = new_name
+        driver["version"] = new_version
+        overflow = size - _MAX_METADATA_SIZE
+        while overflow > 0 and len(pairs) > 1:
+            # A single remaining pair never exceeds the limit: it is the base
+            # driver pair, which steps 1-5 left small enough to fit.
+            last_name, last_version = pairs[-1]
+            if last_version:
+                new_version = _truncate_utf8(last_version, overflow)
+                overflow -= len(last_version.encode("utf-8")) - len(new_version.encode("utf-8"))
+                pairs[-1] = (last_name, new_version)
+            elif last_name:
+                new_name = _truncate_utf8(last_name, overflow)
+                overflow -= len(last_name.encode("utf-8")) - len(new_name.encode("utf-8"))
+                pairs[-1] = (new_name, last_version)
+            else:
+                pairs.pop()
+                overflow -= len(f"|{last_name}|{last_version}".encode())
+        driver["name"] = "|".join(name for name, _ in pairs)
+        driver["version"] = "|".join(version for _, version in pairs)
+
+
+# If the first getaddrinfo call of this interpreter's life is on a thread,
+# while the main thread holds the import lock, getaddrinfo deadlocks trying
+# to import the IDNA codec. Import it here, where presumably we're on the
+# main thread, to avoid the deadlock. See PYTHON-607.
+"foo".encode("idna")
+
+
+class PoolOptions:
+    """Read only connection pool options for an AsyncMongoClient/MongoClient.
+
+    Should not be instantiated directly by application developers. Access
+    a client's pool options via
+    :attr:`~pymongo.client_options.ClientOptions.pool_options` instead::
+
+      pool_opts = client.options.pool_options
+      pool_opts.max_pool_size
+      pool_opts.min_pool_size
+
+    """
+
+    __slots__ = (
+        "__appended_drivers",
+        "__appname",
+        "__compression_settings",
+        "__connect_timeout",
+        "__credentials",
+        "__driver",
+        "__event_listeners",
+        "__load_balanced",
+        "__max_connecting",
+        "__max_idle_time_seconds",
+        "__max_pool_size",
+        "__metadata",
+        "__metadata_lock",
+        "__min_pool_size",
+        "__pause_enabled",
+        "__server_api",
+        "__socket_timeout",
+        "__ssl_context",
+        "__tls_allow_invalid_hostnames",
+        "__wait_queue_timeout",
+    )
+
+    def __init__(
+        self,
+        max_pool_size: int = MAX_POOL_SIZE,
+        min_pool_size: int = MIN_POOL_SIZE,
+        max_idle_time_seconds: int | None = MAX_IDLE_TIME_SEC,
+        connect_timeout: float | None = None,
+        socket_timeout: float | None = None,
+        wait_queue_timeout: int | None = WAIT_QUEUE_TIMEOUT,
+        ssl_context: SSLContext | None = None,
+        tls_allow_invalid_hostnames: bool = False,
+        event_listeners: _EventListeners | None = None,
+        appname: str | None = None,
+        driver: DriverInfo | None = None,
+        compression_settings: CompressionSettings | None = None,
+        max_connecting: int = MAX_CONNECTING,
+        pause_enabled: bool = True,
+        server_api: ServerApi | None = None,
+        load_balanced: bool | None = None,
+        credentials: MongoCredential | None = None,
+        is_sync: bool | None = True,
+    ):
+        self.__max_pool_size = max_pool_size
+        self.__min_pool_size = min_pool_size
+        self.__max_idle_time_seconds = max_idle_time_seconds
+        self.__connect_timeout = connect_timeout
+        self.__socket_timeout = socket_timeout
+        self.__wait_queue_timeout = wait_queue_timeout
+        self.__ssl_context = ssl_context
+        self.__tls_allow_invalid_hostnames = tls_allow_invalid_hostnames
+        self.__event_listeners = event_listeners
+        self.__appname = appname
+        self.__driver = driver
+        self.__compression_settings = compression_settings
+        self.__max_connecting = max_connecting
+        self.__pause_enabled = pause_enabled
+        self.__server_api = server_api
+        self.__load_balanced = load_balanced
+        self.__credentials = credentials
+        self.__metadata = copy.deepcopy(_METADATA)
+        self.__appended_drivers: set[DriverInfo] = set()
+        # Only the synchronous client can append metadata from multiple threads.
+        self.__metadata_lock: AbstractContextManager[bool | None] = (
+            _create_lock() if is_sync else nullcontext()
+        )
+
+        if appname:
+            self.__metadata["application"] = {"name": appname}
+
+        # Combine the "driver" AsyncMongoClient option with PyMongo's info, like:
+        # {
+        #    'driver': {
+        #        'name': 'PyMongo|MyDriver',
+        #        'version': '4.2.0|1.2.3',
+        #    },
+        #    'platform': 'CPython 3.8.0|MyPlatform'
+        # }
+        if has_c():
+            self.__metadata["driver"]["name"] = "{}|{}".format(
+                self.__metadata["driver"]["name"],
+                "c",
+            )
+            self.__metadata["driver"]["version"] = "{}|{}".format(
+                self.__metadata["driver"]["version"],
+                "",
+            )
+        if not is_sync:
+            self.__metadata["driver"]["name"] = "{}|{}".format(
+                self.__metadata["driver"]["name"],
+                "async",
+            )
+            self.__metadata["driver"]["version"] = "{}|{}".format(
+                self.__metadata["driver"]["version"],
+                "",
+            )
+        if driver:
+            self._update_metadata(driver)
+
+        env = _metadata_env()
+        if env:
+            self.__metadata["env"] = env
+
+        _truncate_metadata(self.__metadata)
+
+    def _update_metadata(self, driver: DriverInfo) -> None:
+        """Updates the client's metadata."""
+        with self.__metadata_lock:
+            driver = _normalize_driver(driver)
+            if driver in self.__appended_drivers:
+                return
+
+            # Only the top-level keys and the "driver" document are mutated,
+            # so shallow copies of those two are enough.
+            metadata = {**self.__metadata, "driver": dict(self.__metadata["driver"])}
+
+            metadata["driver"]["name"] = "{}|{}".format(metadata["driver"]["name"], driver.name)
+            metadata["driver"]["version"] = "{}|{}".format(
+                metadata["driver"]["version"], driver.version
+            )
+            if driver.platform:
+                if "platform" in metadata:
+                    metadata["platform"] = "{}|{}".format(metadata["platform"], driver.platform)
+                else:
+                    metadata["platform"] = driver.platform
+
+            _truncate_metadata(metadata)
+
+            self.__metadata = metadata
+
+            # Only track drivers whose appended name/version pair survived
+            # truncation, so __appended_drivers stays bounded. Truncation
+            # keeps name and version index-aligned, so strict=True never
+            # raises.
+            names = metadata["driver"]["name"].split("|")
+            versions = metadata["driver"]["version"].split("|")
+            pairs = zip(names, versions, strict=True)
+            if (driver.name, driver.version) in pairs:
+                self.__appended_drivers.add(driver)
+
+    @property
+    def _credentials(self) -> MongoCredential | None:
+        """A :class:`~pymongo.auth.MongoCredentials` instance or None."""
+        return self.__credentials
+
+    @property
+    def non_default_options(self) -> dict[str, Any]:
+        """The non-default options this pool was created with.
+
+        Added for CMAP's :class:`PoolCreatedEvent`.
+        """
+        opts = {}
+        if self.__max_pool_size != MAX_POOL_SIZE:
+            opts["maxPoolSize"] = self.__max_pool_size
+        if self.__min_pool_size != MIN_POOL_SIZE:
+            opts["minPoolSize"] = self.__min_pool_size
+        if self.__max_idle_time_seconds != MAX_IDLE_TIME_SEC:
+            assert self.__max_idle_time_seconds is not None
+            opts["maxIdleTimeMS"] = self.__max_idle_time_seconds * 1000
+        if self.__wait_queue_timeout != WAIT_QUEUE_TIMEOUT:
+            assert self.__wait_queue_timeout is not None
+            opts["waitQueueTimeoutMS"] = self.__wait_queue_timeout * 1000
+        if self.__max_connecting != MAX_CONNECTING:
+            opts["maxConnecting"] = self.__max_connecting
+        return opts
+
+    @property
+    def max_pool_size(self) -> float:
+        """The maximum allowable number of concurrent connections to each
+        connected server. Requests to a server will block if there are
+        `maxPoolSize` outstanding connections to the requested server.
+        Defaults to 100. A value of 0 or ``None`` means no limit.
+
+        When a server's pool has reached `max_pool_size`, operations for that
+        server block waiting for a socket to be returned to the pool. If
+        ``waitQueueTimeoutMS`` is set, a blocked operation will raise
+        :exc:`~pymongo.errors.ConnectionFailure` after a timeout.
+        By default ``waitQueueTimeoutMS`` is not set.
+        """
+        return self.__max_pool_size
+
+    @property
+    def min_pool_size(self) -> int:
+        """The minimum required number of concurrent connections that the pool
+        will maintain to each connected server. Default is 0.
+        """
+        return self.__min_pool_size
+
+    @property
+    def max_connecting(self) -> int:
+        """The maximum number of concurrent connection creation attempts per
+        pool. Defaults to 2.
+        """
+        return self.__max_connecting
+
+    @property
+    def pause_enabled(self) -> bool:
+        return self.__pause_enabled
+
+    @property
+    def max_idle_time_seconds(self) -> int | None:
+        """The maximum number of seconds that a connection can remain
+        idle in the pool before being removed and replaced. Defaults to
+        `None` (no limit).
+        """
+        return self.__max_idle_time_seconds
+
+    @property
+    def connect_timeout(self) -> float | None:
+        """How long a connection can take to be opened before timing out."""
+        return self.__connect_timeout
+
+    @property
+    def socket_timeout(self) -> float | None:
+        """How long a send or receive on a socket can take before timing out."""
+        return self.__socket_timeout
+
+    @property
+    def wait_queue_timeout(self) -> int | None:
+        """How long a thread will wait for a socket from the pool if the pool
+        has no free sockets.
+        """
+        return self.__wait_queue_timeout
+
+    @property
+    def _ssl_context(self) -> SSLContext | None:
+        """An SSLContext instance or None."""
+        return self.__ssl_context
+
+    @property
+    def tls_allow_invalid_hostnames(self) -> bool:
+        """If True skip ssl.match_hostname."""
+        return self.__tls_allow_invalid_hostnames
+
+    @property
+    def _event_listeners(self) -> _EventListeners | None:
+        """An instance of pymongo.monitoring._EventListeners."""
+        return self.__event_listeners
+
+    @property
+    def appname(self) -> str | None:
+        """The application name, for sending with hello in server handshake."""
+        return self.__appname
+
+    @property
+    def driver(self) -> DriverInfo | None:
+        """Driver name and version, for sending with hello in handshake."""
+        return self.__driver
+
+    @property
+    def _compression_settings(self) -> CompressionSettings | None:
+        return self.__compression_settings
+
+    @property
+    def metadata(self) -> dict[str, Any]:
+        """A dict of metadata about the application, driver, os, and platform."""
+        return self.__metadata.copy()
+
+    @property
+    def server_api(self) -> ServerApi | None:
+        """A pymongo.server_api.ServerApi or None."""
+        return self.__server_api
+
+    @property
+    def load_balanced(self) -> bool | None:
+        """True if this Pool is configured in load balanced mode."""
+        return self.__load_balanced

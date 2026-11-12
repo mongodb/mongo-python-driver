@@ -1,0 +1,76 @@
+{
+  "tests": [
+    {
+      "description": "Valid connection pool options are parsed correctly",
+      "uri": "mongodb://example.com/?maxIdleTimeMS=50000&maxPoolSize=5&minPoolSize=3&maxConnecting=1",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": null,
+      "options": {
+        "maxIdleTimeMS": 50000,
+        "maxPoolSize": 5,
+        "minPoolSize": 3,
+        "maxConnecting": 1
+      }
+    },
+    {
+      "description": "Non-numeric maxIdleTimeMS causes a warning",
+      "uri": "mongodb://example.com/?maxIdleTimeMS=invalid",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": null,
+      "options": null
+    },
+    {
+      "description": "Too low maxIdleTimeMS causes a warning",
+      "uri": "mongodb://example.com/?maxIdleTimeMS=-2",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": null,
+      "options": null
+    },
+    {
+      "description": "maxPoolSize=0 does not error",
+      "uri": "mongodb://example.com/?maxPoolSize=0",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": null,
+      "options": {
+        "maxPoolSize": 0
+      }
+    },
+    {
+      "description": "minPoolSize=0 does not error",
+      "uri": "mongodb://example.com/?minPoolSize=0",
+      "valid": true,
+      "warning": false,
+      "hosts": null,
+      "auth": null,
+      "options": {
+        "minPoolSize": 0
+      }
+    },
+    {
+      "description": "maxConnecting=0 causes a warning",
+      "uri": "mongodb://example.com/?maxConnecting=0",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": null,
+      "options": null
+    },
+    {
+      "description": "maxConnecting<0 causes a warning",
+      "uri": "mongodb://example.com/?maxConnecting=-1",
+      "valid": true,
+      "warning": true,
+      "hosts": null,
+      "auth": null,
+      "options": null
+    }
+  ]
+}

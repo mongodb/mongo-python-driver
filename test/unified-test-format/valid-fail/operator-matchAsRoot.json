@@ -1,0 +1,67 @@
+{
+  "description": "operator-matchAsRoot",
+  "schemaVersion": "1.13",
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0"
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "test"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "coll0"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "coll0",
+      "databaseName": "test",
+      "documents": [
+        {
+          "_id": 1,
+          "x": {
+            "y": 2,
+            "z": 3
+          }
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "matchAsRoot with nested document does not match",
+      "operations": [
+        {
+          "name": "find",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "limit": 1
+          },
+          "expectResult": [
+            {
+              "_id": 1,
+              "x": {
+                "$$matchAsRoot": {
+                  "y": 3
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

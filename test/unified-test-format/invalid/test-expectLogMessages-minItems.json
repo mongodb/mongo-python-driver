@@ -1,0 +1,11 @@
+{
+  "description": "test-expectLogMessages-minItems",
+  "schemaVersion": "1.11",
+  "tests": [
+    {
+      "description": "foo",
+      "operations": [],
+      "expectLogMessages": []
+    }
+  ]
+}

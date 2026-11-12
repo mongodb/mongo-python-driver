@@ -1,0 +1,164 @@
+{
+  "description": "default-write-concern-3.2",
+  "schemaVersion": "1.0",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "3.2"
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "observeEvents": [
+          "commandStartedEvent"
+        ]
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "default-write-concern-tests",
+        "databaseOptions": {
+          "writeConcern": {}
+        }
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "coll",
+        "collectionOptions": {
+          "writeConcern": {}
+        }
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "coll",
+      "databaseName": "default-write-concern-tests",
+      "documents": [
+        {
+          "_id": 1,
+          "x": 11
+        },
+        {
+          "_id": 2,
+          "x": 22
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "findAndModify operations omit default write concern",
+      "operations": [
+        {
+          "name": "findOneAndUpdate",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 1
+            },
+            "update": {
+              "$set": {
+                "x": 1
+              }
+            }
+          }
+        },
+        {
+          "name": "findOneAndReplace",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 2
+            },
+            "replacement": {
+              "x": 2
+            }
+          }
+        },
+        {
+          "name": "findOneAndDelete",
+          "object": "collection0",
+          "arguments": {
+            "filter": {
+              "_id": 2
+            }
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "findAndModify": "coll",
+                  "query": {
+                    "_id": 1
+                  },
+                  "update": {
+                    "$set": {
+                      "x": 1
+                    }
+                  },
+                  "writeConcern": {
+                    "$$exists": false
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "findAndModify": "coll",
+                  "query": {
+                    "_id": 2
+                  },
+                  "update": {
+                    "x": 2
+                  },
+                  "writeConcern": {
+                    "$$exists": false
+                  }
+                }
+              }
+            },
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "findAndModify": "coll",
+                  "query": {
+                    "_id": 2
+                  },
+                  "remove": true,
+                  "writeConcern": {
+                    "$$exists": false
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "outcome": [
+        {
+          "collectionName": "coll",
+          "databaseName": "default-write-concern-tests",
+          "documents": [
+            {
+              "_id": 1,
+              "x": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+    "db.coll": {
+        "bsonType": "object",
+        "properties": {
+            "secret_azure": {
+                "encrypt": {
+                    "keyId": [{
+                        "$binary": {
+                            "base64": "AZURE+AAAAAAAAAAAAAAAA==",
+                            "subType": "04"
+                        }
+                    }],
+                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
+                    "bsonType": "string"
+                }
+            },
+            "secret_gcp": {
+                "encrypt": {
+                    "keyId": [{
+                        "$binary": {
+                            "base64": "GCP+AAAAAAAAAAAAAAAAAA==",
+                            "subType": "04"
+                        }
+                    }],
+                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
+                    "bsonType": "string"
+                }
+            }
+        }
+    }
+}

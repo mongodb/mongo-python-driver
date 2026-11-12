@@ -1,0 +1,125 @@
+{
+  "description": "default-write-concern-4.2",
+  "schemaVersion": "1.0",
+  "runOnRequirements": [
+    {
+      "minServerVersion": "4.2"
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "observeEvents": [
+          "commandStartedEvent"
+        ]
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "default-write-concern-tests",
+        "databaseOptions": {
+          "writeConcern": {}
+        }
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "coll",
+        "collectionOptions": {
+          "writeConcern": {}
+        }
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "coll",
+      "databaseName": "default-write-concern-tests",
+      "documents": [
+        {
+          "_id": 1,
+          "x": 11
+        },
+        {
+          "_id": 2,
+          "x": 22
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "description": "Aggregate with $merge omits default write concern",
+      "operations": [
+        {
+          "object": "collection0",
+          "name": "aggregate",
+          "arguments": {
+            "pipeline": [
+              {
+                "$match": {
+                  "_id": {
+                    "$gt": 1
+                  }
+                }
+              },
+              {
+                "$merge": {
+                  "into": "other_collection_name"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "expectEvents": [
+        {
+          "client": "client0",
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "coll",
+                  "pipeline": [
+                    {
+                      "$match": {
+                        "_id": {
+                          "$gt": 1
+                        }
+                      }
+                    },
+                    {
+                      "$merge": {
+                        "into": "other_collection_name"
+                      }
+                    }
+                  ],
+                  "writeConcern": {
+                    "$$exists": false
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "outcome": [
+        {
+          "collectionName": "other_collection_name",
+          "databaseName": "default-write-concern-tests",
+          "documents": [
+            {
+              "_id": 2,
+              "x": 22
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

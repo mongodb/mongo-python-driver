@@ -1,0 +1,231 @@
+# Copyright 2018 MongoDB, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+from __future__ import annotations
+
+import sys
+import warnings
+from typing import TYPE_CHECKING, Any
+
+from pymongo.errors import ProtocolError
+from pymongo.hello import HelloCompat
+from pymongo.helpers_shared import _SENSITIVE_COMMANDS
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+_SUPPORTED_COMPRESSORS = {"snappy", "zlib", "zstd"}
+_NO_COMPRESSION = {HelloCompat.CMD, HelloCompat.LEGACY_CMD}
+_NO_COMPRESSION.update(_SENSITIVE_COMMANDS)
+
+
+def _have_snappy() -> bool:
+    try:
+        import snappy  # type:ignore[import-untyped]  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def _have_zlib() -> bool:
+    try:
+        import zlib  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def _have_zstd() -> bool:
+    try:
+        if sys.version_info >= (3, 14):
+            from compression import zstd
+        else:
+            from backports import zstd  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def validate_compressors(dummy: Any, value: str | Iterable[str]) -> list[str]:
+    try:
+        # `value` is string.
+        compressors = value.split(",")  # type: ignore[union-attr]
+    except AttributeError:
+        # `value` is an iterable.
+        compressors = list(value)
+
+    for compressor in compressors[:]:
+        if compressor not in _SUPPORTED_COMPRESSORS:
+            compressors.remove(compressor)
+            warnings.warn(f"Unsupported compressor: {compressor}", stacklevel=2)
+        elif compressor == "snappy" and not _have_snappy():
+            compressors.remove(compressor)
+            warnings.warn(
+                "Wire protocol compression with snappy is not available. "
+                "You must install the python-snappy module for snappy support.",
+                stacklevel=2,
+            )
+        elif compressor == "zlib" and not _have_zlib():
+            compressors.remove(compressor)
+            warnings.warn(
+                "Wire protocol compression with zlib is not available. "
+                "The zlib module is not available.",
+                stacklevel=2,
+            )
+        elif compressor == "zstd" and not _have_zstd():
+            compressors.remove(compressor)
+            if sys.version_info >= (3, 14):
+                warnings.warn(
+                    "Wire protocol compression with zstandard is not available. "
+                    "The compression.zstd module is not available.",
+                    stacklevel=2,
+                )
+            else:
+                warnings.warn(
+                    "Wire protocol compression with zstandard is not available. "
+                    "You must install the backports.zstd module for zstandard support.",
+                    stacklevel=2,
+                )
+    return compressors
+
+
+def validate_zlib_compression_level(option: str, value: Any) -> int:
+    try:
+        level = int(value)
+    except Exception:
+        raise TypeError(f"{option} must be an integer, not {value!r}") from None
+    if level < -1 or level > 9:
+        raise ValueError(f"{option} must be between -1 and 9, not {level}.")
+    return level
+
+
+class CompressionSettings:
+    def __init__(self, compressors: list[str], zlib_compression_level: int):
+        self.compressors = compressors
+        self.zlib_compression_level = zlib_compression_level
+
+    def get_compression_context(
+        self, compressors: list[str] | None
+    ) -> SnappyContext | ZlibContext | ZstdContext | None:
+        if compressors:
+            chosen = compressors[0]
+            if chosen == "snappy":
+                return SnappyContext()
+            elif chosen == "zlib":
+                return ZlibContext(self.zlib_compression_level)
+            elif chosen == "zstd":
+                return ZstdContext()
+            return None
+        return None
+
+
+class SnappyContext:
+    compressor_id = 1
+
+    @staticmethod
+    def compress(data: bytes) -> bytes:
+        import snappy
+
+        return snappy.compress(data)
+
+
+class ZlibContext:
+    compressor_id = 2
+
+    def __init__(self, level: int):
+        self.level = level
+
+    def compress(self, data: bytes) -> bytes:
+        import zlib
+
+        return zlib.compress(data, self.level)
+
+
+class ZstdContext:
+    compressor_id = 3
+
+    @staticmethod
+    def compress(data: bytes) -> bytes:
+        if sys.version_info >= (3, 14):
+            from compression import zstd
+        else:
+            from backports import zstd
+
+        return zstd.compress(data)
+
+
+def _snappy_uncompressed_length(data: bytes | memoryview) -> int:
+    """Read the varint-encoded uncompressed length from a raw snappy block."""
+    result = shift = 0
+    for i in range(5):
+        if i >= len(data):
+            raise ProtocolError("Truncated snappy payload")
+        byte = data[i]
+        result |= (byte & 0x7F) << shift
+        if not byte & 0x80:
+            return result
+        shift += 7
+    raise ProtocolError("Invalid snappy uncompressed length header")
+
+
+def decompress(data: bytes | memoryview, compressor_id: int, max_message_size: int) -> bytes:
+    if compressor_id == SnappyContext.compressor_id:
+        declared = _snappy_uncompressed_length(data)
+        if declared > max_message_size:
+            raise ProtocolError(
+                f"Decompressed message size ({declared!r}) is larger than "
+                f"maximum allowed payload size ({max_message_size!r})"
+            )
+        import snappy
+
+        # python-snappy doesn't support the buffer interface.
+        # https://github.com/andrix/python-snappy/issues/65
+        # This only matters when data is a memoryview since
+        # id(bytes(data)) == id(data) when data is a bytes.
+        result = snappy.uncompress(bytes(data))
+    elif compressor_id == ZlibContext.compressor_id:
+        import zlib
+
+        dc = zlib.decompressobj()
+        # Bound the decompressed output during decompression to avoid
+        # allocating a huge buffer before the size check runs.
+        result = dc.decompress(data, max_message_size + 1)
+        if len(result) <= max_message_size:
+            if not dc.eof:
+                raise ProtocolError("Truncated zlib-compressed message")
+            if dc.unused_data:
+                raise ProtocolError("Trailing data after zlib-compressed message")
+    elif compressor_id == ZstdContext.compressor_id:
+        if sys.version_info >= (3, 14):
+            from compression import zstd
+        else:
+            from backports import zstd
+
+        zdc = zstd.ZstdDecompressor()
+        result = zdc.decompress(data, max_message_size + 1)
+        if len(result) <= max_message_size:
+            if not zdc.eof:
+                raise ProtocolError("Truncated zstd-compressed message")
+            if zdc.unused_data:
+                raise ProtocolError("Trailing data after zstd-compressed message")
+    else:
+        raise ValueError(f"Unknown compressorId {compressor_id}")
+    if len(result) > max_message_size:
+        raise ProtocolError(
+            f"Decompressed message size ({len(result)!r}) is larger than "
+            f"maximum allowed payload size ({max_message_size!r})"
+        )
+    return result

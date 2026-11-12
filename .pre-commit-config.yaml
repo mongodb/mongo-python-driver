@@ -1,0 +1,131 @@
+exclude: ^drivers-evergreen-tools/
+
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.5.0
+  hooks:
+  - id: check-added-large-files
+    exclude: ^uv\.lock$
+  - id: check-case-conflict
+  - id: check-toml
+  - id: check-json
+  - id: check-yaml
+    exclude: template.yaml
+  - id: debug-statements
+  - id: end-of-file-fixer
+    exclude: WHEEL
+    exclude_types: [json]
+  - id: forbid-new-submodules
+  - id: trailing-whitespace
+    exclude: .patch
+    exclude_types: [json]
+
+- repo: local
+  hooks:
+    - id: ruff
+      name: ruff
+      entry: uv run --group lint ruff check --fix --show-fixes
+      language: system
+      types_or: [python, pyi]
+      require_serial: true
+    - id: ruff-format
+      name: ruff-format
+      entry: uv run --group lint ruff format
+      language: system
+      types_or: [python, pyi]
+      require_serial: true
+
+- repo: local
+  hooks:
+    - id: synchro
+      name: synchro
+      entry: uv run --group unasync ./tools/synchro.py
+      language: system
+      require_serial: true
+      always_run: true
+    - id: synchro-stage-files
+      name: synchro-stage-files
+      entry: bash -c 'if [ -s .synchro-modified ]; then xargs git add < .synchro-modified || true; fi'
+      language: system
+      require_serial: true
+      always_run: true
+      pass_filenames: false
+
+- repo: https://github.com/pre-commit/pygrep-hooks
+  rev: "v1.10.0"
+  hooks:
+    - id: rst-backticks
+    - id: rst-directive-colons
+    - id: rst-inline-touching-normal
+
+- repo: https://github.com/rstcheck/rstcheck
+  rev: v6.2.0
+  hooks:
+  - id: rstcheck
+    additional_dependencies: [sphinx]
+    args: ["--ignore-directives=doctest,testsetup,todo,automodule","--ignore-substitutions=release", "--report-level=error"]
+
+# We use the Python version instead of the original version which seems to require Docker
+# https://github.com/koalaman/shellcheck-precommit
+- repo: https://github.com/shellcheck-py/shellcheck-py
+  rev: v0.9.0.6
+  hooks:
+    - id: shellcheck
+      name: shellcheck
+      args: ["--severity=warning"]
+      stages: [manual]
+
+- repo: https://github.com/PyCQA/doc8
+  rev: v1.1.1
+  hooks:
+    - id: doc8
+      args: ["--ignore=D001"]  # ignore line length
+      stages: [manual]
+
+- repo: https://github.com/sirosen/check-jsonschema
+  rev: 0.37.2
+  hooks:
+    - id: check-github-workflows
+    - id: check-github-actions
+    - id: check-dependabot
+
+- repo: https://github.com/ariebovenberg/slotscheck
+  rev: v0.19.0
+  hooks:
+  - id: slotscheck
+    files: \.py$
+    exclude: "^(test|tools)/"
+    stages: [manual]
+    args: ["--no-strict-imports"]
+
+- repo: https://github.com/codespell-project/codespell
+  rev: "v2.2.6"
+  hooks:
+  - id: codespell
+    # Examples of errors or updates to justify the exceptions:
+    # - test/test_on_demand_csfle.py:44: FLE ==> FILE
+    # - test/test_bson.py:1043: fo ==> of, for, to, do, go
+    # - test/bson_corpus/decimal128-4.json:98: Infinit ==> Infinite
+    # - test/test_bson.py:267: isnt ==> isn't
+    # - test/versioned-api/crud-api-version-1-strict.json:514: nin ==> inn, min, bin, nine
+    # - test/test_client.py:188: te ==> the, be, we, to
+    args: ["-L", "fle,fo,infinit,isnt,nin,te,aks"]
+    exclude: ^pymongo/public_suffix_list\.dat$
+
+- repo: local
+  hooks:
+  - id: executable-shell
+    name: executable-shell
+    entry: chmod +x
+    language: system
+    types: [shell]
+    exclude: |
+      (?x)(
+          .evergreen/retry-with-backoff.sh
+        )
+  - id: generate-config
+    name: generate-config
+    entry: .evergreen/scripts/generate-config.sh
+    language: python
+    require_serial: true
+    additional_dependencies: ["pytest", "pytest-asyncio", "shrub.py>=3.10.0", "pyyaml>=6.0.2"]
