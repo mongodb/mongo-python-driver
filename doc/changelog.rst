@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Changes in Version 4.20.0 (2026/XX/XX)
+Changes in Version 4.20.0 (2026/11/12)
 --------------------------------------
 
 - The client handshake metadata now reports a detected coding agent in
@@ -62,6 +62,14 @@ Bug fixes
 .. _PYTHON-6182: https://jira.mongodb.org/browse/PYTHON-6182
 .. _PYTHON-6226: https://jira.mongodb.org/browse/PYTHON-6226
 .. _PYTHON-6252: https://jira.mongodb.org/browse/PYTHON-6252
+
+Issues Resolved
+...............
+
+See the `PyMongo 4.20.0 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 4.20.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=52954
 
 Changes in Version 4.19.0 (2026/10/14)
 --------------------------------------
