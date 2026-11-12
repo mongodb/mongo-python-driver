@@ -964,9 +964,9 @@ def create_fuzz_tasks():
     test_vars = dict(TEST_NAME="fuzz", SUB_TEST_NAME="fuzz", UV_PYTHON="3.13")
     test_func = FunctionCall(func="run tests", vars=test_vars)
     # PYTHON-6178: while the scratch corpus still exists, harvest the new
-    # coverage-increasing inputs and open an automated PR growing
-    # fuzz/corpus/. Runs only when the targets finished green, so crashing
-    # inputs never reach the corpus.
+    # coverage-increasing inputs, replay them through every target so a
+    # unit that fails one is never published, and open an automated PR
+    # growing fuzz/corpus/.
     harvest_cmd = get_subprocess_exec(
         args=[".evergreen/scripts/harvest-fuzz-corpus.sh"],
         include_expansions_in_env=[

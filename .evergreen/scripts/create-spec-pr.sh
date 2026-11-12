@@ -17,7 +17,9 @@ echo "Creating the git checkout..."
 branch="spec-resync-${today}"
 prepare_bot_branch "$branch"
 
-if ! stage_and_commit "resyncing specs ${today}" ./test; then
+# The spec sync also updates the vendored public suffix list (cp_psl in
+# resync-specs.sh), a tracked file outside test/.
+if ! stage_and_commit "resyncing specs ${today}" ./test pymongo/public_suffix_list.dat; then
     echo "No spec changes to commit; skipping PR creation."
     cat "$summary_file"
     exit 0

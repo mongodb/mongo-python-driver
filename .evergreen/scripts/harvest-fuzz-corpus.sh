@@ -22,5 +22,23 @@ if [ -z "$(ls -A fuzz-scratch/harvest 2>/dev/null || true)" ]; then
     exit 0
 fi
 
+# Replay the harvested units through every target before publishing.
+# The targets ran sequentially over one shared corpus, so a unit found
+# by a later target never ran through the earlier ones, and publishing
+# it could break the regression run of every later PR. Each input runs
+# exactly once, as in the regression sub-test; a replay failure leaves
+# the unit in fuzz-scratch/ for triage and fails the task instead of
+# opening a PR.
+replay=(fuzz-scratch/harvest/*)
+for target in fuzz_decode fuzz_decode_all fuzz_is_valid; do
+    echo "Replaying harvested units against ${target}..."
+    if ! uv run --no-sync python "fuzz/${target}.py" "${replay[@]}" \
+            -artifact_prefix="$PWD/fuzz-scratch/" -atheris_runs="${#replay[@]}"
+    then
+        echo "Harvested unit fails ${target}; no corpus PR." >&2
+        exit 1
+    fi
+done
+
 bash .evergreen/scripts/create-fuzz-corpus-pr.sh \
     fuzz-scratch/harvest fuzz-scratch/harvest-summary.md

@@ -100,8 +100,10 @@ native ASan-instrumented fuzzing is tracked separately (PYTHON-6169).
 The nightly run seeds from the spec seed corpus plus every unit in
 `corpus/`, and libFuzzer writes each coverage-increasing ("interesting")
 input it discovers back into its corpus directory. After the targets
-finish, the `fuzz` task harvests those new units into `corpus/` and opens
-an automated "[Fuzz Corpus]" PR against main (PYTHON-6178). Later nights
+finish, the `fuzz` task harvests those new units, replays them through
+every target once so a unit that fails any target is never published (it
+stays in `fuzz-scratch/` for triage), and opens an automated
+"[Fuzz Corpus]" PR against main (PYTHON-6178). Later nights
 build on prior discoveries instead of restarting from the spec seeds.
 
 Growth is bounded by per-unit and per-run caps, overridable on Evergreen:
