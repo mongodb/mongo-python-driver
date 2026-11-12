@@ -91,6 +91,23 @@ def test_per_run_cap_prefers_smallest(dirs: dict[str, Path]) -> None:
     assert "per-run cap (2)" in dirs["summary"].read_text()
 
 
+def test_dedups_identical_candidates_within_run(dirs: dict[str, Path]) -> None:
+    """Same contents under two names count once against the cap.
+
+    libFuzzer digest-names corpus files, so the second name simulates a
+    crash artifact.
+    """
+    dup = b"same" * 4
+    distinct = b"distinct-unit-input"
+    write_unit(dirs["corpus"], dup)
+    (dirs["corpus"] / f"crash-{sha256(dup).hexdigest()[:8]}").write_bytes(dup)
+    write_unit(dirs["corpus"], distinct)
+
+    assert harvest(dirs, max_units=2) == 2
+    assert {p.read_bytes() for p in dirs["out"].iterdir()} == {dup, distinct}
+    assert "Units dropped over the per-run cap (2): 0" in dirs["summary"].read_text()
+
+
 def test_no_new_units_writes_summary_and_empty_out(dirs: dict[str, Path]) -> None:
     assert harvest(dirs) == 0
     assert list(dirs["out"].iterdir()) == []

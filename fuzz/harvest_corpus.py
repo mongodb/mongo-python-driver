@@ -88,6 +88,8 @@ def run(
         digest = digest_of(path)
         if digest in known:
             continue
+        # Track accepted digests: same contents under two names count once.
+        known.add(digest)
         size = path.stat().st_size
         if size > max_unit_bytes:
             oversize += 1
