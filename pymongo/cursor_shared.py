@@ -1010,7 +1010,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         if self._has_filter:
             spec = dict(self._spec)
         else:
-            spec = cast(dict, self._spec)  # type: ignore[type-arg]
+            spec = cast("dict", self._spec)  # type: ignore[type-arg]
         spec["$where"] = code
         self._spec = spec
         return self

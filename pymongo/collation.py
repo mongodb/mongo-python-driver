@@ -21,11 +21,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pymongo import common
 from pymongo.write_concern import validate_boolean
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class CollationStrength:

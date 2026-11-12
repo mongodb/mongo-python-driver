@@ -19,10 +19,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pymongo.errors import InvalidOperation
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, MutableMapping
 
 
 class _WriteResult:
@@ -158,7 +160,7 @@ class UpdateResult(_WriteResult):
         """The number of documents modified."""
         self._raise_if_unacknowledged("modified_count")
         assert self.__raw_result is not None
-        return cast(int, self.__raw_result.get("nModified"))
+        return cast("int", self.__raw_result.get("nModified"))
 
     @property
     def upserted_id(self) -> Any:
@@ -229,34 +231,34 @@ class _BulkWriteResultBase(_WriteResult):
     def inserted_count(self) -> int:
         """The number of documents inserted."""
         self._raise_if_unacknowledged("inserted_count")
-        return cast(int, self.__bulk_api_result.get("nInserted"))
+        return cast("int", self.__bulk_api_result.get("nInserted"))
 
     @property
     def matched_count(self) -> int:
         """The number of documents matched for an update."""
         self._raise_if_unacknowledged("matched_count")
-        return cast(int, self.__bulk_api_result.get("nMatched"))
+        return cast("int", self.__bulk_api_result.get("nMatched"))
 
     @property
     def modified_count(self) -> int:
         """The number of documents modified."""
         self._raise_if_unacknowledged("modified_count")
-        return cast(int, self.__bulk_api_result.get("nModified"))
+        return cast("int", self.__bulk_api_result.get("nModified"))
 
     @property
     def deleted_count(self) -> int:
         """The number of documents deleted."""
         self._raise_if_unacknowledged("deleted_count")
         if "nRemoved" in self.__bulk_api_result:
-            return cast(int, self.__bulk_api_result.get("nRemoved"))
+            return cast("int", self.__bulk_api_result.get("nRemoved"))
         else:
-            return cast(int, self.__bulk_api_result.get("nDeleted"))
+            return cast("int", self.__bulk_api_result.get("nDeleted"))
 
     @property
     def upserted_count(self) -> int:
         """The number of documents upserted."""
         self._raise_if_unacknowledged("upserted_count")
-        return cast(int, self.__bulk_api_result.get("nUpserted"))
+        return cast("int", self.__bulk_api_result.get("nUpserted"))
 
 
 class BulkWriteResult(_BulkWriteResultBase):
@@ -339,7 +341,7 @@ class ClientBulkWriteResult(_BulkWriteResultBase):
         self._raise_if_unacknowledged("insert_results")
         self._raise_if_not_verbose("insert_results")
         return cast(
-            Mapping[int, InsertOneResult],
+            "Mapping[int, InsertOneResult]",
             self.bulk_api_result.get("insertResults"),
         )
 
@@ -349,7 +351,7 @@ class ClientBulkWriteResult(_BulkWriteResultBase):
         self._raise_if_unacknowledged("update_results")
         self._raise_if_not_verbose("update_results")
         return cast(
-            Mapping[int, UpdateResult],
+            "Mapping[int, UpdateResult]",
             self.bulk_api_result.get("updateResults"),
         )
 
@@ -359,6 +361,6 @@ class ClientBulkWriteResult(_BulkWriteResultBase):
         self._raise_if_unacknowledged("delete_results")
         self._raise_if_not_verbose("delete_results")
         return cast(
-            Mapping[int, DeleteResult],
+            "Mapping[int, DeleteResult]",
             self.bulk_api_result.get("deleteResults"),
         )

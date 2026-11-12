@@ -35,7 +35,6 @@ from bson.binary import (
     UUID_REPRESENTATION_NAMES,
     UuidRepresentation,
 )
-from bson.typings import _DocumentType
 
 _RAW_BSON_DOCUMENT_MARKER = 101
 
@@ -174,7 +173,7 @@ class TypeRegistry:
         from bson import _BUILT_IN_TYPES
 
         for pytype in _BUILT_IN_TYPES:
-            if issubclass(cast(TypeCodec, codec).python_type, pytype):
+            if issubclass(cast("TypeCodec", codec).python_type, pytype):
                 err_msg = (
                     "TypeEncoders cannot change how built-in types are "
                     f"encoded (encoder {codec} transforms type {pytype})"
@@ -242,6 +241,7 @@ class _BaseCodecOptions(NamedTuple):
 
 
 if TYPE_CHECKING:
+    from bson.typings import _DocumentType
 
     class CodecOptions(tuple[_DocumentType], Generic[_DocumentType]):
         document_class: type[_DocumentType]
@@ -401,7 +401,7 @@ else:
                     "uuid_representation must be a value from bson.binary.UuidRepresentation"
                 )
             if not isinstance(unicode_decode_error_handler, str):
-                raise ValueError(
+                raise TypeError(
                     f"unicode_decode_error_handler must be a string, not {type(unicode_decode_error_handler)}"
                 )
             if tzinfo is not None:

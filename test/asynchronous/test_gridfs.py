@@ -29,11 +29,12 @@ from test.asynchronous.helpers import ConcurrentRunner
 
 sys.path[0:0] = [""]
 
+from typing import TYPE_CHECKING
+
 import gridfs
 from bson.binary import Binary
 from gridfs.asynchronous.grid_file import DEFAULT_CHUNK_SIZE, AsyncGridOutCursor
 from gridfs.errors import CorruptGridFile, FileExists, NoFile
-from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.errors import (
     ConfigurationError,
@@ -44,6 +45,9 @@ from pymongo.read_preferences import ReadPreference
 from test.asynchronous import AsyncIntegrationTest, async_client_context, unittest
 from test.asynchronous.utils import async_joinall
 from test.utils_shared import one
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.database import AsyncDatabase
 
 _IS_SYNC = False
 

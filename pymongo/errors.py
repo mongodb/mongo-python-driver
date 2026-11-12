@@ -19,13 +19,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
 from ssl import SSLCertVerificationError as _CertificateError  # noqa: F401
 from typing import TYPE_CHECKING, Any
 
 from bson.errors import InvalidDocument
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+
     from pymongo.results import ClientBulkWriteResult
     from pymongo.typings import _DocumentOut
 

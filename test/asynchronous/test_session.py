@@ -19,10 +19,9 @@ from __future__ import annotations
 import copy
 import sys
 import time
-from collections.abc import Callable
 from inspect import iscoroutinefunction
 from io import BytesIO
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from test.asynchronous.helpers import ExceptionCatchingTask
 
@@ -52,6 +51,9 @@ from test.utils_shared import (
     OvertCommandListener,
     async_wait_until,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _IS_SYNC = False
 
@@ -1019,7 +1021,7 @@ class TestCausalConsistency(AsyncUnitTest):
                 self.assertIsNone(sess2.cluster_time)
                 self.assertIsNone(sess2.operation_time)
                 self.assertRaises(TypeError, sess2.advance_cluster_time, 1)
-                self.assertRaises(ValueError, sess2.advance_cluster_time, {})
+                self.assertRaises(TypeError, sess2.advance_cluster_time, {})
                 self.assertRaises(TypeError, sess2.advance_operation_time, 1)
                 # No error
                 assert sess.cluster_time is not None

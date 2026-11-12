@@ -21,9 +21,7 @@ import inspect
 import io
 import math
 from collections import abc
-from collections.abc import Iterable, Mapping
-from types import TracebackType
-from typing import Any, NoReturn, Self, cast
+from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -45,7 +43,6 @@ from gridfs.grid_file_shared import (
     _clear_entity_type_registry,
 )
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
-from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
@@ -61,6 +58,12 @@ from pymongo.errors import (
 )
 from pymongo.helpers_shared import _check_write_command_response
 from pymongo.read_preferences import ReadPreference, _ServerMode
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+    from types import TracebackType
+
+    from pymongo.asynchronous.client_session import AsyncClientSession
 
 _IS_SYNC = False
 
@@ -691,7 +694,7 @@ class AsyncGridFSBucket:
         ) as gin:
             await gin.write(source)
 
-        return cast(ObjectId, gin._id)
+        return cast("ObjectId", gin._id)
 
     @_csot.apply
     async def upload_from_stream_with_id(

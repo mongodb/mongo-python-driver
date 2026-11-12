@@ -557,7 +557,7 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
                 f"cluster_time must be a subclass of collections.Mapping, not {type(cluster_time)}"
             )
         if not isinstance(cluster_time.get("clusterTime"), Timestamp):
-            raise ValueError("Invalid cluster_time")
+            raise TypeError("Invalid cluster_time")
         self._advance_cluster_time(cluster_time)
 
     def _advance_operation_time(self, operation_time: Timestamp | None) -> None:
@@ -774,5 +774,5 @@ class _TransactionBase(Generic[_ConnectionT]):
             # Reuse the cursor closing machinery to return the socket to the
             # pool soon. _close_cursor_soon expects the IO-specific
             # _ConnectionManager, which conn_mgr is at runtime.
-            self.client._close_cursor_soon(0, None, cast(Any, self.conn_mgr))
+            self.client._close_cursor_soon(0, None, cast("Any", self.conn_mgr))
             self.conn_mgr = None

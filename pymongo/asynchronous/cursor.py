@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -47,6 +46,8 @@ from pymongo.response import PinnedResponse
 from pymongo.typings import _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from bson.codec_options import CodecOptions
     from pymongo.asynchronous.collection import AsyncCollection
 
@@ -442,7 +443,7 @@ class AsyncRawBatchCursor(AsyncCursor[_DocumentType]):
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-        return cast(list["_DocumentOut"], raw_response)
+        return cast("list[_DocumentOut]", raw_response)
 
     async def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.

@@ -16,10 +16,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
     from datetime import timedelta
 
     from pymongo.message import _OpMsg

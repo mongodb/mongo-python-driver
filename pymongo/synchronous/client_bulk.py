@@ -20,7 +20,6 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Mapping, MutableMapping
 from itertools import islice
 from typing import (
     TYPE_CHECKING,
@@ -29,7 +28,6 @@ from typing import (
 
 from pymongo import _csot
 from pymongo._telemetry import _generate_op_id_or_none
-from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.command_runner import (
@@ -39,8 +37,12 @@ from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import _handle_reauth
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, MutableMapping
+
+    from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient
     from pymongo.synchronous.pool import Connection
+    from pymongo.write_concern import WriteConcern
 from pymongo._client_bulk_shared import (
     _AgnosticClientBulkBase,
     _merge_command,
@@ -68,7 +70,6 @@ from pymongo.results import (
     InsertOneResult,
     UpdateResult,
 )
-from pymongo.write_concern import WriteConcern
 
 _IS_SYNC = True
 

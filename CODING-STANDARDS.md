@@ -1,4 +1,3 @@
-<!-- blacken-docs:off -->
 # Intent
 
 This document describes the common coding standards for all projects maintained by the Python Drivers team. These standards apply to all written code, comments, and docstrings, both human and machine-authored. Use these guidelines both when writing and reviewing code.
@@ -203,4 +202,3 @@ if TYPE_CHECKING:
    2. A poor commit message: “2x speedup on inserts (if document \> 1MB).”
 4. Extended messages longer than the one line summary are permitted, but are not encouraged as they are squashed during pull-request merge. They may contain periods.
 5. Do not force-push to an open PR unless absolutely necessary.
-<!-- blacken-docs:on -->

@@ -604,7 +604,7 @@ if _USE_C:
         result: _T,
         raw_array: bool = False,
     ) -> _T:
-        return cast(_T, _cbson._raw_to_dict(data, position, obj_end, opts, result, raw_array))
+        return cast("_T", _cbson._raw_to_dict(data, position, obj_end, opts, result, raw_array))
 
 else:
 
@@ -618,7 +618,8 @@ else:
     ) -> _T:
         data, view = get_data_and_view(data)
         return cast(
-            _T, _elements_to_dict(data, view, position, obj_end, opts, result, raw_array=raw_array)
+            "_T",
+            _elements_to_dict(data, view, position, obj_end, opts, result, raw_array=raw_array),
         )
 
 

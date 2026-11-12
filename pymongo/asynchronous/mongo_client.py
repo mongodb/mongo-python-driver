@@ -60,7 +60,6 @@ from typing import (
 )
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
-from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
 from pymongo.asynchronous import client_session, database, uri_parser
 from pymongo.asynchronous.change_stream import AsyncChangeStream, AsyncClusterChangeStream
@@ -107,7 +106,6 @@ from pymongo.operations import (
     _Op,
 )
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.results import ClientBulkWriteResult
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
@@ -136,6 +134,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from bson.objectid import ObjectId
+    from bson.timestamp import Timestamp
     from pymongo.asynchronous.bulk import _AsyncBulk
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.cursor_base import _ConnectionManager
@@ -145,6 +144,7 @@ if TYPE_CHECKING:
     from pymongo.client_session_shared import _ServerSession
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
+    from pymongo.results import ClientBulkWriteResult
     from pymongo.server_selectors import Selection
 
 
@@ -1608,7 +1608,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._default_database_name is None and default is None:
             raise ConfigurationError("No default database name defined or provided.")
 
-        name = cast(str, self._default_database_name or default)
+        name = cast("str", self._default_database_name or default)
         return database.AsyncDatabase(
             self, name, codec_options, read_preference, write_concern, read_concern
         )
@@ -2409,7 +2409,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
            Added ``session`` parameter.
         """
         return cast(  # type: ignore[redundant-cast]
-            dict[str, Any],
+            "dict[str, Any]",
             await self.admin.command(
                 "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
             ),

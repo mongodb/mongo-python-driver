@@ -71,7 +71,7 @@ class Selection:
         secondaries = secondary_server_selector(self)
         if secondaries.server_descriptions:
             return max(
-                secondaries.server_descriptions, key=lambda sd: cast(float, sd.last_write_date)
+                secondaries.server_descriptions, key=lambda sd: cast("float", sd.last_write_date)
             )
         return None
 

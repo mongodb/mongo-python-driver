@@ -113,7 +113,7 @@ class client_knobs:
                 f"EVENTS_QUEUE_FREQUENCY={common.EVENTS_QUEUE_FREQUENCY}, stack:\n{self._stack}"
             )
             self.disable()
-            raise Exception(msg)
+            raise RuntimeError(msg)
 
 
 # Global knobs to speed up the test suite.

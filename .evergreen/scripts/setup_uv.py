@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Bootstrap the pinned uv/just for the test environment.
 
-install-dependencies.sh probes with `setup-uv.py --check`, sources ensure-uv.sh
+install-dependencies.sh probes with `setup_uv.py --check`, sources ensure-uv.sh
 (which finds or installs uv), then runs this script for the rest. Only the
 standard library is used.
 
 This runs under the host's system python3, which may be older than our minimum supported version.
 """
+
+from __future__ import annotations
 
 import os
 import re

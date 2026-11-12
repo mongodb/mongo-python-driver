@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, MutableMapping
 from typing import TYPE_CHECKING, Any
 
 from pymongo import common
@@ -25,6 +24,8 @@ from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference, _AggWritePref
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping, MutableMapping
+
     from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.collection import Collection
