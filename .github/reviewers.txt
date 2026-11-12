@@ -1,5 +1,0 @@
-# List of reviewers for auto-assignment of reviews.
-caseyclements
-blink1073
-Jibola
-NoahStapp

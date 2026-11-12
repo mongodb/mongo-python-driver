@@ -1,3 +1,0 @@
-# Test-only; kept out of pyproject.toml so the uv lock never has to
-# resolve it (building its sdist needs Apache).
-mod_wsgi>=6.1.1
