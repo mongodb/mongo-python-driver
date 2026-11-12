@@ -19,7 +19,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
 from bson.codec_options import _parse_codec_options
@@ -39,6 +38,8 @@ from pymongo.ssl_support import get_ssl_context
 from pymongo.write_concern import WriteConcern, validate_boolean
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
     from bson.codec_options import CodecOptions
     from pymongo.auth_shared import MongoCredential
     from pymongo.encryption_options import AutoEncryptionOpts
@@ -164,7 +165,7 @@ def _parse_pool_options(
     connect_timeout = options.get("connecttimeoutms", common.CONNECT_TIMEOUT)
     socket_timeout = options.get("sockettimeoutms")
     wait_queue_timeout = options.get("waitqueuetimeoutms", common.WAIT_QUEUE_TIMEOUT)
-    event_listeners = cast(Sequence[_EventListener] | None, options.get("event_listeners"))
+    event_listeners = cast("Sequence[_EventListener] | None", options.get("event_listeners"))
     appname = options.get("appname")
     driver = options.get("driver")
     server_api = options.get("server_api")

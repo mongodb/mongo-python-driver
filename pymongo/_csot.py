@@ -132,7 +132,7 @@ def apply(func: F) -> F:
                         return func(self, *args, **kwargs)
             return func(self, *args, **kwargs)
 
-    return cast(F, csot_wrapper)
+    return cast("F", csot_wrapper)
 
 
 def apply_write_concern(cmd: MutableMapping[str, Any], write_concern: WriteConcern | None) -> None:

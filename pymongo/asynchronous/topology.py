@@ -203,7 +203,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             )
 
             return [
-                cast(Server, self.get_server_by_address(sd.address)) for sd in server_descriptions
+                cast("Server", self.get_server_by_address(sd.address)) for sd in server_descriptions
             ]
 
     async def _select_servers_loop(

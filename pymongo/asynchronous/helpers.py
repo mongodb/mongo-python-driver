@@ -72,7 +72,7 @@ def _handle_reauth(func: F) -> F:
                 return await func(*args, **kwargs)
             raise
 
-    return cast(F, inner)
+    return cast("F", inner)
 
 
 async def _getaddrinfo(

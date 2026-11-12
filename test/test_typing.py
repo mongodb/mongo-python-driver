@@ -92,7 +92,7 @@ def only_type_check(func: FuncT) -> FuncT:
             raise unittest.SkipTest("Used for Type Checking Only")
         func(*args, **kwargs)
 
-    return cast(FuncT, inner)
+    return cast("FuncT", inner)
 
 
 class TestMypyFails(unittest.TestCase):

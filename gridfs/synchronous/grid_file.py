@@ -690,7 +690,7 @@ class GridFSBucket:
         with self.open_upload_stream(filename, chunk_size_bytes, metadata, session=session) as gin:
             gin.write(source)
 
-        return cast(ObjectId, gin._id)
+        return cast("ObjectId", gin._id)
 
     @_csot.apply
     def upload_from_stream_with_id(

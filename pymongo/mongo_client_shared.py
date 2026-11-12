@@ -62,7 +62,7 @@ def _retryable_error_doc(exc: PyMongoError) -> Mapping[str, Any] | None:
         wces = exc.details["writeConcernErrors"]
         return wces[-1] if wces else None
     if isinstance(exc, (NotPrimaryError, OperationFailure)):
-        return cast(Mapping[str, Any], exc.details)
+        return cast("Mapping[str, Any]", exc.details)
     return None
 
 
