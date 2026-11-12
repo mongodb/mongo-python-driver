@@ -202,13 +202,16 @@ class TestBackpressure(AsyncIntegrationTest):
         self.assertIn("SystemOverloadedError", str(error.exception))
 
     @async_client_context.require_failCommand_appName
+    @async_client_context.require_exhaust_stream
     async def test_retry_overload_error_getMore_exhaust_receive_only(self):
         # PYTHON-6262: an error on a receive-only exhaust getMore must
         # surface instead of retrying a receive with no request in flight.
         # Use a dedicated client: the abandoned exhaust stream leaves the
         # pinned connection unusable.
         uri = await async_client_context.uri
-        client = AsyncMongoClient(uri)
+        client = AsyncMongoClient(
+            uri, server_api=async_client_context.default_client_options.get("server_api")
+        )
         self.addAsyncCleanup(client.close)
         coll = client.get_database(self.db.name).coll
         await coll.delete_many({})

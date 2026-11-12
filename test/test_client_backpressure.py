@@ -202,13 +202,16 @@ class TestBackpressure(IntegrationTest):
         self.assertIn("SystemOverloadedError", str(error.exception))
 
     @client_context.require_failCommand_appName
+    @client_context.require_exhaust_stream
     def test_retry_overload_error_getMore_exhaust_receive_only(self):
         # PYTHON-6262: an error on a receive-only exhaust getMore must
         # surface instead of retrying a receive with no request in flight.
         # Use a dedicated client: the abandoned exhaust stream leaves the
         # pinned connection unusable.
         uri = client_context.uri
-        client = MongoClient(uri)
+        client = MongoClient(
+            uri, server_api=client_context.default_client_options.get("server_api")
+        )
         self.addCleanup(client.close)
         coll = client.get_database(self.db.name).coll
         coll.delete_many({})
