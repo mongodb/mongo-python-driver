@@ -297,7 +297,7 @@ class TestClientMetadataProse(IntegrationTest):
 
                 self.assertIsNotNone(name0)
                 self.assertIsNotNone(version0)
-                version0 = cast(str, version0)
+                version0 = cast("str", version0)
                 driver_name = name0.split("|")[0]
                 driver_version = version0.split("|")[0]
 

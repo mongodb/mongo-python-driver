@@ -218,8 +218,7 @@ extend-select = [
   "YTT",         # flake8-2020
   "EXE",         # flake8-executable
   "ASYNC",       # flake8-async
-  "TC001",       # flake8-type-checking: typing-only first-party imports
-  "TC003",       # flake8-type-checking: typing-only stdlib imports
+  "TC",       # flake8-type-checking
 ]
 ignore = [
   "PLR",    # Design related pylint codes

@@ -26,9 +26,9 @@ _SelectError = getattr(select, "error", OSError)
 
 def _errno_from_exception(exc: BaseException) -> int | None:
     if hasattr(exc, "errno"):
-        return cast(int, exc.errno)
+        return cast("int", exc.errno)
     if exc.args:
-        return cast(int, exc.args[0])
+        return cast("int", exc.args[0])
     return None
 
 

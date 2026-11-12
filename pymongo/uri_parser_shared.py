@@ -423,7 +423,7 @@ def split_options(
         options = _normalize_options(options)
 
     if validate:
-        options = cast(_CaseInsensitiveDictionary, validate_options(options, warn))
+        options = cast("_CaseInsensitiveDictionary", validate_options(options, warn))
         if options.get("authsource") == "":
             raise InvalidURI("the authSource database cannot be an empty string")
 
@@ -507,7 +507,7 @@ def _parse_kms_tls_options(
         opts = _CaseInsensitiveDictionary(options)
         opts = _handle_security_options(opts)
         opts = _normalize_options(opts)
-        opts = cast(_CaseInsensitiveDictionary, validate_options(opts))
+        opts = cast("_CaseInsensitiveDictionary", validate_options(opts))
         ssl_context, allow_invalid_hostnames = _parse_ssl_options(opts, is_sync)
         if ssl_context is None:
             raise ConfigurationError("TLS is required for KMS providers")

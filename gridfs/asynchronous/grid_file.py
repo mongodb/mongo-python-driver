@@ -694,7 +694,7 @@ class AsyncGridFSBucket:
         ) as gin:
             await gin.write(source)
 
-        return cast(ObjectId, gin._id)
+        return cast("ObjectId", gin._id)
 
     @_csot.apply
     async def upload_from_stream_with_id(

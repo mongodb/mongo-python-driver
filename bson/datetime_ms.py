@@ -108,7 +108,7 @@ class DatetimeMS:
             and ``tz_info``. Defaults to
             :const:`~bson.codec_options.DEFAULT_CODEC_OPTIONS`.
         """
-        return cast(datetime.datetime, _millis_to_datetime(self._value, codec_options))
+        return cast("datetime.datetime", _millis_to_datetime(self._value, codec_options))
 
     def __int__(self) -> int:
         return self._value

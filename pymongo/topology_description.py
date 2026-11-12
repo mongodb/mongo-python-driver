@@ -276,7 +276,7 @@ class TopologyDescription:
         return [
             s
             for s in selection.server_descriptions
-            if (cast(float, s.round_trip_time) - fastest) <= threshold
+            if (cast("float", s.round_trip_time) - fastest) <= threshold
         ]
 
     def _filter_servers(self, deprioritized_servers: list[ServerDescription] | None = None) -> None:
