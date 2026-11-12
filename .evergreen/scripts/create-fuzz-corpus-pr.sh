@@ -11,7 +11,7 @@ today="$(date '+%m-%d-%Y')"
 
 # Shared github-app authentication, git branch and PR plumbing.
 # shellcheck disable=SC1091
-. "$(dirname "${BASH_SOURCE[0]}")/github-pr-lib.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/github-pr-util.sh"
 
 acquire_github_token
 
