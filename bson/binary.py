@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import struct
 import warnings
-from collections.abc import Sequence
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Self, overload
 from uuid import UUID
@@ -64,6 +63,7 @@ by :mod:`bson` using this subtype when using
 
 if TYPE_CHECKING:
     from array import array as _array
+    from collections.abc import Sequence
     from mmap import mmap as _mmap
 
     import numpy as np

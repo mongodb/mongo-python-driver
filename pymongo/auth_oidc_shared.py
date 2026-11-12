@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import abc
 import os
-from collections.abc import Callable, Mapping, MutableMapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
@@ -32,6 +31,8 @@ from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.helpers_shared import _AUTHENTICATION_FAILURE_CODE
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping, MutableMapping
+
     from pymongo.auth_shared import MongoCredential
 
 

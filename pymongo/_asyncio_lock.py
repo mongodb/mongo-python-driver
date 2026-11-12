@@ -10,9 +10,11 @@ from __future__ import annotations
 import collections
 import threading
 from asyncio import events, exceptions
-from collections.abc import Coroutine
-from types import TracebackType
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Coroutine
+    from types import TracebackType
 
 _global_lock = threading.Lock()
 

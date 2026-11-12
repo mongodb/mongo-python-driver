@@ -25,8 +25,10 @@ import os
 import subprocess
 import sys
 import warnings
-from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 # The maximum amount of time to wait for the intermediate subprocess.
 _WAIT_TIMEOUT = 10

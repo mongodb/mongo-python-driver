@@ -21,8 +21,7 @@ import os
 import sys
 import time
 import uuid
-from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -37,6 +36,9 @@ from pymongo.write_concern import WriteConcern
 from test.asynchronous import AsyncIntegrationTest, AsyncPyMongoTestCase, unittest
 from test.asynchronous.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import AllowListEventListener, OvertCommandListener
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 _IS_SYNC = False
 

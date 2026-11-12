@@ -17,7 +17,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, MutableMapping
 from typing import TYPE_CHECKING, Any, NoReturn
 
 from bson.objectid import ObjectId
@@ -38,6 +37,8 @@ from pymongo.message import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping, MutableMapping
+
     from pymongo.typings import _AgnosticCollection, _DocumentOut, _DocumentType, _Pipeline
 
 

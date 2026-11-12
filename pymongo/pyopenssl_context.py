@@ -20,11 +20,9 @@ Due to limitations of the CPython asyncio.Protocol implementation for SSL, the a
 
 from __future__ import annotations
 
-import socket as _socket
 import ssl as _stdlibssl
 import sys as _sys
 import time as _time
-from collections.abc import Callable
 from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, TypeVar
@@ -43,6 +41,8 @@ from pymongo.socket_checker import _errno_from_exception
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
+    import socket as _socket
+    from collections.abc import Callable
     from ssl import VerifyMode
 
 

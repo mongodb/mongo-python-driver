@@ -29,7 +29,6 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
-from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.database_shared import _check_name, _CodecDocumentType
@@ -45,6 +44,7 @@ from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipe
 if TYPE_CHECKING:
     import bson
     import bson.codec_options
+    from bson.timestamp import Timestamp
     from pymongo.read_concern import ReadConcern
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient

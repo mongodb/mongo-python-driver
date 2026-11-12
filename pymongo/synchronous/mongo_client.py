@@ -59,7 +59,6 @@ from typing import (
 )
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions, TypeRegistry
-from bson.timestamp import Timestamp
 from pymongo import _csot, _op_id, common, helpers_shared, periodic_executor
 from pymongo.client_options import ClientOptions
 from pymongo.client_session_shared import SessionOptions, TransactionOptions, _EmptyServerSession
@@ -99,7 +98,6 @@ from pymongo.operations import (
     _Op,
 )
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.results import ClientBulkWriteResult
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import writable_server_selector
 from pymongo.server_type import SERVER_TYPE
@@ -135,9 +133,11 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from bson.objectid import ObjectId
+    from bson.timestamp import Timestamp
     from pymongo.client_session_shared import _ServerSession
     from pymongo.read_concern import ReadConcern
     from pymongo.response import Response
+    from pymongo.results import ClientBulkWriteResult
     from pymongo.server_selectors import Selection
     from pymongo.synchronous.bulk import _Bulk
     from pymongo.synchronous.client_session import ClientSession

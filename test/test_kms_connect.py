@@ -37,10 +37,9 @@ import ssl
 import threading
 import time
 from asyncio.trsock import TransportSocket
-from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest import mock
 
 import pytest
@@ -58,6 +57,9 @@ from pymongo.errors import ConfigurationError, ConnectionFailure, EncryptionErro
 from pymongo.pool_options import PoolOptions
 from pymongo.ssl_support import get_ssl_context
 from test.helpers_shared import CA_PEM, CERT_PATH, CLIENT_PEM
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 pytestmark = [pytest.mark.encryption, pytest.mark.asyncio]
 

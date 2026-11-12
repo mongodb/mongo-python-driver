@@ -218,10 +218,12 @@ extend-select = [
   "YTT",         # flake8-2020
   "EXE",         # flake8-executable
   "ASYNC",       # flake8-async
-  "D202", # pydocstyle: no blank lines between docstring and function body.
-  "D209", # pydocstyle: closing quotes go on their own line.
-  "D301", # pydocstyle: docstrings containing \ are defined as string literals.
-  "D403", # pydocstyle: docstrings start with a capital letter.
+  "D202",        # pydocstyle: no blank lines between docstring and function body.
+  "D209",        # pydocstyle: closing quotes go on their own line.
+  "D301",        # pydocstyle: docstrings containing \ are defined as string literals.
+  "D403",        # pydocstyle: docstrings start with a capital letter.
+  "TC001",       # flake8-type-checking: typing-only first-party imports
+  "TC003",       # flake8-type-checking: typing-only stdlib imports
 ]
 ignore = [
   "PLR",    # Design related pylint codes
@@ -250,10 +252,6 @@ ignore = [
   "UP017",   # `timezone.utc` preferred over `datetime.UTC` (keep existing style)
   "ICN001", # Use standard import naming conventions (pandas as pd, datetime as dt...)
   "BLE",    # Broad `Except` exception catches (intentional)
-  # These are all new defaults added in ruff 0.16.0. Individual tickets linked from PYTHON-5964 track enabling each one.
-  "INT",    # flake8-gettext
-  "ISC",    # flake8-implicit-str-concat
-  "FLY",    # flynt
 ]
 unfixable = [
   "RUF100", # Unused noqa

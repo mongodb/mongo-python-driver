@@ -22,9 +22,10 @@ from test.asynchronous.utils import async_ensure_all_connected
 
 sys.path[0:0] = [""]
 
+from typing import TYPE_CHECKING
+
 from bson import SON
 from pymongo import monitoring
-from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.errors import NotPrimaryError
 from pymongo.write_concern import WriteConcern
 from test.asynchronous import (
@@ -36,6 +37,9 @@ from test.asynchronous.helpers import async_repl_set_step_down
 from test.utils_shared import (
     CMAPListener,
 )
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.collection import AsyncCollection
 
 _IS_SYNC = False
 

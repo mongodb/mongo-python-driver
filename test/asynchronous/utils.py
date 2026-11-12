@@ -27,10 +27,9 @@ import traceback
 import unittest
 from functools import wraps
 from inspect import iscoroutinefunction
+from typing import TYPE_CHECKING
 
 from bson.son import SON
-from pymongo import AsyncMongoClient
-from pymongo.asynchronous.pool import Pool
 from pymongo.errors import ConfigurationError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _async_create_lock
@@ -38,6 +37,10 @@ from pymongo.operations import _Op
 from pymongo.pool_shared import _CancellationContext, _PoolGeneration
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import any_server_selector, writable_server_selector
+
+if TYPE_CHECKING:
+    from pymongo import AsyncMongoClient
+    from pymongo.asynchronous.pool import Pool
 
 _IS_SYNC = False
 

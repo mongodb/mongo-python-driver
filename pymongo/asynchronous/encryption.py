@@ -20,9 +20,7 @@ import asyncio
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
-from collections.abc import AsyncGenerator, Mapping, MutableMapping, Sequence
 from copy import deepcopy
-from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -50,10 +48,8 @@ from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot, _op_id
-from pymongo._kms_connect_shared import AsyncKMSConnectCallback
 from pymongo.asynchronous._kms_connect import _KMS_CONNECT_TIMEOUT, _connect_kms
 from pymongo.asynchronous.collection import AsyncCollection
-from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.daemon import _spawn_daemon
@@ -87,14 +83,20 @@ from pymongo.pool_shared import (
     _raise_connection_failure,
 )
 from pymongo.read_concern import ReadConcern
-from pymongo.results import DeleteResult
 from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
 from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser_shared import _parse_kms_tls_options, parse_host
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Mapping, MutableMapping, Sequence
+    from types import TracebackType
+
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
+
+    from pymongo._kms_connect_shared import AsyncKMSConnectCallback
+    from pymongo.asynchronous.cursor import AsyncCursor
+    from pymongo.results import DeleteResult
 
 
 _IS_SYNC = False

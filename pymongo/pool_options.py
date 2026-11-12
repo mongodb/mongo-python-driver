@@ -23,7 +23,6 @@ import copy
 import os
 import platform
 import sys
-from collections.abc import MutableMapping
 from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -41,6 +40,8 @@ from pymongo.common import (
 from pymongo.lock import _create_lock
 
 if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
     from pymongo.auth_shared import MongoCredential
     from pymongo.compression_support import CompressionSettings
     from pymongo.driver_info import DriverInfo

@@ -19,7 +19,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -27,8 +27,10 @@ sys.path[0:0] = [""]
 
 from bson import ObjectId
 from pymongo.server_api import ServerApi
-from pymongo.synchronous.mongo_client import MongoClient
 from test import PyMongoTestCase
+
+if TYPE_CHECKING:
+    from pymongo.synchronous.mongo_client import MongoClient
 
 _IS_SYNC = True
 
