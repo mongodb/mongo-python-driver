@@ -240,7 +240,7 @@ def _xor(fir: bytes, sec: bytes) -> bytes:
 def _parse_scram_response(response: bytes) -> dict[bytes, bytes]:
     """Split a scram response into key, value pairs."""
     return dict(
-        typing.cast(typing.Tuple[bytes, bytes], item.split(b"=", 1))
+        typing.cast("typing.Tuple[bytes, bytes]", item.split(b"=", 1))
         for item in response.split(b",")
     )
 
@@ -290,7 +290,7 @@ class _AuthContext:
     ) -> _AuthContext | None:
         spec_cls = spec_auth_map.get(creds.mechanism)
         if spec_cls:
-            return cast(_AuthContext, spec_cls(creds, address))
+            return cast("_AuthContext", spec_cls(creds, address))
         return None
 
     def speculate_command(self) -> MutableMapping[str, Any] | None:

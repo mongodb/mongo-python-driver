@@ -218,12 +218,11 @@ extend-select = [
   "YTT",         # flake8-2020
   "EXE",         # flake8-executable
   "ASYNC",       # flake8-async
+  "TC",          # flake8-type-checking
   "D202",        # pydocstyle: no blank lines between docstring and function body.
   "D209",        # pydocstyle: closing quotes go on their own line.
   "D301",        # pydocstyle: docstrings containing \ are defined as string literals.
   "D403",        # pydocstyle: docstrings start with a capital letter.
-  "TC001",       # flake8-type-checking: typing-only first-party imports
-  "TC003",       # flake8-type-checking: typing-only stdlib imports
 ]
 ignore = [
   "PLR",    # Design related pylint codes

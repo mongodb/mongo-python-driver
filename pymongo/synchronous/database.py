@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
@@ -42,6 +41,8 @@ from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, MutableMapping, Sequence
+
     import bson
     import bson.codec_options
     from bson.timestamp import Timestamp
@@ -303,7 +304,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     ) -> Mapping[str, Any] | None:
         encrypted_fields = kwargs.get("encryptedFields")
         if encrypted_fields:
-            return cast(Mapping[str, Any], deepcopy(encrypted_fields))
+            return cast("Mapping[str, Any]", deepcopy(encrypted_fields))
         if (
             self.client.options.auto_encryption_opts
             and self.client.options.auto_encryption_opts._encrypted_fields_map
@@ -312,7 +313,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             )
         ):
             return cast(
-                Mapping[str, Any],
+                "Mapping[str, Any]",
                 deepcopy(
                     self.client.options.auto_encryption_opts._encrypted_fields_map[
                         f"{self.name}.{coll_name}"
@@ -322,7 +323,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if ask_db and self.client.options.auto_encryption_opts:
             options = self[coll_name].options()
             if options.get("encryptedFields"):
-                return cast(Mapping[str, Any], deepcopy(options["encryptedFields"]))
+                return cast("Mapping[str, Any]", deepcopy(options["encryptedFields"]))
         return None
 
     # See PYTHON-3084.
@@ -1085,7 +1086,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     ) -> CommandCursor[MutableMapping[str, Any]]:
         """Internal listCollections helper."""
         coll = cast(
-            Collection[MutableMapping[str, Any]],
+            "Collection[MutableMapping[str, Any]]",
             self.get_collection("$cmd", read_preference=read_preference),
         )
         cmd = {"listCollections": 1, "cursor": {}}

@@ -85,7 +85,7 @@ async def _connect_kms(
             )
     # Any: the sync version's callback returns a plain socket.
     result: Any = kms_connect_callback(
-        KMSConnectContext(host=address[0], port=cast(int, address[1]), timeout=timeout)
+        KMSConnectContext(host=address[0], port=cast("int", address[1]), timeout=timeout)
     )
     remaining = _csot.remaining()
     if remaining is None or _IS_SYNC:

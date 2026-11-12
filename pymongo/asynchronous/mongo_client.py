@@ -1607,7 +1607,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         if self._default_database_name is None and default is None:
             raise ConfigurationError("No default database name defined or provided.")
 
-        name = cast(str, self._default_database_name or default)
+        name = cast("str", self._default_database_name or default)
         return database.AsyncDatabase(
             self, name, codec_options, read_preference, write_concern, read_concern
         )
@@ -2407,7 +2407,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
            Added ``session`` parameter.
         """
         return cast(  # type: ignore[redundant-cast]
-            dict[str, Any],
+            "dict[str, Any]",
             await self.admin.command(
                 "buildinfo", read_preference=ReadPreference.PRIMARY, session=session
             ),

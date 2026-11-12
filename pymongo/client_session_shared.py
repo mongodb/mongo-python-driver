@@ -774,5 +774,5 @@ class _TransactionBase(Generic[_ConnectionT]):
             # Reuse the cursor closing machinery to return the socket to the
             # pool soon. _close_cursor_soon expects the IO-specific
             # _ConnectionManager, which conn_mgr is at runtime.
-            self.client._close_cursor_soon(0, None, cast(Any, self.conn_mgr))
+            self.client._close_cursor_soon(0, None, cast("Any", self.conn_mgr))
             self.conn_mgr = None
