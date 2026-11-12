@@ -127,9 +127,11 @@ def write_summary(
         f"- Units skipped over the per-unit cap ({max_unit_bytes} bytes): {oversize}",
         f"- Units dropped over the per-run cap ({max_units}): {over_cap}",
         "",
-        "These are fuzzer-generated inputs, not reviewed code. Before merging, "
-        "skim them for size and for inputs that look like a bug rather than a "
-        "plain coverage gain; anything crashing belongs in `fuzz/regression/`.",
+        (
+            "These are fuzzer-generated inputs, not reviewed code. Before merging, "
+            "skim them for size and for inputs that look like a bug rather than a "
+            "plain coverage gain; anything crashing belongs in `fuzz/regression/`."
+        ),
     ]
     if kept:
         lines.extend(["", "Largest units added:"])
