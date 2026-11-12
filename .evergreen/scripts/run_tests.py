@@ -85,6 +85,16 @@ def handle_green_framework() -> None:
     LOGGER.info(f"Running tests with {GREEN_FRAMEWORK}...")
 
 
+def handle_load_balancer_marker() -> None:
+    """Select the full default suite plus the load-balancer-marked tests.
+
+    The last ``-m`` wins over the one setup_tests.py wrote, and
+    pytest_conf.py grants the implicit default markers only to unmarked
+    tests, so the expression needs an explicit ``load_balancer`` term.
+    """
+    TEST_ARGS.extend(["-m", "default or default_async or load_balancer"])
+
+
 def handle_c_ext() -> None:
     if platform.python_implementation() != "CPython":
         return
@@ -194,6 +204,8 @@ def run() -> None:
     # Handle green framework first so they can patch modules.
     if GREEN_FRAMEWORK:
         handle_green_framework()
+    elif TEST_NAME == "load_balancer":
+        handle_load_balancer_marker()
 
     # Ensure C extensions if applicable.
     if not os.environ.get("NO_EXT"):

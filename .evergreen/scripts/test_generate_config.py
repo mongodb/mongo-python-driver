@@ -282,6 +282,23 @@ def test_non_standard_cov_tasks_have_no_cov_companions():
             assert companion in no_cov, f"missing no-cov companion for {task.name}"
 
 
+def test_load_balancer_marker_selection(monkeypatch):
+    """The load balancer tasks select the load_balancer marker explicitly:
+    pytest_conf.py only grants the implicit default markers to unmarked
+    tests, so the marker expression must add the full default suite
+    alongside the load balancer tests (PYTHON-6262)."""
+    import run_tests
+
+    monkeypatch.setattr(run_tests, "TEST_NAME", "load_balancer")
+    monkeypatch.setattr(run_tests, "GREEN_FRAMEWORK", None)
+    monkeypatch.setattr(run_tests, "TEST_ARGS", ["-m", "load_balancer"])
+    run_tests.handle_load_balancer_marker()
+    assert run_tests.TEST_ARGS[-2:] == [
+        "-m",
+        "default or default_async or load_balancer",
+    ]
+
+
 def test_sanitizer_task_wiring():
     """PYTHON-6048: one pr-tagged sanitizer task, selected by exactly one
     variant that pins MAX_VERSION and runs on a large host for ASan's memory
