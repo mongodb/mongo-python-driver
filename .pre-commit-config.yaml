@@ -135,4 +135,5 @@ repos:
     language: python
     require_serial: true
     pass_filenames: false
+    files: ^\.evergreen/scripts/
     additional_dependencies: ["pytest", "pytest-asyncio"]

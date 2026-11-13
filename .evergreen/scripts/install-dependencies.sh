@@ -49,8 +49,8 @@ if [ "Windows_NT" = "${OS:-}" ]; then
 fi
 
 # Skip setup when a suitable uv is already installed: `setup_uv.py --check`
-# verifies the required-version pin when set, else that the uv on PATH is the
-# one setup installed into UV_TOOL_BIN_DIR, without side effects.
+# verifies the required-version pin, or the project-controlled uv in
+# UV_TOOL_BIN_DIR when unpinned, without side effects.
 # A full `uv sync` here would download Python and install/build dependencies
 # just to make this decision, and would run before setup-uv-python.sh sets
 # UV_PYTHON, creating the environment twice on local dev.

@@ -11,9 +11,8 @@
 #   UV_PYTHON_PREFERENCE  - "system" so the toolchain wins over managed installs.
 #                           A preference set by the task is left alone.
 #   UV_PYTHON             - the Python interpreter uv uses; defaults to CPython
-#                           3.11 when the task does not set one, and becomes the
-#                           toolchain interpreter's path when the toolchain
-#                           provides the requested version.
+#                           3.11, or the toolchain interpreter's path when the
+#                           toolchain has the requested version.
 set -euo pipefail
 
 HERE=$(dirname "${BASH_SOURCE:-$0}")
@@ -120,14 +119,10 @@ if [[ "$UV_PYTHON" == */* || "$UV_PYTHON" == *\\* ]]; then
   _skip_ensure=1
 elif _dir=$(_toolchain_dir "$UV_PYTHON"); then
   _search_path="$_dir"
-  # Prefer the toolchain interpreter by explicit path when it has the requested
-  # version and the task did not set its own preference (PYTHON-6135): the
-  # explicit path bypasses uv's discovery, so a task-set preference would be
-  # silently ignored. uv's discovery is version-dependent and has failed on CI
-  # with uv 0.12.24: `uv python find` aborts on a search-path interpreter it
-  # cannot inspect (RHEL8's /usr/bin/python3 is 3.6) before reaching the
-  # toolchain dir, and `uv python install` has no cpython-3.15 download for it.
-  # uv uses an explicit path as-is, so bypass both.
+  # Use the toolchain interpreter by explicit path when the task did not set its
+  # own preference (PYTHON-6135): uv uses the path as-is, so provisioning cannot
+  # fail on uv's interpreter discovery (it aborts on interpreters it cannot
+  # inspect, like RHEL8's /usr/bin/python3 3.6) or on a missing download.
   if [ -z "${UV_PYTHON_PREFERENCE:-}" ] && [ -x "$_dir/python${UV_PYTHON}" ]; then
     export UV_PYTHON="$_dir/python${UV_PYTHON}"
     _skip_ensure=1
