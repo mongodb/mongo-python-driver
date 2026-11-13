@@ -199,8 +199,8 @@ the pages will re-render and the browser will automatically refresh.
     create a virtual environment and run `pytest` directly.  If you want to use a specific
     version of Python, set `UV_PYTHON` before running `just install`.
 
-    `just install` installs the latest `uv` into `$HOME/.local/bin` (no pin) unless one is already
-    on PATH, and adds that directory to your shell rc file when missing.  The fail-fast version check
+    `just install` installs the latest `uv` into `$HOME/.local/bin` (no pin) unless the `uv` on PATH
+    is that copy, and adds that directory to your shell rc file when missing.  The fail-fast version check
     applies only when a `required-version` pin is set under `[tool.uv]` in `pyproject.toml`.  The
     vendored `drivers-evergreen-tools` submodule is exempt from this project's uv settings: the setup
     scripts write a `uv.toml` boundary into that checkout (see `.evergreen/scripts/configure-env.sh`)
