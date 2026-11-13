@@ -20,7 +20,6 @@ import asyncio
 import time as time  # noqa: PLC0414 # needed in sync version
 import uuid
 import weakref
-from collections.abc import AsyncGenerator, Mapping, MutableMapping, Sequence
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
@@ -49,10 +48,7 @@ from bson.binary import STANDARD, UUID_SUBTYPE, Binary
 from bson.codec_options import CodecOptions
 from bson.raw_bson import DEFAULT_RAW_BSON_OPTIONS, RawBSONDocument, _inflate_bson
 from pymongo import _csot, _op_id
-from pymongo._kms_connect_shared import AsyncKMSConnectCallback
 from pymongo.asynchronous._kms_connect import _KMS_CONNECT_TIMEOUT, _connect_kms
-from pymongo.asynchronous.collection import AsyncCollection
-from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.daemon import _spawn_daemon
@@ -86,14 +82,21 @@ from pymongo.pool_shared import (
     _raise_connection_failure,
 )
 from pymongo.read_concern import ReadConcern
-from pymongo.results import DeleteResult
 from pymongo.ssl_support import BLOCKING_IO_ERRORS, get_ssl_context
 from pymongo.typings import _DocumentType, _DocumentTypeArg
 from pymongo.uri_parser_shared import _parse_kms_tls_options, parse_host
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Mapping, MutableMapping, Sequence
+    from types import TracebackType
+
     from pymongocrypt.mongocrypt import MongoCryptKmsContext
+
+    from pymongo._kms_connect_shared import AsyncKMSConnectCallback
+    from pymongo.asynchronous.collection import AsyncCollection
+    from pymongo.asynchronous.cursor import AsyncCursor
+    from pymongo.results import DeleteResult
 
 
 _IS_SYNC = False
@@ -125,7 +128,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         else:
             self.client_ref = None
         self.key_vault_coll: AsyncCollection[RawBSONDocument] | None = cast(
-            AsyncCollection[RawBSONDocument],
+            "AsyncCollection[RawBSONDocument]",
             key_vault_coll.with_options(
                 codec_options=_KEY_VAULT_OPTS,
                 read_concern=ReadConcern(level="majority"),
@@ -449,7 +452,7 @@ class _Encrypter:
         with _wrap_encryption_errors():
             # Don't let decryption's sub-commands inherit the in-flight op's id.
             with _op_id._OpIdContext(None):
-                return cast(bytes, await self._auto_encrypter.decrypt(response))
+                return cast("bytes", await self._auto_encrypter.decrypt(response))
 
     def _check_closed(self) -> None:
         if self._closed:
@@ -792,7 +795,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         self._check_closed()
         with _wrap_encryption_errors():
             return cast(
-                Binary,
+                "Binary",
                 await self._encryption.create_data_key(
                     kms_provider,
                     master_key=master_key,
@@ -906,7 +909,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
            Added the `query_type` and `contention_factor` parameters.
         """
         return cast(
-            Binary,
+            "Binary",
             await self._encrypt_helper(
                 value=value,
                 algorithm=algorithm,
@@ -962,7 +965,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         .. versionadded:: 4.4
         """
         return cast(
-            RawBSONDocument,
+            "RawBSONDocument",
             await self._encrypt_helper(
                 value=expression,
                 algorithm=algorithm,
@@ -1160,7 +1163,12 @@ class AsyncClientEncryption(Generic[_DocumentType]):
     async def __aenter__(self) -> AsyncClientEncryption[_DocumentType]:
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self.close()
 
     def _check_closed(self) -> None:

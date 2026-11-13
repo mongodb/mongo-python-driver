@@ -190,7 +190,8 @@ def load_config_from_file(path: str | Path) -> dict[str, str]:
 def ensure_openssl3() -> None:
     """Build a local OpenSSL 3 when the system library is older (PYTHON-6167).
 
-    cryptography 47+ refuses OpenSSL 1.1.x."""
+    cryptography 47+ refuses OpenSSL 1.1.x.
+    """
     if PLATFORM != "linux":
         return
     openssl = shutil.which("openssl")

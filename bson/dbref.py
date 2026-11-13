@@ -16,12 +16,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from bson._helpers import _getstate_slots, _setstate_slots
 from bson.son import SON
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class DBRef:

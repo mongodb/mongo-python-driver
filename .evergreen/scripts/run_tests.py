@@ -90,7 +90,8 @@ def handle_load_balancer_marker() -> None:
 
     The pytest addopts only select the implicit default markers, which
     pytest_conf.py does not grant to the load-balancer-marked modules
-    (PYTHON-6167)."""
+    (PYTHON-6167).
+    """
     TEST_ARGS.extend(["-m", "default or default_async or load_balancer"])
 
 

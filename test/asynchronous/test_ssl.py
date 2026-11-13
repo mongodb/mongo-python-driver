@@ -148,7 +148,6 @@ class TestClientSSL(AsyncPyMongoTestCase):
     @unittest.skipUnless(_IS_SYNC, "Tests sync wrap_socket path only")
     def test_tls_session_reused_on_second_connection(self):
         """Cached TLS session is passed to wrap_socket on subsequent connections."""
-
         fake_session = object()
         cache: list = [fake_session]
 

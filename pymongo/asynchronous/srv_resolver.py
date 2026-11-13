@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import ipaddress
 import random
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from pymongo._psl import SPECIAL_USE_LABELS, _to_punycode, is_public_suffix
@@ -27,6 +26,8 @@ from pymongo.common import CONNECT_TIMEOUT
 from pymongo.errors import ConfigurationError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from dns import resolver
 
 _IS_SYNC = False

@@ -17,9 +17,7 @@
 from __future__ import annotations
 
 import asyncio
-import threading
 import time
-from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -41,6 +39,9 @@ from pymongo.errors import OperationFailure
 from pymongo.lock import Lock, _async_create_lock
 
 if TYPE_CHECKING:
+    import threading
+    from collections.abc import Mapping, MutableMapping
+
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.auth_shared import MongoCredential
 
@@ -180,7 +181,7 @@ class _OIDCAuthenticator(_OIDCAuthenticatorBase):
                 else:
                     resp = cb.fetch(context)
                 if not isinstance(resp, OIDCCallbackResult):
-                    raise ValueError(
+                    raise TypeError(
                         f"Callback result must be of type OIDCCallbackResult, not {type(resp)}"
                     )
                 self.refresh_token = resp.refresh_token

@@ -21,8 +21,7 @@ import inspect
 import io
 import math
 from collections import abc
-from collections.abc import Iterable, Mapping
-from typing import Any, NoReturn, cast
+from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -55,11 +54,16 @@ from pymongo.errors import (
 )
 from pymongo.helpers_shared import _check_write_command_response
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+    from types import TracebackType
+
+    from pymongo.synchronous.client_session import ClientSession
 
 _IS_SYNC = True
 
@@ -686,7 +690,7 @@ class GridFSBucket:
         with self.open_upload_stream(filename, chunk_size_bytes, metadata, session=session) as gin:
             gin.write(source)
 
-        return cast(ObjectId, gin._id)
+        return cast("ObjectId", gin._id)
 
     @_csot.apply
     def upload_from_stream_with_id(
@@ -1420,11 +1424,16 @@ class GridIn:
     def writeable(self) -> bool:
         return True
 
-    def __enter__(self) -> GridIn:
+    def __enter__(self) -> Self:
         """Support for the context manager protocol."""
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Any:
         """Support for the context manager protocol.
 
         Close the file if no exceptions occur and allow exceptions to propagate.
@@ -1739,9 +1748,9 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         return True
 
     def __iter__(self) -> GridOut:
-        """Return an iterator over all of this file's data.
+        r"""Return an iterator over all of this file's data.
 
-        The iterator will return lines (delimited by ``b'\\n'``) of
+        The iterator will return lines (delimited by ``b'\n'``) of
         :class:`bytes`. This can be useful when serving files
         using a webserver that handles such an iterator efficiently.
 
@@ -1778,13 +1787,18 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
     def writable(self) -> bool:
         return False
 
-    def __enter__(self) -> GridOut:
+    def __enter__(self) -> Self:
         """Makes it possible to use :class:`GridOut` files
         with the async context manager protocol.
         """
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> Any:
         """Makes it possible to use :class:`GridOut` files
         with the async context manager protocol.
         """

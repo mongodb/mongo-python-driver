@@ -51,7 +51,7 @@ class TestClientLoopUnblocked(AsyncIntegrationTest):
             await t
 
         self.assertLessEqual(
-            sorted(latencies, reverse=True)[0],
+            max(latencies),
             1.0,
             "Background task was blocked from running",
         )

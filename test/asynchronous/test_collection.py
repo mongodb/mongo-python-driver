@@ -23,9 +23,8 @@ import sys
 from codecs import utf_8_decode
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Any, no_type_check
+from typing import TYPE_CHECKING, Any, no_type_check
 
-from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import anext
 from test.asynchronous.utils import async_get_pool
 
@@ -40,7 +39,6 @@ from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOSPHERE, HASHED, TEXT
 from pymongo.asynchronous.collection import AsyncCollection, ReturnDocument
 from pymongo.asynchronous.command_cursor import AsyncCommandCursor
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.bulk_shared import BulkWriteError
 from pymongo.cursor_shared import CursorType
 from pymongo.errors import (
@@ -78,6 +76,10 @@ from test.utils_shared import (
     async_wait_until,
 )
 from test.version import Version
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.database import AsyncDatabase
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 _IS_SYNC = False
 

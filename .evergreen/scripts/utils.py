@@ -315,7 +315,8 @@ def shell_escape(value: str) -> str:
     """Escape a value for a double-quoted shell context.
 
     Backslashes are escaped first; otherwise a backslash-prefixed
-    substitution re-arms when the file is sourced (PYTHON-6167)."""
+    substitution re-arms when the file is sourced (PYTHON-6167).
+    """
     return value.replace("\\", "\\\\").replace("$", "\\$").replace("`", "\\`")
 
 
@@ -323,7 +324,8 @@ def write_env(name: str, value: Any = "1", escape: bool = True) -> None:
     """Append an export line for the value to the test environment file.
 
     The value persists literally; pass escape=False to keep live expansions,
-    like a trailing `$PATH` (PYTHON-6167)."""
+    like a trailing `$PATH` (PYTHON-6167).
+    """
     with ENV_FILE.open("a", newline="\n") as fid:
         value = str(value).replace('"', "")
         if escape:

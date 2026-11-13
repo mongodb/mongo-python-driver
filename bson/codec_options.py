@@ -26,6 +26,7 @@ from typing import (
     Any,
     Generic,
     NamedTuple,
+    Self,
     cast,
 )
 
@@ -34,7 +35,6 @@ from bson.binary import (
     UUID_REPRESENTATION_NAMES,
     UuidRepresentation,
 )
-from bson.typings import _DocumentType
 
 _RAW_BSON_DOCUMENT_MARKER = 101
 
@@ -173,7 +173,7 @@ class TypeRegistry:
         from bson import _BUILT_IN_TYPES
 
         for pytype in _BUILT_IN_TYPES:
-            if issubclass(cast(TypeCodec, codec).python_type, pytype):
+            if issubclass(cast("TypeCodec", codec).python_type, pytype):
                 err_msg = (
                     "TypeEncoders cannot change how built-in types are "
                     f"encoded (encoder {codec} transforms type {pytype})"
@@ -241,6 +241,7 @@ class _BaseCodecOptions(NamedTuple):
 
 
 if TYPE_CHECKING:
+    from bson.typings import _DocumentType
 
     class CodecOptions(tuple[_DocumentType], Generic[_DocumentType]):
         document_class: type[_DocumentType]
@@ -284,7 +285,7 @@ else:
         """Encapsulates options used encoding and / or decoding BSON."""
 
         def __init__(self, *args, **kwargs):
-            """Encapsulates options used encoding and / or decoding BSON.
+            r"""Encapsulates options used encoding and / or decoding BSON.
 
             The `document_class` option is used to define a custom type for use
             decoding BSON documents. Access to the underlying raw BSON bytes for
@@ -297,7 +298,7 @@ else:
               >>> coll = db.get_collection('test', codec_options=codec_options)
               >>> doc = coll.find_one()
               >>> doc.raw
-              '\\x16\\x00\\x00\\x00\\x07_id\\x00[0\\x165\\x91\\x10\\xea\\x14\\xe8\\xc5\\x8b\\x93\\x00'
+              '\x16\x00\x00\x00\x07_id\x00[0\x165\x91\x10\xea\x14\xe8\xc5\x8b\x93\x00'
 
             The document class can be any type that inherits from
             :class:`~collections.abc.MutableMapping`::
@@ -368,7 +369,7 @@ else:
             super().__init__()
 
         def __new__(
-            cls: type[CodecOptions],
+            cls,
             document_class: type[Mapping[str, Any]] | None = None,
             tz_aware: bool = False,
             uuid_representation: int | None = UuidRepresentation.UNSPECIFIED,
@@ -376,7 +377,7 @@ else:
             tzinfo: datetime.tzinfo | None = None,
             type_registry: TypeRegistry | None = None,
             datetime_conversion: DatetimeConversion | None = DatetimeConversion.DATETIME,
-        ) -> CodecOptions:
+        ) -> Self:
             doc_class = document_class or dict
             # Generic aliases like SON[str, Any] or dict[str, Any] aren't classes, so
             # resolve to their origin before the subclass check. issubclass() raises
@@ -400,7 +401,7 @@ else:
                     "uuid_representation must be a value from bson.binary.UuidRepresentation"
                 )
             if not isinstance(unicode_decode_error_handler, str):
-                raise ValueError(
+                raise TypeError(
                     f"unicode_decode_error_handler must be a string, not {type(unicode_decode_error_handler)}"
                 )
             if tzinfo is not None:

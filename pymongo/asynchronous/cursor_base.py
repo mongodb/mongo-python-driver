@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
 from pymongo import _csot
@@ -30,6 +29,9 @@ from pymongo.response import PinnedResponse, Response
 from pymongo.typings import _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+    from types import TracebackType
+
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.pool import AsyncConnection
     from pymongo.read_preferences import _ServerMode
@@ -187,7 +189,12 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
         """Explicitly close / kill this cursor."""
         await self._die_lock()
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self.close()
 
     @_csot.apply

@@ -15,12 +15,14 @@ from __future__ import annotations
 
 import sys
 import warnings
-from collections.abc import Iterable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pymongo.errors import ProtocolError
 from pymongo.hello import HelloCompat
 from pymongo.helpers_shared import _SENSITIVE_COMMANDS
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 _SUPPORTED_COMPRESSORS = {"snappy", "zlib", "zstd"}
 _NO_COMPRESSION = {HelloCompat.CMD, HelloCompat.LEGACY_CMD}

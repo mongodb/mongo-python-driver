@@ -18,8 +18,7 @@ from __future__ import annotations
 
 import threading
 import traceback
-from collections.abc import Callable, Collection
-from typing import Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from bson.objectid import ObjectId
 from pymongo import common
@@ -28,6 +27,9 @@ from pymongo.errors import ConfigurationError
 from pymongo.pool_options import PoolOptions
 from pymongo.server_description import ServerDescription
 from pymongo.topology_description import TOPOLOGY_TYPE, _ServerSelector
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Collection
 
 _PoolClassType = TypeVar("_PoolClassType")
 _MonitorClassType = TypeVar("_MonitorClassType")

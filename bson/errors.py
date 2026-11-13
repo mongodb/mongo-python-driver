@@ -42,7 +42,8 @@ class InvalidDocument(BSONError):
     def document(self) -> Any:
         """The invalid document that caused the error.
 
-        ..versionadded:: 4.16"""
+        .. versionadded:: 4.16
+        """
         return self._document
 
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for using Python's :mod:`json` module with BSON documents.
+r"""Tools for using Python's :mod:`json` module with BSON documents.
 
 This module provides two helper methods `dumps` and `loads` that wrap the
 native :mod:`json` methods and provide explicit BSON conversion to and from
@@ -115,6 +115,7 @@ from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
+    Self,
     cast,
 )
 
@@ -300,14 +301,14 @@ class JSONOptions(_BASE_CLASS):
         super().__init__()
 
     def __new__(
-        cls: type[JSONOptions],
+        cls,
         strict_number_long: bool | None = None,
         datetime_representation: int | None = None,
         strict_uuid: bool | None = None,
         json_mode: int = JSONMode.RELAXED,
         *args: Any,
         **kwargs: Any,
-    ) -> JSONOptions:
+    ) -> Self:
         kwargs["tz_aware"] = kwargs.get("tz_aware", False)
         if kwargs["tz_aware"]:
             kwargs["tzinfo"] = kwargs.get("tzinfo", utc)
@@ -321,7 +322,7 @@ class JSONOptions(_BASE_CLASS):
                 "JSONOptions.datetime_representation must be one of LEGACY, "
                 "NUMBERLONG, or ISO8601 from DatetimeRepresentation."
             )
-        self = cast(JSONOptions, super().__new__(cls, *args, **kwargs))
+        self = cast("Self", super().__new__(cls, *args, **kwargs))
         if json_mode not in (JSONMode.LEGACY, JSONMode.RELAXED, JSONMode.CANONICAL):
             raise ValueError(
                 "JSONOptions.json_mode must be one of LEGACY, RELAXED, or CANONICAL from JSONMode."
@@ -556,7 +557,7 @@ def _binary_or_uuid(data: Any, subtype: int, json_options: JSONOptions) -> Binar
         return binary_value.as_uuid(uuid_representation)
 
     if subtype == 0:
-        return cast(uuid.UUID, data)
+        return cast("uuid.UUID", data)
     return Binary(data, subtype)
 
 

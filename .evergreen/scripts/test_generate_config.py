@@ -62,7 +62,8 @@ def all_variants():
 
 def variant_selects(variant, task):
     """Whether the variant's task selectors match the task: "." selects a
-    tag, "!" negates the token that follows, a bare token names a task."""
+    tag, "!" negates the token that follows, a bare token names a task.
+    """
     tags = task.tags or []
     for ref in variant.tasks:
         includes, excludes, names = [], [], []
@@ -103,7 +104,8 @@ def test_generation_sanity():
 def test_variants_select_tasks():
     """Every variant selects at least one task, and every suite-family task
     is selected by at least one variant: a family restructured without
-    variant wiring would silently never run (PYTHON-6167)."""
+    variant wiring would silently never run (PYTHON-6167).
+    """
     tasks = all_tasks()
     for variant in all_variants():
         assert any(variant_selects(variant, task) for task in tasks), (
@@ -118,7 +120,8 @@ def test_variants_select_tasks():
 
 def test_suite_families():
     """Each per-suite family identifies its suite in its name and TEST_NAME,
-    and no family task mixes min-deps with coverage (PYTHON-6167)."""
+    and no family task mixes min-deps with coverage (PYTHON-6167).
+    """
     for family, suite in SUITE_FAMILIES.items():
         for task in [t for t in all_tasks() if family in (t.tags or [])]:
             where = f"{family} {task.name}"
@@ -132,7 +135,8 @@ def test_suite_families():
 
 def test_pr_tasks_pin_max_version():
     """Task-level pins: pr tasks pin MAX_VERSION (the "latest" nightly is
-    unstable); the explicit 4.4 min-deps pin is the exception."""
+    unstable); the explicit 4.4 min-deps pin is the exception.
+    """
     offenders = [
         (task.name, task_vars(task).get("VERSION"))
         for task in pr_tasks()
@@ -147,7 +151,8 @@ def test_pr_tasks_pin_max_version():
 def test_suite_families_have_pr_pins():
     """Every suite family runs at least one task on PR patches, with
     coverage, so a restructure cannot silently drop a family from the patch
-    build or the codecov report (PYTHON-6167)."""
+    build or the codecov report (PYTHON-6167).
+    """
     for family in SUITE_FAMILIES:
         pinned = [
             task
@@ -161,7 +166,8 @@ def test_suite_families_have_pr_pins():
 
 def test_numpy_win32_tasks_run_on_windows_only():
     """The win32 numpy tasks use the 32-bit toolchain (IS_WIN32) and are
-    selected only by the windows variant (PYTHON-6167)."""
+    selected only by the windows variant (PYTHON-6167).
+    """
     win32_tasks = [task for task in all_tasks() if "test-numpy-win32" in (task.tags or [])]
     assert win32_tasks, "no win32 numpy tasks"
     for task in win32_tasks:
@@ -182,7 +188,8 @@ def test_numpy_win32_tasks_run_on_windows_only():
 def test_run_tests_env_carries_crypt_shared():
     """The run tests setup env carries TEST_CRYPT_SHARED, which
     setup_tests.py reads to wire the crypt_shared lib directory
-    (PYTHON-6167)."""
+    (PYTHON-6167).
+    """
     _, cmds = generate_config.create_run_tests_func()
     setup_cmd = cmds[0]
     includes = setup_cmd.params["include_expansions_in_env"]
@@ -193,7 +200,8 @@ def test_run_tests_env_carries_crypt_shared():
 def test_load_balancer_marker_selection(monkeypatch):
     """The load balancer tasks select the load_balancer marker explicitly:
     pytest_conf.py only grants the implicit default markers to unmarked
-    tests (PYTHON-6167)."""
+    tests (PYTHON-6167).
+    """
     import run_tests
 
     monkeypatch.setattr(run_tests, "TEST_NAME", "load_balancer")
@@ -208,7 +216,8 @@ def test_load_balancer_marker_selection(monkeypatch):
 
 def test_ensure_openssl3_escapes_persisted_values(monkeypatch, tmp_path):
     """A DRIVERS_TOOLS path carrying command substitution must not execute
-    at write time or when the persisted env.sh is sourced (PYTHON-6167)."""
+    at write time or when the persisted env.sh is sourced (PYTHON-6167).
+    """
     import subprocess
 
     import setup_tests
@@ -257,7 +266,8 @@ def test_ensure_openssl3_escapes_persisted_values(monkeypatch, tmp_path):
 def test_crypt_shared_persisted_to_env(monkeypatch, tmp_path):
     """The crypt_shared setup persists TEST_CRYPT_SHARED to the test
     environment: the encryption tests use it to decide whether to run their
-    crypt_shared cases (PYTHON-6167)."""
+    crypt_shared cases (PYTHON-6167).
+    """
     import setup_tests
     import utils
 
@@ -289,7 +299,8 @@ def test_crypt_shared_persisted_to_env(monkeypatch, tmp_path):
 def test_write_env_escapes_backslashes(monkeypatch, tmp_path):
     """write_env escapes backslashes first, so substitution payloads and
     trailing backslashes round-trip literally when the file is sourced
-    (PYTHON-6167)."""
+    (PYTHON-6167).
+    """
     import subprocess
 
     import utils
@@ -323,7 +334,8 @@ def test_write_env_escapes_backslashes(monkeypatch, tmp_path):
 
 def test_read_env_unescapes_double_quoted_escapes(monkeypatch, tmp_path):
     """read_env yields the value bash sourcing would: double-quoted escapes
-    unescape, single-quoted values stay literal (PYTHON-6167)."""
+    unescape, single-quoted values stay literal (PYTHON-6167).
+    """
     import subprocess
 
     import utils
@@ -359,7 +371,8 @@ def test_read_env_unescapes_double_quoted_escapes(monkeypatch, tmp_path):
 
 def test_crypt_shared_escapes_backslashes(monkeypatch, tmp_path):
     """The crypt_shared lib path persists literally while the trailing
-    LD_LIBRARY_PATH expansion stays live (PYTHON-6167)."""
+    LD_LIBRARY_PATH expansion stays live (PYTHON-6167).
+    """
     import subprocess
 
     import setup_tests
@@ -426,7 +439,8 @@ def test_sanitizer_task_wiring():
     """PYTHON-6048: one pr-tagged sanitizer task, selected by exactly one
     variant that pins MAX_VERSION and runs on a large host for ASan's memory
     headroom. VERSION stays off the task so it is exempt
-    from the pr COVERAGE rule (coverage under ASan is not useful)."""
+    from the pr COVERAGE rule (coverage under ASan is not useful).
+    """
     tasks = [task for task in all_tasks() if "sanitizer" in (task.tags or [])]
     assert len(tasks) == 1
     task = tasks[0]

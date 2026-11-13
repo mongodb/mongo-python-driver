@@ -62,7 +62,7 @@ def _retryable_error_doc(exc: PyMongoError) -> Mapping[str, Any] | None:
         wces = exc.details["writeConcernErrors"]
         return wces[-1] if wces else None
     if isinstance(exc, (NotPrimaryError, OperationFailure)):
-        return cast(Mapping[str, Any], exc.details)
+        return cast("Mapping[str, Any]", exc.details)
     return None
 
 
@@ -140,6 +140,7 @@ class _AgnosticClientConnectionRetryableBase(Generic[T, _ServerT, _FuncT]):
         "_base_backoff_ms",
         "_bulk",
         "_client",
+        "_conn_mgr",
         "_deprioritized_servers",
         "_func",
         "_is_aggregate_write",
@@ -172,6 +173,7 @@ class _AgnosticClientConnectionRetryableBase(Generic[T, _ServerT, _FuncT]):
         operation_id: int | None = None,
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
+        conn_mgr: Any = None,
     ):
         self._last_error: Exception | None = None
         self._retrying = False
@@ -200,6 +202,7 @@ class _AgnosticClientConnectionRetryableBase(Generic[T, _ServerT, _FuncT]):
         self._is_run_command = is_run_command
         self._is_aggregate_write = is_aggregate_write
         self._base_backoff_ms: float | None = None
+        self._conn_mgr = conn_mgr
 
     def _is_not_eligible_for_retry(self) -> bool:
         """Checks if the exchange is not eligible for retry"""

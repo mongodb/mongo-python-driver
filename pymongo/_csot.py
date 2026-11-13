@@ -26,6 +26,8 @@ from contextvars import ContextVar, Token
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from pymongo.write_concern import WriteConcern
 
 TIMEOUT: ContextVar[float | None] = ContextVar("TIMEOUT", default=None)
@@ -90,7 +92,12 @@ class _TimeoutContext(AbstractContextManager[Any]):
         rtt_token = RTT.set(0.0)
         self._tokens = (timeout_token, deadline_token, rtt_token)
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         if self._tokens:
             timeout_token, deadline_token, rtt_token = self._tokens
             TIMEOUT.reset(timeout_token)
@@ -125,7 +132,7 @@ def apply(func: F) -> F:
                         return func(self, *args, **kwargs)
             return func(self, *args, **kwargs)
 
-    return cast(F, csot_wrapper)
+    return cast("F", csot_wrapper)
 
 
 def apply_write_concern(cmd: MutableMapping[str, Any], write_concern: WriteConcern | None) -> None:

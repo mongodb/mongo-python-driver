@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import AsyncIterator, Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -33,6 +32,8 @@ from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _DocumentType
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Mapping
+
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.pool import AsyncConnection

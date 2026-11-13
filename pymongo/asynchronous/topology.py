@@ -18,13 +18,11 @@ from __future__ import annotations
 
 import asyncio
 import os
-import queue
 import random
 import sys
 import time
 import warnings
 import weakref
-from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -73,6 +71,9 @@ from pymongo.topology_shared import (
 )
 
 if TYPE_CHECKING:
+    import queue
+    from collections.abc import Callable, Mapping
+
     from pymongo.asynchronous.settings import TopologySettings
     from pymongo.typings import _Address
 
@@ -202,7 +203,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             )
 
             return [
-                cast(Server, self.get_server_by_address(sd.address)) for sd in server_descriptions
+                cast("Server", self.get_server_by_address(sd.address)) for sd in server_descriptions
             ]
 
     async def _select_servers_loop(

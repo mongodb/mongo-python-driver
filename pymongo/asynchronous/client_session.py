@@ -138,12 +138,11 @@ from __future__ import annotations
 import asyncio
 import random
 import time
-from collections.abc import Awaitable, Callable
-from contextlib import AbstractAsyncContextManager
 from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
     Any,
+    Self,
     TypeVar,
 )
 
@@ -170,15 +169,17 @@ from pymongo.errors import (
     PyMongoError,
     WTimeoutError,
 )
-from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import _ServerMode
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+    from contextlib import AbstractAsyncContextManager
     from types import TracebackType
 
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
 
 _IS_SYNC = False
 
@@ -197,7 +198,12 @@ class _AsyncBoundSessionContext:
         self._session_token = _SESSION.set(self._session)  # type: ignore[assignment]
         return self._session
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         if self._session_token:
             _SESSION.reset(self._session_token)  # type: ignore[arg-type]
             self._session_token = None
@@ -211,7 +217,7 @@ class _TransactionContext:
     def __init__(self, session: AsyncClientSession):
         self.__session = session
 
-    async def __aenter__(self) -> _TransactionContext:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(
@@ -292,10 +298,15 @@ class AsyncClientSession(
                 self._client._return_server_session(self._server_session)
                 self._server_session = None
 
-    async def __aenter__(self) -> AsyncClientSession:
+    async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self._end_session(lock=True)
 
     async def with_transaction(

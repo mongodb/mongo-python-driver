@@ -21,8 +21,7 @@ import os
 import sys
 import time
 import uuid
-from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -37,6 +36,9 @@ from pymongo.write_concern import WriteConcern
 from test import IntegrationTest, PyMongoTestCase, unittest
 from test.unified_format import generate_test_classes, get_test_path
 from test.utils_shared import AllowListEventListener, OvertCommandListener
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 _IS_SYNC = True
 
@@ -180,7 +182,6 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_1(self):
         """Driver can successfully create and list search indexes."""
-
         # Create a new search index on ``self.coll0`` with the ``createSearchIndex`` helper.  Use the following definition:
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = self.coll0.create_search_index(model)
@@ -200,7 +201,6 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_2(self):
         """Driver can successfully create multiple indexes in batch."""
-
         # Create two new search indexes on ``self.coll0`` with the ``createSearchIndexes`` helper.
         name1 = "test-search-index-1"
         name2 = "test-search-index-2"
@@ -235,7 +235,6 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_3(self):
         """Driver can successfully drop search indexes."""
-
         # Create a new search index on ``self.coll0``.
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = self.coll0.create_search_index(model)
@@ -254,7 +253,6 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_4(self):
         """Driver can update a search index."""
-
         # Create a new search index on ``self.coll0``.
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = self.coll0.create_search_index(model)
@@ -295,7 +293,6 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_6(self):
         """Driver can successfully create and list search indexes with non-default readConcern and writeConcern."""
-
         # Apply a write concern ``WriteConcern(w=1)`` and a read concern with ``ReadConcern(level="majority")`` to ``self.coll0``.
         coll0 = self.coll0.with_options(
             write_concern=WriteConcern(w="1"), read_concern=ReadConcern(level="majority")
@@ -321,7 +318,6 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_7(self):
         """Driver handles index types."""
-
         # Use these search and vector search definitions for indexes.
         search_definition = {"mappings": {"dynamic": False}}
         vector_search_definition = {

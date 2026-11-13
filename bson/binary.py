@@ -15,9 +15,8 @@ from __future__ import annotations
 
 import struct
 import warnings
-from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any, Self, overload
 from uuid import UUID
 
 """Tools for representing BSON binary data.
@@ -64,6 +63,7 @@ by :mod:`bson` using this subtype when using
 
 if TYPE_CHECKING:
     from array import array as _array
+    from collections.abc import Sequence
     from mmap import mmap as _mmap
 
     import numpy as np
@@ -310,10 +310,10 @@ class Binary(bytes):
     __subtype: int
 
     def __new__(
-        cls: type[Binary],
+        cls,
         data: memoryview | bytes | bytearray | _mmap | _array[Any],
         subtype: int = BINARY_SUBTYPE,
-    ) -> Binary:
+    ) -> Self:
         if not isinstance(subtype, int):
             raise TypeError(f"subtype must be an instance of int, not {type(subtype)}")
         if subtype >= 256 or subtype < 0:
@@ -553,7 +553,6 @@ class Binary(bytes):
 
         .. versionadded:: 4.10
         """
-
         if self.subtype != VECTOR_SUBTYPE:
             raise ValueError(f"Cannot decode subtype {self.subtype} as a vector")
 
