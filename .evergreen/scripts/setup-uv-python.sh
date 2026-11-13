@@ -49,12 +49,17 @@ fi
 # uv version in pyproject.toml.
 export UV_PYTHON="${UV_PYTHON:-3.11}"
 
-# Print the Python toolchain bin dir for a version like "3.11" or "3.14t".
-function _toolchain_dir() {
+# Print the Python toolchain bin dir for a version like "3.11" or "3.14t",
+# without checking that it exists.
+function _toolchain_bin_dir() {
   local version="$1" dir
   # Only plain CPython versions live in the toolchain.
   [[ "$version" =~ ^[0-9]+\.[0-9]+t?$ ]] || return 1
-  if [ "Windows_NT" = "${OS:-}" ]; then
+  if [ -n "${PYMONGO_TOOLCHAIN_ROOT:-}" ]; then
+    # Test override of the unix toolchain root; the <version>/bin layout under
+    # it is unchanged.
+    dir="${PYMONGO_TOOLCHAIN_ROOT}/${version}/bin"
+  elif [ "Windows_NT" = "${OS:-}" ]; then
     local winver="${version%t}"
     winver="${winver//./}"
     if [ -n "${IS_WIN32:-}" ]; then
@@ -71,9 +76,13 @@ function _toolchain_dir() {
   else
     dir="/opt/python/${version}/bin"
   fi
-  # PYMONGO_TOOLCHAIN_ROOT overrides the unix toolchain root for the tests; the
-  # <version>/bin layout under it is unchanged.
-  dir="${PYMONGO_TOOLCHAIN_ROOT:-$(dirname "$dir")}/${version}/bin"
+  echo "$dir"
+}
+
+# Print the toolchain bin dir for the version when it exists on this host.
+function _toolchain_dir() {
+  local dir
+  dir=$(_toolchain_bin_dir "$1") || return 1
   [ -d "$dir" ] || return 1
   echo "$dir"
 }

@@ -97,14 +97,25 @@ def stub_calls(log: Path) -> list[str]:
 
 # --- setup-uv-python.sh ------------------------------------------------------
 
-needs_bash = pytest.mark.skipif(
+# The whole module is unix-only: the bash tests need a unix shell, and the
+# setup_uv.py tests use bash-script uv stubs and colon-separated PATH values.
+pytestmark = pytest.mark.skipif(
     sys.platform in ("win32", "cygwin") or shutil.which("bash") is None,
     reason="needs a unix shell",
 )
 
 
 def run_setup_uv_python(tmp_path: Path, extra_env: dict) -> subprocess.CompletedProcess:
-    """Source setup-uv-python.sh in a child shell; report rc and the exported UV_PYTHON."""
+    """Source a copy of setup-uv-python.sh in a temporary project tree.
+
+    The copy's HERE/ROOT resolve inside the tree, so the script sources the
+    tree's env.sh (if any) and probes the tree's .venv, never the checkout's.
+    Reports rc and the exported UV_PYTHON / search path / preference.
+    """
+    scripts = tmp_path / "proj" / ".evergreen" / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    script_copy = scripts / "setup-uv-python.sh"
+    shutil.copy(SETUP_UV_PYTHON_SH, script_copy)
     env = {
         "HOME": str(tmp_path),
         "CI": "true",
@@ -115,10 +126,11 @@ def run_setup_uv_python(tmp_path: Path, extra_env: dict) -> subprocess.Completed
             "/bin/bash",
             "-c",
             (
-                f'. "{SETUP_UV_PYTHON_SH}"; '
+                f'. "{script_copy}"; '
                 'printf "\\nUV_PYTHON=%s" "$UV_PYTHON"; '
                 'printf "\\nSEARCH_PATH=%s" "${UV_PYTHON_SEARCH_PATH-}"; '
-                'printf "\\nPREFERENCE=%s" "${UV_PYTHON_PREFERENCE-}"'
+                'printf "\\nPREFERENCE=%s" "${UV_PYTHON_PREFERENCE-}"; '
+                'printf "\\nTOOL_BIN_DIR=%s" "${UV_TOOL_BIN_DIR-}"'
             ),
         ],
         check=False,
@@ -136,7 +148,6 @@ def stub_env(tmp_path):
     return log, {"PATH": f"{tmp_path / 'stub-bin'}:/usr/bin:/bin", "UV_STUB_LOG": str(log)}
 
 
-@needs_bash
 def test_toolchain_python_is_used_by_path(tmp_path, stub_env):
     """CI: an exact toolchain match wins by explicit path, without uv find/install."""
     log, env = stub_env
@@ -157,7 +168,6 @@ def test_toolchain_python_is_used_by_path(tmp_path, stub_env):
     assert stub_calls(log) == []
 
 
-@needs_bash
 def test_free_threaded_toolchain_python_is_used_by_path(tmp_path, stub_env):
     """CI: the same bypass applies to free-threaded toolchain versions."""
     log, env = stub_env
@@ -175,8 +185,6 @@ def test_free_threaded_toolchain_python_is_used_by_path(tmp_path, stub_env):
     assert stub_calls(log) == []
 
 
-@needs_bash
-@needs_bash
 def test_toolchain_falls_through_when_interpreter_missing(tmp_path, stub_env):
     """CI: a toolchain dir without the requested version keeps using uv find/install."""
     log, env = stub_env
@@ -194,7 +202,6 @@ def test_toolchain_falls_through_when_interpreter_missing(tmp_path, stub_env):
     assert stub_calls(log) == ["python find 3.15", "python install 3.15"]
 
 
-@needs_bash
 def test_task_preference_disables_bypass(tmp_path, stub_env):
     """A task-set UV_PYTHON_PREFERENCE (PYTHON-6135) keeps the pre-bypass behavior."""
     log, env = stub_env
@@ -233,7 +240,6 @@ def test_ci_fails_loudly_without_toolchain(tmp_path, stub_env):
     assert stub_calls(log) == ["python find 3.15", "python install 3.15"]
 
 
-@needs_bash
 def test_local_fallback_without_toolchain(tmp_path, stub_env):
     """Local (no CI) hosts fall back to any interpreter >=3.9 when find/install fail."""
     _, env = stub_env
@@ -253,7 +259,6 @@ def test_local_fallback_without_toolchain(tmp_path, stub_env):
     assert f"UV_PYTHON={fallback}" in proc.stdout
 
 
-@needs_bash
 def test_explicit_interpreter_path_skips_probing(tmp_path, stub_env):
     """An explicit interpreter path in UV_PYTHON is used as-is."""
     log, env = stub_env
@@ -262,6 +267,93 @@ def test_explicit_interpreter_path_skips_probing(tmp_path, stub_env):
     assert proc.returncode == 0, proc.stderr
     assert f"UV_PYTHON={interpreter}" in proc.stdout
     assert stub_calls(log) == []
+
+
+def toolchain_bin_dir(script_copy: Path, sentinel: Path, version: str) -> str:
+    """Call the script's _toolchain_bin_dir helper and return the printed path."""
+    proc = subprocess.run(  # noqa: S603
+        [
+            "/bin/bash",
+            "-c",
+            f'UV_PYTHON="{sentinel}" . "{script_copy}"; _toolchain_bin_dir "{version}"',
+        ],
+        check=False,
+        env={"PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    return proc.stdout.strip()
+
+
+def test_toolchain_paths_preserved_without_override(tmp_path):
+    """Without the test override, the platform toolchain paths are preserved as-is."""
+    scripts = tmp_path / "proj" / ".evergreen" / "scripts"
+    scripts.mkdir(parents=True)
+    script_copy = scripts / "setup-uv-python.sh"
+    shutil.copy(SETUP_UV_PYTHON_SH, script_copy)
+    sentinel = tmp_path / "sentinel"
+    sentinel.write_text("#!/bin/sh\nexit 0\n")
+    make_executable(sentinel)
+    if sys.platform == "darwin":
+        expected = {
+            "3.15": "/Library/Frameworks/Python.Framework/Versions/3.15/bin",
+            "3.15t": "/Library/Frameworks/PythonT.Framework/Versions/3.15/bin",
+        }
+    else:
+        expected = {
+            "3.15": "/opt/python/3.15/bin",
+            "3.15t": "/opt/python/3.15t/bin",
+        }
+    for version, path in expected.items():
+        assert toolchain_bin_dir(script_copy, sentinel, version) == path
+
+
+def test_toolchain_override_keeps_version_layout(tmp_path):
+    """With the test override, the <version>/bin layout under it is kept."""
+    scripts = tmp_path / "proj" / ".evergreen" / "scripts"
+    scripts.mkdir(parents=True)
+    script_copy = scripts / "setup-uv-python.sh"
+    shutil.copy(SETUP_UV_PYTHON_SH, script_copy)
+    sentinel = tmp_path / "sentinel"
+    sentinel.write_text("#!/bin/sh\nexit 0\n")
+    make_executable(sentinel)
+    proc = subprocess.run(  # noqa: S603
+        [
+            "/bin/bash",
+            "-c",
+            (
+                f'export UV_PYTHON="{sentinel}" '
+                f'PYMONGO_TOOLCHAIN_ROOT="{tmp_path / "root"}"; '
+                f'. "{script_copy}"; _toolchain_bin_dir "3.15"'
+            ),
+        ],
+        check=False,
+        env={"PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip() == str(tmp_path / "root" / "3.15" / "bin")
+
+
+def test_script_sources_env_sh_from_its_tree(tmp_path, stub_env):
+    """The script sources env.sh from the copy's tree, not the checkout's."""
+    _, env = stub_env
+    fallback = make_toolchain(tmp_path / "elsewhere", "3.11")
+    proc = run_setup_uv_python(
+        tmp_path,
+        extra_env={
+            **env,
+            "CI": "",
+            "UV_STUB_FALLBACK": str(fallback),
+        },
+    )
+    # The runner's tree has no env.sh, so the checkout's env.sh must not have
+    # leaked: it exports UV_TOOL_BIN_DIR, which stays unset here.
+    assert proc.returncode == 0, proc.stderr
+    # The last printf has no trailing newline.
+    assert proc.stdout.rstrip("\n").endswith("TOOL_BIN_DIR=")
 
 
 # --- setup_uv.py ------------------------------------------------------------
