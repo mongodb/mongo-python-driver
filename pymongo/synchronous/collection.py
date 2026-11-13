@@ -18,14 +18,6 @@ from __future__ import annotations
 
 import warnings
 from collections import abc
-from collections.abc import (
-    Callable,
-    Iterable,
-    Iterator,
-    Mapping,
-    MutableMapping,
-    Sequence,
-)
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -40,7 +32,6 @@ from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.objectid import ObjectId
 from bson.raw_bson import RawBSONDocument
 from bson.son import SON
-from bson.timestamp import Timestamp
 from pymongo import ASCENDING, _csot, common, helpers_shared, message
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
@@ -123,7 +114,17 @@ class ReturnDocument:
 
 
 if TYPE_CHECKING:
+    from collections.abc import (
+        Callable,
+        Iterable,
+        Iterator,
+        Mapping,
+        MutableMapping,
+        Sequence,
+    )
+
     import bson
+    from bson.timestamp import Timestamp
     from pymongo.collation import Collation
     from pymongo.read_concern import ReadConcern
     from pymongo.synchronous.aggregation import _AggregationCommand
@@ -2528,7 +2529,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> CommandCursor[MutableMapping[str, Any]]:
         codec_options: CodecOptions[Mapping[str, Any]] = CodecOptions(SON)
         coll = cast(
-            Collection[MutableMapping[str, Any]],
+            "Collection[MutableMapping[str, Any]]",
             self.with_options(codec_options=codec_options, read_preference=ReadPreference.PRIMARY),
         )
         read_pref = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
@@ -3056,7 +3057,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             kwargs["comment"] = comment
         with self._database.client._tmp_session(session) as s:
             return cast(
-                RawBatchCursor[_DocumentType],
+                "RawBatchCursor[_DocumentType]",
                 self._aggregate(
                     _CollectionRawAggregationCommand,
                     pipeline,
@@ -3237,7 +3238,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Internal findAndModify helper."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
-            raise ValueError(
+            raise TypeError(
                 f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, not {type(return_document)}"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))

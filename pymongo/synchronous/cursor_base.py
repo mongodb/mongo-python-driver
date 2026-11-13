@@ -17,8 +17,6 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Mapping, Sequence
-from types import TracebackType
 from typing import TYPE_CHECKING, Any, cast
 
 from pymongo import _csot
@@ -31,6 +29,9 @@ from pymongo.synchronous.helpers import _handle_reauth
 from pymongo.typings import _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+    from types import TracebackType
+
     from pymongo.read_preferences import _ServerMode
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.pool import Connection

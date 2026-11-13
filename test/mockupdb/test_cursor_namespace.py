@@ -30,8 +30,12 @@ except ImportError:
     _HAVE_MOCKUPDB = False
 
 
-from pymongo import MongoClient
+from typing import TYPE_CHECKING
+
 from pymongo.common import MIN_SUPPORTED_WIRE_VERSION
+
+if TYPE_CHECKING:
+    from pymongo import MongoClient
 
 pytestmark = pytest.mark.mockupdb
 

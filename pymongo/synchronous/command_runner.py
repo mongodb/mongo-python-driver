@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import datetime
 import time
-from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -54,6 +53,8 @@ from pymongo.message import _BulkWriteContextBase, _convert_exception, _OpMsg
 from pymongo.monitoring import _is_speculative_authenticate
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping, MutableMapping, Sequence
+
     from bson import CodecOptions
     from bson.objectid import ObjectId
     from pymongo.compression_support import SnappyContext, ZlibContext, ZstdContext

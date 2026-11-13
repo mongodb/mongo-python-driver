@@ -21,9 +21,7 @@ import inspect
 import io
 import math
 from collections import abc
-from collections.abc import Iterable, Mapping
-from types import TracebackType
-from typing import Any, NoReturn, Self, cast
+from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -56,11 +54,16 @@ from pymongo.errors import (
 )
 from pymongo.helpers_shared import _check_write_command_response
 from pymongo.read_preferences import ReadPreference, _ServerMode
-from pymongo.synchronous.client_session import ClientSession
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from pymongo.synchronous.database import Database
 from pymongo.synchronous.helpers import next
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+    from types import TracebackType
+
+    from pymongo.synchronous.client_session import ClientSession
 
 _IS_SYNC = True
 
@@ -687,7 +690,7 @@ class GridFSBucket:
         with self.open_upload_stream(filename, chunk_size_bytes, metadata, session=session) as gin:
             gin.write(source)
 
-        return cast(ObjectId, gin._id)
+        return cast("ObjectId", gin._id)
 
     @_csot.apply
     def upload_from_stream_with_id(
@@ -1745,9 +1748,9 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         return True
 
     def __iter__(self) -> GridOut:
-        """Return an iterator over all of this file's data.
+        r"""Return an iterator over all of this file's data.
 
-        The iterator will return lines (delimited by ``b'\\n'``) of
+        The iterator will return lines (delimited by ``b'\n'``) of
         :class:`bytes`. This can be useful when serving files
         using a webserver that handles such an iterator efficiently.
 
@@ -1993,10 +1996,7 @@ class GridOutCursor(Cursor):  # type: ignore[type-arg]
             return [x for x in self]  # noqa: C416,RUF100
         if length < 1:
             raise ValueError("to_list() length must be greater than 0")
-        ret = []
-        for _ in range(length):
-            ret.append(self.next())
-        return ret
+        return [self.next() for _ in range(length)]
 
     __next__ = next
 

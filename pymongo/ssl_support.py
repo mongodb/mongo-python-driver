@@ -18,11 +18,13 @@ from __future__ import annotations
 
 import os
 import sys
-import types
 import warnings
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pymongo.errors import ConfigurationError
+
+if TYPE_CHECKING:
+    import types
 
 HAVE_SSL = True
 HAVE_PYSSL = True

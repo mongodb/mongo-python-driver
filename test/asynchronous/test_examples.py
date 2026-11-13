@@ -1113,7 +1113,7 @@ class TestTransactionExamples(AsyncIntegrationTest):
         async with client.start_session() as session:
             try:
                 await run_transaction_with_retry(update_employee_info, session)
-            except Exception:
+            except Exception:  # noqa: TRY203
                 # Do something with error.
                 raise
 

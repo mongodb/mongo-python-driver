@@ -355,9 +355,7 @@ class TestIgnoreStaleErrors(IntegrationTest):
             except AutoReconnect:
                 pass
 
-        tasks = []
-        for i in range(N_TASKS):
-            tasks.append(ConcurrentRunner(target=insert_command, args=(i,)))
+        tasks = [ConcurrentRunner(target=insert_command, args=(i,)) for i in range(N_TASKS)]
         for t in tasks:
             t.start()
         for t in tasks:
@@ -535,9 +533,7 @@ class TestPoolBackpressure(IntegrationTest):
                 pass
 
         # Run 100 parallel operations that contend for connections.
-        tasks = []
-        for _ in range(100):
-            tasks.append(ConcurrentRunner(target=target))
+        tasks = [ConcurrentRunner(target=target) for _ in range(100)]
         for t in tasks:
             t.start()
         for t in tasks:

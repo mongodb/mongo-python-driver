@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
 from copy import deepcopy
 from typing import (
     TYPE_CHECKING,
@@ -29,7 +28,6 @@ from typing import (
 
 from bson.codec_options import DEFAULT_CODEC_OPTIONS, CodecOptions
 from bson.dbref import DBRef
-from bson.timestamp import Timestamp
 from pymongo import _csot, common
 from pymongo.common import _ecoc_coll_name, _esc_coll_name
 from pymongo.database_shared import _check_name, _CodecDocumentType
@@ -43,8 +41,11 @@ from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.typings import _CollationIn, _DocumentType, _DocumentTypeArg, _Pipeline
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, MutableMapping, Sequence
+
     import bson
     import bson.codec_options
+    from bson.timestamp import Timestamp
     from pymongo.read_concern import ReadConcern
     from pymongo.synchronous.client_session import ClientSession
     from pymongo.synchronous.mongo_client import MongoClient
@@ -303,7 +304,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     ) -> Mapping[str, Any] | None:
         encrypted_fields = kwargs.get("encryptedFields")
         if encrypted_fields:
-            return cast(Mapping[str, Any], deepcopy(encrypted_fields))
+            return cast("Mapping[str, Any]", deepcopy(encrypted_fields))
         if (
             self.client.options.auto_encryption_opts
             and self.client.options.auto_encryption_opts._encrypted_fields_map
@@ -312,7 +313,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             )
         ):
             return cast(
-                Mapping[str, Any],
+                "Mapping[str, Any]",
                 deepcopy(
                     self.client.options.auto_encryption_opts._encrypted_fields_map[
                         f"{self.name}.{coll_name}"
@@ -322,7 +323,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         if ask_db and self.client.options.auto_encryption_opts:
             options = self[coll_name].options()
             if options.get("encryptedFields"):
-                return cast(Mapping[str, Any], deepcopy(options["encryptedFields"]))
+                return cast("Mapping[str, Any]", deepcopy(options["encryptedFields"]))
         return None
 
     # See PYTHON-3084.
@@ -1085,7 +1086,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     ) -> CommandCursor[MutableMapping[str, Any]]:
         """Internal listCollections helper."""
         coll = cast(
-            Collection[MutableMapping[str, Any]],
+            "Collection[MutableMapping[str, Any]]",
             self.get_collection("$cmd", read_preference=read_preference),
         )
         cmd = {"listCollections": 1, "cursor": {}}
@@ -1216,11 +1217,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> list[str]:
-        """Get a list of all the collection names in this database.
+        r"""Get a list of all the collection names in this database.
 
         For example, to list all non-system collections::
 
-            filter = {"name": {"$regex": r"^(?!system\\.)"}}
+            filter = {"name": {"$regex": r"^(?!system\.)"}}
             db.list_collection_names(filter=filter)
 
         :param session: a

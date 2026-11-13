@@ -281,7 +281,7 @@ class TestGetCerts(unittest.TestCase):
         cert2.subject = "other"
         cert2.issuer = "issuer"
 
-        result = _get_certs_by_name([cert1, cert2], issuer, cast(Name, "responder"))
+        result = _get_certs_by_name([cert1, cert2], issuer, cast("Name", "responder"))
         self.assertEqual(result, [cert1])
 
     def test_by_name_no_match(self):
@@ -291,7 +291,7 @@ class TestGetCerts(unittest.TestCase):
         cert.subject = "other"
         cert.issuer = "issuer"
 
-        result = _get_certs_by_name([cert], issuer, cast(Name, "responder"))
+        result = _get_certs_by_name([cert], issuer, cast("Name", "responder"))
         self.assertEqual(result, [])
 
 

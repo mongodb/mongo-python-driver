@@ -18,22 +18,23 @@ from __future__ import annotations
 
 import sys
 import uuid
-from typing import Any, Optional
-
-from pymongo.asynchronous.mongo_client import AsyncMongoClient
+from typing import TYPE_CHECKING, Any
 
 sys.path[0:0] = [""]
 
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
-from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.common import partition_node
 from pymongo.errors import BulkWriteError, ConfigurationError, InvalidOperation, OperationFailure
 from pymongo.operations import *
 from pymongo.write_concern import WriteConcern
 from test.asynchronous import AsyncIntegrationTest, async_client_context, remove_all_users, unittest
 from test.utils_shared import async_wait_until
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.collection import AsyncCollection
+    from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
 _IS_SYNC = False
 
@@ -309,8 +310,7 @@ class AsyncTestBulk(AsyncBulkTestBase):
             {"_id": 3, "l": "s" * (_16_MB - 10000)},
         ]
         # Fill in the remaining ~10000 bytes with small documents.
-        for i in range(4, 10000):
-            docs.append({"_id": i})
+        docs.extend({"_id": i} for i in range(4, 10000))
         result = await self.coll.insert_many(docs)
         self.assertEqual(len(docs), len(result.inserted_ids))
 

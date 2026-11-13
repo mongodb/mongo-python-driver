@@ -21,9 +21,7 @@ import inspect
 import io
 import math
 from collections import abc
-from collections.abc import Iterable, Mapping
-from types import TracebackType
-from typing import Any, NoReturn, Self, cast
+from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
 
 from bson.int64 import Int64
 from bson.objectid import ObjectId
@@ -45,7 +43,6 @@ from gridfs.grid_file_shared import (
     _clear_entity_type_registry,
 )
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
-from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
@@ -61,6 +58,12 @@ from pymongo.errors import (
 )
 from pymongo.helpers_shared import _check_write_command_response
 from pymongo.read_preferences import ReadPreference, _ServerMode
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+    from types import TracebackType
+
+    from pymongo.asynchronous.client_session import AsyncClientSession
 
 _IS_SYNC = False
 
@@ -691,7 +694,7 @@ class AsyncGridFSBucket:
         ) as gin:
             await gin.write(source)
 
-        return cast(ObjectId, gin._id)
+        return cast("ObjectId", gin._id)
 
     @_csot.apply
     async def upload_from_stream_with_id(
@@ -1763,9 +1766,9 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         return True
 
     def __aiter__(self) -> AsyncGridOut:
-        """Return an iterator over all of this file's data.
+        r"""Return an iterator over all of this file's data.
 
-        The iterator will return lines (delimited by ``b'\\n'``) of
+        The iterator will return lines (delimited by ``b'\n'``) of
         :class:`bytes`. This can be useful when serving files
         using a webserver that handles such an iterator efficiently.
 
@@ -2013,10 +2016,7 @@ class AsyncGridOutCursor(AsyncCursor):  # type: ignore[type-arg]
             return [x async for x in self]  # noqa: C416,RUF100
         if length < 1:
             raise ValueError("to_list() length must be greater than 0")
-        ret = []
-        for _ in range(length):
-            ret.append(await self.next())
-        return ret
+        return [await self.next() for _ in range(length)]
 
     __anext__ = next
 

@@ -21,7 +21,6 @@ import sys
 import time
 import traceback
 from collections import abc
-from collections.abc import Container, Iterable, Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -43,6 +42,8 @@ from pymongo.errors import (
 from pymongo.hello import HelloCompat
 
 if TYPE_CHECKING:
+    from collections.abc import Container, Iterable, Mapping, Sequence
+
     from pymongo.cursor_shared import _Hint
     from pymongo.operations import _IndexList
     from pymongo.pool_options import PoolOptions

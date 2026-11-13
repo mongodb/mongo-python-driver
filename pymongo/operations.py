@@ -28,7 +28,6 @@ from typing import (
     cast,
 )
 
-from bson.raw_bson import RawBSONDocument
 from pymongo import helpers_shared
 from pymongo.collation import validate_collation_or_none
 from pymongo.common import validate_is_mapping, validate_list
@@ -38,6 +37,7 @@ from pymongo.typings import _CollationIn, _DocumentType, _Pipeline
 from pymongo.write_concern import validate_boolean
 
 if TYPE_CHECKING:
+    from bson.raw_bson import RawBSONDocument
     from pymongo.typings import _AgnosticBulk, _AgnosticClientBulk
 
 

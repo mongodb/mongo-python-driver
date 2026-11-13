@@ -43,17 +43,15 @@ try:
     HAVE_IPADDRESS = True
 except ImportError:
     HAVE_IPADDRESS = False
-from collections.abc import Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial, wraps
-from typing import Any, overload
+from typing import TYPE_CHECKING, Any, overload
 from unittest import SkipTest
 from urllib.parse import quote_plus
 
 import pymongo
 import pymongo.errors
 from bson.son import SON
-from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.mongo_client import AsyncMongoClient
 from pymongo.common import partition_node
 from pymongo.hello import HelloCompat
@@ -83,6 +81,11 @@ from test.helpers_shared import (
     sanitize_reply,
 )
 from test.version import Version
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
+    from pymongo.asynchronous.database import AsyncDatabase
 
 _IS_SYNC = False
 
@@ -781,6 +784,18 @@ class AsyncClientContext:
         return self._require(
             self.supports_exhaust_cursors,
             "This server does not support exhaust cursors",
+            func=func,
+        )
+
+    def require_exhaust_stream(self, func):
+        """Run a test only if the server streams exhaust getMores.
+
+        mongos streams exhaust getMores from 7.1 (SERVER-57297); older
+        mongos reply per batch, so the receive-only state is never reached.
+        """
+        return self._require(
+            lambda: not (self.is_mongos or self.load_balancer) or self.version.at_least(7, 1),
+            "Exhaust streams require mongos 7.1+",
             func=func,
         )
 

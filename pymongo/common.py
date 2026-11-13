@@ -454,7 +454,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
     props: dict[str, Any] = {}
     if not isinstance(value, str):
         if not isinstance(value, dict):
-            raise ValueError(
+            raise TypeError(
                 f"Auth mechanism properties must be given as a string or a dictionary, not {type(value)}"
             )
         for key, value in value.items():  # noqa: B020
@@ -468,10 +468,10 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
                 from pymongo.auth_oidc_shared import OIDCCallback
 
                 if not isinstance(value, OIDCCallback):
-                    raise ValueError(f"callback must be an OIDCCallback object, not {type(value)}")
+                    raise TypeError(f"callback must be an OIDCCallback object, not {type(value)}")
                 props[key] = value
             else:
-                raise ValueError(f"Invalid type for auth mechanism property {key}, {type(value)}")
+                raise TypeError(f"Invalid type for auth mechanism property {key}, {type(value)}")
         return props
 
     value = validate_string(option, value)
@@ -612,7 +612,7 @@ def validate_is_callable_or_none(option: Any, value: Any) -> Callable[..., Any] 
     if value is None:
         return value
     if not callable(value):
-        raise ValueError(f"{option} must be a callable, not {type(value)}")
+        raise TypeError(f"{option} must be a callable, not {type(value)}")
     return value
 
 
@@ -1120,8 +1120,7 @@ class Version(tuple[int, ...]):
     def _padded(cls, iter: Any, length: int, padding: int = 0) -> list[int]:
         as_list = list(iter)
         if len(as_list) < length:
-            for _ in range(length - len(as_list)):
-                as_list.append(padding)
+            as_list.extend(padding for _ in range(length - len(as_list)))
         return as_list
 
     @classmethod

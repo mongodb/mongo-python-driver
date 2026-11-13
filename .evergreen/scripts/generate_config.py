@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sys
 from itertools import product
+from typing import TYPE_CHECKING
 
 from generate_config_utils import (
     ALL_PYTHONS,
@@ -36,7 +37,6 @@ from generate_config_utils import (
     write_variants_to_file,
     zip_cycle,
 )
-from shrub.v3.evg_build_variant import BuildVariant
 from shrub.v3.evg_command import (
     FunctionCall,
     archive_targz_pack,
@@ -48,6 +48,9 @@ from shrub.v3.evg_command import (
 )
 from shrub.v3.evg_task import EvgTask, EvgTaskDependency, EvgTaskRef
 from utils import PERF_PYTHON_VERSION
+
+if TYPE_CHECKING:
+    from shrub.v3.evg_build_variant import BuildVariant
 
 ##############
 # Variants
@@ -745,19 +748,19 @@ def create_server_version_tasks():
     # The pinned pr tasks: the boundary Pythons per server version, stable as CPYTHONS changes.
     for version, combos in sorted(SERVER_VERSION_PR_PYTHONS.items()):
         for (topology, auth, ssl), python in sorted(combos.items()):
-            for sync in SYNCS:
-                tasks.append(
-                    make_task(
-                        topology,
-                        auth,
-                        ssl,
-                        sync,
-                        python,
-                        extra_tags=("pr", version),
-                        VERSION=version,
-                        COVERAGE="1",
-                    )
+            tasks.extend(
+                make_task(
+                    topology,
+                    auth,
+                    ssl,
+                    sync,
+                    python,
+                    extra_tags=("pr", version),
+                    VERSION=version,
+                    COVERAGE="1",
                 )
+                for sync in SYNCS
+            )
     return tasks
 
 

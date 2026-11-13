@@ -31,17 +31,15 @@ import sys
 import time
 import traceback
 from collections import defaultdict
-from collections.abc import Mapping
 from inspect import iscoroutinefunction
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pytest
 
 import pymongo
 from bson import SON, json_util
 from bson.codec_options import DEFAULT_CODEC_OPTIONS
-from bson.objectid import ObjectId
 from gridfs import GridFSBucket, GridOut, NoFile
 from gridfs.errors import CorruptGridFile
 from pymongo import ASCENDING, CursorType, MongoClient, _csot
@@ -79,7 +77,6 @@ from pymongo.synchronous.database import Database
 from pymongo.synchronous.encryption import ClientEncryption
 from pymongo.synchronous.helpers import next
 from pymongo.topology_description import TopologyDescription
-from pymongo.typings import _Address
 from pymongo.write_concern import WriteConcern
 from test import (
     IntegrationTest,
@@ -111,6 +108,12 @@ from test.utils_shared import (
 )
 from test.utils_spec_runner import SpecRunnerThread
 from test.version import Version
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from bson.objectid import ObjectId
+    from pymongo.typings import _Address
 
 _IS_SYNC = True
 
@@ -1164,10 +1167,9 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
         self.assertIsNone(session._transaction.pinned_address)
 
     def __get_last_two_command_lsids(self, listener):
-        cmd_started_events = []
-        for event in reversed(listener.events):
-            if isinstance(event, CommandStartedEvent):
-                cmd_started_events.append(event)
+        cmd_started_events = [
+            event for event in reversed(listener.events) if isinstance(event, CommandStartedEvent)
+        ]
         if len(cmd_started_events) < 2:
             self.fail(
                 "Needed 2 CommandStartedEvents to compare lsids, got %s" % (len(cmd_started_events))

@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import AsyncIterator, Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -33,6 +32,8 @@ from pymongo.response import PinnedResponse
 from pymongo.typings import _Address, _DocumentType
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Mapping
+
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.pool import AsyncConnection
@@ -182,8 +183,9 @@ class AsyncCommandCursor(
                 result.extend(self._data)
                 self._data.clear()
             else:
+                # A list comprehension here is slower or uses more memory.
                 for _ in range(min(len(self._data), total)):
-                    result.append(self._data.popleft())
+                    result.append(self._data.popleft())  # noqa: PERF401
             return True
         else:
             return False

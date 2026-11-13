@@ -138,8 +138,6 @@ from __future__ import annotations
 import asyncio
 import random
 import time
-from collections.abc import Awaitable, Callable
-from contextlib import AbstractAsyncContextManager
 from contextvars import ContextVar, Token
 from typing import (
     TYPE_CHECKING,
@@ -171,15 +169,17 @@ from pymongo.errors import (
     PyMongoError,
     WTimeoutError,
 )
-from pymongo.read_concern import ReadConcern
-from pymongo.read_preferences import _ServerMode
 from pymongo.write_concern import WriteConcern
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+    from contextlib import AbstractAsyncContextManager
     from types import TracebackType
 
     from pymongo.asynchronous.mongo_client import AsyncMongoClient
     from pymongo.asynchronous.pool import AsyncConnection
+    from pymongo.read_concern import ReadConcern
+    from pymongo.read_preferences import _ServerMode
 
 _IS_SYNC = False
 

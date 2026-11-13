@@ -18,7 +18,6 @@ import asyncio
 import collections
 import os
 import time
-from collections.abc import Mapping, MutableMapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -55,7 +54,9 @@ from pymongo.monitoring import (
     ConnectionClosedReason,
 )
 from pymongo.network_layer import AsyncNetworkingInterface, async_receive_message, async_sendall
-from pymongo.pool_options import PoolOptions
+
+# Needed for backwards-compatible imports from pool.py.
+from pymongo.pool_options import PoolOptions  # noqa: TC001
 from pymongo.pool_shared import (
     _UNDO_OPERATION_COUNT,
     _UNDO_PENDING,
@@ -74,6 +75,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_type import SERVER_TYPE
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, MutableMapping, Sequence
     from types import TracebackType
 
     from bson import CodecOptions

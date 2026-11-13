@@ -33,10 +33,11 @@ from typing import (
 if TYPE_CHECKING:
     from typing import NotRequired
 
-    from typing_extensions import TypedDict
+    from typing_extensions import TypedDict  # noqa: TC004
 
-    from bson import Binary, ObjectId
-    from bson.binary import BinaryVector, BinaryVectorDtype
+    from bson import Binary, ObjectId  # noqa: TC004
+    from bson.binary import BinaryVector, BinaryVectorDtype  # noqa: TC004
+    from pymongo.synchronous.collection import Collection
 
     class Movie(TypedDict):
         name: str
@@ -70,7 +71,6 @@ from bson.son import SON
 from pymongo import ASCENDING, MongoClient
 from pymongo.operations import DeleteOne, InsertOne, ReplaceOne
 from pymongo.read_preferences import ReadPreference
-from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.cursor import Cursor
 from test import IntegrationTest, PyMongoTestCase, client_context
 
@@ -92,7 +92,7 @@ def only_type_check(func: FuncT) -> FuncT:
             raise unittest.SkipTest("Used for Type Checking Only")
         func(*args, **kwargs)
 
-    return cast(FuncT, inner)
+    return cast("FuncT", inner)
 
 
 class TestMypyFails(unittest.TestCase):

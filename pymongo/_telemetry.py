@@ -17,9 +17,7 @@
 from __future__ import annotations
 
 import datetime
-import queue
 import time
-from collections.abc import MutableMapping
 from typing import TYPE_CHECKING, Any
 
 from pymongo import _op_id
@@ -39,6 +37,9 @@ from pymongo.logger import (
 from pymongo.message import _randint
 
 if TYPE_CHECKING:
+    import queue
+    from collections.abc import MutableMapping
+
     from bson.objectid import ObjectId
     from pymongo.hello import Hello
     from pymongo.monitoring import _EventListeners

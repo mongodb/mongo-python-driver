@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -47,6 +46,8 @@ from pymongo.synchronous.helpers import next
 from pymongo.typings import _DocumentOut, _DocumentType
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from bson.codec_options import CodecOptions
     from pymongo.synchronous.collection import Collection
 
@@ -392,8 +393,9 @@ class Cursor(_AgnosticCursor[_DocumentType], _CursorBase[_DocumentType]):
                 result.extend(self._data)
                 self._data.clear()
             else:
+                # A list comprehension here is slower or uses more memory.
                 for _ in range(min(len(self._data), total)):
-                    result.append(self._data.popleft())
+                    result.append(self._data.popleft())  # noqa: PERF401
             return True
         else:
             return False
@@ -438,7 +440,7 @@ class RawBatchCursor(Cursor[_DocumentType]):
             # OP_MSG returns firstBatch/nextBatch documents as a BSON array
             # Re-assemble the array of documents into a document stream
             _convert_raw_document_lists_to_streams(raw_response[0])
-        return cast(list["_DocumentOut"], raw_response)
+        return cast("list[_DocumentOut]", raw_response)
 
     def explain(self) -> _DocumentType:
         """Returns an explain plan record for this cursor.

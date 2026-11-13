@@ -2,16 +2,19 @@
 
 """Lock and Condition classes vendored from https://github.com/python/cpython/blob/main/Lib/asyncio/locks.py
 to port 3.13 fixes to older versions of Python.
-Can be removed once we drop Python 3.12 support."""
+Can be removed once we drop Python 3.12 support.
+"""
 
 from __future__ import annotations
 
 import collections
 import threading
 from asyncio import events, exceptions
-from collections.abc import Coroutine
-from types import TracebackType
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Coroutine
+    from types import TracebackType
 
 _global_lock = threading.Lock()
 

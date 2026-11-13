@@ -23,7 +23,6 @@ import sys
 import zipfile
 from io import BytesIO
 
-from pymongo.asynchronous.database import AsyncDatabase
 from test.asynchronous import (
     AsyncIntegrationTest,
     AsyncUnitTest,
@@ -33,6 +32,8 @@ from test.asynchronous import (
 )
 
 sys.path[0:0] = [""]
+
+from typing import TYPE_CHECKING
 
 from bson.objectid import ObjectId
 from gridfs.asynchronous.grid_file import (
@@ -50,6 +51,9 @@ from pymongo.asynchronous.helpers import aiter, anext
 from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from pymongo.message import _CursorAddress
 from test.utils_shared import OvertCommandListener
+
+if TYPE_CHECKING:
+    from pymongo.asynchronous.database import AsyncDatabase
 
 _IS_SYNC = False
 

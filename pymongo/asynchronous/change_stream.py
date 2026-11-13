@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from types import TracebackType
 from typing import TYPE_CHECKING
 
 from bson import _bson_to_dict
@@ -43,6 +42,8 @@ from pymongo.typings import _DocumentType
 _IS_SYNC = False
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from pymongo.asynchronous.client_session import AsyncClientSession
     from pymongo.asynchronous.collection import AsyncCollection
     from pymongo.asynchronous.database import AsyncDatabase
