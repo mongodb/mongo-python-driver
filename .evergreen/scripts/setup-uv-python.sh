@@ -11,7 +11,9 @@
 #   UV_PYTHON_PREFERENCE  - "system" so the toolchain wins over managed installs.
 #                           A preference set by the task is left alone.
 #   UV_PYTHON             - the Python interpreter uv uses; defaults to CPython
-#                           3.11 when the task does not set one.
+#                           3.11 when the task does not set one, and becomes the
+#                           toolchain interpreter's path when the toolchain
+#                           provides the requested version.
 set -euo pipefail
 
 HERE=$(dirname "${BASH_SOURCE:-$0}")
@@ -70,6 +72,9 @@ function _toolchain_dir() {
   else
     dir="/opt/python/${version}/bin"
   fi
+  # PYMONGO_TOOLCHAIN_ROOT overrides the unix toolchain root for the tests; the
+  # <version>/bin layout under it is unchanged.
+  dir="${PYMONGO_TOOLCHAIN_ROOT:-$(dirname "$dir")}/${version}/bin"
   [ -d "$dir" ] || return 1
   echo "$dir"
 }
@@ -115,6 +120,18 @@ if [[ "$UV_PYTHON" == */* || "$UV_PYTHON" == *\\* ]]; then
   _skip_ensure=1
 elif _dir=$(_toolchain_dir "$UV_PYTHON"); then
   _search_path="$_dir"
+  # Prefer the toolchain interpreter by explicit path when it has the requested
+  # version and the task did not set its own preference (PYTHON-6135): the
+  # explicit path bypasses uv's discovery, so a task-set preference would be
+  # silently ignored. uv's discovery is version-dependent and has failed on CI
+  # with uv 0.12.24: `uv python find` aborts on a search-path interpreter it
+  # cannot inspect (RHEL8's /usr/bin/python3 is 3.6) before reaching the
+  # toolchain dir, and `uv python install` has no cpython-3.15 download for it.
+  # uv uses an explicit path as-is, so bypass both.
+  if [ -z "${UV_PYTHON_PREFERENCE:-}" ] && [ -x "$_dir/python${UV_PYTHON}" ]; then
+    export UV_PYTHON="$_dir/python${UV_PYTHON}"
+    _skip_ensure=1
+  fi
 fi
 
 # Point uv at the toolchain Python when there is one and the task did not set

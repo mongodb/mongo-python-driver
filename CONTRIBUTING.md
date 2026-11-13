@@ -199,13 +199,13 @@ the pages will re-render and the browser will automatically refresh.
     create a virtual environment and run `pytest` directly.  If you want to use a specific
     version of Python, set `UV_PYTHON` before running `just install`.
 
-    `just install` installs the latest `uv` into `$HOME/.local/bin` when no `uv` is on PATH
-    (no pin), and adds that directory to your shell rc file when missing, so `uv` takes effect in new shells.
-    The fail-fast version check only applies if a `required-version` pin is ever set under `[tool.uv]` in
-    `pyproject.toml`.  Scripts inside the vendored `drivers-evergreen-tools` submodule are exempt from this
-    project's uv settings: the setup scripts write a `uv.toml` boundary file into that checkout (see
-    `.evergreen/scripts/configure-env.sh`), which stops uv's config discovery there, since the tools' scripts
-    run with their own uv settings.
+    `just install` installs the latest `uv` into `$HOME/.local/bin` (no pin) unless that uv is
+    already on PATH, and adds that directory to your shell rc file when missing, so `uv` takes effect
+    in new shells.  The fail-fast version check only applies if a `required-version` pin is ever set
+    under `[tool.uv]` in `pyproject.toml`.  Scripts inside the vendored `drivers-evergreen-tools`
+    submodule are exempt from this project's uv settings: the setup scripts write a `uv.toml` boundary
+    file into that checkout (see `.evergreen/scripts/configure-env.sh`), which stops uv's config
+    discovery there, since the tools' scripts run with their own uv settings.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
     [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `${DRIVERS_TOOLS:-drivers-evergreen-tools}/.evergreen/run-mongodb.sh start -h`
@@ -482,15 +482,18 @@ Tasks are host-agnostic, so the interpreter lookup happens on the host: for a pl
 CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at it, and for anything else
 (a version the toolchain lacks) uv downloads it.
     - If a specific Python binary is needed (for example on the FIPS host), set `UV_PYTHON=/path/to/python`.
-    - The default if `UV_PYTHON` is not set is CPython 3.10.  This is deterministic across host types, so a task
+    - The default if `UV_PYTHON` is not set is CPython 3.11.  This is deterministic across host types, so a task
       that does not pin a version always gets the same Python (with the build headers (`Python.h`) needed to build
       the C extensions).
-    - GitHub Actions use the latest uv (`astral-sh/setup-uv`'s default), and Evergreen ensures a uv via
-      `ensure-uv.sh` / `setup_uv.py`.  A `[tool.uv] required-version` pin is added to `pyproject.toml` only when a
-      needed uv lockfile feature requires it.  If uv cannot find the requested Python, it installs it; if that
-      fails, the task fails.  The submodule boundary keeps this project's `[tool.uv]` settings from leaking into
-      the tools' scripts: the setup scripts write a `uv.toml` boundary into the submodule checkout that stops
-      uv's config discovery there.
+    - GitHub Actions use the latest uv (`astral-sh/setup-uv`'s default), and Evergreen ensures a
+      project-controlled uv in `UV_TOOL_BIN_DIR` via `ensure-uv.sh` / `setup_uv.py` (the pinned version
+      when a pin is set, the latest otherwise).  A `[tool.uv] required-version` pin is added to
+      `pyproject.toml` only when a needed uv lockfile feature requires it.  If uv cannot find the
+      requested Python, it installs it; if that fails, the task fails.  When the MongoDB toolchain
+      provides the requested version, `setup-uv-python.sh` points `UV_PYTHON` at that interpreter by
+      path, which keeps provisioning independent of the uv version on PATH.  The submodule boundary
+      keeps this project's `[tool.uv]` settings from leaking into the tools' scripts: the setup scripts
+      write a `uv.toml` boundary into the submodule checkout that stops uv's config discovery there.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - PR tasks pin to the Python boundaries: `MIN_PYTHON` with `TEST_MIN_DEPS=1`, `MAX_PYTHON`, and one
   `FREE_THREADED_PYTHON`, against the newest numbered server (`MAX_VERSION`; the `latest` nightly
