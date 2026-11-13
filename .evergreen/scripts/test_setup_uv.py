@@ -19,6 +19,16 @@ from pathlib import Path
 
 import pytest
 
+# The repo's pytest addopts filter on "default or default_async"; marking the
+# module keeps bare pytest invocations from deselecting it.
+pytestmark = [
+    pytest.mark.default,
+    pytest.mark.skipif(
+        sys.platform in ("win32", "cygwin") or shutil.which("bash") is None,
+        reason="needs a unix shell",
+    ),
+]
+
 HERE = Path(__file__).resolve().parent
 SETUP_UV = HERE / "setup_uv.py"
 SETUP_UV_PYTHON_SH = HERE / "setup-uv-python.sh"
@@ -96,13 +106,6 @@ def stub_calls(log: Path) -> list[str]:
 
 
 # --- setup-uv-python.sh ------------------------------------------------------
-
-# The whole module is unix-only: the bash tests need a unix shell, and the
-# setup_uv.py tests use bash-script uv stubs and colon-separated PATH values.
-pytestmark = pytest.mark.skipif(
-    sys.platform in ("win32", "cygwin") or shutil.which("bash") is None,
-    reason="needs a unix shell",
-)
 
 
 def run_setup_uv_python(tmp_path: Path, extra_env: dict) -> subprocess.CompletedProcess:
