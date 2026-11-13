@@ -86,11 +86,11 @@ def handle_green_framework() -> None:
 
 
 def handle_load_balancer_marker() -> None:
-    """Select the full default suite plus the load-balancer-marked tests.
+    """Select the full default suite alongside the load-balancer-marked tests.
 
-    The last ``-m`` wins over the one setup_tests.py wrote, and
-    pytest_conf.py grants the implicit default markers only to unmarked
-    tests, so the expression needs an explicit ``load_balancer`` term.
+    The pytest addopts only select the implicit default markers, which
+    pytest_conf.py does not grant to the load-balancer-marked modules
+    (PYTHON-6167).
     """
     TEST_ARGS.extend(["-m", "default or default_async or load_balancer"])
 
@@ -157,8 +157,7 @@ def handle_fuzz() -> None:
         if not inputs:
             raise RuntimeError("No fuzz regression inputs found in fuzz/regression/")
         corpus_dir = os.environ.get("FUZZ_CORPUS_DIR", str(ROOT / "fuzz-scratch" / "corpus"))
-        # Fail fast on a missing or empty corpus; libFuzzer would silently
-        # skip it.
+        # Fail fast on a missing or empty corpus; libFuzzer would silently skip it.
         corpus_files = sorted(
             str(p) for p in Path(corpus_dir).glob("*") if not p.name.startswith(".")
         )
@@ -167,8 +166,8 @@ def handle_fuzz() -> None:
                 f"No fuzz seed corpus found in {corpus_dir}; was setup_tests.py run?"
             )
         inputs.extend(corpus_files)
-        # Each input runs exactly once without random fuzzing; the -atheris_runs
-        # budget equals the file count so atheris exits cleanly after the last.
+        # Each input runs once: -atheris_runs equals the file count, so
+        # atheris exits cleanly after the last one.
         runs = len(inputs)
         for target in targets:
             run_command(
@@ -178,9 +177,7 @@ def handle_fuzz() -> None:
 
     # Time-boxed fuzzing against the generated seed corpus.
     corpus_dir = os.environ.get("FUZZ_CORPUS_DIR", str(ROOT / "fuzz-scratch" / "corpus"))
-    # Fail fast on a missing or empty corpus: libFuzzer would only log
-    # "starting from an empty corpus" and burn the whole time budget
-    # without the seeds the task exists to exercise.
+    # Fail fast: libFuzzer would burn the whole budget without the seeds.
     if not any(Path(corpus_dir).glob("*")):
         raise RuntimeError(f"No fuzz seed corpus found in {corpus_dir}; was setup_tests.py run?")
     # Keep libFuzzer artifacts (crash-*, leak-*, ...) under the scratch dir.
