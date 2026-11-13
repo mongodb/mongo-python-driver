@@ -29,6 +29,8 @@ from bson.errors import InvalidId
 from bson.tz_util import utc
 
 _MAX_COUNTER_VALUE = 0xFFFFFF
+_OBJECT_ID_BYTE_LENGTH = 12
+_OBJECT_ID_HEX_LENGTH = 24
 _PACK_INT = struct.Struct(">I").pack
 _PACK_INT_RANDOM = struct.Struct(">I5s").pack
 _UNPACK_INT = struct.Struct(">I").unpack
@@ -104,17 +106,17 @@ class ObjectId:
 
             # 4 bytes current time, 5 bytes random, 3 bytes inc.
             self.__id = _PACK_INT_RANDOM(int(time.time()), ObjectId._random()) + _PACK_INT(inc)[1:4]
-        elif isinstance(oid, bytes) and len(oid) == 12:
+        elif isinstance(oid, bytes) and len(oid) == _OBJECT_ID_BYTE_LENGTH:
             self.__id = oid
         elif isinstance(oid, str):
-            if len(oid) == 24:
+            if len(oid) == _OBJECT_ID_HEX_LENGTH:
                 try:
                     self.__id = bytes.fromhex(oid)
                 except (TypeError, ValueError):
                     _raise_invalid_id(oid)
                 # bytes.fromhex() skips ASCII whitespace, so a 24-character
                 # string can decode to fewer than 12 bytes.
-                if len(self.__id) != 12:
+                if len(self.__id) != _OBJECT_ID_BYTE_LENGTH:
                     _raise_invalid_id(oid)
             else:
                 _raise_invalid_id(oid)

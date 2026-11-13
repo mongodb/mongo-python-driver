@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 _SUPPORTED_COMPRESSORS = {"snappy", "zlib", "zstd"}
+_MAX_ZLIB_COMPRESSION_LEVEL = 9
 _NO_COMPRESSION = {HelloCompat.CMD, HelloCompat.LEGACY_CMD}
 _NO_COMPRESSION.update(_SENSITIVE_COMMANDS)
 
@@ -107,7 +108,7 @@ def validate_zlib_compression_level(option: str, value: Any) -> int:
         level = int(value)
     except Exception:
         raise TypeError(f"{option} must be an integer, not {value!r}") from None
-    if level < -1 or level > 9:
+    if level < -1 or level > _MAX_ZLIB_COMPRESSION_LEVEL:
         raise ValueError(f"{option} must be between -1 and 9, not {level}.")
     return level
 

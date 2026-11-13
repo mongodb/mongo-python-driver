@@ -61,7 +61,8 @@ def _split_message(
 
     :param message: (request_id, data, max_doc_size) or (request_id, data)
     """
-    if len(message) == 3:
+    # A literal length is required for mypy to narrow the tuple type.
+    if len(message) == 3:  # noqa: PLR2004
         return message
     # get_more and kill_cursors messages don't include BSON documents.
     request_id, data = message

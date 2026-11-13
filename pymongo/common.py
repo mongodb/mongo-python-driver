@@ -70,6 +70,16 @@ MAX_SUPPORTED_WIRE_VERSION = 29
 # MongoDB 7.1, the first release whose mongos continues an exhaust getMore stream.
 MONGOS_EXHAUST_WIRE_VERSION = 22
 
+# Wire versions for server feature gates.
+WIRE_VERSION_3_6 = 6
+WIRE_VERSION_5_0 = 13
+WIRE_VERSION_6_0 = 17
+WIRE_VERSION_7_0 = 21
+WIRE_VERSION_8_0 = 25
+
+_ONE_BILLION = 1e9
+_MAX_APP_NAME_LENGTH = 128
+
 # Frequency to call hello on servers, in seconds.
 HEARTBEAT_FREQUENCY = 10
 
@@ -287,7 +297,7 @@ def validate_positive_float(option: str, value: Any) -> float:
 
     # float('inf') doesn't work in 2.4 or 2.5 on Windows, so just cap floats at
     # one billion - this is a reasonable approximation for infinity
-    if not 0 < value < 1e9:
+    if not 0 < value < _ONE_BILLION:
         raise ValueError(f"{option} must be greater than 0 and less than one billion")
     return value
 
@@ -584,7 +594,7 @@ def validate_appname_or_none(option: str, value: Any) -> str | None:
         return value
     validate_string(option, value)
     # We need length in bytes, so encode utf8 first.
-    if len(value.encode("utf-8")) > 128:
+    if len(value.encode("utf-8")) > _MAX_APP_NAME_LENGTH:
         raise ValueError(f"{option} must be <= 128 bytes")
     return value
 

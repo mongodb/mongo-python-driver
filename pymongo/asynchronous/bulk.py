@@ -28,9 +28,7 @@ from typing import (
 
 from pymongo import _csot
 from pymongo._telemetry import _generate_op_id_or_none
-from pymongo.asynchronous.command_runner import (
-    run_bulk_write_command,
-)
+from pymongo.asynchronous.command_runner import run_bulk_write_command
 from pymongo.asynchronous.helpers import _handle_reauth
 from pymongo.bulk_shared import (
     _COMMANDS,
@@ -39,6 +37,7 @@ from pymongo.bulk_shared import (
     _raise_bulk_write_error,
 )
 from pymongo.client_session_shared import _validate_session_write_concern
+from pymongo.common import WIRE_VERSION_8_0
 from pymongo.errors import (
     ConfigurationError,
     InvalidOperation,
@@ -407,7 +406,7 @@ class _AsyncBulk(_AgnosticBulkBase):
             raise ConfigurationError("arrayFilters is unsupported for unacknowledged writes.")
         # Guard against unsupported unacknowledged writes.
         unack = write_concern and not write_concern.acknowledged
-        if unack and self.uses_sort and conn.max_wire_version < 25:
+        if unack and self.uses_sort and conn.max_wire_version < WIRE_VERSION_8_0:
             raise ConfigurationError(
                 "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."
             )

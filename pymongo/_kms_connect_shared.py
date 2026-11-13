@@ -86,6 +86,14 @@ def _close_rejected_kms_socket(obj: Any) -> None:
 # Cap the CONNECT response header so a silent proxy cannot grow the buffer without bound.
 _MAX_CONNECT_HEADER = 8192
 
+# HTTP status codes for a successful CONNECT response.
+_HTTP_OK = 200
+_HTTP_REDIRECT = 300
+_HTTP_STATUS_CODE_LENGTH = 3
+_MIN_HTTP_STATUS_PARTS = 2
+# The number of directions a bridged socket is read in.
+_BRIDGE_DIRECTIONS = 2
+
 # An RFC 7230 token: the grammar for a header field name.
 _TOKEN_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
 
@@ -285,12 +293,12 @@ class HTTPProxyKMSConnect:
         # "HTTP/1.1 201"; require a three-digit code and reject malformed lines.
         parts = status.split(b" ", 2)
         valid = (
-            len(parts) >= 2
+            len(parts) >= _MIN_HTTP_STATUS_PARTS
             and parts[0].startswith(b"HTTP/")
-            and len(parts[1]) == 3
+            and len(parts[1]) == _HTTP_STATUS_CODE_LENGTH
             and parts[1].isdigit()
         )
-        if not valid or not 200 <= int(parts[1]) < 300:
+        if not valid or not _HTTP_OK <= int(parts[1]) < _HTTP_REDIRECT:
             raise OSError(f"proxy refused CONNECT to {target}: {status!r}")
 
     def _bridge(
@@ -329,7 +337,7 @@ class HTTPProxyKMSConnect:
                 with phases_lock:
                     finished[src].add("read")
                     finished[dst].add("write")
-                    done = [s for s, marks in finished.items() if len(marks) == 2]
+                    done = [s for s, marks in finished.items() if len(marks) == _BRIDGE_DIRECTIONS]
                     for s in done:
                         del finished[s]
                 for sock in done:

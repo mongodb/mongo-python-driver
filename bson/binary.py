@@ -209,6 +209,15 @@ USER_DEFINED_SUBTYPE = 128
 """BSON binary subtype for any user defined structure.
 """
 
+# Binary subtypes are one byte, so the valid range is [0, 256).
+_SUBTYPE_LIMIT = 256
+_UUID_LENGTH = 16
+_MAX_PADDING = 7
+_INT8_MIN = -128
+_INT8_MAX = 127
+# Packed-bit vectors are restricted to the signed int8 range when built from numpy arrays.
+_PACKED_BIT_MAX = 127
+
 
 class BinaryVectorDtype(Enum):
     """Datatypes of vector subtype.
@@ -316,7 +325,7 @@ class Binary(bytes):
     ) -> Self:
         if not isinstance(subtype, int):
             raise TypeError(f"subtype must be an instance of int, not {type(subtype)}")
-        if subtype >= 256 or subtype < 0:
+        if subtype >= _SUBTYPE_LIMIT or subtype < 0:
             raise ValueError("subtype must be contained in [0, 256)")
         # Support any type that implements the buffer protocol.
         self = bytes.__new__(cls, memoryview(data).tobytes())
@@ -405,8 +414,10 @@ class Binary(bytes):
         if uuid_representation == UuidRepresentation.UNSPECIFIED:
             raise ValueError("uuid_representation cannot be UNSPECIFIED")
 
-        if len(self) != 16:
-            raise ValueError(f"cannot decode a uuid from a {len(self)}-byte payload, expected 16")
+        if len(self) != _UUID_LENGTH:
+            raise ValueError(
+                f"cannot decode a uuid from a {len(self)}-byte payload, expected {_UUID_LENGTH}"
+            )
 
         if uuid_representation == UuidRepresentation.PYTHON_LEGACY:
             if self.subtype == OLD_UUID_SUBTYPE:
@@ -496,7 +507,7 @@ class Binary(bytes):
                     raise ValueError(f"padding does not apply to {dtype=}")
             elif dtype == BinaryVectorDtype.PACKED_BIT:  # pack ints in [0, 255] as unsigned uint8
                 format_str = "B"
-                if 0 <= padding > 7:
+                if 0 <= padding > _MAX_PADDING:
                     raise ValueError(f"{padding=}. It must be in [0,1, ..7].")
                 if padding and not vector:
                     raise ValueError("Empty vector with non-zero padding.")
@@ -526,12 +537,12 @@ class Binary(bytes):
             if dtype == BinaryVectorDtype.FLOAT32:
                 vector = vector.astype(np.dtype("float32"), copy=False)
             elif dtype == BinaryVectorDtype.INT8:
-                if vector.min() >= -128 and vector.max() <= 127:
+                if vector.min() >= _INT8_MIN and vector.max() <= _INT8_MAX:
                     vector = vector.astype(np.dtype("int8"), copy=False)
                 else:
                     raise ValueError("Values found outside INT8 range.")
             elif dtype == BinaryVectorDtype.PACKED_BIT:
-                if vector.min() >= 0 and vector.max() <= 127:
+                if vector.min() >= 0 and vector.max() <= _PACKED_BIT_MAX:
                     vector = vector.astype(np.dtype("uint8"), copy=False)
                 else:
                     raise ValueError("Values found outside UINT8 range.")
@@ -588,8 +599,10 @@ class Binary(bytes):
                 # data packed as uint8
                 if padding and not n_bytes:
                     raise ValueError("Corrupt data. Vector has a padding P, but no data.")
-                if padding > 7 or padding < 0:
-                    raise ValueError(f"Corrupt data. Padding ({padding}) must be between 0 and 7.")
+                if padding > _MAX_PADDING or padding < 0:
+                    raise ValueError(
+                        f"Corrupt data. Padding ({padding}) must be between 0 and {_MAX_PADDING}."
+                    )
                 dtype_format = "B"
                 format_string = f"<{n_bytes}{dtype_format}"
                 unpacked_uint8s = list(struct.unpack_from(format_string, self, offset))
@@ -622,8 +635,10 @@ class Binary(bytes):
                 # data packed as uint8
                 if padding and not n_bytes:
                     raise ValueError("Corrupt data. Vector has a padding P, but no data.")
-                if padding > 7 or padding < 0:
-                    raise ValueError(f"Corrupt data. Padding ({padding}) must be between 0 and 7.")
+                if padding > _MAX_PADDING or padding < 0:
+                    raise ValueError(
+                        f"Corrupt data. Padding ({padding}) must be between 0 and {_MAX_PADDING}."
+                    )
                 data = np.frombuffer(self[offset:], dtype="uint8")
                 if padding and np.unpackbits(data[-1])[-padding:].sum() > 0:
                     warnings.warn(

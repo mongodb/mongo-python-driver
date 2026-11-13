@@ -29,8 +29,9 @@ base_time = get_total_time(base_sha)
 curr_time = get_total_time(head_sha)
 
 # Check if we got 20% or more slower.
+_MAX_REGRESSION_PERCENT = 20
 change = int((curr_time - base_time) / base_time * 100)
-if change > 20:
+if change > _MAX_REGRESSION_PERCENT:
     print(f"PyMongo import got {change} percent worse")
     sys.exit(1)
 

@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 from pymongo import _csot
 from pymongo._telemetry import _generate_op_id_or_none, log_command_retry
 from pymongo.errors import (
+    _MMAPV1_TRANSACTION_NUMBER_CODE,
     BulkWriteError,
     ClientBulkWriteException,
     ConnectionFailure,
@@ -71,7 +72,7 @@ def _add_retryable_write_error(exc: PyMongoError) -> None:
     if doc:
         code = doc.get("code", 0)
         # retryWrites on MMAPv1 should raise an actionable error.
-        if code == 20 and str(exc).startswith("Transaction numbers"):
+        if code == _MMAPV1_TRANSACTION_NUMBER_CODE and str(exc).startswith("Transaction numbers"):
             errmsg = (
                 "This MongoDB deployment does not support "
                 "retryable writes. Please add retryWrites=false "

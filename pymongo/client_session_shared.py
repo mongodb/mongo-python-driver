@@ -34,7 +34,9 @@ from bson.binary import Binary
 from bson.int64 import Int64
 from bson.timestamp import Timestamp
 from pymongo import _csot
+from pymongo.common import WIRE_VERSION_5_0
 from pymongo.errors import (
+    _MAX_TIME_MS_EXPIRED_CODE,
     ConfigurationError,
     ExecutionTimeout,
     InvalidOperation,
@@ -261,7 +263,7 @@ def _reraise_with_unknown_commit(exc: Any) -> NoReturn:
 
 def _max_time_expired_error(exc: PyMongoError) -> bool:
     """Return true if exc is a MaxTimeMSExpired error."""
-    return isinstance(exc, OperationFailure) and exc.code == 50
+    return isinstance(exc, OperationFailure) and exc.code == _MAX_TIME_MS_EXPIRED_CODE
 
 
 # From the transactions spec, all the retryable writes errors plus
@@ -709,7 +711,7 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
         if self.options.causal_consistency and self.operation_time is not None:
             cmd.setdefault("readConcern", {})["afterClusterTime"] = self.operation_time
         if self.options.snapshot:
-            if conn.max_wire_version < 13:
+            if conn.max_wire_version < WIRE_VERSION_5_0:
                 raise ConfigurationError("Snapshot reads require MongoDB 5.0 or later")
             rc = cmd.setdefault("readConcern", {})
             rc["level"] = "snapshot"

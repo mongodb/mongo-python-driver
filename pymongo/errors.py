@@ -30,6 +30,10 @@ if TYPE_CHECKING:
     from pymongo.results import ClientBulkWriteResult
     from pymongo.typings import _DocumentOut
 
+# Server error codes.
+_MAX_TIME_MS_EXPIRED_CODE = 50
+_MMAPV1_TRANSACTION_NUMBER_CODE = 20
+
 
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions."""
@@ -286,7 +290,9 @@ class DuplicateKeyError(WriteError):
 
 def _wtimeout_error(error: Any) -> bool:
     """Return True if this writeConcernError doc is a caused by a timeout."""
-    return error.get("code") == 50 or ("errInfo" in error and error["errInfo"].get("wtimeout"))
+    return error.get("code") == _MAX_TIME_MS_EXPIRED_CODE or (
+        "errInfo" in error and error["errInfo"].get("wtimeout")
+    )
 
 
 class BulkWriteError(OperationFailure):
@@ -312,7 +318,7 @@ class BulkWriteError(OperationFailure):
             return True
 
         werrs = self.details.get("writeErrors", [])
-        return bool(werrs and werrs[-1].get("code") == 50)
+        return bool(werrs and werrs[-1].get("code") == _MAX_TIME_MS_EXPIRED_CODE)
 
 
 class ClientBulkWriteException(OperationFailure):

@@ -28,6 +28,7 @@ from typing import (
 
 from pymongo import _csot
 from pymongo._telemetry import _generate_op_id_or_none
+from pymongo.common import WIRE_VERSION_8_0
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.command_cursor import CommandCursor
 from pymongo.synchronous.command_runner import (
@@ -383,7 +384,7 @@ class _ClientBulk(_AgnosticClientBulkBase):
             conn: Connection,
             retryable: bool,
         ) -> None:
-            if conn.max_wire_version < 25:
+            if conn.max_wire_version < WIRE_VERSION_8_0:
                 raise InvalidOperation(
                     "MongoClient.bulk_write requires MongoDB server version 8.0+."
                 )
@@ -483,7 +484,7 @@ class _ClientBulk(_AgnosticClientBulkBase):
 
         if not self.write_concern.acknowledged:
             with self.client._conn_for_writes(session, operation) as connection:
-                if connection.max_wire_version < 25:
+                if connection.max_wire_version < WIRE_VERSION_8_0:
                     raise InvalidOperation(
                         "MongoClient.bulk_write requires MongoDB server version 8.0+."
                     )

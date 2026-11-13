@@ -48,7 +48,12 @@ from pymongo.asynchronous.cursor import (
     AsyncRawBatchCursor,
 )
 from pymongo.collation import validate_collation_or_none
-from pymongo.common import _ecoc_coll_name, _esc_coll_name
+from pymongo.common import (
+    WIRE_VERSION_7_0,
+    WIRE_VERSION_8_0,
+    _ecoc_coll_name,
+    _esc_coll_name,
+)
 from pymongo.errors import (
     ConfigurationError,
     InvalidName,
@@ -640,7 +645,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         async def inner(
             session: AsyncClientSession | None, conn: AsyncConnection, _retryable_write: bool
         ) -> None:
-            if qev2_required and conn.max_wire_version < 21:
+            if qev2_required and conn.max_wire_version < WIRE_VERSION_7_0:
                 raise ConfigurationError(
                     "Driver support of Queryable Encryption is incompatible with server. "
                     "Upgrade server to use Queryable Encryption. "
@@ -1011,7 +1016,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 hint = helpers_shared._index_document(hint)
             update_doc["hint"] = hint
         if sort is not None:
-            if not acknowledged and conn.max_wire_version < 25:
+            if not acknowledged and conn.max_wire_version < WIRE_VERSION_8_0:
                 raise ConfigurationError(
                     "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."
                 )
@@ -2560,7 +2565,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             except OperationFailure as exc:
                 # Ignore NamespaceNotFound errors to match the behavior
                 # of reading from *.system.indexes.
-                if exc.code != 26:
+                if exc.code != helpers_shared._NAMESPACE_NOT_FOUND_CODE:
                     raise
                 cursor = {"id": 0, "firstBatch": []}
             cmd_cursor = AsyncCommandCursor(

@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from typing import Any
 
+_HTTP_OK = 200
+
 
 def _get_gcp_response(resource: str, timeout: float = 5) -> dict[str, Any]:
     from urllib.request import Request, urlopen
@@ -34,7 +36,7 @@ def _get_gcp_response(resource: str, timeout: float = 5) -> dict[str, Any]:
         msg = f"Failed to acquire IMDS access token: {e}"
         raise ValueError(msg) from None
 
-    if status != 200:
+    if status != _HTTP_OK:
         msg = "Failed to acquire IMDS access token."
         raise ValueError(msg)
 

@@ -29,6 +29,7 @@ from typing import (
 
 from pymongo import ASCENDING
 from pymongo.errors import (
+    _MAX_TIME_MS_EXPIRED_CODE,
     CursorNotFound,
     DuplicateKeyError,
     ExecutionTimeout,
@@ -85,6 +86,12 @@ _RETRYABLE_ERROR_CODES: frozenset[int] = _NOT_PRIMARY_CODES | frozenset(
         134,  # ReadConcernMajorityNotAvailableYet
     ]
 )
+
+# Server code raised for findAndModify with upsert and other duplicate key errors.
+_DUPLICATE_KEY_CODE: int = 11000
+_DUPLICATE_KEY_CODES: frozenset[int] = frozenset([11000, 11001, 12582])
+_CURSOR_NOT_FOUND_CODE: int = 43
+_NAMESPACE_NOT_FOUND_CODE: int = 26
 
 # Server code raised when re-authentication is required
 _REAUTHENTICATION_REQUIRED_CODE: int = 391
@@ -312,15 +319,15 @@ def _check_command_response(
 
     # Other errors
     # findAndModify with upsert can raise duplicate key error
-    if code in (11000, 11001, 12582):
+    if code in _DUPLICATE_KEY_CODES:
         raise DuplicateKeyError(errmsg, code, response, max_wire_version)
-    elif code == 50:
+    elif code == _MAX_TIME_MS_EXPIRED_CODE:
         # Append timeout details to MaxTimeMSExpired responses.
         if pool_opts:
             timeout_details = _get_timeout_details(pool_opts)
             errmsg += format_timeout_details(timeout_details)
         raise ExecutionTimeout(errmsg, code, response, max_wire_version)
-    elif code == 43:
+    elif code == _CURSOR_NOT_FOUND_CODE:
         raise CursorNotFound(errmsg, code, response, max_wire_version)
 
     raise OperationFailure(errmsg, code, response, max_wire_version)
@@ -330,8 +337,8 @@ def _raise_last_write_error(write_errors: list[Any]) -> NoReturn:
     # If the last batch had multiple errors only report
     # the last error to emulate continue_on_error.
     error = write_errors[-1]
-    if error.get("code") == 11000:
-        raise DuplicateKeyError(error.get("errmsg"), 11000, error)
+    if error.get("code") == _DUPLICATE_KEY_CODE:
+        raise DuplicateKeyError(error.get("errmsg"), _DUPLICATE_KEY_CODE, error)
     raise WriteError(error.get("errmsg"), error.get("code"), error)
 
 

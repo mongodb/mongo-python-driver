@@ -20,6 +20,8 @@ import json
 from typing import Any
 from urllib.parse import quote
 
+_HTTP_OK = 200
+
 
 def _get_azure_response(
     resource: str, client_id: str | None = None, timeout: float = 5
@@ -42,7 +44,7 @@ def _get_azure_response(
         msg = f"Failed to acquire IMDS access token: {e}"
         raise ValueError(msg) from None
 
-    if status != 200:
+    if status != _HTTP_OK:
         msg = "Failed to acquire IMDS access token."
         raise ValueError(msg)
     try:

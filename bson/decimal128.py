@@ -36,6 +36,7 @@ _EXPONENT_MAX = 6144
 _EXPONENT_MIN = -6143
 _MAX_DIGITS = 34
 _MAX_COEFFICIENT = 10**_MAX_DIGITS - 1
+_BYTE_LENGTH = 16
 
 _INF = 0x7800000000000000
 _NAN = 0x7C00000000000000
@@ -259,7 +260,8 @@ class Decimal128:
         if isinstance(value, (str, decimal.Decimal)):
             self.__high, self.__low = _decimal_to_128(value)
         elif isinstance(value, (list, tuple)):
-            if len(value) != 2:
+            # A literal length is required for mypy to narrow the tuple type.
+            if len(value) != 2:  # noqa: PLR2004
                 raise ValueError(
                     "Invalid size for creation of Decimal128 "
                     "from list or tuple. Must have exactly 2 "
@@ -325,7 +327,7 @@ class Decimal128:
         """
         if not isinstance(value, bytes):
             raise TypeError(f"value must be an instance of bytes, not {type(value)}")
-        if len(value) != 16:
+        if len(value) != _BYTE_LENGTH:
             raise ValueError("value must be exactly 16 bytes")
         return cls((_UNPACK_64(value[8:])[0], _UNPACK_64(value[:8])[0]))  # type: ignore
 

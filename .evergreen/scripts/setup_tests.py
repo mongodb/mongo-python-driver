@@ -74,6 +74,8 @@ SANITIZER_FILES = [
 # (MONGOCRYPT-938).
 LIBMONGOCRYPT_VERSION = "1.21.0"
 
+_HTTP_OK = 200
+
 
 def is_set(var: str) -> bool:
     value = os.environ.get(var, "")
@@ -149,7 +151,7 @@ def setup_libmongocrypt():
 
     LOGGER.info(f"Fetching {url}...")
     with request.urlopen(request.Request(url), timeout=15.0) as response:  # noqa: S310
-        if response.status == 200:
+        if response.status == _HTTP_OK:
             with Path("libmongocrypt.tar.gz").open("wb") as f:
                 f.write(response.read())
             Path("libmongocrypt").mkdir()

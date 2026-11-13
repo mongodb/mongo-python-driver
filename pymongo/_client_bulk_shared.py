@@ -26,7 +26,11 @@ from pymongo.common import (
     validate_ok_for_replace,
     validate_ok_for_update,
 )
-from pymongo.errors import ClientBulkWriteException, OperationFailure
+from pymongo.errors import (
+    _MMAPV1_TRANSACTION_NUMBER_CODE,
+    ClientBulkWriteException,
+    OperationFailure,
+)
 from pymongo.helpers_shared import _get_wce_doc
 from pymongo.message import _ClientBulkWriteContext
 
@@ -79,7 +83,7 @@ def _throw_client_bulk_write_exception(
         err = full_result["writeErrors"][0]
         code = err["code"]
         msg = err["errmsg"]
-        if code == 20 and msg.startswith("Transaction numbers"):
+        if code == _MMAPV1_TRANSACTION_NUMBER_CODE and msg.startswith("Transaction numbers"):
             errmsg = (
                 "This MongoDB deployment does not support "
                 "retryable writes. Please add retryWrites=false "
