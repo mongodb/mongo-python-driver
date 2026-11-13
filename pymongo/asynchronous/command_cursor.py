@@ -183,7 +183,9 @@ class AsyncCommandCursor(
                 result.extend(self._data)
                 self._data.clear()
             else:
-                result.extend([self._data.popleft() for _ in range(min(len(self._data), total))])
+                # A list comprehension here is slower or uses more memory.
+                for _ in range(min(len(self._data), total)):
+                    result.append(self._data.popleft())  # noqa: PERF401
             return True
         else:
             return False
