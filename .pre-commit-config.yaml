@@ -129,3 +129,11 @@ repos:
     language: python
     require_serial: true
     additional_dependencies: ["pytest", "pytest-asyncio", "shrub.py>=3.10.0", "pyyaml>=6.0.2"]
+  - id: evergreen-scripts
+    name: evergreen-scripts
+    entry: python -m pytest .evergreen/scripts/test_setup_uv.py -m ""
+    language: python
+    require_serial: true
+    pass_filenames: false
+    files: ^\.evergreen/scripts/
+    additional_dependencies: ["pytest", "pytest-asyncio"]

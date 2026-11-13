@@ -38,9 +38,8 @@ fi
 
 # Add the latest MongoDB toolchain bin dir to PATH if it exists, so that hosts
 # with an old system Python (e.g. RHEL8's 3.6) still get a modern interpreter
-# for tool installs like `uv tool install rust-just`. It goes after
-# PYMONGO_BIN_DIR so the pinned uv (installed there by setup_uv.py) takes
-# precedence over the toolchain's uv.
+# for tool installs like `uv tool install rust-just`. Goes after PYMONGO_BIN_DIR
+# so the project's uv wins.
 if [ "Windows_NT" = "${OS:-}" ]; then
   _toolchain_bin="/cygdrive/c/Python/Current/Scripts"
 elif [ "$(uname -s)" == "Darwin" ]; then
@@ -106,8 +105,9 @@ if [ "$DRIVERS_TOOLS" = "$PROJECT_DIRECTORY/drivers-evergreen-tools" ]; then
 
   # Write a uv config boundary into the submodule: it is vendored inside this
   # project, so uv run by the tools' own scripts would otherwise walk up to
-  # pyproject.toml and enforce our required-version pin. Write-if-absent, so an
-  # upstream uv.toml fails the submodule update loudly instead of being clobbered.
+  # pyproject.toml and apply this project's [tool.uv] settings.
+  # Write-if-absent, so an upstream uv.toml fails the submodule update loudly
+  # instead of being clobbered.
   if [ -d "${DRIVERS_TOOLS}" ] && [ ! -f "${DRIVERS_TOOLS}/uv.toml" ]; then
     cat <<EOT > "${DRIVERS_TOOLS}/uv.toml"
 # Written by mongo-python-driver to stop uv's config discovery here; see

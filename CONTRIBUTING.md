@@ -199,12 +199,12 @@ the pages will re-render and the browser will automatically refresh.
     create a virtual environment and run `pytest` directly.  If you want to use a specific
     version of Python, set `UV_PYTHON` before running `just install`.
 
-    `just install` installs the pinned version of `uv` (from `[tool.uv] required-version`) into `$HOME/.local/bin`,
-    and adds that directory to your shell rc file when missing, so the pinned `uv` takes effect in new shells.  If a
-    project `uv` command (e.g. `just test`) runs with a different `uv` version, `uv` fails fast and tells you how to update.
-    Scripts inside the vendored `drivers-evergreen-tools` submodule are exempt: the setup scripts write a `uv.toml`
-    boundary file into that checkout (see `.evergreen/scripts/configure-env.sh`), which stops uv's config discovery
-    there, since the tools' scripts run uv versions this project does not pin.
+    `just install` installs the latest `uv` into `$HOME/.local/bin` (no pin) unless the `uv` on PATH
+    is that copy, and adds that directory to your shell rc file when missing.  The fail-fast version check
+    applies only when a `required-version` pin is set under `[tool.uv]` in `pyproject.toml`.  The
+    vendored `drivers-evergreen-tools` submodule is exempt from this project's uv settings: the setup
+    scripts write a `uv.toml` boundary into that checkout (see `.evergreen/scripts/configure-env.sh`)
+    to stop uv's config discovery there.
 -   Ensure you have started the appropriate Mongo Server(s).  You can run `just run-server` with optional args
     to set up the server.  All given options will be passed to
     [`run-mongodb.sh`](https://github.com/mongodb-labs/drivers-evergreen-tools/blob/master/.evergreen/run-mongodb.sh).  Run `${DRIVERS_TOOLS:-drivers-evergreen-tools}/.evergreen/run-mongodb.sh start -h`
@@ -481,16 +481,16 @@ Tasks are host-agnostic, so the interpreter lookup happens on the host: for a pl
 CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at it, and for anything else
 (a version the toolchain lacks) uv downloads it.
     - If a specific Python binary is needed (for example on the FIPS host), set `UV_PYTHON=/path/to/python`.
-    - The default if `UV_PYTHON` is not set is CPython 3.10.  This is deterministic across host types, so a task
+    - The default if `UV_PYTHON` is not set is CPython 3.11.  This is deterministic across host types, so a task
       that does not pin a version always gets the same Python (with the build headers (`Python.h`) needed to build
       the C extensions).
-    - The uv binary version is pinned once in `[tool.uv] required-version` in `pyproject.toml`.
-      `.evergreen/scripts/install-dependencies.sh` installs it with `uv tool install`, uv enforces it locally, and
-      `astral-sh/setup-uv` reads it on GitHub.  Bump it manually when a newer uv is needed.  If uv cannot find the
-      requested Python, it installs it; if that fails, the task fails.  The pin is not enforced for scripts inside
-      the vendored `drivers-evergreen-tools` submodule: those scripts run uv versions this project does not pin, so
-      the setup scripts write a `uv.toml` boundary into the submodule checkout that stops uv's config discovery
-      (and with it the required-version check) at the submodule boundary.
+    - GitHub Actions use the latest uv (`astral-sh/setup-uv`'s default); Evergreen ensures a
+      project-controlled uv in `UV_TOOL_BIN_DIR` via `ensure-uv.sh` / `setup_uv.py` (the pinned
+      version when a pin is set, the latest otherwise).  A `[tool.uv] required-version` pin is added
+      only when a needed uv lockfile feature requires it.  If uv cannot find the requested Python, it
+      installs it; if that fails, the task fails.  When the MongoDB toolchain provides the requested
+      version, `setup-uv-python.sh` points `UV_PYTHON` at that interpreter by path, keeping
+      provisioning independent of the uv version on PATH.
 - Regenerate the test variants and tasks using `pre-commit run --all-files generate-config`.
 - PR tasks pin to the Python boundaries: `MIN_PYTHON` with `TEST_MIN_DEPS=1`, `MAX_PYTHON`, and one
   `FREE_THREADED_PYTHON`, against the newest numbered server (`MAX_VERSION`; the `latest` nightly
@@ -657,10 +657,18 @@ From the spawn host or Ubuntu image, do the following:
 
 ## Dependency updates
 
-Dependabot raises PRs at most once per week for GitHub Actions updates. For Python
-dependencies it is limited to security updates, because routine upgrades are handled by
-a scheduled workflow that runs weekly, running `uv lock --upgrade` and keeping a single
-open pull request on the `uv-lock-update` branch.
+Dependabot raises PRs at most once per week for GitHub Actions updates. Dependabot fully
+manages `uv.lock`: one grouped weekly pull request with a 7-day cooldown, plus immediate,
+ungrouped security updates the cooldown never delays.
+
+Never set `exclude-newer` under `[tool.uv]` in `pyproject.toml`: Dependabot resolves with
+it and produces pull requests that remove or downgrade packages
+([dependabot-core#14156](https://github.com/dependabot/dependabot-core/issues/14156)). To
+pull a routine update forward past the cooldown, list the package under the cooldown's
+`exclude` key in `.github/dependabot.yml`.
+
+Set `[tool.uv] required-version` only when a needed uv feature requires it, and keep it
+satisfiable by the uv version Dependabot ships.
 
 If a typing dependency has changed, run `just typing` and handle any new findings.
 
@@ -670,9 +678,7 @@ If a typing dependency has changed, run `just typing` and handle any new finding
 and in CI. Continuous integration runs `uv lock --check`, which fails when the lock file
 no longer matches `pyproject.toml`.
 
-If that check fails on your pull request, regenerate the lock file and commit the result.
-A 7 day cutoff (`exclude-newer` in `pyproject.toml`) applies automatically, so a package
-version yanked shortly after release is less likely to land in the lock file:
+If that check fails on your pull request, regenerate the lock file and commit the result:
 
 ```bash
 uv lock

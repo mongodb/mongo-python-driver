@@ -11,7 +11,8 @@
 #   UV_PYTHON_PREFERENCE  - "system" so the toolchain wins over managed installs.
 #                           A preference set by the task is left alone.
 #   UV_PYTHON             - the Python interpreter uv uses; defaults to CPython
-#                           3.11 when the task does not set one.
+#                           3.11, or the toolchain interpreter's path when the
+#                           toolchain has the requested version.
 set -euo pipefail
 
 HERE=$(dirname "${BASH_SOURCE:-$0}")
@@ -48,12 +49,17 @@ fi
 # uv version in pyproject.toml.
 export UV_PYTHON="${UV_PYTHON:-3.11}"
 
-# Print the Python toolchain bin dir for a version like "3.11" or "3.14t".
-function _toolchain_dir() {
+# Print the Python toolchain bin dir for a version like "3.11" or "3.14t",
+# without checking that it exists.
+function _toolchain_bin_dir() {
   local version="$1" dir
   # Only plain CPython versions live in the toolchain.
   [[ "$version" =~ ^[0-9]+\.[0-9]+t?$ ]] || return 1
-  if [ "Windows_NT" = "${OS:-}" ]; then
+  if [ -n "${PYMONGO_TOOLCHAIN_ROOT:-}" ]; then
+    # Test override of the unix toolchain root; the <version>/bin layout under
+    # it is unchanged.
+    dir="${PYMONGO_TOOLCHAIN_ROOT}/${version}/bin"
+  elif [ "Windows_NT" = "${OS:-}" ]; then
     local winver="${version%t}"
     winver="${winver//./}"
     if [ -n "${IS_WIN32:-}" ]; then
@@ -70,6 +76,13 @@ function _toolchain_dir() {
   else
     dir="/opt/python/${version}/bin"
   fi
+  echo "$dir"
+}
+
+# Print the toolchain bin dir for the version when it exists on this host.
+function _toolchain_dir() {
+  local dir
+  dir=$(_toolchain_bin_dir "$1") || return 1
   [ -d "$dir" ] || return 1
   echo "$dir"
 }
@@ -115,6 +128,14 @@ if [[ "$UV_PYTHON" == */* || "$UV_PYTHON" == *\\* ]]; then
   _skip_ensure=1
 elif _dir=$(_toolchain_dir "$UV_PYTHON"); then
   _search_path="$_dir"
+  # Use the toolchain interpreter by explicit path when the task did not set its
+  # own preference (PYTHON-6135): uv uses the path as-is, so provisioning cannot
+  # fail on uv's interpreter discovery (it aborts on interpreters it cannot
+  # inspect, like RHEL8's /usr/bin/python3 3.6) or on a missing download.
+  if [ -z "${UV_PYTHON_PREFERENCE:-}" ] && [ -x "$_dir/python${UV_PYTHON}" ]; then
+    export UV_PYTHON="$_dir/python${UV_PYTHON}"
+    _skip_ensure=1
+  fi
 fi
 
 # Point uv at the toolchain Python when there is one and the task did not set

@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Bootstrap the pinned uv/just for the test environment.
+"""Bootstrap uv/just for the test environment.
 
 install-dependencies.sh probes with `setup_uv.py --check`, sources ensure-uv.sh
 (which finds or installs uv), then runs this script for the rest. Only the
 standard library is used.
+
+The project always controls a uv in UV_TOOL_BIN_DIR: the pinned version when
+[tool.uv] required-version is set, the latest uv otherwise. A uv found
+elsewhere on PATH may be invisible to later steps, so setup never accepts it
+as-is.
 
 This runs under the host's system python3, which may be older than our minimum supported version.
 """
@@ -26,7 +31,7 @@ ASTRAL_INSTALL_URL = "https://astral.sh/uv/install.sh"
 
 
 def required_uv_pin() -> str:
-    """Return [tool.uv] required-version, e.g. '==0.12.12' ('' if absent)."""
+    """Return [tool.uv] required-version, e.g. '==1.2.3' ('' if absent)."""
     pattern = re.compile(r"required-version\s*=\s*['\"]?([^'\"\s]+)['\"]?")
     in_uv = False
     for line in (ROOT / "pyproject.toml").read_text().splitlines():
@@ -65,21 +70,21 @@ def _install_uv_astral() -> None:
     _add_path(os.environ["UV_TOOL_BIN_DIR"])
 
 
-def _pin_uv(uv_pin: str) -> None:
-    """Install the pinned uv via uv tool install --force.
+def _install_uv(pin: str) -> None:
+    """Install uv into UV_TOOL_BIN_DIR with `uv tool install --force`.
 
-    UV_TOOL_BIN_DIR and UV_TOOL_DIR are inherited from the environment (set by
-    install-dependencies.sh / ensure-uv.sh, in native form on Windows). uv tool
-    install writes the binary into UV_TOOL_BIN_DIR and the tool venv into
-    UV_TOOL_DIR; --force lets it overwrite an existing install.
-
-    Windows will not overwrite a running executable, so when the current uv is
-    already the target bin dir, run the install from a copy of the binary.
+    Installs the pinned version when pin is set ("==0.12.12"), the latest uv
+    otherwise (pin ""). Windows will not overwrite a running executable, so
+    when the uv driving the install is the binary being replaced, run the
+    install from a copy of it.
     """
     uv_path = shutil.which("uv")
+    bin_dir = os.environ["UV_TOOL_BIN_DIR"]
+    exe = "uv.exe" if os.name == "nt" else "uv"
+    overwrite_self = uv_path is not None and _same_path(uv_path, str(Path(bin_dir, exe)))
     tool = uv_path
     tmp_uv = None
-    if os.name == "nt":
+    if overwrite_self:
         tmp_uv = Path(tempfile.mkdtemp()) / Path(uv_path).name
         shutil.copy2(uv_path, tmp_uv)
         tool = str(tmp_uv)
@@ -93,7 +98,7 @@ def _pin_uv(uv_pin: str) -> None:
                 "-q",
                 "--force",
                 "--from",
-                f"uv{uv_pin}",
+                f"uv{pin}",
                 "uv",
             ],
             check=True,
@@ -133,9 +138,39 @@ def _write_env() -> None:
     ENV_SH.write_bytes(("\n".join(keep) + "\n").encode())
 
 
-def _pinned_uv_installed() -> bool:
-    """Return True when the uv on PATH already matches the required-version pin."""
+def _same_path(a: str, b: str) -> bool:
+    """Compare two paths, tolerating forms realpath cannot unify.
+
+    On cygwin, which() may report a /cygdrive form while UV_TOOL_BIN_DIR is
+    native ("C:/...").
+    """
+    try:
+        if os.path.realpath(a) == os.path.realpath(b):
+            return True
+    except OSError:
+        pass
+    return os.path.normcase(os.path.normpath(a)) == os.path.normcase(os.path.normpath(b))
+
+
+def _project_uv_installed() -> bool:
+    """Return True when the uv on PATH is the one this setup put in UV_TOOL_BIN_DIR."""
+    uv_path = shutil.which("uv")
+    bin_dir = os.environ.get("UV_TOOL_BIN_DIR")
+    if not uv_path or not bin_dir:
+        return False
+    exe = "uv.exe" if os.name == "nt" else "uv"
+    return _same_path(uv_path, str(Path(bin_dir, exe)))
+
+
+def _required_uv_installed() -> bool:
+    """Return True when the uv on PATH already satisfies the setup requirement.
+
+    With a required-version pin, the uv on PATH must match it exactly; without
+    a pin, it must be the project-controlled uv in UV_TOOL_BIN_DIR.
+    """
     pin = required_uv_pin()
+    if not pin:
+        return _project_uv_installed()
     if not pin.startswith("=="):
         # Only exact pins are checked here; anything else falls back to setup.
         return False
@@ -154,7 +189,7 @@ def main() -> int:
     # there would download Python and install dependencies just to decide
     # whether setup is needed.
     if "--check" in sys.argv[1:]:
-        return 0 if _pinned_uv_installed() else 1
+        return 0 if _required_uv_installed() else 1
 
     bin_dir = os.environ["UV_TOOL_BIN_DIR"]
     Path(bin_dir).mkdir(parents=True, exist_ok=True)
@@ -166,7 +201,14 @@ def main() -> int:
 
     uv_pin = required_uv_pin()
     if uv_pin:
-        _pin_uv(uv_pin)
+        _install_uv(uv_pin)
+    elif not _project_uv_installed():
+        # Unpinned: still install the latest uv into UV_TOOL_BIN_DIR, so the
+        # project controls the uv that later steps find on PATH. A uv found
+        # elsewhere (the vendored submodule's, the host's) may be missing from
+        # those steps' PATH entirely, and may lack behavior the project relies
+        # on, such as provisioning newer CPythons.
+        _install_uv("")
 
     _write_env()
     return 0
