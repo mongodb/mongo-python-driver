@@ -1972,24 +1972,6 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
         """
-        if operation.conn_mgr:
-            server = self._select_server(
-                operation.read_preference,
-                operation.session,  # type: ignore[arg-type]
-                operation.name,
-                address=address,
-            )
-
-            with operation.conn_mgr._lock:
-                with _ClientCheckout.for_existing_conn(
-                    self,
-                    server,
-                    operation.session,  # type: ignore[arg-type]
-                    operation.conn_mgr.conn,
-                ):
-                    return run_with_conn(
-                        operation.conn_mgr.conn, operation, operation.read_preference
-                    )
 
         def _cmd(
             _session: ClientSession | None,
@@ -2007,6 +1989,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             address=address,
             retryable=isinstance(operation, _Query),
             operation=operation.name,
+            conn_mgr=operation.conn_mgr,
         )
 
     def _retry_with_session(
@@ -2053,6 +2036,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         operation_id: int | None = None,
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
+        conn_mgr: Any = None,
     ) -> T:
         """Internal retryable helper for all client transactions.
 
@@ -2067,6 +2051,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
+        :param conn_mgr: Pinned connection manager, defaults to None
 
         :return: Output of the calling func()
         """
@@ -2083,6 +2068,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             operation_id=operation_id,
             is_run_command=is_run_command,
             is_aggregate_write=is_aggregate_write,
+            conn_mgr=conn_mgr,
         ).run()
 
     def _retryable_read(
@@ -2096,6 +2082,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         operation_id: int | None = None,
         is_run_command: bool = False,
         is_aggregate_write: bool = False,
+        conn_mgr: Any = None,
     ) -> T:
         """Execute an operation with consecutive retries if possible
 
@@ -2114,6 +2101,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         :param is_run_command: If this is a runCommand operation, defaults to False.
         :param is_aggregate_write: If this is a aggregate operation with a write, defaults to False.
         :param operation_id: Stable operation id shared across retries, defaults to None
+        :param conn_mgr: Pinned connection manager, defaults to None
         """
         # Ensure that the client supports retrying on reads and there is no session in
         # transaction, otherwise, we will not support retry behavior for this call.
@@ -2133,6 +2121,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 operation_id=operation_id,
                 is_run_command=is_run_command,
                 is_aggregate_write=is_aggregate_write,
+                conn_mgr=conn_mgr,
             )
 
     def _retryable_write(
@@ -2938,6 +2927,11 @@ class _ClientConnectionRetryable(
                             )
                         ):
                             raise
+                        if self._conn_mgr is not None and self._conn_mgr.more_to_come:
+                            # A receive-only exhaust getMore has no request
+                            # in flight to retry: the error reply ends the
+                            # stream.
+                            raise
                         self._retrying = True
                         self._last_error = exc_to_check
                         self._attempt_number += 1
@@ -3076,19 +3070,30 @@ class _ClientConnectionRetryable(
         """
         self._server = self._get_server()
         assert self._read_pref is not None, "Read Preference required on read calls"
+        if self._conn_mgr is not None:
+            # The cursor is pinned to a connection (e.g. load-balanced mode):
+            # retry on that same connection.
+            with self._conn_mgr._lock:
+                with _ClientCheckout.for_existing_conn(
+                    self._client, self._server, self._session, self._conn_mgr.conn
+                ):
+                    return self._run_read_func(self._conn_mgr.conn, self._read_pref)
         with self._client._conn_from_server(self._read_pref, self._server, self._session) as (
             conn,
             read_pref,
         ):
-            if self._retrying and not self._retryable and not self._always_retryable:
-                self._check_last_error()
-            if self._retrying:
-                self._log_retry(is_write=False)
-            # One operation id across all attempts of this operation if APM/logging is enabled
-            if self._operation_id is None:
-                return self._func(self._session, self._server, conn, read_pref)  # type: ignore
-            with _op_id._OpIdContext(self._operation_id):
-                return self._func(self._session, self._server, conn, read_pref)  # type: ignore
+            return self._run_read_func(conn, read_pref)
+
+    def _run_read_func(self, conn: Connection, read_pref: _ServerMode) -> T:
+        if self._retrying and not self._retryable and not self._always_retryable:
+            self._check_last_error()
+        if self._retrying:
+            self._log_retry(is_write=False)
+        # One operation id across all attempts of this operation if APM/logging is enabled
+        if self._operation_id is None:
+            return self._func(self._session, self._server, conn, read_pref)  # type: ignore
+        with _op_id._OpIdContext(self._operation_id):
+            return self._func(self._session, self._server, conn, read_pref)  # type: ignore
 
 
 if _HAS_REGISTER_AT_FORK:

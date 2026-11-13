@@ -52,6 +52,9 @@ Bug fixes
 - Fixed undefined behavior in the C extension's BSON buffer growth: growing
   an encode buffer past 1GiB doubled a signed integer past its limit.
   Over-limit encodes still raise ``ValueError`` (`PYTHON-6252`_).
+- Fixed a bug where ``getMore`` commands in load-balanced mode were not
+  retried when the server returned a retryable overload error
+  (`PYTHON-6262`_).
 
 .. _PYTHON-5929: https://jira.mongodb.org/browse/PYTHON-5929
 .. _PYTHON-5959: https://jira.mongodb.org/browse/PYTHON-5959
@@ -62,6 +65,7 @@ Bug fixes
 .. _PYTHON-6182: https://jira.mongodb.org/browse/PYTHON-6182
 .. _PYTHON-6226: https://jira.mongodb.org/browse/PYTHON-6226
 .. _PYTHON-6252: https://jira.mongodb.org/browse/PYTHON-6252
+.. _PYTHON-6262: https://jira.mongodb.org/browse/PYTHON-6262
 
 Issues Resolved
 ...............
