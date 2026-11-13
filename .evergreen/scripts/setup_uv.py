@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Bootstrap the pinned uv/just for the test environment.
+"""Bootstrap uv/just for the test environment, pinning uv only when
+[tool.uv] required-version is set in pyproject.toml.
 
 install-dependencies.sh probes with `setup_uv.py --check`, sources ensure-uv.sh
 (which finds or installs uv), then runs this script for the rest. Only the
@@ -26,7 +27,7 @@ ASTRAL_INSTALL_URL = "https://astral.sh/uv/install.sh"
 
 
 def required_uv_pin() -> str:
-    """Return [tool.uv] required-version, e.g. '==0.12.12' ('' if absent)."""
+    """Return [tool.uv] required-version, e.g. '==1.2.3' ('' if absent)."""
     pattern = re.compile(r"required-version\s*=\s*['\"]?([^'\"\s]+)['\"]?")
     in_uv = False
     for line in (ROOT / "pyproject.toml").read_text().splitlines():
@@ -133,9 +134,15 @@ def _write_env() -> None:
     ENV_SH.write_bytes(("\n".join(keep) + "\n").encode())
 
 
-def _pinned_uv_installed() -> bool:
-    """Return True when the uv on PATH already matches the required-version pin."""
+def _required_uv_installed() -> bool:
+    """Return True when the uv on PATH already satisfies the setup requirement.
+
+    With a required-version pin, the uv on PATH must match it exactly; without
+    a pin, any uv on PATH is acceptable.
+    """
     pin = required_uv_pin()
+    if not pin:
+        return shutil.which("uv") is not None
     if not pin.startswith("=="):
         # Only exact pins are checked here; anything else falls back to setup.
         return False
@@ -154,7 +161,7 @@ def main() -> int:
     # there would download Python and install dependencies just to decide
     # whether setup is needed.
     if "--check" in sys.argv[1:]:
-        return 0 if _pinned_uv_installed() else 1
+        return 0 if _required_uv_installed() else 1
 
     bin_dir = os.environ["UV_TOOL_BIN_DIR"]
     Path(bin_dir).mkdir(parents=True, exist_ok=True)
