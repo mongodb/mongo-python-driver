@@ -183,8 +183,7 @@ class AsyncCommandCursor(
                 result.extend(self._data)
                 self._data.clear()
             else:
-                for _ in range(min(len(self._data), total)):
-                    result.append(self._data.popleft())
+                result.extend([self._data.popleft() for _ in range(min(len(self._data), total))])
             return True
         else:
             return False

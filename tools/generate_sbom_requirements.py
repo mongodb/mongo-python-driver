@@ -23,14 +23,12 @@ def collect_files(root: Path) -> list[Path]:
     Returns:
         list[Path]: A list of Paths to requirement files to include in the SBOM.
     """
-    files = []
-
     # requirements.txt + all requirements/**/*.txt
-    for p in [root / "requirements.txt", *root.glob("requirements/**/*.txt")]:
-        if p.is_file() and p.name not in EXCLUDED_NAMES:
-            files.append(p)
-
-    return files
+    return [
+        p
+        for p in [root / "requirements.txt", *root.glob("requirements/**/*.txt")]
+        if p.is_file() and p.name not in EXCLUDED_NAMES
+    ]
 
 
 def write_combined_req_files(root: Path, files: list[Path], outname: str) -> Path:

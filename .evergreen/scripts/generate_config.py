@@ -748,19 +748,19 @@ def create_server_version_tasks():
     # The pinned pr tasks: the boundary Pythons per server version, stable as CPYTHONS changes.
     for version, combos in sorted(SERVER_VERSION_PR_PYTHONS.items()):
         for (topology, auth, ssl), python in sorted(combos.items()):
-            for sync in SYNCS:
-                tasks.append(
-                    make_task(
-                        topology,
-                        auth,
-                        ssl,
-                        sync,
-                        python,
-                        extra_tags=("pr", version),
-                        VERSION=version,
-                        COVERAGE="1",
-                    )
+            tasks.extend(
+                make_task(
+                    topology,
+                    auth,
+                    ssl,
+                    sync,
+                    python,
+                    extra_tags=("pr", version),
+                    VERSION=version,
+                    COVERAGE="1",
                 )
+                for sync in SYNCS
+            )
     return tasks
 
 

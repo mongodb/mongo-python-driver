@@ -145,9 +145,7 @@ class CustomBSONTypeTests:
 
     @no_type_check
     def test_decode_all(self):
-        documents = []
-        for dec in range(3):
-            documents.append({"average": Decimal(f"56.4{dec}")})
+        documents = [{"average": Decimal(f"56.4{dec}")} for dec in range(3)]
 
         bsonstream = b""
         for doc in documents:
