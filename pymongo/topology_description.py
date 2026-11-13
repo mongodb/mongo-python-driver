@@ -583,7 +583,10 @@ def _update_rs_from_primary(
         sds.pop(server_description.address)
         return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
 
-    if server_description.max_wire_version is None or server_description.max_wire_version < 17:
+    if (
+        server_description.max_wire_version is None
+        or server_description.max_wire_version < common.WIRE_VERSION_6_0
+    ):
         new_election_tuple: tuple = (server_description.set_version, server_description.election_id)  # type: ignore[type-arg]
         max_election_tuple: tuple = (max_set_version, max_election_id)  # type: ignore[type-arg]
         if None not in new_election_tuple:

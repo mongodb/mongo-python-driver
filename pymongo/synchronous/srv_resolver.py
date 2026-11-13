@@ -32,6 +32,11 @@ if TYPE_CHECKING:
 
 _IS_SYNC = True
 
+# A domain name has at least two labels: "example.com".
+_MIN_DOMAIN_LABELS = 2
+# An SRV host must have at least three labels: "_mongodb._tcp.example.com".
+_MIN_SRV_HOST_LABELS = 3
+
 
 # dnspython can return bytes or str from various parts
 # of its API depending on version. We always want str.
@@ -89,7 +94,7 @@ class _SrvResolver:
             suffix = _to_punycode(suffix).lower()
 
             is_special_use = suffix in SPECIAL_USE_LABELS
-            if len(suffix.split(".")) < 2 and not is_special_use:
+            if len(suffix.split(".")) < _MIN_DOMAIN_LABELS and not is_special_use:
                 raise ConfigurationError(
                     "srvAllowedHostsSuffix must contain at least two '.' separated labels, "
                     f"got: {srv_allowed_hosts_suffix}"
@@ -108,7 +113,7 @@ class _SrvResolver:
             pass
         try:
             split_fqdn = self.__fqdn.split(".")
-            self.__plist = split_fqdn[1:] if len(split_fqdn) > 2 else split_fqdn
+            self.__plist = split_fqdn[1:] if len(split_fqdn) > _MIN_DOMAIN_LABELS else split_fqdn
         except Exception:
             raise ConfigurationError(_INVALID_HOST_MSG % (fqdn,)) from None
         self.__slen = len(self.__plist)
@@ -163,7 +168,7 @@ class _SrvResolver:
             if not srv_host.endswith(self.__srv_allowed_hosts_suffix):
                 raise ConfigurationError(f"Invalid SRV host: {srv_host}")
         else:
-            if self.__fqdn == srv_host and self.nparts < 3:
+            if self.__fqdn == srv_host and self.nparts < _MIN_SRV_HOST_LABELS:
                 raise ConfigurationError(
                     "Invalid SRV host: return address is identical to SRV hostname"
                 )

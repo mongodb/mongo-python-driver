@@ -115,6 +115,8 @@ if TYPE_CHECKING:
 
 _LOGGER = _logging.getLogger(__name__)
 
+_HTTP_OK = 200
+
 _CERT_REGEX = _re.compile(
     b"-----BEGIN CERTIFICATE[^\r\n]+.+?-----END CERTIFICATE[^\r\n]+", _re.DOTALL
 )
@@ -327,7 +329,7 @@ def _get_ocsp_response(
         except _RequestException as exc:
             _LOGGER.debug("HTTP request failed: %s", exc)
             return None
-        if response.status_code != 200:
+        if response.status_code != _HTTP_OK:
             _LOGGER.debug("HTTP request returned %d", response.status_code)
             return None
         ocsp_response = _load_der_ocsp_response(response.content)

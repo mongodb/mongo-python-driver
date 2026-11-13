@@ -16,6 +16,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 import generate_config
 import generate_config_utils
 
+_MIN_PR_TASKS = 2
+_MAX_STANDARD_PR_TASKS = 5
+_MAX_NEWER_STANDARD_PR_TASKS = 3
+
 
 def all_tasks():
     tasks = []
@@ -160,7 +164,7 @@ def test_pr_tasks_cover_version_boundaries():
         assert seen == set(pythons), (
             f"{version} pr tasks pin {sorted(seen)}, want {sorted(pythons)}"
         )
-        assert len(tasks) >= 2, f"{version} has too few server-version pr tasks"
+        assert len(tasks) >= _MIN_PR_TASKS, f"{version} has too few server-version pr tasks"
 
 
 def test_server_version_rotated_tasks_keep_coverage():
@@ -203,7 +207,9 @@ def test_standard_family_pr_budget():
     filter).
     """
     tasks = [task for task in pr_tasks() if "test-standard" in (task.tags or [])]
-    assert len(tasks) <= 5, f"too many test-standard PR tasks: {[t.name for t in tasks]}"
+    assert len(tasks) <= _MAX_STANDARD_PR_TASKS, (
+        f"too many test-standard PR tasks: {[t.name for t in tasks]}"
+    )
     newer = [
         task
         for task in tasks
@@ -212,7 +218,9 @@ def test_standard_family_pr_budget():
             for tag in ("python-3.14", "python-3.14t", "python-3.15", "python-3.15t")
         )
     ]
-    assert len(newer) <= 3, f"too many 3.14+ test-standard PR tasks: {[t.name for t in newer]}"
+    assert len(newer) <= _MAX_NEWER_STANDARD_PR_TASKS, (
+        f"too many 3.14+ test-standard PR tasks: {[t.name for t in newer]}"
+    )
 
 
 def test_pr_tasks_run_coverage():

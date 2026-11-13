@@ -25,6 +25,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from bson import EPOCH_NAIVE
+from pymongo.common import WIRE_VERSION_3_6
 from pymongo.hello import Hello
 from pymongo.server_type import SERVER_TYPE
 
@@ -259,7 +260,7 @@ class ServerDescription:
     @property
     def retryable_reads_supported(self) -> bool:
         """Checks if this server supports retryable writes."""
-        return self._max_wire_version >= 6
+        return self._max_wire_version >= WIRE_VERSION_3_6
 
     @property
     def topology_version(self) -> Mapping[str, Any] | None:

@@ -103,6 +103,8 @@ _IS_SYNC = False
 
 _HTTPS_PORT = 443
 _MONGOCRYPTD_TIMEOUT_MS = 10000
+# BSON binary subtype for an encrypted BSON value.
+_ENCRYPTED_SUBTYPE = 6
 
 _DATA_KEY_OPTS: CodecOptions[dict[str, Any]] = CodecOptions(
     document_class=dict[str, Any], uuid_representation=STANDARD
@@ -987,7 +989,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         :return: The decrypted BSON value.
         """
         self._check_closed()
-        if not (isinstance(value, Binary) and value.subtype == 6):
+        if not (isinstance(value, Binary) and value.subtype == _ENCRYPTED_SUBTYPE):
             raise TypeError("value to decrypt must be a bson.binary.Binary with subtype 6")
 
         with _wrap_encryption_errors():

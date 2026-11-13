@@ -51,6 +51,7 @@ SCHEME_LEN = len(SCHEME)
 SRV_SCHEME = "mongodb+srv://"
 SRV_SCHEME_LEN = len(SRV_SCHEME)
 DEFAULT_PORT = 27017
+_MAX_PORT = 65535
 
 URI_OPTIONS = frozenset(
     [
@@ -215,7 +216,7 @@ def parse_host(entity: str, default_port: int | None = DEFAULT_PORT) -> _Address
                 "Port contains non-digit characters. Hint: username and password must be escaped according to "
                 "RFC 3986, use urllib.parse.quote_plus"
             )
-        if int(port) > 65535 or int(port) <= 0:
+        if int(port) > _MAX_PORT or int(port) <= 0:
             raise ValueError("Port must be an integer between 0 and 65535")
         port = int(port)
 
