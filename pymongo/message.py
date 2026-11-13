@@ -126,8 +126,8 @@ def _maybe_add_read_preference(
     return spec
 
 
-def _convert_exception(exception: Exception) -> dict[str, Any]:
-    """Convert an Exception into a failure document for publishing."""
+def _convert_exception(exception: BaseException) -> dict[str, Any]:
+    """Convert an exception into a failure document for publishing."""
     return {"errmsg": str(exception), "errtype": exception.__class__.__name__}
 
 
