@@ -1120,8 +1120,7 @@ class Version(tuple[int, ...]):
     def _padded(cls, iter: Any, length: int, padding: int = 0) -> list[int]:
         as_list = list(iter)
         if len(as_list) < length:
-            for _ in range(length - len(as_list)):
-                as_list.append(padding)
+            as_list.extend(padding for _ in range(length - len(as_list)))
         return as_list
 
     @classmethod

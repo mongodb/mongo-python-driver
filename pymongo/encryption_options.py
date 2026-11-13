@@ -324,17 +324,17 @@ class RangeOpts:
 
     @property
     def document(self) -> dict[str, Any]:
-        doc = {}
-        for k, v in [
-            ("sparsity", int64.Int64(self.sparsity) if self.sparsity else None),
-            ("trimFactor", self.trim_factor),
-            ("precision", self.precision),
-            ("min", self.min),
-            ("max", self.max),
-        ]:
-            if v is not None:
-                doc[k] = v
-        return doc
+        return {
+            k: v
+            for k, v in [
+                ("sparsity", int64.Int64(self.sparsity) if self.sparsity else None),
+                ("trimFactor", self.trim_factor),
+                ("precision", self.precision),
+                ("min", self.min),
+                ("max", self.max),
+            ]
+            if v is not None
+        }
 
 
 class StringOpts:
@@ -366,17 +366,17 @@ class StringOpts:
 
     @property
     def document(self) -> dict[str, Any]:
-        doc = {}
-        for k, v in [
-            ("substring", self.substring),
-            ("prefix", self.prefix),
-            ("suffix", self.suffix),
-            ("caseSensitive", self.case_sensitive),
-            ("diacriticSensitive", self.diacritic_sensitive),
-        ]:
-            if v is not None:
-                doc[k] = v
-        return doc
+        return {
+            k: v
+            for k, v in [
+                ("substring", self.substring),
+                ("prefix", self.prefix),
+                ("suffix", self.suffix),
+                ("caseSensitive", self.case_sensitive),
+                ("diacriticSensitive", self.diacritic_sensitive),
+            ]
+            if v is not None
+        }
 
 
 class SubstringOpts(TypedDict):

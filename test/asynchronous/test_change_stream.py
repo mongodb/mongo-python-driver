@@ -90,9 +90,7 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
 
     def generate_unique_collnames(self, numcolls):
         """Generate numcolls collection names unique to a test."""
-        collnames = []
-        for idx in range(1, numcolls + 1):
-            collnames.append(self.id() + "_" + str(idx))
+        collnames = [self.id() + "_" + str(idx) for idx in range(1, numcolls + 1)]
         return collnames
 
     async def get_resume_token(self, invalidate=False):
