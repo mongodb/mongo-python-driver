@@ -1,6 +1,19 @@
 Changelog
 =========
 
+Changes in Version 4.21.0 (unreleased)
+--------------------------------------
+
+Bug fixes
+.........
+
+- Fixed a bug where a cancelled async command published a
+  ``CommandStartedEvent`` (and its "Command started" log message) without a
+  correlating ``CommandFailedEvent``. A cancellation now publishes the failure
+  before the ``CancelledError`` propagates (`PYTHON-6187`_).
+
+.. _PYTHON-6187: https://jira.mongodb.org/browse/PYTHON-6187
+
 Changes in Version 4.20.1 (2026/XX/XX)
 --------------------------------------
 

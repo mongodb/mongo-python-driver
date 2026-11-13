@@ -18,9 +18,10 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import time
 
 from test.asynchronous.utils import async_get_pool
-from test.utils_shared import delay, one
+from test.utils_shared import OvertCommandListener, delay, one
 
 sys.path[0:0] = [""]
 
@@ -99,6 +100,53 @@ class TestAsyncCancellation(AsyncIntegrationTest):
             await task
 
         self.assertTrue(cursor._killed)
+
+    @async_client_context.require_failCommand_blockConnection
+    async def test_async_cancellation_publishes_command_failed_event(self):
+        # PYTHON-6187: a cancelled command must still get its
+        # CommandFailedEvent, per the Command Logging and Monitoring spec.
+        listener = OvertCommandListener()
+        client = await self.async_single_client(event_listeners=[listener])
+        await self.client.db.coll.insert_one({"x": 1})
+        self.addAsyncCleanup(self.client.db.coll.delete_many, {})
+
+        # Make sure the find blocks.
+        fail_command = {
+            "configureFailPoint": "failCommand",
+            "mode": "alwaysOn",
+            "data": {"failCommands": ["find"], "blockConnection": True, "blockTimeMS": 1000},
+        }
+
+        def find_started() -> bool:
+            return any(e.command_name == "find" for e in listener.started_events)
+
+        async def await_find_started() -> None:
+            deadline = time.monotonic() + 10
+            while not find_started():
+                if time.monotonic() > deadline:
+                    self.fail("the find command never started")
+                await asyncio.sleep(0.01)
+
+        # Configure the failpoint before the task so the find blocks as soon
+        # as it starts.
+        async with self.fail_point(fail_command):
+            task = asyncio.create_task(client.db.coll.find_one({}))
+            try:
+                # A fixed sleep cannot confirm the find started, the task
+                # first has to connect its client.
+                await await_find_started()
+            finally:
+                task.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await task
+
+        started = [e for e in listener.started_events if e.command_name == "find"]
+        failed = [e for e in listener.failed_events if e.command_name == "find"]
+        self.assertEqual(len(started), 1)
+        self.assertEqual(len(failed), 1)
+        self.assertEqual(failed[0].request_id, started[0].request_id)
+        self.assertEqual(failed[0].failure["errtype"], "CancelledError")
+        self.assertIn("CancelledError", failed[0].failure["errmsg"])
 
     @async_client_context.require_change_streams
     @async_client_context.require_failCommand_blockConnection

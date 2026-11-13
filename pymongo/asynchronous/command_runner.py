@@ -216,11 +216,15 @@ async def _run_command(
                     parse_write_concern_error=parse_write_concern_error,
                     pool_opts=pool_opts,
                 )
-    except Exception as exc:
+    except BaseException as exc:
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
             failure = _convert_exception(exc)
+            if not failure["errmsg"]:
+                # CancelledError, KeyboardInterrupt, and SystemExit
+                # stringify to "".
+                failure["errmsg"] = f"operation interrupted by {exc.__class__.__name__}"
         if telemetry is not None:
             telemetry.failed(failure, command_name, isinstance(exc, OperationFailure))
         raise
