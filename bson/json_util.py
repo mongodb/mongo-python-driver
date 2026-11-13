@@ -147,9 +147,9 @@ _BINARY_COMPONENT_COUNT = 2
 _REGEX_COMPONENT_COUNT = 2
 _DBREF_COMPONENT_COUNT = 2
 _SINGLE_FIELD_COUNT = 1
-_TZ_OFFSET_HOUR_MIN_SEC_LENGTH = 6
-_TZ_OFFSET_HOUR_MIN_LENGTH = 5
-_TZ_OFFSET_HOUR_LENGTH = 3
+_TZ_OFFSET_HH_COLON_MM_LENGTH = 6
+_TZ_OFFSET_HHMM_LENGTH = 5
+_TZ_OFFSET_HH_LENGTH = 3
 
 _RE_OPT_TABLE = {
     "i": re.IGNORECASE,
@@ -641,12 +641,12 @@ def _parse_canonical_datetime(
         )
 
         if offset and offset != "Z":
-            if len(offset) == _TZ_OFFSET_HOUR_MIN_SEC_LENGTH:
+            if len(offset) == _TZ_OFFSET_HH_COLON_MM_LENGTH:
                 hours, minutes = offset[1:].split(":")
                 secs = int(hours) * 3600 + int(minutes) * 60
-            elif len(offset) == _TZ_OFFSET_HOUR_MIN_LENGTH:
+            elif len(offset) == _TZ_OFFSET_HHMM_LENGTH:
                 secs = int(offset[1:3]) * 3600 + int(offset[3:]) * 60
-            elif len(offset) == _TZ_OFFSET_HOUR_LENGTH:
+            elif len(offset) == _TZ_OFFSET_HH_LENGTH:
                 secs = int(offset[1:3]) * 3600
             if offset[0] == "-":
                 secs *= -1
