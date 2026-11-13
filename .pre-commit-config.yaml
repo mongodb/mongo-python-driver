@@ -109,7 +109,8 @@ repos:
     # - test/test_bson.py:267: isnt ==> isn't
     # - test/versioned-api/crud-api-version-1-strict.json:514: nin ==> inn, min, bin, nine
     # - test/test_client.py:188: te ==> the, be, we, to
-    args: ["-L", "fle,fo,infinit,isnt,nin,te,aks"]
+    # - rust/bson/src/*.rs: crate ==> create ("crate" is a Rust compilation unit)
+    args: ["-L", "fle,fo,infinit,isnt,nin,te,aks,crate,statics"]
     exclude: ^pymongo/public_suffix_list\.dat$
 
 - repo: local

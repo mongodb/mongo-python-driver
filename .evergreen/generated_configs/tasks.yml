@@ -190,6 +190,28 @@ tasks:
             - AWS_SESSION_TOKEN
         type: test
 
+  # Bson codec compare tests
+  - name: bson-codec-compare
+    commands:
+      - func: run server
+        vars:
+          VERSION: v8.0-perf
+          SSL: nossl
+          UV_PYTHON: 3.11.9
+          UV_PYTHON_PREFERENCE: only-managed
+      - command: subprocess.exec
+        params:
+          binary: bash
+          args:
+            - .evergreen/scripts/bson_codec_compare.sh
+          working_dir: src
+          include_expansions_in_env:
+            - UV_PYTHON
+            - UV_PYTHON_PREFERENCE
+        type: test
+      - func: upload bson compare artifacts
+    tags: [bson-codec-compare]
+
   # Coverage report tests
   - name: coverage-report
     commands:
