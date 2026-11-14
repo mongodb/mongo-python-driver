@@ -204,8 +204,8 @@ ObjectId('4aba160ee23f6b543e000002')
 
 - MongoDB Learn - [Python
 courses](https://learn.mongodb.com/catalog?labels=%5B%22Language%22%5D&values=%5B%22Python%22%5D).
-- [Python Articles on Developer
-Center](https://www.mongodb.com/developer/languages/python/).
+- Python Articles on Developer
+Center.
 
 ## Testing
 
