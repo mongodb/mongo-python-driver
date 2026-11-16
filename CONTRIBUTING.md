@@ -459,6 +459,8 @@ wheels (CPython 3.12-3.14).
   the per-target budget.
 - Nightly fuzzing harvests coverage-increasing inputs into `fuzz/corpus/`
   via an automated PR (PYTHON-6178); see [fuzz/README.md](fuzz/README.md).
+  To run that flow on demand, patch the task:
+  `evergreen patch --variant fuzz-rhel8 --task fuzz`.
 
 ## Testing time-dependent operations
 

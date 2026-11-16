@@ -520,19 +520,20 @@ def create_doctests_variants():
 
 
 def create_fuzz_variants():
-    # One variant for both fuzz flows: the regression reproducers run on
-    # every PR (pr-tagged task), the time-boxed fuzzing runs nightly. The
-    # host needs CPython, which the rhel8 toolchain provides.
+    # Two variants for the two fuzz flows: the regression reproducers run
+    # on every PR, the time-boxed fuzzing runs nightly. The nightly variant
+    # carries no "pr" tag, so PR patch builds never select it, while its
+    # default patchability keeps it manually runnable
+    # (`evergreen patch --variant fuzz-rhel8 --task fuzz`). The host needs
+    # CPython, which the rhel8 toolchain provides.
     host = HOSTS["rhel8"]
-    name = get_variant_name("Fuzz", host)
     return [
         create_variant(
-            [".fuzz-regression", ".fuzz-nightly"],
-            name,
-            host=host,
-            batchtime=BATCHTIME_DAY,
-            tags=["pr"],
-        )
+            [".fuzz-regression"], get_variant_name("Fuzz Regression", host), host=host, tags=["pr"]
+        ),
+        create_variant(
+            [".fuzz-nightly"], get_variant_name("Fuzz", host), host=host, batchtime=BATCHTIME_DAY
+        ),
     ]
 
 
@@ -973,7 +974,6 @@ def create_fuzz_tasks():
     harvest_cmd = get_subprocess_exec(
         args=[".evergreen/scripts/harvest-fuzz-corpus.sh"],
         include_expansions_in_env=[
-            "is_patch",
             "FUZZ_CORPUS_MAX_UNITS",
             "FUZZ_CORPUS_MAX_UNIT_BYTES",
             # The harvest bootstraps the comment-bot github app, whose
