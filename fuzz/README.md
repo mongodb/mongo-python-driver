@@ -26,9 +26,9 @@ Atheris is a `uv` dependency group. Run targets from the repository root:
 uv run --group fuzz python fuzz/fuzz_decode.py fuzz/regression/*
 ```
 
-Atheris publishes CPython 3.12 to 3.14 wheels for Linux x86_64 only, so the
-`fuzz` group cannot install on other interpreters or platforms. Pin a
-compatible interpreter where one is available, and run in a Linux x86_64
+The latest atheris publishes CPython 3.12 to 3.14 wheels for Linux x86_64
+only, so the `fuzz` group may not install on other interpreters or platforms.
+Pin a compatible interpreter where one is available, and run in a Linux x86_64
 container otherwise:
 
 ```bash
