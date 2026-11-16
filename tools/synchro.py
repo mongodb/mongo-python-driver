@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +30,7 @@ from pathlib import Path
 from unasync import Rule, unasync_files  # type: ignore[import-untyped,import-not-found]
 
 MANIFEST = ".synchro-modified"
+STAGING = ".synchro-staging"
 
 replacements = {
     "AsyncCollection": "Collection",
@@ -343,6 +345,72 @@ def process_ignores(lines: list[str]) -> list[str]:
     return lines
 
 
+def copy_changed_files(pairs: list[tuple[Path, Path]]) -> list[Path]:
+    """Copy staged files into the working tree when their content differs.
+
+    If a write fails midway, destinations already written are restored so
+    the working tree is left unchanged.
+    """
+    written: list[tuple[Path, bytes | None]] = []
+    try:
+        for staged, dest in pairs:
+            new = staged.read_bytes()
+            old = dest.read_bytes() if dest.is_file() else None
+            if old == new:
+                continue
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(new)
+            written.append((dest, old))
+    except OSError:
+        for dest, old in written:
+            if old is None:
+                dest.unlink(missing_ok=True)
+            else:
+                dest.write_bytes(old)
+        raise
+    return [dest for dest, _ in written]
+
+
+def prepare_staging() -> None:
+    """Recreate the out-of-tree staging area used to generate sync files.
+
+    A copy of pyproject.toml at the staging root keeps ruff's
+    per-file-ignores (e.g. ``test/*.py``) and first-party import
+    classification identical to a run against the repo root.
+    """
+    shutil.rmtree(STAGING, ignore_errors=True)
+    for base in (_pymongo_dest_base, _gridfs_dest_base, _test_dest_base):
+        Path(STAGING, base[2:]).mkdir(parents=True, exist_ok=True)
+    shutil.copyfile("pyproject.toml", f"{STAGING}/pyproject.toml")
+    config = Path(STAGING, "pyproject.toml")
+    lines = config.read_text().splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if line.startswith("isort.required-imports"):
+            lines.insert(i + 1, 'isort.known-first-party = ["pymongo", "gridfs", "bson", "test"]\n')
+            break
+    else:
+        print(
+            "Synchro: no isort.required-imports line in pyproject.toml, so "
+            "isort.known-first-party was not added to the staged ruff config and "
+            "import classification may differ from the repo root.",
+            file=sys.stderr,
+        )
+    config.write_text("".join(lines))
+
+
+def mirrored_test_files(filtered_tests: list[str]) -> list[str]:
+    """Return the generated test paths for the given async test files.
+
+    A test file is mirrored only when its synchronous counterpart already
+    exists in ``test/``.
+    """
+    return [
+        _test_dest_base + Path(f).name
+        for f in filtered_tests
+        if (Path(_test_dest_base) / Path(f).name).is_file()
+    ]
+
+
 def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[str, str]) -> None:
     unasync_files(
         files,
@@ -390,58 +458,66 @@ def main() -> None:
             check=True,
         )
 
-    unasync_directory(filtered_async, _pymongo_base, _pymongo_dest_base, replacements)
-    unasync_directory(filtered_gridfs, _gridfs_base, _gridfs_dest_base, replacements)
-    unasync_directory(filtered_tests, _test_base, _test_dest_base, replacements)
+    try:
+        prepare_staging()
+        generated_pymongo = [_pymongo_dest_base + Path(f).name for f in filtered_async]
+        generated_gridfs = [_gridfs_dest_base + Path(f).name for f in filtered_gridfs]
+        generated_tests = mirrored_test_files(filtered_tests)
+        generated_names = generated_pymongo + generated_gridfs + generated_tests
+        staged_pymongo = [f"{STAGING}/{name[2:]}" for name in generated_pymongo]
+        staged_gridfs = [f"{STAGING}/{name[2:]}" for name in generated_gridfs]
+        staged_tests = [f"{STAGING}/{name[2:]}" for name in generated_tests]
+        staged_names = staged_pymongo + staged_gridfs + staged_tests
 
-    # Derive generated output paths directly from filtered source paths.
-    generated_pymongo = [_pymongo_dest_base + Path(f).name for f in filtered_async]
-    generated_gridfs = [_gridfs_dest_base + Path(f).name for f in filtered_gridfs]
-    generated_tests = [
-        _test_dest_base + Path(f).name
-        for f in filtered_tests
-        if (Path(_test_dest_base) / Path(f).name).is_file()
-    ]
-
-    docstring_translate_files = generated_pymongo + generated_gridfs + generated_tests
-
-    process_files(
-        generated_pymongo + generated_gridfs + generated_tests,
-        docstring_translate_files,
-        generated_tests,
-    )
-
-    generated_files = generated_pymongo + generated_gridfs + generated_tests
-
-    if is_ci and generated_files:
-        print(f"Synchro generated {len(generated_files)} file(s):")
-        for f in generated_files:
-            print(f"  {f}")
-
-    if generated_files:
-        subprocess.run(  # noqa: S603
-            [sys.executable, "-m", "ruff", "check", *generated_files, "--fix", *ruff_extra],
-            check=is_ci,
+        unasync_directory(
+            filtered_async, _pymongo_base, f"{STAGING}/{_pymongo_dest_base[2:]}", replacements
         )
-        subprocess.run(  # noqa: S603
-            [sys.executable, "-m", "ruff", "format", *generated_files, *ruff_extra],
-            check=is_ci,
+        unasync_directory(
+            filtered_gridfs, _gridfs_base, f"{STAGING}/{_gridfs_dest_base[2:]}", replacements
+        )
+        unasync_directory(
+            filtered_tests, _test_base, f"{STAGING}/{_test_dest_base[2:]}", replacements
         )
 
-    if is_ci and generated_files:
-        result = subprocess.run(  # noqa: S603
-            ["git", "diff", "--name-only", "--", *generated_files],  # noqa: S607
-            capture_output=True,
-            text=True,
-            check=True,
+        process_files(staged_names, staged_names, staged_tests)
+
+        if staged_names:
+            try:
+                subprocess.run(  # noqa: S603
+                    [sys.executable, "-m", "ruff", "check", *staged_names, "--fix", *ruff_extra],
+                    check=True,
+                )
+                subprocess.run(  # noqa: S603
+                    [sys.executable, "-m", "ruff", "format", *staged_names, *ruff_extra],
+                    check=True,
+                )
+            except subprocess.CalledProcessError:
+                print(
+                    "Synchro: ruff failed on the generated sync output. Fix the error in "
+                    "the corresponding async source file and run the synchro hook again; "
+                    "the working tree was left unchanged.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+        changed = copy_changed_files(
+            [
+                (Path(staged), Path(name))
+                for staged, name in zip(staged_names, generated_names, strict=True)
+            ]
         )
-        if result.stdout.strip():
-            print("Sync files are out of date. Run `just lint --all-files synchro` to regenerate:")
-            for f in result.stdout.strip().splitlines():
+        changed_names = [f"./{dest.as_posix()}" for dest in changed]
+
+        if is_ci and changed_names:
+            print(f"Synchro generated {len(changed_names)} file(s):")
+            for f in changed_names:
                 print(f"  {f}")
+            print("Sync files are out of date. Run `just lint --all-files synchro` to regenerate:")
             sys.exit(1)
 
-    Path(MANIFEST).write_text("\n".join(generated_files) + ("\n" if generated_files else ""))
+        Path(MANIFEST).write_text("\n".join(changed_names) + ("\n" if changed_names else ""))
+    finally:
+        shutil.rmtree(STAGING, ignore_errors=True)
 
 
 if __name__ == "__main__":

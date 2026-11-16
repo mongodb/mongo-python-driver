@@ -1,16 +1,17 @@
-"""Smoke test for tools/synchro.py."""
+"""Tests for tools/synchro.py."""
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-if TYPE_CHECKING:
-    import pytest
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
+
+import synchro
 
 
 def test_synchro(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -31,6 +32,8 @@ def test_synchro(monkeypatch: pytest.MonkeyPatch) -> None:
     with (
         patch("synchro.unasync_directory", side_effect=capture),
         patch("synchro.process_files"),
+        patch("synchro.prepare_staging"),
+        patch("synchro.copy_changed_files", return_value=[]),
         patch("subprocess.run"),
         patch("pathlib.Path.write_text"),
     ):
@@ -40,3 +43,209 @@ def test_synchro(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert "./pymongo/asynchronous/mongo_client.py" in processed
     assert "./pymongo/asynchronous/collection.py" not in processed
+
+
+def test_copy_changed_files_skips_identical(tmp_path: Path) -> None:
+    """A destination whose content already matches is neither rewritten nor reported."""
+    staged = tmp_path / "staged.py"
+    dest = tmp_path / "dest.py"
+    staged.write_bytes(b"same")
+    dest.write_bytes(b"same")
+    before = dest.stat().st_mtime_ns
+
+    changed = synchro.copy_changed_files([(staged, dest)])
+
+    assert changed == []
+    assert dest.read_bytes() == b"same"
+    assert dest.stat().st_mtime_ns == before
+
+
+def test_copy_changed_files_updates_differing(tmp_path: Path) -> None:
+    """A destination whose content differs is overwritten and reported."""
+    staged = tmp_path / "staged.py"
+    dest = tmp_path / "dest.py"
+    staged.write_bytes(b"new")
+    dest.write_bytes(b"old")
+
+    changed = synchro.copy_changed_files([(staged, dest)])
+
+    assert changed == [dest]
+    assert dest.read_bytes() == b"new"
+
+
+def test_copy_changed_files_creates_missing_dest(tmp_path: Path) -> None:
+    """A missing destination is created (with parents) and reported."""
+    staged = tmp_path / "staged.py"
+    dest = tmp_path / "subdir" / "dest.py"
+    staged.write_bytes(b"new")
+
+    changed = synchro.copy_changed_files([(staged, dest)])
+
+    assert changed == [dest]
+    assert dest.read_bytes() == b"new"
+
+
+def test_copy_changed_files_rolls_back_on_failure(tmp_path: Path) -> None:
+    """A failed write restores destinations that were already written."""
+    staged_a = tmp_path / "a_staged.py"
+    dest_a = tmp_path / "a_dest.py"
+    staged_a.write_bytes(b"new-a")
+    dest_a.write_bytes(b"old-a")
+    staged_b = tmp_path / "b_staged.py"
+    dest_b = tmp_path / "blocking-dir" / "b_dest.py"
+    staged_b.write_bytes(b"new-b")
+    # A file occupies b_dest.py's parent directory, so the mkdir fails.
+    (tmp_path / "blocking-dir").write_bytes(b"not a directory")
+
+    with pytest.raises(FileExistsError):
+        synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)])
+
+    assert dest_a.read_bytes() == b"old-a"
+
+
+ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
+SYNC_SOURCE = "_IS_SYNC = True\n\n\ndef f() -> None:\n    pass\n"
+
+
+def setup_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Create a minimal repo-like tree and point synchro at it."""
+    (tmp_path / "pymongo" / "asynchronous").mkdir(parents=True)
+    (tmp_path / "pymongo" / "synchronous").mkdir(parents=True)
+    (tmp_path / "test" / "asynchronous").mkdir(parents=True)
+    (tmp_path / "pyproject.toml").write_text("")
+    (tmp_path / "pymongo" / "asynchronous" / "foo.py").write_text(ASYNC_SOURCE)
+    monkeypatch.setattr(sys, "argv", ["synchro.py"])
+    monkeypatch.setattr(synchro, "async_files", ["./pymongo/asynchronous/foo.py"])
+    monkeypatch.setattr(synchro, "gridfs_files", [])
+    monkeypatch.setattr(synchro, "test_files", [])
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.chdir(tmp_path)
+    return tmp_path / "pymongo" / "synchronous" / "foo.py"
+
+
+def test_noop_run_leaves_tree_unchanged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A run with nothing to regenerate writes no files and stages nothing."""
+    dest = setup_tree(tmp_path, monkeypatch)
+    dest.write_text(SYNC_SOURCE)
+    before = dest.stat().st_mtime_ns
+
+    with patch("subprocess.run"):
+        synchro.main()
+
+    assert dest.read_text() == SYNC_SOURCE
+    assert dest.stat().st_mtime_ns == before
+    assert (tmp_path / ".synchro-modified").read_text() == ""
+    assert not (tmp_path / ".synchro-staging").exists()
+
+
+def test_regenerated_file_is_copied_and_manifested(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only files whose content changed are copied and listed in the manifest."""
+    dest = setup_tree(tmp_path, monkeypatch)
+    dest.write_text("_IS_SYNC = True\n# stale\n")
+
+    with patch("subprocess.run"):
+        synchro.main()
+
+    assert dest.read_text() == SYNC_SOURCE
+    assert (tmp_path / ".synchro-modified").read_text() == "./pymongo/synchronous/foo.py\n"
+    assert not (tmp_path / ".synchro-staging").exists()
+
+
+def test_async_test_without_counterpart_is_not_mirrored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An async test file is mirrored only when test/<name>.py already exists."""
+    setup_tree(tmp_path, monkeypatch)
+    (tmp_path / "test" / "asynchronous" / "test_bar.py").write_text(ASYNC_SOURCE)
+    monkeypatch.setattr(synchro, "test_files", ["./test/asynchronous/test_bar.py"])
+
+    with patch("subprocess.run"):
+        synchro.main()
+
+    assert not (tmp_path / "test" / "test_bar.py").exists()
+
+
+def test_ruff_failure_leaves_tree_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A ruff failure on generated output exits nonzero without touching the tree."""
+    dest = setup_tree(tmp_path, monkeypatch)
+    dest.write_text("_IS_SYNC = True\n# stale\n")
+
+    def failing_ruff(
+        cmd: list[str], *args: object, **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        if "--fix" in cmd:
+            raise subprocess.CalledProcessError(1, cmd)
+        return subprocess.CompletedProcess(cmd, 0)
+
+    with patch("subprocess.run", side_effect=failing_ruff):
+        with pytest.raises(SystemExit) as excinfo:
+            synchro.main()
+
+    assert excinfo.value.code == 1
+    assert dest.read_text() == "_IS_SYNC = True\n# stale\n"
+    assert not (tmp_path / ".synchro-modified").exists()
+    assert not (tmp_path / ".synchro-staging").exists()
+
+
+def test_ci_reports_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """In CI, changed generated files are copied so the drift is visible, then fail."""
+    dest = setup_tree(tmp_path, monkeypatch)
+    dest.write_text("_IS_SYNC = True\n# stale\n")
+    monkeypatch.setenv("CI", "true")
+
+    with patch("subprocess.run"):
+        with pytest.raises(SystemExit) as excinfo:
+            synchro.main()
+
+    assert excinfo.value.code == 1
+    assert dest.read_text() == SYNC_SOURCE
+
+
+def test_mirrored_test_files_requires_sync_counterpart(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Async tests are mirrored only when the sync counterpart exists."""
+    async_dir = tmp_path / "test" / "asynchronous"
+    async_dir.mkdir(parents=True)
+    (async_dir / "test_a.py").write_text("")
+    (async_dir / "test_b.py").write_text("")
+    (tmp_path / "test" / "test_a.py").write_text("")
+    monkeypatch.setattr(synchro, "_test_dest_base", f"{tmp_path / 'test'}/")
+
+    filtered = [str(async_dir / "test_a.py"), str(async_dir / "test_b.py")]
+
+    assert synchro.mirrored_test_files(filtered) == [f"{tmp_path / 'test' / 'test_a.py'}"]
+
+
+def test_prepare_staging_pins_first_party_packages(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The staged pyproject copy pins the first-party packages for isort."""
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.ruff.lint]\nisort.required-imports = ["from __future__ import annotations"]\n'
+    )
+    monkeypatch.chdir(tmp_path)
+
+    synchro.prepare_staging()
+
+    staged = (tmp_path / synchro.STAGING / "pyproject.toml").read_text()
+    assert 'isort.known-first-party = ["pymongo", "gridfs", "bson", "test"]' in staged
+    assert "isort.required-imports" in staged
+
+
+def test_prepare_staging_warns_when_anchor_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A pyproject without the isort anchor gets no insert and a stderr warning."""
+    (tmp_path / "pyproject.toml").write_text("")
+    monkeypatch.chdir(tmp_path)
+
+    synchro.prepare_staging()
+
+    staged = (tmp_path / synchro.STAGING / "pyproject.toml").read_text()
+    assert "known-first-party" not in staged
+    assert "known-first-party" in capsys.readouterr().err

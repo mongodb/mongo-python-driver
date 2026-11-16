@@ -616,10 +616,10 @@ To prevent the `synchro` hook from accidentally overwriting code, it first check
 of a file is changing and not its async counterpart, and will fail.
 In the unlikely scenario that you want to override this behavior, first export `OVERRIDE_SYNCHRO_CHECK=1`.
 
-Sometimes, the `synchro` hook will fail and introduce changes many previously unmodified files. This is due to static
-Python errors, such as missing imports, incorrect syntax, or other fatal typos. To resolve these issues,
-run `pre-commit run --all-files --hook-stage manual ruff` and fix all reported errors before running the `synchro`
-hook again.
+The `synchro` hook generates the synchronous files in a staging area and copies them into the working tree only when
+their content changes, so a failed run leaves the working tree unchanged and nothing is staged when there is nothing
+to regenerate. If the hook reports that ruff failed on the generated output, fix the reported error in the
+corresponding `pymongo/asynchronous` source file and run the hook again.
 
 ## CPU profiling
 
