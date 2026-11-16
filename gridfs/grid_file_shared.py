@@ -37,7 +37,6 @@ def _a_grid_in_property(
     closed_only: bool | None = False,
 ) -> Any:
     """Create a GridIn property."""
-
     warn_str = ""
     if docstring.startswith("DEPRECATED,"):
         warn_str = (

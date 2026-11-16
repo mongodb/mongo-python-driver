@@ -2,7 +2,8 @@
 
 """Lock and Condition classes vendored from https://github.com/python/cpython/blob/main/Lib/asyncio/locks.py
 to port 3.13 fixes to older versions of Python.
-Can be removed once we drop Python 3.12 support."""
+Can be removed once we drop Python 3.12 support.
+"""
 
 from __future__ import annotations
 

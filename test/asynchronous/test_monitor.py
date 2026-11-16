@@ -110,7 +110,8 @@ class TestMonitor(AsyncIntegrationTest):
     @async_client_context.require_sync
     def test_no_thread_start_runtime_err_on_shutdown(self):
         """Test we silence noisy runtime errors fired when the AsyncMongoClient spawns a new thread
-        on process shutdown."""
+        on process shutdown.
+        """
         command = [
             sys.executable,
             "-c",

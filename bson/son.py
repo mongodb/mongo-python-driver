@@ -68,9 +68,7 @@ class SON(dict[_Key, _Value]):
         return instance
 
     def __repr__(self) -> str:
-        result = []
-        for key in self.__keys:
-            result.append(f"({key!r}, {self[key]!r})")
+        result = [f"({key!r}, {self[key]!r})" for key in self.__keys]
         return "SON([{}])".format(", ".join(result))
 
     def __setitem__(self, key: _Key, value: _Value) -> None:

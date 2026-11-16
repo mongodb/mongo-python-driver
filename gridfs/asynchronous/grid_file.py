@@ -1766,9 +1766,9 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         return True
 
     def __aiter__(self) -> AsyncGridOut:
-        """Return an iterator over all of this file's data.
+        r"""Return an iterator over all of this file's data.
 
-        The iterator will return lines (delimited by ``b'\\n'``) of
+        The iterator will return lines (delimited by ``b'\n'``) of
         :class:`bytes`. This can be useful when serving files
         using a webserver that handles such an iterator efficiently.
 
@@ -2016,10 +2016,7 @@ class AsyncGridOutCursor(AsyncCursor):  # type: ignore[type-arg]
             return [x async for x in self]  # noqa: C416,RUF100
         if length < 1:
             raise ValueError("to_list() length must be greater than 0")
-        ret = []
-        for _ in range(length):
-            ret.append(await self.next())
-        return ret
+        return [await self.next() for _ in range(length)]
 
     __anext__ = next
 

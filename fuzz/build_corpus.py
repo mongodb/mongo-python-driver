@@ -144,7 +144,8 @@ def seed_boundary_documents(zw: zipfile.ZipFile) -> None:
 
 def seed_large_document(zw: zipfile.ZipFile) -> None:
     """Seed one ~500 KB document; without it, libFuzzer's max_len default
-    keeps mutation below the size where large-input paths live."""
+    keeps mutation below the size where large-input paths live.
+    """
     doc = {
         "long_string": "a" * (256 * 1024),
         "many_fields": {f"f{i:05d}": i for i in range(5_000)},

@@ -43,7 +43,8 @@ TEST_RAW_BSON = (
 
 class _TaggedRawBSONDocument(RawBSONDocument):
     """RawBSONDocument subclass with a different __init__ signature and
-    extra instance state, stored in __dict__."""
+    extra instance state, stored in __dict__.
+    """
 
     def __init__(self, bson_bytes, tag, codec_options=None):
         super().__init__(bson_bytes, codec_options)

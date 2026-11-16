@@ -285,7 +285,7 @@ else:
         """Encapsulates options used encoding and / or decoding BSON."""
 
         def __init__(self, *args, **kwargs):
-            """Encapsulates options used encoding and / or decoding BSON.
+            r"""Encapsulates options used encoding and / or decoding BSON.
 
             The `document_class` option is used to define a custom type for use
             decoding BSON documents. Access to the underlying raw BSON bytes for
@@ -298,7 +298,7 @@ else:
               >>> coll = db.get_collection('test', codec_options=codec_options)
               >>> doc = coll.find_one()
               >>> doc.raw
-              '\\x16\\x00\\x00\\x00\\x07_id\\x00[0\\x165\\x91\\x10\\xea\\x14\\xe8\\xc5\\x8b\\x93\\x00'
+              '\x16\x00\x00\x00\x07_id\x00[0\x165\x91\x10\xea\x14\xe8\xc5\x8b\x93\x00'
 
             The document class can be any type that inherits from
             :class:`~collections.abc.MutableMapping`::

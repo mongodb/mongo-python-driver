@@ -32,7 +32,8 @@ class TestBSONBinaryVector(unittest.TestCase):
     Tests are automatically generated on import
     from json files in _TEST_PATH via `create_tests`.
     The actual tests are defined in the inner function `run_test`
-    of the test generator `create_test`."""
+    of the test generator `create_test`.
+    """
 
 
 def create_test(case_spec):

@@ -44,16 +44,6 @@ Documentation = "https://www.mongodb.com/docs/languages/python/pymongo-driver/cu
 Source = "https://github.com/mongodb/mongo-python-driver"
 Tracker = "https://jira.mongodb.org/projects/PYTHON/issues"
 
-[tool.uv]
-# Pin the uv binary version across local dev, GitHub Actions, and Evergreen.
-# uv enforces this locally, astral-sh/setup-uv reads it on GitHub, and
-# install-dependencies.sh installs it in Evergreen. Bump manually when a newer uv
-# is needed.
-required-version = "==0.12.12"
-# Skip dependency releases newer than 7 days. Defining it here keeps every uv
-# invocation on the same cutoff.
-exclude-newer = "7 days"
-
 [dependency-groups]
 dev = []
 lint = [
@@ -71,7 +61,7 @@ coverage = [
 mockupdb = [
     "mockupdb>=1.8.1"
 ]
-# Atheris publishes CPython 3.12-3.14 Linux x86_64 wheels only; see fuzz/README.md.
+# The latest atheris publishes CPython 3.12-3.14 Linux x86_64 wheels only; see fuzz/README.md.
 fuzz = ["atheris>=2.3.0"]
 perf = ["simplejson>=3.17.0"]
 typing = [
@@ -219,6 +209,11 @@ extend-select = [
   "EXE",         # flake8-executable
   "ASYNC",       # flake8-async
   "TC",          # flake8-type-checking
+  "PERF",        # perflint
+  "D202",        # pydocstyle: no blank lines between docstring and function body.
+  "D209",        # pydocstyle: closing quotes go on their own line.
+  "D301",        # pydocstyle: docstrings containing \ are defined as string literals.
+  "D403",        # pydocstyle: docstrings start with a capital letter.
 ]
 ignore = [
   "PLR",    # Design related pylint codes
@@ -257,6 +252,7 @@ exclude = []
 flake8-unused-arguments.ignore-variadic-names = true
 isort.required-imports = ["from __future__ import annotations"]
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
+pydocstyle.convention = "pep257"
 
 [tool.ruff.lint.per-file-ignores]
 "pymongo/__init__.py" = ["E402"]

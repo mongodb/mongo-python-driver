@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for using Python's :mod:`json` module with BSON documents.
+r"""Tools for using Python's :mod:`json` module with BSON documents.
 
 This module provides two helper methods `dumps` and `loads` that wrap the
 native :mod:`json` methods and provide explicit BSON conversion to and from

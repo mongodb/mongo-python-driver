@@ -826,9 +826,7 @@ class TestAuthOIDCMachine(OIDCTestBase):
             for _ in range(100):
                 await client.test.coll.find_one()
 
-        tasks = []
-        for i in range(10):
-            tasks.append(ConcurrentRunner(target=target))
+        tasks = [ConcurrentRunner(target=target) for _ in range(10)]
         for t in tasks:
             await t.start()
         for t in tasks:

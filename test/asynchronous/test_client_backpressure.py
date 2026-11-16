@@ -22,7 +22,9 @@ import sys
 from time import perf_counter
 from unittest.mock import patch
 
+from pymongo import AsyncMongoClient
 from pymongo.common import MAX_ADAPTIVE_RETRIES
+from pymongo.cursor_shared import CursorType
 
 sys.path[0:0] = [""]
 
@@ -159,6 +161,95 @@ class TestBackpressure(AsyncIntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 await cursor.to_list()
 
+        self.assertIn("RetryableError", str(error.exception))
+        self.assertIn("SystemOverloadedError", str(error.exception))
+
+    @async_client_context.require_failCommand_appName
+    async def test_retry_overload_error_getMore_pinned_connection(self):
+        # PYTHON-6262: getMores on pinned (e.g. load-balanced) connections must
+        # retry retryable overload errors on the pinned connection.
+        coll = self.db.coll
+        await coll.delete_many({})
+        await coll.insert_many([{"x": 1} for _ in range(10)])
+        fail_many = {
+            "configureFailPoint": "failCommand",
+            "mode": {"times": MAX_ADAPTIVE_RETRIES},
+            "data": {
+                "failCommands": ["getMore"],
+                "errorCode": 462,  # IngressRequestRateLimitExceeded
+                "errorLabels": ["RetryableError", "SystemOverloadedError"],
+            },
+        }
+        with patch.object(type(self.db.client), "_should_pin_cursor", return_value=True):
+            # Ensure pinned getMore is retried on overload error.
+            cursor = coll.find(batch_size=2)
+            await cursor.next()
+            # Verify the cursor actually pinned its connection.
+            self.assertIsNotNone(cursor._sock_mgr)
+            async with self.fail_point(fail_many):
+                self.assertEqual(len(await cursor.to_list()), 9)
+
+            # Ensure pinned getMore stops retrying after MAX_ADAPTIVE_RETRIES.
+            fail_too_many = fail_many.copy()
+            fail_too_many["mode"] = {"times": MAX_ADAPTIVE_RETRIES + 1}
+            cursor = coll.find(batch_size=2)
+            await cursor.next()
+            async with self.fail_point(fail_too_many):
+                with self.assertRaises(PyMongoError) as error:
+                    await cursor.to_list()
+
+        self.assertIn("RetryableError", str(error.exception))
+        self.assertIn("SystemOverloadedError", str(error.exception))
+
+    @async_client_context.require_failCommand_appName
+    @async_client_context.require_exhaust_stream
+    async def test_retry_overload_error_getMore_exhaust_receive_only(self):
+        # PYTHON-6262: an error on a receive-only exhaust getMore must
+        # surface instead of retrying a receive with no request in flight.
+        # Use a dedicated client: the abandoned exhaust stream leaves the
+        # pinned connection unusable.
+        uri = await async_client_context.uri
+        client = AsyncMongoClient(
+            uri, server_api=async_client_context.default_client_options.get("server_api")
+        )
+        self.addAsyncCleanup(client.close)
+        coll = client.get_database(self.db.name).coll
+        await coll.delete_many({})
+        await coll.insert_many([{"x": 1} for _ in range(10)])
+        with patch.object(type(client), "_should_pin_cursor", return_value=True):
+            cursor = coll.find(batch_size=2, cursor_type=CursorType.EXHAUST)
+            for _ in range(4):
+                await cursor.next()
+                if cursor._sock_mgr and cursor._sock_mgr.more_to_come:
+                    break
+            self.assertTrue(cursor._sock_mgr.more_to_come)
+            conn = cursor._sock_mgr.conn
+            orig_receive = type(conn).receive_message
+            receives = 0
+
+            async def fail_receive_only(conn, request_id):
+                # Consume the streamed reply, then fail like a retryable
+                # overload reply would.
+                reply = await orig_receive(conn, request_id)
+                if request_id is None:
+                    nonlocal receives
+                    receives += 1
+                    raise OperationFailure(
+                        "getMore overload",
+                        462,
+                        {
+                            "errorLabels": ["RetryableError", "SystemOverloadedError"],
+                            "baseBackoffMS": 10,
+                        },
+                    )
+                return reply
+
+            with patch.object(type(conn), "receive_message", fail_receive_only):
+                with self.assertRaises(PyMongoError) as error:
+                    await cursor.to_list()
+
+        # The failed receive ended the stream: no request-less retry.
+        self.assertEqual(receives, 1)
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 

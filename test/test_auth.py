@@ -239,9 +239,7 @@ class TestGSSAPI(PyMongoTestCase):
             except OperationFailure:
                 raise SkipTest("User must be able to write.")
 
-        threads = []
-        for _ in range(4):
-            threads.append(AutoAuthenticateThread(collection))
+        threads = [AutoAuthenticateThread(collection) for _ in range(4)]
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -657,9 +655,7 @@ class TestSCRAM(IntegrationTest):
         # The first thread to call find() will authenticate
         client = self.rs_or_single_client()
         coll = client.db.coll
-        threads = []
-        for _ in range(4):
-            threads.append(AutoAuthenticateThread(coll))
+        threads = [AutoAuthenticateThread(coll) for _ in range(4)]
         for thread in threads:
             thread.start()
         for thread in threads:

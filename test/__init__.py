@@ -787,6 +787,18 @@ class ClientContext:
             func=func,
         )
 
+    def require_exhaust_stream(self, func):
+        """Run a test only if the server streams exhaust getMores.
+
+        mongos streams exhaust getMores from 7.1 (SERVER-57297); older
+        mongos reply per batch, so the receive-only state is never reached.
+        """
+        return self._require(
+            lambda: not (self.is_mongos or self.load_balancer) or self.version.at_least(7, 1),
+            "Exhaust streams require mongos 7.1+",
+            func=func,
+        )
+
     def supports_transactions(self):
         return self.is_mongos or self.is_rs
 

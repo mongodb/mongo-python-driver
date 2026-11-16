@@ -42,6 +42,9 @@ Async functions must not call blocking I/O.
 
 New features need integration tests. Bug fixes need regression tests.
 
+## Dependency updates
+Dependabot fully manages `uv.lock`: one grouped weekly pull request plus immediate security pull requests. Never set `[tool.uv] exclude-newer` in `pyproject.toml`; pin `required-version` only when a uv lockfile feature requires it. Details in CONTRIBUTING.md "Dependency updates".
+
 ## Commit and PR Conventions
 - Prefix commits and PR titles with the JIRA ticket: `PYTHON-1234 Fix retryable write on mongos`
 - Backport PRs: append the target branch in brackets — `PYTHON-1234 [v4.9] Fix retryable write`
