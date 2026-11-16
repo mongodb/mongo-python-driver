@@ -70,6 +70,11 @@ def _install_uv_astral() -> None:
     _add_path(os.environ["UV_TOOL_BIN_DIR"])
 
 
+def _uv_exe() -> str:
+    """The uv binary name on this platform."""
+    return "uv.exe" if os.name == "nt" else "uv"
+
+
 def _install_uv(pin: str) -> None:
     """Install uv into UV_TOOL_BIN_DIR with `uv tool install --force`.
 
@@ -80,8 +85,7 @@ def _install_uv(pin: str) -> None:
     """
     uv_path = shutil.which("uv")
     bin_dir = os.environ["UV_TOOL_BIN_DIR"]
-    exe = "uv.exe" if os.name == "nt" else "uv"
-    overwrite_self = uv_path is not None and _same_path(uv_path, str(Path(bin_dir, exe)))
+    overwrite_self = uv_path is not None and _same_path(uv_path, str(Path(bin_dir, _uv_exe())))
     tool = uv_path
     tmp_uv = None
     if overwrite_self:
@@ -171,8 +175,7 @@ def _project_uv_installed() -> bool:
     bin_dir = os.environ.get("UV_TOOL_BIN_DIR")
     if not uv_path or not bin_dir:
         return False
-    exe = "uv.exe" if os.name == "nt" else "uv"
-    return _same_path(uv_path, str(Path(bin_dir, exe)))
+    return _same_path(uv_path, str(Path(bin_dir, _uv_exe())))
 
 
 def _required_uv_installed() -> bool:

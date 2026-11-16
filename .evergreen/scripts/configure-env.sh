@@ -38,8 +38,8 @@ fi
 
 # Add the latest MongoDB toolchain bin dir to PATH if it exists, so that hosts
 # with an old system Python (e.g. RHEL8's 3.6) still get a modern interpreter
-# for tool installs like `uv tool install rust-just`. Goes after PYMONGO_BIN_DIR
-# so the project's uv wins.
+# for tool installs like `uv tool install rust-just`. It goes after
+# PYMONGO_BIN_DIR so the project's uv takes precedence.
 if [ "Windows_NT" = "${OS:-}" ]; then
   _toolchain_bin="/cygdrive/c/Python/Current/Scripts"
 elif [ "$(uname -s)" == "Darwin" ]; then

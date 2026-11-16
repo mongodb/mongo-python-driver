@@ -97,6 +97,13 @@ def make_toolchain(root: Path, version: str) -> Path:
     return make_executable(interpreter)
 
 
+def make_sentinel(root: Path) -> Path:
+    """Create a no-op executable, used as an interpreter path the script accepts."""
+    sentinel = root / "sentinel"
+    sentinel.write_text("#!/bin/sh\nexit 0\n")
+    return make_executable(sentinel)
+
+
 def stub_calls(log: Path) -> list[str]:
     if not log.exists():
         return []
@@ -267,9 +274,7 @@ def test_explicit_interpreter_path_skips_probing(tmp_path, stub_env):
 def test_toolchain_paths_preserved_without_override(tmp_path):
     """Without the test override, the platform toolchain paths are preserved as-is."""
     script_copy = script_copy_in(tmp_path)
-    sentinel = tmp_path / "sentinel"
-    sentinel.write_text("#!/bin/sh\nexit 0\n")
-    make_executable(sentinel)
+    sentinel = make_sentinel(tmp_path)
     if sys.platform == "darwin":
         expected = {
             "3.15": "/Library/Frameworks/Python.Framework/Versions/3.15/bin",
@@ -287,9 +292,7 @@ def test_toolchain_paths_preserved_without_override(tmp_path):
 def test_toolchain_override_keeps_version_layout(tmp_path):
     """With the test override, the <version>/bin layout under it is kept."""
     script_copy = script_copy_in(tmp_path)
-    sentinel = tmp_path / "sentinel"
-    sentinel.write_text("#!/bin/sh\nexit 0\n")
-    make_executable(sentinel)
+    sentinel = make_sentinel(tmp_path)
     override = {"UV_PYTHON": str(sentinel), "PYMONGO_TOOLCHAIN_ROOT": str(tmp_path / "root")}
     assert call_toolchain_bin_dir(script_copy, "3.15t", override) == str(
         tmp_path / "root" / "3.15t" / "bin"
@@ -299,9 +302,7 @@ def test_toolchain_override_keeps_version_layout(tmp_path):
 def test_toolchain_branch_for_windows(tmp_path):
     """The Windows branch computes the python toolchain path."""
     script_copy = script_copy_in(tmp_path)
-    sentinel = tmp_path / "sentinel"
-    sentinel.write_text("#!/bin/sh\nexit 0\n")
-    make_executable(sentinel)
+    sentinel = make_sentinel(tmp_path)
     env = {"OS": "Windows_NT", "UV_PYTHON": str(sentinel)}
     assert call_toolchain_bin_dir(script_copy, "3.15", env) == "C:/python/Python315"
 
@@ -334,9 +335,7 @@ def test_interpreter_file_names_the_exact_file(tmp_path):
     the bare name (PYTHON-6273).
     """
     script_copy = script_copy_in(tmp_path)
-    sentinel = tmp_path / "sentinel"
-    sentinel.write_text("#!/bin/sh\nexit 0\n")
-    make_executable(sentinel)
+    sentinel = make_sentinel(tmp_path)
     windows = {"OS": "Windows_NT", "UV_PYTHON": str(sentinel)}
     assert call_interpreter_file(script_copy, "3.15t", windows) == "/toolchain/dir/python3.15t.exe"
     assert call_interpreter_file(script_copy, "3.15t", {"UV_PYTHON": str(sentinel)}) == (
@@ -407,6 +406,11 @@ def project(tmp_path):
 
 
 def run_setup_uv(project: Path, args: list[str], env: dict) -> subprocess.CompletedProcess:
+    """Run setup_uv.py with the inherited environment plus the overrides.
+
+    Unlike the bash harness, the environment is inherited: setup_uv.py runs
+    subprocesses (uv tool install) that need a working PATH.
+    """
     return subprocess.run(  # noqa: S603
         [sys.executable, str(project / ".evergreen" / "scripts" / "setup_uv.py"), *args],
         check=False,
@@ -452,7 +456,7 @@ def test_check_pinned_requires_exact_version(tmp_path, project):
 
 
 def test_main_unpinned_installs_latest_uv_into_bin_dir(tmp_path, project):
-    """Unpinned setup installs the latest uv into UV_TOOL_BIN_DIR, even with a foreign uv on PATH."""
+    """Unpinned setup installs the latest uv into UV_TOOL_BIN_DIR over a foreign uv on PATH."""
     log = tmp_path / "log"
     foreign = write_stub_uv(tmp_path / "foreign-bin")
     bin_dir = tmp_path / "project-bin"
