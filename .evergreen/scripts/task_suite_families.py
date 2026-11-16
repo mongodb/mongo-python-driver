@@ -281,21 +281,20 @@ def create_test_compression_tasks() -> list[EvgTask]:
     set plus async sharded-cluster cells on every other MongoDB version, so
     each compressor meets every server version (PYTHON-6167).
     """
-    tasks = []
-    for compressor in COMPRESSORS:
-        # Sync, max CPython, noauth, SSL, replica set.
-        tasks.append(
-            _create_suite_task(
-                "test-compression",
-                "latest",
-                "replica_set",
-                MAX_PYTHON,
-                "sync",
-                "default",
-                suffix=compressor,
-                extra_test_vars=dict(COMPRESSORS=compressor),
-            )
+    # Sync, max CPython, noauth, SSL, replica set.
+    tasks = [
+        _create_suite_task(
+            "test-compression",
+            "latest",
+            "replica_set",
+            MAX_PYTHON,
+            "sync",
+            "default",
+            suffix=compressor,
+            extra_test_vars=dict(COMPRESSORS=compressor),
         )
+        for compressor in COMPRESSORS
+    ]
     cells = list(product(COMPRESSORS, [v for v in ALL_VERSIONS if v != "latest"]))
     for (compressor, version), python in zip_cycle(cells, CPYTHONS):
         # Async, auth, SSL, sharded cluster. The first compressor's max-stable

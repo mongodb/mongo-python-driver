@@ -87,7 +87,7 @@ buildvariants:
       - name: .auth-aws !.auth-aws-web-identity !.auth-aws-ec2 !.rhel8
     display_name: Auth AWS macOS
     run_on:
-      - macos-14
+      - macos-15-amd64
   - name: auth-aws-ecs-ubuntu-24
     tasks:
       - name: .auth-aws-ecs
@@ -159,7 +159,7 @@ buildvariants:
       - name: .test-encryption .macos
     display_name: Encryption macOS
     run_on:
-      - macos-14
+      - macos-15-amd64
     batchtime: 1440
     tags: [encryption_tag]
   - name: encryption-win64
@@ -186,7 +186,7 @@ buildvariants:
       - name: .test-standard-auth .auth !.free-threaded
     display_name: Auth Enterprise macOS
     run_on:
-      - macos-14
+      - macos-15-amd64
     expansions:
       TEST_NAME: enterprise_auth
       AUTH: auth
@@ -312,7 +312,7 @@ buildvariants:
       - name: .ocsp-rsa !.ocsp-staple .4.4
     display_name: OCSP macOS
     run_on:
-      - macos-14
+      - macos-15-amd64
     batchtime: 10080
 
   # Oidc auth tests
@@ -338,7 +338,7 @@ buildvariants:
       - name: "!.auth_oidc_remote .auth_oidc"
     display_name: Auth OIDC macOS
     run_on:
-      - macos-14
+      - macos-15-amd64
     batchtime: 1440
   - name: auth-oidc-win64
     tasks:
@@ -370,7 +370,7 @@ buildvariants:
       - name: .test-pyopenssl .macos
     display_name: PyOpenSSL macOS
     run_on:
-      - macos-14
+      - macos-15-amd64
     batchtime: 1440
   - name: pyopenssl-win64
     tasks:
@@ -501,14 +501,14 @@ buildvariants:
       - name: .test-standard .macos
     display_name: "* Test macOS"
     run_on:
-      - macos-14
+      - macos-15-amd64
     tags: [standard-non-linux]
   - name: test-macos-arm64
     tasks:
       - name: .test-standard .macos-arm64
     display_name: "* Test macOS Arm64"
     run_on:
-      - macos-14-arm64
+      - macos-15-arm64
     tags: [standard-non-linux]
   - name: test-win64
     tasks:
@@ -557,5 +557,5 @@ buildvariants:
       - name: .test-numpy !.rhel8
     display_name: Test Numpy macOS Arm64
     run_on:
-      - macos-14-arm64
+      - macos-15-arm64
     tags: [binary, vector]

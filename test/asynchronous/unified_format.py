@@ -1176,10 +1176,9 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         self.assertIsNone(session._transaction.pinned_address)
 
     def __get_last_two_command_lsids(self, listener):
-        cmd_started_events = []
-        for event in reversed(listener.events):
-            if isinstance(event, CommandStartedEvent):
-                cmd_started_events.append(event)
+        cmd_started_events = [
+            event for event in reversed(listener.events) if isinstance(event, CommandStartedEvent)
+        ]
         if len(cmd_started_events) < 2:
             self.fail(
                 "Needed 2 CommandStartedEvents to compare lsids, got %s" % (len(cmd_started_events))

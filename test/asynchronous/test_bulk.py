@@ -310,8 +310,7 @@ class AsyncTestBulk(AsyncBulkTestBase):
             {"_id": 3, "l": "s" * (_16_MB - 10000)},
         ]
         # Fill in the remaining ~10000 bytes with small documents.
-        for i in range(4, 10000):
-            docs.append({"_id": i})
+        docs.extend({"_id": i} for i in range(4, 10000))
         result = await self.coll.insert_many(docs)
         self.assertEqual(len(docs), len(result.inserted_ids))
 

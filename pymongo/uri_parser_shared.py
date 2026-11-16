@@ -631,6 +631,5 @@ def _make_options_case_sensitive(options: _CaseInsensitiveDictionary) -> dict[st
         if option.lower() in options:
             case_sensitive[option] = options[option]
             options.pop(option)
-    for k, v in options.items():
-        case_sensitive[k] = v
+    case_sensitive.update(options)
     return case_sensitive

@@ -98,18 +98,18 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
 
-        models = []
-        for _ in range(self.max_write_batch_size + 1):
-            models.append(InsertOne(namespace="db.coll", document={"a": "b"}))
+        models = [
+            InsertOne(namespace="db.coll", document={"a": "b"})
+            for _ in range(self.max_write_batch_size + 1)
+        ]
         self.addCleanup(client.db["coll"].drop)
 
         result = client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, self.max_write_batch_size + 1)
 
-        bulk_write_events = []
-        for event in listener.started_events:
-            if event.command_name == "bulkWrite":
-                bulk_write_events.append(event)
+        bulk_write_events = [
+            event for event in listener.started_events if event.command_name == "bulkWrite"
+        ]
         self.assertEqual(len(bulk_write_events), 2)
 
         first_event, second_event = bulk_write_events
@@ -122,25 +122,23 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         listener = OvertCommandListener()
         client = self.rs_or_single_client(event_listeners=[listener])
 
-        models = []
         num_models = int(self.max_message_size_bytes / self.max_bson_object_size + 1)
         b_repeated = "b" * (self.max_bson_object_size - 500)
-        for _ in range(num_models):
-            models.append(
-                InsertOne(
-                    namespace="db.coll",
-                    document={"a": b_repeated},
-                )
+        models = [
+            InsertOne(
+                namespace="db.coll",
+                document={"a": b_repeated},
             )
+            for _ in range(num_models)
+        ]
         self.addCleanup(client.db["coll"].drop)
 
         result = client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, num_models)
 
-        bulk_write_events = []
-        for event in listener.started_events:
-            if event.command_name == "bulkWrite":
-                bulk_write_events.append(event)
+        bulk_write_events = [
+            event for event in listener.started_events if event.command_name == "bulkWrite"
+        ]
         self.assertEqual(len(bulk_write_events), 2)
 
         first_event, second_event = bulk_write_events
@@ -166,14 +164,13 @@ class TestClientBulkWriteCRUD(IntegrationTest):
             },
         }
         with self.fail_point(fail_command):
-            models = []
-            for _ in range(self.max_write_batch_size + 1):
-                models.append(
-                    InsertOne(
-                        namespace="db.coll",
-                        document={"a": "b"},
-                    )
+            models = [
+                InsertOne(
+                    namespace="db.coll",
+                    document={"a": "b"},
                 )
+                for _ in range(self.max_write_batch_size + 1)
+            ]
             self.addCleanup(client.db["coll"].drop)
 
             with self.assertRaises(ClientBulkWriteException) as context:
@@ -184,10 +181,9 @@ class TestClientBulkWriteCRUD(IntegrationTest):
                 context.exception.partial_result.inserted_count, self.max_write_batch_size + 1
             )
 
-        bulk_write_events = []
-        for event in listener.started_events:
-            if event.command_name == "bulkWrite":
-                bulk_write_events.append(event)
+        bulk_write_events = [
+            event for event in listener.started_events if event.command_name == "bulkWrite"
+        ]
         self.assertEqual(len(bulk_write_events), 2)
 
     @client_context.require_version_min(8, 0, 0, -24)
@@ -200,23 +196,21 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         collection.drop()
         collection.insert_one(document={"_id": 1})
 
-        models = []
-        for _ in range(self.max_write_batch_size + 1):
-            models.append(
-                InsertOne(
-                    namespace="db.coll",
-                    document={"_id": 1},
-                )
+        models = [
+            InsertOne(
+                namespace="db.coll",
+                document={"_id": 1},
             )
+            for _ in range(self.max_write_batch_size + 1)
+        ]
 
         with self.assertRaises(ClientBulkWriteException) as context:
             client.bulk_write(models=models, ordered=False)
         self.assertEqual(len(context.exception.write_errors), self.max_write_batch_size + 1)  # type: ignore[arg-type]
 
-        bulk_write_events = []
-        for event in listener.started_events:
-            if event.command_name == "bulkWrite":
-                bulk_write_events.append(event)
+        bulk_write_events = [
+            event for event in listener.started_events if event.command_name == "bulkWrite"
+        ]
         self.assertEqual(len(bulk_write_events), 2)
 
     @client_context.require_version_min(8, 0, 0, -24)
@@ -229,23 +223,21 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         collection.drop()
         collection.insert_one(document={"_id": 1})
 
-        models = []
-        for _ in range(self.max_write_batch_size + 1):
-            models.append(
-                InsertOne(
-                    namespace="db.coll",
-                    document={"_id": 1},
-                )
+        models = [
+            InsertOne(
+                namespace="db.coll",
+                document={"_id": 1},
             )
+            for _ in range(self.max_write_batch_size + 1)
+        ]
 
         with self.assertRaises(ClientBulkWriteException) as context:
             client.bulk_write(models=models, ordered=True)
         self.assertEqual(len(context.exception.write_errors), 1)  # type: ignore[arg-type]
 
-        bulk_write_events = []
-        for event in listener.started_events:
-            if event.command_name == "bulkWrite":
-                bulk_write_events.append(event)
+        bulk_write_events = [
+            event for event in listener.started_events if event.command_name == "bulkWrite"
+        ]
         self.assertEqual(len(bulk_write_events), 1)
 
     @client_context.require_version_min(8, 0, 0, -24)
@@ -418,15 +410,14 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         num_models = ops_bytes // self.max_bson_object_size
         remainder_bytes = ops_bytes % self.max_bson_object_size
 
-        models = []
         b_repeated = "b" * (self.max_bson_object_size - _OPERATION_DOC_BYTES)
-        for _ in range(num_models):
-            models.append(
-                InsertOne(
-                    namespace="db.coll",
-                    document={"a": b_repeated},
-                )
+        models = [
+            InsertOne(
+                namespace="db.coll",
+                document={"a": b_repeated},
             )
+            for _ in range(num_models)
+        ]
         if remainder_bytes >= _NAMESPACE_DOC_BYTES:
             num_models += 1
             b_repeated = "b" * (remainder_bytes - _OPERATION_DOC_BYTES)
@@ -456,10 +447,9 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         result = client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, num_models + 1)
 
-        bulk_write_events = []
-        for event in listener.started_events:
-            if event.command_name == "bulkWrite":
-                bulk_write_events.append(event)
+        bulk_write_events = [
+            event for event in listener.started_events if event.command_name == "bulkWrite"
+        ]
 
         self.assertEqual(len(bulk_write_events), 1)
         event = bulk_write_events[0]
@@ -489,10 +479,9 @@ class TestClientBulkWriteCRUD(IntegrationTest):
         result = client.bulk_write(models=models)
         self.assertEqual(result.inserted_count, num_models + 1)
 
-        bulk_write_events = []
-        for event in listener.started_events:
-            if event.command_name == "bulkWrite":
-                bulk_write_events.append(event)
+        bulk_write_events = [
+            event for event in listener.started_events if event.command_name == "bulkWrite"
+        ]
 
         self.assertEqual(len(bulk_write_events), 2)
         first_event, second_event = bulk_write_events
@@ -648,16 +637,15 @@ class TestClientBulkWriteCSOT(IntegrationTest):
             "data": {"failCommands": ["bulkWrite"], "blockConnection": True, "blockTimeMS": 1010},
         }
         with self.fail_point(fail_command):
-            models = []
             num_models = int(self.max_message_size_bytes / self.max_bson_object_size + 1)
             b_repeated = "b" * (self.max_bson_object_size - _OVERHEAD)
-            for _ in range(num_models):
-                models.append(
-                    InsertOne(
-                        namespace="db.coll",
-                        document={"a": b_repeated},
-                    )
+            models = [
+                InsertOne(
+                    namespace="db.coll",
+                    document={"a": b_repeated},
                 )
+                for _ in range(num_models)
+            ]
 
             listener = OvertCommandListener()
             client = self.rs_or_single_client(
@@ -674,8 +662,7 @@ class TestClientBulkWriteCSOT(IntegrationTest):
                 client.bulk_write(models=models)
             self.assertIsInstance(context.exception.error, NetworkTimeout)
 
-        bulk_write_events = []
-        for event in listener.started_events:
-            if event.command_name == "bulkWrite":
-                bulk_write_events.append(event)
+        bulk_write_events = [
+            event for event in listener.started_events if event.command_name == "bulkWrite"
+        ]
         self.assertEqual(len(bulk_write_events), 2)
