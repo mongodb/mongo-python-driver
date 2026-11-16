@@ -35,7 +35,7 @@ fi
 export UV_TOOL_BIN_DIR="${UV_TOOL_BIN_DIR:-$PYMONGO_BIN_DIR}"
 
 # Ensure the bin dir is on PATH: hosts without env.sh (e.g. auth-aws-ecs) never
-# export it, so a fresh pinned install there would be invisible to the probe
+# export it, so a fresh uv install there would be invisible to the probe
 # below and to later steps like `uv tool install` and `uv sync`.
 case ":$PATH:" in
   *":$PYMONGO_BIN_DIR_POSIX:"*) ;;
@@ -48,8 +48,9 @@ if [ "Windows_NT" = "${OS:-}" ]; then
   _uv_setup_script="$(cygpath -m "$_uv_setup_script")"
 fi
 
-# Skip setup when the pinned uv is already installed: `setup_uv.py --check`
-# compares the uv on PATH with the required-version pin, without side effects.
+# Skip setup when a suitable uv is already installed: `setup_uv.py --check`
+# verifies the required-version pin, or the project-controlled uv in
+# UV_TOOL_BIN_DIR when unpinned, without side effects.
 # A full `uv sync` here would download Python and install/build dependencies
 # just to make this decision, and would run before setup-uv-python.sh sets
 # UV_PYTHON, creating the environment twice on local dev.
