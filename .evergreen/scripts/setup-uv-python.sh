@@ -79,6 +79,19 @@ function _toolchain_bin_dir() {
   echo "$dir"
 }
 
+# Print the toolchain interpreter file for a version like "3.15t", without
+# checking that it exists. Windows interpreters are exe files; cygwin bash's
+# -x test also matches the bare name, but uv is a native Windows binary and
+# needs the exact file name.
+function _interpreter_file() {
+  local dir="$1" version="$2"
+  if [ "Windows_NT" = "${OS:-}" ]; then
+    echo "$dir/python${version}.exe"
+  else
+    echo "$dir/python${version}"
+  fi
+}
+
 # Print the toolchain bin dir for the version when it exists on this host.
 function _toolchain_dir() {
   local dir
@@ -132,8 +145,9 @@ elif _dir=$(_toolchain_dir "$UV_PYTHON"); then
   # own preference (PYTHON-6135): uv uses the path as-is, so provisioning cannot
   # fail on uv's interpreter discovery (it aborts on interpreters it cannot
   # inspect, like RHEL8's /usr/bin/python3 3.6) or on a missing download.
-  if [ -z "${UV_PYTHON_PREFERENCE:-}" ] && [ -x "$_dir/python${UV_PYTHON}" ]; then
-    export UV_PYTHON="$_dir/python${UV_PYTHON}"
+  _file=$(_interpreter_file "$_dir" "$UV_PYTHON")
+  if [ -z "${UV_PYTHON_PREFERENCE:-}" ] && [ -x "$_file" ]; then
+    export UV_PYTHON="$_file"
     _skip_ensure=1
   fi
 fi

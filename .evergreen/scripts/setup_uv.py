@@ -138,6 +138,15 @@ def _write_env() -> None:
     ENV_SH.write_bytes(("\n".join(keep) + "\n").encode())
 
 
+def _cygdrive(path: str) -> str:
+    """Map a native Windows path to its cygwin /cygdrive form."""
+    match = re.match(r"^([A-Za-z]):[/\\](.*)$", path)
+    if not match:
+        return path
+    drive, rest = match.groups()
+    return "/cygdrive/" + drive.lower() + "/" + rest.replace("\\", "/")
+
+
 def _same_path(a: str, b: str) -> bool:
     """Compare two paths, tolerating forms realpath cannot unify.
 
@@ -149,7 +158,11 @@ def _same_path(a: str, b: str) -> bool:
             return True
     except OSError:
         pass
-    return os.path.normcase(os.path.normpath(a)) == os.path.normcase(os.path.normpath(b))
+    return any(
+        os.path.normcase(os.path.normpath(form_a)) == os.path.normcase(os.path.normpath(form_b))
+        for form_a in (a, _cygdrive(a))
+        for form_b in (b, _cygdrive(b))
+    )
 
 
 def _project_uv_installed() -> bool:

@@ -10,6 +10,7 @@ toolchain root selected through PYMONGO_TOOLCHAIN_ROOT.
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import shutil
 import stat
@@ -107,8 +108,41 @@ def stub_calls(log: Path) -> list[str]:
 
 # --- setup-uv-python.sh ------------------------------------------------------
 
+setup_uv = importlib.util.module_from_spec(
+    importlib.util.spec_from_file_location("setup_uv", HERE / "setup_uv.py")
+)
+setup_uv.__spec__.loader.exec_module(setup_uv)
 
-def run_setup_uv_python(tmp_path: Path, extra_env: dict) -> subprocess.CompletedProcess:
+
+def call_toolchain_bin_dir(script_copy: Path, version: str, env_overrides: dict) -> str:
+    """Call the script's _toolchain_bin_dir helper and return the printed path."""
+    proc = subprocess.run(  # noqa: S603
+        ["/bin/bash", "-c", f'. "{script_copy}"; _toolchain_bin_dir "{version}"'],
+        check=False,
+        env={
+            "PATH": "/usr/bin:/bin",
+            "HOME": str(script_copy.parents[2]),
+            **env_overrides,
+        },
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    return proc.stdout.strip()
+
+
+def script_copy_in(tmp_path: Path) -> Path:
+    """Copy setup-uv-python.sh into a temporary project tree and return its path."""
+    scripts = tmp_path / "proj" / ".evergreen" / "scripts"
+    scripts.mkdir(parents=True)
+    script_copy = scripts / "setup-uv-python.sh"
+    shutil.copy(SETUP_UV_PYTHON_SH, script_copy)
+    return script_copy
+
+
+def run_setup_uv_python(
+    tmp_path: Path, extra_env: dict, cwd: Path | None = None
+) -> subprocess.CompletedProcess:
     """Source a copy of setup-uv-python.sh in a temporary project tree.
 
     The copy's HERE/ROOT resolve inside the tree, so the script sources the
@@ -138,6 +172,7 @@ def run_setup_uv_python(tmp_path: Path, extra_env: dict) -> subprocess.Completed
         ],
         check=False,
         env=env,
+        cwd=str(cwd or tmp_path),
         capture_output=True,
         text=True,
     )
@@ -272,29 +307,9 @@ def test_explicit_interpreter_path_skips_probing(tmp_path, stub_env):
     assert stub_calls(log) == []
 
 
-def toolchain_bin_dir(script_copy: Path, sentinel: Path, version: str) -> str:
-    """Call the script's _toolchain_bin_dir helper and return the printed path."""
-    proc = subprocess.run(  # noqa: S603
-        [
-            "/bin/bash",
-            "-c",
-            f'UV_PYTHON="{sentinel}" . "{script_copy}"; _toolchain_bin_dir "{version}"',
-        ],
-        check=False,
-        env={"PATH": "/usr/bin:/bin"},
-        capture_output=True,
-        text=True,
-    )
-    assert proc.returncode == 0, proc.stderr
-    return proc.stdout.strip()
-
-
 def test_toolchain_paths_preserved_without_override(tmp_path):
     """Without the test override, the platform toolchain paths are preserved as-is."""
-    scripts = tmp_path / "proj" / ".evergreen" / "scripts"
-    scripts.mkdir(parents=True)
-    script_copy = scripts / "setup-uv-python.sh"
-    shutil.copy(SETUP_UV_PYTHON_SH, script_copy)
+    script_copy = script_copy_in(tmp_path)
     sentinel = tmp_path / "sentinel"
     sentinel.write_text("#!/bin/sh\nexit 0\n")
     make_executable(sentinel)
@@ -309,7 +324,7 @@ def test_toolchain_paths_preserved_without_override(tmp_path):
             "3.15t": "/opt/python/3.15t/bin",
         }
     for version, path in expected.items():
-        assert toolchain_bin_dir(script_copy, sentinel, version) == path
+        assert call_toolchain_bin_dir(script_copy, version, {"UV_PYTHON": str(sentinel)}) == path
 
 
 def test_toolchain_override_keeps_version_layout(tmp_path):
@@ -340,6 +355,99 @@ def test_toolchain_override_keeps_version_layout(tmp_path):
     assert proc.stdout.strip() == str(tmp_path / "root" / "3.15" / "bin")
 
 
+def test_toolchain_branch_for_darwin(tmp_path):
+    """The darwin branch computes the framework toolchain path."""
+    script_copy = script_copy_in(tmp_path)
+    (tmp_path / "shims").mkdir()
+    shim = tmp_path / "shims" / "uname"
+    shim.write_text("#!/bin/sh\necho Darwin\n")
+    make_executable(shim)
+    sentinel = tmp_path / "sentinel"
+    sentinel.write_text("#!/bin/sh\nexit 0\n")
+    make_executable(sentinel)
+    shim_env = {"PATH": f"{tmp_path / 'shims'}:/usr/bin:/bin", "UV_PYTHON": str(sentinel)}
+    assert (
+        call_toolchain_bin_dir(script_copy, "3.15", shim_env)
+        == "/Library/Frameworks/Python.Framework/Versions/3.15/bin"
+    )
+    assert (
+        call_toolchain_bin_dir(script_copy, "3.15t", shim_env)
+        == "/Library/Frameworks/PythonT.Framework/Versions/3.15/bin"
+    )
+
+
+def test_toolchain_branch_for_windows(tmp_path):
+    """The Windows branch computes the python toolchain path."""
+    script_copy = script_copy_in(tmp_path)
+    sentinel = tmp_path / "sentinel"
+    sentinel.write_text("#!/bin/sh\nexit 0\n")
+    make_executable(sentinel)
+    env = {"OS": "Windows_NT", "UV_PYTHON": str(sentinel)}
+    assert call_toolchain_bin_dir(script_copy, "3.15", env) == "C:/python/Python315"
+
+
+def call_interpreter_file(script_copy: Path, version: str, env_overrides: dict) -> str:
+    """Call the script's _interpreter_file helper and return the printed path."""
+    proc = subprocess.run(  # noqa: S603
+        [
+            "/bin/bash",
+            "-c",
+            f'. "{script_copy}"; _interpreter_file "/toolchain/dir" "{version}"',
+        ],
+        check=False,
+        env={
+            "PATH": "/usr/bin:/bin",
+            "HOME": str(script_copy.parents[2]),
+            **env_overrides,
+        },
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    return proc.stdout.strip()
+
+
+def test_interpreter_file_names_the_exact_file(tmp_path):
+    """Windows interpreters are exe files; the other platforms use the bare name.
+
+    Native uv needs the exact file name; cygwin bash's -x test also matches
+    the bare name (PYTHON-6273).
+    """
+    script_copy = script_copy_in(tmp_path)
+    sentinel = tmp_path / "sentinel"
+    sentinel.write_text("#!/bin/sh\nexit 0\n")
+    make_executable(sentinel)
+    windows = {"OS": "Windows_NT", "UV_PYTHON": str(sentinel)}
+    assert call_interpreter_file(script_copy, "3.15t", windows) == "/toolchain/dir/python3.15t.exe"
+    assert call_interpreter_file(script_copy, "3.15t", {"UV_PYTHON": str(sentinel)}) == (
+        "/toolchain/dir/python3.15t"
+    )
+    assert call_interpreter_file(script_copy, "3.11", windows) == "/toolchain/dir/python3.11.exe"
+
+
+def test_windows_toolchain_interpreter_is_exported_as_exe_file(tmp_path, stub_env):
+    """CI (Windows): the exported interpreter path names the .exe file exactly.
+
+    The script computes the toolchain dir as the native path
+    "C:/python/Python315", which resolves under this test's cwd.
+    """
+    log, env = stub_env
+    python_dir = tmp_path / "C:" / "python" / "Python315"
+    python_dir.mkdir(parents=True)
+    interpreter = python_dir / "python3.15t.exe"
+    interpreter.write_text("#!/bin/sh\nexit 0\n")
+    make_executable(interpreter)
+    proc = run_setup_uv_python(
+        tmp_path,
+        extra_env={**env, "UV_PYTHON": "3.15t", "OS": "Windows_NT"},
+        cwd=tmp_path,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "UV_PYTHON=C:/python/Python315/python3.15t.exe" in proc.stdout
+    # The exact file bypasses uv's discovery entirely: no find, no install.
+    assert stub_calls(log) == []
+
+
 def test_script_sources_env_sh_from_its_tree(tmp_path, stub_env):
     """The script sources env.sh from the copy's tree, not the checkout's."""
     _, env = stub_env
@@ -357,6 +465,14 @@ def test_script_sources_env_sh_from_its_tree(tmp_path, stub_env):
     assert proc.returncode == 0, proc.stderr
     # The last printf has no trailing newline.
     assert proc.stdout.rstrip("\n").endswith("TOOL_BIN_DIR=")
+
+
+def test_same_path_maps_cygwin_forms():
+    """A native Windows path matches its cygwin /cygdrive form."""
+    assert setup_uv._same_path("C:/tools/uv.exe", "C:/tools/uv.exe")
+    assert setup_uv._same_path("C:/tools/uv.exe", "/cygdrive/c/tools/uv.exe")
+    assert setup_uv._same_path("/cygdrive/c/tools/uv.exe", "C:/tools/uv.exe")
+    assert not setup_uv._same_path("C:/tools/uv.exe", "C:/elsewhere/uv.exe")
 
 
 # --- setup_uv.py ------------------------------------------------------------
