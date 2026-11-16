@@ -80,8 +80,7 @@ function _toolchain_bin_dir() {
 }
 
 # Print the toolchain interpreter file for a version like "3.15t", without
-# checking that it exists. Windows interpreters are exe files; cygwin bash's
-# -x test also matches the bare name, but uv is a native Windows binary and
+# checking that it exists. Windows interpreters are exe files: native uv
 # needs the exact file name.
 function _interpreter_file() {
   local dir="$1" version="$2"
