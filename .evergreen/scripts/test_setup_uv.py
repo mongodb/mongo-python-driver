@@ -20,8 +20,7 @@ from pathlib import Path
 
 import pytest
 
-# The repo's pytest addopts filter on "default or default_async"; marking the
-# module keeps bare pytest invocations from deselecting it.
+# The repo's pytest addopts deselect modules without the "default" mark.
 pytestmark = [
     pytest.mark.default,
     pytest.mark.skipif(
@@ -39,11 +38,9 @@ PIN = "==0.12.12"
 UNPINNED_PYPROJECT = '[project]\nname = "test"\n'
 PINNED_PYPROJECT = f'[project]\nname = "test"\n\n[tool.uv]\nrequired-version = "{PIN}"\n'
 
-# A stub `uv`: records each invocation to $UV_STUB_LOG, reports
-# $UV_STUB_VERSION for --version, fails `python find`/`python install` the way
-# CI's uv does on rhel8.10 (except a ">=3.9" find, which reports
-# $UV_STUB_FALLBACK when set), and emulates `uv tool install ... --from <req>`
-# by writing itself into $UV_TOOL_BIN_DIR.
+# A stub `uv` that fails `python find`/`python install` the way CI's uv does
+# on rhel8.10, records each invocation to $UV_STUB_LOG, and emulates
+# `uv tool install` by copying itself into $UV_TOOL_BIN_DIR.
 STUB_UV = """\
 #!/bin/bash
 [ -n "${UV_STUB_LOG:-}" ] && printf '%s\\n' "$*" >> "$UV_STUB_LOG"
@@ -199,7 +196,6 @@ def test_toolchain_python_is_used_by_path(tmp_path, stub_env):
     assert f"UV_PYTHON={interpreter}" in proc.stdout
     assert f"SEARCH_PATH={interpreter.parent}" in proc.stdout
     assert "PREFERENCE=system" in proc.stdout
-    # uv's discovery is bypassed entirely: no find, no install.
     assert stub_calls(log) == []
 
 
@@ -235,8 +231,7 @@ def test_task_preference_disables_bypass(tmp_path, stub_env):
     )
     assert proc.returncode == 1
     assert "could not find or install Python" in proc.stderr
-    # No bypass: the script failed in uv's find/install (rc 0 would mean the
-    # explicit-path branch ran, ignoring the task's preference).
+    # rc 1 means the explicit-path branch did not run.
     assert stub_calls(log) == ["python find 3.15", "python install 3.15"]
 
 
@@ -369,7 +364,6 @@ def test_windows_toolchain_interpreter_is_exported_as_exe_file(tmp_path, stub_en
     )
     assert proc.returncode == 0, proc.stderr
     assert "UV_PYTHON=C:/python/Python315/python3.15t.exe" in proc.stdout
-    # The exact file bypasses uv's discovery entirely: no find, no install.
     assert stub_calls(log) == []
 
 
@@ -385,10 +379,8 @@ def test_script_sources_env_sh_from_its_tree(tmp_path, stub_env):
             "UV_STUB_FALLBACK": str(fallback),
         },
     )
-    # The runner's tree has no env.sh, so the checkout's env.sh must not have
-    # leaked: it exports UV_TOOL_BIN_DIR, which stays unset here.
+    # A leaked checkout env.sh would set UV_TOOL_BIN_DIR; the runner tree has none.
     assert proc.returncode == 0, proc.stderr
-    # The last printf has no trailing newline.
     assert proc.stdout.rstrip("\n").endswith("TOOL_BIN_DIR=")
 
 
