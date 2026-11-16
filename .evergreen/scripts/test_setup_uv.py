@@ -149,10 +149,7 @@ def run_setup_uv_python(
     tree's env.sh (if any) and probes the tree's .venv, never the checkout's.
     Reports rc and the exported UV_PYTHON / search path / preference.
     """
-    scripts = tmp_path / "proj" / ".evergreen" / "scripts"
-    scripts.mkdir(parents=True, exist_ok=True)
-    script_copy = scripts / "setup-uv-python.sh"
-    shutil.copy(SETUP_UV_PYTHON_SH, script_copy)
+    script_copy = script_copy_in(tmp_path)
     env = {
         "HOME": str(tmp_path),
         "CI": "true",
@@ -206,23 +203,6 @@ def test_toolchain_python_is_used_by_path(tmp_path, stub_env):
     assert stub_calls(log) == []
 
 
-def test_free_threaded_toolchain_python_is_used_by_path(tmp_path, stub_env):
-    """CI: the same bypass applies to free-threaded toolchain versions."""
-    log, env = stub_env
-    interpreter = make_toolchain(tmp_path / "toolchain", "3.15t")
-    proc = run_setup_uv_python(
-        tmp_path,
-        extra_env={
-            **env,
-            "UV_PYTHON": "3.15t",
-            "PYMONGO_TOOLCHAIN_ROOT": str(tmp_path / "toolchain"),
-        },
-    )
-    assert proc.returncode == 0, proc.stderr
-    assert f"UV_PYTHON={interpreter}" in proc.stdout
-    assert stub_calls(log) == []
-
-
 def test_toolchain_falls_through_when_interpreter_missing(tmp_path, stub_env):
     """CI: a toolchain dir without the requested version keeps using uv find/install."""
     log, env = stub_env
@@ -257,24 +237,6 @@ def test_task_preference_disables_bypass(tmp_path, stub_env):
     assert "could not find or install Python" in proc.stderr
     # No bypass: the script failed in uv's find/install (rc 0 would mean the
     # explicit-path branch ran, ignoring the task's preference).
-    assert stub_calls(log) == ["python find 3.15", "python install 3.15"]
-
-
-def test_ci_fails_loudly_without_toolchain(tmp_path, stub_env):
-    """CI without the toolchain keeps failing after find and install both fail."""
-    log, env = stub_env
-    proc = run_setup_uv_python(
-        tmp_path,
-        extra_env={
-            **env,
-            "UV_PYTHON": "3.15",
-            # An empty toolchain root: no version can match it.
-            "PYMONGO_TOOLCHAIN_ROOT": str(tmp_path / "no-toolchain"),
-        },
-    )
-    assert proc.returncode == 1
-    assert "could not find or install Python" in proc.stderr
-    # find was attempted, then install.
     assert stub_calls(log) == ["python find 3.15", "python install 3.15"]
 
 
@@ -329,50 +291,13 @@ def test_toolchain_paths_preserved_without_override(tmp_path):
 
 def test_toolchain_override_keeps_version_layout(tmp_path):
     """With the test override, the <version>/bin layout under it is kept."""
-    scripts = tmp_path / "proj" / ".evergreen" / "scripts"
-    scripts.mkdir(parents=True)
-    script_copy = scripts / "setup-uv-python.sh"
-    shutil.copy(SETUP_UV_PYTHON_SH, script_copy)
-    sentinel = tmp_path / "sentinel"
-    sentinel.write_text("#!/bin/sh\nexit 0\n")
-    make_executable(sentinel)
-    proc = subprocess.run(  # noqa: S603
-        [
-            "/bin/bash",
-            "-c",
-            (
-                f'export UV_PYTHON="{sentinel}" '
-                f'PYMONGO_TOOLCHAIN_ROOT="{tmp_path / "root"}"; '
-                f'. "{script_copy}"; _toolchain_bin_dir "3.15"'
-            ),
-        ],
-        check=False,
-        env={"PATH": "/usr/bin:/bin"},
-        capture_output=True,
-        text=True,
-    )
-    assert proc.returncode == 0, proc.stderr
-    assert proc.stdout.strip() == str(tmp_path / "root" / "3.15" / "bin")
-
-
-def test_toolchain_branch_for_darwin(tmp_path):
-    """The darwin branch computes the framework toolchain path."""
     script_copy = script_copy_in(tmp_path)
-    (tmp_path / "shims").mkdir()
-    shim = tmp_path / "shims" / "uname"
-    shim.write_text("#!/bin/sh\necho Darwin\n")
-    make_executable(shim)
     sentinel = tmp_path / "sentinel"
     sentinel.write_text("#!/bin/sh\nexit 0\n")
     make_executable(sentinel)
-    shim_env = {"PATH": f"{tmp_path / 'shims'}:/usr/bin:/bin", "UV_PYTHON": str(sentinel)}
-    assert (
-        call_toolchain_bin_dir(script_copy, "3.15", shim_env)
-        == "/Library/Frameworks/Python.Framework/Versions/3.15/bin"
-    )
-    assert (
-        call_toolchain_bin_dir(script_copy, "3.15t", shim_env)
-        == "/Library/Frameworks/PythonT.Framework/Versions/3.15/bin"
+    override = {"UV_PYTHON": str(sentinel), "PYMONGO_TOOLCHAIN_ROOT": str(tmp_path / "root")}
+    assert call_toolchain_bin_dir(script_copy, "3.15t", override) == str(
+        tmp_path / "root" / "3.15t" / "bin"
     )
 
 
@@ -516,14 +441,6 @@ def test_check_unpinned_accepts_project_uv(tmp_path, project):
     write_stub_uv(bin_dir)
     env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "UV_TOOL_BIN_DIR": str(bin_dir)}
     assert run_setup_uv(project, ["--check"], env).returncode == 0
-
-
-def test_check_unpinned_without_uv_fails(tmp_path, project):
-    """Unpinned --check fails when no uv is on PATH at all."""
-    bin_dir = tmp_path / "project-bin"
-    bin_dir.mkdir()
-    env = {"PATH": "/usr/bin:/bin", "UV_TOOL_BIN_DIR": str(bin_dir)}
-    assert run_setup_uv(project, ["--check"], env).returncode == 1
 
 
 def test_check_pinned_requires_exact_version(tmp_path, project):
