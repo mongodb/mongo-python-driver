@@ -20,6 +20,7 @@ from utils import (
     ROOT,
     SANITIZER_PYTHON,
     TEST_SUITE_MAP,
+    TSAN_PYTHON,
     Distro,
     check_drivers_tools,
     get_test_options,
@@ -57,13 +58,16 @@ EXTRAS_MAP = {
 # Map the test name to test group.
 GROUP_MAP = dict(fuzz="fuzz", mockupdb="mockupdb", perf="perf")
 
-# The test files run under ASan/UBSan (PYTHON-6048). They exercise the
-# buffer-protocol acquisition path in bson/_cbsonmodule.c
-# (_get_buffer/_prepare_input_buffer) and the wire-message builders in
-# pymongo/_cmessagemodule.c (_op_msg, _batched_op_msg,
-# _encode_batched_write_command).
+# The test files run under the sanitizer tasks (PYTHON-6048, PYTHON-6168).
+# They exercise the buffer-protocol acquisition path in
+# bson/_cbsonmodule.c (_get_buffer/_prepare_input_buffer), the wire-message
+# builders in pymongo/_cmessagemodule.c (_op_msg, _batched_op_msg,
+# _encode_batched_write_command), and — via the concurrency classes added
+# in PYTHON-6168 — concurrent zero-copy RawBSONDocument reads and batched
+# message building on free-threaded CPython.
 SANITIZER_FILES = [
     "test/test_bson.py",
+    "test/test_message.py",
     "test/test_raw_bson.py",
     "test/test_raw_bson_shared.py",
     "test/test_client.py",
@@ -550,12 +554,14 @@ def handle_test_env() -> None:
         write_env("FUZZ_CORPUS_DIR", str(corpus_dir))
 
     if test_name == "sanitizer":
+        tsan = sub_test_name == "tsan"
+        python = TSAN_PYTHON if tsan else SANITIZER_PYTHON
         if PLATFORM != "linux":
             raise RuntimeError("The sanitizer tests require the Linux Python toolchain.")
-        if not Path(SANITIZER_PYTHON).is_file():
+        if not Path(python).is_file():
             raise RuntimeError(
-                f"Sanitizer interpreter not found at {SANITIZER_PYTHON}; "
-                "the task must run on a host with the ASan/UBSan toolchain Python."
+                f"Sanitizer interpreter not found at {python}; the task must run "
+                "on a host with the sanitizer toolchain Python."
             )
         # Clear stale C artifacts: build_ext reuses them by mtime, and a
         # plain same-version CPython build shares the ABI tag.
@@ -563,20 +569,29 @@ def handle_test_env() -> None:
         for pkg in ["bson", "pymongo"]:
             for ext in (ROOT / pkg).glob("*.so"):
                 ext.unlink()
-        # Build and run against the ASan/UBSan-instrumented toolchain CPython,
+        # Build and run against the sanitizer-instrumented toolchain CPython,
         # and fail loudly rather than silently skip the C extension build.
-        write_env("UV_PYTHON", SANITIZER_PYTHON)
+        write_env("UV_PYTHON", python)
         write_env("PYMONGO_C_EXT_MUST_BUILD")
-        write_env("CFLAGS", "-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1")
-        write_env("LDFLAGS", "-fsanitize=address,undefined")
-        # CPython's pymalloc trips LeakSanitizer with false positives.
-        write_env("ASAN_OPTIONS", "detect_leaks=0")
-        # UBSan only warns by default; make undefined behavior fail the task.
-        write_env("UBSAN_OPTIONS", "halt_on_error=1:print_stacktrace=1")
+        if tsan:
+            write_env("CFLAGS", "-fsanitize=thread -fno-omit-frame-pointer -g -O1")
+            write_env("LDFLAGS", "-fsanitize=thread")
+            suppressions = ROOT / ".evergreen" / "tsan-suppressions.txt"
+            write_env(
+                "TSAN_OPTIONS",
+                f"halt_on_error=1:handle_segv=0:suppressions={suppressions}",
+            )
+        else:
+            write_env("CFLAGS", "-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1")
+            write_env("LDFLAGS", "-fsanitize=address,undefined")
+            # CPython's pymalloc trips LeakSanitizer with false positives.
+            write_env("ASAN_OPTIONS", "detect_leaks=0")
+            # UBSan only warns by default; make undefined behavior fail the task.
+            write_env("UBSAN_OPTIONS", "halt_on_error=1:print_stacktrace=1")
         # The toolchain interpreter self-initializes the sanitizer runtimes,
-        # so no LD_PRELOAD: gcc's libasan.so is a linker script that ld.so
-        # cannot preload, and preloading a mismatched runtime would mix two
-        # sanitizers in one process.
+        # so no LD_PRELOAD: preloading a mismatched runtime would mix two
+        # sanitizers in one process, and for TSan report false races inside
+        # CPython's own free-threading internals.
         # -s: with halt_on_error=1, a sanitizer failure exits the interpreter
         # before pytest replays captured stderr, losing the report and trace.
         TEST_ARGS = "-s " + " ".join(SANITIZER_FILES) + " " + TEST_ARGS
