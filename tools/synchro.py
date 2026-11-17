@@ -376,15 +376,17 @@ def copy_changed_files(
 
     Each destination is written through a temporary sibling that then
     atomically replaces it, so a write that fails midway (for example when
-    the disk fills) leaves that destination untouched. If a later step
-    fails or is interrupted, destinations already written are restored, so
-    the working tree is left unchanged; publishing ``manifest`` inside
-    that same rollback scope extends the guarantee to manifest write
-    failures. An unchanged destination that ``tracked`` does not contain
-    is listed in the manifest without being rewritten, so a newly
-    generated module reaches the staging hook on its first commit.
+    the disk fills) leaves that destination untouched. The original is
+    hard-linked aside first, so the rollback restores it by rename and
+    needs no disk space. If a later step fails or is interrupted,
+    destinations already written are restored, so the working tree is left
+    unchanged; publishing ``manifest`` inside that same rollback scope
+    extends the guarantee to manifest write failures. An unchanged
+    destination that ``tracked`` does not contain is listed in the
+    manifest without being rewritten, so a newly generated module reaches
+    the staging hook on its first commit.
     """
-    written: list[tuple[Path, bytes | None]] = []
+    written: list[tuple[Path, bytes | None, Path | None]] = []
     replaced: list[Path] = []
     included: list[Path] = []
     try:
@@ -396,8 +398,17 @@ def copy_changed_files(
                     included.append(dest)
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
+            backup: Path | None = None
+            if old is not None:
+                backup = dest.with_name(dest.name + ".synchro-backup")
+                try:
+                    backup.unlink(missing_ok=True)
+                    os.link(dest, backup)
+                except OSError:
+                    # No hard-link support: fall back to the in-memory restore.
+                    backup = None
             # Track before replacing so an interrupt cannot skip the rollback.
-            written.append((dest, old))
+            written.append((dest, old, backup))
             tmp = dest.with_name(dest.name + ".synchro-tmp")
             try:
                 tmp.write_bytes(new)
@@ -418,9 +429,11 @@ def copy_changed_files(
         # Restore in reverse so each restore releases space for the next.
         # Any exception, including Ctrl-C, must restore the working tree,
         # and a failing restore must not strand the other destinations.
-        for dest, old in reversed(written):
+        for dest, old, backup in reversed(written):
             try:
-                if old is None:
+                if backup is not None:
+                    backup.replace(dest)
+                elif old is None:
                     dest.unlink(missing_ok=True)
                 else:
                     dest.write_bytes(old)
@@ -430,6 +443,12 @@ def copy_changed_files(
                     file=sys.stderr,
                 )
         raise
+    finally:
+        # Drop the backups: consumed by the rollback above, or not needed
+        # because publication succeeded.
+        for _, _, backup in written:
+            if backup is not None:
+                backup.unlink(missing_ok=True)
     return replaced
 
 

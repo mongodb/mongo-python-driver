@@ -71,6 +71,8 @@ def test_copy_changed_files_updates_differing(tmp_path: Path) -> None:
 
     assert changed == [dest]
     assert dest.read_bytes() == b"new"
+    # The backup is dropped once publication succeeds.
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["dest.py", "staged.py"]
 
 
 def test_copy_changed_files_creates_missing_dest(tmp_path: Path) -> None:
@@ -131,9 +133,14 @@ def test_copy_changed_files_rollback_restores_in_reverse_order(tmp_path: Path) -
         if data.startswith(b"old"):
             restored.append(data)
 
-    with patch.object(Path, "write_bytes", tracking_write):
-        with pytest.raises(FileExistsError):
-            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)])
+    # No hard-linkable backups: restores rewrite the files, so the
+    # space-releasing order above is what the restores depend on.
+    with patch("os.link", side_effect=OSError(1, "link not supported")):
+        with patch.object(Path, "write_bytes", tracking_write):
+            with pytest.raises(FileExistsError):
+                synchro.copy_changed_files(
+                    [(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)]
+                )
 
     assert restored == [b"old-b", b"old-a"]
     assert dest_a.read_bytes() == b"old-a"
@@ -154,8 +161,9 @@ def test_copy_changed_files_failing_write_leaves_dest_unchanged(tmp_path: Path) 
     real_write = Path.write_bytes
 
     def failing_write(self: Path, data: bytes) -> None:
-        if data == b"new-b":
-            # Simulate ENOSPC: some bytes land before the write fails.
+        if self.name.startswith(dest_b.name):
+            # Simulate persistent ENOSPC: every write under dest_b's name,
+            # including a rollback restore, lands partial bytes then fails.
             real_write(self, b"ne")
             raise OSError(28, "No space left on device")
         real_write(self, data)
@@ -166,7 +174,7 @@ def test_copy_changed_files_failing_write_leaves_dest_unchanged(tmp_path: Path) 
 
     assert dest_a.read_bytes() == b"old-a"
     assert dest_b.read_bytes() == b"old-b"
-    # No temporary files are left behind.
+    # No temporary or backup files are left behind.
     assert sorted(p.name for p in tmp_path.iterdir()) == [
         "a_dest.py",
         "a_staged.py",
