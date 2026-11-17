@@ -380,12 +380,12 @@ def copy_changed_files(
     fails or is interrupted, destinations already written are restored, so
     the working tree is left unchanged; publishing ``manifest`` inside
     that same rollback scope extends the guarantee to manifest write
-    failures. An unchanged
-    destination that ``tracked`` does not contain is listed in the
-    manifest without being rewritten, so a newly generated module reaches
-    the staging hook on its first commit.
+    failures. An unchanged destination that ``tracked`` does not contain
+    is listed in the manifest without being rewritten, so a newly
+    generated module reaches the staging hook on its first commit.
     """
     written: list[tuple[Path, bytes | None]] = []
+    replaced: list[Path] = []
     included: list[Path] = []
     try:
         for staged, dest in pairs:
@@ -396,13 +396,15 @@ def copy_changed_files(
                     included.append(dest)
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
+            # Track before replacing so an interrupt cannot skip the rollback.
+            written.append((dest, old))
             tmp = dest.with_name(dest.name + ".synchro-tmp")
             try:
                 tmp.write_bytes(new)
                 tmp.replace(dest)
             finally:
                 tmp.unlink(missing_ok=True)
-            written.append((dest, old))
+            replaced.append(dest)
             included.append(dest)
         if manifest is not None:
             names = [f"./{dest.as_posix()}" for dest in included]
@@ -414,14 +416,21 @@ def copy_changed_files(
                 tmp_manifest.unlink(missing_ok=True)
     except BaseException:
         # Restore in reverse so each restore releases space for the next.
-        # Any exception, including Ctrl-C, must restore the working tree.
+        # Any exception, including Ctrl-C, must restore the working tree,
+        # and a failing restore must not strand the other destinations.
         for dest, old in reversed(written):
-            if old is None:
-                dest.unlink(missing_ok=True)
-            else:
-                dest.write_bytes(old)
+            try:
+                if old is None:
+                    dest.unlink(missing_ok=True)
+                else:
+                    dest.write_bytes(old)
+            except BaseException as restore_error:
+                print(
+                    f"Synchro: could not restore {dest}: {restore_error!r}",
+                    file=sys.stderr,
+                )
         raise
-    return [dest for dest, _ in written]
+    return replaced
 
 
 def prepare_staging() -> None:

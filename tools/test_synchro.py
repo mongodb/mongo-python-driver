@@ -154,7 +154,7 @@ def test_copy_changed_files_failing_write_leaves_dest_unchanged(tmp_path: Path) 
     real_write = Path.write_bytes
 
     def failing_write(self: Path, data: bytes) -> None:
-        if self.name.startswith(dest_b.name):
+        if data == b"new-b":
             # Simulate ENOSPC: some bytes land before the write fails.
             real_write(self, b"ne")
             raise OSError(28, "No space left on device")
@@ -267,6 +267,33 @@ def test_copy_changed_files_interrupt_rolls_back(tmp_path: Path) -> None:
         "b_dest.py",
         "b_staged.py",
     ]
+
+
+def test_copy_changed_files_interrupt_after_replace_rolls_back(tmp_path: Path) -> None:
+    """An interrupt just after a replacement still rolls that destination back."""
+    staged_a = tmp_path / "a_staged.py"
+    dest_a = tmp_path / "a_dest.py"
+    staged_a.write_bytes(b"new-a")
+    dest_a.write_bytes(b"old-a")
+    staged_b = tmp_path / "b_staged.py"
+    dest_b = tmp_path / "b_dest.py"
+    staged_b.write_bytes(b"new-b")
+    dest_b.write_bytes(b"old-b")
+
+    real_replace = Path.replace
+
+    def replacing_interrupt(self: Path, target: Path) -> Path:
+        real_replace(self, target)
+        if target == dest_b:
+            raise KeyboardInterrupt
+        return target
+
+    with patch.object(Path, "replace", replacing_interrupt):
+        with pytest.raises(KeyboardInterrupt):
+            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)])
+
+    assert dest_a.read_bytes() == b"old-a"
+    assert dest_b.read_bytes() == b"old-b"
 
 
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
