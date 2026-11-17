@@ -21,7 +21,7 @@ import os
 import pathlib
 import socket
 import sys
-import unittest.mock as mock
+from unittest import mock
 
 sys.path[0:0] = [""]
 

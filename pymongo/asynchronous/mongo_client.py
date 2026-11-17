@@ -1430,7 +1430,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         options.extend(
             option_repr(key, self._options._options[key])
             for key in self._options._options
-            if key not in set(self._constructor_args) and key != "username" and key != "password"
+            if key not in set(self._constructor_args) and key not in {"username", "password"}
         )
         return ", ".join(options)
 
@@ -2631,10 +2631,9 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
             if write_concern:
                 raise InvalidOperation("Cannot set write concern after starting a transaction")
             write_concern = session._transaction.opts.write_concern  # type: ignore[union-attr]
-        else:
+        elif not write_concern:
             # Inherit the client's write concern if none is provided.
-            if not write_concern:
-                write_concern = self.write_concern
+            write_concern = self.write_concern
 
         if write_concern and not write_concern.acknowledged and verbose_results:
             raise InvalidOperation(
