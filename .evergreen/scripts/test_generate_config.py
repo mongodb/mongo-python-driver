@@ -292,6 +292,37 @@ def test_non_standard_cov_tasks_have_no_cov_companions():
             assert companion in no_cov, f"missing no-cov companion for {task.name}"
 
 
+def test_fuzz_task_wiring():
+    """Two fuzz variants: the pr-tagged regression variant runs the
+    reproducers on every PR; the nightly variant (which also captures the
+    corpus) carries no "pr" tag, so PR patch builds never select it, while
+    its default patchability keeps it manually runnable
+    (`evergreen patch --variant fuzz-rhel8 --task fuzz`).
+    """
+    tasks = [task for task in all_tasks() if "fuzz" in (task.tags or [])]
+    assert [task.name for task in tasks if "pr" in (task.tags or [])] == ["fuzz-regression"]
+    assert [task.name for task in tasks if "pr" not in (task.tags or [])] == ["fuzz"]
+    variants = generate_config.create_fuzz_variants()
+    assert len(variants) == 2
+    regression, nightly = variants
+    assert variant_selects(regression, tasks[0])
+    assert "pr" in (regression.tags or [])
+    assert variant_selects(nightly, tasks[1])
+    assert nightly.batchtime == generate_config_utils.BATCHTIME_DAY
+    # Webhook PR patch builds only select pr-tagged variants.
+    assert not nightly.tags
+    # The capture subprocess bootstraps the comment-bot github app, whose
+    # secrets live in AWS Secrets Manager: it needs the assumed-role
+    # credentials (as resync_specs and backport-pr also pass them).
+    capture = tasks[1].commands[-1]
+    env_vars = capture.params["include_expansions_in_env"]
+    for var in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"):
+        assert var in env_vars, f"capture subprocess missing {var}"
+    # The capture no longer keys off is_patch: manual patch runs must
+    # capture too, and the nightly variant never runs in a PR build.
+    assert "is_patch" not in env_vars
+
+
 def test_load_balancer_marker_selection(monkeypatch):
     """The load balancer tasks select the load_balancer marker explicitly:
     pytest_conf.py only grants the implicit default markers to unmarked

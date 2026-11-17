@@ -520,14 +520,21 @@ def create_doctests_variants():
 
 
 def create_fuzz_variants():
+    # Two variants for the two fuzz flows: the regression reproducers run
+    # on every PR, the time-boxed fuzzing runs nightly. The nightly variant
+    # carries no "pr" tag, so PR patch builds never select it, while its
+    # default patchability keeps it manually runnable
+    # (`evergreen patch --variant fuzz-rhel8 --task fuzz`). The host needs
+    # CPython, which the rhel8 toolchain provides.
     host = HOSTS["rhel8"]
-    # Regression test on every PR.
-    name = get_variant_name("Fuzz Regression", host)
-    pr_variant = create_variant([".fuzz-regression"], name, host=host, tags=["pr"])
-    # Fuzzing requires CPython on Linux/macOS; use a pinned CPython on RHEL8.
-    name = get_variant_name("Fuzz", host)
-    nightly = create_variant([".fuzz-nightly"], name, host=host, batchtime=BATCHTIME_DAY)
-    return [pr_variant, nightly]
+    return [
+        create_variant(
+            [".fuzz-regression"], get_variant_name("Fuzz Regression", host), host=host, tags=["pr"]
+        ),
+        create_variant(
+            [".fuzz-nightly"], get_variant_name("Fuzz", host), host=host, batchtime=BATCHTIME_DAY
+        ),
+    ]
 
 
 def create_sanitizer_variants() -> list[BuildVariant]:
@@ -960,7 +967,24 @@ def create_fuzz_tasks():
     tags = ["fuzz", "fuzz-nightly"]
     test_vars = dict(TEST_NAME="fuzz", SUB_TEST_NAME="fuzz", UV_PYTHON="3.13")
     test_func = FunctionCall(func="run tests", vars=test_vars)
-    tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func]))
+    # PYTHON-6178: while the scratch corpus still exists, capture the new
+    # coverage-increasing inputs, replay them through every target so a
+    # unit that fails one is never published, and open an automated PR
+    # growing fuzz/corpus/.
+    capture_cmd = get_subprocess_exec(
+        args=[".evergreen/scripts/capture-fuzz-corpus.sh"],
+        include_expansions_in_env=[
+            "FUZZ_CORPUS_MAX_UNITS",
+            "FUZZ_CORPUS_MAX_UNIT_BYTES",
+            # The capture bootstraps the comment-bot github app, whose
+            # secrets live in AWS Secrets Manager; pass the assumed-role
+            # credentials as resync_specs and backport-pr also do.
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SESSION_TOKEN",
+        ],
+    )
+    tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func, capture_cmd]))
     return tasks
 
 
