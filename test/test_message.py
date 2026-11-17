@@ -23,7 +23,7 @@ from unittest.mock import MagicMock
 
 sys.path[0:0] = [""]
 
-from bson import CodecOptions, encode
+from bson import CodecOptions, decode, encode
 from bson.objectid import ObjectId
 from pymongo.common import MIN_SUPPORTED_WIRE_VERSION, MONGOS_EXHAUST_WIRE_VERSION
 from pymongo.compression_support import ZlibContext, _have_zlib
@@ -45,6 +45,11 @@ from pymongo.read_concern import ReadConcern
 from pymongo.read_preferences import ReadPreference, SecondaryPreferred
 from pymongo.server_type import SERVER_TYPE
 from test import unittest
+
+try:
+    from pymongo import _cmessage
+except ImportError:
+    _cmessage = None
 
 _OPTS = CodecOptions()
 
@@ -465,6 +470,87 @@ class TestMessage(unittest.TestCase):
             comment="my comment",
         )
         self.assertEqual(cmd["comment"], "my comment")
+
+
+class _FakeBulkWriteContext:
+    """Stub exposing the max sizes read by _cbson_batched_op_msg."""
+
+    max_bson_size = 16 * 1024 * 1024
+    max_write_batch_size = 100000
+    max_message_size = 48 * 1024 * 1024
+
+
+class TestOpMsgBuilders(unittest.TestCase):
+    """Directly drive the C wire-message builders.
+
+    Exercises buffer growth and length back-patching in _cbson_op_msg and
+    _cbson_batched_op_msg under sanitizer builds.
+    """
+
+    def setUp(self):
+        if _cmessage is None:
+            self.skipTest("_cmessage not built")
+
+    def test_op_msg_no_identifier(self):
+        _, msg, total_size, max_doc_size = _cmessage._op_msg(0, {"ismaster": 1}, "", None, _OPTS)
+        self.assertIsInstance(msg, bytes)
+        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        # 21 bytes of header precede the command document.
+        self.assertEqual(total_size, len(msg) - 21)
+        self.assertEqual(max_doc_size, 0)
+        self.assertEqual(decode(msg[21:]), {"ismaster": 1})
+
+    def test_op_msg_with_identifier(self):
+        docs: list[dict[str, Any]] = [{"b": 1}, {"c": "two"}]
+        _, msg, _, max_doc_size = _cmessage._op_msg(0, {"insert": "coll"}, "documents", docs, _OPTS)
+        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        self.assertEqual(max_doc_size, max(len(encode(doc)) for doc in docs))
+        command_size = struct.unpack("<i", msg[21:25])[0]
+        self.assertEqual(decode(msg[21 : 21 + command_size]), {"insert": "coll"})
+        # Type-1 payload: type byte, 4-byte length, cstring identifier.
+        payload_start = 21 + command_size
+        self.assertEqual(msg[payload_start], 0x01)
+        payload_length = struct.unpack("<i", msg[payload_start + 1 : payload_start + 5])[0]
+        self.assertEqual(
+            payload_length,
+            4 + len(b"documents\x00") + sum(len(encode(doc)) for doc in docs),
+        )
+        offset = payload_start + 5 + len(b"documents\x00")
+        for doc in docs:
+            size = len(encode(doc))
+            self.assertEqual(decode(msg[offset : offset + size]), doc)
+            offset += size
+        self.assertEqual(offset, len(msg))
+
+    def test_op_msg_empty_docs(self):
+        _, msg, _, max_doc_size = _cmessage._op_msg(0, {"insert": "coll"}, "documents", [], _OPTS)
+        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        self.assertEqual(max_doc_size, 0)
+
+    def test_op_msg_multiple_buffer_doublings(self):
+        docs = [{"s": "x" * n} for n in (5000, 50, 5)]
+        _, msg, _, max_doc_size = _cmessage._op_msg(0, {"insert": "coll"}, "documents", docs, _OPTS)
+        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        self.assertEqual(max_doc_size, max(len(encode(doc)) for doc in docs))
+
+    def test_batched_op_msg_insert(self):
+        docs = [{"_id": i, "s": "x" * 10} for i in range(3)]
+        _, msg, to_publish = _cmessage._batched_op_msg(
+            0, {"insert": "coll"}, docs, True, _OPTS, _FakeBulkWriteContext()
+        )
+        self.assertIsInstance(to_publish, list)
+        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        command_size = struct.unpack("<i", msg[21:25])[0]
+        self.assertEqual(decode(msg[21 : 21 + command_size]), {"insert": "coll"})
+        self.assertEqual(len(to_publish), len(docs))
+
+    def test_batched_op_msg_update(self):
+        docs = [{"q": {}, "u": {"$set": {"a": 1}}}]
+        _, msg, to_publish = _cmessage._batched_op_msg(
+            1, {"update": "coll"}, docs, True, _OPTS, _FakeBulkWriteContext()
+        )
+        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        self.assertIsInstance(to_publish, list)
 
 
 if __name__ == "__main__":
