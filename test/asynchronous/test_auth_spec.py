@@ -80,11 +80,10 @@ def create_test(test_case):
                     actual = credentials.mechanism_properties
                     for key, value in expected.items():
                         self.assertEqual(getattr(actual, key.lower()), value)
+                elif credential["mechanism"] == "MONGODB-AWS":
+                    self.assertIsNone(credentials.mechanism_properties.aws_session_token)
                 else:
-                    if credential["mechanism"] == "MONGODB-AWS":
-                        self.assertIsNone(credentials.mechanism_properties.aws_session_token)
-                    else:
-                        self.assertIsNone(credentials.mechanism_properties)
+                    self.assertIsNone(credentials.mechanism_properties)
 
     return run_test
 

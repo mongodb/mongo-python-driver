@@ -565,16 +565,13 @@ class TestServerMonitoringMode(AsyncIntegrationTest):
                     if _IS_SYNC:
                         if monitor._rtt_monitor._executor._thread is None:
                             return False
-                    else:
-                        if monitor._rtt_monitor._executor._task is None:
-                            return False
-                else:
-                    if _IS_SYNC:
-                        if monitor._rtt_monitor._executor._thread is not None:
-                            return False
-                    else:
-                        if monitor._rtt_monitor._executor._task is not None:
-                            return False
+                    elif monitor._rtt_monitor._executor._task is None:
+                        return False
+                elif _IS_SYNC:
+                    if monitor._rtt_monitor._executor._thread is not None:
+                        return False
+                elif monitor._rtt_monitor._executor._task is not None:
+                    return False
             return True
 
         await async_wait_until(predicate, "find all RTT monitors")

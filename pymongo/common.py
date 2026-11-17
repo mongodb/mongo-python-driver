@@ -296,7 +296,7 @@ def validate_positive_float_or_zero(option: str, value: Any) -> float:
     """Validates that 'value' is 0 or a positive float, or can be converted to
     0 or a positive float.
     """
-    if value == 0 or value == "0":
+    if value in (0, "0"):
         return 0
     return validate_positive_float(option, value)
 
@@ -318,7 +318,7 @@ def validate_timeout_or_zero(option: str, value: Any) -> float:
     """
     if value is None:
         raise ConfigurationError(f"{option} cannot be None")
-    if value == 0 or value == "0":
+    if value in (0, "0"):
         return 0
     return validate_positive_float(option, value) / 1000.0
 
@@ -328,7 +328,7 @@ def validate_timeout_or_none_or_zero(option: Any, value: Any) -> float | None:
     a value in floating point seconds. value=0 and value="0" are treated the
     same as value=None which means unlimited timeout.
     """
-    if value is None or value == 0 or value == "0":
+    if value in (None, 0, "0"):
         return None
     return validate_positive_float(option, value) / 1000.0
 
@@ -344,7 +344,7 @@ def validate_timeoutms(option: Any, value: Any) -> float | None:
 
 def validate_max_staleness(option: str, value: Any) -> int:
     """Validates maxStalenessSeconds according to the Max Staleness Spec."""
-    if value == -1 or value == "-1":
+    if value in (-1, "-1"):
         # Default: No maximum staleness.
         return -1
     return validate_positive_integer(option, value)
@@ -457,21 +457,25 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
             raise TypeError(
                 f"Auth mechanism properties must be given as a string or a dictionary, not {type(value)}"
             )
-        for key, value in value.items():  # noqa: B020
-            if isinstance(value, str):
-                props[key] = value
-            elif isinstance(value, bool):
-                props[key] = str(value).lower()
-            elif key in ["ALLOWED_HOSTS"] and isinstance(value, list):
-                props[key] = value
+        for key, prop_value in value.items():
+            if isinstance(prop_value, str):
+                props[key] = prop_value
+            elif isinstance(prop_value, bool):
+                props[key] = str(prop_value).lower()
+            elif key in ["ALLOWED_HOSTS"] and isinstance(prop_value, list):
+                props[key] = prop_value
             elif key in ["OIDC_CALLBACK", "OIDC_HUMAN_CALLBACK"]:
                 from pymongo.auth_oidc_shared import OIDCCallback
 
-                if not isinstance(value, OIDCCallback):
-                    raise TypeError(f"callback must be an OIDCCallback object, not {type(value)}")
-                props[key] = value
+                if not isinstance(prop_value, OIDCCallback):
+                    raise TypeError(
+                        f"callback must be an OIDCCallback object, not {type(prop_value)}"
+                    )
+                props[key] = prop_value
             else:
-                raise TypeError(f"Invalid type for auth mechanism property {key}, {type(value)}")
+                raise TypeError(
+                    f"Invalid type for auth mechanism property {key}, {type(prop_value)}"
+                )
         return props
 
     value = validate_string(option, value)

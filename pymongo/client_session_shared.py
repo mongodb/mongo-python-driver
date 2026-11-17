@@ -565,8 +565,7 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
         if self._operation_time is None:
             self._operation_time = operation_time
         elif operation_time is not None:
-            if operation_time > self._operation_time:
-                self._operation_time = operation_time
+            self._operation_time = max(self._operation_time, operation_time)
 
     def advance_operation_time(self, operation_time: Timestamp) -> None:
         """Update the operation time for this session.
