@@ -410,6 +410,15 @@ def copy_changed_files(
             backup: Path | None = None
             if old is not None:
                 backup = dest.with_name(dest.name + ".synchro-backup")
+                if backup.exists() and not backup.samefile(dest):
+                    # A failed run left this backup holding the only copy of
+                    # the original; refuse to overwrite it. Kept outside the
+                    # try below so the refusal is not swallowed.
+                    raise OSError(
+                        f"Synchro: {backup} holds the unrecovered original of "
+                        f"{dest}; inspect and remove it manually, then re-run "
+                        "the hook."
+                    )
                 try:
                     backup.unlink(missing_ok=True)
                     os.link(dest, backup)

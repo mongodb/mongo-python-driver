@@ -619,7 +619,9 @@ In the unlikely scenario that you want to override this behavior, first export `
 The `synchro` hook generates the synchronous files in a staging area and copies them into the working tree only when
 their content changes, so a failed run leaves the working tree unchanged and nothing is staged when there is nothing
 to regenerate. If the hook reports that ruff failed on the generated output, fix the reported error in the
-corresponding `pymongo/asynchronous` source file and run the hook again.
+corresponding `pymongo/asynchronous` source file and run the hook again. If the hook refuses to run because a
+`.synchro-backup` file holds an unrecovered original from a failed run, inspect that file, restore or delete it
+manually, and run the hook again.
 
 ## CPU profiling
 

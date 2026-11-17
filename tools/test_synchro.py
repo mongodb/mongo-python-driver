@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -390,6 +391,37 @@ def test_copy_changed_files_failed_restore_keeps_backup(tmp_path: Path) -> None:
     backup_b = tmp_path / "b_dest.py.synchro-backup"
     assert backup_b.read_bytes() == b"old-b"
     assert not manifest.exists()
+
+
+def test_copy_changed_files_unrecovered_backup_blocks_publication(tmp_path: Path) -> None:
+    """An existing backup holding an unrecovered original refuses publication."""
+    staged = tmp_path / "staged.py"
+    dest = tmp_path / "dest.py"
+    staged.write_bytes(b"new")
+    dest.write_bytes(b"current")
+    # A failed run left this backup holding the only copy of the original.
+    (tmp_path / "dest.py.synchro-backup").write_bytes(b"original")
+
+    with pytest.raises(OSError, match="unrecovered original"):
+        synchro.copy_changed_files([(staged, dest)])
+
+    assert dest.read_bytes() == b"current"
+    assert (tmp_path / "dest.py.synchro-backup").read_bytes() == b"original"
+
+
+def test_copy_changed_files_clears_stale_twin_backup(tmp_path: Path) -> None:
+    """A stale backup that still matches the destination is safely replaced."""
+    staged = tmp_path / "staged.py"
+    dest = tmp_path / "dest.py"
+    staged.write_bytes(b"new")
+    dest.write_bytes(b"old")
+    os.link(dest, tmp_path / "dest.py.synchro-backup")
+
+    changed = synchro.copy_changed_files([(staged, dest)])
+
+    assert changed == [dest]
+    assert dest.read_bytes() == b"new"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["dest.py", "staged.py"]
 
 
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
