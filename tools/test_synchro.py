@@ -304,6 +304,44 @@ def test_copy_changed_files_interrupt_after_replace_rolls_back(tmp_path: Path) -
     assert dest_b.read_bytes() == b"old-b"
 
 
+def test_copy_changed_files_never_published_dest_not_restored(tmp_path: Path) -> None:
+    """A destination whose replacement never lands is not rewritten by rollback."""
+    staged_a = tmp_path / "a_staged.py"
+    dest_a = tmp_path / "a_dest.py"
+    staged_a.write_bytes(b"new-a")
+    dest_a.write_bytes(b"old-a")
+    staged_b = tmp_path / "b_staged.py"
+    dest_b = tmp_path / "b_dest.py"
+    staged_b.write_bytes(b"new-b")
+    dest_b.write_bytes(b"old-b")
+
+    real_write = Path.write_bytes
+
+    def failing_write(self: Path, data: bytes) -> None:
+        if self.name.startswith(dest_b.name):
+            # Simulate persistent ENOSPC: every write under dest_b's name,
+            # including a rollback restore, lands partial bytes then fails.
+            real_write(self, b"ne")
+            raise OSError(28, "No space left on device")
+        real_write(self, data)
+
+    # No hard-link support: rollback restores would have to rewrite files.
+    with patch("os.link", side_effect=OSError(1, "link not supported")):
+        with patch.object(Path, "write_bytes", failing_write):
+            with pytest.raises(OSError, match="No space left on device"):
+                synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)])
+
+    assert dest_a.read_bytes() == b"old-a"
+    assert dest_b.read_bytes() == b"old-b"
+    # No temporary or backup files are left behind.
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "a_dest.py",
+        "a_staged.py",
+        "b_dest.py",
+        "b_staged.py",
+    ]
+
+
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
 SYNC_SOURCE = "_IS_SYNC = True\n\n\ndef f() -> None:\n    pass\n"
 

@@ -413,6 +413,19 @@ def copy_changed_files(
             try:
                 tmp.write_bytes(new)
                 tmp.replace(dest)
+            except BaseException:
+                try:
+                    landed = dest.read_bytes() == new
+                except OSError:
+                    landed = True  # cannot verify; keep the entry and attempt the restore
+                if not landed:
+                    # The rename is atomic: nothing was published, so the
+                    # destination still holds its original and the rollback
+                    # must not rewrite it.
+                    written.pop()
+                    if backup is not None:
+                        backup.unlink(missing_ok=True)
+                raise
             finally:
                 tmp.unlink(missing_ok=True)
             replaced.append(dest)
