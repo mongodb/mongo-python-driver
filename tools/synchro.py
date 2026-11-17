@@ -367,6 +367,14 @@ def git_tracked_files(dests: list[Path]) -> set[Path] | None:
     return {Path(line) for line in result.stdout.splitlines()}
 
 
+def clear_manifest(manifest: Path) -> None:
+    """Remove the staging manifest so nothing is staged for this run."""
+    try:
+        manifest.unlink(missing_ok=True)
+    except OSError as unlink_error:
+        print(f"Synchro: could not remove {manifest}: {unlink_error!r}", file=sys.stderr)
+
+
 def copy_changed_files(
     pairs: list[tuple[Path, Path]],
     manifest: Path | None = None,
@@ -442,13 +450,7 @@ def copy_changed_files(
     except BaseException:
         # A failed run claims nothing to stage, whatever happens next.
         if manifest is not None:
-            try:
-                manifest.unlink(missing_ok=True)
-            except OSError as unlink_error:
-                print(
-                    f"Synchro: could not remove {manifest}: {unlink_error!r}",
-                    file=sys.stderr,
-                )
+            clear_manifest(manifest)
         # Restore in reverse so each restore releases space for the next.
         # Any exception, including Ctrl-C, must restore the working tree,
         # and a failing restore must not strand the other destinations.
@@ -466,12 +468,12 @@ def copy_changed_files(
                     file=sys.stderr,
                 )
         raise
-    finally:
-        # Drop the backups: consumed by the rollback above, or not needed
-        # because publication succeeded.
-        for _, _, backup in written:
-            if backup is not None:
-                backup.unlink(missing_ok=True)
+    # Publication succeeded, so the backups are obsolete. A restore that
+    # failed above kept its backup as the only copy of the original; it is
+    # reclaimed losslessly on the next run, before the new backup is linked.
+    for _, _, backup in written:
+        if backup is not None:
+            backup.unlink(missing_ok=True)
     return replaced
 
 
@@ -530,6 +532,10 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 
 def main() -> None:
     is_ci = bool(os.environ.get("CI"))
+    # Any run that fails before publication must claim nothing to stage, so
+    # the previous run's manifest is dropped up front; a successful run
+    # publishes a fresh one below.
+    clear_manifest(Path(MANIFEST))
     modified_files = [f"./{f}" for f in sys.argv[1:]]
     errored = False
     for fname in async_files + gridfs_files + test_files:

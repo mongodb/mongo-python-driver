@@ -345,6 +345,53 @@ def test_copy_changed_files_never_published_dest_not_restored(tmp_path: Path) ->
     ]
 
 
+def test_copy_changed_files_failed_restore_keeps_backup(tmp_path: Path) -> None:
+    """A restore that fails keeps its backup as the recoverable copy."""
+    staged_a = tmp_path / "a_staged.py"
+    dest_a = tmp_path / "a_dest.py"
+    staged_a.write_bytes(b"new-a")
+    dest_a.write_bytes(b"old-a")
+    staged_b = tmp_path / "b_staged.py"
+    dest_b = tmp_path / "b_dest.py"
+    staged_b.write_bytes(b"new-b")
+    dest_b.write_bytes(b"old-b")
+    manifest = tmp_path / "manifest.txt"
+    manifest.write_text("stale\n")
+
+    real_replace = Path.replace
+    real_write_text = Path.write_text
+
+    def failing_restore(self: Path, target: Path) -> Path:
+        if self.name.endswith(".synchro-backup") and target == dest_b:
+            raise OSError(13, "Permission denied")
+        return real_replace(self, target)
+
+    def failing_write_text(
+        self: Path,
+        data: str,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> int:
+        if self.name.startswith(manifest.name):
+            raise OSError(28, "No space left on device")
+        return real_write_text(self, data, encoding, errors, newline)
+
+    with (
+        patch.object(Path, "replace", failing_restore),
+        patch.object(Path, "write_text", failing_write_text),
+    ):
+        with pytest.raises(OSError, match="No space left on device"):
+            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)], manifest=manifest)
+
+    assert dest_a.read_bytes() == b"old-a"
+    assert dest_b.read_bytes() == b"new-b"
+    # The failed restore's backup survives as the only copy of the original.
+    backup_b = tmp_path / "b_dest.py.synchro-backup"
+    assert backup_b.read_bytes() == b"old-b"
+    assert not manifest.exists()
+
+
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
 SYNC_SOURCE = "_IS_SYNC = True\n\n\ndef f() -> None:\n    pass\n"
 
@@ -424,6 +471,7 @@ def test_ruff_failure_leaves_tree_unchanged(
     """A ruff failure on generated output exits nonzero without touching the tree."""
     dest = setup_tree(tmp_path, monkeypatch)
     dest.write_text("_IS_SYNC = True\n# stale\n")
+    (tmp_path / ".synchro-modified").write_text("./pymongo/synchronous/foo.py\n")
 
     def failing_ruff(
         cmd: list[str], *args: object, **kwargs: object
@@ -440,6 +488,25 @@ def test_ruff_failure_leaves_tree_unchanged(
     assert dest.read_text() == "_IS_SYNC = True\n# stale\n"
     assert not (tmp_path / ".synchro-modified").exists()
     assert not (tmp_path / ".synchro-staging").exists()
+
+
+def test_early_failure_claims_nothing_to_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failure before publication leaves no manifest to stage."""
+    setup_tree(tmp_path, monkeypatch)
+    (tmp_path / ".synchro-modified").write_text("./pymongo/synchronous/foo.py\n")
+
+    def failing_first_ruff(
+        cmd: list[str], *args: object, **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        raise subprocess.CalledProcessError(1, cmd)
+
+    with patch("subprocess.run", side_effect=failing_first_ruff):
+        with pytest.raises(subprocess.CalledProcessError):
+            synchro.main()
+
+    assert not (tmp_path / ".synchro-modified").exists()
 
 
 def test_ruff_commands_keep_diagnostics_visible(
