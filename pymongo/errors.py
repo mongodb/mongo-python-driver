@@ -222,7 +222,7 @@ class OperationFailure(PyMongoError):
 
     @property
     def timeout(self) -> bool:
-        return self.__code in (50,)
+        return self.__code == 50
 
     @property
     def _base_backoff_ms(self) -> float | None:

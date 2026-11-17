@@ -210,6 +210,7 @@ extend-select = [
   "ASYNC",       # flake8-async
   "TC",          # flake8-type-checking
   "PERF",        # perflint
+  "FURB",        # refurb
   "D202",        # pydocstyle: no blank lines between docstring and function body.
   "D209",        # pydocstyle: closing quotes go on their own line.
   "D301",        # pydocstyle: docstrings containing \ are defined as string literals.

@@ -462,7 +462,7 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
                 props[key] = value
             elif isinstance(value, bool):
                 props[key] = str(value).lower()
-            elif key in ["ALLOWED_HOSTS"] and isinstance(value, list):
+            elif key == "ALLOWED_HOSTS" and isinstance(value, list):
                 props[key] = value
             elif key in ["OIDC_CALLBACK", "OIDC_HUMAN_CALLBACK"]:
                 from pymongo.auth_oidc_shared import OIDCCallback

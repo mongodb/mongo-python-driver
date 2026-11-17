@@ -412,7 +412,7 @@ class TestTransactionsConvenientAPI(TransactionsBase):
                 self.mongos_clients.append(self.single_client("{}:{}".format(*address)))
 
     def set_fail_point(self, command_args):
-        clients = self.mongos_clients if self.mongos_clients else [self.client]
+        clients = self.mongos_clients or [self.client]
         for client in clients:
             self.configure_fail_point(client, command_args)
 
