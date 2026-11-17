@@ -2164,7 +2164,10 @@ class TestBSONEncodeDecodeBoundaries(unittest.TestCase):
         # Encoded sizes that exactly fill the C encoder's buffer at each
         # doubling boundary (no realloc), and one byte more (forces a
         # realloc). Encoding {"a": "x" * n} adds 13 bytes of BSON
-        # overhead, so use n = capacity - 13 and capacity - 12.
+        # overhead, so use n = capacity - 13 and capacity - 12. A capacity
+        # of _MAX_INT32 (the maximum BSON document size) is deliberately
+        # excluded: exercising buffer_grow's > INT_MAX/2 branch would
+        # require allocating a multi-GiB document.
         for capacity in (256, 512, 1024, 2**16, 2**17):
             for size in (capacity - 13, capacity - 12):
                 with self.subTest(capacity=capacity, size=size):
@@ -2237,30 +2240,33 @@ class TestBSONMutations(unittest.TestCase):
             for value in self.MUTATION_VALUES:
                 flipped = bytearray(data)
                 flipped[offset] = value
-                yield bytes(flipped)
+                yield f"mutated offset {offset} = {value:#04x}", bytes(flipped)
             inverted = bytearray(data)
             inverted[offset] ^= 0xFF
-            yield bytes(inverted)
+            yield f"mutated offset {offset} = inverted", bytes(inverted)
 
     def _truncated(self, data):
         stride = max(1, len(data) // 64)
         for i in range(4, len(data), stride):
-            yield data[:i]
+            yield f"truncated at {i}", data[:i]
 
     def _assert_decodes_or_errors(self, data):
-        """Decode must either succeed or raise; never crash."""
+        """Decode must either succeed or raise a BSONError; never crash."""
         try:
             bson.decode(data, codec_options=_DATETIME_MS_CODEC)
-        except (BSONError, ValueError):
+        except BSONError:
             pass
 
     def test_mutations_decode_cleanly(self):
         for doc in _extreme_typed_documents():
+            label = next(iter(doc), "empty")
             data = bson.encode(doc, codec_options=_DATETIME_MS_CODEC)
-            for corrupted in self._mutated(data):
-                self._assert_decodes_or_errors(corrupted)
-            for truncated in self._truncated(data):
-                self._assert_decodes_or_errors(truncated)
+            for detail, corrupted in self._mutated(data):
+                with self.subTest(f"{label} {detail}"):
+                    self._assert_decodes_or_errors(corrupted)
+            for detail, truncated in self._truncated(data):
+                with self.subTest(f"{label} {detail}"):
+                    self._assert_decodes_or_errors(truncated)
 
 
 if __name__ == "__main__":
