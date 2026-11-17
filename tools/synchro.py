@@ -377,9 +377,10 @@ def copy_changed_files(
     Each destination is written through a temporary sibling that then
     atomically replaces it, so a write that fails midway (for example when
     the disk fills) leaves that destination untouched. If a later step
-    fails, destinations already written are restored, so the working tree
-    is left unchanged; publishing ``manifest`` inside that same rollback
-    scope extends the guarantee to manifest write failures. An unchanged
+    fails or is interrupted, destinations already written are restored, so
+    the working tree is left unchanged; publishing ``manifest`` inside
+    that same rollback scope extends the guarantee to manifest write
+    failures. An unchanged
     destination that ``tracked`` does not contain is listed in the
     manifest without being rewritten, so a newly generated module reaches
     the staging hook on its first commit.
@@ -411,8 +412,9 @@ def copy_changed_files(
                 tmp_manifest.replace(manifest)
             finally:
                 tmp_manifest.unlink(missing_ok=True)
-    except OSError:
+    except BaseException:
         # Restore in reverse so each restore releases space for the next.
+        # Any exception, including Ctrl-C, must restore the working tree.
         for dest, old in reversed(written):
             if old is None:
                 dest.unlink(missing_ok=True)

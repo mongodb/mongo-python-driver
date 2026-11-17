@@ -236,6 +236,39 @@ def test_copy_changed_files_manifest_failure_rolls_back(tmp_path: Path) -> None:
     ]
 
 
+def test_copy_changed_files_interrupt_rolls_back(tmp_path: Path) -> None:
+    """An interrupt mid-publication still restores destinations already replaced."""
+    staged_a = tmp_path / "a_staged.py"
+    dest_a = tmp_path / "a_dest.py"
+    staged_a.write_bytes(b"new-a")
+    dest_a.write_bytes(b"old-a")
+    staged_b = tmp_path / "b_staged.py"
+    dest_b = tmp_path / "b_dest.py"
+    staged_b.write_bytes(b"new-b")
+    dest_b.write_bytes(b"old-b")
+
+    real_write = Path.write_bytes
+
+    def interrupting_write(self: Path, data: bytes) -> None:
+        if self.name.startswith(dest_b.name):
+            raise KeyboardInterrupt
+        real_write(self, data)
+
+    with patch.object(Path, "write_bytes", interrupting_write):
+        with pytest.raises(KeyboardInterrupt):
+            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)])
+
+    assert dest_a.read_bytes() == b"old-a"
+    assert dest_b.read_bytes() == b"old-b"
+    # No temporary files are left behind.
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "a_dest.py",
+        "a_staged.py",
+        "b_dest.py",
+        "b_staged.py",
+    ]
+
+
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
 SYNC_SOURCE = "_IS_SYNC = True\n\n\ndef f() -> None:\n    pass\n"
 
