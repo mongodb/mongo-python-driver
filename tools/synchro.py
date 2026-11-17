@@ -482,7 +482,16 @@ def copy_changed_files(
     # reclaimed losslessly on the next run, before the new backup is linked.
     for _, _, backup in written:
         if backup is not None:
-            backup.unlink(missing_ok=True)
+            try:
+                backup.unlink(missing_ok=True)
+            except OSError as unlink_error:
+                # A backup left behind makes the next run refuse publication
+                # with recovery guidance; a completed publication must not
+                # fail over the cleanup.
+                print(
+                    f"Synchro: could not remove {backup}: {unlink_error!r}",
+                    file=sys.stderr,
+                )
     return replaced
 
 

@@ -424,6 +424,41 @@ def test_copy_changed_files_clears_stale_twin_backup(tmp_path: Path) -> None:
     assert sorted(p.name for p in tmp_path.iterdir()) == ["dest.py", "staged.py"]
 
 
+def test_copy_changed_files_backup_cleanup_failure_is_not_fatal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A backup that cannot be swept after publication does not fail the run."""
+    monkeypatch.chdir(tmp_path)
+    staged = tmp_path / "staged.py"
+    dest = Path("dest.py")
+    staged.write_bytes(b"new")
+    dest.write_bytes(b"old")
+    manifest = tmp_path / "manifest.txt"
+
+    real_unlink = Path.unlink
+    backup_unlinks = 0
+
+    def failing_unlink(self: Path, missing_ok: bool = False) -> None:
+        nonlocal backup_unlinks
+        if self.name.endswith(".synchro-backup"):
+            backup_unlinks += 1
+            if backup_unlinks > 1:
+                # The first unlink is the stale-backup clear at creation;
+                # the second is the success sweep.
+                raise OSError(13, "Permission denied")
+        real_unlink(self, missing_ok=missing_ok)
+
+    with patch.object(Path, "unlink", failing_unlink):
+        changed = synchro.copy_changed_files([(staged, dest)], manifest=manifest)
+
+    assert changed == [dest]
+    assert dest.read_bytes() == b"new"
+    assert manifest.read_text() == "./dest.py\n"
+    # The backup remains, with a warning on stderr.
+    assert (tmp_path / "dest.py.synchro-backup").exists()
+    assert "could not remove" in capsys.readouterr().err
+
+
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
 SYNC_SOURCE = "_IS_SYNC = True\n\n\ndef f() -> None:\n    pass\n"
 
