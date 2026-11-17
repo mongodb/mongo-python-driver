@@ -417,10 +417,9 @@ class Binary(bytes):
         elif uuid_representation == UuidRepresentation.CSHARP_LEGACY:
             if self.subtype == OLD_UUID_SUBTYPE:
                 return UUID(bytes_le=self)
-        else:
+        elif self.subtype == UUID_SUBTYPE:
             # uuid_representation == UuidRepresentation.STANDARD
-            if self.subtype == UUID_SUBTYPE:
-                return UUID(bytes=self)
+            return UUID(bytes=self)
 
         raise ValueError(
             f"cannot decode subtype {self.subtype} to {UUID_REPRESENTATION_NAMES[uuid_representation]}"

@@ -27,8 +27,8 @@ from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, TypeVar
 
-import cryptography.x509 as x509
 import service_identity
+from cryptography import x509
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 

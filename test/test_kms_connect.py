@@ -1032,7 +1032,6 @@ async def test_non_coroutine_callback_is_rejected(api):
 
     def callback(context):
         entered.append(context)
-        return None
 
     with pytest.raises(ConfigurationError, match="coroutine function"):
         await api.connect(_KMS_ADDRESS, _pool_options(), callback, 10.0)

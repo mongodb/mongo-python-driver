@@ -666,7 +666,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             if name == "listIndexNames":
                 self.skipTest("PyMongo does not support list_index_names()")
             if not async_client_context.test_commands_enabled:
-                if name == "failPoint" or name == "targetedFailPoint":
+                if name in {"failPoint", "targetedFailPoint"}:
                     self.skipTest("Test commands must be enabled to use fail points")
             if name == "modifyCollection":
                 self.skipTest("PyMongo does not support modifyCollection")
@@ -1552,7 +1552,7 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         # operations during test set up and tear down.
         for op in spec["operations"]:
             name = op["name"]
-            if name == "startTransaction" or name == "withTransaction":
+            if name in {"startTransaction", "withTransaction"}:
                 self.addAsyncCleanup(self.kill_all_sessions)
                 break
 

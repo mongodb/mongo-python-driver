@@ -430,9 +430,8 @@ class ClientContext:
         if "parsed" in self.cmd_line:
             if not self.cmd_line["parsed"].get("net", {}).get("ipv6"):
                 return False
-        else:
-            if "--ipv6" not in self.cmd_line["argv"]:
-                return False
+        elif "--ipv6" not in self.cmd_line["argv"]:
+            return False
 
         # The server was started with --ipv6. Is there an IPv6 route to it?
         try:

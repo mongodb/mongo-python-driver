@@ -148,10 +148,10 @@ def _max_datetime_ms(tz: datetime.tzinfo = utc) -> int:
 
 def _millis_to_datetime(millis: int, opts: CodecOptions[Any]) -> datetime.datetime | DatetimeMS:
     """Convert milliseconds since epoch UTC to datetime."""
-    if (
-        opts.datetime_conversion == DatetimeConversion.DATETIME
-        or opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP
-        or opts.datetime_conversion == DatetimeConversion.DATETIME_AUTO
+    if opts.datetime_conversion in (
+        DatetimeConversion.DATETIME,
+        DatetimeConversion.DATETIME_CLAMP,
+        DatetimeConversion.DATETIME_AUTO,
     ):
         tz = opts.tzinfo or utc
         if opts.datetime_conversion == DatetimeConversion.DATETIME_CLAMP:

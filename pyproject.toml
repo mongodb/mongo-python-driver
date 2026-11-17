@@ -211,13 +211,29 @@ extend-select = [
   "TC",          # flake8-type-checking
   "PERF",        # perflint
   "FURB",        # refurb
-  "D202",        # pydocstyle: no blank lines between docstring and function body.
-  "D209",        # pydocstyle: closing quotes go on their own line.
-  "D301",        # pydocstyle: docstrings containing \ are defined as string literals.
-  "D403",        # pydocstyle: docstrings start with a capital letter.
+  # Non-design pylint rules.
+  "PLR0124",     # pylint: comparison of a name with itself
+  "PLR0133",     # pylint: comparison between two constants
+  "PLR0206",     # pylint: property with parameters
+  "PLR0402",     # pylint: `import a.b as b` should be `from a import b`
+  "PLR1704",     # pylint: local variable redefines an argument
+  "PLR1708",     # pylint: `raise StopIteration` in a generator should be `return`
+  "PLR1711",     # pylint: useless `return` at the end of a function
+  "PLR1714",     # pylint: repeated equality comparison should use `in`
+  "PLR1716",     # pylint: chained comparison can be simplified
+  "PLR1722",     # pylint: use `sys.exit()` instead of `exit()` or `quit()`
+  "PLR1730",     # pylint: `if` statement can be replaced by `min()` or `max()`
+  "PLR1733",     # pylint: unnecessary dict index lookup while iterating `.items()`
+  "PLR1736",     # pylint: unnecessary list index lookup while iterating `enumerate()`
+  "PLR2044",     # pylint: empty comment
+  "PLR5501",     # pylint: `else: if` should be `elif`
+  "D202",        # pydocstyle: no blank lines between docstring and function body
+  "D209",        # pydocstyle: closing quotes go on their own line
+  "D301",        # pydocstyle: docstrings containing \ are defined as string literals
+  "D403",        # pydocstyle: docstrings start with a capital letter
 ]
 ignore = [
-  "PLR",    # Design related pylint codes
+  "PLR",    # Design related pylint rules
   "E501",   # Line too long
   "EM101",  # Exception must not use a string literal, assign to variable first
   "EM102",  # Exception must not use an f-string literal, assign to variable first
