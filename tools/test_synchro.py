@@ -103,6 +103,41 @@ def test_copy_changed_files_rolls_back_on_failure(tmp_path: Path) -> None:
     assert dest_a.read_bytes() == b"old-a"
 
 
+def test_copy_changed_files_failing_write_leaves_dest_unchanged(tmp_path: Path) -> None:
+    """A write that fails midway leaves the failing destination unchanged."""
+    staged_a = tmp_path / "a_staged.py"
+    dest_a = tmp_path / "a_dest.py"
+    staged_a.write_bytes(b"new-a")
+    dest_a.write_bytes(b"old-a")
+    staged_b = tmp_path / "b_staged.py"
+    dest_b = tmp_path / "b_dest.py"
+    staged_b.write_bytes(b"new-b")
+    dest_b.write_bytes(b"old-b")
+
+    real_write = Path.write_bytes
+
+    def failing_write(self: Path, data: bytes) -> None:
+        if self.name.startswith(dest_b.name):
+            # Simulate ENOSPC: some bytes land before the write fails.
+            real_write(self, b"ne")
+            raise OSError(28, "No space left on device")
+        real_write(self, data)
+
+    with patch.object(Path, "write_bytes", failing_write):
+        with pytest.raises(OSError, match="No space left on device"):
+            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)])
+
+    assert dest_a.read_bytes() == b"old-a"
+    assert dest_b.read_bytes() == b"old-b"
+    # No temporary files are left behind.
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "a_dest.py",
+        "a_staged.py",
+        "b_dest.py",
+        "b_staged.py",
+    ]
+
+
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
 SYNC_SOURCE = "_IS_SYNC = True\n\n\ndef f() -> None:\n    pass\n"
 
@@ -189,6 +224,26 @@ def test_ruff_failure_leaves_tree_unchanged(
     assert dest.read_text() == "_IS_SYNC = True\n# stale\n"
     assert not (tmp_path / ".synchro-modified").exists()
     assert not (tmp_path / ".synchro-staging").exists()
+
+
+def test_ruff_commands_keep_diagnostics_visible(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ruff runs without --silent so fatal failures show their diagnostics."""
+    setup_tree(tmp_path, monkeypatch)
+
+    commands: list[list[str]] = []
+
+    def capture(cmd: list[str], *args: object, **kwargs: object) -> None:
+        commands.append(cmd)
+
+    with patch("subprocess.run", side_effect=capture):
+        synchro.main()
+
+    ruff_cmds = [cmd for cmd in commands if "ruff" in cmd]
+    assert ruff_cmds
+    for cmd in ruff_cmds:
+        assert "--silent" not in cmd
 
 
 def test_ci_reports_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

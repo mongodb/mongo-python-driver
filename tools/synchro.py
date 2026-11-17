@@ -348,8 +348,11 @@ def process_ignores(lines: list[str]) -> list[str]:
 def copy_changed_files(pairs: list[tuple[Path, Path]]) -> list[Path]:
     """Copy staged files into the working tree when their content differs.
 
-    If a write fails midway, destinations already written are restored so
-    the working tree is left unchanged.
+    Each destination is written through a temporary sibling that then
+    atomically replaces it, so a write that fails midway (for example when
+    the disk fills) leaves that destination untouched. If a later step
+    fails, destinations already written are restored so the working tree
+    is left unchanged.
     """
     written: list[tuple[Path, bytes | None]] = []
     try:
@@ -359,7 +362,12 @@ def copy_changed_files(pairs: list[tuple[Path, Path]]) -> list[Path]:
             if old == new:
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(new)
+            tmp = dest.with_name(dest.name + ".synchro-tmp")
+            try:
+                tmp.write_bytes(new)
+                tmp.replace(dest)
+            finally:
+                tmp.unlink(missing_ok=True)
             written.append((dest, old))
     except OSError:
         for dest, old in written:
@@ -448,13 +456,11 @@ def main() -> None:
     filtered_gridfs = [f for f in gridfs_files if not modified_set or f in modified_set]
     filtered_tests = [f for f in test_files if not modified_set or f in modified_set]
 
-    ruff_extra = [] if is_ci else ["--silent"]
-
     # Check async source files for problems before generating sync output.
     async_sources = filtered_async + filtered_gridfs + filtered_tests
     if async_sources:
         subprocess.run(  # noqa: S603
-            [sys.executable, "-m", "ruff", "check", *async_sources, *ruff_extra],
+            [sys.executable, "-m", "ruff", "check", *async_sources],
             check=True,
         )
 
@@ -484,11 +490,11 @@ def main() -> None:
         if staged_names:
             try:
                 subprocess.run(  # noqa: S603
-                    [sys.executable, "-m", "ruff", "check", *staged_names, "--fix", *ruff_extra],
+                    [sys.executable, "-m", "ruff", "check", *staged_names, "--fix"],
                     check=True,
                 )
                 subprocess.run(  # noqa: S603
-                    [sys.executable, "-m", "ruff", "format", *staged_names, *ruff_extra],
+                    [sys.executable, "-m", "ruff", "format", *staged_names],
                     check=True,
                 )
             except subprocess.CalledProcessError:
