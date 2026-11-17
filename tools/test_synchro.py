@@ -98,11 +98,15 @@ def test_copy_changed_files_rolls_back_on_failure(tmp_path: Path) -> None:
     staged_b.write_bytes(b"new-b")
     # A file occupies b_dest.py's parent directory, so the mkdir fails.
     (tmp_path / "blocking-dir").write_bytes(b"not a directory")
+    manifest = tmp_path / "manifest.txt"
+    manifest.write_text("stale\n")
 
     with pytest.raises(FileExistsError):
-        synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)])
+        synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)], manifest=manifest)
 
     assert dest_a.read_bytes() == b"old-a"
+    # A failed run claims nothing to stage.
+    assert not manifest.exists()
 
 
 def test_copy_changed_files_rollback_restores_in_reverse_order(tmp_path: Path) -> None:
@@ -206,7 +210,7 @@ def test_copy_changed_files_manifests_untracked_unchanged(
 
 
 def test_copy_changed_files_manifest_failure_rolls_back(tmp_path: Path) -> None:
-    """A manifest write failure restores destinations and leaves the manifest alone."""
+    """A manifest write failure restores destinations and claims nothing to stage."""
     staged_a = tmp_path / "a_staged.py"
     dest_a = tmp_path / "a_dest.py"
     staged_a.write_bytes(b"new-a")
@@ -234,13 +238,12 @@ def test_copy_changed_files_manifest_failure_rolls_back(tmp_path: Path) -> None:
             synchro.copy_changed_files([(staged_a, dest_a)], manifest=manifest)
 
     assert dest_a.read_bytes() == b"old-a"
-    # Only a successful publication replaces the manifest.
-    assert manifest.read_text() == "stale\n"
+    # A failed run claims nothing to stage.
+    assert not manifest.exists()
     # No temporary files are left behind.
     assert sorted(p.name for p in tmp_path.iterdir()) == [
         "a_dest.py",
         "a_staged.py",
-        "manifest.txt",
     ]
 
 

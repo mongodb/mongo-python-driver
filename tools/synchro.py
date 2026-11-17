@@ -379,8 +379,9 @@ def copy_changed_files(
     the disk fills) leaves that destination untouched. The original is
     hard-linked aside first, so the rollback restores it by rename and
     needs no disk space. If a later step fails or is interrupted,
-    destinations already written are restored, so the working tree is left
-    unchanged; publishing ``manifest`` inside that same rollback scope
+    destinations already written are restored and the manifest is removed,
+    so the working tree is left unchanged and nothing is claimed for
+    staging; publishing ``manifest`` inside that same rollback scope
     extends the guarantee to manifest write failures. An unchanged
     destination that ``tracked`` does not contain is listed in the
     manifest without being rewritten, so a newly generated module reaches
@@ -439,6 +440,15 @@ def copy_changed_files(
             finally:
                 tmp_manifest.unlink(missing_ok=True)
     except BaseException:
+        # A failed run claims nothing to stage, whatever happens next.
+        if manifest is not None:
+            try:
+                manifest.unlink(missing_ok=True)
+            except OSError as unlink_error:
+                print(
+                    f"Synchro: could not remove {manifest}: {unlink_error!r}",
+                    file=sys.stderr,
+                )
         # Restore in reverse so each restore releases space for the next.
         # Any exception, including Ctrl-C, must restore the working tree,
         # and a failing restore must not strand the other destinations.
