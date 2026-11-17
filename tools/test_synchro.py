@@ -175,6 +175,56 @@ def test_copy_changed_files_failing_write_leaves_dest_unchanged(tmp_path: Path) 
     ]
 
 
+def test_copy_changed_files_manifests_untracked_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unchanged untracked destination is listed in the manifest, not rewritten."""
+    monkeypatch.chdir(tmp_path)
+    staged = tmp_path / "staged.py"
+    dest = tmp_path / "dest.py"
+    staged.write_bytes(b"same")
+    dest.write_bytes(b"same")
+    manifest = tmp_path / "manifest.txt"
+    before = dest.stat().st_mtime_ns
+
+    changed = synchro.copy_changed_files(
+        [(staged, Path("dest.py"))], manifest=manifest, tracked=set()
+    )
+
+    assert changed == []
+    assert manifest.read_text() == "./dest.py\n"
+    assert dest.read_bytes() == b"same"
+    assert dest.stat().st_mtime_ns == before
+
+
+def test_copy_changed_files_manifest_failure_rolls_back(tmp_path: Path) -> None:
+    """A manifest write failure restores destinations already replaced."""
+    staged_a = tmp_path / "a_staged.py"
+    dest_a = tmp_path / "a_dest.py"
+    staged_a.write_bytes(b"new-a")
+    dest_a.write_bytes(b"old-a")
+    manifest = tmp_path / "manifest.txt"
+
+    real_write_text = Path.write_text
+
+    def failing_write_text(
+        self: Path,
+        data: str,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> int:
+        if self == manifest:
+            raise OSError(28, "No space left on device")
+        return real_write_text(self, data, encoding, errors, newline)
+
+    with patch.object(Path, "write_text", failing_write_text):
+        with pytest.raises(OSError, match="No space left on device"):
+            synchro.copy_changed_files([(staged_a, dest_a)], manifest=manifest)
+
+    assert dest_a.read_bytes() == b"old-a"
+
+
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
 SYNC_SOURCE = "_IS_SYNC = True\n\n\ndef f() -> None:\n    pass\n"
 
@@ -201,7 +251,10 @@ def test_noop_run_leaves_tree_unchanged(tmp_path: Path, monkeypatch: pytest.Monk
     dest.write_text(SYNC_SOURCE)
     before = dest.stat().st_mtime_ns
 
-    with patch("subprocess.run"):
+    with (
+        patch("subprocess.run"),
+        patch("synchro.git_tracked_files", return_value=None),
+    ):
         synchro.main()
 
     assert dest.read_text() == SYNC_SOURCE
@@ -217,7 +270,10 @@ def test_regenerated_file_is_copied_and_manifested(
     dest = setup_tree(tmp_path, monkeypatch)
     dest.write_text("_IS_SYNC = True\n# stale\n")
 
-    with patch("subprocess.run"):
+    with (
+        patch("subprocess.run"),
+        patch("synchro.git_tracked_files", return_value=None),
+    ):
         synchro.main()
 
     assert dest.read_text() == SYNC_SOURCE
@@ -233,7 +289,10 @@ def test_async_test_without_counterpart_is_not_mirrored(
     (tmp_path / "test" / "asynchronous" / "test_bar.py").write_text(ASYNC_SOURCE)
     monkeypatch.setattr(synchro, "test_files", ["./test/asynchronous/test_bar.py"])
 
-    with patch("subprocess.run"):
+    with (
+        patch("subprocess.run"),
+        patch("synchro.git_tracked_files", return_value=None),
+    ):
         synchro.main()
 
     assert not (tmp_path / "test" / "test_bar.py").exists()
@@ -274,7 +333,10 @@ def test_ruff_commands_keep_diagnostics_visible(
     def capture(cmd: list[str], *args: object, **kwargs: object) -> None:
         commands.append(cmd)
 
-    with patch("subprocess.run", side_effect=capture):
+    with (
+        patch("subprocess.run", side_effect=capture),
+        patch("synchro.git_tracked_files", return_value=None),
+    ):
         synchro.main()
 
     ruff_cmds = [cmd for cmd in commands if "ruff" in cmd]
@@ -311,6 +373,20 @@ def test_mirrored_test_files_requires_sync_counterpart(
     filtered = [str(async_dir / "test_a.py"), str(async_dir / "test_b.py")]
 
     assert synchro.mirrored_test_files(filtered) == [f"{tmp_path / 'test' / 'test_a.py'}"]
+
+
+def test_git_tracked_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """git_tracked_files reports tracked paths and None outside a repository."""
+    monkeypatch.chdir(tmp_path)
+    assert synchro.git_tracked_files([Path("a.py")]) is None
+
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / "a.py").write_bytes(b"a")
+    (tmp_path / "b.py").write_bytes(b"b")
+    # git ls-files reports the index, so staging a.py marks it tracked.
+    subprocess.run(["git", "add", "a.py"], cwd=tmp_path, check=True)
+
+    assert synchro.git_tracked_files([Path("a.py"), Path("b.py")]) == {Path("a.py")}
 
 
 def test_prepare_staging_pins_first_party_packages(

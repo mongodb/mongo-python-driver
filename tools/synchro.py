@@ -345,21 +345,54 @@ def process_ignores(lines: list[str]) -> list[str]:
     return lines
 
 
-def copy_changed_files(pairs: list[tuple[Path, Path]]) -> list[Path]:
+def git_tracked_files(dests: list[Path]) -> set[Path] | None:
+    """Return the subset of dests git tracks, or None when git is unusable.
+
+    A ``None`` result (no git, or outside a repository, as in the test
+    tree) makes callers treat every destination as tracked, which skips
+    unchanged files as before.
+    """
+    if not dests:
+        return set()
+    command = ["git", "ls-files", "--", *(str(dest) for dest in dests)]
+    try:
+        result = subprocess.run(  # noqa: S603
+            command,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return {Path(line) for line in result.stdout.splitlines()}
+
+
+def copy_changed_files(
+    pairs: list[tuple[Path, Path]],
+    manifest: Path | None = None,
+    tracked: set[Path] | None = None,
+) -> list[Path]:
     """Copy staged files into the working tree when their content differs.
 
     Each destination is written through a temporary sibling that then
     atomically replaces it, so a write that fails midway (for example when
     the disk fills) leaves that destination untouched. If a later step
-    fails, destinations already written are restored so the working tree
-    is left unchanged.
+    fails, destinations already written are restored, so the working tree
+    is left unchanged; publishing ``manifest`` inside that same rollback
+    scope extends the guarantee to manifest write failures. An unchanged
+    destination that ``tracked`` does not contain is listed in the
+    manifest without being rewritten, so a newly generated module reaches
+    the staging hook on its first commit.
     """
     written: list[tuple[Path, bytes | None]] = []
+    included: list[Path] = []
     try:
         for staged, dest in pairs:
             new = staged.read_bytes()
             old = dest.read_bytes() if dest.is_file() else None
             if old == new:
+                if tracked is not None and dest not in tracked:
+                    included.append(dest)
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
             tmp = dest.with_name(dest.name + ".synchro-tmp")
@@ -369,6 +402,10 @@ def copy_changed_files(pairs: list[tuple[Path, Path]]) -> list[Path]:
             finally:
                 tmp.unlink(missing_ok=True)
             written.append((dest, old))
+            included.append(dest)
+        if manifest is not None:
+            names = [f"./{dest.as_posix()}" for dest in included]
+            manifest.write_text("\n".join(names) + ("\n" if names else ""))
     except OSError:
         # Restore in reverse so each restore releases space for the next.
         for dest, old in reversed(written):
@@ -507,11 +544,16 @@ def main() -> None:
                 )
                 sys.exit(1)
 
+        pairs = [
+            (Path(staged), Path(name))
+            for staged, name in zip(staged_names, generated_names, strict=True)
+        ]
+        # In CI the drift itself is the report, so neither the manifest nor
+        # untracked detection runs and the copied drift is left in place.
         changed = copy_changed_files(
-            [
-                (Path(staged), Path(name))
-                for staged, name in zip(staged_names, generated_names, strict=True)
-            ]
+            pairs,
+            manifest=None if is_ci else Path(MANIFEST),
+            tracked=None if is_ci else git_tracked_files([dest for _, dest in pairs]),
         )
         changed_names = [f"./{dest.as_posix()}" for dest in changed]
 
@@ -521,8 +563,6 @@ def main() -> None:
                 print(f"  {f}")
             print("Sync files are out of date. Run `just lint --all-files synchro` to regenerate:")
             sys.exit(1)
-
-        Path(MANIFEST).write_text("\n".join(changed_names) + ("\n" if changed_names else ""))
     finally:
         shutil.rmtree(STAGING, ignore_errors=True)
 
