@@ -370,7 +370,8 @@ def copy_changed_files(pairs: list[tuple[Path, Path]]) -> list[Path]:
                 tmp.unlink(missing_ok=True)
             written.append((dest, old))
     except OSError:
-        for dest, old in written:
+        # Restore in reverse so each restore releases space for the next.
+        for dest, old in reversed(written):
             if old is None:
                 dest.unlink(missing_ok=True)
             else:

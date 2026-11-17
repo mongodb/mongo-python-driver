@@ -103,6 +103,43 @@ def test_copy_changed_files_rolls_back_on_failure(tmp_path: Path) -> None:
     assert dest_a.read_bytes() == b"old-a"
 
 
+def test_copy_changed_files_rollback_restores_in_reverse_order(tmp_path: Path) -> None:
+    """Rollback frees later allocations first so earlier restores fit."""
+    staged_a = tmp_path / "a_staged.py"
+    dest_a = tmp_path / "a_dest.py"
+    staged_a.write_bytes(b"new-a")
+    dest_a.write_bytes(b"old-a")
+    staged_b = tmp_path / "b_staged.py"
+    dest_b = tmp_path / "b_dest.py"
+    staged_b.write_bytes(b"new-b")
+    dest_b.write_bytes(b"old-b")
+    staged_c = tmp_path / "c_staged.py"
+    dest_c = tmp_path / "blocking-dir" / "c_dest.py"
+    staged_c.write_bytes(b"new-c")
+    # A file occupies c_dest.py's parent directory, so the mkdir fails.
+    (tmp_path / "blocking-dir").write_bytes(b"not a directory")
+
+    real_write = Path.write_bytes
+    restored: list[bytes] = []
+
+    def tracking_write(self: Path, data: bytes) -> None:
+        if data == b"old-a" and b"old-b" not in restored:
+            # Simulate ENOSPC: old-a does not fit until b's larger staged
+            # content has been released by its own restore.
+            raise OSError(28, "No space left on device")
+        real_write(self, data)
+        if data.startswith(b"old"):
+            restored.append(data)
+
+    with patch.object(Path, "write_bytes", tracking_write):
+        with pytest.raises(FileExistsError):
+            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)])
+
+    assert restored == [b"old-b", b"old-a"]
+    assert dest_a.read_bytes() == b"old-a"
+    assert dest_b.read_bytes() == b"old-b"
+
+
 def test_copy_changed_files_failing_write_leaves_dest_unchanged(tmp_path: Path) -> None:
     """A write that fails midway leaves the failing destination unchanged."""
     staged_a = tmp_path / "a_staged.py"
