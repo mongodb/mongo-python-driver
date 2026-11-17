@@ -2155,9 +2155,13 @@ class TestBSONEncodeDecodeBoundaries(unittest.TestCase):
             self._round_trip(doc)
 
     def test_round_trip_size_boundaries(self):
-        # String sizes that cross buffer doubling boundaries.
-        for size in (127, 128, 255, 256, 2**16, 2**16 + 1):
-            self._round_trip({"a": "x" * size})
+        # Encoded sizes that exactly fill the C encoder's buffer at each
+        # doubling boundary (no realloc), and one byte more (forces a
+        # realloc).  Encoding {"a": "x" * n} adds 13 bytes of BSON
+        # overhead, so use n = capacity - 13 and capacity - 12.
+        for capacity in (256, 512, 1024, 2**16, 2**17):
+            for size in (capacity - 13, capacity - 12):
+                self._round_trip({"a": "x" * size})
 
 
 class TestBSONHostileLengths(unittest.TestCase):
