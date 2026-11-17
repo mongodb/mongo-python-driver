@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import atexit
 import threading
 import time
@@ -107,9 +106,9 @@ class MonitorBase:
         """
         self.gc_safe_close()
 
-    async def join(self) -> None:
+    async def join(self, timeout: int | None = None) -> None:
         """Wait for the monitor to stop."""
-        await self._executor.join()
+        await self._executor.join(timeout)
 
     def request_check(self) -> None:
         """If the monitor is sleeping, wake it soon."""
@@ -185,14 +184,24 @@ class Monitor(MonitorBase):
         self._rtt_monitor.gc_safe_close()
         self.cancel_check()
 
-    async def join(self) -> None:
-        await asyncio.gather(
-            self._executor.join(), self._rtt_monitor.join(), return_exceptions=True
-        )  # type: ignore[func-returns-value]
+    async def join(self, timeout: int | None = None) -> None:
+        # The timeout budgets BOTH executors: the RTT join gets whatever
+        # remains after the heartbeat executor stops.
+        start = time.monotonic()
+        await self._executor.join(timeout)
+        if timeout is not None:
+            timeout = max(0, round(timeout - (time.monotonic() - start)))
+        await self._rtt_monitor.join(timeout)
 
     async def close(self) -> None:
         self.gc_safe_close()
         await self._rtt_monitor.close()
+        # Wake the executor and wait briefly for the task to stop before
+        # resetting the pool, so we don't race with a connection it has
+        # checked out. The join is a bounded backstop: if the task is still
+        # running, the reset below closes the socket once it's checked in.
+        self._executor.wake()
+        await self._executor.join(1)
         # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
         await self._reset_connection()
@@ -409,6 +418,12 @@ class _RttMonitor(MonitorBase):
 
     async def close(self) -> None:
         self.gc_safe_close()
+        # Wake the executor and wait briefly for the task to stop before
+        # resetting the pool, so we don't race with a connection it has
+        # checked out. The join is a bounded backstop: if the task is still
+        # running, the reset below closes the socket once it's checked in.
+        self._executor.wake()
+        await self._executor.join(1)
         # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
         await self._pool.reset()

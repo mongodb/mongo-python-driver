@@ -12,8 +12,16 @@ Bug fixes
 - Fixed a bug where ``getMore`` commands in load-balanced mode were not
   retried when the server returned a retryable overload error
   (`PYTHON-6262`_).
+- Fixed a race between a server monitor's background thread and connection
+  pool teardown during
+  :meth:`~pymongo.synchronous.mongo_client.MongoClient.close`. Closing a
+  client now waits (with a bounded timeout) for its monitor threads to stop
+  before returning, adding up to a couple hundred milliseconds to
+  ``close()`` (`PYTHON-1634`_).
 
 .. _PYTHON-6262: https://jira.mongodb.org/browse/PYTHON-6262
+
+.. _PYTHON-1634: https://jira.mongodb.org/browse/PYTHON-1634
 
 Changes in Version 4.20.0 (2026/11/12)
 --------------------------------------

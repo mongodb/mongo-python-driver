@@ -20,6 +20,7 @@ import asyncio
 import gc
 import subprocess
 import sys
+import time
 import warnings
 from functools import partial
 
@@ -106,6 +107,51 @@ class TestMonitor(AsyncIntegrationTest):
             await async_wait_until(
                 lambda: executor._stopped, f"closed executor: {executor._name}", timeout=5
             )
+
+    @async_client_context.require_sync
+    def test_close_stops_monitor_thread(self):
+        """PYTHON-1634: close() joins the monitor thread before returning,
+        so callers don't race it while it reads the socket.
+        """
+        client = self.create_client()
+        server = next(iter(client._topology._servers.values()))
+        monitor = server._monitor
+
+        def thread_alive(executor):
+            try:
+                return executor._thread is not None and executor._thread.is_alive()
+            except ReferenceError:
+                return False
+
+        deadline = time.monotonic() + 10
+        while not thread_alive(monitor._executor) and time.monotonic() < deadline:
+            time.sleep(0.1)
+        self.assertTrue(thread_alive(monitor._executor), "monitor thread never started")
+
+        client.close()
+
+        # close() drains the deferred-join queue after releasing the lock.
+        self.assertEqual(client._topology._monitor_tasks, [])
+        self.assertFalse(thread_alive(monitor._executor))
+        self.assertFalse(thread_alive(monitor._rtt_monitor._executor))
+
+    @async_client_context.require_async
+    async def test_close_stops_monitor_task(self):
+        """PYTHON-1634: the async counterpart of
+        test_close_stops_monitor_thread.
+        """
+        client = await self.create_client()
+        server = next(iter(client._topology._servers.values()))
+        monitor = server._monitor
+
+        self.assertIsNotNone(monitor._executor._task)
+        self.assertFalse(monitor._executor._task.done())
+
+        await client.close()
+
+        self.assertEqual(client._topology._monitor_tasks, [])
+        self.assertTrue(monitor._executor._task.done())
+        self.assertTrue(monitor._rtt_monitor._executor._task.done())
 
     @async_client_context.require_sync
     def test_no_thread_start_runtime_err_on_shutdown(self):
