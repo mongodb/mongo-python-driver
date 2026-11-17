@@ -550,7 +550,7 @@ def handle_test_env() -> None:
         zip_path.unlink()
         if sub_test_name == "fuzz":
             # PYTHON-6178 Also seed from the committed corpus of previously
-            # harvested inputs, so the nightly builds on prior discoveries
+            # captured inputs, so the nightly builds on prior discoveries
             # instead of the spec seeds alone. Regression runs (PRs) keep
             # running only the reproducers and the spec seed corpus.
             committed_dir = ROOT / "fuzz" / "corpus"
@@ -559,9 +559,9 @@ def handle_test_env() -> None:
                     if path.name.startswith("."):
                         continue
                     shutil.copyfile(path, corpus_dir / path.name)
-        # Manifest of every input this run starts from; harvest_corpus.py
+        # Manifest of every input this run starts from; capture_corpus.py
         # treats these digests as already-known, so only units the fuzzer
-        # discovered during the run get harvested.
+        # discovered during the run get captured.
         with open(scratch_dir / "baseline.txt", "w", encoding="utf-8") as fp:
             for path in sorted(corpus_dir.iterdir()):
                 if path.is_file():

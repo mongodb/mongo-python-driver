@@ -2,10 +2,10 @@
 set -eu
 
 # Open (or update) the automated pull request that grows fuzz/corpus/
-# with freshly harvested units. Arguments: 1 = harvested units directory,
-# 2 = harvest summary markdown to use as the PR body.
+# with freshly captured units. Arguments: 1 = captured units directory,
+# 2 = capture summary markdown to use as the PR body.
 
-harvest_dir="$1"
+capture_dir="$1"
 summary_file="$2"
 today="$(date '+%m-%d-%Y')"
 
@@ -20,7 +20,7 @@ branch="fuzz-corpus-${today}"
 prepare_bot_branch "$branch"
 
 mkdir -p fuzz/corpus
-cp "$harvest_dir"/* fuzz/corpus/
+cp "$capture_dir"/* fuzz/corpus/
 if ! stage_and_commit "PYTHON-6178 Grow the BSON fuzz corpus (${today})" fuzz/corpus; then
     echo "No new corpus units to commit; skipping PR creation."
     exit 0

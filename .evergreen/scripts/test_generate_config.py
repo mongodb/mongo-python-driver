@@ -294,7 +294,7 @@ def test_non_standard_cov_tasks_have_no_cov_companions():
 
 def test_fuzz_task_wiring():
     """Two fuzz variants: the pr-tagged regression variant runs the
-    reproducers on every PR; the nightly variant (which also harvests the
+    reproducers on every PR; the nightly variant (which also captures the
     corpus) carries no "pr" tag, so PR patch builds never select it, while
     its default patchability keeps it manually runnable
     (`evergreen patch --variant fuzz-rhel8 --task fuzz`).
@@ -311,15 +311,15 @@ def test_fuzz_task_wiring():
     assert nightly.batchtime == generate_config_utils.BATCHTIME_DAY
     # Webhook PR patch builds only select pr-tagged variants.
     assert not nightly.tags
-    # The harvest subprocess bootstraps the comment-bot github app, whose
+    # The capture subprocess bootstraps the comment-bot github app, whose
     # secrets live in AWS Secrets Manager: it needs the assumed-role
     # credentials (as resync_specs and backport-pr also pass them).
-    harvest = tasks[1].commands[-1]
-    env_vars = harvest.params["include_expansions_in_env"]
+    capture = tasks[1].commands[-1]
+    env_vars = capture.params["include_expansions_in_env"]
     for var in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"):
-        assert var in env_vars, f"harvest subprocess missing {var}"
-    # The harvest no longer keys off is_patch: manual patch runs must
-    # harvest too, and the nightly variant never runs in a PR build.
+        assert var in env_vars, f"capture subprocess missing {var}"
+    # The capture no longer keys off is_patch: manual patch runs must
+    # capture too, and the nightly variant never runs in a PR build.
     assert "is_patch" not in env_vars
 
 

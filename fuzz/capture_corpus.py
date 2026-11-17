@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Harvest coverage-increasing inputs from a finished fuzzing run (PYTHON-6178).
+Capture coverage-increasing inputs from a finished fuzzing run (PYTHON-6178).
 
 Compares the scratch corpus directory (where libFuzzer writes each new
 "interesting" input) against the baseline manifest written by
@@ -12,7 +12,7 @@ Pure stdlib: this runs on the Evergreen nightly host after the fuzz
 targets finish, and its unit tests must run everywhere (no atheris, no
 bson).
 
-Usage: python harvest_corpus.py [--corpus-dir DIR] [--baseline FILE]
+Usage: python capture_corpus.py [--corpus-dir DIR] [--baseline FILE]
 """
 
 from __future__ import annotations
@@ -25,8 +25,8 @@ from pathlib import Path
 
 DEFAULT_CORPUS_DIR = "fuzz-scratch/corpus"
 DEFAULT_EXISTING = "fuzz/corpus"
-DEFAULT_OUT = "fuzz-scratch/harvest"
-DEFAULT_SUMMARY = "fuzz-scratch/harvest-summary.md"
+DEFAULT_OUT = "fuzz-scratch/capture"
+DEFAULT_SUMMARY = "fuzz-scratch/capture-summary.md"
 # Growth caps keep a runaway run from flooding the repository; both are
 # overridable from Evergreen. Defaults chosen in PYTHON-6178: small inputs
 # carry the most coverage per committed byte.
@@ -73,7 +73,7 @@ def run(
 ) -> int:
     """Copy the new units into out/ and write the PR summary.
 
-    Returns the number of units harvested; zero means the run found
+    Returns the number of units captured; zero means the run found
     nothing new and the PR step can no-op.
     """
     known = read_baseline(baseline) | digest_set(existing)
@@ -107,7 +107,7 @@ def run(
 
     write_summary(summary, kept, oversize, over_cap, max_units, max_unit_bytes)
     print(
-        f"Harvested {len(kept)} new units "
+        f"Captured {len(kept)} new units "
         f"({oversize} oversize skipped, {over_cap} over the per-run cap)."
     )
     return len(kept)
@@ -121,9 +121,9 @@ def write_summary(
     max_units: int,
     max_unit_bytes: int,
 ) -> None:
-    """Write the Markdown harvest summary used as the automated PR body."""
+    """Write the Markdown capture summary used as the automated PR body."""
     lines = [
-        "Harvested coverage-increasing inputs from last night's BSON fuzz run.",
+        "Captured coverage-increasing inputs from last night's BSON fuzz run.",
         "",
         f"- New units added: **{len(kept)}**",
         f"- Units skipped over the per-unit cap ({max_unit_bytes} bytes): {oversize}",
@@ -145,7 +145,7 @@ def write_summary(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Harvest new coverage-increasing inputs from a fuzz run."
+        description="Capture new coverage-increasing inputs from a fuzz run."
     )
     parser.add_argument(
         "--corpus-dir",

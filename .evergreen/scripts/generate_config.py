@@ -967,16 +967,16 @@ def create_fuzz_tasks():
     tags = ["fuzz", "fuzz-nightly"]
     test_vars = dict(TEST_NAME="fuzz", SUB_TEST_NAME="fuzz", UV_PYTHON="3.13")
     test_func = FunctionCall(func="run tests", vars=test_vars)
-    # PYTHON-6178: while the scratch corpus still exists, harvest the new
+    # PYTHON-6178: while the scratch corpus still exists, capture the new
     # coverage-increasing inputs, replay them through every target so a
     # unit that fails one is never published, and open an automated PR
     # growing fuzz/corpus/.
-    harvest_cmd = get_subprocess_exec(
-        args=[".evergreen/scripts/harvest-fuzz-corpus.sh"],
+    capture_cmd = get_subprocess_exec(
+        args=[".evergreen/scripts/capture-fuzz-corpus.sh"],
         include_expansions_in_env=[
             "FUZZ_CORPUS_MAX_UNITS",
             "FUZZ_CORPUS_MAX_UNIT_BYTES",
-            # The harvest bootstraps the comment-bot github app, whose
+            # The capture bootstraps the comment-bot github app, whose
             # secrets live in AWS Secrets Manager; pass the assumed-role
             # credentials as resync_specs and backport-pr also do.
             "AWS_ACCESS_KEY_ID",
@@ -984,7 +984,7 @@ def create_fuzz_tasks():
             "AWS_SESSION_TOKEN",
         ],
     )
-    tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func, harvest_cmd]))
+    tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func, capture_cmd]))
     return tasks
 
 
