@@ -198,12 +198,13 @@ def test_copy_changed_files_manifests_untracked_unchanged(
 
 
 def test_copy_changed_files_manifest_failure_rolls_back(tmp_path: Path) -> None:
-    """A manifest write failure restores destinations already replaced."""
+    """A manifest write failure restores destinations and leaves the manifest alone."""
     staged_a = tmp_path / "a_staged.py"
     dest_a = tmp_path / "a_dest.py"
     staged_a.write_bytes(b"new-a")
     dest_a.write_bytes(b"old-a")
     manifest = tmp_path / "manifest.txt"
+    manifest.write_text("stale\n")
 
     real_write_text = Path.write_text
 
@@ -214,7 +215,9 @@ def test_copy_changed_files_manifest_failure_rolls_back(tmp_path: Path) -> None:
         errors: str | None = None,
         newline: str | None = None,
     ) -> int:
-        if self == manifest:
+        if self.name.startswith(manifest.name):
+            # Simulate ENOSPC: partial bytes land before the write fails.
+            real_write_text(self, data[:4], encoding, errors, newline)
             raise OSError(28, "No space left on device")
         return real_write_text(self, data, encoding, errors, newline)
 
@@ -223,6 +226,14 @@ def test_copy_changed_files_manifest_failure_rolls_back(tmp_path: Path) -> None:
             synchro.copy_changed_files([(staged_a, dest_a)], manifest=manifest)
 
     assert dest_a.read_bytes() == b"old-a"
+    # Only a successful publication replaces the manifest.
+    assert manifest.read_text() == "stale\n"
+    # No temporary files are left behind.
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "a_dest.py",
+        "a_staged.py",
+        "manifest.txt",
+    ]
 
 
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"

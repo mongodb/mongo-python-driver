@@ -405,7 +405,12 @@ def copy_changed_files(
             included.append(dest)
         if manifest is not None:
             names = [f"./{dest.as_posix()}" for dest in included]
-            manifest.write_text("\n".join(names) + ("\n" if names else ""))
+            tmp_manifest = manifest.with_name(manifest.name + ".synchro-tmp")
+            try:
+                tmp_manifest.write_text("\n".join(names) + ("\n" if names else ""))
+                tmp_manifest.replace(manifest)
+            finally:
+                tmp_manifest.unlink(missing_ok=True)
     except OSError:
         # Restore in reverse so each restore releases space for the next.
         for dest, old in reversed(written):
