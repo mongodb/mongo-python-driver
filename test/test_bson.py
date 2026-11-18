@@ -31,6 +31,7 @@ import tempfile
 import uuid
 from collections import OrderedDict, abc
 from io import BytesIO
+from typing import Any
 
 sys.path[0:0] = [""]
 
@@ -63,7 +64,8 @@ from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
 from bson.datetime_ms import _DATETIME_ERROR_SUGGESTION
 from bson.dbref import DBRef
-from bson.errors import InvalidBSON, InvalidDocument
+from bson.decimal128 import Decimal128
+from bson.errors import BSONError, InvalidBSON, InvalidDocument
 from bson.int64 import Int64
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
@@ -2080,6 +2082,204 @@ class TestLongLongToString(unittest.TestCase):
             _cbson._test_long_long_to_str()
         except ImportError:
             print("_cbson was not imported. Check compilation logs.")
+
+
+def _nested_document(depth: int) -> dict[str, Any]:
+    doc: dict[str, Any] = {"leaf": 1}
+    for _ in range(depth):
+        doc = {"d": doc}
+    return doc
+
+
+def _extreme_typed_documents() -> list[dict[str, Any]]:
+    """One document per BSON type, at value extremes where applicable."""
+    return [
+        {},
+        {"int32 max": 2**31 - 1, "int32 min": -(2**31)},
+        {"int64 max": Int64(2**63 - 1), "int64 min": Int64(-(2**63))},
+        {
+            "double": 1.5,
+            "double min": sys.float_info.min,
+            "double max": sys.float_info.max,
+            "double inf": float("inf"),
+            "double neg inf": float("-inf"),
+            "double nan": float("nan"),
+        },
+        {"string": "hello é", "string empty": ""},
+        {"string big": "x" * 70000},
+        {
+            "binary": Binary(b"\x00\xffbin", 0),
+            "binary old": Binary(b"old", 2),
+            "binary empty": Binary(b"", 0),
+        },
+        {
+            "datetime zero": DatetimeMS(0),
+            "datetime min": DatetimeMS(-(2**63)),
+            "datetime max": DatetimeMS(2**63 - 1),
+        },
+        {"timestamp": Timestamp(0, 1), "timestamp max": Timestamp(0xFFFFFFFF, 0xFFFFFFFF)},
+        {
+            "decimal128": Decimal128("1.25"),
+            "decimal128 nan": Decimal128("NaN"),
+            "decimal128 inf": Decimal128("Infinity"),
+            "decimal128 neg0": Decimal128("-0"),
+        },
+        {"regex": Regex("a*b", "im"), "regex empty": Regex("", "")},
+        {"code": Code("function() { return 1; }"), "code scope": Code("f", {"x": [1, 2]})},
+        {
+            "dbref": DBRef("coll", "id"),
+            "objectid": ObjectId(b"0123456789ab"),
+            "minkey": MinKey(),
+            "maxkey": MaxKey(),
+            "null": None,
+            "bool": True,
+        },
+        {"array": [1, "two", None, {"nested": True}], "subdoc": {"b": {"c": 1}}},
+        {"bytes": b"raw bytes"},
+        {"key" * 63 + "e": 1},
+        {"deep": _nested_document(50)},
+    ]
+
+
+# Maximum int32 value; the largest length field a malformed document can claim.
+_MAX_INT32 = 0x7FFFFFFF
+
+_DATETIME_MS_CODEC = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_MS)
+
+
+class TestBSONEncodeDecodeBoundaries(unittest.TestCase):
+    """Encode every BSON type at value extremes and re-encode byte-stably.
+
+    The boundary-sized documents walk the C encoder's buffer through its
+    doubling thresholds (bson/buffer.c), and the string, binary, and regex
+    values exercise the C encoder's _downcast_and_check length validations,
+    all under sanitizer builds.
+    """
+
+    def _round_trip(self, doc):
+        encoded = bson.encode(doc, codec_options=_DATETIME_MS_CODEC)
+        decoded = bson.decode(encoded, codec_options=_DATETIME_MS_CODEC)
+        # Compare byte-level stability rather than decoded == doc so that
+        # NaN payloads (which are not equal to themselves) round-trip too.
+        self.assertEqual(bson.encode(decoded, codec_options=_DATETIME_MS_CODEC), encoded)
+
+    def test_round_trip_value_extremes(self):
+        for doc in _extreme_typed_documents():
+            with self.subTest(next(iter(doc), "empty")):
+                self._round_trip(doc)
+
+    def test_round_trip_size_boundaries(self):
+        # Encoded sizes that exactly fill the C encoder's buffer at each
+        # doubling boundary (no realloc), and one byte more (forces a
+        # realloc). Encoding {"a": "x" * n} adds 13 bytes of BSON
+        # overhead, so use n = capacity - 13 and capacity - 12. A capacity
+        # of _MAX_INT32 (the maximum BSON document size) is deliberately
+        # excluded: exercising buffer_grow's > INT_MAX/2 branch would
+        # require allocating a multi-GiB document.
+        for capacity in (256, 512, 1024, 2**16, 2**17):
+            for size in (capacity - 13, capacity - 12):
+                with self.subTest(capacity=capacity, size=size):
+                    self._round_trip({"a": "x" * size})
+
+
+class TestBSONHostileLengths(unittest.TestCase):
+    """Decode must reject malformed length fields with a BSONError.
+
+    Exercises the C decoder's int-boundary validation without allocating
+    multi-GiB buffers.
+    """
+
+    def _assert_bson_error(self, data):
+        with self.assertRaises(BSONError):
+            bson.decode(data)
+
+    def test_declared_document_lengths(self):
+        base = bson.encode({"a": "b" * 20, "c": [1, 2]})
+        for length in (0, -1, 0x7F7F7F7F, _MAX_INT32, len(base) + 1):
+            with self.subTest(length=length):
+                data = bytearray(base)
+                data[0:4] = struct.pack("<i", length)
+                self._assert_bson_error(bytes(data))
+
+    def test_element_string_lengths(self):
+        base = bson.encode({"a": "x" * 20})
+        # The string length field starts at offset 7.
+        for length in (-1, _MAX_INT32):
+            with self.subTest(length=length):
+                data = bytearray(base)
+                data[7:11] = struct.pack("<i", length)
+                self._assert_bson_error(bytes(data))
+
+    def test_element_subdocument_lengths(self):
+        base = bson.encode({"a": {"b": 1}})
+        # The subdocument length field starts at offset 7.
+        for length in (0, -1, _MAX_INT32):
+            with self.subTest(length=length):
+                data = bytearray(base)
+                data[7:11] = struct.pack("<i", length)
+                self._assert_bson_error(bytes(data))
+
+    def test_element_binary_lengths(self):
+        base = bson.encode({"a": Binary(b"1234567890", 0)})
+        # The binary length field starts at offset 7.
+        for length in (-1, _MAX_INT32):
+            with self.subTest(length=length):
+                data = bytearray(base)
+                data[7:11] = struct.pack("<i", length)
+                self._assert_bson_error(bytes(data))
+
+    def test_truncated_documents(self):
+        # Dense complement to the strided sampling in TestBSONMutations:
+        # every truncation offset of one document must raise a BSONError.
+        base = bson.encode({"a": "b" * 20, "c": [1, 2]})
+        for i in range(4, len(base)):
+            with self.subTest(length=i):
+                self._assert_bson_error(base[:i])
+
+
+class TestBSONMutations(unittest.TestCase):
+    """Every byte mutation must decode successfully or raise a BSONError,
+    never crash or read out of bounds.
+    """
+
+    MUTATION_VALUES = (0x00, 0x7F, 0xFF)
+
+    def _mutated(self, data):
+        stride = max(1, len(data) // 64)
+        for offset in range(0, len(data), stride):
+            for value in self.MUTATION_VALUES:
+                flipped = bytearray(data)
+                flipped[offset] = value
+                yield f"mutated offset {offset} = {value:#04x}", bytes(flipped)
+            inverted = bytearray(data)
+            inverted[offset] ^= 0xFF
+            yield f"mutated offset {offset} = inverted", bytes(inverted)
+
+    def _truncated(self, data):
+        stride = max(1, len(data) // 64)
+        for i in range(4, len(data), stride):
+            yield f"truncated at {i}", data[:i]
+
+    def _assert_decodes_or_errors(self, data):
+        """Decode must either succeed or raise a BSONError; never crash."""
+        try:
+            bson.decode(data, codec_options=_DATETIME_MS_CODEC)
+        except BSONError:
+            pass
+
+    def test_mutations_decode_cleanly(self):
+        for doc in _extreme_typed_documents():
+            label = next(iter(doc), "empty")
+            data = bson.encode(doc, codec_options=_DATETIME_MS_CODEC)
+            for detail, corrupted in self._mutated(data):
+                with self.subTest(f"{label} {detail}"):
+                    self._assert_decodes_or_errors(corrupted)
+            # Strided complement to the dense scan in
+            # TestBSONHostileLengths: feeds truncated input to every
+            # type's parser.
+            for detail, truncated in self._truncated(data):
+                with self.subTest(f"{label} {detail}"):
+                    self._assert_decodes_or_errors(truncated)
 
 
 if __name__ == "__main__":
