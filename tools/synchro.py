@@ -425,8 +425,14 @@ def copy_changed_files(
                     backup.unlink(missing_ok=True)
                     os.link(dest, backup)
                 except OSError:
-                    # No hard-link support: fall back to the in-memory restore.
-                    backup = None
+                    # No hard-link support: try a full copy before giving up
+                    # on an on-disk backup.
+                    try:
+                        shutil.copyfile(dest, backup)
+                    except OSError:
+                        # Remove a partial copy so no garbage stray remains.
+                        backup.unlink(missing_ok=True)
+                        backup = None
             # Track before replacing so an interrupt cannot skip the rollback.
             written.append((dest, old, backup))
             tmp = dest.with_name(dest.name + ".synchro-tmp")

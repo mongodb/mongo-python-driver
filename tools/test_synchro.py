@@ -138,14 +138,15 @@ def test_copy_changed_files_rollback_restores_in_reverse_order(tmp_path: Path) -
         if data.startswith(b"old"):
             restored.append(data)
 
-    # No hard-linkable backups: restores rewrite the files, so the
+    # No on-disk backup at all: restores rewrite the files, so the
     # space-releasing order above is what the restores depend on.
-    with patch("os.link", side_effect=OSError(1, "link not supported")):
-        with patch.object(Path, "write_bytes", tracking_write):
-            with pytest.raises(FileExistsError):
-                synchro.copy_changed_files(
-                    [(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)]
-                )
+    with (
+        patch("os.link", side_effect=OSError(1, "link not supported")),
+        patch("shutil.copyfile", side_effect=OSError(1, "copy not supported")),
+        patch.object(Path, "write_bytes", tracking_write),
+    ):
+        with pytest.raises(FileExistsError):
+            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)])
 
     assert restored == [b"old-b", b"old-a"]
     assert dest_a.read_bytes() == b"old-a"
@@ -329,11 +330,14 @@ def test_copy_changed_files_never_published_dest_not_restored(tmp_path: Path) ->
             raise OSError(28, "No space left on device")
         real_write(self, data)
 
-    # No hard-link support: rollback restores would have to rewrite files.
-    with patch("os.link", side_effect=OSError(1, "link not supported")):
-        with patch.object(Path, "write_bytes", failing_write):
-            with pytest.raises(OSError, match="No space left on device"):
-                synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)])
+    # No on-disk backup at all: the rollback would have to rewrite files.
+    with (
+        patch("os.link", side_effect=OSError(1, "link not supported")),
+        patch("shutil.copyfile", side_effect=OSError(1, "copy not supported")),
+        patch.object(Path, "write_bytes", failing_write),
+    ):
+        with pytest.raises(OSError, match="No space left on device"):
+            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)])
 
     assert dest_a.read_bytes() == b"old-a"
     assert dest_b.read_bytes() == b"old-b"
@@ -485,13 +489,15 @@ def test_copy_changed_files_failed_fallback_restore_is_clean(tmp_path: Path) -> 
             raise OSError(28, "No space left on device")
         real_write(self, data)
 
-    # No hard-link support: restores must rewrite the files.
-    with patch("os.link", side_effect=OSError(1, "link not supported")):
-        with patch.object(Path, "write_bytes", failing_restore):
-            with pytest.raises(FileExistsError):
-                synchro.copy_changed_files(
-                    [(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)]
-                )
+    # No on-disk backup at all: the failed restore cannot truncate the
+    # destination, which keeps its published content.
+    with (
+        patch("os.link", side_effect=OSError(1, "link not supported")),
+        patch("shutil.copyfile", side_effect=OSError(1, "copy not supported")),
+        patch.object(Path, "write_bytes", failing_restore),
+    ):
+        with pytest.raises(FileExistsError):
+            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)])
 
     assert dest_a.read_bytes() == b"old-a"
     # The failed restore leaves the published content, uncorrupted.
@@ -505,6 +511,84 @@ def test_copy_changed_files_failed_fallback_restore_is_clean(tmp_path: Path) -> 
         "blocking-dir",
         "c_staged.py",
     ]
+
+
+def test_copy_changed_files_copy_backup_used_for_rollback(tmp_path: Path) -> None:
+    """Without hard links, a copied backup restores by rename, not rewrite."""
+    staged_a = tmp_path / "a_staged.py"
+    dest_a = tmp_path / "a_dest.py"
+    staged_a.write_bytes(b"new-a")
+    dest_a.write_bytes(b"old-a")
+    staged_b = tmp_path / "b_staged.py"
+    dest_b = tmp_path / "b_dest.py"
+    staged_b.write_bytes(b"new-b")
+    dest_b.write_bytes(b"old-b")
+    staged_c = tmp_path / "c_staged.py"
+    dest_c = tmp_path / "blocking-dir" / "c_dest.py"
+    staged_c.write_bytes(b"new-c")
+    # A file occupies c_dest.py's parent directory, so the mkdir fails.
+    (tmp_path / "blocking-dir").write_bytes(b"not a directory")
+
+    real_write = Path.write_bytes
+    restore_payloads: list[bytes] = []
+
+    def tracking_write(self: Path, data: bytes) -> None:
+        if data.startswith(b"old"):
+            restore_payloads.append(data)
+        real_write(self, data)
+
+    with (
+        patch("os.link", side_effect=OSError(1, "link not supported")),
+        patch.object(Path, "write_bytes", tracking_write),
+    ):
+        with pytest.raises(FileExistsError):
+            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)])
+
+    # The copied backups restored the destinations by rename.
+    assert restore_payloads == []
+    assert dest_a.read_bytes() == b"old-a"
+    assert dest_b.read_bytes() == b"old-b"
+
+
+def test_copy_changed_files_copy_backup_failure_is_clean(tmp_path: Path) -> None:
+    """A failed copy backup is cleaned and the rollback stays clean."""
+    staged_a = tmp_path / "a_staged.py"
+    dest_a = tmp_path / "a_dest.py"
+    staged_a.write_bytes(b"new-a")
+    dest_a.write_bytes(b"old-a")
+    staged_b = tmp_path / "b_staged.py"
+    dest_b = tmp_path / "b_dest.py"
+    staged_b.write_bytes(b"new-b")
+    dest_b.write_bytes(b"old-b")
+    staged_c = tmp_path / "c_staged.py"
+    dest_c = tmp_path / "blocking-dir" / "c_dest.py"
+    staged_c.write_bytes(b"new-c")
+    # A file occupies c_dest.py's parent directory, so the mkdir fails.
+    (tmp_path / "blocking-dir").write_bytes(b"not a directory")
+
+    real_write = Path.write_bytes
+
+    def failing_restore(self: Path, data: bytes) -> None:
+        if data == b"old-b":
+            # Simulate persistent ENOSPC: the restore lands partial bytes
+            # then fails.
+            real_write(self, b"ol")
+            raise OSError(28, "No space left on device")
+        real_write(self, data)
+
+    with (
+        patch("os.link", side_effect=OSError(1, "link not supported")),
+        patch("shutil.copyfile", side_effect=OSError(28, "No space left on device")),
+        patch.object(Path, "write_bytes", failing_restore),
+    ):
+        with pytest.raises(FileExistsError):
+            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)])
+
+    assert dest_a.read_bytes() == b"old-a"
+    # The failed restore leaves the published content, uncorrupted.
+    assert dest_b.read_bytes() == b"new-b"
+    # The partial copy backup was removed.
+    assert not (tmp_path / "b_dest.py.synchro-backup").exists()
 
 
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
