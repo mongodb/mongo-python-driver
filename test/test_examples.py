@@ -1426,10 +1426,9 @@ class TestSnapshotQueryExamples(IntegrationTest):
         # End Snapshot Query Example 2
 
     def check_for_snapshot(self, collection):
-        """Wait for snapshot reads to become available to prevent this error:
-        [246:SnapshotUnavailable]: Unable to read from a snapshot due to pending collection catalog
-        changes; please retry the operation. Snapshot timestamp is Timestamp(1646666892, 4).
-        Collection minimum is Timestamp(1646666892, 5) (on localhost:27017, modern retry, attempt 1)
+        """Wait for snapshot reads to become available to prevent this error.
+
+        [246:SnapshotUnavailable]: Unable to read from a snapshot due to pending collection catalog changes; please retry the operation. Snapshot timestamp is Timestamp(1646666892, 4). Collection minimum is Timestamp(1646666892, 5) (on localhost:27017, modern retry, attempt 1)
         From https://github.com/mongodb/mongo-ruby-driver/commit/7c4117b58e3d12e237f7536f7521e18fc15f79ac
         """
         with self.client.start_session(snapshot=True) as s:

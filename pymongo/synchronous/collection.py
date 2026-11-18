@@ -100,9 +100,10 @@ _WriteOp = (
 
 
 class ReturnDocument:
-    """An enum used with
-    :meth:`~pymongo.collection.Collection.find_one_and_replace` and
-    :meth:`~pymongo.collection.Collection.find_one_and_update`.
+    """An enum used with the find_one_and_replace and find_one_and_update methods.
+
+    See :meth:`~pymongo.collection.Collection.find_one_and_replace`
+    and :meth:`~pymongo.collection.Collection.find_one_and_update`.
     """
 
     BEFORE = False
@@ -330,8 +331,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     @property
     def database(self) -> Database[_DocumentType]:
-        """The :class:`~pymongo.database.Database` that this
-        :class:`Collection` is a part of.
+        """Return the collection's :class:`~pymongo.database.Database`.
+
+        This is the :class:`~pymongo.database.Database` that
+        this :class:`Collection` is a part of.
         """
         return self._database
 
@@ -407,7 +410,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     next = __next__
 
     def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:
-        """This is only here so that some API misusages are easier to debug."""
+        """Raise an error so that some API misusages are easier to debug."""
         if "." not in self._name:
             raise TypeError(
                 f"'{type(self).__name__}' object is not callable. If you "
@@ -577,7 +580,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         retryable_write: bool = False,
         user_fields: Any | None = None,
     ) -> Mapping[str, Any]:
-        """Internal command helper.
+        """Run a command (internal helper).
 
         :param conn` - A Connection instance.
         :param command` - The command itself, as a :class:`~bson.son.SON` instance.
@@ -629,7 +632,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         encrypted_fields: Mapping[str, Any] | None = None,
         qev2_required: bool = False,
     ) -> None:
-        """Sends a create command with the given options."""
+        """Send a create command with the given options."""
         cmd: dict[str, Any] = {"create": name}
         if encrypted_fields:
             cmd["encryptedFields"] = encrypted_fields
@@ -792,7 +795,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: ClientSession | None,
         comment: Any | None = None,
     ) -> Any:
-        """Internal helper for inserting a single document."""
+        """Insert a single document (internal helper)."""
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
         command = {"insert": self.name, "ordered": ordered, "documents": [doc]}
@@ -949,7 +952,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         inserted_ids: list[ObjectId] = []
 
         def gen() -> Iterator[tuple[int, Mapping[str, Any]]]:
-            """A generator that validates documents and handles _ids."""
+            """Validate documents and handle _ids."""
             for document in documents:
                 common.validate_is_document_type("document", document)
                 if not isinstance(document, RawBSONDocument):
@@ -984,7 +987,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         sort: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any] | None:
-        """Internal update / replace helper."""
+        """Update or replace a document (internal helper)."""
         validate_boolean("upsert", upsert)
         collation = validate_collation_or_none(collation)
         write_concern = write_concern or self.write_concern
@@ -1076,7 +1079,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         sort: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any] | None:
-        """Internal update / replace helper."""
+        """Update or replace a document (internal helper)."""
 
         def _update(
             session: ClientSession | None, conn: Connection, retryable_write: bool
@@ -1493,7 +1496,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         let: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any]:
-        """Internal delete helper."""
+        """Delete documents (internal helper)."""
         common.validate_is_mapping("filter", criteria)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
@@ -1543,7 +1546,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         let: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any]:
-        """Internal delete helper."""
+        """Delete documents (internal helper)."""
 
         def _delete(
             session: ClientSession | None, conn: Connection, retryable_write: bool
@@ -1986,7 +1989,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd: dict[str, Any],
         collation: Collation | None,
     ) -> int:
-        """Internal count command helper."""
+        """Run a count command (internal helper)."""
         res = self._command(
             conn,
             cmd,
@@ -2006,7 +2009,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: _CollationIn | None,
         session: ClientSession | None,
     ) -> Mapping[str, Any] | None:
-        """Internal helper to run an aggregate that returns a single result."""
+        """Run an aggregate that returns a single result (internal helper)."""
         result = self._command(
             conn,
             cmd,
@@ -2024,8 +2027,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return batch[0] if batch else None
 
     def estimated_document_count(self, comment: Any | None = None, **kwargs: Any) -> int:
-        """Get an estimate of the number of documents in this collection using
-        collection metadata.
+        """Get an estimate of the number of documents in this collection.
+
+        Uses collection metadata.
 
         The :meth:`estimated_document_count` method is **not** supported in a
         transaction.
@@ -2222,7 +2226,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _create_indexes(
         self, indexes: Sequence[IndexModel], session: ClientSession | None, **kwargs: Any
     ) -> list[str]:
-        """Internal createIndexes helper.
+        """Create indexes (internal helper).
 
         :param indexes: A list of :class:`~pymongo.operations.IndexModel`
             instances.
@@ -2267,7 +2271,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> str:
-        """Creates an index on this collection.
+        """Create an index on this collection.
 
         Takes either a single key or a list containing (key, direction) pairs
         or keys.  If no direction is given, :data:`~pymongo.ASCENDING` will
@@ -2384,7 +2388,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
-        """Drops all indexes on this collection.
+        """Drop all indexes on this collection.
 
         Can be used on non-existent collections or collections with no indexes.
         Raises OperationFailure on an error.
@@ -2418,7 +2422,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
-        """Drops the specified index on this collection.
+        """Drop the specified index on this collection.
 
         Can be used on non-existent collections or collections with no
         indexes.  Raises OperationFailure on an error (e.g. trying to
@@ -2938,8 +2942,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> CommandCursor[_DocumentType]:
-        """Perform an aggregation using the aggregation framework on this
-        collection.
+        """Perform an aggregation using the aggregation framework on this collection.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`, except when ``$out`` or ``$merge`` are used on
@@ -3162,8 +3165,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: _IndexKeyHint | None = None,
         **kwargs: Any,
     ) -> list[Any]:
-        """Get a list of distinct values for `key` among all documents
-        in this collection.
+        """Get a list of distinct values for `key` among all documents in this collection.
 
         Raises :class:`TypeError` if `key` is not an instance of
         :class:`str`.
@@ -3254,7 +3256,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         let: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> Any:
-        """Internal findAndModify helper."""
+        """Run a findAndModify command (internal helper)."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise TypeError(
@@ -3323,7 +3325,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> _DocumentType | None:
-        """Finds a single document and deletes it, returning the document.
+        """Find a single document and delete it, returning the document.
 
           >>> db.test.count_documents({'x': 1})
           2
@@ -3419,8 +3421,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> _DocumentType | None:
-        """Finds a single document and replaces it, returning either the
-        original or the replaced document.
+        """Find a single document and replace it.
+
+        Return either the original or the replaced document.
 
           >>> db.test.find_one({'x': 1})
           {'_id': 0, 'x': 1}
@@ -3539,8 +3542,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> _DocumentType | None:
-        """Finds a single document and updates it, returning either the
-        original or the updated document.
+        """Find a single document and update it.
+
+        Return either the original or the updated document.
 
           >>> db.test.find_one({'_id': 665})
           {'_id': 665, 'done': False, 'count': 25}

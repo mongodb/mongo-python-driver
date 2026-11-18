@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for creating `messages
-<https://www.mongodb.com/docs/manual/reference/mongodb-wire-protocol/>`_ to be sent to
-MongoDB.
+"""Tools for creating messages to be sent to MongoDB.
+
+The messages follow the `MongoDB wire protocol
+<https://www.mongodb.com/docs/manual/reference/mongodb-wire-protocol/>`_.
 
 .. note:: This module is for internal use and is generally not needed by
    application developers.
@@ -132,8 +133,9 @@ def _convert_exception(exception: Exception) -> dict[str, Any]:
 
 
 def _convert_client_bulk_exception(exception: Exception) -> dict[str, Any]:
-    """Convert an Exception into a failure document for publishing,
-    for use in client-level bulk write API.
+    """Convert an Exception into a failure document for publishing.
+
+    Used in the client-level bulk write API.
     """
     return {
         "errmsg": str(exception),
@@ -247,7 +249,7 @@ _COMPRESSION_HEADER_SIZE = 25
 def _compress(
     operation: int, data: bytes, ctx: SnappyContext | ZlibContext | ZstdContext
 ) -> tuple[int, bytes]:
-    """Takes message data, compresses it, and adds an OP_COMPRESSED header."""
+    """Compress the message data and add an OP_COMPRESSED header."""
     compressed = ctx.compress(data)
     request_id = _randint()
 
@@ -267,7 +269,7 @@ _pack_header = struct.Struct("<iiii").pack
 
 
 def __pack_message(operation: int, data: bytes) -> tuple[int, bytes]:
-    """Takes message data and adds a message header based on the operation.
+    """Add a message header to the message data based on the operation.
 
     Returns the resultant message string.
     """
@@ -321,7 +323,7 @@ def _op_msg_compressed(
     opts: CodecOptions[Any],
     ctx: SnappyContext | ZlibContext | ZstdContext,
 ) -> tuple[int, bytes, int, int]:
-    """Internal OP_MSG message helper."""
+    """Build a compressed OP_MSG message (internal helper)."""
     msg, total_size, max_bson_size = _op_msg_no_header(flags, command, identifier, docs, opts)
     rid, msg = _compress(2013, msg, ctx)
     return rid, msg, total_size, max_bson_size
@@ -334,7 +336,7 @@ def _op_msg_uncompressed(
     docs: list[Mapping[str, Any]] | None,
     opts: CodecOptions[Any],
 ) -> tuple[int, bytes, int, int]:
-    """Internal compressed OP_MSG message helper."""
+    """Build an uncompressed OP_MSG message (internal helper)."""
     data, total_size, max_bson_size = _op_msg_no_header(flags, command, identifier, docs, opts)
     request_id, op_message = __pack_message(2013, data)
     return request_id, op_message, total_size, max_bson_size
@@ -516,7 +518,7 @@ class _EncryptedBulkWriteContext(_BulkWriteContext):
 
 
 def _raise_document_too_large(operation: str, doc_size: int, max_size: int) -> NoReturn:
-    """Internal helper for raising DocumentTooLarge."""
+    """Raise DocumentTooLarge."""
     if operation == "insert":
         raise DocumentTooLarge(
             f"BSON document too large ({doc_size} bytes)"
@@ -611,9 +613,7 @@ def _encode_batched_op_msg(
     opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
 ) -> tuple[bytes, list[Mapping[str, Any]]]:
-    """Encode the next batched insert, update, or delete operation
-    as OP_MSG.
-    """
+    """Encode the next batched insert, update, or delete operation as OP_MSG."""
     buf = _BytesIO()
 
     to_send, _ = _batched_op_msg_impl(operation, command, docs, ack, opts, ctx, buf)
@@ -632,9 +632,7 @@ def _batched_op_msg_compressed(
     opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]]]:
-    """Create the next batched insert, update, or delete operation
-    with OP_MSG, compressed.
-    """
+    """Create the next batched insert, update, or delete operation with OP_MSG, compressed."""
     data, to_send = _encode_batched_op_msg(operation, command, docs, ack, opts, ctx)
 
     assert ctx.conn.compression_context is not None
@@ -682,9 +680,7 @@ def _do_batched_op_msg(
     opts: CodecOptions[Any],
     ctx: _BulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]]]:
-    """Create the next batched insert, update, or delete operation
-    using OP_MSG.
-    """
+    """Create the next batched insert, update, or delete operation using OP_MSG."""
     command["$db"] = namespace.split(".", 1)[0]
     if "writeConcern" in command:
         ack = bool(command["writeConcern"].get("w", 1))
@@ -909,9 +905,7 @@ def _client_encode_batched_op_msg(
     opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
 ) -> tuple[bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
-    """Encode the next batched client-level bulkWrite
-    operation as OP_MSG.
-    """
+    """Encode the next batched client-level bulkWrite operation as OP_MSG."""
     buf = _BytesIO()
 
     to_send_ops, to_send_ns, _ = _client_batched_op_msg_impl(
@@ -928,9 +922,7 @@ def _client_batched_op_msg_compressed(
     opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
-    """Create the next batched client-level bulkWrite operation
-    with OP_MSG, compressed.
-    """
+    """Create the next batched client-level bulkWrite operation with OP_MSG, compressed."""
     data, to_send_ops, to_send_ns = _client_encode_batched_op_msg(
         command, operations, namespaces, ack, opts, ctx
     )
@@ -977,9 +969,7 @@ def _client_do_batched_op_msg(
     opts: CodecOptions[Any],
     ctx: _ClientBulkWriteContext,
 ) -> tuple[int, bytes, list[Mapping[str, Any]], list[Mapping[str, Any]]]:
-    """Create the next batched client-level bulkWrite
-    operation using OP_MSG.
-    """
+    """Create the next batched client-level bulkWrite operation using OP_MSG."""
     command["$db"] = "admin"
     if "writeConcern" in command:
         ack = bool(command["writeConcern"].get("w", 1))
@@ -1107,9 +1097,10 @@ class _OpMsg:
         cursor_id: int | None = None,
         user_fields: Mapping[str, Any] | None = {},
     ) -> list[Mapping[str, Any]]:
-        """
-        cursor_id is ignored
-        user_fields is used to determine which fields must not be decoded
+        """Return the raw response.
+
+        cursor_id is ignored. user_fields is used to determine which fields
+        must not be decoded.
         """
         inflated_response = bson._decode_selective(
             RawBSONDocument(self.payload_document), user_fields, _RAW_ARRAY_BSON_OPTIONS
@@ -1146,7 +1137,7 @@ class _OpMsg:
 
     @property
     def more_to_come(self) -> bool:
-        """Is the moreToCome bit set on this response?"""
+        """Whether the moreToCome bit is set on this response."""
         return bool(self.flags & self.MORE_TO_COME)
 
     @classmethod
@@ -1309,7 +1300,7 @@ class _Query:
     def get_message(
         self, read_preference: _ServerMode, conn: _AgnosticConnection
     ) -> tuple[int, bytes, int]:
-        """Get a query message"""
+        """Get a query message."""
         # Use the read_preference decided by _socket_from_server.
         self.read_preference = read_preference
 

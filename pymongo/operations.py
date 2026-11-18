@@ -580,7 +580,7 @@ class UpdateOne(_UpdateOp):
         namespace: str | None = None,
         sort: Mapping[str, Any] | None = None,
     ) -> None:
-        """Represents an update_one operation.
+        """Represent an update_one operation.
 
         For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`,
         :meth:`~pymongo.collection.Collection.bulk_write`,
@@ -813,9 +813,7 @@ class IndexModel:
 
     @property
     def document(self) -> dict[str, Any]:
-        """An index document suitable for passing to the createIndexes
-        command.
-        """
+        """An index document suitable for passing to the createIndexes command."""
         return self.__document
 
     def __repr__(self) -> str:

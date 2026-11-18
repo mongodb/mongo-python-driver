@@ -198,7 +198,7 @@ def _gen_index_name(keys: _IndexList) -> str:
 def _index_list(
     key_or_list: _Hint, direction: int | str | None = None
 ) -> Sequence[tuple[str, int | str | Mapping[str, Any]]]:
-    """Helper to generate a list of (key, direction) pairs.
+    """Generate a list of (key, direction) pairs.
 
     Takes such a list, or a single key, or a single key and direction.
     """
@@ -227,7 +227,7 @@ def _index_list(
 
 
 def _index_document(index_list: _IndexList) -> dict[str, Any]:
-    """Helper to generate an index specifying document.
+    """Generate an index specifying document.
 
     Takes a list of (key, direction) pairs.
     """
@@ -374,7 +374,7 @@ def _check_write_command_response(result: Mapping[str, Any]) -> None:
 def _fields_list_to_dict(
     fields: Mapping[str, Any] | Iterable[str], option_name: str
 ) -> Mapping[str, Any]:
-    """Takes a sequence of field names and returns a matching dictionary.
+    """Convert a sequence of field names into a matching dictionary.
 
     ["a", "b"] becomes {"a": 1, "b": 1}
 

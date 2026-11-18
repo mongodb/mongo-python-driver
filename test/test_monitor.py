@@ -106,8 +106,10 @@ class TestMonitor(IntegrationTest):
 
     @client_context.require_sync
     def test_no_thread_start_runtime_err_on_shutdown(self):
-        """Test we silence noisy runtime errors fired when the MongoClient spawns a new thread
-        on process shutdown.
+        """Test we silence noisy runtime errors.
+
+        The errors are fired when the MongoClient spawns a new thread on
+        process shutdown.
         """
         command = [
             sys.executable,

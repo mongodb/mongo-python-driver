@@ -253,12 +253,11 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         write_concern: WriteConcern | None = None,
         read_concern: ReadConcern | None = None,
     ) -> Collection[_DocumentType]:
-        """Get a :class:`~pymongo.collection.Collection` with the given name
-        and options.
+        """Get a :class:`~pymongo.collection.Collection`.
 
-        Useful for creating a :class:`~pymongo.collection.Collection` with
-        different codec options, read preference, and/or write concern from
-        this :class:`Database`.
+        The returned collection uses the given name and options. Useful for creating a
+        :class:`~pymongo.collection.Collection` with different codec
+        options, read preference, and/or write concern from this :class:`Database`.
 
           >>> db.read_preference
           Primary()
@@ -484,8 +483,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         check_exists: bool | None = True,
         **kwargs: Any,
     ) -> Collection[_DocumentType]:
-        """Create a new :class:`~pymongo.collection.Collection` in this
-        database.
+        """Create a new :class:`~pymongo.collection.Collection` in this database.
 
         Normally collection creation is automatic. This method should
         only be used to specify options on
@@ -765,7 +763,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         session: ClientSession | None = None,
         **kwargs: Any,
     ) -> dict[str, Any] | _CodecDocumentType:
-        """Internal command helper."""
+        """Run an internal command."""
         if isinstance(command, str):
             command = {command: value}
 
@@ -1065,7 +1063,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         operation: str,
         session: ClientSession | None = None,
     ) -> dict[str, Any]:
-        """Same as command but used for retryable read commands."""
+        """Run the given command as a retryable read."""
         read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
         def _cmd(
@@ -1090,7 +1088,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         read_preference: _ServerMode,
         **kwargs: Any,
     ) -> CommandCursor[MutableMapping[str, Any]]:
-        """Internal listCollections helper."""
+        """Run the internal listCollections helper."""
         coll = cast(
             "Collection[MutableMapping[str, Any]]",
             self.get_collection("$cmd", read_preference=read_preference),
@@ -1443,8 +1441,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> _DocumentType | None:
-        """Dereference a :class:`~bson.dbref.DBRef`, getting the
-        document it points to.
+        """Dereference a :class:`~bson.dbref.DBRef`, getting the document it points to.
 
         Raises :class:`TypeError` if `dbref` is not an instance of
         :class:`~bson.dbref.DBRef`. Returns a document, or ``None`` if

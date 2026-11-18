@@ -273,8 +273,9 @@ class _AgnosticBulkBase:
         self.ops.append((_DELETE, cmd))
 
     def gen_ordered(self) -> Iterator[_Run | None]:
-        """Generate batches of operations, batched by type of
-        operation, in the order **provided**.
+        """Generate batches of operations, batched by type of operation.
+
+        The batches are in the order **provided**.
         """
         run = None
         for idx, (op_type, operation) in enumerate(self.ops):
@@ -287,9 +288,7 @@ class _AgnosticBulkBase:
         yield run
 
     def gen_unordered(self) -> Iterator[_Run]:
-        """Generate batches of operations, batched by type of
-        operation, in arbitrary order.
-        """
+        """Generate batches of operations, batched by type of operation, in arbitrary order."""
         operations = [_Run(_INSERT), _Run(_UPDATE), _Run(_DELETE)]
         for idx, (op_type, operation) in enumerate(self.ops):
             operations[op_type].add(idx, operation)

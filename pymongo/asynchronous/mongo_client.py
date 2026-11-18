@@ -1181,7 +1181,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         self._opened = False
 
     def append_metadata(self, driver_info: DriverInfo) -> None:
-        """Appends the given metadata to existing driver metadata.
+        """Append the given metadata to existing driver metadata.
 
         :param driver_info: a :class:`~pymongo.driver_info.DriverInfo`
 
@@ -1197,7 +1197,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._options.load_balanced and not (session and session.in_transaction)
 
     def _after_fork(self) -> None:
-        """Resets topology in a child after successfully forking."""
+        """Reset topology in a child after successfully forking."""
         self._init_background(self._topology._pid)
         # Reset the session pool to avoid duplicate sessions in the child process.
         self._topology._session_pool.reset()
@@ -1649,12 +1649,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         write_concern: WriteConcern | None = None,
         read_concern: ReadConcern | None = None,
     ) -> database.AsyncDatabase[_DocumentType]:
-        """Get a :class:`~pymongo.asynchronous.database.AsyncDatabase` with the given name and
-        options.
+        """Get a :class:`~pymongo.asynchronous.database.AsyncDatabase`.
 
-        Useful for creating a :class:`~pymongo.asynchronous.database.AsyncDatabase` with
-        different codec options, read preference, and/or write concern from
-        this :class:`AsyncMongoClient`.
+        The returned database uses the given name and options. Useful for creating a
+        :class:`~pymongo.asynchronous.database.AsyncDatabase` with different codec
+        options, read preference, and/or write concern from this :class:`AsyncMongoClient`.
 
           >>> client.read_preference
           Primary()
@@ -1729,7 +1728,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     next = __next__
 
     async def _server_property(self, attr_name: str) -> Any:
-        """An attribute of the current server's description.
+        """Get an attribute of the current server's description.
 
         If the client is not connected, this will block until a connection is
         established or raise ServerSelectionTimeoutError if no server is
@@ -1827,9 +1826,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     @property
     async def is_mongos(self) -> bool:
-        """If this client is connected to mongos. If the client is not
-        connected, this will block until a connection is established or raise
-        ServerSelectionTimeoutError if no server is available.
+        """Whether this client is connected to mongos.
+
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
         """
         return await self._server_property("server_type") == SERVER_TYPE.Mongos
 
@@ -2038,7 +2039,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         operation: str,
         operation_id: int | None = None,
     ) -> T:
-        """Execute an operation with at most one consecutive retries
+        """Execute an operation with at most one consecutive retries.
 
         Returns func()'s return value on success. On error retries the same
         command.
@@ -2075,7 +2076,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         is_aggregate_write: bool = False,
         conn_mgr: Any = None,
     ) -> T:
-        """Internal retryable helper for all client transactions.
+        """Run the internal retryable helper for all client transactions.
 
         :param func: Callback function we want to retry
         :param session: Client Session on which the transaction should occur
@@ -2121,7 +2122,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         is_aggregate_write: bool = False,
         conn_mgr: Any = None,
     ) -> T:
-        """Execute an operation with consecutive retries if possible
+        """Execute an operation with consecutive retries if possible.
 
         Returns func()'s return value on success. On error retries the same
         command.
@@ -2170,7 +2171,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
         bulk: _AsyncBulk | _AsyncClientBulk | None = None,
         operation_id: int | None = None,
     ) -> T:
-        """Execute an operation with consecutive retries if possible
+        """Execute an operation with consecutive retries if possible.
 
         Returns func()'s return value on success. On error retries the same
         command.
@@ -2343,9 +2344,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
     # This method is run periodically by a background thread.
     async def _process_periodic_tasks(self) -> None:
-        """Process any pending kill cursors requests and
-        maintain connection pool parameters.
-        """
+        """Process any pending kill cursors requests and maintain connection pool parameters."""
         try:
             await self._process_kill_cursors()
             await self._topology.update_pool()
@@ -2356,7 +2355,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                 _log_client_error()
 
     def _return_server_session(self, server_session: _ServerSession | _EmptyServerSession) -> None:
-        """Internal: return a _ServerSession to the pool."""
+        """Return a _ServerSession to the pool."""
         if isinstance(server_session, _EmptyServerSession):
             return None
         return self._topology.return_server_session(server_session)
@@ -2900,7 +2899,7 @@ class _ClientReadCheckout(_ClientCheckout):
 class _ClientConnectionRetryable(
     _AgnosticClientConnectionRetryableBase[T, "Server", _WriteCall[T] | _ReadCall[T]]
 ):
-    """Responsible for executing retryable connections on read or write operations"""
+    """Responsible for executing retryable connections on read or write operations."""
 
     __slots__ = ()
 
@@ -2908,7 +2907,7 @@ class _ClientConnectionRetryable(
     _session: AsyncClientSession | None
 
     async def run(self) -> T:
-        """Runs the supplied func() and attempts a retry
+        """Run the supplied func() and attempt a retry.
 
         :raises: self._last_error: Last exception raised
 
@@ -3067,7 +3066,7 @@ class _ClientConnectionRetryable(
                     await asyncio.sleep(delay)
 
     async def _get_server(self) -> Server:
-        """Retrieves a server object based on provided object context
+        """Retrieve a server object based on provided object context.
 
         :return: Abstraction to connect to server
         """
@@ -3081,7 +3080,7 @@ class _ClientConnectionRetryable(
         )
 
     async def _write(self) -> T:
-        """Wrapper method for write-type retryable client executions
+        """Wrap write-type retryable client executions.
 
         :return: Output for func()'s call
         """
@@ -3113,7 +3112,7 @@ class _ClientConnectionRetryable(
             raise
 
     async def _read(self) -> T:
-        """Wrapper method for read-type retryable client executions
+        """Wrap read-type retryable client executions.
 
         :return: Output for func()'s call
         """

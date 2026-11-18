@@ -101,8 +101,9 @@ async def _run_command(
     unpack_res: Callable[..., Any] | None = None,
     cursor_id: int | None = None,
 ) -> tuple[list[dict[str, Any]], _OpMsg | None, float]:
-    """Send ``msg`` over ``conn`` and return ``(docs, reply, duration_s)``,
-    where ``duration_s`` is the round-trip duration in seconds.
+    """Send ``msg`` over ``conn`` and return ``(docs, reply, duration_s)``.
+
+    ``duration_s`` is the round-trip duration in seconds.
 
     Private shared implementation. Should not be called directly outside this module. Use
     :func:`run_command`, :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.

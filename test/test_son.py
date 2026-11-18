@@ -139,7 +139,7 @@ class TestSON(unittest.TestCase):
         self.assertEqual(id(reflexive_son1), id(reflexive_son1["reflexive"]))
 
     def test_iteration(self):
-        """Test __iter__"""
+        """Test __iter__."""
         # test success case
         test_son = SON([(1, 100), (2, 200), (3, 300)])
         for ele in test_son:
@@ -153,7 +153,7 @@ class TestSON(unittest.TestCase):
         self.assertNotIn(22, test_son, "in succeeded when it shouldn't")
 
     def test_clears(self):
-        """Test clear()"""
+        """Test clear()."""
         test_son = SON([(1, 100), (2, 200), (3, 300)])
         test_son.clear()
         self.assertNotIn(1, test_son)
@@ -162,7 +162,7 @@ class TestSON(unittest.TestCase):
         self.assertEqual({}, test_son.to_dict())
 
     def test_len(self):
-        """Test len"""
+        """Test len."""
         test_son = SON()
         self.assertEqual(0, len(test_son))
         test_son = SON([(1, 100), (2, 200), (3, 300)])

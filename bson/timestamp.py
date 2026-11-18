@@ -116,9 +116,9 @@ class Timestamp:
         return f"Timestamp({self.__time}, {self.__inc})"
 
     def as_datetime(self) -> datetime.datetime:
-        """Return a :class:`~datetime.datetime` instance corresponding
-        to the time portion of this :class:`Timestamp`.
+        """Return a :class:`~datetime.datetime` for this :class:`Timestamp`.
 
+        The datetime corresponds to the time portion of this timestamp.
         The returned datetime's timezone is UTC.
         """
         return datetime.datetime.fromtimestamp(self.__time, utc)

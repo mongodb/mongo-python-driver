@@ -182,7 +182,7 @@ def run_setup_uv_python(
 
 @pytest.fixture
 def stub_env(tmp_path):
-    """A stub uv bin dir and its invocation log; returns (log, env-overrides)."""
+    """Return a stub uv bin dir and its invocation log as (log, env-overrides)."""
     log = tmp_path / "uv-stub.log"
     write_stub_uv(tmp_path / "stub-bin")
     return log, {"PATH": f"{tmp_path / 'stub-bin'}:/usr/bin:/bin", "UV_STUB_LOG": str(log)}
@@ -397,7 +397,7 @@ def test_same_path_maps_cygwin_forms():
 
 @pytest.fixture
 def project(tmp_path):
-    """A fake project tree: a pyproject.toml plus a copy of setup_uv.py."""
+    """Create a fake project tree: a pyproject.toml plus a copy of setup_uv.py."""
     proj = tmp_path / "proj"
     scripts = proj / ".evergreen" / "scripts"
     scripts.mkdir(parents=True)

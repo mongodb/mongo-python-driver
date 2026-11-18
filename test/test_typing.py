@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test that each file in mypy_fails/ actually fails mypy, and test some
-sample client code that uses PyMongo typings.
+"""Test that each file in mypy_fails/ actually fails mypy.
+
+Also test some sample client code that uses PyMongo typings.
 """
 
 from __future__ import annotations

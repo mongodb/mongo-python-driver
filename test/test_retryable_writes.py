@@ -252,9 +252,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     @client_context.require_replica_set
     @client_context.require_test_commands
     def test_retry_timeout_raises_original_error(self):
-        """A ServerSelectionTimeoutError on the retry attempt raises the
-        original error.
-        """
+        """A ServerSelectionTimeoutError on the retry attempt raises the original error."""
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
         topology = client._topology
@@ -588,8 +586,10 @@ class TestPoolPausedError(IntegrationTest):
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
     @client_context.require_replica_set
     def test_increment_transaction_id_without_sending_command(self):
-        """Test that the txnNumber field is properly incremented, even when
-        the first attempt fails before sending the command.
+        """Test that the txnNumber field is properly incremented.
+
+        This holds even when the first attempt fails before sending the
+        command.
         """
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])

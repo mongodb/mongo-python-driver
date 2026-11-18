@@ -72,7 +72,7 @@ def create_test(case_spec):
                     self.assertEqual(
                         vector_obs.dtype, BinaryVectorDtype[dtype_alias_exp], description
                     )
-                if dtype_exp in [BinaryVectorDtype.FLOAT32]:
+                if dtype_exp == BinaryVectorDtype.FLOAT32:
                     [
                         self.assertAlmostEqual(vector_obs.data[i], vector_exp[i], delta=1e-5)
                         for i in range(len(vector_exp))

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-OSS-Fuzz seed corpus builder for BSON fuzzing, mirroring the Go driver's
-(mongodb/mongo-go-driver) internal/cmd/build-oss-fuzz-corpus/main.go.
+OSS-Fuzz seed corpus builder for BSON fuzzing.
+
+Mirrors the Go driver's (mongodb/mongo-go-driver)
+internal/cmd/build-oss-fuzz-corpus/main.go.
 
 Converts the valid cases in the vendored BSON spec corpus (test/bson_corpus/
 by default) to raw BSON bytes and packages them into a ZIP, plus synthesized
@@ -143,8 +145,10 @@ def seed_boundary_documents(zw: zipfile.ZipFile) -> None:
 
 
 def seed_large_document(zw: zipfile.ZipFile) -> None:
-    """Seed one ~500 KB document; without it, libFuzzer's max_len default
-    keeps mutation below the size where large-input paths live.
+    """Seed one ~500 KB document.
+
+    Without it, libFuzzer's max_len default keeps mutation below the size
+    where large-input paths live.
     """
     doc = {
         "long_string": "a" * (256 * 1024),

@@ -243,6 +243,7 @@ class BinaryVectorDtype(Enum):
 
 class BinaryVector:
     """Vector of numbers along with metadata for binary interoperability.
+
     .. versionadded:: 4.10
     """
 
@@ -254,7 +255,8 @@ class BinaryVector:
         dtype: BinaryVectorDtype,
         padding: int = 0,
     ):
-        """
+        """Create a new BinaryVector.
+
         :param data: Sequence of numbers representing the mathematical vector.
         :param dtype:  The data type stored in binary
         :param padding: The number of bits in the final byte that are to be ignored

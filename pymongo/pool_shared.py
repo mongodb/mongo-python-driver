@@ -281,7 +281,8 @@ class _AgnosticBasePool(Generic[_ConnT]):
         is_sdam: bool = False,
         client_id: ObjectId | None = None,
     ):
-        """
+        """Create a new pool.
+
         :param address: a (hostname, port) tuple
         :param options: a PoolOptions instance
         :param is_sdam: whether to call hello for each new connection
@@ -457,7 +458,7 @@ except ImportError:
     # (Jython, IronPython, ..), systems that don't provide
     # everything we need from fcntl, etc.
     def _set_non_inheritable_non_atomic(fd: int) -> None:
-        """Dummy function for platforms that don't provide fcntl."""
+        """Do nothing on platforms that don't provide fcntl."""
 
 
 _MAX_TCP_KEEPIDLE = 120
@@ -554,14 +555,12 @@ class _CancellationContext:
 
     @property
     def cancelled(self) -> bool:
-        """Was cancel called?"""
+        """Whether cancel was called."""
         return self._cancelled
 
 
 class _PoolClosedError(PyMongoError):
-    """Internal error raised when a thread tries to get a connection from a
-    closed pool.
-    """
+    """Internal error raised when a thread tries to get a connection from a closed pool."""
 
 
 class _PoolGeneration:

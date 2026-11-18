@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test that the pymongo.uri_parser module is compliant with the connection
-string and uri options specifications.
+"""Test the pymongo.uri_parser module.
+
+Covers the connection string specification and the uri options
+specifications.
 """
 
 from __future__ import annotations

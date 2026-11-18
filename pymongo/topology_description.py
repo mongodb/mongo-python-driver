@@ -113,7 +113,7 @@ class TopologyDescription:
             )
 
     def _init_incompatible_err(self) -> None:
-        """Internal compatibility check for non-load balanced topologies."""
+        """Check compatibility of non-load balanced topologies."""
         for s in self._server_descriptions.values():
             if not s.is_server_type_known:
                 continue
@@ -162,12 +162,12 @@ class TopologyDescription:
         return address in self._server_descriptions
 
     def reset_server(self, address: _Address) -> TopologyDescription:
-        """A copy of this description, with one server marked Unknown."""
+        """Return a copy of this description, with one server marked Unknown."""
         unknown_sd = self._server_descriptions[address].to_unknown()
         return updated_topology_description(self, unknown_sd)
 
     def reset(self) -> TopologyDescription:
-        """A copy of this description, with all servers marked Unknown."""
+        """Return a copy of this description, with all servers marked Unknown."""
         if self._topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary:
             topology_type = TOPOLOGY_TYPE.ReplicaSetNoPrimary
         else:
@@ -373,8 +373,9 @@ class TopologyDescription:
         return self._apply_local_threshold(selection)
 
     def has_readable_server(self, read_preference: _ServerMode = ReadPreference.PRIMARY) -> bool:
-        """Does this topology have any readable servers available matching the
-        given read preference?
+        """Check if this topology has any readable servers available.
+
+        The servers must match the given read preference.
 
         :param read_preference: an instance of a read preference from
             :mod:`~pymongo.read_preferences`. Defaults to
@@ -389,7 +390,7 @@ class TopologyDescription:
         return any(self.apply_selector(read_preference))
 
     def has_writable_server(self) -> bool:
-        """Does this topology have a writable server available?
+        """Check if this topology has a writable server available.
 
         .. note:: When connected directly to a single server this method
           always returns ``True``.
@@ -711,7 +712,7 @@ def _update_rs_no_primary_from_member(
 
 
 def _check_has_primary(sds: Mapping[_Address, ServerDescription]) -> int:
-    """Current topology type is ReplicaSetWithPrimary. Is primary still known?
+    """Check if the primary is still known when the topology type is ReplicaSetWithPrimary.
 
     Pass in a dict of ServerDescriptions.
 

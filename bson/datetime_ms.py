@@ -42,7 +42,7 @@ class DatetimeMS:
     __slots__ = ("_value",)
 
     def __init__(self, value: int | datetime.datetime):
-        """Represents a BSON UTC datetime.
+        """Represent a BSON UTC datetime.
 
         BSON UTC datetimes are defined as an int64 of milliseconds since the
         Unix epoch. The principal use of DatetimeMS is to represent

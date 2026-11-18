@@ -73,7 +73,7 @@ class TestCursor(PyMongoTestCase):
 
 class TestRetryableErrorCodeCatch(PyMongoTestCase):
     def _test_fail_on_operation_failure_with_code(self, code):
-        """Test reads on error codes that should not be retried"""
+        """Test reads on error codes that should not be retried."""
         server = MockupDB()
         server.run()
         self.addCleanup(server.stop)
