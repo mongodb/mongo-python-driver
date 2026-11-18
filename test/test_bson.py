@@ -2094,9 +2094,16 @@ def _extreme_typed_documents() -> list[dict[str, Any]]:
     """One document per BSON type, at value extremes where applicable."""
     return [
         {},
-        {"int32": 1},
+        {"int32 max": 2**31 - 1, "int32 min": -(2**31)},
         {"int64 max": Int64(2**63 - 1), "int64 min": Int64(-(2**63))},
-        {"double": 1.5, "double min": sys.float_info.min, "double max": sys.float_info.max},
+        {
+            "double": 1.5,
+            "double min": sys.float_info.min,
+            "double max": sys.float_info.max,
+            "double inf": float("inf"),
+            "double neg inf": float("-inf"),
+            "double nan": float("nan"),
+        },
         {"string": "hello é", "string empty": ""},
         {"string big": "x" * 70000},
         {
@@ -2181,8 +2188,8 @@ class TestBSONHostileLengths(unittest.TestCase):
     multi-GiB buffers.
     """
 
-    def _assert_bson_error(self, data, msg=None):
-        with self.assertRaises(BSONError, msg=msg):
+    def _assert_bson_error(self, data):
+        with self.assertRaises(BSONError):
             bson.decode(data)
 
     def test_declared_document_lengths(self):
@@ -2221,6 +2228,8 @@ class TestBSONHostileLengths(unittest.TestCase):
                 self._assert_bson_error(bytes(data))
 
     def test_truncated_documents(self):
+        # Dense complement to the strided sampling in TestBSONMutations:
+        # every truncation offset of one document must raise a BSONError.
         base = bson.encode({"a": "b" * 20, "c": [1, 2]})
         for i in range(4, len(base)):
             with self.subTest(length=i):
@@ -2264,6 +2273,9 @@ class TestBSONMutations(unittest.TestCase):
             for detail, corrupted in self._mutated(data):
                 with self.subTest(f"{label} {detail}"):
                     self._assert_decodes_or_errors(corrupted)
+            # Strided complement to the dense scan in
+            # TestBSONHostileLengths: feeds truncated input to every
+            # type's parser.
             for detail, truncated in self._truncated(data):
                 with self.subTest(f"{label} {detail}"):
                     self._assert_decodes_or_errors(truncated)

@@ -501,6 +501,18 @@ class TestOpMsgBuilders(unittest.TestCase):
         """The first 4 bytes of an OP_MSG are its back-patched total length."""
         self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
 
+    def _assert_command_document(self, msg, command):
+        """The type-0 command document following the header decodes to `command`.
+
+        Returns the command document's size.
+        """
+        command_size = struct.unpack("<i", msg[_OP_MSG_HEADER_SIZE : _OP_MSG_HEADER_SIZE + 4])[0]
+        self.assertEqual(
+            decode(msg[_OP_MSG_HEADER_SIZE : _OP_MSG_HEADER_SIZE + command_size]),
+            command,
+        )
+        return command_size
+
     def test_op_msg_no_identifier(self):
         _, msg, total_size, max_doc_size = _cmessage._op_msg(0, {"ismaster": 1}, "", None, _OPTS)
         self.assertIsInstance(msg, bytes)
@@ -515,11 +527,7 @@ class TestOpMsgBuilders(unittest.TestCase):
         _, msg, _, max_doc_size = _cmessage._op_msg(0, {"insert": "coll"}, "documents", docs, _OPTS)
         self._assert_total_length(msg)
         self.assertEqual(max_doc_size, max(len(encode(doc)) for doc in docs))
-        command_size = struct.unpack("<i", msg[_OP_MSG_HEADER_SIZE : _OP_MSG_HEADER_SIZE + 4])[0]
-        self.assertEqual(
-            decode(msg[_OP_MSG_HEADER_SIZE : _OP_MSG_HEADER_SIZE + command_size]),
-            {"insert": "coll"},
-        )
+        command_size = self._assert_command_document(msg, {"insert": "coll"})
         # Type-1 payload: type byte, 4-byte length, cstring identifier.
         payload_start = _OP_MSG_HEADER_SIZE + command_size
         self.assertEqual(msg[payload_start], 0x01)
@@ -558,11 +566,7 @@ class TestOpMsgBuilders(unittest.TestCase):
         )
         self.assertIsInstance(to_publish, list)
         self._assert_total_length(msg)
-        command_size = struct.unpack("<i", msg[_OP_MSG_HEADER_SIZE : _OP_MSG_HEADER_SIZE + 4])[0]
-        self.assertEqual(
-            decode(msg[_OP_MSG_HEADER_SIZE : _OP_MSG_HEADER_SIZE + command_size]),
-            {"insert": "coll"},
-        )
+        self._assert_command_document(msg, {"insert": "coll"})
         self.assertEqual(len(to_publish), len(docs))
 
     def test_batched_op_msg_update(self):
@@ -584,11 +588,7 @@ class TestOpMsgBuilders(unittest.TestCase):
         )
         self.assertEqual(len(to_publish), 2)
         self._assert_total_length(msg)
-        command_size = struct.unpack("<i", msg[_OP_MSG_HEADER_SIZE : _OP_MSG_HEADER_SIZE + 4])[0]
-        self.assertEqual(
-            decode(msg[_OP_MSG_HEADER_SIZE : _OP_MSG_HEADER_SIZE + command_size]),
-            {"insert": "coll"},
-        )
+        self._assert_command_document(msg, {"insert": "coll"})
 
     def test_batched_op_msg_split_on_message_size(self):
         # A document that would push the message past max_message_size is
