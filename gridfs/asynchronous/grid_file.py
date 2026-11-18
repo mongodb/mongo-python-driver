@@ -359,8 +359,7 @@ class AsyncGridFS:
         arbitrary queries on the files collection. Can be combined
         with other modifiers for additional control. For example::
 
-          for grid_out in fs.find({"filename": "lisa.txt"},
-                                  no_cursor_timeout=True):
+          for grid_out in fs.find({"filename": "lisa.txt"}, no_cursor_timeout=True):
               data = grid_out.read()
 
         would iterate through all versions of "lisa.txt" stored in GridFS.
@@ -548,8 +547,8 @@ class AsyncGridFSBucket:
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
           with fs.open_upload_stream(
-                "test_file", chunk_size_bytes=4,
-                metadata={"contentType": "text/plain"}) as grid_in:
+              "test_file", chunk_size_bytes=4, metadata={"contentType": "text/plain"}
+          ) as grid_in:
               grid_in.write("data I want to store!")
           # uploaded on close
 
@@ -602,10 +601,8 @@ class AsyncGridFSBucket:
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
           with fs.open_upload_stream_with_id(
-                ObjectId(),
-                "test_file",
-                chunk_size_bytes=4,
-                metadata={"contentType": "text/plain"}) as grid_in:
+              ObjectId(), "test_file", chunk_size_bytes=4, metadata={"contentType": "text/plain"}
+          ) as grid_in:
               grid_in.write("data I want to store!")
           # uploaded on close
 
@@ -664,7 +661,8 @@ class AsyncGridFSBucket:
               "test_file",
               "data I want to store!",
               chunk_size_bytes=4,
-              metadata={"contentType": "text/plain"})
+              metadata={"contentType": "text/plain"},
+          )
 
         Returns the _id of the uploaded file.
 
@@ -716,7 +714,8 @@ class AsyncGridFSBucket:
               "test_file",
               "data I want to store!",
               chunk_size_bytes=4,
-              metadata={"contentType": "text/plain"})
+              metadata={"contentType": "text/plain"},
+          )
 
         Raises :exc:`~gridfs.errors.NoFile` if no such version of
         that file exists.
@@ -787,7 +786,7 @@ class AsyncGridFSBucket:
           # Get _id of file to read
           file_id = fs.upload_from_stream("test_file", "data I want to store!")
           # Get file to write to
-          file = open('myfile','wb+')
+          file = open("myfile", "wb+")
           fs.download_to_stream(file_id, file)
           file.seek(0)
           contents = file.read()
@@ -877,8 +876,7 @@ class AsyncGridFSBucket:
 
         For example::
 
-          for grid_data in fs.find({"filename": "lisa.txt"},
-                                  no_cursor_timeout=True):
+          for grid_data in fs.find({"filename": "lisa.txt"}, no_cursor_timeout=True):
               data = grid_data.read()
 
         would iterate through all versions of "lisa.txt" stored in GridFS.
@@ -983,7 +981,7 @@ class AsyncGridFSBucket:
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
           # Get file to write to
-          file = open('myfile','wb')
+          file = open("myfile", "wb")
           fs.download_to_stream_by_name("test_file", file)
 
         Raises :exc:`~gridfs.errors.NoFile` if no such version of

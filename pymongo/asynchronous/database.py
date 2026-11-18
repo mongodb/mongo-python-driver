@@ -104,7 +104,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
            of :class:`~pymongo.asynchronous.collection.AsyncCollection` for attribute names
            with leading underscores. You must use dict-style lookups instead::
 
-               db['__my_collection__']
+               db["__my_collection__"]
 
            Not:
 
@@ -174,7 +174,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
           >>> db1.read_preference
           Primary()
           >>> from pymongo.read_preferences import Secondary
-          >>> db2 = db1.with_options(read_preference=Secondary([{'node': 'analytics'}]))
+          >>> db2 = db1.with_options(read_preference=Secondary([{"node": "analytics"}]))
           >>> db1.read_preference
           Primary()
           >>> db2.read_preference
@@ -265,8 +265,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
           >>> coll1.read_preference
           Primary()
           >>> from pymongo import ReadPreference
-          >>> coll2 = db.get_collection(
-          ...     'test', read_preference=ReadPreference.SECONDARY)
+          >>> coll2 = db.get_collection("test", read_preference=ReadPreference.SECONDARY)
           >>> coll2.read_preference
           Secondary(tag_sets=None)
 
@@ -1286,22 +1285,21 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
             Queryable Encryption. For example::
 
                 {
-                  "escCollection": "enxcol_.encryptedCollection.esc",
-                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
-                  "fields": [
-                      {
-                          "path": "firstName",
-                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
-                          "bsonType": "string",
-                          "queries": {"queryType": "equality"}
-                      },
-                      {
-                          "path": "ssn",
-                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
-                          "bsonType": "string"
-                      }
-                  ]
-
+                    "escCollection": "enxcol_.encryptedCollection.esc",
+                    "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                    "fields": [
+                        {
+                            "path": "firstName",
+                            "keyId": Binary.from_uuid(UUID("00000000-0000-0000-0000-000000000000")),
+                            "bsonType": "string",
+                            "queries": {"queryType": "equality"},
+                        },
+                        {
+                            "path": "ssn",
+                            "keyId": Binary.from_uuid(UUID("04104104-1041-0410-4104-104104104104")),
+                            "bsonType": "string",
+                        },
+                    ],
                 }
 
 

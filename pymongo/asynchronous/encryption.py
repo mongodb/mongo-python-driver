@@ -540,7 +540,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             :class:`pymongo.mongo_client.AsyncMongoClient`. For example, to
             override the system default CA file::
 
-              kms_tls_options={'kmip': {'tlsCAFile': certifi.where()}}
+              kms_tls_options = {"kmip": {"tlsCAFile": certifi.where()}}
 
             Or to supply a client certificate::
 

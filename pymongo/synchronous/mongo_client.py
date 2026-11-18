@@ -215,20 +215,22 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
             from urllib.parse import quote_plus
 
-            uri = "mongodb://%s:%s@%s" % (
-                quote_plus(user), quote_plus(password), host)
+            uri = "mongodb://%s:%s@%s" % (quote_plus(user), quote_plus(password), host)
             client = MongoClient(uri)
 
         Unix domain sockets are also supported. The socket path must be percent
         encoded in the URI::
 
             uri = "mongodb://%s:%s@%s" % (
-                quote_plus(user), quote_plus(password), quote_plus(socket_path))
+                quote_plus(user),
+                quote_plus(password),
+                quote_plus(socket_path),
+            )
             client = MongoClient(uri)
 
         But not when passed as a simple hostname::
 
-            client = MongoClient('/tmp/mongodb-27017.sock')
+            client = MongoClient("/tmp/mongodb-27017.sock")
 
         Starting with version 3.6, PyMongo supports mongodb+srv:// URIs. The
         URI must include one, and only one, hostname. The hostname will be
@@ -258,10 +260,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           like this::
 
             from pymongo.errors import ConnectionFailure
+
             client = MongoClient()
             try:
                 # The ping command is cheap and does not require auth.
-                client.admin.command('ping')
+                client.admin.command("ping")
             except ConnectionFailure:
                 print("Server not available")
 
@@ -489,6 +492,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
                 def validator(host: str) -> bool:
                     return host.endswith((".a.example.com", ".b.example.com"))
+
 
                 MongoClient(
                     "mongodb+srv://cluster.example.com/",
@@ -772,7 +776,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
            In PyMongo 2.x, :class:`~pymongo.MongoClient` accepted a list of
            standalone MongoDB servers and used the first it could connect to::
 
-               MongoClient(['host1.com:27017', 'host2.com:27017'])
+               MongoClient(["host1.com:27017", "host2.com:27017"])
 
            A list of multiple standalones is no longer supported; if multiple
            servers are listed they must be members of the same replica set, or
@@ -802,7 +806,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
            instance of :class:`~pymongo.database.Database` for attribute names
            with leading underscores. You must use dict-style lookups instead::
 
-               client['__my_database__']
+               client["__my_database__"]
 
            Not::
 
@@ -1560,12 +1564,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> database.Database[_DocumentType]:
         """Get the database named in the MongoDB connection URI.
 
-        >>> uri = 'mongodb://host/my_database'
+        >>> uri = "mongodb://host/my_database"
         >>> client = MongoClient(uri)
         >>> db = client.get_default_database()
-        >>> assert db.name == 'my_database'
+        >>> assert db.name == "my_database"
         >>> db = client.get_database()
-        >>> assert db.name == 'my_database'
+        >>> assert db.name == "my_database"
 
         Useful in scripts where you want to choose which database to use
         based only on the URI in a configuration file.
@@ -1630,8 +1634,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           >>> db1.read_preference
           Primary()
           >>> from pymongo import ReadPreference
-          >>> db2 = client.get_database(
-          ...     'test', read_preference=ReadPreference.SECONDARY)
+          >>> db2 = client.get_database("test", read_preference=ReadPreference.SECONDARY)
           >>> db2.read_preference
           Secondary(tag_sets=None)
 
@@ -2540,21 +2543,23 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
           >>> for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           ...
           >>> for doc in db.coll.find({}):
           ...     print(doc)
-          ...
           {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
           ...
           >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
           >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
-          >>> models = [InsertOne(namespace="db.test", document={'y': 1}),
-          ...           DeleteOne(namespace="db.test", filter={'x': 1}),
-          ...           InsertOne(namespace="db.coll", document={'y': 2}),
-          ...           ReplaceOne(namespace="db.test", filter={'w': 1}, replacement={'z': 1}, upsert=True)]
+          >>> models = [
+          ...     InsertOne(namespace="db.test", document={"y": 1}),
+          ...     DeleteOne(namespace="db.test", filter={"x": 1}),
+          ...     InsertOne(namespace="db.coll", document={"y": 2}),
+          ...     ReplaceOne(
+          ...         namespace="db.test", filter={"w": 1}, replacement={"z": 1}, upsert=True
+          ...     ),
+          ... ]
           >>> result = client.bulk_write(models=models)
           >>> result.inserted_count
           2
@@ -2566,14 +2571,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           1
           >>> for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           {'y': 1, '_id': ObjectId('54f62ee2fba5226811f634f1')}
           {'z': 1, '_id': ObjectId('54f62ee28891e756a6e1abd5')}
           ...
           >>> for doc in db.coll.find({}):
           ...     print(doc)
-          ...
           {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
           {'y': 2, '_id': ObjectId('507f1f77bcf86cd799439012')}
 

@@ -184,6 +184,9 @@ disable_error_code = ["unused-coroutine", "no-redef"]
 line-length = 100
 extend-exclude = ["drivers-evergreen-tools"]
 
+[tool.ruff.format]
+docstring-code-format = true
+
 [tool.ruff.lint]
 extend-select = [
   "E", "F", "W", # flake8

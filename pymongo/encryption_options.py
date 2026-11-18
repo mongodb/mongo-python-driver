@@ -132,8 +132,8 @@ class AutoEncryptionOpts:
             For example, to configure multiple local KMS providers::
 
               kms_providers = {
-                  "local": {"key": local_kek1},        # Unnamed KMS provider.
-                  "local:myname": {"key": local_kek2}, # Named KMS provider with name "myname".
+                  "local": {"key": local_kek1},  # Unnamed KMS provider.
+                  "local:myname": {"key": local_kek2},  # Named KMS provider with name "myname".
               }
 
         :param key_vault_namespace: The namespace for the key vault collection.
@@ -183,7 +183,7 @@ class AutoEncryptionOpts:
             :class:`pymongo.mongo_client.AsyncMongoClient` and :class:`pymongo.mongo_client.MongoClient`. For example, to
             override the system default CA file::
 
-              kms_tls_options={'kmip': {'tlsCAFile': certifi.where()}}
+              kms_tls_options = {"kmip": {"tlsCAFile": certifi.where()}}
 
             Or to supply a client certificate::
 

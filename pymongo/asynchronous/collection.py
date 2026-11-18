@@ -214,7 +214,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
            names with leading underscores. You must use dict-style lookups
            instead::
 
-               collection['__my_collection__']
+               collection["__my_collection__"]
 
            Not:
 
@@ -710,14 +710,15 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
           >>> async for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
-          ...
           >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
-          >>> requests = [InsertOne({'y': 1}), DeleteOne({'x': 1}),
-          ...             ReplaceOne({'w': 1}, {'z': 1}, upsert=True)]
+          >>> requests = [
+          ...     InsertOne({"y": 1}),
+          ...     DeleteOne({"x": 1}),
+          ...     ReplaceOne({"w": 1}, {"z": 1}, upsert=True),
+          ... ]
           >>> result = await db.test.bulk_write(requests)
           >>> result.inserted_count
           1
@@ -729,7 +730,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
           {2: ObjectId('54f62ee28891e756a6e1abd5')}
           >>> async for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           {'y': 1, '_id': ObjectId('54f62ee2fba5226811f634f1')}
           {'z': 1, '_id': ObjectId('54f62ee28891e756a6e1abd5')}
@@ -838,12 +838,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> InsertOneResult:
         """Insert a single document.
 
-          >>> await db.test.count_documents({'x': 1})
+          >>> await db.test.count_documents({"x": 1})
           0
-          >>> result = await db.test.insert_one({'x': 1})
+          >>> result = await db.test.insert_one({"x": 1})
           >>> result.inserted_id
           ObjectId('54f112defba522406c9cc208')
-          >>> await db.test.find_one({'x': 1})
+          >>> await db.test.find_one({"x": 1})
           {'x': 1, '_id': ObjectId('54f112defba522406c9cc208')}
 
         :param document: The document to insert. Must be a mutable mapping
@@ -906,7 +906,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
           >>> await db.test.count_documents({})
           0
-          >>> result = await db.test.insert_many([{'x': i} for i in range(2)])
+          >>> result = await db.test.insert_many([{"x": i} for i in range(2)])
           >>> await result.inserted_ids
           [ObjectId('54f113fffba522406c9cc20e'), ObjectId('54f113fffba522406c9cc20f')]
           >>> await db.test.count_documents({})
@@ -1128,29 +1128,27 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
           >>> async for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': ObjectId('54f4c5befba5220aa4d6dee7')}
-          >>> result = await db.test.replace_one({'x': 1}, {'y': 1})
+          >>> result = await db.test.replace_one({"x": 1}, {"y": 1})
           >>> result.matched_count
           1
           >>> result.modified_count
           1
           >>> async for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'y': 1, '_id': ObjectId('54f4c5befba5220aa4d6dee7')}
 
         The *upsert* option can be used to insert a new document if a matching
         document does not exist.
 
-          >>> result = await db.test.replace_one({'x': 1}, {'x': 1}, True)
+          >>> result = await db.test.replace_one({"x": 1}, {"x": 1}, True)
           >>> result.matched_count
           0
           >>> result.modified_count
           0
           >>> result.upserted_id
           ObjectId('54f11e5c8891e756a6e1abd4')
-          >>> await db.test.find_one({'x': 1})
+          >>> await db.test.find_one({"x": 1})
           {'x': 1, '_id': ObjectId('54f11e5c8891e756a6e1abd4')}
 
         :param filter: A query that matches the document to replace.
@@ -1237,18 +1235,16 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
           >>> async for doc in db.test.find():
           ...     print(doc)
-          ...
           {'x': 1, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
-          >>> result = await db.test.update_one({'x': 1}, {'$inc': {'x': 3}})
+          >>> result = await db.test.update_one({"x": 1}, {"$inc": {"x": 3}})
           >>> result.matched_count
           1
           >>> result.modified_count
           1
           >>> async for doc in db.test.find():
           ...     print(doc)
-          ...
           {'x': 4, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
@@ -1256,7 +1252,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         If ``upsert=True`` and no documents match the filter, create a
         new document based on the filter criteria and update modifications.
 
-          >>> result = await db.test.update_one({'x': -10}, {'$inc': {'x': 3}}, upsert=True)
+          >>> result = await db.test.update_one({"x": -10}, {"$inc": {"x": 3}}, upsert=True)
           >>> result.matched_count
           0
           >>> result.modified_count
@@ -1355,18 +1351,16 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
           >>> async for doc in db.test.find():
           ...     print(doc)
-          ...
           {'x': 1, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
-          >>> result = await db.test.update_many({'x': 1}, {'$inc': {'x': 3}})
+          >>> result = await db.test.update_many({"x": 1}, {"$inc": {"x": 3}})
           >>> result.matched_count
           3
           >>> result.modified_count
           3
           >>> async for doc in db.test.find():
           ...     print(doc)
-          ...
           {'x': 4, '_id': 0}
           {'x': 4, '_id': 1}
           {'x': 4, '_id': 2}
@@ -1584,12 +1578,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> DeleteResult:
         """Delete a single document matching the filter.
 
-          >>> await db.test.count_documents({'x': 1})
+          >>> await db.test.count_documents({"x": 1})
           3
-          >>> result = await db.test.delete_one({'x': 1})
+          >>> result = await db.test.delete_one({"x": 1})
           >>> result.deleted_count
           1
-          >>> await db.test.count_documents({'x': 1})
+          >>> await db.test.count_documents({"x": 1})
           2
 
         :param filter: A query that matches the document to delete.
@@ -1649,12 +1643,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> DeleteResult:
         """Delete one or more documents matching the filter.
 
-          >>> await db.test.count_documents({'x': 1})
+          >>> await db.test.count_documents({"x": 1})
           3
-          >>> result = await db.test.delete_many({'x': 1})
+          >>> result = await db.test.delete_many({"x": 1})
           >>> result.deleted_count
           3
-          >>> await db.test.count_documents({'x': 1})
+          >>> await db.test.count_documents({"x": 1})
           0
 
         :param filter: A query that matches the documents to delete.
@@ -2183,8 +2177,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         """Create one or more indexes on this collection.
 
           >>> from pymongo import IndexModel, ASCENDING, DESCENDING
-          >>> index1 = IndexModel([("hello", DESCENDING),
-          ...                      ("world", ASCENDING)], name="hello_world")
+          >>> index1 = IndexModel([("hello", DESCENDING), ("world", ASCENDING)], name="hello_world")
           >>> index2 = IndexModel([("goodbye", DESCENDING)])
           >>> await db.test.create_indexes([index1, index2])
           ["hello_world", "goodbye_-1"]
@@ -2506,7 +2499,6 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
           >>> async for index in await db.test.list_indexes():
           ...     print(index)
-          ...
           SON([('v', 2), ('key', SON([('_id', 1)])), ('name', '_id_')])
 
         Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
@@ -3056,8 +3048,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         :mod:`bson` module.
 
           >>> import bson
-          >>> cursor = await db.test.aggregate_raw_batches([
-          ...     {'$project': {'x': {'$multiply': [2, '$x']}}}])
+          >>> cursor = await db.test.aggregate_raw_batches(
+          ...     [{"$project": {"x": {"$multiply": [2, "$x"]}}}]
+          ... )
           >>> async for batch in cursor:
           ...     print(bson.decode_all(batch))
 
@@ -3322,32 +3315,30 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> _DocumentType | None:
         """Find a single document and delete it, returning the document.
 
-          >>> await db.test.count_documents({'x': 1})
+          >>> await db.test.count_documents({"x": 1})
           2
-          >>> await db.test.find_one_and_delete({'x': 1})
+          >>> await db.test.find_one_and_delete({"x": 1})
           {'x': 1, '_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
-          >>> await db.test.count_documents({'x': 1})
+          >>> await db.test.count_documents({"x": 1})
           1
 
         Returns ``None`` if no document matches the filter.
 
-          >>> await db.test.find_one_and_delete({'_exists': False})
+          >>> await db.test.find_one_and_delete({"_exists": False})
 
         If multiple documents match *filter*, a *sort* can be applied.
 
-          >>> async for doc in db.test.find({'x': 1}):
+          >>> async for doc in db.test.find({"x": 1}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
-          >>> await db.test.find_one_and_delete(
-          ...     {'x': 1}, sort=[('_id', pymongo.DESCENDING)])
+          >>> await db.test.find_one_and_delete({"x": 1}, sort=[("_id", pymongo.DESCENDING)])
           {'x': 1, '_id': 2}
 
         The *projection* option can be used to limit the fields returned.
 
-          >>> await db.test.find_one_and_delete({'x': 1}, projection={'_id': False})
+          >>> await db.test.find_one_and_delete({"x": 1}, projection={"_id": False})
           {'x': 1}
 
         :param filter: A query that matches the document to delete.
@@ -3420,17 +3411,17 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         Return either the original or the replaced document.
 
-          >>> await db.test.find_one({'x': 1})
+          >>> await db.test.find_one({"x": 1})
           {'_id': 0, 'x': 1}
-          >>> await db.test.find_one_and_replace({'x': 1}, {'y': 2})
+          >>> await db.test.find_one_and_replace({"x": 1}, {"y": 2})
           {'_id': 0, 'x': 1}
-          >>> await db.test.find_one({'x': 1})
-          >>> await db.test.find_one({'y': 2})
+          >>> await db.test.find_one({"x": 1})
+          >>> await db.test.find_one({"y": 2})
           {'_id': 0, 'y': 2}
 
         Returns ``None`` if no document matches the filter.
 
-          >>> await db.test.find_one_and_replace({'_exists': False}, {'x': 1})
+          >>> await db.test.find_one_and_replace({"_exists": False}, {"x": 1})
 
         The :meth:`find_one_and_replace` method differs from
         :meth:`find_one_and_update` by replacing the document matched by
@@ -3438,15 +3429,13 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
           >>> async for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
-          >>> await db.test.find_one_and_replace({'x': 1}, {'y': 1})
+          >>> await db.test.find_one_and_replace({"x": 1}, {"y": 1})
           {'x': 1, '_id': 0}
           >>> async for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'y': 1, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
@@ -3541,18 +3530,18 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
         Return either the original or the updated document.
 
-          >>> await db.test.find_one({'_id': 665})
+          >>> await db.test.find_one({"_id": 665})
           {'_id': 665, 'done': False, 'count': 25}
           >>> await db.test.find_one_and_update(
-          ...    {'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
+          ...     {"_id": 665}, {"$inc": {"count": 1}, "$set": {"done": True}}
+          ... )
           {'_id': 665, 'done': False, 'count': 25}
-          >>> await db.test.find_one({'_id': 665})
+          >>> await db.test.find_one({"_id": 665})
           {'_id': 665, 'done': True, 'count': 26}
 
         Returns ``None`` if no document matches the filter.
 
-          >>> await db.test.find_one_and_update(
-          ...    {'_exists': False}, {'$inc': {'count': 1}})
+          >>> await db.test.find_one_and_update({"_exists": False}, {"$inc": {"count": 1}})
 
         When the filter matches, by default :meth:`find_one_and_update`
         returns the original version of the document before the update was
@@ -3562,18 +3551,18 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
           >>> from pymongo import ReturnDocument
           >>> await db.example.find_one_and_update(
-          ...     {'_id': 'userid'},
-          ...     {'$inc': {'seq': 1}},
-          ...     return_document=ReturnDocument.AFTER)
+          ...     {"_id": "userid"}, {"$inc": {"seq": 1}}, return_document=ReturnDocument.AFTER
+          ... )
           {'_id': 'userid', 'seq': 1}
 
         You can limit the fields returned with the *projection* option.
 
           >>> await db.example.find_one_and_update(
-          ...     {'_id': 'userid'},
-          ...     {'$inc': {'seq': 1}},
-          ...     projection={'seq': True, '_id': False},
-          ...     return_document=ReturnDocument.AFTER)
+          ...     {"_id": "userid"},
+          ...     {"$inc": {"seq": 1}},
+          ...     projection={"seq": True, "_id": False},
+          ...     return_document=ReturnDocument.AFTER,
+          ... )
           {'seq': 2}
 
         The *upsert* option can be used to create the document if it doesn't
@@ -3582,24 +3571,23 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
           >>> (await db.example.delete_many({})).deleted_count
           1
           >>> await db.example.find_one_and_update(
-          ...     {'_id': 'userid'},
-          ...     {'$inc': {'seq': 1}},
-          ...     projection={'seq': True, '_id': False},
+          ...     {"_id": "userid"},
+          ...     {"$inc": {"seq": 1}},
+          ...     projection={"seq": True, "_id": False},
           ...     upsert=True,
-          ...     return_document=ReturnDocument.AFTER)
+          ...     return_document=ReturnDocument.AFTER,
+          ... )
           {'seq': 1}
 
         If multiple documents match *filter*, a *sort* can be applied.
 
-          >>> async for doc in db.test.find({'done': True}):
+          >>> async for doc in db.test.find({"done": True}):
           ...     print(doc)
-          ...
           {'_id': 665, 'done': True, 'result': {'count': 26}}
           {'_id': 701, 'done': True, 'result': {'count': 17}}
           >>> await db.test.find_one_and_update(
-          ...     {'done': True},
-          ...     {'$set': {'final': True}},
-          ...     sort=[('_id', pymongo.DESCENDING)])
+          ...     {"done": True}, {"$set": {"final": True}}, sort=[("_id", pymongo.DESCENDING)]
+          ... )
           {'_id': 701, 'done': True, 'result': {'count': 17}}
 
         :param filter: A query that matches the document to update.

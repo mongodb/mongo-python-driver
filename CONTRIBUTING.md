@@ -250,9 +250,7 @@ for local testing):
 ```python
 from pymongo import MongoClient
 
-client = MongoClient(
-    "mongodb://localhost:27017?tls=true&tlsAllowInvalidCertificates=true"
-)
+client = MongoClient("mongodb://localhost:27017?tls=true&tlsAllowInvalidCertificates=true")
 ```
 
 If you want to use the actual certificate file then set `tlsCertificateKeyFile` to the local path

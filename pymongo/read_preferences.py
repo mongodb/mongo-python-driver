@@ -171,7 +171,7 @@ class _ServerMode:
 
         For example, to only send a query to an analytic node::
 
-           Nearest(tag_sets=[{"node":"analytics"}])
+           Nearest(tag_sets=[{"node": "analytics"}])
 
         Or using :class:`SecondaryPreferred`::
 
@@ -553,7 +553,7 @@ class ReadPreference:
 
     Apps can also create a custom read preference, for example::
 
-       Nearest(tag_sets=[{"node":"analytics"}])
+       Nearest(tag_sets=[{"node": "analytics"}])
 
     See `Read and Write Settings <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_ for code examples.
 

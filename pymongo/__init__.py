@@ -158,7 +158,7 @@ def timeout(seconds: float | None) -> AbstractContextManager[None]:
       with pymongo.timeout(5):
           coll.find_one()  # Uses the 5 second deadline.
           with pymongo.timeout(3):
-              coll.find_one() # Uses the 3 second deadline.
+              coll.find_one()  # Uses the 3 second deadline.
           coll.find_one()  # Uses the original 5 second deadline.
           with pymongo.timeout(10):
               coll.find_one()  # Still uses the original 5 second deadline.
