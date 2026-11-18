@@ -58,13 +58,15 @@ EXTRAS_MAP = {
 # Map the test name to test group.
 GROUP_MAP = dict(fuzz="fuzz", mockupdb="mockupdb", perf="perf")
 
-# The test files run under ASan/UBSan (PYTHON-6048). They exercise the
-# buffer-protocol acquisition path in bson/_cbsonmodule.c
-# (_get_buffer/_prepare_input_buffer) and the wire-message builders in
+# The test files run under ASan/UBSan (PYTHON-6048, PYTHON-6285). They
+# exercise the buffer-protocol acquisition path in bson/_cbsonmodule.c
+# (_get_buffer/_prepare_input_buffer), the wire-message builders in
 # pymongo/_cmessagemodule.c (_op_msg, _batched_op_msg,
-# _encode_batched_write_command).
+# _encode_batched_write_command), and the hostile-input and boundary tests
+# driving the decoder and builders directly.
 SANITIZER_FILES = [
     "test/test_bson.py",
+    "test/test_message.py",
     "test/test_raw_bson.py",
     "test/test_raw_bson_shared.py",
     "test/test_client.py",
