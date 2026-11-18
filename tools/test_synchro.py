@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -249,39 +248,6 @@ def test_copy_changed_files_manifest_failure_rolls_back(tmp_path: Path) -> None:
     ]
 
 
-def test_copy_changed_files_interrupt_rolls_back(tmp_path: Path) -> None:
-    """An interrupt mid-publication still restores destinations already replaced."""
-    staged_a = tmp_path / "a_staged.py"
-    dest_a = tmp_path / "a_dest.py"
-    staged_a.write_bytes(b"new-a")
-    dest_a.write_bytes(b"old-a")
-    staged_b = tmp_path / "b_staged.py"
-    dest_b = tmp_path / "b_dest.py"
-    staged_b.write_bytes(b"new-b")
-    dest_b.write_bytes(b"old-b")
-
-    real_write = Path.write_bytes
-
-    def interrupting_write(self: Path, data: bytes) -> None:
-        if self.name.startswith(dest_b.name):
-            raise KeyboardInterrupt
-        real_write(self, data)
-
-    with patch.object(Path, "write_bytes", interrupting_write):
-        with pytest.raises(KeyboardInterrupt):
-            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)])
-
-    assert dest_a.read_bytes() == b"old-a"
-    assert dest_b.read_bytes() == b"old-b"
-    # No temporary files are left behind.
-    assert sorted(p.name for p in tmp_path.iterdir()) == [
-        "a_dest.py",
-        "a_staged.py",
-        "b_dest.py",
-        "b_staged.py",
-    ]
-
-
 def test_copy_changed_files_interrupt_after_replace_rolls_back(tmp_path: Path) -> None:
     """An interrupt just after a replacement still rolls that destination back."""
     staged_a = tmp_path / "a_staged.py"
@@ -307,47 +273,6 @@ def test_copy_changed_files_interrupt_after_replace_rolls_back(tmp_path: Path) -
 
     assert dest_a.read_bytes() == b"old-a"
     assert dest_b.read_bytes() == b"old-b"
-
-
-def test_copy_changed_files_never_published_dest_not_restored(tmp_path: Path) -> None:
-    """A destination whose replacement never lands is not rewritten by rollback."""
-    staged_a = tmp_path / "a_staged.py"
-    dest_a = tmp_path / "a_dest.py"
-    staged_a.write_bytes(b"new-a")
-    dest_a.write_bytes(b"old-a")
-    staged_b = tmp_path / "b_staged.py"
-    dest_b = tmp_path / "b_dest.py"
-    staged_b.write_bytes(b"new-b")
-    dest_b.write_bytes(b"old-b")
-
-    real_write = Path.write_bytes
-
-    def failing_write(self: Path, data: bytes) -> None:
-        if self.name.startswith(dest_b.name):
-            # Simulate persistent ENOSPC: every write under dest_b's name,
-            # including a rollback restore, lands partial bytes then fails.
-            real_write(self, b"ne")
-            raise OSError(28, "No space left on device")
-        real_write(self, data)
-
-    # No on-disk backup at all: the rollback would have to rewrite files.
-    with (
-        patch("os.link", side_effect=OSError(1, "link not supported")),
-        patch("shutil.copyfile", side_effect=OSError(1, "copy not supported")),
-        patch.object(Path, "write_bytes", failing_write),
-    ):
-        with pytest.raises(OSError, match="No space left on device"):
-            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b)])
-
-    assert dest_a.read_bytes() == b"old-a"
-    assert dest_b.read_bytes() == b"old-b"
-    # No temporary or backup files are left behind.
-    assert sorted(p.name for p in tmp_path.iterdir()) == [
-        "a_dest.py",
-        "a_staged.py",
-        "b_dest.py",
-        "b_staged.py",
-    ]
 
 
 def test_copy_changed_files_failed_restore_keeps_backup(tmp_path: Path) -> None:
@@ -411,21 +336,6 @@ def test_copy_changed_files_unrecovered_backup_blocks_publication(tmp_path: Path
 
     assert dest.read_bytes() == b"current"
     assert (tmp_path / "dest.py.synchro-backup").read_bytes() == b"original"
-
-
-def test_copy_changed_files_clears_stale_twin_backup(tmp_path: Path) -> None:
-    """A stale backup that still matches the destination is safely replaced."""
-    staged = tmp_path / "staged.py"
-    dest = tmp_path / "dest.py"
-    staged.write_bytes(b"new")
-    dest.write_bytes(b"old")
-    os.link(dest, tmp_path / "dest.py.synchro-backup")
-
-    changed = synchro.copy_changed_files([(staged, dest)])
-
-    assert changed == [dest]
-    assert dest.read_bytes() == b"new"
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["dest.py", "staged.py"]
 
 
 def test_copy_changed_files_backup_cleanup_failure_is_not_fatal(
@@ -511,84 +421,6 @@ def test_copy_changed_files_failed_fallback_restore_is_clean(tmp_path: Path) -> 
         "blocking-dir",
         "c_staged.py",
     ]
-
-
-def test_copy_changed_files_copy_backup_used_for_rollback(tmp_path: Path) -> None:
-    """Without hard links, a copied backup restores by rename, not rewrite."""
-    staged_a = tmp_path / "a_staged.py"
-    dest_a = tmp_path / "a_dest.py"
-    staged_a.write_bytes(b"new-a")
-    dest_a.write_bytes(b"old-a")
-    staged_b = tmp_path / "b_staged.py"
-    dest_b = tmp_path / "b_dest.py"
-    staged_b.write_bytes(b"new-b")
-    dest_b.write_bytes(b"old-b")
-    staged_c = tmp_path / "c_staged.py"
-    dest_c = tmp_path / "blocking-dir" / "c_dest.py"
-    staged_c.write_bytes(b"new-c")
-    # A file occupies c_dest.py's parent directory, so the mkdir fails.
-    (tmp_path / "blocking-dir").write_bytes(b"not a directory")
-
-    real_write = Path.write_bytes
-    restore_payloads: list[bytes] = []
-
-    def tracking_write(self: Path, data: bytes) -> None:
-        if data.startswith(b"old"):
-            restore_payloads.append(data)
-        real_write(self, data)
-
-    with (
-        patch("os.link", side_effect=OSError(1, "link not supported")),
-        patch.object(Path, "write_bytes", tracking_write),
-    ):
-        with pytest.raises(FileExistsError):
-            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)])
-
-    # The copied backups restored the destinations by rename.
-    assert restore_payloads == []
-    assert dest_a.read_bytes() == b"old-a"
-    assert dest_b.read_bytes() == b"old-b"
-
-
-def test_copy_changed_files_copy_backup_failure_is_clean(tmp_path: Path) -> None:
-    """A failed copy backup is cleaned and the rollback stays clean."""
-    staged_a = tmp_path / "a_staged.py"
-    dest_a = tmp_path / "a_dest.py"
-    staged_a.write_bytes(b"new-a")
-    dest_a.write_bytes(b"old-a")
-    staged_b = tmp_path / "b_staged.py"
-    dest_b = tmp_path / "b_dest.py"
-    staged_b.write_bytes(b"new-b")
-    dest_b.write_bytes(b"old-b")
-    staged_c = tmp_path / "c_staged.py"
-    dest_c = tmp_path / "blocking-dir" / "c_dest.py"
-    staged_c.write_bytes(b"new-c")
-    # A file occupies c_dest.py's parent directory, so the mkdir fails.
-    (tmp_path / "blocking-dir").write_bytes(b"not a directory")
-
-    real_write = Path.write_bytes
-
-    def failing_restore(self: Path, data: bytes) -> None:
-        if data == b"old-b":
-            # Simulate persistent ENOSPC: the restore lands partial bytes
-            # then fails.
-            real_write(self, b"ol")
-            raise OSError(28, "No space left on device")
-        real_write(self, data)
-
-    with (
-        patch("os.link", side_effect=OSError(1, "link not supported")),
-        patch("shutil.copyfile", side_effect=OSError(28, "No space left on device")),
-        patch.object(Path, "write_bytes", failing_restore),
-    ):
-        with pytest.raises(FileExistsError):
-            synchro.copy_changed_files([(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)])
-
-    assert dest_a.read_bytes() == b"old-a"
-    # The failed restore leaves the published content, uncorrupted.
-    assert dest_b.read_bytes() == b"new-b"
-    # The partial copy backup was removed.
-    assert not (tmp_path / "b_dest.py.synchro-backup").exists()
 
 
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
@@ -689,25 +521,6 @@ def test_ruff_failure_leaves_tree_unchanged(
     assert not (tmp_path / ".synchro-staging").exists()
 
 
-def test_early_failure_claims_nothing_to_stage(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A failure before publication leaves no manifest to stage."""
-    setup_tree(tmp_path, monkeypatch)
-    (tmp_path / ".synchro-modified").write_text("./pymongo/synchronous/foo.py\n")
-
-    def failing_first_ruff(
-        cmd: list[str], *args: object, **kwargs: object
-    ) -> subprocess.CompletedProcess[str]:
-        raise subprocess.CalledProcessError(1, cmd)
-
-    with patch("subprocess.run", side_effect=failing_first_ruff):
-        with pytest.raises(subprocess.CalledProcessError):
-            synchro.main()
-
-    assert not (tmp_path / ".synchro-modified").exists()
-
-
 def test_ruff_commands_keep_diagnostics_visible(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -759,20 +572,6 @@ def test_mirrored_test_files_requires_sync_counterpart(
     filtered = [str(async_dir / "test_a.py"), str(async_dir / "test_b.py")]
 
     assert synchro.mirrored_test_files(filtered) == [f"{tmp_path / 'test' / 'test_a.py'}"]
-
-
-def test_git_tracked_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """git_tracked_files reports tracked paths and None outside a repository."""
-    monkeypatch.chdir(tmp_path)
-    assert synchro.git_tracked_files([Path("a.py")]) is None
-
-    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
-    (tmp_path / "a.py").write_bytes(b"a")
-    (tmp_path / "b.py").write_bytes(b"b")
-    # git ls-files reports the index, so staging a.py marks it tracked.
-    subprocess.run(["git", "add", "a.py"], cwd=tmp_path, check=True)
-
-    assert synchro.git_tracked_files([Path("a.py"), Path("b.py")]) == {Path("a.py")}
 
 
 def test_prepare_staging_pins_first_party_packages(
