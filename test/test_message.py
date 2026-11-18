@@ -498,11 +498,11 @@ class TestOpMsgBuilders(unittest.TestCase):
             self.skipTest("_cmessage not built")
 
     def _assert_total_length(self, msg):
-        """The first 4 bytes of an OP_MSG are its back-patched total length."""
+        """Assert the first 4 bytes of an OP_MSG are its back-patched total length."""
         self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
 
     def _assert_command_document(self, msg, command):
-        """The type-0 command document following the header decodes to `command`.
+        """Assert the type-0 command document following the header decodes to `command`.
 
         Returns the command document's size.
         """

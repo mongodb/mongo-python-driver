@@ -2238,8 +2238,9 @@ class TestBSONHostileLengths(unittest.TestCase):
 
 
 class TestBSONMutations(unittest.TestCase):
-    """Every byte mutation must decode successfully or raise a BSONError,
-    never crash or read out of bounds.
+    """Every byte mutation must decode successfully or raise a BSONError.
+
+    A mutation must never crash or read out of bounds.
     """
 
     MUTATION_VALUES = (0x00, 0x7F, 0xFF)

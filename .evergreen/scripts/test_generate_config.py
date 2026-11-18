@@ -307,11 +307,12 @@ def test_non_standard_cov_tasks_have_no_cov_companions():
 
 
 def test_fuzz_task_wiring():
-    """Two fuzz variants: the pr-tagged regression variant runs the
-    reproducers on every PR; the nightly variant (which also captures the
-    corpus) carries no "pr" tag, so PR patch builds never select it, while
-    its default patchability keeps it manually runnable
-    (`evergreen patch --variant fuzz-rhel8 --task fuzz`).
+    """Test the fuzz task wiring.
+
+    Two fuzz variants: the pr-tagged regression variant runs the reproducers on
+    every PR; the nightly variant (which also captures the corpus) carries no
+    "pr" tag, so PR patch builds never select it, while its default patchability
+    keeps it manually runnable (`evergreen patch --variant fuzz-rhel8 --task fuzz`).
     """
     tasks = [task for task in all_tasks() if "fuzz" in (task.tags or [])]
     assert [task.name for task in tasks if "pr" in (task.tags or [])] == ["fuzz-regression"]
