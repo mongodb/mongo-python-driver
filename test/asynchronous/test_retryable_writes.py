@@ -633,6 +633,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
     @async_client_context.require_replica_set
     # Run against server versions 6.0 and above.
     @async_client_context.require_version_min(6, 0)  # type: ignore[untyped-decorator]
+    # The tests configure the failCommand fail point.
+    @async_client_context.require_failCommand_fail_point
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         self.setup_client = MongoClient(**async_client_context.default_client_options)
