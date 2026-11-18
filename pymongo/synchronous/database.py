@@ -989,7 +989,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         :param comment: A user-provided comment to attach to future getMores for this
           command.
         :param max_await_time_ms: The number of ms to wait for more data on future getMores for
-        this command.
+          this command.
         :param kwargs: additional keyword arguments will
           be added to the command document before it is sent
 

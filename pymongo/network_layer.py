@@ -531,9 +531,9 @@ class PyMongoProtocol(BufferedProtocol):
     def get_buffer(self, sizehint: int) -> memoryview:
         """Allocate a new receive buffer.
 
-        The asyncio loop calls this method expecting to receive a non-empty buffer to fill with data.
-        If any data does not fit into the returned buffer, this method will be called again until
-        either no data remains or an empty buffer is returned.
+        The asyncio loop calls this method expecting to receive a non-empty buffer to fill with
+        data. If any data does not fit into the returned buffer, this method will be called again
+        until either no data remains or an empty buffer is returned.
         """
         # Due to a bug, Python <=3.11 will call get_buffer() even after we raise
         # ProtocolError in buffer_updated() and call connection_lost(). We allocate

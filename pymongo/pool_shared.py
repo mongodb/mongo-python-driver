@@ -101,8 +101,9 @@ class _ConnectionTelemetryInfo(Protocol):
 
 
 class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
-    """Shared base class for AsyncConnection and Connection. Subclasses contain all methods that
-    perform I/O.
+    """Shared base class for AsyncConnection and Connection.
+
+    Subclasses contain all methods that perform I/O.
     """
 
     def __init__(
@@ -270,9 +271,7 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
 
 
 class _AgnosticBasePool(Generic[_ConnT]):
-    """Shared base class for async and sync Pool. Subclasses contain all methods that
-    perform I/O.
-    """
+    """Shared base class for async and sync Pool. Subclasses contain methods that perform I/O."""
 
     def __init__(
         self,
@@ -987,8 +986,7 @@ def _configured_socket_interface(
     options: PoolOptions,
     ssl_session_cache: list[Any] | None = None,
 ) -> NetworkingInterface:
-    """Given (host, port) and PoolOptions, return a NetworkingInterface wrapping a configured
-    socket.
+    """Given (host, port) and PoolOptions, return a NetworkingInterface for a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
 

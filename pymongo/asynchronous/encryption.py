@@ -687,8 +687,9 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         :meth:`~pymongo.asynchronous.database.AsyncDatabase.create_collection` for all valid
         options.
 
-        :raises: - :class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation
-            or creating the collection fails.
+        :raises:
+            - :class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation or
+              creating the collection fails.
 
         .. versionadded:: 4.4
 
@@ -886,7 +887,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
             :attr:`~bson.binary.UUID_SUBTYPE`).
         :param key_alt_name: Identifies a key vault document by 'keyAltName'.
         :param query_type` (str): The query type to execute. See :class:`QueryType` for valid
-        options.
+            options.
         :param contention_factor` (int): The contention factor to use
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
@@ -1047,8 +1048,7 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         return await self._key_vault_coll.delete_one({"_id": id})
 
     async def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
-        """Add ``key_alt_name`` to the set of alternate names in the key document with UUID
-        ``key_id``.
+        """Add ``key_alt_name`` to the alternate names in the key document with UUID ``key_id``.
 
         :param id: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
@@ -1119,8 +1119,9 @@ class AsyncClientEncryption(Generic[_DocumentType]):
         provider: str | None = None,
         master_key: Mapping[str, Any] | None = None,
     ) -> RewrapManyDataKeyResult:
-        """Decrypts and encrypts all matching data keys in the key vault with a possibly new
-        `master_key` value.
+        """Decrypts and encrypts all matching data keys in the key vault.
+
+        A possibly new `master_key` value is used.
 
         :param filter: A document used to filter the data keys.
         :param provider: The new KMS provider to use to encrypt the data keys,

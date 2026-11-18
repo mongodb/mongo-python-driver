@@ -196,9 +196,10 @@ class _ServerMode:
 
     @property
     def hedge(self) -> _Hedge | None:
-        """**DEPRECATED** - The read preference 'hedge' option is deprecated in PyMongo 4.12+
-        because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be
-        removed in PyMongo 5.0.
+        """**DEPRECATED** - The read preference 'hedge' option is deprecated in PyMongo 4.12+.
+
+        Hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed
+        in PyMongo 5.0.
 
         The read preference ``hedge`` parameter.
 

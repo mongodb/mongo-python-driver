@@ -844,7 +844,7 @@ class SearchIndexModel:
         :param definition: The definition for this index.
         :param name: The name for this index, if present.
         :param type: The type for this index which defaults to "search". Alternative values include
-        "vectorSearch".
+            "vectorSearch".
         :param kwargs: Keyword arguments supplying any additional options.
 
         .. note:: Search indexes require a MongoDB server version 7.0+ Atlas cluster.

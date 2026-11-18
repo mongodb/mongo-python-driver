@@ -313,9 +313,7 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
 
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_6(self):
-        """Driver can successfully create and list search indexes with non-default readConcern and
-        writeConcern.
-        """
+        """Driver can create and list search indexes with non-default readConcern, writeConcern."""
         # Apply a write concern ``WriteConcern(w=1)`` and a read concern with
         # ``ReadConcern(level="majority")`` to ``self.coll0``.
         coll0 = self.coll0.with_options(

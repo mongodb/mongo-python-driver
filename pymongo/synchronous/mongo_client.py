@@ -15,8 +15,8 @@
 """Tools for connecting to MongoDB.
 
 .. seealso:: `Read and Write Settings
-<https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_
-for examples of connecting to replica sets or sets of mongos servers.
+   <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_
+   for examples of connecting to replica sets or sets of mongos servers.
 
 To get a :class:`~pymongo.database.Database` instance from a
 :class:`MongoClient` use either dictionary-style or attribute-style

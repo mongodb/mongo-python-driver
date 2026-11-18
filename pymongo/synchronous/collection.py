@@ -2826,8 +2826,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
-        """Update a search index by replacing the existing index definition with the
-        provided definition.
+        """Update a search index by replacing the index definition with the provided definition.
 
         :param name: The name of the search index to be updated.
         :param definition: The new search index definition.

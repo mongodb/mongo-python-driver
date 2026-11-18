@@ -567,11 +567,10 @@ class Binary(bytes):
         return cls(metadata + data, subtype=VECTOR_SUBTYPE)
 
     def as_vector(self, return_numpy: bool = False) -> BinaryVector:
-        """From the Binary, create a list or 1-d numpy array of numbers, along with
-        dtype and padding.
+        """From the Binary, create a list or 1-d numpy array of numbers, with dtype and padding.
 
         :param return_numpy: If True, BinaryVector.data will be a one-dimensional numpy array. By
-        default, it is a list.
+            default, it is a list.
         :return: BinaryVector
 
         .. versionadded:: 4.10

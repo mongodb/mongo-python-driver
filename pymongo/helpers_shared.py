@@ -147,9 +147,7 @@ class _RetryPolicy:
         )
 
     def should_retry(self, attempt: int, delay: float) -> bool:
-        """Return if we have retry attempts remaining and the next backoff would not exceed a
-        timeout.
-        """
+        """Return if retry attempts remain and the next backoff would not exceed a timeout."""
         from pymongo import _csot
 
         if attempt > self.attempts:

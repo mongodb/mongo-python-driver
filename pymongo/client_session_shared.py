@@ -465,8 +465,7 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
             raise InvalidOperation("Cannot use ended session")
 
     def bind(self, end_session: bool = True) -> _BoundSessionContextT:
-        """Bind this session so it is implicitly passed to all database operations within the
-        returned context.
+        """Bind this session so it is implicitly passed to all operations within the context.
 
         .. code-block:: python
 

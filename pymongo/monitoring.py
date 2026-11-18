@@ -844,7 +844,7 @@ class PoolClearedEvent(_PoolEvent):
        attempting to connect to.
     :param service_id: The service_id this command was sent to, or ``None``.
     :param interrupt_connections: True if all active connections were interrupted by the Pool during
-    clearing.
+       clearing.
 
     .. versionadded:: 3.9
     """

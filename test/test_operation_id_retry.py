@@ -88,9 +88,7 @@ class TestOperationIdRetry(IntegrationTest):
         self.coll.create_index("x")
 
     def _run_under_failpoint(self, name, f, times):
-        """Set a failpoint for the given command and return the corresponding events published
-        during its execution.
-        """
+        """Set a failpoint for the given command and return matching events published during it."""
         self.listener.reset()
         fail_point = {
             "mode": {"times": times},

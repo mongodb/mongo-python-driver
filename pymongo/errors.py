@@ -431,8 +431,7 @@ class EncryptedCollectionError(EncryptionError):
 
     @property
     def encrypted_fields(self) -> Mapping[str, Any]:
-        """The encrypted_fields document that allows inferring which data keys are *known* to be
-        created.
+        """The encrypted_fields document for inferring which data keys are *known* to be created.
 
         Note that the returned document is not guaranteed to contain information about *all* of the
         data keys that were created, for example in the case of an indefinite error like a timeout.
