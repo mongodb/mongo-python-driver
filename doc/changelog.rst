@@ -16,8 +16,7 @@ Bug fixes
   pool teardown during
   :meth:`~pymongo.synchronous.mongo_client.MongoClient.close`. Closing a
   client now waits (with a bounded timeout) for its monitor threads to stop
-  before returning, adding up to a couple hundred milliseconds to
-  ``close()`` (`PYTHON-1634`_).
+  before returning (`PYTHON-1634`_).
 
 .. _PYTHON-6262: https://jira.mongodb.org/browse/PYTHON-6262
 

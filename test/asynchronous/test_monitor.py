@@ -26,11 +26,13 @@ from functools import partial
 
 sys.path[0:0] = [""]
 
+from pymongo.asynchronous.monitor import Monitor
 from pymongo.periodic_executor import _EXECUTORS
 from test.asynchronous import AsyncIntegrationTest, async_client_context, connected, unittest
 from test.asynchronous.utils import (
     async_wait_until,
 )
+from test.utils import wait_until as sync_wait_until
 from test.utils_shared import (
     ServerAndTopologyEventListener,
     gevent_monkey_patched,
@@ -123,10 +125,7 @@ class TestMonitor(AsyncIntegrationTest):
             except ReferenceError:
                 return False
 
-        deadline = time.monotonic() + 10
-        while not thread_alive(monitor._executor) and time.monotonic() < deadline:
-            time.sleep(0.1)
-        self.assertTrue(thread_alive(monitor._executor), "monitor thread never started")
+        sync_wait_until(lambda: thread_alive(monitor._executor), "monitor thread never started")
 
         client.close()
 
@@ -170,6 +169,58 @@ class TestMonitor(AsyncIntegrationTest):
 
         self.assertFalse(completed_process.stderr)
         self.assertFalse(completed_process.stdout)
+
+
+class _SlowExecutor:
+    """Executor stand-in whose join takes a fixed time."""
+
+    def __init__(self, delay: float) -> None:
+        self._delay = delay
+
+    async def join(self, timeout: float | None = None) -> None:
+        # Blocks with time.sleep on purpose: the sync mirror of this test
+        # needs the same delay, and unasync does not translate asyncio.sleep.
+        self._sleep()
+
+    def _sleep(self) -> None:
+        time.sleep(self._delay)
+
+
+class _RecordingExecutor:
+    """Executor stand-in that records the timeouts it is joined with."""
+
+    def __init__(self) -> None:
+        self.timeouts: list[float | None] = []
+
+    async def join(self, timeout: float | None = None) -> None:
+        self.timeouts.append(timeout)
+
+
+class TestMonitorJoin(unittest.IsolatedAsyncioTestCase):
+    """Unit tests for the timeout budget in Monitor.join."""
+
+    async def test_rtt_join_gets_unspent_budget(self):
+        # PYTHON-1634: after the heartbeat executor stops, the RTT monitor
+        # gets whatever budget remains, never more.
+        monitor = Monitor.__new__(Monitor)
+        monitor._executor = _SlowExecutor(0.45)  # type: ignore[assignment]
+        rtt = _RecordingExecutor()
+        monitor._rtt_monitor = rtt  # type: ignore[assignment]
+
+        await monitor.join(1)
+        rtt_timeout = rtt.timeouts[0]
+        # Narrowing only; the verified assertion is assertLess below.
+        assert isinstance(rtt_timeout, float)
+        self.assertLess(rtt_timeout, 0.95)
+
+    async def test_join_without_timeout_waits_indefinitely(self):
+        monitor = Monitor.__new__(Monitor)
+        monitor._executor = _SlowExecutor(0)  # type: ignore[assignment]
+        rtt = _RecordingExecutor()
+        monitor._rtt_monitor = rtt  # type: ignore[assignment]
+
+        await monitor.join(None)
+        self.assertEqual(rtt.timeouts, [None])
 
 
 if __name__ == "__main__":

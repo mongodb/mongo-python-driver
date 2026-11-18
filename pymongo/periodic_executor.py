@@ -87,7 +87,7 @@ class AsyncPeriodicExecutor:
         if self._task is not current:
             self._task.cancel()
 
-    async def join(self, timeout: int | None = None) -> None:
+    async def join(self, timeout: float | None = None) -> None:
         if self._task is not None:
             await asyncio.wait([self._task], timeout=timeout)  # type-ignore: [arg-type]
 
@@ -245,7 +245,7 @@ class PeriodicExecutor:
         """
         self._stopped = True
 
-    def join(self, timeout: int | None = None) -> None:
+    def join(self, timeout: float | None = None) -> None:
         if self._thread is not None:
             try:
                 self._thread.join(timeout)

@@ -360,27 +360,27 @@ class TestRawBSONDocumentConcurrency(unittest.TestCase):
             try:
                 for _ in range(N_ITERS):
                     big = shared_doc["big"]
-                    assert big["payload"] == BIG_PAYLOAD
-                    assert big["n"] == 42
-                    assert isinstance(big.raw, memoryview)
+                    self.assertEqual(big["payload"], BIG_PAYLOAD)
+                    self.assertEqual(big["n"], 42)
+                    self.assertIsInstance(big.raw, memoryview)
 
                     arr = shared_doc["arr"]
                     for j, item in enumerate(arr):
-                        assert item["idx"] == j
-                        assert item["payload"] == BIG_PAYLOAD
+                        self.assertEqual(item["idx"], j)
+                        self.assertEqual(item["payload"], BIG_PAYLOAD)
 
                     small = shared_doc["small"]
-                    assert small["n"] == 1
+                    self.assertEqual(small["n"], 1)
 
                     # Re-encodes a view-backed subdocument while other
                     # threads may be reading the same underlying buffer.
                     reencoded = encode({"again": big})
-                    assert isinstance(reencoded, bytes)
+                    self.assertIsInstance(reencoded, bytes)
 
                     multi = decode_all(doc_bytes * 2, DEFAULT_RAW_BSON_OPTIONS)
-                    assert len(multi) == 2
+                    self.assertEqual(len(multi), 2)
                     for d in multi:
-                        assert isinstance(d["big"].raw, memoryview)
+                        self.assertIsInstance(d["big"].raw, memoryview)
             except BaseException as exc:
                 with errors_lock:
                     errors.append(exc)
