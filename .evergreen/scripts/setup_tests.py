@@ -635,7 +635,13 @@ def handle_test_env() -> None:
         # and fail loudly rather than silently skip the C extension build.
         write_env("UV_PYTHON", SANITIZER_PYTHON)
         write_env("PYMONGO_C_EXT_MUST_BUILD")
-        write_env("CFLAGS", "-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1")
+        # -fno-sanitize=function: the toolchain interpreter's UBSan runtime
+        # predates the image's clang, whose function check references a
+        # handler the runtime does not provide (PYTHON-6167).
+        write_env(
+            "CFLAGS",
+            "-fsanitize=address,undefined -fno-sanitize=function -fno-omit-frame-pointer -g -O1",
+        )
         write_env("LDFLAGS", "-fsanitize=address,undefined")
         # CPython's pymalloc trips LeakSanitizer with false positives.
         write_env("ASAN_OPTIONS", "detect_leaks=0")
