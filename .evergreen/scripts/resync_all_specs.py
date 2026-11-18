@@ -17,7 +17,7 @@ def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
         if not spec.is_dir():
             continue
 
-        if spec.name in ["asynchronous"]:
+        if spec.name == "asynchronous":
             continue
         try:
             subprocess.run(  # noqa: S603

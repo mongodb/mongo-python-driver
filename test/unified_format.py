@@ -873,7 +873,7 @@ class UnifiedSpecTestMixinV1(IntegrationTest):
     def kill_all_sessions(self):
         if getattr(self, "client", None) is None:
             return
-        clients = self.mongos_clients if self.mongos_clients else [self.client]
+        clients = self.mongos_clients or [self.client]
         for client in clients:
             try:
                 client.admin.command("killAllSessions", [])
