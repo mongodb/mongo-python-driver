@@ -206,7 +206,8 @@ def flaky(
     def decorator(target_func):
         @wraps(target_func)
         async def wrapper(*args, **kwargs):
-            # flaky decorates either an unbound test method (prose test) or a bound method (unified test).
+            # flaky decorates either an unbound test method (prose test) or a bound method
+            # (unified test).
             method = getattr(target_func, "__self__", None)
             if method is None and args and isinstance(args[0], unittest.TestCase):
                 method = args[0]
@@ -222,7 +223,8 @@ def flaky(
                     if i == max_runs - 1:
                         raise
                     print(
-                        f"Retrying after attempt {i + 1} of {func_name or target_func.__name__} failed with ({reason})):\n"
+                        f"Retrying after attempt {i + 1} of "
+                        f"{func_name or target_func.__name__} failed with ({reason})):\n"
                         f"{traceback.format_exc()}",
                         file=sys.stderr,
                     )

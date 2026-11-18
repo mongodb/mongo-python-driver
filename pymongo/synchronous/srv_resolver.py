@@ -97,7 +97,8 @@ class _SrvResolver:
 
             if not is_special_use and is_public_suffix(suffix):
                 raise ConfigurationError(
-                    f"srvAllowedHostsSuffix must not be a public suffix, got: {srv_allowed_hosts_suffix}"
+                    f"srvAllowedHostsSuffix must not be a public suffix, "
+                    f"got: {srv_allowed_hosts_suffix}"
                 )
             self.__srv_allowed_hosts_suffix = "." + suffix
 

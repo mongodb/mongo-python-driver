@@ -671,9 +671,8 @@ class TestTransactionsConvenientAPI(TransactionsBase):
             self.set_fail_point(
                 {
                     "configureFailPoint": "failCommand",
-                    "mode": {
-                        "times": 13
-                    },  # sufficiently high enough such that the time effect of backoff is noticeable
+                    # sufficiently high enough such that the time effect of backoff is noticeable
+                    "mode": {"times": 13},
                     "data": {
                         "failCommands": ["commitTransaction"],
                         "errorCode": 251,
@@ -697,7 +696,8 @@ class TestOptionsInsideTransactionProse(TransactionsBase):
     @client_context.require_no_standalone
     def test_case_1(self):
         # Write concern not inherited from collection object inside transaction
-        # Create a MongoClient running against a configured sharded/replica set/load balanced cluster.
+        # Create a MongoClient running against a configured sharded/replica set/load balanced
+        # cluster.
         client = client_context.client
         coll = client[self.db.name].coll
         coll.delete_many({})
@@ -705,7 +705,7 @@ class TestOptionsInsideTransactionProse(TransactionsBase):
         with client.start_session() as s:
             # Start a transaction on the session.
             s.start_transaction()
-            # Instantiate a collection object in the driver with a default write concern of { w: 0 }.
+            # Instantiate a collection object in the driver with a default write concern of {w: 0}.
             inner_coll = coll.with_options(write_concern=WriteConcern(w=0))
             # Insert the document { n: 1 } on the instantiated collection.
             result = inner_coll.insert_one({"n": 1}, session=s)

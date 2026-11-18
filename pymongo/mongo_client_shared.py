@@ -81,8 +81,8 @@ def _add_retryable_write_error(exc: PyMongoError) -> None:
         for label in doc.get("errorLabels", []):
             exc._add_error_label(label)
 
-    # Connection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which is
-    # handled above.
+    # Connection errors are always retryable except NotPrimaryError and WaitQueueTimeoutError which
+    # is handled above.
     if isinstance(exc, ClientBulkWriteException):
         exc_to_check = exc.error
     else:
@@ -115,7 +115,8 @@ def _detect_external_db(entity: str) -> bool:
         if entity.endswith(host):
             _log_or_warn(
                 _CLIENT_LOGGER,
-                "You appear to be connected to a CosmosDB cluster. For more information regarding feature "
+                "You appear to be connected to a CosmosDB cluster. For more information "
+                "regarding feature "
                 "compatibility and support please visit https://www.mongodb.com/supportability/cosmosdb",
             )
             return True
@@ -123,7 +124,8 @@ def _detect_external_db(entity: str) -> bool:
         if entity.endswith(host):
             _log_or_warn(
                 _CLIENT_LOGGER,
-                "You appear to be connected to a DocumentDB cluster. For more information regarding feature "
+                "You appear to be connected to a DocumentDB cluster. For more information "
+                "regarding feature "
                 "compatibility and support please visit https://www.mongodb.com/supportability/documentdb",
             )
             return True
@@ -228,7 +230,8 @@ class _AgnosticClientConnectionRetryableBase(Generic[T, _ServerT, _FuncT]):
         """Checks if the ongoing client exchange experienced a exception previously.
         If so, raise last error
 
-        :param check_csot: Checks CSOT to ensure we are retrying with time remaining defaults to False
+        :param check_csot: Checks CSOT to ensure we are retrying with time remaining defaults to
+        False
         """
         if self._is_retrying():
             remaining = _csot.remaining()

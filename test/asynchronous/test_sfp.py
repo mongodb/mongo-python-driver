@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test connectivity and authentication through an Atlas Secure Frontend Processor (SFP/Monguard)."""
+"""Test connectivity and authentication through an Atlas Secure Frontend Processor
+(SFP/Monguard).
+"""
 
 from __future__ import annotations
 

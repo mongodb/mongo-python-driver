@@ -70,13 +70,15 @@ from test import client_context, unittest
 
 pytestmark = pytest.mark.perf
 
-# Spec says to use at least 1 minute cumulative execution time and up to 100 iterations or 5 minutes but that
-# makes the benchmarks too slow. Instead, we use at least 30 seconds and at most 60 seconds.
+# Spec says to use at least 1 minute cumulative execution time and up to 100 iterations or 5 minutes
+# but that makes the benchmarks too slow.
+# Instead, we use at least 30 seconds and at most 60 seconds.
 NUM_ITERATIONS = 100
 MIN_ITERATION_TIME = 30
 MAX_ITERATION_TIME = 60
 NUM_DOCS = 10000
-# When debugging or prototyping it's often useful to run the benchmarks locally, set FASTBENCH=1 to run quickly.
+# When debugging or prototyping it's often useful to run the benchmarks locally, set FASTBENCH=1 to
+# run quickly.
 if bool(os.getenv("FASTBENCH")):
     NUM_ITERATIONS = 2
     MIN_ITERATION_TIME = 0.1
@@ -139,8 +141,9 @@ class PerformanceTest:
         median = self.percentile(50)
         megabytes_per_sec = (self.data_size * self.n_threads) / median / 1000000
         print(
-            f"Completed {self.__class__.__name__} {megabytes_per_sec:.3f} MB/s, MEDIAN={self.percentile(50):.3f}s, "
-            f"total time={duration:.3f}s, iterations={len(self.results)}"
+            f"Completed {self.__class__.__name__} {megabytes_per_sec:.3f} MB/s, "
+            f"MEDIAN={self.percentile(50):.3f}s, total time={duration:.3f}s, "
+            f"iterations={len(self.results)}"
         )
         result_data.append(
             {
@@ -203,7 +206,8 @@ class PerformanceTest:
                 with warnings.catch_warnings():
                     warnings.simplefilter("default")
                     warnings.warn(
-                        f"{self.__class__.__name__} timed out after {MAX_ITERATION_TIME}s, completed {i}/{NUM_ITERATIONS} iterations."
+                        f"{self.__class__.__name__} timed out after {MAX_ITERATION_TIME}s, "
+                        f"completed {i}/{NUM_ITERATIONS} iterations."
                     )
 
                 break

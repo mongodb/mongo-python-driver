@@ -199,7 +199,8 @@ class _CursorBase(_AgnosticCursorBase[_DocumentType]):
 
     @_csot.apply
     def to_list(self, length: int | None = None) -> list[_DocumentType]:
-        """Converts the contents of this cursor to a list more efficiently than ``[doc for doc in cursor]``.
+        """Converts the contents of this cursor to a list more efficiently than ``[doc for doc
+        in cursor]``.
 
         To use::
 

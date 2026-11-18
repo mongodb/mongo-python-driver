@@ -104,7 +104,8 @@ def _run_command(
     """Send ``msg`` over ``conn`` and return ``(docs, reply, duration_s)``,
     where ``duration_s`` is the round-trip duration in seconds.
 
-    Private shared implementation. Should not be called directly outside this module. Use :func:`run_command`, :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
+    Private shared implementation. Should not be called directly outside this module. Use
+    :func:`run_command`, :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
 
     Publishes the
     ``STARTED``/``SUCCEEDED``/``FAILED`` command log and APM events, performs

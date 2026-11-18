@@ -387,7 +387,9 @@ _OP_MSG_MAP = {
 
 
 class _BulkWriteContextBase:
-    """Private base class for wrapping around AsyncConnection to use with write splitting functions."""
+    """Private base class for wrapping around AsyncConnection to use with write splitting
+    functions.
+    """
 
     __slots__ = (
         "codec",
@@ -449,7 +451,9 @@ class _BulkWriteContextBase:
 
 
 class _BulkWriteContext(_BulkWriteContextBase):
-    """A wrapper around AsyncConnection/Connection for use with the collection-level bulk write API."""
+    """A wrapper around AsyncConnection/Connection for use with the collection-level bulk write
+    API.
+    """
 
     __slots__ = ()
 

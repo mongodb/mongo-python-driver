@@ -1278,7 +1278,8 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(0, bson_re1.flags)
 
         doc1 = {"r": bson_re1}
-        doc1_bson = b"\x11\x00\x00\x00\x0br\x00[\\w-\\.]\x00\x00\x00"  # document length  # r: regex  # document terminator
+        # document length  # r: regex  # document terminator
+        doc1_bson = b"\x11\x00\x00\x00\x0br\x00[\\w-\\.]\x00\x00\x00"
 
         self.assertEqual(doc1_bson, encode(doc1))
         self.assertEqual(doc1, decode(doc1_bson))
@@ -1289,7 +1290,8 @@ class TestBSON(unittest.TestCase):
 
         doc2_with_re = {"r": re2}
         doc2_with_bson_re = {"r": bson_re2}
-        doc2_bson = b"\x11\x00\x00\x00\x0br\x00.*\x00imsux\x00\x00"  # document length  # r: regex  # document terminator
+        # document length  # r: regex  # document terminator
+        doc2_bson = b"\x11\x00\x00\x00\x0br\x00.*\x00imsux\x00\x00"
 
         self.assertEqual(doc2_bson, encode(doc2_with_re))
         self.assertEqual(doc2_bson, encode(doc2_with_bson_re))
@@ -1338,8 +1340,10 @@ class TestBSON(unittest.TestCase):
 
     def test_minkey_maxkey_comparison(self):
         # MinKey's <, <=, >, >=, !=, and ==.
-        # These tests should be kept as assertTrue as opposed to using unittest's built-in comparison assertions because
-        # MinKey and MaxKey define their own __ge__, __le__, and other comparison attributes, and we want to explicitly test that.
+        # These tests should be kept as assertTrue as opposed to using unittest's built-in
+        # comparison assertions because
+        # MinKey and MaxKey define their own __ge__, __le__, and other comparison attributes, and we
+        # want to explicitly test that.
         self.assertTrue(MinKey() < None)
         self.assertTrue(MinKey() < 1)
         self.assertTrue(MinKey() <= 1)
@@ -1834,7 +1838,8 @@ class TestDatetimeConversion(unittest.TestCase):
             opts = CodecOptions(
                 datetime_conversion=DatetimeConversion.DATETIME_CLAMP, tz_aware=True, tzinfo=tz
             )
-            # Min/max values in this timezone which can be represented in both BSON and datetime UTC.
+            # Min/max values in this timezone which can be represented in both BSON and datetime
+            # UTC.
             try:
                 min_tz = datetime.datetime.min.replace(tzinfo=utc).astimezone(tz)
             except OverflowError:

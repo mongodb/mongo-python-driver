@@ -222,12 +222,13 @@ class TestClientMetadataProse(IntegrationTest):
         self.assertEqual(new_platform, platform)
 
     def test_9_handshake_documents_include_backpressure(self):
-        # Create a `MongoClient` that is configured to record all handshake documents sent to the server as a part of
-        # connection establishment.
+        # Create a `MongoClient` that is configured to record all handshake documents sent to the
+        # server as a part of connection establishment.
         client = self.rs_or_single_client("mongodb://" + self.server.address_string)
 
-        # Send a `ping` command to the server and verify that the command succeeds. This ensure that a connection is
-        # established on all topologies.  Note: MockupDB only supports standalone servers.
+        # Send a `ping` command to the server and verify that the command succeeds. This ensure that
+        # a connection is established on all topologies.  Note: MockupDB only supports standalone
+        # servers.
         client.admin.command("ping")
 
         # Assert that for every handshake document intercepted:

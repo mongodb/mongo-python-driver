@@ -25,11 +25,13 @@ from test.asynchronous import AsyncIntegrationTest
 
 class TestClientLoopUnblocked(AsyncIntegrationTest):
     async def test_client_does_not_block_loop(self):
-        # Use an unreachable TEST-NET host to ensure that the client times out attempting to create a connection.
+        # Use an unreachable TEST-NET host to ensure that the client times out attempting to create
+        # a connection.
         client = self.simple_client("192.0.2.1", serverSelectionTimeoutMS=500)
         latencies = []
 
-        # If the loop is being blocked, at least one iteration will have a latency much more than 0.1 seconds
+        # If the loop is being blocked, at least one iteration will have a latency much more than
+        # 0.1 seconds
         async def background_task():
             start = time.monotonic()
             try:

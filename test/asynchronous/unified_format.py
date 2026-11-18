@@ -466,7 +466,8 @@ class EntityMapUtil:
         session = self[session_name]
         if not isinstance(session, AsyncClientSession):
             self.test.fail(
-                f"Expected entity {session_name} to be of type AsyncClientSession, got {type(session)}"
+                f"Expected entity {session_name} to be of type AsyncClientSession, "
+                f"got {type(session)}"
             )
 
         try:
@@ -611,8 +612,14 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             "reset server and pool after network timeout error during authentication",
             "driver extends timeout while streaming",
             "connection pool clear uses interruptinuseconnections=true after monitor timeout",
-            "error returned from connection pool clear with interruptinuseconnections=true is retryable",
-            "error returned from connection pool clear with interruptinuseconnections=true is retryable for write",
+            (
+                "error returned from connection pool clear with interruptinuseconnections=true "
+                "is retryable"
+            ),
+            (
+                "error returned from connection pool clear with interruptinuseconnections=true "
+                "is retryable for write"
+            ),
         ]
         if description in python_5966_tests:
             self.skipTest(
@@ -624,7 +631,10 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
             slow_macos = [
                 "operation fails after two consecutive socket timeouts.*",
                 "operation succeeds after one socket timeout.*",
-                "Non-tailable cursor lifetime remaining timeoutMS applied to getMore if timeoutMode is unset",
+                (
+                    "Non-tailable cursor lifetime remaining timeoutMS applied to getMore "
+                    "if timeoutMode is unset"
+                ),
             ]
             slow_win32 = [
                 *slow_macos,
@@ -747,7 +757,8 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
         if write_concern_errors is not None:
             if not isinstance(exception, ClientBulkWriteException):
                 self.fail(
-                    f"writeConcernErrors can only be specified with {ClientBulkWriteException} exceptions, got {exception}"
+                    f"writeConcernErrors can only be specified with "
+                    f"{ClientBulkWriteException} exceptions, got {exception}"
                 )
             actual_write_concern_errors = exception.details.get("writeConcernErrors", [])
             self.assertEqual(len(write_concern_errors), len(actual_write_concern_errors))
@@ -770,7 +781,9 @@ class UnifiedSpecTestMixinV1(AsyncIntegrationTest):
                 self.match_evaluator.match_result(expect_result, result)
             else:
                 self.fail(
-                    f"expectResult can only be specified with {BulkWriteError} or {ClientBulkWriteException} exceptions, got {exception}"
+                    f"expectResult can only be specified with "
+                    f"{BulkWriteError} or {ClientBulkWriteException} "
+                    f"exceptions, got {exception}"
                 )
 
         return exception

@@ -289,7 +289,7 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
         ]
         await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
-    async def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(
+    async def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(  # noqa: E501
         self,
     ):
         test_cases = [

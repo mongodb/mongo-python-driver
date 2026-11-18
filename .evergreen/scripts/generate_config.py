@@ -1385,12 +1385,18 @@ def create_upload_mo_artifacts_func():
     include = ["./**.core", "./**.mdmp"]  # Windows: minidumps
     archive_cmd = archive_targz_pack(target="mongo-coredumps.tgz", source_dir="./", include=include)
     display_name = "Core Dumps - Execution"
-    remote_file = "${build_variant}/${revision}/${version_id}/${build_id}/coredumps/${task_id}-${execution}-mongodb-coredumps.tar.gz"
+    remote_file = (
+        "${build_variant}/${revision}/${version_id}/${build_id}/coredumps/"
+        "${task_id}-${execution}-mongodb-coredumps.tar.gz"
+    )
     s3_dumps = get_s3_put(
         local_file="mongo-coredumps.tgz", remote_file=remote_file, display_name=display_name
     )
     display_name = "drivers-tools-logs.tar.gz"
-    remote_file = "${build_variant}/${revision}/${version_id}/${build_id}/logs/${task_id}-${execution}-drivers-tools-logs.tar.gz"
+    remote_file = (
+        "${build_variant}/${revision}/${version_id}/${build_id}/logs/"
+        "${task_id}-${execution}-drivers-tools-logs.tar.gz"
+    )
     s3_logs = get_s3_put(
         local_file="${DRIVERS_TOOLS}/.evergreen/test_logs.tar.gz",
         remote_file=remote_file,

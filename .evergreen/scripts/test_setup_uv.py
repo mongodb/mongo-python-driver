@@ -55,7 +55,8 @@ case "$1 $2" in
       printf '%s\\n' "$UV_STUB_FALLBACK"
       exit 0
     fi
-    printf 'error: Failed to inspect Python interpreter from search path at `/usr/bin/python3`\\n' >&2
+    printf 'error: Failed to inspect Python interpreter from search path at `/usr/bin/python3`\\n'\\
+        >&2
     exit 1 ;;
   "python install")
     printf 'error: No download found for request: cpython-3.15-linux-x86_64-gnu\\n' >&2

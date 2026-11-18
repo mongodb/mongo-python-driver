@@ -1071,7 +1071,8 @@ class GridFSBucket:
         )
         if not result.matched_count:
             raise NoFile(
-                f"no files could be renamed {new_filename!r} because none matched filename {filename!r}"
+                f"no files could be renamed {new_filename!r} "
+                f"because none matched filename {filename!r}"
             )
 
 
@@ -1212,7 +1213,8 @@ class GridIn:
     )
     md5: str | None = _grid_in_property(
         "md5",
-        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file "
+        "if an md5 sum was created.",
         closed_only=True,
     )
 
@@ -1245,7 +1247,8 @@ class GridIn:
                     )
                 else:
                     raise AttributeError(
-                        "GridIn does not support __setattr__ after being closed(). Set the attribute before closing the file or use GridIn.set() instead"
+                        "GridIn does not support __setattr__ after being closed(). "
+                        "Set the attribute before closing the file or use GridIn.set() instead"
                     )
 
     def set(self, name: str, value: Any) -> None:
@@ -1536,7 +1539,8 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
     )
     md5: str | None = _grid_out_property(
         "md5",
-        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file "
+        "if an md5 sum was created.",
     )
 
     _file: Any

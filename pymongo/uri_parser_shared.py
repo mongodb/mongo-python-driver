@@ -212,8 +212,8 @@ def parse_host(entity: str, default_port: int | None = DEFAULT_PORT) -> _Address
             # A non-digit port indicates that the URI is invalid, likely because the password
             # or username were not escaped.
             raise ValueError(
-                "Port contains non-digit characters. Hint: username and password must be escaped according to "
-                "RFC 3986, use urllib.parse.quote_plus"
+                "Port contains non-digit characters. Hint: username and password must be "
+                "escaped according to RFC 3986, use urllib.parse.quote_plus"
             )
         if int(port) > 65535 or int(port) <= 0:
             raise ValueError("Port must be an integer between 0 and 65535")

@@ -110,7 +110,9 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def apply(func: F) -> F:
-    """Apply the client's timeoutMS to this operation. Can wrap both asynchronous and synchronous methods"""
+    """Apply the client's timeoutMS to this operation. Can wrap both asynchronous and synchronous
+    methods
+    """
     if inspect.iscoroutinefunction(func):
 
         @functools.wraps(func)

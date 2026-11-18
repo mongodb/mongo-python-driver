@@ -15,7 +15,8 @@
 """A CPython compatible SSLContext implementation wrapping PyOpenSSL's
 context.
 
-Due to limitations of the CPython asyncio.Protocol implementation for SSL, the async API does not support PyOpenSSL.
+Due to limitations of the CPython asyncio.Protocol implementation for SSL, the async API does not
+support PyOpenSSL.
 """
 
 from __future__ import annotations

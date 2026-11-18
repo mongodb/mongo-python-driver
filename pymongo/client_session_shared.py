@@ -100,7 +100,8 @@ class SessionOptions:
             if not isinstance(default_transaction_options, TransactionOptions):
                 raise TypeError(
                     "default_transaction_options must be an instance of "
-                    f"pymongo.client_session.TransactionOptions, not: {default_transaction_options!r}"
+                    f"pymongo.client_session.TransactionOptions, not: "
+                    f"{default_transaction_options!r}"
                 )
         self._default_transaction_options = default_transaction_options
         self._snapshot = snapshot
@@ -461,7 +462,8 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
             raise InvalidOperation("Cannot use ended session")
 
     def bind(self, end_session: bool = True) -> _BoundSessionContextT:
-        """Bind this session so it is implicitly passed to all database operations within the returned context.
+        """Bind this session so it is implicitly passed to all database operations within the
+        returned context.
 
         .. code-block:: python
 
@@ -477,7 +479,8 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
                    # session=s is passed implicitly
                    await client.db.collection.insert_one({"x": 1})
 
-        :param end_session: Whether to end the session on exiting the returned context. Defaults to True.
+        :param end_session: Whether to end the session on exiting the returned context. Defaults to
+            True.
             If set to False, :meth:`~pymongo.client_session.ClientSession.end_session()` or
             :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.end_session()` must be
             called once the session is no longer used.
@@ -577,7 +580,8 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
         """
         if not isinstance(operation_time, Timestamp):
             raise TypeError(
-                f"operation_time must be an instance of bson.timestamp.Timestamp, not {type(operation_time)}"
+                f"operation_time must be an instance of bson.timestamp.Timestamp, not "
+                f"{type(operation_time)}"
             )
         self._advance_operation_time(operation_time)
 

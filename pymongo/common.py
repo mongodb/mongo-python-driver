@@ -175,7 +175,10 @@ def raise_config_error(key: str, suggestions: list[str] | None = None) -> NoRetu
     """Raise ConfigurationError with the given key name."""
     msg = f"Unknown option: {key}."
     if suggestions:
-        msg += f" Did you mean one of ({', '.join(suggestions)}) or maybe a camelCase version of one? Refer to docstring."
+        msg += (
+            f" Did you mean one of ({', '.join(suggestions)}) or maybe a camelCase version "
+            "of one? Refer to docstring."
+        )
     raise ConfigurationError(msg)
 
 
@@ -269,7 +272,8 @@ def validate_non_negative_int_or_basestring(option: Any, value: Any) -> int | st
             return value
         return validate_non_negative_integer(option, val)
     raise TypeError(
-        f"Wrong type for {option}, value must be an non negative integer or a string, not {type(value)}"
+        f"Wrong type for {option}, value must be an non negative integer or a "
+        f"string, not {type(value)}"
     )
 
 
@@ -455,7 +459,8 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
     if not isinstance(value, str):
         if not isinstance(value, dict):
             raise TypeError(
-                f"Auth mechanism properties must be given as a string or a dictionary, not {type(value)}"
+                f"Auth mechanism properties must be given as a string or a "
+                f"dictionary, not {type(value)}"
             )
         for key, prop_value in value.items():
             if isinstance(prop_value, str):
@@ -946,13 +951,15 @@ class BaseObject:
 
         if not isinstance(write_concern, WriteConcern):
             raise TypeError(
-                f"write_concern must be an instance of pymongo.write_concern.WriteConcern, not {type(write_concern)}"
+                f"write_concern must be an instance of "
+                f"pymongo.write_concern.WriteConcern, not {type(write_concern)}"
             )
         self._write_concern = write_concern
 
         if not isinstance(read_concern, ReadConcern):
             raise TypeError(
-                f"read_concern must be an instance of pymongo.read_concern.ReadConcern, not {type(read_concern)}"
+                f"read_concern must be an instance of "
+                f"pymongo.read_concern.ReadConcern, not {type(read_concern)}"
             )
         self._read_concern = read_concern
 

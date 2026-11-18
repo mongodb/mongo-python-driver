@@ -67,7 +67,9 @@ def apply_patches(errored):
 
 
 def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
-    """Check to see if there are any directories in the spec repo that don't exist in pymongo/test"""
+    """Check to see if there are any directories in the spec repo that don't
+    exist in pymongo/test
+    """
     spec_dir = pathlib.Path(os.environ["MDB_SPECS"]) / "source"
     spec_set = {
         entry.name.replace("-", "_")
@@ -123,7 +125,10 @@ def write_summary(errored: dict[str, str], new: list[str], filename: str | None)
             pr_body += f"\n -{k}\n```{v}\n```"
         pr_body += "\n"
     if len(new) > 0:
-        pr_body += "\n\nThe following directories are in the specification repository and not in our test directory:\n -"
+        pr_body += (
+            "\n\nThe following directories are in the specification repository "
+            "and not in our test directory:\n -"
+        )
         pr_body += "\n -".join(new)
         pr_body += "\n"
     if pr_body != "":

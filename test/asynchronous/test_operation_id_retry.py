@@ -90,7 +90,9 @@ class TestOperationIdRetry(AsyncIntegrationTest):
         await self.coll.create_index("x")
 
     async def _run_under_failpoint(self, name, f, times):
-        """Set a failpoint for the given command and return the corresponding events published during its execution."""
+        """Set a failpoint for the given command and return the corresponding events published
+        during its execution.
+        """
         self.listener.reset()
         fail_point = {
             "mode": {"times": times},
