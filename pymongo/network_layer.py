@@ -689,11 +689,10 @@ async def async_receive_message(
     timeout = conn.conn.gettimeout
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
+    elif timeout:
+        deadline = time.monotonic() + timeout
     else:
-        if timeout:
-            deadline = time.monotonic() + timeout
-        else:
-            deadline = None
+        deadline = None
     if deadline:
         # When the timeout has expired perform one final check to
         # see if the socket is readable. This helps avoid spurious

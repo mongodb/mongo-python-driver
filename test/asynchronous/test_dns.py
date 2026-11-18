@@ -134,7 +134,7 @@ def create_test(test_case):
                         self.assertEqual(result["username"], expected)
                     elif opt == "password":
                         self.assertEqual(result["password"], expected)
-                    elif opt == "auth_database" or opt == "db":
+                    elif opt in {"auth_database", "db"}:
                         self.assertEqual(result["database"], expected)
 
             hostname = next(iter(async_client_context.client.nodes))[0]

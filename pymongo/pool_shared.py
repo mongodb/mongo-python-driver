@@ -576,8 +576,8 @@ class _PoolGeneration:
         """Increment the generation for the given service_id."""
         self._generation += 1
         if service_id is None:
-            for service_id in self._generations:
-                self._generations[service_id] += 1
+            for sid in self._generations:
+                self._generations[sid] += 1
         else:
             self._generations[service_id] += 1
 

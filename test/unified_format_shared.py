@@ -556,12 +556,11 @@ class MatchEvaluatorUtil:
                 self.test.assertEqual(expectation, actual)
             else:
                 return expectation == actual
+        elif test:
+            self.test.assertIsInstance(actual, type(expectation))
+            self.test.assertEqual(expectation, actual)
         else:
-            if test:
-                self.test.assertIsInstance(actual, type(expectation))
-                self.test.assertEqual(expectation, actual)
-            else:
-                return isinstance(actual, type(expectation)) and expectation == actual
+            return isinstance(actual, type(expectation)) and expectation == actual
         return True
 
     def match_server_description(self, actual: ServerDescription, spec: dict) -> None:
@@ -606,13 +605,11 @@ class MatchEvaluatorUtil:
                 continue
             if field in ("previousDescription", "newDescription"):
                 if isinstance(actual, ServerDescriptionChangedEvent):
-                    self.match_server_description(
-                        getattr(actual, camel_to_snake(field)), spec[field]
-                    )
+                    self.match_server_description(getattr(actual, camel_to_snake(field)), expected)
                     continue
                 if isinstance(actual, TopologyDescriptionChangedEvent):
                     self.match_topology_description(
-                        getattr(actual, camel_to_snake(field)), spec[field]
+                        getattr(actual, camel_to_snake(field)), expected
                     )
                     continue
 
