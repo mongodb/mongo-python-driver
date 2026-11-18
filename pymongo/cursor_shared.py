@@ -69,8 +69,8 @@ def _split_message(
 
 
 class _AgnosticCursorBase(ABC, Generic[_DocumentType]):
-    """
-    Shared IO-agnostic cursor base used by both async and sync cursor classes.
+    """Shared IO-agnostic cursor base used by both async and sync cursor classes.
+
     All IO-specific behavior is implemented in subclasses.
     """
 
@@ -105,7 +105,7 @@ class _AgnosticCursorBase(ABC, Generic[_DocumentType]):
 
     @property
     def alive(self) -> bool:
-        """Does this cursor have the potential to return more data?
+        """Check whether this cursor has the potential to return more data.
 
         This is mostly useful with `tailable cursors
         <https://www.mongodb.com/docs/manual/core/tailable-cursors/>`_
@@ -160,7 +160,7 @@ class _AgnosticCursorBase(ABC, Generic[_DocumentType]):
         return cursor_id, address
 
     def _die_no_lock(self) -> None:
-        """Closes this cursor without acquiring a lock."""
+        """Close this cursor without acquiring a lock."""
         try:
             already_killed = self._killed
         except AttributeError:
@@ -179,9 +179,10 @@ class _AgnosticCursorBase(ABC, Generic[_DocumentType]):
 
 class _AgnosticCommandCursorBase(_AgnosticCursorBase[_DocumentType]):
     """An agnostic cursor / iterator over command cursors.
-    Used by aggregate, list_indexes, list_search_indexes, list_collections, cursor_command,
-    and list_databases helpers on both synchronous and asynchronous APIs to iterate MongoDB
-    command results.
+
+    Used by aggregate, list_indexes, list_search_indexes, list_collections,
+    cursor_command, and list_databases helpers on both synchronous and
+    asynchronous APIs to iterate MongoDB command results.
 
     Should not be called directly by application developers.
     """
@@ -234,9 +235,10 @@ class _AgnosticCommandCursorBase(_AgnosticCursorBase[_DocumentType]):
         return self._ns
 
     def batch_size(self, batch_size: int) -> Self:
-        """Limits the number of documents returned in one batch. Each batch
-        requires a round trip to the server. It can be adjusted to optimize
-        performance and limit data transfer.
+        """Limit the number of documents returned in one batch.
+
+        Each batch requires a round trip to the server. It can be adjusted to
+        optimize performance and limit data transfer.
 
         .. note:: batch_size can not override MongoDB's internal limits on the
            amount of data it will return to the client in a single batch (i.e
@@ -257,15 +259,14 @@ class _AgnosticCommandCursorBase(_AgnosticCursorBase[_DocumentType]):
         return self
 
     def _has_next(self) -> bool:
-        """Returns `True` if the cursor has documents remaining from the
-        previous batch.
-        """
+        """Return `True` if the cursor has documents remaining from the previous batch."""
         return len(self._data) > 0
 
     @property
     def _post_batch_resume_token(self) -> Mapping[str, Any] | None:
-        """Retrieve the postBatchResumeToken from the response to a
-        changeStream aggregate or getMore.
+        """Retrieve the postBatchResumeToken from a changeStream response.
+
+        Applies to a changeStream aggregate or getMore response.
         """
         return self._postbatchresumetoken
 
@@ -397,6 +398,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         let: Mapping[str, Any] | None = None,
     ) -> None:
         """Create a new cursor.
+
         Used by a collection's ``find()`` method to iterate over MongoDB query results.
 
         Should not be called directly by application developers.
@@ -544,7 +546,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self._clone(True)
 
     def _clone(self, deepcopy: bool = True, base: Any | None = None) -> Self:
-        """Internal clone helper."""
+        """Return a new cursor with the same query and options."""
         if not base:
             if self._session and not self._session._implicit:
                 base = self._clone_base(self._session)
@@ -586,7 +588,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return base
 
     def _clone_base(self, session: Any | None) -> Self:
-        """Creates an empty cursor object for information to be copied into."""
+        """Create an empty cursor object for information to be copied into."""
         return self.__class__(self._collection, session=session)
 
     def _query_spec(self) -> Mapping[str, Any]:
@@ -661,8 +663,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self
 
     def allow_disk_use(self, allow_disk_use: bool) -> Self:
-        """Specifies whether MongoDB can use temporary disk files while
-        processing a blocking sort operation.
+        """Specify whether MongoDB can use temporary disk files for a sort.
 
         Raises :exc:`TypeError` if `allow_disk_use` is not a boolean.
 
@@ -704,9 +705,10 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self
 
     def batch_size(self, batch_size: int) -> Self:
-        """Limits the number of documents returned in one batch. Each batch
-        requires a round trip to the server. It can be adjusted to optimize
-        performance and limit data transfer.
+        """Limit the number of documents returned in one batch.
+
+        Each batch requires a round trip to the server. It can be adjusted to
+        optimize performance and limit data transfer.
 
         .. note:: batch_size can not override MongoDB's internal limits on the
            amount of data it will return to the client in a single batch (i.e
@@ -751,8 +753,9 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self
 
     def max_time_ms(self, max_time_ms: int | None) -> Self:
-        """Specifies a time limit for a query operation. If the specified
-        time is exceeded, the operation will be aborted and
+        """Specify a time limit for a query operation.
+
+        If the specified time is exceeded, the operation will be aborted and
         :exc:`~pymongo.errors.ExecutionTimeout` is raised. If `max_time_ms`
         is ``None`` no limit is applied.
 
@@ -770,9 +773,10 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self
 
     def max_await_time_ms(self, max_await_time_ms: int | None) -> Self:
-        """Specifies a time limit for a getMore operation on a
-        :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT` cursor. For all other
-        types of cursor max_await_time_ms is ignored.
+        """Specify a time limit for a getMore operation.
+
+        The limit applies to a :attr:`~pymongo.cursor.CursorType.TAILABLE_AWAIT`
+        cursor. For all other types of cursor max_await_time_ms is ignored.
 
         Raises :exc:`TypeError` if `max_await_time_ms` is not an integer or
         ``None``. Raises :exc:`~pymongo.errors.InvalidOperation` if this
@@ -798,11 +802,10 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self
 
     def max_scan(self, max_scan: int | None) -> Self:
-        """**DEPRECATED** - Limit the number of documents to scan when
-        performing the query.
+        """Limit the number of documents to scan when performing the query.
 
-        Raises :class:`~pymongo.errors.InvalidOperation` if this
-        cursor has already been used. Only the last :meth:`max_scan`
+        **DEPRECATED**. Raises :class:`~pymongo.errors.InvalidOperation` if
+        this cursor has already been used. Only the last :meth:`max_scan`
         applied to this cursor has any effect.
 
         :param max_scan: the maximum number of documents to scan
@@ -817,7 +820,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self
 
     def max(self, spec: _Sort) -> Self:
-        """Adds ``max`` operator that specifies upper bound for specific index.
+        """Add a ``max`` operator specifying the upper bound for a specific index.
 
         When using ``max``, :meth:`~hint` is required to ensure the query
         uses the expected index.
@@ -838,7 +841,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self
 
     def min(self, spec: _Sort) -> Self:
-        """Adds ``min`` operator that specifies lower bound for specific index.
+        """Add a ``min`` operator specifying the lower bound for a specific index.
 
         When using ``min``, :meth:`~hint` is required to ensure the query
         uses the expected index.
@@ -932,7 +935,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
             self._hint = helpers_shared._index_document(index)
 
     def hint(self, index: _Hint | None) -> Self:
-        """Adds a 'hint', telling Mongo the proper index to use for the query.
+        """Add a 'hint', telling Mongo the proper index to use for the query.
 
         Judicious use of hints can greatly improve query
         performance. When doing a query on multiple fields (at least
@@ -955,7 +958,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self
 
     def comment(self, comment: Any) -> Self:
-        """Adds a 'comment' to the cursor.
+        """Add a 'comment' to the cursor.
 
         http://mongodb.com/docs/manual/reference/operator/comment/
 
@@ -969,7 +972,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self
 
     def where(self, code: str | Code) -> Self:
-        """Adds a `$where`_ clause to this query.
+        """Add a `$where`_ clause to this query.
 
         The `code` argument must be an instance of :class:`str` or
         :class:`~bson.code.Code` containing a JavaScript expression.
@@ -1016,7 +1019,7 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         return self
 
     def collation(self, collation: _CollationIn | None) -> Self:
-        """Adds a :class:`~pymongo.collation.Collation` to this query.
+        """Add a :class:`~pymongo.collation.Collation` to this query.
 
         Raises :exc:`TypeError` if `collation` is not an instance of
         :class:`~pymongo.collation.Collation` or a ``dict``. Raises

@@ -50,8 +50,10 @@ def _raw_document_class(document_class: Any) -> bool:
 
 
 class TypeEncoder(abc.ABC):
-    """Base class for defining type codec classes which describe how a
-    custom type can be transformed to one of the types BSON understands.
+    """Base class for defining type codec classes.
+
+    A type codec describes how a custom type can be transformed to one of
+    the types BSON understands.
 
     Codec classes must implement the ``python_type`` attribute, and the
     ``transform_python`` method to support encoding.
@@ -69,8 +71,10 @@ class TypeEncoder(abc.ABC):
 
 
 class TypeDecoder(abc.ABC):
-    """Base class for defining type codec classes which describe how a
-    BSON type can be transformed to a custom type.
+    """Base class for defining type codec classes.
+
+    A type codec describes how a BSON type can be transformed to a custom
+    type.
 
     Codec classes must implement the ``bson_type`` attribute, and the
     ``transform_bson`` method to support decoding.
@@ -88,9 +92,10 @@ class TypeDecoder(abc.ABC):
 
 
 class TypeCodec(TypeEncoder, TypeDecoder):
-    """Base class for defining type codec classes which describe how a
-    custom type can be transformed to/from one of the types :mod:`bson`
-    can already encode/decode.
+    """Base class for defining type codec classes.
+
+    A type codec describes how a custom type can be transformed to/from one
+    of the types :mod:`bson` can already encode/decode.
 
     Codec classes must implement the ``python_type`` attribute, and the
     ``transform_python`` method to support encoding, as well as the
@@ -106,9 +111,10 @@ _Fallback = Callable[[Any], Any]
 
 
 class TypeRegistry:
-    """Encapsulates type codecs used in encoding and / or decoding BSON, as
-    well as the fallback encoder. Type registries cannot be modified after
-    instantiation.
+    """Encapsulates type codecs used in encoding and / or decoding BSON.
+
+    The type registry also holds the fallback encoder. Type registries
+    cannot be modified after instantiation.
 
     ``TypeRegistry`` can be initialized with an iterable of type codecs, and
     a callable for the fallback encoder::
@@ -285,7 +291,7 @@ else:
         """Encapsulates options used encoding and / or decoding BSON."""
 
         def __init__(self, *args, **kwargs):
-            r"""Encapsulates options used encoding and / or decoding BSON.
+            r"""Encapsulate options used encoding and / or decoding BSON.
 
             The `document_class` option is used to define a custom type for use
             decoding BSON documents. Access to the underlying raw BSON bytes for
@@ -452,7 +458,9 @@ else:
             return f"{self.__class__.__name__}({self._arguments_repr()})"
 
         def with_options(self, **kwargs: Any) -> CodecOptions:
-            """Make a copy of this CodecOptions, overriding some options::
+            """Make a copy of this CodecOptions, overriding some options.
+
+            For example::
 
                 >>> from bson.codec_options import DEFAULT_CODEC_OPTIONS
                 >>> DEFAULT_CODEC_OPTIONS.tz_aware

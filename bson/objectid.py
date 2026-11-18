@@ -158,7 +158,7 @@ class ObjectId:
 
     @classmethod
     def is_valid(cls: type[ObjectId], oid: Any) -> bool:
-        """Checks if a `oid` string is valid or not.
+        """Check if a `oid` string is valid or not.
 
         :param oid: the object id to validate
 
@@ -189,24 +189,23 @@ class ObjectId:
 
     @property
     def generation_time(self) -> datetime.datetime:
-        """A :class:`datetime.datetime` instance representing the time of
-        generation for this :class:`ObjectId`.
+        """A :class:`datetime.datetime` instance for this :class:`ObjectId`.
 
-        The :class:`datetime.datetime` is timezone aware, and
-        represents the generation time in UTC. It is precise to the
-        second.
+        The :class:`datetime.datetime` is timezone aware, and represents
+        the generation time in UTC. It is precise to the second.
         """
         timestamp = _UNPACK_INT(self.__id[0:4])[0]
         return datetime.datetime.fromtimestamp(timestamp, utc)
 
     def __getstate__(self) -> bytes:
         """Return value of object for pickling.
-        needed explicitly because __slots__() defined.
+
+        Needed explicitly because ``__slots__`` is defined.
         """
         return self.__id
 
     def __setstate__(self, value: Any) -> None:
-        """Explicit state set from pickling"""
+        """Explicit state set from pickling."""
         # Provide backwards compatibility with OIDs
         # pickled with pymongo-1.9 or older.
         if isinstance(value, dict):

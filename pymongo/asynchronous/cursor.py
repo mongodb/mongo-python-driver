@@ -57,8 +57,9 @@ _IS_SYNC = False
 class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType]):
     @property
     def collection(self) -> AsyncCollection[_DocumentType]:
-        """The :class:`~pymongo.asynchronous.collection.AsyncCollection` that this
-        :class:`AsyncCursor` is iterating.
+        """The :class:`~pymongo.asynchronous.collection.AsyncCollection` being iterated.
+
+        The collection that this :class:`AsyncCursor` is iterating.
         """
         return self._collection
 
@@ -169,7 +170,7 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
             raise IndexError("AsyncCursor does not support indexing")
 
     async def explain(self) -> _DocumentType:
-        """Returns an explain plan record for this cursor.
+        """Return an explain plan record for this cursor.
 
         .. note:: This method uses the default verbosity mode of the
           `explain command
@@ -191,8 +192,9 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
         return await anext(c)
 
     async def distinct(self, key: str) -> list[Any]:
-        """Get a list of distinct values for `key` among all documents
-        in the result set of this query.
+        """Get a list of distinct values for `key` among all documents.
+
+        The distinct values are drawn from the result set of this query.
 
         Raises :class:`TypeError` if `key` is not an instance of
         :class:`str`.
@@ -296,7 +298,7 @@ class AsyncCursor(_AgnosticCursor[_DocumentType], _AsyncCursorBase[_DocumentType
             await self.close()
 
     async def _refresh(self) -> int:
-        """Refreshes the cursor with more data from Mongo.
+        """Refresh the cursor with more data from Mongo.
 
         Returns the length of self._data after refresh. Will exit early if
         self._data is already non-empty. Raises OperationFailure when the
@@ -447,7 +449,7 @@ class AsyncRawBatchCursor(AsyncCursor[_DocumentType]):
         return cast("list[_DocumentOut]", raw_response)
 
     async def explain(self) -> _DocumentType:
-        """Returns an explain plan record for this cursor.
+        """Return an explain plan record for this cursor.
 
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
         """

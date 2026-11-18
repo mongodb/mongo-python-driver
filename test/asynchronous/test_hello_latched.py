@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test that connection continues to use hello after ismaster returns hello_ok"""
+"""Test that connection continues to use hello after ismaster returns hello_ok."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ class TestHelloLatched(AsyncUnitTest):
         self._sent = []
 
     def create_connection(self) -> AsyncConnection:
-        """Returns a minimal connection object for _hello"""
+        """Return a minimal connection object for _hello."""
         conn = object.__new__(AsyncConnection)
         conn.hello_ok = False
         conn.performed_handshake = True
@@ -39,14 +39,14 @@ class TestHelloLatched(AsyncUnitTest):
         return conn
 
     async def test_hello_is_latched(self):
-        """
-        Regression Test for PYTHON-5904
-        Tests for connection hello_ok persistence when connection
-        Switches from ismaster to hello
+        """Regression test for PYTHON-5904.
+
+        Tests for connection hello_ok persistence when the connection
+        switches from ismaster to hello.
         """
 
         async def mock_conn_command(db, cmd, **kwargs):
-            """Returns mocked hello and ismaster results for conn.command"""
+            """Return mocked hello and ismaster results for conn.command."""
             self._sent.append(cmd.copy())
             if cmd.get("ismaster") == 1:
                 return {"ok": 1, "helloOk": True, "ismaster": True, "maxWireVersion": 25}

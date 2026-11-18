@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Minimal test of PyMongo in a WSGI application, see bug PYTHON-353"""
+"""Minimal test of PyMongo in a WSGI application, see bug PYTHON-353."""
 
 from __future__ import annotations
 

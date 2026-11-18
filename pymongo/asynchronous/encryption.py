@@ -120,7 +120,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         mongocryptd_client: AsyncMongoClient[_DocumentTypeArg] | None,
         opts: AutoEncryptionOpts,
     ):
-        """Internal class to perform I/O on behalf of pymongocrypt."""
+        """Perform I/O on behalf of pymongocrypt (internal class)."""
         self.client_ref: Any
         # Use a weak ref to break reference cycle.
         if client is not None:
@@ -291,7 +291,7 @@ class _EncryptionIO(AsyncMongoCryptCallback):  # type: ignore[misc]
         return res.raw
 
     async def fetch_keys(self, filter: bytes) -> AsyncGenerator[bytes | memoryview, None]:
-        """Yields one or more keys from the key vault.
+        """Yield one or more keys from the key vault.
 
         :param filter: The filter to pass to find.
 

@@ -69,8 +69,9 @@ class AsyncChangeStream(_AgnosticChangeStream[_DocumentType, "AsyncMongoClient[_
         self._cursor = await self._create_cursor()
 
     async def _run_aggregation_cmd(self, session: AsyncClientSession | None) -> AsyncCommandCursor:  # type: ignore[type-arg]
-        """Run the full aggregation pipeline for this AsyncChangeStream and return
-        the corresponding AsyncCommandCursor.
+        """Run the full aggregation pipeline for this AsyncChangeStream.
+
+        Return the corresponding AsyncCommandCursor.
         """
         cmd = self._aggregation_command_class(
             self._target,

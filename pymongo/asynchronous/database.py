@@ -253,12 +253,11 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         write_concern: WriteConcern | None = None,
         read_concern: ReadConcern | None = None,
     ) -> AsyncCollection[_DocumentType]:
-        """Get a :class:`~pymongo.asynchronous.collection.AsyncCollection` with the given name
-        and options.
+        """Get a :class:`~pymongo.asynchronous.collection.AsyncCollection`.
 
-        Useful for creating a :class:`~pymongo.asynchronous.collection.AsyncCollection` with
-        different codec options, read preference, and/or write concern from
-        this :class:`AsyncDatabase`.
+        The returned collection uses the given name and options. Useful for creating a
+        :class:`~pymongo.asynchronous.collection.AsyncCollection` with different codec
+        options, read preference, and/or write concern from this :class:`AsyncDatabase`.
 
           >>> db.read_preference
           Primary()
@@ -484,8 +483,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         check_exists: bool | None = True,
         **kwargs: Any,
     ) -> AsyncCollection[_DocumentType]:
-        """Create a new :class:`~pymongo.asynchronous.collection.AsyncCollection` in this
-        database.
+        """Create a new :class:`~pymongo.asynchronous.collection.AsyncCollection` in this database.
 
         Normally collection creation is automatic. This method should
         only be used to specify options on
@@ -762,7 +760,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         session: AsyncClientSession | None = None,
         **kwargs: Any,
     ) -> dict[str, Any] | _CodecDocumentType:
-        """Internal command helper."""
+        """Run an internal command."""
         if isinstance(command, str):
             command = {command: value}
 
@@ -1059,7 +1057,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         operation: str,
         session: AsyncClientSession | None = None,
     ) -> dict[str, Any]:
-        """Same as command but used for retryable read commands."""
+        """Run the given command as a retryable read."""
         read_preference = (session and session._txn_read_preference()) or ReadPreference.PRIMARY
 
         async def _cmd(
@@ -1084,7 +1082,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         read_preference: _ServerMode,
         **kwargs: Any,
     ) -> AsyncCommandCursor[MutableMapping[str, Any]]:
-        """Internal listCollections helper."""
+        """Run the internal listCollections helper."""
         coll = cast(
             "AsyncCollection[MutableMapping[str, Any]]",
             self.get_collection("$cmd", read_preference=read_preference),
@@ -1437,8 +1435,7 @@ class AsyncDatabase(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> _DocumentType | None:
-        """Dereference a :class:`~bson.dbref.DBRef`, getting the
-        document it points to.
+        """Dereference a :class:`~bson.dbref.DBRef`, getting the document it points to.
 
         Raises :class:`TypeError` if `dbref` is not an instance of
         :class:`~bson.dbref.DBRef`. Returns a document, or ``None`` if

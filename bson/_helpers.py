@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Setstate and getstate functions for objects with __slots__, allowing
-compatibility with default pickling protocol
+"""Setstate and getstate functions for objects with __slots__.
+
+These allow compatibility with the default pickling protocol.
 """
 
 from __future__ import annotations

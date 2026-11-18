@@ -477,8 +477,10 @@ class PyMongoProtocol(BufferedProtocol):
         return self._timeout
 
     def connection_made(self, transport: BaseTransport) -> None:
-        """Called exactly once when a connection is made.
-        The transport argument is the transport representing the write side of the connection.
+        """Handle a new connection.
+
+        Called exactly once when a connection is made. The transport argument is
+        the transport representing the write side of the connection.
         """
         self.transport = transport  # type: ignore[assignment]
         self.transport.set_write_buffer_limits(MAX_MESSAGE_SIZE, MAX_MESSAGE_SIZE)
@@ -525,7 +527,8 @@ class PyMongoProtocol(BufferedProtocol):
         raise OSError("connection closed")
 
     def get_buffer(self, sizehint: int) -> memoryview:
-        """Called to allocate a new receive buffer.
+        """Allocate a new receive buffer.
+
         The asyncio loop calls this method expecting to receive a non-empty buffer to fill with data.
         If any data does not fit into the returned buffer, this method will be called again until
         either no data remains or an empty buffer is returned.
@@ -546,7 +549,7 @@ class PyMongoProtocol(BufferedProtocol):
         return self._message[self._message_index :]  # type: ignore[index]
 
     def buffer_updated(self, nbytes: int) -> None:
-        """Called when the buffer was updated with the received data"""
+        """Handle received data once the buffer has been updated."""
         # Wrote 0 bytes into a non-empty buffer, signal connection closed
         if nbytes == 0:
             self.close(OSError("connection closed"))

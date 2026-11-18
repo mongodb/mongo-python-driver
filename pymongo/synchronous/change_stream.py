@@ -69,8 +69,9 @@ class ChangeStream(_AgnosticChangeStream[_DocumentType, "MongoClient[_DocumentTy
         self._cursor = self._create_cursor()
 
     def _run_aggregation_cmd(self, session: ClientSession | None) -> CommandCursor:  # type: ignore[type-arg]
-        """Run the full aggregation pipeline for this ChangeStream and return
-        the corresponding CommandCursor.
+        """Run the full aggregation pipeline for this ChangeStream.
+
+        Return the corresponding CommandCursor.
         """
         cmd = self._aggregation_command_class(
             self._target,

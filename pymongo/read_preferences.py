@@ -160,13 +160,15 @@ class _ServerMode:
 
     @property
     def tag_sets(self) -> _TagSets:
-        """Set ``tag_sets`` to a list of dictionaries like [{'dc': 'ny'}] to
-        read only from members whose ``dc`` tag has the value ``"ny"``.
+        """Set ``tag_sets`` to a list of dictionaries like ``[{'dc': 'ny'}]``.
+
+        Reads only from members whose ``dc`` tag has the value ``"ny"``.
         To specify a priority-order for tag sets, provide a list of
         tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
         set, ``{}``, means "read from any member that matches the mode,
         ignoring tags." MongoClient tries each set of tags in turn
         until it finds a set of tags with at least one matching member.
+
         For example, to only send a query to an analytic node::
 
            Nearest(tag_sets=[{"node":"analytics"}])
@@ -182,9 +184,11 @@ class _ServerMode:
 
     @property
     def max_staleness(self) -> int:
-        """The maximum estimated length of time (in seconds) a replica set
-        secondary can fall behind the primary in replication before it will
-        no longer be selected for operations, or -1 for no maximum.
+        """The maximum estimated time (in seconds) a secondary can fall behind.
+
+        This is the estimated length of time a replica set secondary can fall
+        behind the primary in replication before it will no longer be selected
+        for operations, or -1 for no maximum.
         """
         return self.__max_staleness
 

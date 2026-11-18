@@ -303,7 +303,7 @@ async def _authenticate_gssapi(credentials: MongoCredential, conn: AsyncConnecti
 
 
 async def _authenticate_plain(credentials: MongoCredential, conn: AsyncConnection) -> None:
-    """Authenticate using SASL PLAIN (RFC 4616)"""
+    """Authenticate using SASL PLAIN (RFC 4616)."""
     source = credentials.source
     username = credentials.username
     password = credentials.password

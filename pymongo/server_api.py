@@ -163,7 +163,7 @@ class ServerApi:
 
 
 def _add_to_command(cmd: MutableMapping[str, Any], server_api: ServerApi | None) -> None:
-    """Internal helper which adds API versioning options to a command.
+    """Add API versioning options to a command.
 
     :param cmd: The command.
     :param server_api: A :class:`ServerApi` or ``None``.

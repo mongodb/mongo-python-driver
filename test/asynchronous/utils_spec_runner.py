@@ -85,9 +85,7 @@ class AsyncSpecTestCreator:
         self.test_path = test_path
 
     def _ensure_min_max_server_version(self, scenario_def, method):
-        """Test modifier that enforces a version range for the server on a
-        test case.
-        """
+        """Test modifier that enforces a version range for the server on a test case."""
         if "minServerVersion" in scenario_def:
             min_ver = tuple(int(elt) for elt in scenario_def["minServerVersion"].split("."))
             if min_ver is not None:

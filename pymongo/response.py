@@ -116,7 +116,8 @@ class PinnedResponse(Response):
 
     @property
     def more_to_come(self) -> bool:
-        """If true, server is ready to send batches on the socket until the
-        result set is exhausted or there is an error.
+        """If true, server is ready to send batches on the socket.
+
+        Batches are sent until the result set is exhausted or there is an error.
         """
         return self._more_to_come

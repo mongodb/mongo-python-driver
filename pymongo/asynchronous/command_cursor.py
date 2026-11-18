@@ -45,6 +45,7 @@ class AsyncCommandCursor(
     _AgnosticCommandCursorBase[_DocumentType], _AsyncCursorBase[_DocumentType]
 ):
     """An asynchronous cursor / iterator over command cursors.
+
     Used by :meth:`~pymongo.asynchronous.collection.AsyncCollection.aggregate`,
     :meth:`~pymongo.asynchronous.database.AsyncDatabase.aggregate`,
     :meth:`~pymongo.asynchronous.collection.AsyncCollection.list_indexes`,
@@ -113,7 +114,7 @@ class AsyncCommandCursor(
         self._data = deque(documents)
 
     async def _refresh(self) -> int:
-        """Refreshes the cursor with more data from the server.
+        """Refresh the cursor with more data from the server.
 
         Returns the length of self._data after refresh. Will exit early if
         self._data is already non-empty. Raises OperationFailure when the
