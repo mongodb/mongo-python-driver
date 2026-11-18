@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import os
 import platform
 import shutil
@@ -59,13 +60,15 @@ EXTRAS_MAP = {
 # Map the test name to test group.
 GROUP_MAP = dict(fuzz="fuzz", mockupdb="mockupdb", perf="perf")
 
-# The test files run under ASan/UBSan (PYTHON-6048). They exercise the
-# buffer-protocol acquisition path in bson/_cbsonmodule.c
-# (_get_buffer/_prepare_input_buffer) and the wire-message builders in
+# The test files run under ASan/UBSan (PYTHON-6048, PYTHON-6285). They
+# exercise the buffer-protocol acquisition path in bson/_cbsonmodule.c
+# (_get_buffer/_prepare_input_buffer), the wire-message builders in
 # pymongo/_cmessagemodule.c (_op_msg, _batched_op_msg,
-# _encode_batched_write_command).
+# _encode_batched_write_command), and the hostile-input and boundary tests
+# driving the decoder and builders directly.
 SANITIZER_FILES = [
     "test/test_bson.py",
+    "test/test_message.py",
     "test/test_raw_bson.py",
     "test/test_raw_bson_shared.py",
     "test/test_client.py",
@@ -594,6 +597,24 @@ def handle_test_env() -> None:
         with zipfile.ZipFile(zip_path) as zf:
             zf.extractall(corpus_dir)
         zip_path.unlink()
+        if sub_test_name == "fuzz":
+            # PYTHON-6178 Also seed from the committed corpus of previously
+            # captured inputs, so the nightly builds on prior discoveries
+            # instead of the spec seeds alone. Regression runs (PRs) keep
+            # running only the reproducers and the spec seed corpus.
+            committed_dir = ROOT / "fuzz" / "corpus"
+            if committed_dir.is_dir():
+                for path in sorted(committed_dir.iterdir()):
+                    if path.name.startswith("."):
+                        continue
+                    shutil.copyfile(path, corpus_dir / path.name)
+        # Manifest of every input this run starts from; capture_corpus.py
+        # treats these digests as already-known, so only units the fuzzer
+        # discovered during the run get captured.
+        with open(scratch_dir / "baseline.txt", "w", encoding="utf-8") as fp:
+            for path in sorted(corpus_dir.iterdir()):
+                if path.is_file():
+                    fp.write(hashlib.sha256(path.read_bytes()).hexdigest() + "\n")
         write_env("FUZZ_CORPUS_DIR", str(corpus_dir))
 
     if test_name == "sanitizer":

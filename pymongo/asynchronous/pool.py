@@ -520,15 +520,14 @@ class Pool(_AgnosticBasePool["AsyncConnection"]):
                 for conn in sockets:
                     await conn.close_conn(ConnectionClosedReason.POOL_CLOSED)
             self._telemetry.pool_closed()
+        elif not _IS_SYNC:
+            await asyncio.gather(
+                *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
+                return_exceptions=True,
+            )
         else:
-            if not _IS_SYNC:
-                await asyncio.gather(
-                    *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
-                    return_exceptions=True,
-                )
-            else:
-                for conn in sockets:
-                    await conn.close_conn(ConnectionClosedReason.STALE)
+            for conn in sockets:
+                await conn.close_conn(ConnectionClosedReason.STALE)
 
     async def update_is_writable(self, is_writable: bool | None) -> None:
         """Updates the is_writable attribute on all sockets currently in the
@@ -1014,14 +1013,13 @@ class _PoolCheckout:
             pinned = conn.pinned_txn or conn.pinned_cursor
             if not pinned and conn.active:
                 await pool.checkin(conn)
-        else:
-            if conn.pinned_txn:
-                async with pool.lock:
-                    pool._pinned_sockets.add(conn)
-                    pool.ntxns += 1
-            elif conn.pinned_cursor:
-                async with pool.lock:
-                    pool._pinned_sockets.add(conn)
-                    pool.ncursors += 1
-            elif conn.active:
-                await pool.checkin(conn)
+        elif conn.pinned_txn:
+            async with pool.lock:
+                pool._pinned_sockets.add(conn)
+                pool.ntxns += 1
+        elif conn.pinned_cursor:
+            async with pool.lock:
+                pool._pinned_sockets.add(conn)
+                pool.ncursors += 1
+        elif conn.active:
+            await pool.checkin(conn)

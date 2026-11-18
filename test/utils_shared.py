@@ -703,7 +703,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
         if arg_name == "fieldName":
             arguments["key"] = arguments.pop(arg_name)
         # Aggregate uses "batchSize", while find uses batch_size.
-        elif (arg_name == "batchSize" or arg_name == "allowDiskUse") and opname == "aggregate":
+        elif arg_name in {"batchSize", "allowDiskUse"} and opname == "aggregate":
             continue
         elif arg_name == "bypassDocumentValidation" and (
             opname == "aggregate" or "find_one_and" in opname
@@ -714,7 +714,7 @@ def prepare_spec_arguments(spec, arguments, opname, entity_map, with_txn_callbac
         # Requires boolean returnDocument.
         elif arg_name == "returnDocument":
             arguments[c2s] = getattr(ReturnDocument, arguments.pop(arg_name).upper())
-        elif "bulk_write" in opname and (c2s == "requests" or c2s == "models"):
+        elif "bulk_write" in opname and c2s in {"requests", "models"}:
             # Parse each request into a bulk write model.
             requests = []
             for request in arguments[c2s]:
