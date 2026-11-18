@@ -509,7 +509,7 @@ CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at
 The `sanitizer` test suite (PYTHON-6048) builds the C extensions with
 `-fsanitize=address,undefined` against the toolchain's ASan/UBSan-instrumented
 CPython (`SANITIZER_PYTHON` in `.evergreen/scripts/utils.py`) and runs the
-files listed in `SANITIZER_FILES` in `.evergreen/scripts/setup_tests.py`. The
+files listed in `SANITIZER_FILES` in `.evergreen/scripts/setup_sanitizer.py`. The
 toolchain interpreter initializes the sanitizer runtimes itself. It runs on
 PRs via the "Sanitizer RHEL8" variant. To run it on a Linux host with the
 toolchain:

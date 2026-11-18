@@ -340,7 +340,7 @@ class TestRawBSONDocument(UnitTest):
 class TestRawBSONDocumentConcurrency(unittest.TestCase):
     """Concurrency and buffer-lifetime regression tests for zero-copy
     RawBSONDocument; also run under the sanitizer CI tasks (see
-    SANITIZER_FILES in .evergreen/scripts/setup_tests.py).
+    SANITIZER_FILES in .evergreen/scripts/setup_sanitizer.py).
     """
 
     def test_concurrent_reads_on_shared_document(self):
