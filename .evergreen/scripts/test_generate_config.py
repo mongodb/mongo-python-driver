@@ -164,6 +164,17 @@ def test_suite_families_have_pr_pins():
         assert covd, f"no pr task with coverage in the {family} family"
 
 
+def test_amazon2023_no_toolchain_variant_runs_on_prs():
+    """The Amazon Linux host has no Python toolchain, so its no-toolchain
+    variant must keep running on PR patches (PYTHON-6167).
+    """
+    (variant,) = [v for v in all_variants() if "amazon2023" in v.name]
+    assert "pr" in (variant.tags or [])
+    selected = [task for task in all_tasks() if variant_selects(variant, task)]
+    assert selected
+    assert all("test-no-toolchain" in (task.tags or []) for task in selected)
+
+
 def test_numpy_win32_tasks_run_on_windows_only():
     """The win32 numpy tasks use the 32-bit toolchain (IS_WIN32) and are
     selected only by the windows variant (PYTHON-6167).
@@ -195,6 +206,37 @@ def test_run_tests_env_carries_crypt_shared():
     includes = setup_cmd.params["include_expansions_in_env"]
     assert "TEST_CRYPT_SHARED" in includes, includes
     assert "LIBMONGOCRYPT_URL" in includes, includes
+
+
+def test_fuzz_task_wiring():
+    """Two fuzz variants: the pr-tagged regression variant runs the
+    reproducers on every PR; the nightly variant (which also captures the
+    corpus) carries no "pr" tag, so PR patch builds never select it, while
+    its default patchability keeps it manually runnable
+    (`evergreen patch --variant fuzz-rhel8 --task fuzz`).
+    """
+    tasks = [task for task in all_tasks() if "fuzz" in (task.tags or [])]
+    assert [task.name for task in tasks if "pr" in (task.tags or [])] == ["fuzz-regression"]
+    assert [task.name for task in tasks if "pr" not in (task.tags or [])] == ["fuzz"]
+    variants = generate_config.create_fuzz_variants()
+    assert len(variants) == 2
+    regression, nightly = variants
+    assert variant_selects(regression, tasks[0])
+    assert "pr" in (regression.tags or [])
+    assert variant_selects(nightly, tasks[1])
+    assert nightly.batchtime == generate_config_utils.BATCHTIME_DAY
+    # Webhook PR patch builds only select pr-tagged variants.
+    assert not nightly.tags
+    # The capture subprocess bootstraps the comment-bot github app, whose
+    # secrets live in AWS Secrets Manager: it needs the assumed-role
+    # credentials (as resync_specs and backport-pr also pass them).
+    capture = tasks[1].commands[-1]
+    env_vars = capture.params["include_expansions_in_env"]
+    for var in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"):
+        assert var in env_vars, f"capture subprocess missing {var}"
+    # The capture no longer keys off is_patch: manual patch runs must
+    # capture too, and the nightly variant never runs in a PR build.
+    assert "is_patch" not in env_vars
 
 
 def test_load_balancer_marker_selection(monkeypatch):
@@ -367,6 +409,41 @@ def test_read_env_unescapes_double_quoted_escapes(monkeypatch, tmp_path):
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout == "$external", repr(result.stdout)
+
+
+def test_write_env_escapes_embedded_quotes(monkeypatch, tmp_path):
+    """write_env escapes embedded double quotes instead of dropping them, so
+    a value read with read_env round-trips when persisted (PYTHON-6167).
+    """
+    import subprocess
+
+    import utils
+
+    source = tmp_path / "secrets-export.sh"
+    source.write_text('export QUOTE="a\\"b"\n')
+    env_file = tmp_path / "test-env.sh"
+    monkeypatch.setattr(utils, "ENV_FILE", env_file)
+
+    utils.write_env("QUOTE", utils.read_env(source)["QUOTE"])
+    # escape=False passes the value through raw: a caller-pre-escaped quote
+    # stays literal while expansions stay live.
+    utils.write_env("LIVE", 'a\\"b${UNSET_VAR}', escape=False)
+
+    result = subprocess.run(  # noqa: S603
+        [
+            "/bin/bash",
+            "-c",
+            '. "$1" && printf "%s\\n" "$QUOTE" "$LIVE"',
+            "bash",
+            str(env_file),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(tmp_path),
+        check=False,  # The file must source cleanly; asserted via returncode.
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == 'a"b\na"b\n', repr(result.stdout)
 
 
 def test_crypt_shared_escapes_backslashes(monkeypatch, tmp_path):

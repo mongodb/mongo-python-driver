@@ -238,7 +238,8 @@ def create_test_load_balancer_tasks() -> list[EvgTask]:
     """
     tasks = []
     for sync in SYNCS:
-        # One CPython per version (6.0→3.11 … latest→3.15t); the trailing 3.15 is unused.
+        # One CPython per version (6.0→3.11 … latest→3.15t); free-threaded
+        # lands on 9.0 and latest, the trailing 3.15 is unused.
         for version, python in zip(get_versions_from("6.0"), CPYTHONS, strict=False):
             is_pin = version == MAX_VERSION
             tasks.append(
