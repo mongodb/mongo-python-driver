@@ -348,9 +348,8 @@ def process_ignores(lines: list[str]) -> list[str]:
 def git_tracked_files(dests: list[Path]) -> set[Path] | None:
     """Return the subset of dests git tracks, or None when git is unusable.
 
-    A ``None`` result (no git, or outside a repository, as in the test
-    tree) makes callers treat every destination as tracked, which skips
-    unchanged files as before.
+    A ``None`` result makes callers treat every destination as tracked,
+    which skips unchanged files as before.
     """
     if not dests:
         return set()
@@ -382,20 +381,13 @@ def copy_changed_files(
 ) -> list[Path]:
     """Copy staged files into the working tree when their content differs.
 
-    Each destination is written through a temporary sibling that then
-    atomically replaces it, so a write that fails midway (for example when
-    the disk fills) leaves that destination untouched. The original is
-    hard-linked aside first, so the rollback restores it by rename and
-    needs no disk space. Without hard-link support the rollback rewrites
-    the file through the same temporary sibling, so a restore that fails
-    leaves the published content in place. If a later step fails or is
-    interrupted, destinations already written are restored and the manifest
-    is removed, so the working tree is left unchanged and nothing is
-    claimed for staging; publishing ``manifest`` inside that same rollback
-    scope extends the guarantee to manifest write failures. An unchanged
-    destination that ``tracked`` does not contain is listed in the
-    manifest without being rewritten, so a newly generated module reaches
-    the staging hook on its first commit.
+    Each destination is backed up, written through a temporary sibling,
+    and atomically replaced, so a failed write never truncates it. If a
+    later step fails or is interrupted, what was already written is
+    restored and the manifest is removed, leaving the working tree
+    unchanged. An unchanged destination that ``tracked`` does not contain
+    is listed in the manifest without being rewritten, so a newly
+    generated module reaches the staging hook on its first commit.
     """
     written: list[tuple[Path, bytes | None, Path | None]] = []
     replaced: list[Path] = []
@@ -469,8 +461,8 @@ def copy_changed_files(
         if manifest is not None:
             clear_manifest(manifest)
         # Restore in reverse so each restore releases space for the next.
-        # Any exception, including Ctrl-C, must restore the working tree,
-        # and a failing restore must not strand the other destinations.
+        # Any exception, including Ctrl-C, must restore the tree, and a
+        # failing restore must not strand the others.
         for dest, old, backup in reversed(written):
             try:
                 if backup is not None:
@@ -478,9 +470,8 @@ def copy_changed_files(
                 elif old is None:
                     dest.unlink(missing_ok=True)
                 else:
-                    # No backup: rewrite the file. The temporary sibling
-                    # keeps a failing restore from truncating the
-                    # destination, which keeps its published content.
+                    # No backup: rewrite through the temporary sibling, so a
+                    # failing restore leaves the published content in place.
                     tmp_restore = dest.with_name(dest.name + ".synchro-tmp")
                     try:
                         tmp_restore.write_bytes(old)
