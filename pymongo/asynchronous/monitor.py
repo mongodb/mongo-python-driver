@@ -56,7 +56,7 @@ def _sanitize(error: Exception) -> None:
 
 class MonitorBase:
     def __init__(self, topology: Topology, name: str, interval: int, min_interval: float):
-        """Base class to do periodic work on a background thread.
+        """Do periodic work on a background thread (base class).
 
         The background thread is signaled to stop when the Topology or
         this instance is freed.
@@ -270,7 +270,7 @@ class Monitor(MonitorBase):
             return ServerDescription(address, error=error)
 
     async def _check_once(self) -> ServerDescription:
-        """A single attempt to call hello.
+        """Make a single attempt to call hello.
 
         Returns a ServerDescription, or raises an exception.
         """

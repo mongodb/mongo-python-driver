@@ -113,14 +113,15 @@ class TestReadPreferencesBase(IntegrationTest):
         self.addCleanup(self.db.coll.drop)
 
     def read_from_which_host(self, client):
-        """Do a find() on the client and return which host was used"""
+        """Do a find() on the client and return which host was used."""
         cursor = client.pymongo_test.coll.find()
         next(cursor)
         return cursor.address
 
     def read_from_which_kind(self, client):
-        """Do a find() on the client and return 'primary' or 'secondary'
-        depending on which the client used.
+        """Do a find() on the client and return 'primary' or 'secondary'.
+
+        Which one is returned depends on which the client used.
         """
         address = self.read_from_which_host(client)
         if address == client.primary:

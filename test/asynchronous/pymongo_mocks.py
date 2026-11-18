@@ -106,7 +106,7 @@ class AsyncMockClient(AsyncMongoClient):
         *args,
         **kwargs,
     ):
-        """An AsyncMongoClient connected to the default server, with a mock topology.
+        """Create an AsyncMongoClient connected to the default server, with a mock topology.
 
         standalones, members, mongoses, arbiters, and down_hosts determine the
         configuration of the topology. They are formatted like ['a:1', 'b:2'].

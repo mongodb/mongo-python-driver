@@ -387,8 +387,9 @@ BSON_TYPE_ALIAS_MAP = {
 
 
 class MatchEvaluatorUtil:
-    """Utility class that implements methods for evaluating matches as per
-    the unified test format specification.
+    """Utility class that implements methods for evaluating matches.
+
+    Matches are evaluated as per the unified test format specification.
     """
 
     def __init__(self, test_class):
@@ -470,9 +471,10 @@ class MatchEvaluatorUtil:
             method(spec, actual, key_to_compare)
 
     def _evaluate_if_special_operation(self, expectation, actual, key_to_compare=None):
-        """Returns True if a special operation is evaluated, False
-        otherwise. If the ``expectation`` map contains a single key,
-        value pair we check it for a special operation.
+        """Return True if a special operation is evaluated, False otherwise.
+
+        If the ``expectation`` map contains a single key, value pair we
+        check it for a special operation.
         If given, ``key_to_compare`` is assumed to be the key in
         ``expectation`` whose corresponding value needs to be
         evaluated for a possible special operation. ``key_to_compare``

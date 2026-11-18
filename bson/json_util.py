@@ -245,7 +245,7 @@ class JSONOptions(_BASE_CLASS):
     document_class: type[MutableMapping[str, Any]]
 
     def __init__(self, *args: Any, **kwargs: Any):
-        """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
+        """Encapsulate JSON options for :func:`dumps` and :func:`loads`.
 
         :param strict_number_long: If ``True``, :class:`~bson.int64.Int64` objects
             are encoded to MongoDB Extended JSON's *Strict mode* type
@@ -374,8 +374,9 @@ class JSONOptions(_BASE_CLASS):
         )
 
     def with_options(self, **kwargs: Any) -> JSONOptions:
-        """
-        Make a copy of this JSONOptions, overriding some options::
+        """Make a copy of this JSONOptions, overriding some options.
+
+        For example::
 
             >>> from bson.json_util import CANONICAL_JSON_OPTIONS
             >>> CANONICAL_JSON_OPTIONS.tz_aware
@@ -431,9 +432,9 @@ The same as :const:`RELAXED_JSON_OPTIONS`.
 
 
 def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
-    """Helper function that wraps :func:`json.dumps`.
+    """Wrap :func:`json.dumps` to handle BSON types.
 
-    Recursive function that handles all BSON types including
+    Recursively handles all BSON types including
     :class:`~bson.binary.Binary` and :class:`~bson.code.Code`.
 
     :param json_options: A :class:`JSONOptions` instance used to modify the
@@ -452,7 +453,7 @@ def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
 
 
 def loads(s: str | bytes | bytearray, *args: Any, **kwargs: Any) -> Any:
-    """Helper function that wraps :func:`json.loads`.
+    """Wrap :func:`json.loads` to handle BSON types.
 
     Automatically passes the object_hook for BSON type conversion.
 
@@ -486,9 +487,7 @@ def loads(s: str | bytes | bytearray, *args: Any, **kwargs: Any) -> Any:
 
 
 def _json_convert(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
-    """Recursive helper method that converts BSON types so they can be
-    converted into json.
-    """
+    """Recursive helper method that converts BSON types so they can be converted into json."""
     if hasattr(obj, "items"):
         return {k: _json_convert(v, json_options) for k, v in obj.items()}
     elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes)):
@@ -1068,7 +1067,7 @@ _VARIABLE_SIZE_TABLE: dict[Any, Callable[[Any], int]] = {
 
 
 def get_size(obj: Any, max_size: int, current_size: int = 0) -> int:
-    """Recursively finds size of objects"""
+    """Recursively find the size of objects."""
     if current_size >= max_size:
         return current_size
 

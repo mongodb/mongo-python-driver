@@ -1067,8 +1067,9 @@ class TestClient(IntegrationTest):
         self.assertIsNone(session._transaction.conn_mgr)
 
     def test_constants(self):
-        """This test uses MongoClient explicitly to make sure that host and
-        port are not overloaded.
+        """This test uses MongoClient explicitly.
+
+        It makes sure that host and port are not overloaded.
         """
         host, port = client_context.host, client_context.port
         kwargs: dict = client_context.default_client_options.copy()

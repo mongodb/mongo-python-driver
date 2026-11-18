@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""A BSON wrapper for long (int in python3)"""
+"""A BSON wrapper for long (int in python3)."""
 
 from __future__ import annotations
 

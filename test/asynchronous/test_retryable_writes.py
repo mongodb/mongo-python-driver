@@ -254,9 +254,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     @async_client_context.require_replica_set
     @async_client_context.require_test_commands
     async def test_retry_timeout_raises_original_error(self):
-        """A ServerSelectionTimeoutError on the retry attempt raises the
-        original error.
-        """
+        """A ServerSelectionTimeoutError on the retry attempt raises the original error."""
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(retryWrites=True, event_listeners=[listener])
         topology = client._topology
@@ -594,8 +592,10 @@ class TestPoolPausedError(AsyncIntegrationTest):
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
     @async_client_context.require_replica_set
     async def test_increment_transaction_id_without_sending_command(self):
-        """Test that the txnNumber field is properly incremented, even when
-        the first attempt fails before sending the command.
+        """Test that the txnNumber field is properly incremented.
+
+        This holds even when the first attempt fails before sending the
+        command.
         """
         listener = OvertCommandListener()
         client = await self.async_rs_or_single_client(retryWrites=True, event_listeners=[listener])

@@ -57,8 +57,9 @@ _IS_SYNC = True
 class Cursor(_AgnosticCursor[_DocumentType], _CursorBase[_DocumentType]):
     @property
     def collection(self) -> Collection[_DocumentType]:
-        """The :class:`~pymongo.collection.Collection` that this
-        :class:`Cursor` is iterating.
+        """The :class:`~pymongo.collection.Collection` being iterated.
+
+        The collection that this :class:`Cursor` is iterating.
         """
         return self._collection
 
@@ -169,7 +170,7 @@ class Cursor(_AgnosticCursor[_DocumentType], _CursorBase[_DocumentType]):
             raise IndexError("Cursor does not support indexing")
 
     def explain(self) -> _DocumentType:
-        """Returns an explain plan record for this cursor.
+        """Return an explain plan record for this cursor.
 
         .. note:: This method uses the default verbosity mode of the
           `explain command
@@ -191,8 +192,9 @@ class Cursor(_AgnosticCursor[_DocumentType], _CursorBase[_DocumentType]):
         return next(c)
 
     def distinct(self, key: str) -> list[Any]:
-        """Get a list of distinct values for `key` among all documents
-        in the result set of this query.
+        """Get a list of distinct values for `key` among all documents.
+
+        The distinct values are drawn from the result set of this query.
 
         Raises :class:`TypeError` if `key` is not an instance of
         :class:`str`.
@@ -294,7 +296,7 @@ class Cursor(_AgnosticCursor[_DocumentType], _CursorBase[_DocumentType]):
             self.close()
 
     def _refresh(self) -> int:
-        """Refreshes the cursor with more data from Mongo.
+        """Refresh the cursor with more data from Mongo.
 
         Returns the length of self._data after refresh. Will exit early if
         self._data is already non-empty. Raises OperationFailure when the
@@ -443,7 +445,7 @@ class RawBatchCursor(Cursor[_DocumentType]):
         return cast("list[_DocumentOut]", raw_response)
 
     def explain(self) -> _DocumentType:
-        """Returns an explain plan record for this cursor.
+        """Return an explain plan record for this cursor.
 
         .. seealso:: The MongoDB documentation on `explain <https://dochub.mongodb.org/core/explain>`_.
         """

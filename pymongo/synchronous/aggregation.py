@@ -117,7 +117,7 @@ class _AggregationCommand:
         raise NotImplementedError
 
     def _cursor_collection(self, cursor_doc: Mapping[str, Any]) -> Collection[Any]:
-        """The Collection used for the aggregate command cursor."""
+        """Return the Collection used for the aggregate command cursor."""
         raise NotImplementedError
 
     @property
@@ -213,7 +213,7 @@ class _CollectionAggregationCommand(_AggregationCommand):
         return self._target.full_name
 
     def _cursor_collection(self, cursor: Mapping[str, Any]) -> Collection[Any]:
-        """The Collection used for the aggregate command cursor."""
+        """Return the Collection used for the aggregate command cursor."""
         return self._target
 
     @property
@@ -246,7 +246,7 @@ class _DatabaseAggregationCommand(_AggregationCommand):
         return self._target
 
     def _cursor_collection(self, cursor: Mapping[str, Any]) -> Collection[Any]:
-        """The Collection used for the aggregate command cursor."""
+        """Return the Collection used for the aggregate command cursor."""
         # Collection level aggregate may not always return the "ns" field
         # according to our MockupDB tests. Let's handle that case for db level
         # aggregate too by defaulting to the <db>.$cmd.aggregate namespace.

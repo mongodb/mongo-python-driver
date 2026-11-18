@@ -67,7 +67,9 @@ _BoundSessionContextT = TypeVar("_BoundSessionContextT")
 
 
 class SessionOptions:
-    """Options for a new :class:`~pymongo.asynchronous.client_session.AsyncClientSession`
+    """Options for a new client session.
+
+    For :class:`~pymongo.asynchronous.client_session.AsyncClientSession`
     or :class:`~pymongo.client_session.ClientSession`.
 
     :param causal_consistency: If True, read operations are causally
@@ -112,8 +114,7 @@ class SessionOptions:
 
     @property
     def default_transaction_options(self) -> TransactionOptions | None:
-        """The default TransactionOptions to use for transactions started on
-        this session.
+        """The default TransactionOptions for transactions started on this session.
 
         .. versionadded:: 3.7
         """
@@ -129,7 +130,9 @@ class SessionOptions:
 
 
 class TransactionOptions:
-    """Options for :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.start_transaction`
+    """Options for a new transaction.
+
+    For :meth:`~pymongo.asynchronous.client_session.AsyncClientSession.start_transaction`
     or :meth:`~pymongo.client_session.ClientSession.start_transaction`.
 
     :param read_concern: The
@@ -283,7 +286,7 @@ _BACKOFF_INITIAL = 0.005  # 5ms initial backoff
 
 
 def _within_time_limit(start_time: float, backoff: float = 0) -> bool:
-    """Are we within the with_transaction retry limit?"""
+    """Check whether we are within the with_transaction retry limit."""
     remaining = _csot.remaining()
     if remaining is not None and remaining <= 0:
         return False
@@ -488,9 +491,10 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
 
     @property
     def client(self) -> _ClientT:
-        """The :class:`~pymongo.mongo_client.MongoClient` or
-        :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient` this session was
-        created from.
+        """The client from which this session was created.
+
+        One of :class:`~pymongo.mongo_client.MongoClient` or
+        :class:`~pymongo.asynchronous.mongo_client.AsyncMongoClient`.
         """
         return self._client
 
@@ -514,16 +518,12 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
 
     @property
     def cluster_time(self) -> ClusterTime | None:
-        """The cluster time returned by the last operation executed
-        in this session.
-        """
+        """The cluster time returned by the last operation executed in this session."""
         return self._cluster_time
 
     @property
     def operation_time(self) -> Timestamp | None:
-        """The operation time returned by the last operation executed
-        in this session.
-        """
+        """The operation time returned by the last operation executed in this session."""
         return self._operation_time
 
     def _inherit_option(self, name: str, val: _T) -> _T:
@@ -537,7 +537,7 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
         return getattr(self.client, name)
 
     def _advance_cluster_time(self, cluster_time: Mapping[str, Any] | None) -> None:
-        """Internal cluster time helper."""
+        """Update the internal cluster time."""
         if self._cluster_time is None:
             self._cluster_time = cluster_time
         elif cluster_time is not None:
@@ -561,7 +561,7 @@ class _AgnosticClientSessionBase(Generic[_ClientT, _ConnectionT, _BoundSessionCo
         self._advance_cluster_time(cluster_time)
 
     def _advance_operation_time(self, operation_time: Timestamp | None) -> None:
-        """Internal operation time helper."""
+        """Update the internal operation time."""
         if self._operation_time is None:
             self._operation_time = operation_time
         elif operation_time is not None:

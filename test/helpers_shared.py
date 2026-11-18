@@ -125,7 +125,7 @@ os.environ.setdefault("MONGOB_LOG_MAX_DOCUMENT_LENGTH", "2000")
 
 
 def is_server_resolvable():
-    """Returns True if 'server' is resolvable."""
+    """Return True if 'server' is resolvable."""
     socket_timeout = socket.getdefaulttimeout()
     socket.setdefaulttimeout(1)
     try:

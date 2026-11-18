@@ -94,9 +94,7 @@ def _add_retryable_write_error(exc: PyMongoError) -> None:
 
 
 def _after_fork_child(clients: Mapping[Any, Any]) -> None:
-    """Releases the locks in child process and resets the
-    topologies in the passed clients.
-    """
+    """Releases the locks in child process and resets the topologies in the passed clients."""
     # Reinitialize locks
     _release_locks()
 
@@ -106,7 +104,7 @@ def _after_fork_child(clients: Mapping[Any, Any]) -> None:
 
 
 def _detect_external_db(entity: str) -> bool:
-    """Detects external database hosts and logs an informational message at the INFO level."""
+    """Detect external database hosts and log an informational message at the INFO level."""
     entity = entity.lower()
     cosmos_db_hosts = [".cosmos.azure.com"]
     document_db_hosts = [".docdb.amazonaws.com", ".docdb-elastic.amazonaws.com"]
@@ -131,7 +129,7 @@ def _detect_external_db(entity: str) -> bool:
 
 
 class _AgnosticClientConnectionRetryableBase(Generic[T, _ServerT, _FuncT]):
-    """Responsible for executing retryable connections on read or write operations"""
+    """Responsible for executing retryable connections on read or write operations."""
 
     __slots__ = (
         "_address",
@@ -205,17 +203,17 @@ class _AgnosticClientConnectionRetryableBase(Generic[T, _ServerT, _FuncT]):
         self._conn_mgr = conn_mgr
 
     def _is_not_eligible_for_retry(self) -> bool:
-        """Checks if the exchange is not eligible for retry"""
+        """Check if the exchange is not eligible for retry."""
         return not self._retryable or (
             self._is_retrying() and self._attempt_number >= self._max_retries
         )
 
     def _is_retrying(self) -> bool:
-        """Checks if the exchange is currently undergoing a retry"""
+        """Check if the exchange is currently undergoing a retry."""
         return self._bulk.retrying if self._bulk else self._retrying
 
     def _is_session_state_retryable(self) -> bool:
-        """Checks if provided session is eligible for retry
+        """Check if provided session is eligible for retry.
 
         reads: Make sure there is no ongoing transaction (if provided a session)
         writes: Make sure there is a session without an active transaction
@@ -225,8 +223,9 @@ class _AgnosticClientConnectionRetryableBase(Generic[T, _ServerT, _FuncT]):
         return bool(self._session and not self._session.in_transaction)
 
     def _check_last_error(self, check_csot: bool = False) -> None:
-        """Checks if the ongoing client exchange experienced a exception previously.
-        If so, raise last error
+        """Check if the ongoing client exchange experienced an exception previously.
+
+        If so, raise the last error.
 
         :param check_csot: Checks CSOT to ensure we are retrying with time remaining defaults to False
         """

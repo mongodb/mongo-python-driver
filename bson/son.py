@@ -176,8 +176,10 @@ class SON(dict[_Key, _Value]):
             return default
 
     def __eq__(self, other: object) -> bool:
-        """Comparison to another SON is order-sensitive while comparison to a
-        regular dictionary is order-insensitive.
+        """Compare this SON to another object.
+
+        Comparison to another SON is order-sensitive while comparison to a regular
+        dictionary is order-insensitive.
         """
         if isinstance(other, SON):
             return len(self) == len(other) and list(self.items()) == list(other.items())

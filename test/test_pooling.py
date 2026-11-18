@@ -897,11 +897,12 @@ class TestPoolMaxSize(_TestPoolingBase):
 
 
 class TestPoolHandleConnectionError(unittest.TestCase):
-    """PYTHON-5919: PyOpenSSL raises OpenSSL.SSL.SysCallError/ZeroReturnError
-    (not ssl.SSLEOFError/ssl.SSLZeroReturnError) when the server closes the
-    socket during the TLS handshake, e.g. when an ingress rate limiter rejects
-    a connection. Pool._handle_connection_error must recognize these as
-    handshake-EOF errors and still add the SystemOverloadedError label.
+    """PYTHON-5919: PyOpenSSL raises OpenSSL.SSL.SysCallError/ZeroReturnError, not ssl.SSLEOFError/ssl.SSLZeroReturnError.
+
+    These errors occur when the server closes the socket during the TLS
+    handshake, e.g. when an ingress rate limiter rejects a connection.
+    Pool._handle_connection_error must recognize these as handshake-EOF errors
+    and still add the SystemOverloadedError label.
     """
 
     def _make_pool(self):

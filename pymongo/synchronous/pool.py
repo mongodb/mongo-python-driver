@@ -431,7 +431,8 @@ class Pool(_AgnosticBasePool["Connection"]):
         is_sdam: bool = False,
         client_id: ObjectId | None = None,
     ):
-        """
+        """Initialize a new connection pool.
+
         :param address: a (hostname, port) tuple
         :param options: a PoolOptions instance
         :param is_sdam: whether to call hello for each new connection
@@ -530,9 +531,7 @@ class Pool(_AgnosticBasePool["Connection"]):
                 conn.close_conn(ConnectionClosedReason.STALE)
 
     def update_is_writable(self, is_writable: bool | None) -> None:
-        """Updates the is_writable attribute on all sockets currently in the
-        Pool.
-        """
+        """Update the is_writable attribute on all sockets currently in the Pool."""
         self.is_writable = is_writable
         with self.lock:
             for _socket in self.conns:
@@ -550,10 +549,10 @@ class Pool(_AgnosticBasePool["Connection"]):
         self._reset(close=True)
 
     def remove_stale_sockets(self, reference_generation: int) -> None:
-        """Removes stale sockets then adds new ones if pool is too small and
-        has not been reset. The `reference_generation` argument specifies the
-        `generation` at the point in time this operation was requested on the
-        pool.
+        """Remove stale sockets then add new ones if pool is too small and has not been reset.
+
+        The `reference_generation` argument specifies the `generation` at the
+        point in time this operation was requested on the pool.
         """
         # Take the lock to avoid the race condition described in PYTHON-2699.
         with self.lock:
@@ -687,7 +686,9 @@ class Pool(_AgnosticBasePool["Connection"]):
         return conn
 
     def checkout(self, handler: _ClientCheckout | None = None) -> _PoolCheckout:
-        """Get a connection from the pool. Always use in a with statement::
+        """Get a connection from the pool.
+
+        Always use in a with statement::
 
             with pool.checkout() as connection:
                 connection.send_message(msg)

@@ -236,9 +236,7 @@ class NonLazyCursor:
 
 
 class EntityMapUtil:
-    """Utility class that implements an entity map as per the unified
-    test format specification.
-    """
+    """Utility class that implements an entity map as per the unified test format specification."""
 
     def __init__(self, test_class):
         self._entities: dict[str, Any] = {}
@@ -475,7 +473,7 @@ class EntityMapUtil:
             return self._session_lsids[session_name]
 
     def advance_cluster_times(self, cluster_time) -> None:
-        """Manually synchronize entities when desired"""
+        """Manually synchronize entities when desired."""
         for entity in self._entities.values():
             if isinstance(entity, ClientSession) and cluster_time:
                 entity.advance_cluster_time(cluster_time)
@@ -1629,13 +1627,16 @@ def generate_test_classes(
     bypass_test_generation_errors=False,
     **kwargs,
 ):
-    """Method for generating test classes. Returns a dictionary where keys are
-    the names of test classes and values are the test class objects.
+    """Generate test classes.
+
+    Returns a dictionary where keys are the names of test classes and values
+    are the test class objects.
     """
     test_klasses = {}
 
     def test_base_class_factory(test_spec):
-        """Utility that creates the base class to use for test generation.
+        """Create the base class to use for test generation.
+
         This is needed to ensure that cls.TEST_SPEC is appropriately set when
         the metaclass __init__ is invoked.
         """

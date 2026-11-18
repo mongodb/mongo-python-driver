@@ -1,5 +1,5 @@
 """
-Lambda function for Python Driver testing
+Lambda function for Python Driver testing.
 
 Creates the client that is cached for all requests, subscribes to
 relevant events, and forces the connection pool to get populated.
@@ -149,10 +149,7 @@ def reset():
 
 
 def lambda_handler(event, context):
-    """
-    The handler function itself performs an insert/delete and returns the
-    id of the document in play.
-    """
+    """Perform an insert/delete and return the id of the document in play."""
     print("initializing")
     db = client.lambdaTest
     collection = db.test
