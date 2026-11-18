@@ -58,9 +58,10 @@ def _create_suite_task(
     pr: bool = False,
     cov: bool | None = None,
 ) -> EvgTask:
-    """One task of a per-suite family: the name carries no distro, so every
-    distro variant lists the same definition, tagged with its distros
-    (PYTHON-6167).
+    """Create one task of a per-suite family.
+
+    The name carries no distro, so every distro variant lists the same
+    definition, tagged with its distros (PYTHON-6167).
     """
     auth, ssl = get_standard_auth_ssl(topology)
     tags = [
@@ -197,9 +198,10 @@ def _create_cov_pr_twin(
     sub_test: str | None = None,
     extra_test_vars: dict[str, str] | None = None,
 ) -> EvgTask:
-    """Rhel8-only max-stable coverage twin carrying the pr pin: the rotated
-    max-stable cell can land on the min-deps Python, and coverage stays off
-    macOS/Win64 (PYTHON-6167).
+    """Create the rhel8-only max-stable coverage twin carrying the pr pin.
+
+    The rotated max-stable cell can land on the min-deps Python, and
+    coverage stays off macOS/Win64 (PYTHON-6167).
     """
     return _create_suite_task(
         family,
@@ -231,10 +233,11 @@ def create_test_encryption_pyopenssl_tasks() -> list[EvgTask]:
 
 
 def create_test_load_balancer_tasks() -> list[EvgTask]:
-    """Load balancer tasks: one sync and one async task per MongoDB version
-    6.0+ on a load-balanced auth SSL sharded cluster, running the full
-    default suite (PYTHON-6167). The v9.0 pair carries the pr pin and
-    coverage.
+    """Create the load balancer tasks.
+
+    One sync and one async task per MongoDB version 6.0+ on a load-balanced
+    auth SSL sharded cluster, running the full default suite (PYTHON-6167).
+    The v9.0 pair carries the pr pin and coverage.
     """
     tasks = []
     for sync in SYNCS:
@@ -278,9 +281,11 @@ def create_test_doctest_tasks() -> list[EvgTask]:
 
 
 def create_test_compression_tasks() -> list[EvgTask]:
-    """Compression tasks: one sync task per compressor on the latest replica
-    set plus async sharded-cluster cells on every other MongoDB version, so
-    each compressor meets every server version (PYTHON-6167).
+    """Create the compression tasks.
+
+    One sync task per compressor on the latest replica set plus async
+    sharded-cluster cells on every other MongoDB version, so each compressor
+    meets every server version (PYTHON-6167).
     """
     # Sync, max CPython, noauth, SSL, replica set.
     tasks = [
@@ -320,8 +325,10 @@ def create_test_compression_tasks() -> list[EvgTask]:
 
 
 def _per_version_cells() -> list[tuple[str, str]]:
-    """One cell per MongoDB version: a sharded cluster for every stable and
-    rapid version, a replica set for latest, all with SSL.
+    """List one cell per MongoDB version.
+
+    A sharded cluster for every stable and rapid version, a replica set for
+    latest, all with SSL.
     """
     return [(version, "sharded_cluster") for version in ALL_VERSIONS if version != "latest"] + [
         ("latest", "replica_set")
@@ -329,8 +336,10 @@ def _per_version_cells() -> list[tuple[str, str]]:
 
 
 def create_test_pyopenssl_tasks() -> list[EvgTask]:
-    """PyOpenSSL tasks: one task per MongoDB version, running the default
-    suite with the PyOpenSSL extra. Free-threaded CPython is covered by the
+    """Create the PyOpenSSL tasks.
+
+    One task per MongoDB version, running the default suite with the
+    PyOpenSSL extra. Free-threaded CPython is covered by the
     encryption-pyopenssl family, and the rhel8 max-stable twin carries the
     pr pin and coverage (PYTHON-6167).
     """
@@ -363,9 +372,11 @@ def _create_rotation_tasks(
     sync: str | None = None,
     pin: str | None = None,
 ) -> list[EvgTask]:
-    """One task per MongoDB version, the topology cycling through standalone,
-    replica set, and sharded cluster (PYTHON-6167). The max-stable cell
-    carries the pr pin when pin is set, with coverage for "pr+cov".
+    """Create one task per MongoDB version.
+
+    The topology cycles through standalone, replica set, and sharded cluster
+    (PYTHON-6167). The max-stable cell carries the pr pin when pin is set,
+    with coverage for "pr+cov".
     """
     tasks = []
     for version, topology, python in zip_cycle(ALL_VERSIONS, TOPOLOGIES, pythons):
@@ -376,7 +387,7 @@ def _create_rotation_tasks(
                 version,
                 topology,
                 python,
-                sync if sync else get_suite_mode(topology),
+                sync or get_suite_mode(topology),
                 "default",
                 extra_test_vars=extra_test_vars,
                 extra_expansions=extra_expansions,
@@ -388,10 +399,11 @@ def _create_rotation_tasks(
 
 
 def create_test_gevent_tasks() -> list[EvgTask]:
-    """Gevent tasks: one task per MongoDB version running the sync default
-    suite (async tests are excluded under the framework; free-threaded
-    CPython is unsupported), plus the rhel8 max-stable pr twin with coverage
-    (PYTHON-6167).
+    """Create the gevent tasks.
+
+    One task per MongoDB version running the sync default suite (async tests
+    are excluded under the framework; free-threaded CPython is unsupported),
+    plus the rhel8 max-stable pr twin with coverage (PYTHON-6167).
     """
     return [
         *_create_rotation_tasks(
@@ -405,8 +417,10 @@ def create_test_gevent_tasks() -> list[EvgTask]:
 
 
 def create_test_disable_test_commands_tasks() -> list[EvgTask]:
-    """Disable-test-commands tasks: one task per MongoDB version, the
-    topology cycling through all three (PYTHON-6167).
+    """Create the disable-test-commands tasks.
+
+    One task per MongoDB version, the topology cycling through all three
+    (PYTHON-6167).
     """
     return _create_rotation_tasks(
         "test-disable-test-commands",
@@ -418,17 +432,19 @@ def create_test_disable_test_commands_tasks() -> list[EvgTask]:
 
 
 def create_test_no_c_ext_tasks() -> list[EvgTask]:
-    """No-c-ext tasks: one task per MongoDB version, the topology cycling
-    through all three, without the C extensions (NO_EXT feeds run_tests.py)
-    (PYTHON-6167).
+    """Create the no-c-ext tasks.
+
+    One task per MongoDB version, the topology cycling through all three,
+    without the C extensions (NO_EXT feeds run_tests.py) (PYTHON-6167).
     """
     return _create_rotation_tasks("test-no-c-ext", extra_test_vars=dict(NO_EXT="1"), pin="pr+cov")
 
 
 def create_test_stable_api_tasks() -> list[EvgTask]:
-    """Stable API tasks: one require-v1 task per MongoDB version 5.0+ on a
-    sharded cluster, and one accept-v2 standalone task per version
-    (PYTHON-6167).
+    """Create the stable API tasks.
+
+    One require-v1 task per MongoDB version 5.0+ on a sharded cluster, and
+    one accept-v2 standalone task per version (PYTHON-6167).
     """
     cells = [
         # Async, auth, SSL, sharded cluster started with requireApiVersion=1.
@@ -463,8 +479,9 @@ def create_test_stable_api_tasks() -> list[EvgTask]:
 
 
 def create_test_storage_inmemory_tasks() -> list[EvgTask]:
-    """InMemory storage engine tasks: one sync standalone task per MongoDB
-    version (PYTHON-6167).
+    """Create the InMemory storage engine tasks.
+
+    One sync standalone task per MongoDB version (PYTHON-6167).
     """
     tasks = []
     for version, python in zip_cycle(ALL_VERSIONS, CPYTHONS):
@@ -486,10 +503,11 @@ def create_test_storage_inmemory_tasks() -> list[EvgTask]:
 
 
 def create_standard_tasks() -> list[EvgTask]:
-    """The standard suite on the non-Linux platforms, one task per MongoDB
-    version following the encryption corners; the platform tags restrict the
-    cells (macOS arm64 starts at 6.0, win32 has no free-threaded CPython)
-    (PYTHON-6167).
+    """Build the standard suite on the non-Linux platforms.
+
+    One task per MongoDB version following the encryption corners; the
+    platform tags restrict the cells (macOS arm64 starts at 6.0, win32 has
+    no free-threaded CPython) (PYTHON-6167).
     """
     all_platforms = ["macos", "macos-arm64", "win32", "win64"]
     corners = [

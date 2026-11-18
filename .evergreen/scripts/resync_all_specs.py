@@ -11,13 +11,13 @@ JIRA_FILTER = "https://jira.mongodb.org/issues/?jql=labels%20%3D%20automated-syn
 
 
 def resync_specs(directory: pathlib.Path, errored: dict[str, str]) -> None:
-    """Actually sync the specs"""
+    """Actually sync the specs."""
     print("Beginning to sync specs")
     for spec in os.scandir(directory):
         if not spec.is_dir():
             continue
 
-        if spec.name in ["asynchronous"]:
+        if spec.name == "asynchronous":
             continue
         try:
             subprocess.run(  # noqa: S603
@@ -67,7 +67,7 @@ def apply_patches(errored):
 
 
 def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
-    """Check to see if there are any directories in the spec repo that don't exist in pymongo/test"""
+    """Check for spec repo directories that don't exist in pymongo/test."""
     spec_dir = pathlib.Path(os.environ["MDB_SPECS"]) / "source"
     spec_set = {
         entry.name.replace("-", "_")
@@ -96,7 +96,7 @@ def check_new_spec_directories(directory: pathlib.Path) -> list[str]:
 
 
 def write_summary(errored: dict[str, str], new: list[str], filename: str | None) -> None:
-    """Generate the PR description"""
+    """Generate the PR description."""
     pr_body = ""
     # Avoid shell=True and complex pipes by using Python to process git output
     process = subprocess.run(

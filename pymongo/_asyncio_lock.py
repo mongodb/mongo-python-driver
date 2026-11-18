@@ -1,6 +1,8 @@
 # Copyright (c) 2001-2024 Python Software Foundation; All Rights Reserved
 
-"""Lock and Condition classes vendored from https://github.com/python/cpython/blob/main/Lib/asyncio/locks.py
+"""Lock and Condition classes vendored from CPython's asyncio.locks.
+
+Vendored from https://github.com/python/cpython/blob/main/Lib/asyncio/locks.py
 to port 3.13 fixes to older versions of Python.
 Can be removed once we drop Python 3.12 support.
 """
@@ -285,6 +287,7 @@ class Condition(_ContextManagerMixin, _LoopBoundMixin):
 
     def notify(self, n: int = 1) -> None:
         """By default, wake up one task waiting on this condition, if any.
+
         If the calling task has not acquired the lock when this method
         is called, a RuntimeError is raised.
 
@@ -310,9 +313,10 @@ class Condition(_ContextManagerMixin, _LoopBoundMixin):
                 fut.set_result(False)
 
     def notify_all(self) -> None:
-        """Wake up all tasks waiting on this condition. This method acts
-        like notify(), but wakes up all waiting tasks instead of one. If the
-        calling task has not acquired the lock when this method is called,
-        a RuntimeError is raised.
+        """Wake up all tasks waiting on this condition.
+
+        This method acts like notify(), but wakes up all waiting tasks
+        instead of one. If the calling task has not acquired the lock when
+        this method is called, a RuntimeError is raised.
         """
         self.notify(len(self._waiters))

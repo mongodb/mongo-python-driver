@@ -45,7 +45,7 @@ OTHER_ERRORS = (
 
 
 def normalize(obj: object) -> object:
-    """Comparable form of a decoded document.
+    """Return a comparable form of a decoded document.
 
     The two bson handles are separate module instances, so bson type classes
     (ObjectId, Timestamp, ...) never compare equal across handles. Reduce

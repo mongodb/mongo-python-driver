@@ -229,7 +229,7 @@ def get_standard_auth_ssl(topology):
 
 
 def get_suite_mode(topology):
-    """The sync mode of a per-suite cell: sync except on sharded clusters."""
+    """Return the sync mode of a per-suite cell: sync except on sharded clusters."""
     return "async" if topology == "sharded_cluster" else "sync"
 
 

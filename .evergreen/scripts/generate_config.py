@@ -658,7 +658,7 @@ def create_no_toolchain_tasks():
 
 
 def create_test_standard_auth_tasks():
-    """We only use auth on sharded clusters"""
+    """We only use auth on sharded clusters."""
     tasks = []
     task_combos = set()
     # Rotate through the CPython and MongoDB versions

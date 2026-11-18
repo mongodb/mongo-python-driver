@@ -420,7 +420,7 @@ class TestTransactionsConvenientAPI(AsyncTransactionsBase):
                 self.mongos_clients.append(await self.async_single_client("{}:{}".format(*address)))
 
     async def set_fail_point(self, command_args):
-        clients = self.mongos_clients if self.mongos_clients else [self.client]
+        clients = self.mongos_clients or [self.client]
         for client in clients:
             await self.configure_fail_point(client, command_args)
 

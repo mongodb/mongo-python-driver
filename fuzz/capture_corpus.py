@@ -35,7 +35,7 @@ DEFAULT_MAX_UNIT_BYTES = 64 * 1024
 
 
 def digest_of(path: Path) -> str:
-    """The SHA-256 hex digest of a file's contents."""
+    """Return the SHA-256 hex digest of a file's contents."""
     digest = sha256()
     with open(path, "rb") as fp:
         for chunk in iter(lambda: fp.read(1024 * 1024), b""):

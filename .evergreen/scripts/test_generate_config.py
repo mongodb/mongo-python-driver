@@ -1,5 +1,6 @@
-"""Sanity checks for the Evergreen config generation, and regression tests
-for the .evergreen script fixes in PYTHON-6167.
+"""Sanity checks for the Evergreen config generation.
+
+Also regression tests for the .evergreen script fixes in PYTHON-6167.
 
 Run: pytest .evergreen/scripts/test_generate_config.py -m ""
 (-m "" clears the repo-wide marker filter.)
@@ -61,8 +62,10 @@ def all_variants():
 
 
 def variant_selects(variant, task):
-    """Whether the variant's task selectors match the task: "." selects a
-    tag, "!" negates the token that follows, a bare token names a task.
+    """Whether the variant's task selectors match the task.
+
+    "." selects a tag, "!" negates the token that follows, a bare token
+    names a task.
     """
     tags = task.tags or []
     for ref in variant.tasks:
@@ -102,9 +105,11 @@ def test_generation_sanity():
 
 
 def test_variants_select_tasks():
-    """Every variant selects at least one task, and every suite-family task
-    is selected by at least one variant: a family restructured without
-    variant wiring would silently never run (PYTHON-6167).
+    """Check every variant selects at least one task.
+
+    Every suite-family task is selected by at least one variant: a family
+    restructured without variant wiring would silently never run
+    (PYTHON-6167).
     """
     tasks = all_tasks()
     for variant in all_variants():
@@ -119,8 +124,10 @@ def test_variants_select_tasks():
 
 
 def test_suite_families():
-    """Each per-suite family identifies its suite in its name and TEST_NAME,
-    and no family task mixes min-deps with coverage (PYTHON-6167).
+    """Check each per-suite family identifies its suite.
+
+    The name and TEST_NAME identify the suite, and no family task mixes
+    min-deps with coverage (PYTHON-6167).
     """
     for family, suite in SUITE_FAMILIES.items():
         for task in [t for t in all_tasks() if family in (t.tags or [])]:
@@ -134,8 +141,11 @@ def test_suite_families():
 
 
 def test_pr_tasks_pin_max_version():
-    """Task-level pins: pr tasks pin MAX_VERSION (the "latest" nightly is
-    unstable); the explicit 4.4 min-deps pin is the exception.
+    """Task-level pins: pr tasks pin MAX_VERSION.
+
+    The "latest" nightly is unstable; the explicit 4.4 min-deps pin is the
+    exception. Variant-merged pins are checked by
+    test_pr_tasks_effectively_pin_max_version.
     """
     offenders = [
         (task.name, task_vars(task).get("VERSION"))
@@ -149,9 +159,10 @@ def test_pr_tasks_pin_max_version():
 
 
 def test_suite_families_have_pr_pins():
-    """Every suite family runs at least one task on PR patches, with
-    coverage, so a restructure cannot silently drop a family from the patch
-    build or the codecov report (PYTHON-6167).
+    """Run every suite family at least once on PR patches, with coverage.
+
+    A restructure cannot then silently drop a family from the patch build
+    or the codecov report (PYTHON-6167).
     """
     for family in SUITE_FAMILIES:
         pinned = [
@@ -164,8 +175,89 @@ def test_suite_families_have_pr_pins():
         assert covd, f"no pr task with coverage in the {family} family"
 
 
+def test_pr_tasks_effectively_pin_max_version():
+    """Effective pins: every pr task that runs a server resolves to MAX_VERSION.
+
+    A pr task without its own VERSION var inherits the selecting variant's
+    version once variant expansions merge in. The explicit 4.4 min-deps
+    pin is the exception.
+    """
+    tasks = [task for task in all_tasks() if "pr" in (task.tags or [])]
+    offenders = []
+    for variant in all_variants():
+        variant_version = (variant.expansions or {}).get("VERSION")
+        for task in tasks:
+            if not variant_selects(variant, task):
+                continue
+            task_vars_ = task_vars(task)
+            if task_vars_.get("VERSION") == "4.4" and task_vars_.get("TEST_MIN_DEPS") == "1":
+                continue
+            effective = task_vars_.get("VERSION") or variant_version
+            if effective is None:
+                # Helpers that run the stable default server, like kms-fail.
+                continue
+            if effective != generate_config_utils.MAX_VERSION:
+                offenders.append((variant.name, task.name, effective))
+    assert not offenders, f"pr tasks not effectively pinned to MAX_VERSION: {offenders}"
+
+
+def test_server_version_pr_tasks_selected_once():
+    """A pr server-version task must be selected only by its matching variant.
+
+    The variant must run the server version the task pins. The expected
+    family comes from create_server_version_variants(), not from the
+    selections: a variant missing its PR selector would otherwise drop
+    from both sides and the comparison would pass. Variants outside the
+    family must not select these tasks (the sanitizer variant pins
+    MAX_VERSION for its own mongod).
+    """
+    sv_tasks = [task for task in pr_tasks() if "server-version" in (task.tags or [])]
+    sv_variants = generate_config.create_server_version_variants()
+    offenders = {}
+    for task in sv_tasks:
+        own = task_vars(task).get("VERSION")
+        selecting = [variant.name for variant in all_variants() if variant_selects(variant, task)]
+        matching = [
+            variant.name
+            for variant in sv_variants
+            if (variant.expansions or {}).get("VERSION") == own
+        ]
+        if selecting != matching:
+            offenders[task.name] = {"selected by": selecting, "pins": own}
+    assert not offenders, (
+        f"server-version pr tasks not selected by the variant matching their pin: {offenders}"
+    )
+
+
+def test_pr_tasks_cover_version_boundaries():
+    """PRs test the server version boundaries.
+
+    The newest numbered server runs with every Python boundary, the min
+    server with its min-Python floor.
+    """
+    for version, pythons in (
+        (
+            generate_config_utils.MAX_VERSION,
+            (generate_config_utils.MIN_PYTHON, generate_config_utils.MAX_PYTHON),
+        ),
+        (generate_config_utils.MIN_VERSION, (generate_config_utils.MIN_PYTHON,)),
+    ):
+        tasks = [
+            task
+            for task in pr_tasks()
+            if "server-version" in (task.tags or []) and task_vars(task).get("VERSION") == version
+        ]
+        seen = {task_vars(task).get("UV_PYTHON") for task in tasks}
+        assert seen == set(pythons), (
+            f"{version} pr tasks pin {sorted(seen)}, want {sorted(pythons)}"
+        )
+        assert len(tasks) >= 2, f"{version} has too few server-version pr tasks"
+
+
 def test_amazon2023_no_toolchain_variant_runs_on_prs():
-    """The Amazon Linux host has no Python toolchain, so its no-toolchain
+    """Keep the no-toolchain variant on PR patches.
+
+    The Amazon Linux host has no Python toolchain, so its no-toolchain
     variant must keep running on PR patches (PYTHON-6167).
     """
     (variant,) = [v for v in all_variants() if "amazon2023" in v.name]
@@ -175,9 +267,37 @@ def test_amazon2023_no_toolchain_variant_runs_on_prs():
     assert all("test-no-toolchain" in (task.tags or []) for task in selected)
 
 
+def test_server_version_rotated_tasks_keep_coverage():
+    """Per-commit coverage for this family rides the rotated boundary-Python tasks.
+
+    Not the pr tasks, which run only on MAX_VERSION.
+    """
+    family = [task for task in all_tasks() if "server-version" in (task.tags or [])]
+    cov = [task for task in family if task_vars(task).get("COVERAGE") == "1"]
+    assert any("pr" not in (task.tags or []) for task in cov), (
+        "the server-version family's only COVERAGE tasks are pr tasks"
+    )
+    pr_pythons = {
+        combo: python
+        for combos in generate_config.SERVER_VERSION_PR_PYTHONS.values()
+        for combo, python in combos.items()
+    }
+    offenders = []
+    for task in family:
+        if "pr" in (task.tags or []):
+            continue
+        vars = task_vars(task)
+        boundary = pr_pythons.get((vars["TOPOLOGY"], vars["AUTH"], vars["SSL"]))
+        if vars.get("UV_PYTHON") == boundary and vars.get("COVERAGE") != "1":
+            offenders.append(task.name)
+    assert not offenders, f"rotated server-version boundary tasks without COVERAGE: {offenders}"
+
+
 def test_numpy_win32_tasks_run_on_windows_only():
-    """The win32 numpy tasks use the 32-bit toolchain (IS_WIN32) and are
-    selected only by the windows variant (PYTHON-6167).
+    """Keep the win32 numpy tasks on the windows variant.
+
+    They use the 32-bit toolchain (IS_WIN32) and must be selected only by
+    the windows variant (PYTHON-6167).
     """
     win32_tasks = [task for task in all_tasks() if "test-numpy-win32" in (task.tags or [])]
     assert win32_tasks, "no win32 numpy tasks"
@@ -197,8 +317,9 @@ def test_numpy_win32_tasks_run_on_windows_only():
 
 
 def test_run_tests_env_carries_crypt_shared():
-    """The run tests setup env carries TEST_CRYPT_SHARED, which
-    setup_tests.py reads to wire the crypt_shared lib directory
+    """Check the run tests setup env carries TEST_CRYPT_SHARED.
+
+    setup_tests.py reads it to wire the crypt_shared lib directory
     (PYTHON-6167).
     """
     _, cmds = generate_config.create_run_tests_func()
@@ -208,12 +329,124 @@ def test_run_tests_env_carries_crypt_shared():
     assert "LIBMONGOCRYPT_URL" in includes, includes
 
 
+def test_pr_min_deps_tasks_also_run_coverage():
+    offenders = [
+        task.name
+        for task in pr_tasks()
+        if task_vars(task).get("TEST_MIN_DEPS") == "1" and task_vars(task).get("COVERAGE") != "1"
+    ]
+    assert not offenders, f"min-deps PR tasks without COVERAGE: {offenders}"
+
+
+def test_standard_family_pr_budget():
+    """Patch-build PR budget for test-standard pr tasks.
+
+    At most 5 (the pre-pin baseline), at most 3 on Python 3.14+ (the
+    ubuntu22 compression filter).
+    """
+    tasks = [task for task in pr_tasks() if "test-standard" in (task.tags or [])]
+    assert len(tasks) <= 5, f"too many test-standard PR tasks: {[t.name for t in tasks]}"
+    newer = [
+        task
+        for task in tasks
+        if any(
+            tag in (task.tags or [])
+            for tag in ("python-3.14", "python-3.14t", "python-3.15", "python-3.15t")
+        )
+    ]
+    assert len(newer) <= 3, f"too many 3.14+ test-standard PR tasks: {[t.name for t in newer]}"
+
+
+def test_pr_tasks_run_coverage():
+    """Pr tasks that pin a server version run with COVERAGE=1.
+
+    No-cov companions, infrastructure tasks (no VERSION), and the
+    encryption tasks (their suites exceed the coverage timeout on
+    macOS/Win64, PYTHON-6167) are exempt.
+    """
+    offenders = [
+        task.name
+        for task in pr_tasks()
+        if task_vars(task).get("VERSION") is not None
+        and "test-non-standard-no-cov" not in (task.tags or [])
+        and "test-encryption" not in (task.tags or [])
+        and task_vars(task).get("COVERAGE") != "1"
+    ]
+    assert not offenders, f"PR tasks without COVERAGE: {offenders}"
+
+
+def test_rotated_tasks_keep_nightly_coverage():
+    """Batch coverage rides the rotation independently of the pr tasks.
+
+    Rotated "latest" tasks and max-Python auth-aws tasks keep COVERAGE=1
+    (min-deps excepted).
+    """
+    offenders = []
+    for task in all_tasks():
+        tags = task.tags or []
+        vars = task_vars(task)
+        if vars.get("TEST_MIN_DEPS") == "1" or "pr" in tags:
+            continue
+        rotated_latest = "server-latest" in tags or ("ocsp-ecdsa" in tags and "latest" in tags)
+        is_tested = ("test-standard" in tags and "server-latest" in tags) or (
+            "test-non-standard" in tags
+            and "server-latest" in tags
+            and "sharded_cluster-auth-ssl" in tags
+        )
+        is_aws_max_python = (
+            "auth-aws" in tags
+            and "session-name" not in task.name
+            and vars.get("UV_PYTHON") == generate_config_utils.MAX_PYTHON
+        )
+        if rotated_latest and is_tested and vars.get("COVERAGE") != "1":
+            offenders.append(task.name)
+        if is_aws_max_python and vars.get("COVERAGE") != "1":
+            offenders.append(task.name)
+    assert not offenders, f"rotated tasks without nightly COVERAGE: {offenders}"
+    # The "latest" ECDSA staples task keeps its nightly coverage.
+    latest_staples = [
+        task.name
+        for task in all_tasks()
+        if "ocsp-ecdsa" in (task.tags or [])
+        and "ocsp-staple" in (task.tags or [])
+        and "latest" in (task.tags or [])
+        and task_vars(task).get("COVERAGE") == "1"
+    ]
+    assert latest_staples, "no ECDSA staples task on the latest nightly with COVERAGE"
+    # The 9.0 nightly OCSP tasks stay on the min-deps Python.
+    offenders = [
+        task.name
+        for task in all_tasks()
+        if "ocsp" in (task.tags or [])
+        and "9.0" in (task.tags or [])
+        and "pr" not in (task.tags or [])
+        and task_vars(task).get("TEST_MIN_DEPS") != "1"
+    ]
+    assert not offenders, f"nightly 9.0 OCSP tasks not on min-deps Python: {offenders}"
+
+
+def test_non_standard_cov_tasks_have_no_cov_companions():
+    """Each non-standard coverage task also emits a no-cov companion.
+
+    The macOS/Win64 encryption variants (which filter .cov) have a task to
+    activate in patch builds.
+    """
+    no_cov = {task.name for task in all_tasks() if "test-non-standard-no-cov" in (task.tags or [])}
+    for task in all_tasks():
+        if "test-non-standard-no-cov" in (task.tags or []):
+            assert "pr" not in (task.tags or []), f"no-cov companion tagged pr: {task.name}"
+        elif "cov" in (task.tags or []) and "test-non-standard" in (task.tags or []):
+            companion = task.name.removesuffix("-cov")
+            assert companion in no_cov, f"missing no-cov companion for {task.name}"
+
+
 def test_fuzz_task_wiring():
-    """Two fuzz variants: the pr-tagged regression variant runs the
-    reproducers on every PR; the nightly variant (which also captures the
-    corpus) carries no "pr" tag, so PR patch builds never select it, while
-    its default patchability keeps it manually runnable
-    (`evergreen patch --variant fuzz-rhel8 --task fuzz`).
+    """Test the fuzz task wiring.
+
+    Two fuzz variants: the pr-tagged regression variant runs the reproducers on
+    every PR; the nightly variant (which also captures the corpus) carries no
+    "pr" tag, so PR patch builds never select it, while its default patchability
+    keeps it manually runnable (`evergreen patch --variant fuzz-rhel8 --task fuzz`).
     """
     tasks = [task for task in all_tasks() if "fuzz" in (task.tags or [])]
     assert [task.name for task in tasks if "pr" in (task.tags or [])] == ["fuzz-regression"]
@@ -240,7 +473,8 @@ def test_fuzz_task_wiring():
 
 
 def test_load_balancer_marker_selection(monkeypatch):
-    """The load balancer tasks select the load_balancer marker explicitly:
+    """The load balancer tasks select the load_balancer marker explicitly.
+
     pytest_conf.py only grants the implicit default markers to unmarked
     tests (PYTHON-6167).
     """
@@ -257,8 +491,10 @@ def test_load_balancer_marker_selection(monkeypatch):
 
 
 def test_ensure_openssl3_escapes_persisted_values(monkeypatch, tmp_path):
-    """A DRIVERS_TOOLS path carrying command substitution must not execute
-    at write time or when the persisted env.sh is sourced (PYTHON-6167).
+    """Reject DRIVERS_TOOLS paths carrying command substitution.
+
+    A hostile path must not execute at write time or when the persisted
+    env.sh is sourced (PYTHON-6167).
     """
     import subprocess
 
@@ -306,9 +542,10 @@ def test_ensure_openssl3_escapes_persisted_values(monkeypatch, tmp_path):
 
 
 def test_crypt_shared_persisted_to_env(monkeypatch, tmp_path):
-    """The crypt_shared setup persists TEST_CRYPT_SHARED to the test
-    environment: the encryption tests use it to decide whether to run their
-    crypt_shared cases (PYTHON-6167).
+    """Check the crypt_shared setup persists TEST_CRYPT_SHARED.
+
+    The encryption tests use it to decide whether to run their crypt_shared
+    cases (PYTHON-6167).
     """
     import setup_tests
     import utils
@@ -339,9 +576,10 @@ def test_crypt_shared_persisted_to_env(monkeypatch, tmp_path):
 
 
 def test_write_env_escapes_backslashes(monkeypatch, tmp_path):
-    """write_env escapes backslashes first, so substitution payloads and
-    trailing backslashes round-trip literally when the file is sourced
-    (PYTHON-6167).
+    """Check write_env escapes backslashes first.
+
+    Substitution payloads and trailing backslashes must round-trip
+    literally when the file is sourced (PYTHON-6167).
     """
     import subprocess
 
@@ -375,8 +613,10 @@ def test_write_env_escapes_backslashes(monkeypatch, tmp_path):
 
 
 def test_read_env_unescapes_double_quoted_escapes(monkeypatch, tmp_path):
-    """read_env yields the value bash sourcing would: double-quoted escapes
-    unescape, single-quoted values stay literal (PYTHON-6167).
+    """Check read_env yields the value bash sourcing would.
+
+    Double-quoted escapes unescape, single-quoted values stay literal
+    (PYTHON-6167).
     """
     import subprocess
 
@@ -412,8 +652,10 @@ def test_read_env_unescapes_double_quoted_escapes(monkeypatch, tmp_path):
 
 
 def test_write_env_escapes_embedded_quotes(monkeypatch, tmp_path):
-    """write_env escapes embedded double quotes instead of dropping them, so
-    a value read with read_env round-trips when persisted (PYTHON-6167).
+    """Check write_env escapes embedded double quotes.
+
+    Dropping them would lose data: a value read with read_env must
+    round-trip when persisted (PYTHON-6167).
     """
     import subprocess
 
@@ -447,8 +689,9 @@ def test_write_env_escapes_embedded_quotes(monkeypatch, tmp_path):
 
 
 def test_crypt_shared_escapes_backslashes(monkeypatch, tmp_path):
-    """The crypt_shared lib path persists literally while the trailing
-    LD_LIBRARY_PATH expansion stays live (PYTHON-6167).
+    """Check the crypt_shared lib path persists literally.
+
+    The trailing LD_LIBRARY_PATH expansion stays live (PYTHON-6167).
     """
     import subprocess
 
@@ -513,10 +756,11 @@ def test_sync_option_env_override(monkeypatch):
 
 
 def test_sanitizer_task_wiring():
-    """PYTHON-6048: one pr-tagged sanitizer task, selected by exactly one
-    variant that pins MAX_VERSION and runs on a large host for ASan's memory
-    headroom. VERSION stays off the task so it is exempt
-    from the pr COVERAGE rule (coverage under ASan is not useful).
+    """PYTHON-6048: one pr-tagged sanitizer task, selected by exactly one variant.
+
+    The variant pins MAX_VERSION and runs on a large host for ASan's
+    memory headroom. VERSION stays off the task so it is exempt from the
+    pr COVERAGE rule (coverage under ASan is not useful).
     """
     tasks = [task for task in all_tasks() if "sanitizer" in (task.tags or [])]
     assert len(tasks) == 1

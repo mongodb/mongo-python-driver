@@ -433,9 +433,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
                 await server.pool.reset(interrupt_connections=interrupt_connections)
 
     async def _process_srv_update(self, seedlist: list[tuple[str, Any]]) -> None:
-        """Process a new seedlist on an opened topology.
-        Hold the lock when calling this.
-        """
+        """Process a new seedlist on an opened topology. Hold the lock when calling this."""
         td_old = self._description
         if td_old.topology_type not in SRV_POLLING_TOPOLOGIES:
             return
@@ -512,8 +510,9 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
                 raise
 
     async def close(self) -> None:
-        """Clear pools and terminate monitors. Topology does not reopen on
-        demand. Any further operations will raise
+        """Clear pools and terminate monitors.
+
+        Topology does not reopen on demand. Any further operations will raise
         :exc:`~.errors.InvalidOperation`.
         """
         async with self._lock:

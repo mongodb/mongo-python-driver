@@ -31,10 +31,7 @@ if TYPE_CHECKING:
 
 
 class CollationStrength:
-    """
-    An enum that defines values for `strength` on a
-    :class:`~pymongo.collation.Collation`.
-    """
+    """An enum that defines values for `strength` on a :class:`~pymongo.collation.Collation`."""
 
     PRIMARY = 1
     """Differentiate base (unadorned) characters."""
@@ -53,10 +50,7 @@ class CollationStrength:
 
 
 class CollationAlternate:
-    """
-    An enum that defines values for `alternate` on a
-    :class:`~pymongo.collation.Collation`.
-    """
+    """An enum that defines values for `alternate` on a :class:`~pymongo.collation.Collation`."""
 
     NON_IGNORABLE = "non-ignorable"
     """Spaces and punctuation are treated as base characters."""
@@ -72,10 +66,7 @@ class CollationAlternate:
 
 
 class CollationMaxVariable:
-    """
-    An enum that defines values for `max_variable` on a
-    :class:`~pymongo.collation.Collation`.
-    """
+    """An enum that defines values for `max_variable` on a :class:`~pymongo.collation.Collation`."""
 
     PUNCT = "punct"
     """Both punctuation and spaces are ignored."""
@@ -85,10 +76,7 @@ class CollationMaxVariable:
 
 
 class CollationCaseFirst:
-    """
-    An enum that defines values for `case_first` on a
-    :class:`~pymongo.collation.Collation`.
-    """
+    """An enum that defines values for `case_first` on a :class:`~pymongo.collation.Collation`."""
 
     UPPER = "upper"
     """Sort uppercase characters first."""
@@ -101,7 +89,7 @@ class CollationCaseFirst:
 
 
 class Collation:
-    """Collation
+    """Collation.
 
     :param locale: (string) The locale of the collation. This should be a string
         that identifies an `ICU locale ID` exactly. For example, ``en_US`` is

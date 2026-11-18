@@ -969,7 +969,7 @@ class TestBSON(unittest.TestCase):
             self.assertEqual(decode_all(payload, standard), [doc])
 
     def test_vector(self):
-        """Tests of subtype 9"""
+        """Tests of subtype 9."""
         # We start with valid cases, across the 3 dtypes implemented.
         # Work with a simple vector that can be interpreted as int8, float32, or ubyte
         list_vector = [127, 8]
@@ -1052,7 +1052,7 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(repr(new_obj), repr(obj))
 
     def test_binaryvector_repr(self):
-        """Tests of repr(BinaryVector)"""
+        """Tests of repr(BinaryVector)."""
         data = [1 / 127, -7 / 6]
         one = BinaryVector(data, BinaryVectorDtype.FLOAT32)
         self.assertEqual(
@@ -1086,7 +1086,7 @@ class TestBSON(unittest.TestCase):
         self.assertRepr(zero)
 
     def test_binaryvector_equality(self):
-        """Tests of == __eq__"""
+        """Tests of == __eq__."""
         self.assertEqual(
             BinaryVector([1.2, 1 - 1 / 3], BinaryVectorDtype.FLOAT32, 0),
             BinaryVector([1.2, 1 - 1.0 / 3.0], BinaryVectorDtype.FLOAT32, 0),
@@ -1105,7 +1105,7 @@ class TestBSON(unittest.TestCase):
 
     @unittest.skipIf(not _NUMPY_AVAILABLE, "numpy optional-dependency not installed.")
     def test_vector_from_numpy(self):
-        """Follows test_vector except for input type numpy.ndarray"""
+        """Follows test_vector except for input type numpy.ndarray."""
         # Simple data values could be treated as any of our BinaryVectorDtypes
         import numpy as np
 
@@ -1164,6 +1164,7 @@ class TestBSON(unittest.TestCase):
 
     def test_unicode_regex(self):
         """Tests we do not get a segfault for C extension on unicode RegExs.
+
         This had been happening.
         """
         regex = re.compile("revisi\xf3n")
@@ -2237,8 +2238,9 @@ class TestBSONHostileLengths(unittest.TestCase):
 
 
 class TestBSONMutations(unittest.TestCase):
-    """Every byte mutation must decode successfully or raise a BSONError,
-    never crash or read out of bounds.
+    """Every byte mutation must decode successfully or raise a BSONError.
+
+    A mutation must never crash or read out of bounds.
     """
 
     MUTATION_VALUES = (0x00, 0x7F, 0xFF)

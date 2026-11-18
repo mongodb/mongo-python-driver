@@ -210,6 +210,7 @@ extend-select = [
   "ASYNC",       # flake8-async
   "TC",          # flake8-type-checking
   "PERF",        # perflint
+  "FURB",        # refurb
   # Non-design pylint rules.
   "PLR0124",     # pylint: comparison of a name with itself
   "PLR0133",     # pylint: comparison between two constants
@@ -227,8 +228,11 @@ extend-select = [
   "PLR2044",     # pylint: empty comment
   "PLR5501",     # pylint: `else: if` should be `elif`
   "D202",        # pydocstyle: no blank lines between docstring and function body
+  "D205",        # pydocstyle: 1 blank line required between summary line and description
   "D209",        # pydocstyle: closing quotes go on their own line
   "D301",        # pydocstyle: docstrings containing \ are defined as string literals
+  "D400",        # pydocstyle: first line should end with a period
+  "D401",        # pydocstyle: first line should be in imperative mood
   "D403",        # pydocstyle: docstrings start with a capital letter
 ]
 ignore = [

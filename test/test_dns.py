@@ -210,8 +210,8 @@ class TestCaseInsensitive(IntegrationTest):
 
 
 class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
-    """
-    Initial DNS Seedlist Discovery prose tests
+    """Initial DNS Seedlist Discovery prose tests.
+
     https://github.com/mongodb/specifications/blob/5036f26/source/initial-dns-seedlist-discovery/tests/README.md#prose-tests
 
     Numbered tests correspond to the numbered prose tests in the spec. The

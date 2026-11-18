@@ -42,8 +42,9 @@ else:
 
 
 def _create_lock() -> threading.Lock:
-    """Represents a lock that is tracked upon instantiation using a WeakSet and
-    reset by pymongo upon forking.
+    """Create a lock that is tracked upon instantiation using a WeakSet.
+
+    The lock is reset by pymongo upon forking.
     """
     lock = threading.Lock()
     if _HAS_REGISTER_AT_FORK:
@@ -52,21 +53,21 @@ def _create_lock() -> threading.Lock:
 
 
 def _async_create_lock() -> Lock:
-    """Represents an asyncio.Lock."""
+    """Create an asyncio.Lock."""
     return Lock()
 
 
 def _create_condition(
     lock: threading.Lock, condition_class: Any | None = None
 ) -> threading.Condition:
-    """Represents a threading.Condition."""
+    """Create a threading.Condition."""
     if condition_class:
         return condition_class(lock)
     return threading.Condition(lock)
 
 
 def _async_create_condition(lock: Lock, condition_class: Any | None = None) -> Condition:
-    """Represents an asyncio.Condition."""
+    """Create an asyncio.Condition."""
     if condition_class:
         return condition_class(lock)
     return Condition(lock)

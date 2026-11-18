@@ -1096,8 +1096,9 @@ class TestClient(AsyncIntegrationTest):
         self.assertIsNone(session._transaction.conn_mgr)
 
     async def test_constants(self):
-        """This test uses AsyncMongoClient explicitly to make sure that host and
-        port are not overloaded.
+        """This test uses AsyncMongoClient explicitly.
+
+        It makes sure that host and port are not overloaded.
         """
         host, port = await async_client_context.host, await async_client_context.port
         kwargs: dict = async_client_context.default_client_options.copy()

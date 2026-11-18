@@ -137,9 +137,7 @@ class TestSrvPolling(PyMongoTestCase):
         return client._topology.description.server_descriptions().keys()
 
     def assert_nodelist_change(self, expected_nodelist, client, timeout=(100 * WAIT_TIME)):
-        """Check if the client._topology eventually sees all nodes in the
-        expected_nodelist.
-        """
+        """Check if the client._topology eventually sees all nodes in the expected_nodelist."""
 
         def predicate():
             nodelist = self.get_nodelist(client)
@@ -150,10 +148,11 @@ class TestSrvPolling(PyMongoTestCase):
         wait_until(predicate, "see expected nodelist", timeout=timeout)
 
     def assert_nodelist_nochange(self, expected_nodelist, client, timeout=(100 * WAIT_TIME)):
-        """Check if the client._topology ever deviates from seeing all nodes
-        in the expected_nodelist. Consistency is checked after sleeping for
-        (WAIT_TIME * 10) seconds. Also check that the resolver is called at
-        least once.
+        """Check if the client._topology ever deviates from the expected_nodelist.
+
+        The topology must continue to see all nodes in the expected_nodelist.
+        Consistency is checked after sleeping for (WAIT_TIME * 10) seconds.
+        Also check that the resolver is called at least once.
         """
 
         def predicate():

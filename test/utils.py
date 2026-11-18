@@ -88,9 +88,10 @@ def wait_until(predicate, success_description, timeout=10):
 
 
 def ensure_all_connected(client: MongoClient) -> None:
-    """Ensure that the client's connection pool has socket connections to all
-    members of a replica set. Raises ConfigurationError when called with a
-    non-replica set client.
+    """Ensure that the client's connection pool is connected to all members.
+
+    The pool must have socket connections to all members of a replica set.
+    Raises ConfigurationError when called with a non-replica set client.
 
     Depending on the use-case, the caller may need to clear any event listeners
     that are configured on the client.
@@ -126,10 +127,12 @@ def ensure_all_connected(client: MongoClient) -> None:
 
 
 def assertRaisesExactly(cls, fn, *args, **kwargs):
-    """
-    Unlike the standard assertRaises, this checks that a function raises a
-    specific class of exception, and not a subclass. E.g., check that
-    MongoClient() raises ConnectionFailure but not its subclass, AutoReconnect.
+    """Check the exact exception class a function raises.
+
+    Unlike the standard assertRaises, this checks that a function raises a specific
+    class of exception, and not a subclass. E.g., check that
+    MongoClient() raises ConnectionFailure but not its subclass,
+    AutoReconnect.
     """
     try:
         fn(*args, **kwargs)
@@ -146,7 +149,7 @@ def set_fail_point(client, command_args):
 
 
 def joinall(tasks):
-    """Join threads with a 5-minute timeout, assert joins succeeded"""
+    """Join threads with a 5-minute timeout, assert joins succeeded."""
     if _IS_SYNC:
         for t in tasks:
             t.join(300)

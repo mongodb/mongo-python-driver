@@ -312,11 +312,11 @@ def read_env(path: Path | str) -> dict[str, str]:
 
 
 def shell_escape(value: str) -> str:
-    """Escape a value for a double-quoted shell context; the inverse of
-    read_env's unescaping.
+    """Escape a value for a double-quoted shell context.
 
-    Backslashes are escaped first; otherwise a backslash-prefixed
-    substitution re-arms when the file is sourced (PYTHON-6167).
+    The inverse of read_env's unescaping. Backslashes are escaped first;
+    otherwise a backslash-prefixed substitution re-arms when the file is
+    sourced (PYTHON-6167).
     """
     return value.replace("\\", "\\\\").replace("$", "\\$").replace("`", "\\`").replace('"', '\\"')
 
