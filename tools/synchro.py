@@ -386,11 +386,13 @@ def copy_changed_files(
     atomically replaces it, so a write that fails midway (for example when
     the disk fills) leaves that destination untouched. The original is
     hard-linked aside first, so the rollback restores it by rename and
-    needs no disk space. If a later step fails or is interrupted,
-    destinations already written are restored and the manifest is removed,
-    so the working tree is left unchanged and nothing is claimed for
-    staging; publishing ``manifest`` inside that same rollback scope
-    extends the guarantee to manifest write failures. An unchanged
+    needs no disk space. Without hard-link support the rollback rewrites
+    the file through the same temporary sibling, so a restore that fails
+    leaves the published content in place. If a later step fails or is
+    interrupted, destinations already written are restored and the manifest
+    is removed, so the working tree is left unchanged and nothing is
+    claimed for staging; publishing ``manifest`` inside that same rollback
+    scope extends the guarantee to manifest write failures. An unchanged
     destination that ``tracked`` does not contain is listed in the
     manifest without being rewritten, so a newly generated module reaches
     the staging hook on its first commit.
@@ -470,7 +472,15 @@ def copy_changed_files(
                 elif old is None:
                     dest.unlink(missing_ok=True)
                 else:
-                    dest.write_bytes(old)
+                    # No backup: rewrite the file. The temporary sibling
+                    # keeps a failing restore from truncating the
+                    # destination, which keeps its published content.
+                    tmp_restore = dest.with_name(dest.name + ".synchro-tmp")
+                    try:
+                        tmp_restore.write_bytes(old)
+                        tmp_restore.replace(dest)
+                    finally:
+                        tmp_restore.unlink(missing_ok=True)
             except BaseException as restore_error:
                 print(
                     f"Synchro: could not restore {dest}: {restore_error!r}",

@@ -459,6 +459,54 @@ def test_copy_changed_files_backup_cleanup_failure_is_not_fatal(
     assert "could not remove" in capsys.readouterr().err
 
 
+def test_copy_changed_files_failed_fallback_restore_is_clean(tmp_path: Path) -> None:
+    """A fallback restore that fails leaves the published content in place."""
+    staged_a = tmp_path / "a_staged.py"
+    dest_a = tmp_path / "a_dest.py"
+    staged_a.write_bytes(b"new-a")
+    dest_a.write_bytes(b"old-a")
+    staged_b = tmp_path / "b_staged.py"
+    dest_b = tmp_path / "b_dest.py"
+    staged_b.write_bytes(b"new-b")
+    dest_b.write_bytes(b"old-b")
+    staged_c = tmp_path / "c_staged.py"
+    dest_c = tmp_path / "blocking-dir" / "c_dest.py"
+    staged_c.write_bytes(b"new-c")
+    # A file occupies c_dest.py's parent directory, so the mkdir fails.
+    (tmp_path / "blocking-dir").write_bytes(b"not a directory")
+
+    real_write = Path.write_bytes
+
+    def failing_restore(self: Path, data: bytes) -> None:
+        if data == b"old-b":
+            # Simulate persistent ENOSPC: the restore lands partial bytes
+            # then fails.
+            real_write(self, b"ol")
+            raise OSError(28, "No space left on device")
+        real_write(self, data)
+
+    # No hard-link support: restores must rewrite the files.
+    with patch("os.link", side_effect=OSError(1, "link not supported")):
+        with patch.object(Path, "write_bytes", failing_restore):
+            with pytest.raises(FileExistsError):
+                synchro.copy_changed_files(
+                    [(staged_a, dest_a), (staged_b, dest_b), (staged_c, dest_c)]
+                )
+
+    assert dest_a.read_bytes() == b"old-a"
+    # The failed restore leaves the published content, uncorrupted.
+    assert dest_b.read_bytes() == b"new-b"
+    # No temporary or backup files are left behind.
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "a_dest.py",
+        "a_staged.py",
+        "b_dest.py",
+        "b_staged.py",
+        "blocking-dir",
+        "c_staged.py",
+    ]
+
+
 ASYNC_SOURCE = "_IS_SYNC = False\n\n\ndef f() -> None:\n    pass\n"
 SYNC_SOURCE = "_IS_SYNC = True\n\n\ndef f() -> None:\n    pass\n"
 
