@@ -301,7 +301,7 @@ def create_tests():
     for dirpath, _, filenames in os.walk(_TEST_PATH):
         dirname = os.path.split(dirpath)[-1]
 
-        if dirname == "operation" or dirname == "write-concern-errors":
+        if dirname in {"operation", "write-concern-errors"}:
             # These directories have their tests generated below by generate_test_classes().
             continue
         elif dirname == "connection-string":

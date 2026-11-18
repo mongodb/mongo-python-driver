@@ -39,7 +39,6 @@ class _ContextManagerMixin:
         await self.acquire()  # type: ignore[attr-defined]
         # We have no use for the "as ..."  clause in the with
         # statement for locks.
-        return
 
     async def __aexit__(
         self,

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import os
 import sys
-import unittest.mock as mock
+from unittest import mock
 
 sys.path[0:0] = [""]
 

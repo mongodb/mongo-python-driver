@@ -16,7 +16,7 @@ if [ -f $HERE/test-env.sh ]; then
   . $HERE/test-env.sh
 fi
 
-# The bin dir for the pinned uv/just. setup-system.sh sets it on evergreen hosts;
+# The bin dir for uv/just. setup-system.sh sets it on evergreen hosts;
 # default it here so local dev (without setup-system.sh) also has a usable value.
 # Native (Windows) form on cygwin, like install-dependencies.sh.
 export PYMONGO_BIN_DIR="${PYMONGO_BIN_DIR:-$HOME/.local/bin}"

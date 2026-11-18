@@ -51,6 +51,10 @@ try:
 except ImportError:
     _cmessage = None
 
+# OP_MSG header: 4 message length + 4 request id + 4 responseTo + 4 opCode
+# + 4 flags + 1 payload-type byte, preceding the type-0 command document.
+_OP_MSG_HEADER_SIZE = 21
+
 _OPTS = CodecOptions()
 
 
@@ -476,8 +480,10 @@ class _FakeBulkWriteContext:
     """Stub exposing the max sizes read by _cbson_batched_op_msg."""
 
     max_bson_size = 16 * 1024 * 1024
-    max_write_batch_size = 100000
-    max_message_size = 48 * 1024 * 1024
+
+    def __init__(self, max_write_batch_size=100000, max_message_size=48 * 1024 * 1024):
+        self.max_write_batch_size = max_write_batch_size
+        self.max_message_size = max_message_size
 
 
 class TestOpMsgBuilders(unittest.TestCase):
@@ -491,24 +497,39 @@ class TestOpMsgBuilders(unittest.TestCase):
         if _cmessage is None:
             self.skipTest("_cmessage not built")
 
+    def _assert_total_length(self, msg):
+        """The first 4 bytes of an OP_MSG are its back-patched total length."""
+        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+
+    def _assert_command_document(self, msg, command):
+        """The type-0 command document following the header decodes to `command`.
+
+        Returns the command document's size.
+        """
+        command_size = struct.unpack("<i", msg[_OP_MSG_HEADER_SIZE : _OP_MSG_HEADER_SIZE + 4])[0]
+        self.assertEqual(
+            decode(msg[_OP_MSG_HEADER_SIZE : _OP_MSG_HEADER_SIZE + command_size]),
+            command,
+        )
+        return command_size
+
     def test_op_msg_no_identifier(self):
         _, msg, total_size, max_doc_size = _cmessage._op_msg(0, {"ismaster": 1}, "", None, _OPTS)
         self.assertIsInstance(msg, bytes)
-        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
-        # 21 bytes of header precede the command document.
-        self.assertEqual(total_size, len(msg) - 21)
+        self._assert_total_length(msg)
+        # The header precedes the command document.
+        self.assertEqual(total_size, len(msg) - _OP_MSG_HEADER_SIZE)
         self.assertEqual(max_doc_size, 0)
-        self.assertEqual(decode(msg[21:]), {"ismaster": 1})
+        self.assertEqual(decode(msg[_OP_MSG_HEADER_SIZE:]), {"ismaster": 1})
 
     def test_op_msg_with_identifier(self):
         docs: list[dict[str, Any]] = [{"b": 1}, {"c": "two"}]
         _, msg, _, max_doc_size = _cmessage._op_msg(0, {"insert": "coll"}, "documents", docs, _OPTS)
-        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        self._assert_total_length(msg)
         self.assertEqual(max_doc_size, max(len(encode(doc)) for doc in docs))
-        command_size = struct.unpack("<i", msg[21:25])[0]
-        self.assertEqual(decode(msg[21 : 21 + command_size]), {"insert": "coll"})
+        command_size = self._assert_command_document(msg, {"insert": "coll"})
         # Type-1 payload: type byte, 4-byte length, cstring identifier.
-        payload_start = 21 + command_size
+        payload_start = _OP_MSG_HEADER_SIZE + command_size
         self.assertEqual(msg[payload_start], 0x01)
         payload_length = struct.unpack("<i", msg[payload_start + 1 : payload_start + 5])[0]
         self.assertEqual(
@@ -524,13 +545,18 @@ class TestOpMsgBuilders(unittest.TestCase):
 
     def test_op_msg_empty_docs(self):
         _, msg, _, max_doc_size = _cmessage._op_msg(0, {"insert": "coll"}, "documents", [], _OPTS)
-        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        self._assert_total_length(msg)
         self.assertEqual(max_doc_size, 0)
 
     def test_op_msg_multiple_buffer_doublings(self):
+        # The C encoder starts with a 256-byte buffer (INITIAL_BUFFER_SIZE in
+        # bson/buffer.c) and repeatedly doubles it until the data fits. The
+        # 5013-byte first document (plus the 21-byte header, command document,
+        # and payload prefix) forces 5 consecutive doublings: 256 -> 8192. The
+        # later documents are small, so only the first drives the growth.
         docs = [{"s": "x" * n} for n in (5000, 50, 5)]
         _, msg, _, max_doc_size = _cmessage._op_msg(0, {"insert": "coll"}, "documents", docs, _OPTS)
-        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        self._assert_total_length(msg)
         self.assertEqual(max_doc_size, max(len(encode(doc)) for doc in docs))
 
     def test_batched_op_msg_insert(self):
@@ -539,9 +565,8 @@ class TestOpMsgBuilders(unittest.TestCase):
             0, {"insert": "coll"}, docs, True, _OPTS, _FakeBulkWriteContext()
         )
         self.assertIsInstance(to_publish, list)
-        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
-        command_size = struct.unpack("<i", msg[21:25])[0]
-        self.assertEqual(decode(msg[21 : 21 + command_size]), {"insert": "coll"})
+        self._assert_total_length(msg)
+        self._assert_command_document(msg, {"insert": "coll"})
         self.assertEqual(len(to_publish), len(docs))
 
     def test_batched_op_msg_update(self):
@@ -549,8 +574,32 @@ class TestOpMsgBuilders(unittest.TestCase):
         _, msg, to_publish = _cmessage._batched_op_msg(
             1, {"update": "coll"}, docs, True, _OPTS, _FakeBulkWriteContext()
         )
-        self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
+        self._assert_total_length(msg)
         self.assertIsInstance(to_publish, list)
+        self.assertEqual(len(to_publish), len(docs))
+
+    def test_batched_op_msg_split_on_batch_size(self):
+        # Exceeding max_write_batch_size ends the batch after exactly that
+        # many documents; the remaining documents are left for the caller to
+        # batch separately.
+        docs = [{"_id": i, "s": "x" * 10} for i in range(5)]
+        _, msg, to_publish = _cmessage._batched_op_msg(
+            0, {"insert": "coll"}, docs, True, _OPTS, _FakeBulkWriteContext(max_write_batch_size=2)
+        )
+        self.assertEqual(len(to_publish), 2)
+        self._assert_total_length(msg)
+        self._assert_command_document(msg, {"insert": "coll"})
+
+    def test_batched_op_msg_split_on_message_size(self):
+        # A document that would push the message past max_message_size is
+        # rolled back out of the buffer and left for the caller to batch
+        # separately.
+        docs = [{"_id": i, "s": "x" * 100} for i in range(3)]
+        _, msg, to_publish = _cmessage._batched_op_msg(
+            0, {"insert": "coll"}, docs, True, _OPTS, _FakeBulkWriteContext(max_message_size=350)
+        )
+        self.assertEqual(len(to_publish), 2)
+        self._assert_total_length(msg)
 
 
 if __name__ == "__main__":
