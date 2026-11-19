@@ -272,6 +272,9 @@ flake8-unused-arguments.ignore-variadic-names = true
 isort.required-imports = ["from __future__ import annotations"]
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?)|dummy.*)$"
 pydocstyle.convention = "pep257"
+# Arms W505 (doc-line-too-long). Kept separate from `line-length` so doc lines can
+# be limited independently; currently raises nothing beyond E501.
+pycodestyle.max-doc-length = 100
 
 [tool.ruff.lint.per-file-ignores]
 "pymongo/__init__.py" = ["E402"]
