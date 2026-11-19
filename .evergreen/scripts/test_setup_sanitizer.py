@@ -31,10 +31,20 @@ def repo(tmp_path, monkeypatch):
     (root / ".evergreen" / "tsan-suppressions.txt").write_text("")
     interpreter = root / "interpreter" / "python3"
     interpreter.parent.mkdir(parents=True)
-    interpreter.write_bytes(b"")
+    interpreter.write_text(
+        "#!/bin/sh\n"
+        'if [ "$1" = "-c" ]; then\n'
+        "  echo 'Clang 14.0.6 (Red Hat 14.0.6-1.module+el8.7.0+15816+ec020e8f)'\n"
+        "else\n"
+        "  echo 'clang -pthread'\n"
+        "fi\n"
+    )
+    interpreter.chmod(0o755)
     monkeypatch.setattr(setup_sanitizer, "ROOT", root)
     monkeypatch.setattr(setup_sanitizer, "TSAN_PYTHON", str(interpreter))
     monkeypatch.setattr(setup_sanitizer, "SANITIZER_PYTHON", str(interpreter))
+    monkeypatch.setattr(setup_sanitizer, "clang_candidates", lambda: ["/usr/bin/clang"])
+    monkeypatch.setattr(setup_sanitizer, "compiler_clang_version", lambda *_: "14.0.6")
     monkeypatch.setattr(utils, "ENV_FILE", tmp_path / "env.sh")
     return root
 
@@ -56,6 +66,8 @@ def test_tsan_env_writes_expected_variables(monkeypatch):
 
     lines = env_lines()
     assert lines["UV_PYTHON"] == setup_sanitizer.TSAN_PYTHON
+    assert lines["CC"] == "/usr/bin/clang"
+    assert lines["CXX"] == "/usr/bin/clang++"
     assert lines["CFLAGS"] == "-fsanitize=thread -fno-omit-frame-pointer -g -O1"
     assert lines["LDFLAGS"] == "-fsanitize=thread"
     assert lines["UV_NO_CACHE"] == "1"
@@ -84,13 +96,123 @@ def test_asan_env_writes_expected_variables(monkeypatch):
 
     lines = env_lines()
     assert lines["UV_PYTHON"] == setup_sanitizer.SANITIZER_PYTHON
-    assert lines["CFLAGS"] == "-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1"
+    assert lines["CC"] == "/usr/bin/clang"
+    assert lines["CXX"] == "/usr/bin/clang++"
+    assert (
+        lines["CFLAGS"]
+        == "-fsanitize=address,undefined -fno-sanitize=function -fno-omit-frame-pointer -g -O1"
+    )
     assert lines["LDFLAGS"] == "-fsanitize=address,undefined"
     assert lines["ASAN_OPTIONS"] == "detect_leaks=0"
     assert lines["UBSAN_OPTIONS"] == "halt_on_error=1:print_stacktrace=1"
     assert lines["UV_NO_CACHE"] == "1"
     assert "TSAN_OPTIONS" not in lines
     assert test_args.startswith("-s ")
+
+
+@pytest.mark.usefixtures("repo")
+def test_tsan_env_fails_on_compiler_mismatch(monkeypatch):
+    monkeypatch.setattr(setup_sanitizer, "PLATFORM", "linux")
+    monkeypatch.setattr(setup_sanitizer, "tsan_interface_exported", lambda *_: True)
+    monkeypatch.setattr(
+        setup_sanitizer,
+        "clang_candidates",
+        lambda: ["/opt/mongodbtoolchain/v5/bin/clang", "/usr/bin/clang"],
+    )
+    versions = {
+        "/opt/mongodbtoolchain/v5/bin/clang": "19.1.7",
+        "/usr/bin/clang": "22.1.8",
+    }
+    monkeypatch.setattr(setup_sanitizer, "compiler_clang_version", lambda cc: versions[cc])
+
+    with pytest.raises(RuntimeError, match=r"14\.0\.6.*19\.1\.7.*22\.1\.8"):
+        setup_sanitizer.configure_env("tsan", "")
+
+
+def test_find_matching_clang_picks_the_interpreters_version(monkeypatch):
+    candidates = [
+        "/opt/mongodbtoolchain/v5/bin/clang",
+        "/opt/rh/llvm-toolset-14/root/usr/bin/clang",
+    ]
+    monkeypatch.setattr(setup_sanitizer, "clang_candidates", lambda: candidates)
+    versions = dict(zip(candidates, ["19.1.7", "14.0.6"], strict=False))
+    monkeypatch.setattr(setup_sanitizer, "compiler_clang_version", lambda cc: versions[cc])
+
+    assert setup_sanitizer.find_matching_clang("14.0.6") == (
+        "/opt/rh/llvm-toolset-14/root/usr/bin/clang",
+        "14.0.6",
+        True,
+    )
+
+
+def test_find_matching_clang_falls_back_to_the_newest_older_clang(monkeypatch):
+    """No exact match: the newest clang OLDER than the interpreter's is the
+    stopgap — a newer clang emits references the runtime does not export
+    (the v5 clang 19.1.7 and the system clang 22.1.8 both fail on hosts
+    whose interpreters were built with clang 14.0.6).
+    """
+    candidates = [
+        "/opt/mongodbtoolchain/v4/bin/clang",
+        "/opt/mongodbtoolchain/v5/bin/clang",
+        "/usr/bin/clang",
+    ]
+    monkeypatch.setattr(setup_sanitizer, "clang_candidates", lambda: candidates)
+    versions = dict(zip(candidates, ["12.0.1", "19.1.7", "22.1.8"], strict=False))
+    monkeypatch.setattr(setup_sanitizer, "compiler_clang_version", lambda cc: versions[cc])
+
+    assert setup_sanitizer.find_matching_clang("14.0.6") == (
+        "/opt/mongodbtoolchain/v4/bin/clang",
+        "12.0.1",
+        False,
+    )
+
+
+def test_find_matching_clang_lists_the_probed_candidates_on_failure(monkeypatch):
+    candidates = ["/opt/mongodbtoolchain/v5/bin/clang", "/usr/bin/clang"]
+    monkeypatch.setattr(setup_sanitizer, "clang_candidates", lambda: candidates)
+    versions = dict(zip(candidates, ["19.1.7", "22.1.8"], strict=False))
+    monkeypatch.setattr(setup_sanitizer, "compiler_clang_version", lambda cc: versions[cc])
+
+    with pytest.raises(RuntimeError, match=r"14\.0\.6.*19\.1\.7.*22\.1\.8"):
+        setup_sanitizer.find_matching_clang("14.0.6")
+
+
+@pytest.mark.usefixtures("repo")
+def test_tsan_env_proceeds_without_a_discoverable_compiler_version(monkeypatch, capsys):
+    monkeypatch.setattr(setup_sanitizer, "PLATFORM", "linux")
+    monkeypatch.setattr(setup_sanitizer, "tsan_interface_exported", lambda *_: True)
+    monkeypatch.setattr(setup_sanitizer, "interpreter_clang_version", lambda *_: None)
+    monkeypatch.setattr(setup_sanitizer, "compiler_clang_version", lambda *_: None)
+
+    setup_sanitizer.configure_env("tsan", "")
+
+    assert "not discoverable" in capsys.readouterr().out
+
+
+def test_interpreter_clang_version_parses_the_compiler_banner(tmp_path, monkeypatch):
+    binary = tmp_path / "python3"
+    binary.write_bytes(b"")
+    monkeypatch.setattr(
+        setup_sanitizer.subprocess,
+        "run",
+        lambda *args, **kwargs: type(
+            "R", (), {"stdout": "Clang 14.0.6 (Red Hat 14.0.6-1.module+el8.7.0+15816+ec020e8f)\n"}
+        )(),
+    )
+
+    assert setup_sanitizer.interpreter_clang_version(str(binary)) == "14.0.6"
+
+
+def test_interpreter_clang_version_skips_a_non_clang_interpreter(tmp_path, monkeypatch):
+    binary = tmp_path / "python3"
+    binary.write_bytes(b"")
+    monkeypatch.setattr(
+        setup_sanitizer.subprocess,
+        "run",
+        lambda *args, **kwargs: type("R", (), {"stdout": "GCC 12.1.1\n"})(),
+    )
+
+    assert setup_sanitizer.interpreter_clang_version(str(binary)) is None
 
 
 @pytest.mark.usefixtures("repo")
