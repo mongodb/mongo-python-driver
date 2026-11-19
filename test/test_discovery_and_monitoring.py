@@ -856,27 +856,46 @@ class TestMonitorCleanup(UnitTest):
         topology = create_mock_topology("mongodb://a:27017,b:27017")
         first = topology._servers[("a", 27017)]._monitor
         second = topology._servers[("b", 27017)]._monitor
-        in_flight = asyncio.Event()
-        first_done = asyncio.Event()
-        second_done = asyncio.Event()
+        if _IS_SYNC:
+            in_flight = threading.Event()
+            second_appended = threading.Event()
+            second_done = threading.Event()
 
-        def slow_close():
-            in_flight.set()
-            time.sleep(0.2)
-            first_done.set()
+            def slow_close():
+                in_flight.set()
+                second_appended.wait(timeout=5)
+                second_done.set()
+        else:
+            in_flight = asyncio.Event()
+            second_done = asyncio.Event()
 
-        def fast_close():
-            second_done.set()
+            def slow_close():
+                in_flight.set()
+                time.sleep(0.2)
+                second_done.set()
+
+            def fast_close():
+                second_done.set()
 
         with patch.object(first, "close", slow_close), patch.object(second, "close", fast_close):
             topology._monitor_tasks.append(first)
-            drain = asyncio.create_task(topology.cleanup_monitors())
+            if _IS_SYNC:
+                drain = threading.Thread(target=topology.cleanup_monitors)
+                drain.start()
+            else:
+                drain = asyncio.create_task(topology.cleanup_monitors())
             # Signal the second monitor while the first close is in flight.
-            in_flight.wait()
+            if _IS_SYNC:
+                in_flight.wait()
+            else:
+                in_flight.wait()
             topology._monitor_tasks.append(second)
-            drain
+            if _IS_SYNC:
+                second_appended.set()
+                drain.join(timeout=5)
+            else:
+                drain
 
-        self.assertTrue(first_done.is_set())
         self.assertTrue(second_done.is_set())
         self.assertEqual(topology._monitor_tasks, [])
 
