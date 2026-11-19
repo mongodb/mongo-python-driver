@@ -627,6 +627,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
     @client_context.require_replica_set
     # Run against server versions 6.0 and above.
     @client_context.require_version_min(6, 0)  # type: ignore[untyped-decorator]
+    # The tests configure the failCommand fail point.
+    @client_context.require_failCommand_fail_point
     def setUp(self) -> None:
         super().setUp()
         self.setup_client = MongoClient(**client_context.default_client_options)
