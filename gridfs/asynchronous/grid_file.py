@@ -47,7 +47,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.cursor import AsyncCursor
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import anext
-from pymongo.common import validate_string
+from pymongo.common import validate_string, validate_string_or_none
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -221,6 +221,7 @@ class AsyncGridFS:
         .. versionchanged:: 3.1
            ``get_version`` no longer ensures indexes.
         """
+        validate_string_or_none("filename", filename)
         query = kwargs
         if filename is not None:
             query["filename"] = filename

@@ -357,6 +357,17 @@ class TestGridfs(IntegrationTest):
         self.fs.delete(two)
         self.fs.delete(three)
 
+    def test_get_version_invalid_filename(self):
+        msg = "Wrong type for filename"
+        with self.assertRaisesRegex(TypeError, msg):
+            self.fs.get_version({"filename": "test"})  # type: ignore[arg-type]
+        with self.assertRaisesRegex(TypeError, msg):
+            self.fs.get_version(filename={"filename": "test"})  # type: ignore[arg-type]
+        with self.assertRaisesRegex(TypeError, msg):
+            self.fs.get_last_version({"filename": "test"})  # type: ignore[arg-type]
+        with self.assertRaisesRegex(TypeError, msg):
+            self.fs.get_last_version(filename=["test"])  # type: ignore[arg-type]
+
     def test_put_filelike(self):
         oid = self.fs.put(BytesIO(b"hello world"), chunk_size=1)
         self.assertEqual(11, self.db.fs.chunks.count_documents({}))

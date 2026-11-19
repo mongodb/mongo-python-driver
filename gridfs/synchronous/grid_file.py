@@ -43,7 +43,7 @@ from gridfs.grid_file_shared import (
     _grid_out_property,
 )
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
-from pymongo.common import validate_string
+from pymongo.common import validate_string, validate_string_or_none
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -221,6 +221,7 @@ class GridFS:
         .. versionchanged:: 3.1
            ``get_version`` no longer ensures indexes.
         """
+        validate_string_or_none("filename", filename)
         query = kwargs
         if filename is not None:
             query["filename"] = filename
