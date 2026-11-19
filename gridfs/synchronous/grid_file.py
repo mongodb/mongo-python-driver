@@ -43,7 +43,7 @@ from gridfs.grid_file_shared import (
     _grid_out_property,
 )
 from pymongo import ASCENDING, DESCENDING, WriteConcern, _csot
-from pymongo.common import validate_string
+from pymongo.common import validate_string, validate_string_or_none
 from pymongo.errors import (
     BulkWriteError,
     ConfigurationError,
@@ -205,6 +205,8 @@ class GridFS:
         ``-3``, version ``1`` is the same as version ``-2``, and
         version ``2`` is the same as version ``-1``.
 
+        Raises :class:`TypeError` if `filename` is not a string or `None`.
+
         Raises :class:`~gridfs.errors.NoFile` if no such version of
         that file exists.
 
@@ -215,12 +217,16 @@ class GridFS:
             :class:`~pymongo.client_session.ClientSession`
         :param kwargs: find files by custom metadata.
 
+        .. versionchanged:: 4.20.2
+           Raise :class:`TypeError` if `filename` is not a string or `None`.
+
         .. versionchanged:: 3.6
            Added ``session`` parameter.
 
         .. versionchanged:: 3.1
            ``get_version`` no longer ensures indexes.
         """
+        validate_string_or_none("filename", filename)
         query = kwargs
         if filename is not None:
             query["filename"] = filename
@@ -252,10 +258,15 @@ class GridFS:
         Equivalent to calling :meth:`get_version` with the default
         `version` (``-1``).
 
+        Raises :class:`TypeError` if `filename` is not a string or `None`.
+
         :param filename: ``"filename"`` of the file to get, or `None`
         :param session: a
             :class:`~pymongo.client_session.ClientSession`
         :param kwargs: find files by custom metadata.
+
+        .. versionchanged:: 4.20.2
+           Raise :class:`TypeError` if `filename` is not a string or `None`.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
