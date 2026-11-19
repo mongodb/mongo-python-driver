@@ -879,7 +879,7 @@ def _get_validator(
     validators: dict[str, Callable[[Any, Any], Any]],
     normed_key: str | None = None,
     from_uri: bool = False,
-) -> Callable[..., Any]:
+) -> Callable[[Any, Any], Any]:
     normed_key = normed_key or key
     try:
         return validators[normed_key]

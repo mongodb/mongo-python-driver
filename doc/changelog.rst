@@ -16,11 +16,13 @@ Bug fixes
   ``CommandStartedEvent`` (and its "Command started" log message) without a
   correlating ``CommandFailedEvent``. A cancellation now publishes the failure
   before the ``CancelledError`` propagates (`PYTHON-6187`_).
-- Sanitize parsing error messages.
-- Improved credential validation.
+- Sanitize parsing error messages. (`PYTHON-6058`_)
+- Improved credential validation. (`PYTHON-6073`_)
 
 .. _PYTHON-6262: https://jira.mongodb.org/browse/PYTHON-6262
 .. _PYTHON-6187: https://jira.mongodb.org/browse/PYTHON-6187
+.. _PYTHON-6058: https://jira.mongodb.org/browse/PYTHON-6058
+.. _PYTHON-6073: https://jira.mongodb.org/browse/PYTHON-6073
 
 Changes in Version 4.20.0 (2026/11/12)
 --------------------------------------
