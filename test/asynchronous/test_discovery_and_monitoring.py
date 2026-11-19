@@ -892,6 +892,34 @@ class TestMonitorCleanup(AsyncUnitTest):
             self.assertTrue(second_done.is_set())
             self.assertEqual(topology._monitor_tasks, [])
 
+    async def test_cleanup_skips_when_cleanup_lock_held(self):
+        # A caller returns immediately when another cleanup holds the lock,
+        # leaving its monitors queued for the running cleanup to drain.
+        topology = await create_mock_topology("mongodb://a:27017,b:27017")
+        monitor = topology._servers[("a", 27017)]._monitor
+        topology._monitor_tasks.append(monitor)
+        if _IS_SYNC:
+            topology._cleanup_lock.acquire()
+        else:
+            await topology._cleanup_lock.acquire()
+        await topology.cleanup_monitors()
+        self.assertIn(monitor, topology._monitor_tasks)
+        topology._cleanup_lock.release()
+        await topology.cleanup_monitors()
+        self.assertEqual(topology._monitor_tasks, [])
+
+    async def test_cleanup_releases_cleanup_lock(self):
+        # The cleanup lock must be released when cleanup_monitors returns,
+        # including on the nonblocking acquire path in the sync driver.
+        topology = await create_mock_topology("mongodb://a:27017,b:27017")
+        monitor = topology._servers[("a", 27017)]._monitor
+        topology._monitor_tasks.append(monitor)
+        await topology.cleanup_monitors()
+        self.assertFalse(topology._cleanup_lock.locked())
+        await topology.cleanup_monitors()
+        self.assertFalse(topology._cleanup_lock.locked())
+        self.assertEqual(topology._monitor_tasks, [])
+
     async def test_cleanup_drains_monitors_appended_in_flight(self):
         # The drain runs until the queue is empty, even when a server is
         # signaled while an earlier close is still joining.

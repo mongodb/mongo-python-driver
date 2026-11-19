@@ -718,7 +718,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         for address, server in list(self._servers.items()):
             if not self._description.has_server(address):
                 # Record before signaling: signal_close() may be cancelled
-                # mid-(PYTHON-6226). Joins happen in cleanup_monitors().
+                # before returning (PYTHON-6226). Joins happen in cleanup_monitors().
                 self._monitor_tasks.append(server._monitor)
                 self._servers.pop(address)
                 server.signal_close()
@@ -731,10 +731,21 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         lock released: a monitor being joined may itself be blocked acquiring
         the lock.
         """
-        if self._cleanup_lock.locked():
-            return
-        with self._cleanup_lock:
-            self._drain_monitors()
+        if _IS_SYNC:
+            # locked() plus acquire is not atomic across threads: a monitor
+            # can pass the check, then block while close's cleanup joins it.
+            if not self._cleanup_lock.acquire(blocking=False):  # type: ignore[call-arg]
+                return
+            try:
+                self._drain_monitors()
+            finally:
+                self._cleanup_lock.release()
+        else:
+            # locked() plus acquire is atomic within a single event loop.
+            if self._cleanup_lock.locked():
+                return
+            with self._cleanup_lock:
+                self._drain_monitors()
 
     def _drain_monitors(self) -> None:
         while self._monitor_tasks:
