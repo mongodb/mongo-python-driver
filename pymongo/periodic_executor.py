@@ -102,7 +102,8 @@ class AsyncPeriodicExecutor:
         self._skip_sleep = True
 
     async def _run(self) -> None:
-        # The CSOT and op id contextvars must be cleared inside the executor task before execution begins
+        # The CSOT and op id contextvars must be cleared inside the executor task before execution
+        # begins
         _csot.reset_all()
         _op_id.reset()
         while not self._stopped:

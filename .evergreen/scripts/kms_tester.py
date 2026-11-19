@@ -125,7 +125,8 @@ def test_kms_send_to_remote(sub_test_name: str) -> None:
         key_name = os.environ["KEY_NAME"]
         key_vault_endpoint = os.environ["KEY_VAULT_ENDPOINT"]
         env["AZUREKMS_CMD"] = (
-            f'KEY_NAME="{key_name}" KEY_VAULT_ENDPOINT="{key_vault_endpoint}" CI=true bash ./.evergreen/just.sh run-tests'
+            f'KEY_NAME="{key_name}" KEY_VAULT_ENDPOINT="{key_vault_endpoint}" '
+            "CI=true bash ./.evergreen/just.sh run-tests"
         )
     else:
         env["GCPKMS_CMD"] = "CI=true ./.evergreen/just.sh run-tests"

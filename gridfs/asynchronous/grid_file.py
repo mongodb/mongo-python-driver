@@ -1078,7 +1078,8 @@ class AsyncGridFSBucket:
         )
         if not result.matched_count:
             raise NoFile(
-                f"no files could be renamed {new_filename!r} because none matched filename {filename!r}"
+                f"no files could be renamed {new_filename!r} "
+                f"because none matched filename {filename!r}"
             )
 
 
@@ -1143,7 +1144,8 @@ class AsyncGridIn:
         """
         if not isinstance(root_collection, AsyncCollection):
             raise TypeError(
-                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}"
+                f"root_collection must be an instance of AsyncCollection, "
+                f"not {type(root_collection)}"
             )
 
         if not root_collection.write_concern.acknowledged:
@@ -1225,7 +1227,8 @@ class AsyncGridIn:
     )
     md5: str | None = _a_grid_in_property(
         "md5",
-        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file "
+        "if an md5 sum was created.",
         closed_only=True,
     )
 
@@ -1258,7 +1261,8 @@ class AsyncGridIn:
                     )
                 else:
                     raise AttributeError(
-                        "AsyncGridIn does not support __setattr__ after being closed(). Set the attribute before closing the file or use AsyncGridIn.set() instead"
+                        "AsyncGridIn does not support __setattr__ after being closed(). "
+                        "Set the attribute before closing the file or use AsyncGridIn.set() instead"
                     )
 
     async def set(self, name: str, value: Any) -> None:
@@ -1508,7 +1512,8 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         """
         if not isinstance(root_collection, AsyncCollection):
             raise TypeError(
-                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}"
+                f"root_collection must be an instance of AsyncCollection, "
+                f"not {type(root_collection)}"
             )
         _disallow_transactions(session)
 
@@ -1549,7 +1554,8 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
     )
     md5: str | None = _a_grid_out_property(
         "md5",
-        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file "
+        "if an md5 sum was created.",
     )
 
     _file: Any

@@ -210,7 +210,8 @@ class HTTPProxyKMSConnect:
             )
         if split.path not in ("", "/") or split.query or split.fragment:
             raise ConfigurationError(
-                f"proxy_url must not include a path, query, or fragment: {_redact_proxy_url(proxy_url)!r}"
+                f"proxy_url must not include a path, query, or fragment: "
+                f"{_redact_proxy_url(proxy_url)!r}"
             )
         try:
             port = split.port

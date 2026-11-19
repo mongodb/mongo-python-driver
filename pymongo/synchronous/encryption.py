@@ -364,7 +364,8 @@ class _Encrypter:
             encrypted_fields_map = _dict_to_bson(opts._encrypted_fields_map, False, _DATA_KEY_OPTS)
         self._bypass_auto_encryption = opts._bypass_auto_encryption
         self._internal_client = None
-        # parsing kms_ssl_contexts here so that parsing errors will be raised before internal clients are created
+        # parsing kms_ssl_contexts here so that parsing errors will be raised before
+        # internal clients are created
         opts._kms_ssl_contexts(_IS_SYNC)
 
         def _get_internal_client(
@@ -488,7 +489,9 @@ class ClientEncryption(Generic[_DocumentType]):
         creating data keys. It does not provide an API to query keys from the
         key vault collection, as this can be done directly on the MongoClient.
 
-        See `explicit client-side encryption <https://www.mongodb.com/docs/manual/core/csfle/fundamentals/manual-encryption/#csfle-explicit-encryption>`_ for an example.
+        See `explicit client-side encryption
+        <https://www.mongodb.com/docs/manual/core/csfle/fundamentals/manual-encryption/#csfle-explicit-encryption>`_
+        for an example.
 
         :param kms_providers: Map of KMS provider options. The `kms_providers`
             map values differ by provider:
@@ -579,7 +582,8 @@ class ClientEncryption(Generic[_DocumentType]):
 
         if not isinstance(codec_options, CodecOptions):
             raise TypeError(
-                f"codec_options must be an instance of bson.codec_options.CodecOptions, not {type(codec_options)}"
+                f"codec_options must be an instance of "
+                f"bson.codec_options.CodecOptions, not {type(codec_options)}"
             )
 
         if not isinstance(key_vault_client, MongoClient):
@@ -630,8 +634,8 @@ class ClientEncryption(Generic[_DocumentType]):
 
         .. warning::
             This function does not update the encryptedFieldsMap in the client's
-            AutoEncryptionOpts, thus the user must create a new client after calling this function with
-            the encryptedFields returned.
+            AutoEncryptionOpts, thus the user must create a new client after calling this function
+            with the encryptedFields returned.
 
         Normally collection creation is automatic. This method should
         only be used to specify options on
@@ -641,7 +645,8 @@ class ClientEncryption(Generic[_DocumentType]):
         :param database: the database to create the collection
         :param name: the name of the collection to create
         :param encrypted_fields: Document that describes the encrypted fields for
-            Queryable Encryption. The "keyId" may be set to ``None`` to auto-generate the data keys.  For example:
+            Queryable Encryption. The "keyId" may be set to ``None`` to auto-generate the data keys.
+            For example:
 
             .. code-block: python
 
@@ -671,9 +676,13 @@ class ClientEncryption(Generic[_DocumentType]):
 
         All optional `create collection command`_ parameters should be passed
         as keyword arguments to this method.
-        See the documentation for :meth:`~pymongo.database.Database.create_collection` for all valid options.
+        See the documentation for
+        :meth:`~pymongo.database.Database.create_collection` for all valid
+        options.
 
-        :raises: - :class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation or creating the collection fails.
+        :raises:
+            - :class:`~pymongo.errors.EncryptedCollectionError`: When either data-key creation or
+              creating the collection fails.
 
         .. versionadded:: 4.4
 
@@ -870,7 +879,8 @@ class ClientEncryption(Generic[_DocumentType]):
             :class:`~bson.binary.Binary` with subtype 4 (
             :attr:`~bson.binary.UUID_SUBTYPE`).
         :param key_alt_name: Identifies a key vault document by 'keyAltName'.
-        :param query_type` (str): The query type to execute. See :class:`QueryType` for valid options.
+        :param query_type` (str): The query type to execute. See :class:`QueryType` for valid
+            options.
         :param contention_factor` (int): The contention factor to use
             when the algorithm is :attr:`Algorithm.INDEXED`.  An integer value
             *must* be given when the :attr:`Algorithm.INDEXED` algorithm is
@@ -1031,7 +1041,7 @@ class ClientEncryption(Generic[_DocumentType]):
         return self._key_vault_coll.delete_one({"_id": id})
 
     def add_key_alt_name(self, id: Binary, key_alt_name: str) -> Any:
-        """Add ``key_alt_name`` to the set of alternate names in the key document with UUID ``key_id``.
+        """Add ``key_alt_name`` to the alternate names in the key document with UUID ``key_id``.
 
         :param id: The UUID of a key a which must be a
             :class:`~bson.binary.Binary` with subtype 4 (
@@ -1102,7 +1112,9 @@ class ClientEncryption(Generic[_DocumentType]):
         provider: str | None = None,
         master_key: Mapping[str, Any] | None = None,
     ) -> RewrapManyDataKeyResult:
-        """Decrypts and encrypts all matching data keys in the key vault with a possibly new `master_key` value.
+        """Decrypts and encrypts all matching data keys in the key vault.
+
+        A possibly new `master_key` value is used.
 
         :param filter: A document used to filter the data keys.
         :param provider: The new KMS provider to use to encrypt the data keys,
@@ -1113,8 +1125,8 @@ class ClientEncryption(Generic[_DocumentType]):
         :return: A :class:`RewrapManyDataKeyResult`.
 
         This method allows you to re-encrypt all of your data-keys with a new CMK, or master key.
-        Note that this does *not* require re-encrypting any of the data in your encrypted collections,
-        but rather refreshes the key that protects the keys that encrypt the data:
+        Note that this does *not* require re-encrypting any of the data in your encrypted
+        collections, but rather refreshes the key that protects the keys that encrypt the data:
 
         .. code-block:: python
 

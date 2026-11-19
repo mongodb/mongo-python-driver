@@ -655,7 +655,11 @@ class CommandStartedEvent(_CommandEvent):
         return super().database_name
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, "
+            f"command: {self.command_name!r}, operation_id: {self.operation_id}, "
+            f"service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+        )
 
 
 class CommandSucceededEvent(_CommandEvent):
@@ -713,7 +717,12 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__reply
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, duration_micros: {self.duration_micros}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, "
+            f"command: {self.command_name!r}, operation_id: {self.operation_id}, "
+            f"duration_micros: {self.duration_micros}, service_id: {self.service_id}, "
+            f"server_connection_id: {self.server_connection_id}>"
+        )
 
 
 class CommandFailedEvent(_CommandEvent):
@@ -768,8 +777,10 @@ class CommandFailedEvent(_CommandEvent):
 
     def __repr__(self) -> str:
         return (
-            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, duration_micros: {self.duration_micros}, "
-            f"failure: {self.failure!r}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, "
+            f"command: {self.command_name!r}, operation_id: {self.operation_id}, "
+            f"duration_micros: {self.duration_micros}, failure: {self.failure!r}, "
+            f"service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
         )
 
 
@@ -832,7 +843,8 @@ class PoolClearedEvent(_PoolEvent):
     :param address: The address (host, port) pair of the server this Pool is
        attempting to connect to.
     :param service_id: The service_id this command was sent to, or ``None``.
-    :param interrupt_connections: True if all active connections were interrupted by the Pool during clearing.
+    :param interrupt_connections: True if all active connections were interrupted by the Pool during
+       clearing.
 
     .. versionadded:: 3.9
     """
@@ -868,7 +880,10 @@ class PoolClearedEvent(_PoolEvent):
         return self.__interrupt_connections
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.address!r}, {self.__service_id!r}, {self.__interrupt_connections!r})"
+        return (
+            f"{self.__class__.__name__}({self.address!r}, "
+            f"{self.__service_id!r}, {self.__interrupt_connections!r})"
+        )
 
 
 class PoolClosedEvent(_PoolEvent):
@@ -974,7 +989,10 @@ class _ConnectionDurationEvent(_ConnectionIdEvent):
         return self.__duration
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.address!r}, {self.connection_id!r}, {self.__duration!r})"
+        return (
+            f"{self.__class__.__name__}({self.address!r}, "
+            f"{self.connection_id!r}, {self.__duration!r})"
+        )
 
 
 class ConnectionCreatedEvent(_ConnectionIdEvent):
@@ -1033,7 +1051,10 @@ class ConnectionClosedEvent(_ConnectionIdEvent):
         return self.__reason
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.address!r}, {self.connection_id!r}, {self.__reason!r})"
+        return (
+            f"{self.__class__.__name__}({self.address!r}, "
+            f"{self.connection_id!r}, {self.__reason!r})"
+        )
 
 
 class ConnectionCheckOutStartedEvent(_ConnectionEvent):
@@ -1155,7 +1176,10 @@ class ServerDescriptionChangedEvent(_ServerEvent):
         return self.__new_description
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.server_address} changed from: {self.previous_description}, to: {self.new_description}>"
+        return (
+            f"<{self.__class__.__name__} {self.server_address} "
+            f"changed from: {self.previous_description}, to: {self.new_description}>"
+        )
 
 
 class ServerOpeningEvent(_ServerEvent):
@@ -1222,7 +1246,10 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
         return self.__new_description
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} topology_id: {self.topology_id} changed from: {self.previous_description}, to: {self.new_description}>"
+        return (
+            f"<{self.__class__.__name__} topology_id: {self.topology_id} "
+            f"changed from: {self.previous_description}, to: {self.new_description}>"
+        )
 
 
 class TopologyOpenedEvent(TopologyEvent):
@@ -1320,7 +1347,10 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         return super().awaited
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, awaited: {self.awaited}, reply: {self.reply}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, "
+            f"awaited: {self.awaited}, reply: {self.reply}>"
+        )
 
 
 class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
@@ -1361,7 +1391,10 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         return super().awaited
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, awaited: {self.awaited}, reply: {self.reply!r}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, "
+            f"awaited: {self.awaited}, reply: {self.reply!r}>"
+        )
 
 
 class _EventListeners:

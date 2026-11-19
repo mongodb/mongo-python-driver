@@ -58,7 +58,9 @@ bytes [#bytes]_                          binary         both
    the microsecond field is truncated.
 .. [#dt2] all datetime.datetime instances are encoded as UTC. By default, they
    are decoded as *naive* but timezone aware datetimes are also supported.
-   See `Dates and Times <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#dates-and-times>`_ for examples.
+   See `Dates and Times
+   <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#dates-and-times>`_
+   for examples.
 .. [#dt3] To enable decoding a bson UTC datetime to a :class:`~bson.datetime_ms.DatetimeMS`
    instance see `handling out of range datetimes <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes>`_.
 .. [#uuid] For :py:class:`uuid.UUID` encoding and decoding behavior see `<https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_.
@@ -266,8 +268,8 @@ def _raw_slice(data: Any, view: memoryview, position: int, end: int, obj_size: i
 def _raise_unknown_type(element_type: int, element_name: str) -> NoReturn:
     """Unknown type helper."""
     raise InvalidBSON(
-        f"Detected unknown BSON type {chr(element_type).encode()!r} for fieldname '{element_name}'. Are "
-        "you using the latest driver version?"
+        f"Detected unknown BSON type {chr(element_type).encode()!r} for fieldname "
+        f"'{element_name}'. Are you using the latest driver version?"
     )
 
 

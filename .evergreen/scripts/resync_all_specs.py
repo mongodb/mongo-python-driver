@@ -123,7 +123,10 @@ def write_summary(errored: dict[str, str], new: list[str], filename: str | None)
             pr_body += f"\n -{k}\n```{v}\n```"
         pr_body += "\n"
     if len(new) > 0:
-        pr_body += "\n\nThe following directories are in the specification repository and not in our test directory:\n -"
+        pr_body += (
+            "\n\nThe following directories are in the specification repository "
+            "and not in our test directory:\n -"
+        )
         pr_body += "\n -".join(new)
         pr_body += "\n"
     if pr_body != "":

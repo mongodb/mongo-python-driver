@@ -70,8 +70,8 @@ _POLL_TIMEOUT = 0.5
 BLOCKING_IO_ERRORS = (BlockingIOError, *BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
 
 
-# These socket-based I/O methods are for KMS requests and any other network operations that do not use
-# the MongoDB wire protocol
+# These socket-based I/O methods are for KMS requests and any other network operations that do not
+# use the MongoDB wire protocol
 async def async_socket_sendall(sock: socket.socket | _sslConn, buf: bytes) -> None:
     timeout = sock.gettimeout()
     loop = asyncio.get_running_loop()
@@ -109,7 +109,8 @@ if sys.platform != "win32":
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
-                # KMS responses update their expected size after the first batch, stop reading after one loop
+                # KMS responses update their expected size after the first batch, stop reading after
+                # one loop
                 if once:
                     return mv[:read]
                 total_read += read
@@ -159,7 +160,8 @@ else:
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
-                # KMS responses update their expected size after the first batch, stop reading after one loop
+                # KMS responses update their expected size after the first batch, stop reading after
+                # one loop
                 if once:
                     return mv[:read]
             except BLOCKING_IO_ERRORS:
@@ -529,9 +531,9 @@ class PyMongoProtocol(BufferedProtocol):
     def get_buffer(self, sizehint: int) -> memoryview:
         """Allocate a new receive buffer.
 
-        The asyncio loop calls this method expecting to receive a non-empty buffer to fill with data.
-        If any data does not fit into the returned buffer, this method will be called again until
-        either no data remains or an empty buffer is returned.
+        The asyncio loop calls this method expecting to receive a non-empty buffer to fill with
+        data. If any data does not fit into the returned buffer, this method will be called again
+        until either no data remains or an empty buffer is returned.
         """
         # Due to a bug, Python <=3.11 will call get_buffer() even after we raise
         # ProtocolError in buffer_updated() and call connection_lost(). We allocate
@@ -584,8 +586,8 @@ class PyMongoProtocol(BufferedProtocol):
                 if uncompressed_size <= 0 or uncompressed_size + 16 > self._max_message_size:
                     self.close(
                         ProtocolError(
-                            f"Uncompressed message size ({uncompressed_size!r}) is invalid or larger "
-                            f"than server max message size "
+                            f"Uncompressed message size ({uncompressed_size!r}) is invalid or "
+                            f"larger than server max message size "
                             f"({self._max_message_size!r})"
                         )
                     )
@@ -627,7 +629,8 @@ class PyMongoProtocol(BufferedProtocol):
         if op_code == 2012:  # OP_COMPRESSED
             if length <= 25:
                 raise ProtocolError(
-                    f"Message length ({length!r}) not longer than standard OP_COMPRESSED message header size (25)"
+                    f"Message length ({length!r}) not longer than standard "
+                    f"OP_COMPRESSED message header size (25)"
                 )
             expecting_compression = True
             length -= 9
@@ -763,7 +766,8 @@ def receive_message(
     if op_code == 2012:
         if length <= 25:
             raise ProtocolError(
-                f"Message length ({length!r}) not longer than standard OP_COMPRESSED message header size (25)"
+                f"Message length ({length!r}) not longer than standard "
+                f"OP_COMPRESSED message header size (25)"
             )
         op_code, uncompressed_size, compressor_id = _UNPACK_COMPRESSION_HEADER(
             receive_data(conn, 9, deadline)
