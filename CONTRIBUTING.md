@@ -523,7 +523,7 @@ The `sanitizer tsan` suite (PYTHON-6168) builds the C extensions with
 free-threaded CPython (`TSAN_PYTHON` in `.evergreen/scripts/utils.py`) and
 runs the same files as the ASan suite with ThreadSanitizer set to halt on
 error (suppressions in `.evergreen/tsan-suppressions.txt`). It runs on PRs
-via the same "Sanitizer RHEL8" variant. To run it on a Linux host with the
+with the same "Sanitizer RHEL8" variant. To run it on a Linux host with the
 toolchain:
 
     just run-server

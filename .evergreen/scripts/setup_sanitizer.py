@@ -19,9 +19,9 @@ from utils import PLATFORM, ROOT, SANITIZER_PYTHON, TSAN_PYTHON, write_env
 # bson/_cbsonmodule.c (_get_buffer/_prepare_input_buffer), the wire-message
 # builders in pymongo/_cmessagemodule.c (_op_msg, _batched_op_msg,
 # _encode_batched_write_command), the hostile-input and boundary tests
-# driving the decoder and builders directly, and — via the concurrency
-# classes added in PYTHON-6168 — concurrent zero-copy RawBSONDocument reads
-# and batched message building on free-threaded CPython.
+# driving the decoder and builders directly, and the PYTHON-6168
+# concurrency classes: concurrent zero-copy RawBSONDocument reads and
+# batched message building on free-threaded CPython.
 SANITIZER_FILES = [
     "test/test_bson.py",
     "test/test_message.py",
@@ -170,9 +170,9 @@ def configure_env(sub_test_name: str, test_args: str) -> str:
             ext.unlink()
     # The extensions must be compiled by a clang whose version matches the
     # one that built the interpreter (see find_matching_clang), so resolve
-    # the compiler by version match and fail setup — with the probed
-    # inventory in the message — when the host has no match, rather than
-    # failing deep in the run with a confusing ImportError.
+    # the compiler by version match and, when the host has no match, fail
+    # setup with the probed inventory in the message rather than failing
+    # deep in the run with a confusing ImportError.
     interpreter_version = interpreter_clang_version(python)
     if interpreter_version is None:
         # Cannot probe the interpreter: fall back to the system clang and
@@ -197,8 +197,8 @@ def configure_env(sub_test_name: str, test_args: str) -> str:
             print(
                 f"sanitizer setup: no clang {interpreter_version} on this host; "
                 f"extensions compile with {compiler} (clang {compiler_version}), "
-                "the newest clang older than the interpreter's build compiler "
-                "— a newer compiler emits references the interpreter's runtime "
+                "the newest clang older than the interpreter's build compiler. "
+                "A newer compiler emits references the interpreter's runtime "
                 "does not export. Upgrade the toolchain image to ship the "
                 "interpreter's compiler (PYTHON-6067)."
             )
@@ -232,7 +232,7 @@ def configure_env(sub_test_name: str, test_args: str) -> str:
     else:
         # -fno-sanitize=function: the toolchain interpreter's UBSan runtime
         # predates the image's clang, whose function check references a
-        # handler the runtime does not export — the extensions fail to
+        # handler the runtime does not export, so the extensions fail to
         # import with undefined symbol: __ubsan_handle_function_type_mismatch
         # (PYTHON-6167).
         write_env(
