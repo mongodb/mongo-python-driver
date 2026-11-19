@@ -60,7 +60,6 @@ EXTRAS_MAP = {
 # Map the test name to test group.
 GROUP_MAP = dict(fuzz="fuzz", mockupdb="mockupdb", perf="perf")
 
-# The test files run under the sanitizer tasks; see sanitizer.py.
 # The libmongocrypt release used when LIBMONGOCRYPT_URL is not set. Must be at
 # least 1.21.0; the beta preview string query types were removed in 1.21.0
 # (MONGOCRYPT-938).

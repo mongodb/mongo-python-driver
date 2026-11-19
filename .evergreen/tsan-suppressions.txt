@@ -1,7 +1,7 @@
 # PyMongo-specific ThreadSanitizer suppressions.
 #
 # The TSan task (PYTHON-6168) passes this file as TSan's single
-# suppressions= path via TSAN_OPTIONS in .evergreen/scripts/setup_tests.py.
+# suppressions= path via TSAN_OPTIONS in .evergreen/scripts/setup_sanitizer.py.
 #
 # Add an entry below only for a race that has been investigated and judged
 # benign, with a comment saying why: either a race in PyMongo's own C

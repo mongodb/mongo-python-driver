@@ -119,9 +119,9 @@ class MonitorBase:
 
     async def _wake_and_join_executor(self) -> None:
         # Wait briefly for the executor to stop before resetting the pool, so
-        # we don't race with a connection it has checked out. The timeout is a
-        # backstop: if the executor is still running, the reset closes its
-        # socket once the connection is checked in.
+        # we don't race with a connection it has checked out. The timeout only
+        # bounds the wait: if the executor is still running, the reset closes
+        # its socket once the connection is checked in.
         self._executor.wake()
         await self._executor.join(_EXECUTOR_JOIN_TIMEOUT)
 

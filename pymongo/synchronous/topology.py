@@ -52,7 +52,7 @@ from pymongo.server_selectors import (
     secondary_server_selector,
     writable_server_selector,
 )
-from pymongo.synchronous.monitor import MonitorBase, SrvMonitor
+from pymongo.synchronous.monitor import _EXECUTOR_JOIN_TIMEOUT, MonitorBase, SrvMonitor
 from pymongo.synchronous.pool import Pool
 from pymongo.synchronous.server import Server
 from pymongo.topology_description import (
@@ -726,7 +726,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             pass
         for t in tasks:
             try:
-                t.join(1)
+                t.join(_EXECUTOR_JOIN_TIMEOUT)
             except Exception:  # noqa: S110
                 # One monitor failing to stop must not block the rest.
                 pass

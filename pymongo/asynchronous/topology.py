@@ -30,7 +30,7 @@ from pymongo._telemetry import (
     _ServerSelectionTelemetry,
     log_server_selection_succeeded,
 )
-from pymongo.asynchronous.monitor import MonitorBase, SrvMonitor
+from pymongo.asynchronous.monitor import _EXECUTOR_JOIN_TIMEOUT, MonitorBase, SrvMonitor
 from pymongo.asynchronous.pool import Pool
 from pymongo.asynchronous.server import Server
 from pymongo.errors import (
@@ -728,7 +728,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             pass
         for t in tasks:
             try:
-                await t.join(1)
+                await t.join(_EXECUTOR_JOIN_TIMEOUT)
             except Exception:  # noqa: S110
                 # One monitor failing to stop must not block the rest.
                 pass

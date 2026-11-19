@@ -115,7 +115,7 @@ def find_matching_clang(version: str) -> tuple[str, str, bool]:
     The reverse direction is the supported one: the runtime's
     compiled-code interface is forward-compatible, so when the exact
     compiler is absent the newest clang OLDER than the interpreter's is a
-    usable stopgap. Returns (path, clang version, exact match).
+    usable fallback. Returns (path, clang version, exact match).
     """
     probed = []
     fallback: tuple[str, str] | None = None
