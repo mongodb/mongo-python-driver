@@ -637,7 +637,7 @@ def validate_server_api_or_none(option: Any, value: Any) -> ServerApi | None:
     return value
 
 
-def validate_is_callable_or_none(option: Any, value: Any) -> Callable[..., Any] | None:
+def validate_is_callable_or_none(option: Any, value: Any) -> Callable[[Any, Any], Any] | None:
     """Validate that 'value' is a callable."""
     if value is None:
         return value
