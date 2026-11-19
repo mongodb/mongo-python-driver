@@ -226,6 +226,8 @@ def _build_credentials_tuple(
 
     elif mech == "PLAIN":
         source_database = source or database or "$external"
+        if (user and "\x00" in user) or (passwd and "\x00" in passwd):
+            raise ConfigurationError("PLAIN credentials cannot contain NUL characters.")
         return MongoCredential(mech, source_database, user, passwd, None, None)
     else:
         source_database = source or database or "admin"
