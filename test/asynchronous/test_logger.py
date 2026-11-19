@@ -45,6 +45,7 @@ class TestLogger(AsyncIntegrationTest):
         db = self.db
 
         with patch.dict("os.environ"):
+            os.environ.pop("MONGOB_LOG_MAX_DOCUMENT_LENGTH", None)
             os.environ.pop("MONGODB_LOG_MAX_DOCUMENT_LENGTH", None)
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                 await db.coll.insert_many(docs)
