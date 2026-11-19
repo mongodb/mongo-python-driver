@@ -1,6 +1,19 @@
 Changelog
 =========
 
+Changes in Version 4.20.2 (unreleased)
+--------------------------------------
+
+Bug fixes
+.........
+
+- Fixed a bug where :meth:`~gridfs.GridFS.get_version` and
+  :meth:`~gridfs.GridFS.get_last_version` accepted a non-string ``filename``
+  and treated a dict as query criteria. They now raise :exc:`TypeError`
+  (`PYTHON-6183`_).
+
+.. _PYTHON-6183: https://jira.mongodb.org/browse/PYTHON-6183
+
 Changes in Version 4.20.1 (2026/11/19)
 --------------------------------------
 
