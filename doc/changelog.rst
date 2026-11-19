@@ -17,8 +17,8 @@ Bug fixes
   and treated a dict as query criteria. They now raise :exc:`TypeError`
   (`PYTHON-6183`_).
 
-.. _PYTHON-6183: https://jira.mongodb.org/browse/PYTHON-6183
 .. _PYTHON-6262: https://jira.mongodb.org/browse/PYTHON-6262
+.. _PYTHON-6183: https://jira.mongodb.org/browse/PYTHON-6183
 
 Changes in Version 4.20.0 (2026/11/12)
 --------------------------------------

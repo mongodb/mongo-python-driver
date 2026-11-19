@@ -205,6 +205,8 @@ class GridFS:
         ``-3``, version ``1`` is the same as version ``-2``, and
         version ``2`` is the same as version ``-1``.
 
+        Raises :class:`TypeError` if `filename` is not a string or `None`.
+
         Raises :class:`~gridfs.errors.NoFile` if no such version of
         that file exists.
 
@@ -214,6 +216,9 @@ class GridFS:
         :param session: a
             :class:`~pymongo.client_session.ClientSession`
         :param kwargs: find files by custom metadata.
+
+        .. versionchanged:: 4.20.1
+           Raise :class:`TypeError` if `filename` is not a string or `None`.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
@@ -252,6 +257,8 @@ class GridFS:
         The file is matched by ``"filename"`` or metadata fields.
         Equivalent to calling :meth:`get_version` with the default
         `version` (``-1``).
+
+        Raises :class:`TypeError` if `filename` is not a string or `None`.
 
         :param filename: ``"filename"`` of the file to get, or `None`
         :param session: a
