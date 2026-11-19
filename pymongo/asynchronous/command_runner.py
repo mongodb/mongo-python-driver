@@ -101,10 +101,12 @@ async def _run_command(
     unpack_res: Callable[..., Any] | None = None,
     cursor_id: int | None = None,
 ) -> tuple[list[dict[str, Any]], _OpMsg | None, float]:
-    """Send ``msg`` over ``conn`` and return ``(docs, reply, duration_s)``,
-    where ``duration_s`` is the round-trip duration in seconds.
+    """Send ``msg`` over ``conn`` and return ``(docs, reply, duration_s)``.
 
-    Private shared implementation. Should not be called directly outside this module. Use :func:`run_command`, :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
+    ``duration_s`` is the round-trip duration in seconds.
+
+    Private shared implementation. Should not be called directly outside this module. Use
+    :func:`run_command`, :func:`run_bulk_write_command`, or :func:`run_cursor_command` instead.
 
     Publishes the
     ``STARTED``/``SUCCEEDED``/``FAILED`` command log and APM events, performs
@@ -216,11 +218,15 @@ async def _run_command(
                     parse_write_concern_error=parse_write_concern_error,
                     pool_opts=pool_opts,
                 )
-    except Exception as exc:
+    except BaseException as exc:
         if isinstance(exc, (NotPrimaryError, OperationFailure)):
             failure: _DocumentOut = exc.details  # type: ignore[assignment]
         else:
             failure = _convert_exception(exc)
+            if not failure["errmsg"]:
+                # CancelledError, KeyboardInterrupt, and SystemExit
+                # stringify to "".
+                failure["errmsg"] = f"operation interrupted by {exc.__class__.__name__}"
         if telemetry is not None:
             telemetry.failed(failure, command_name, isinstance(exc, OperationFailure))
         raise

@@ -203,8 +203,8 @@ class ClientOptions:
     """Read only configuration options for an AsyncMongoClient/MongoClient.
 
     Should not be instantiated directly by application developers. Access
-    a client's options via :attr:`pymongo.mongo_client.AsyncMongoClient.options` or :attr:`pymongo.mongo_client.MongoClient.options`
-    instead.
+    a client's options via :attr:`pymongo.mongo_client.AsyncMongoClient.options` or
+    :attr:`pymongo.mongo_client.MongoClient.options` instead.
     """
 
     def __init__(

@@ -212,8 +212,8 @@ class IsolatedAsyncioTestCaseInsensitive(AsyncIntegrationTest):
 
 
 class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
-    """
-    Initial DNS Seedlist Discovery prose tests
+    """Initial DNS Seedlist Discovery prose tests.
+
     https://github.com/mongodb/specifications/blob/5036f26/source/initial-dns-seedlist-discovery/tests/README.md#prose-tests
 
     Numbered tests correspond to the numbered prose tests in the spec. The
@@ -289,7 +289,7 @@ class TestInitialDnsSeedlistDiscovery(AsyncPyMongoTestCase):
         ]
         await self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
-    async def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(
+    async def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(  # noqa: E501
         self,
     ):
         test_cases = [

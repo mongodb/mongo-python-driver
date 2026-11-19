@@ -830,7 +830,11 @@ class AsyncClientUnitTest(AsyncUnitTest):
     def test_validate_suggestion(self):
         """Validate kwargs in constructor."""
         for typo in ["auth", "Auth", "AUTH"]:
-            expected = f"Unknown option: {typo}. Did you mean one of (authsource, authmechanism, authoidcallowedhosts) or maybe a camelCase version of one? Refer to docstring."
+            expected = (
+                f"Unknown option: {typo}. Did you mean one of "
+                "(authsource, authmechanism, authoidcallowedhosts) "
+                "or maybe a camelCase version of one? Refer to docstring."
+            )
             expected = re.escape(expected)
             with self.assertRaisesRegex(ConfigurationError, expected):
                 AsyncMongoClient(**{typo: "standard"})  # type: ignore[arg-type]
@@ -1096,8 +1100,9 @@ class TestClient(AsyncIntegrationTest):
         self.assertIsNone(session._transaction.conn_mgr)
 
     async def test_constants(self):
-        """This test uses AsyncMongoClient explicitly to make sure that host and
-        port are not overloaded.
+        """This test uses AsyncMongoClient explicitly.
+
+        It makes sure that host and port are not overloaded.
         """
         host, port = await async_client_context.host, await async_client_context.port
         kwargs: dict = async_client_context.default_client_options.copy()

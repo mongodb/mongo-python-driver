@@ -27,7 +27,7 @@ except ImportError:
         data: Any,
         prohibit_unassigned_code_points: bool | None = True,  # noqa: ARG001
     ) -> Any:
-        """SASLprep dummy"""
+        """SASLprep dummy."""
         if isinstance(data, str):
             raise TypeError(
                 "The stringprep module is not available. Usernames and "
@@ -56,7 +56,7 @@ else:
     )
 
     def saslprep(data: Any, prohibit_unassigned_code_points: bool | None = True) -> Any:
-        """An implementation of RFC4013 SASLprep.
+        """Perform SASLprep per RFC4013.
 
         :param data: The string to SASLprep. Unicode strings
             (:class:`str`) are supported. Byte strings

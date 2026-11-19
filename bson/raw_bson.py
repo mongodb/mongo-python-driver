@@ -78,8 +78,7 @@ def _inflate_bson(
 
 
 class RawBSONDocument(Mapping[str, Any]):
-    """Representation for a MongoDB document that provides access to the raw
-    BSON bytes that compose it.
+    """Representation of a MongoDB document that exposes its raw BSON bytes.
 
     Only when a field is accessed or modified within the document does
     RawBSONDocument decode its bytes.
@@ -94,7 +93,7 @@ class RawBSONDocument(Mapping[str, Any]):
         bson_bytes: bytes | memoryview,
         codec_options: CodecOptions[RawBSONDocument] | None = None,
     ) -> None:
-        """Create a new :class:`RawBSONDocument`
+        """Create a new :class:`RawBSONDocument`.
 
         :class:`RawBSONDocument` is a representation of a BSON document that
         provides access to the underlying raw BSON bytes. Only when a field is

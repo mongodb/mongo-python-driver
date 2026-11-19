@@ -405,6 +405,7 @@ class ServerHeartbeatListener(_EventListener):
 
 class TopologyListener(_EventListener):
     """Abstract base class for topology monitoring listeners.
+
     Handles `TopologyOpenedEvent`, `TopologyDescriptionChangedEvent`, and
     `TopologyClosedEvent`.
 
@@ -435,6 +436,7 @@ class TopologyListener(_EventListener):
 
 class ServerListener(_EventListener):
     """Abstract base class for server listeners.
+
     Handles `ServerOpeningEvent`, `ServerDescriptionChangedEvent`, and
     `ServerClosedEvent`.
 
@@ -471,7 +473,7 @@ def _to_micros(dur: timedelta) -> int:
 def _validate_event_listeners(
     option: str, listeners: Sequence[_EventListeners]
 ) -> Sequence[_EventListeners]:
-    """Validate event listeners"""
+    """Validate event listeners."""
     if not isinstance(listeners, abc.Sequence):
         raise TypeError(f"{option} must be a list or tuple, not {type(listeners)}")
     for listener in listeners:
@@ -653,7 +655,11 @@ class CommandStartedEvent(_CommandEvent):
         return super().database_name
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, "
+            f"command: {self.command_name!r}, operation_id: {self.operation_id}, "
+            f"service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+        )
 
 
 class CommandSucceededEvent(_CommandEvent):
@@ -711,7 +717,12 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__reply
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, duration_micros: {self.duration_micros}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, "
+            f"command: {self.command_name!r}, operation_id: {self.operation_id}, "
+            f"duration_micros: {self.duration_micros}, service_id: {self.service_id}, "
+            f"server_connection_id: {self.server_connection_id}>"
+        )
 
 
 class CommandFailedEvent(_CommandEvent):
@@ -766,8 +777,10 @@ class CommandFailedEvent(_CommandEvent):
 
     def __repr__(self) -> str:
         return (
-            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, duration_micros: {self.duration_micros}, "
-            f"failure: {self.failure!r}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, "
+            f"command: {self.command_name!r}, operation_id: {self.operation_id}, "
+            f"duration_micros: {self.duration_micros}, failure: {self.failure!r}, "
+            f"service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
         )
 
 
@@ -781,9 +794,7 @@ class _PoolEvent:
 
     @property
     def address(self) -> _Address:
-        """The address (host, port) pair of the server the pool is attempting
-        to connect to.
-        """
+        """The address (host, port) pair of the server the pool is attempting to connect to."""
         return self.__address
 
     def __repr__(self) -> str:
@@ -832,7 +843,8 @@ class PoolClearedEvent(_PoolEvent):
     :param address: The address (host, port) pair of the server this Pool is
        attempting to connect to.
     :param service_id: The service_id this command was sent to, or ``None``.
-    :param interrupt_connections: True if all active connections were interrupted by the Pool during clearing.
+    :param interrupt_connections: True if all active connections were interrupted by the Pool during
+       clearing.
 
     .. versionadded:: 3.9
     """
@@ -868,7 +880,10 @@ class PoolClearedEvent(_PoolEvent):
         return self.__interrupt_connections
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.address!r}, {self.__service_id!r}, {self.__interrupt_connections!r})"
+        return (
+            f"{self.__class__.__name__}({self.address!r}, "
+            f"{self.__service_id!r}, {self.__interrupt_connections!r})"
+        )
 
 
 class PoolClosedEvent(_PoolEvent):
@@ -884,8 +899,7 @@ class PoolClosedEvent(_PoolEvent):
 
 
 class ConnectionClosedReason:
-    """An enum that defines values for `reason` on a
-    :class:`ConnectionClosedEvent`.
+    """An enum that defines values for `reason` on a :class:`ConnectionClosedEvent`.
 
     .. versionadded:: 3.9
     """
@@ -905,8 +919,7 @@ class ConnectionClosedReason:
 
 
 class ConnectionCheckOutFailedReason:
-    """An enum that defines values for `reason` on a
-    :class:`ConnectionCheckOutFailedEvent`.
+    """An enum that defines values for `reason` on a :class:`ConnectionCheckOutFailedEvent`.
 
     .. versionadded:: 3.9
     """
@@ -933,9 +946,7 @@ class _ConnectionEvent:
 
     @property
     def address(self) -> _Address:
-        """The address (host, port) pair of the server this connection is
-        attempting to connect to.
-        """
+        """The (host, port) pair of the server this connection is attempting to connect to."""
         return self.__address
 
     def __repr__(self) -> str:
@@ -978,7 +989,10 @@ class _ConnectionDurationEvent(_ConnectionIdEvent):
         return self.__duration
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.address!r}, {self.connection_id!r}, {self.__duration!r})"
+        return (
+            f"{self.__class__.__name__}({self.address!r}, "
+            f"{self.connection_id!r}, {self.__duration!r})"
+        )
 
 
 class ConnectionCreatedEvent(_ConnectionIdEvent):
@@ -1037,7 +1051,10 @@ class ConnectionClosedEvent(_ConnectionIdEvent):
         return self.__reason
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.address!r}, {self.connection_id!r}, {self.__reason!r})"
+        return (
+            f"{self.__class__.__name__}({self.address!r}, "
+            f"{self.connection_id!r}, {self.__reason!r})"
+        )
 
 
 class ConnectionCheckOutStartedEvent(_ConnectionEvent):
@@ -1118,7 +1135,7 @@ class _ServerEvent:
 
     @property
     def server_address(self) -> _Address:
-        """The address (host, port) pair of the server"""
+        """The address (host, port) pair of the server."""
         return self.__server_address
 
     @property
@@ -1150,20 +1167,19 @@ class ServerDescriptionChangedEvent(_ServerEvent):
 
     @property
     def previous_description(self) -> ServerDescription:
-        """The previous
-        :class:`~pymongo.server_description.ServerDescription`.
-        """
+        """The previous :class:`~pymongo.server_description.ServerDescription`."""
         return self.__previous_description
 
     @property
     def new_description(self) -> ServerDescription:
-        """The new
-        :class:`~pymongo.server_description.ServerDescription`.
-        """
+        """The new :class:`~pymongo.server_description.ServerDescription`."""
         return self.__new_description
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.server_address} changed from: {self.previous_description}, to: {self.new_description}>"
+        return (
+            f"<{self.__class__.__name__} {self.server_address} "
+            f"changed from: {self.previous_description}, to: {self.new_description}>"
+        )
 
 
 class ServerOpeningEvent(_ServerEvent):
@@ -1221,20 +1237,19 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
 
     @property
     def previous_description(self) -> TopologyDescription:
-        """The previous
-        :class:`~pymongo.topology_description.TopologyDescription`.
-        """
+        """The previous :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__previous_description
 
     @property
     def new_description(self) -> TopologyDescription:
-        """The new
-        :class:`~pymongo.topology_description.TopologyDescription`.
-        """
+        """The new :class:`~pymongo.topology_description.TopologyDescription`."""
         return self.__new_description
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} topology_id: {self.topology_id} changed from: {self.previous_description}, to: {self.new_description}>"
+        return (
+            f"<{self.__class__.__name__} topology_id: {self.topology_id} "
+            f"changed from: {self.previous_description}, to: {self.new_description}>"
+        )
 
 
 class TopologyOpenedEvent(TopologyEvent):
@@ -1266,9 +1281,7 @@ class _ServerHeartbeatEvent:
 
     @property
     def connection_id(self) -> _Address:
-        """The address (host, port) of the server this heartbeat was sent
-        to.
-        """
+        """The address (host, port) of the server this heartbeat was sent to."""
         return self.__connection_id
 
     @property
@@ -1334,12 +1347,14 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         return super().awaited
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, awaited: {self.awaited}, reply: {self.reply}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, "
+            f"awaited: {self.awaited}, reply: {self.reply}>"
+        )
 
 
 class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
-    """Fired when the server heartbeat fails, either with an "ok: 0"
-    or a socket exception.
+    """Fired when the server heartbeat fails, either with an "ok: 0" or a socket exception.
 
     .. versionadded:: 3.3
     """
@@ -1376,7 +1391,10 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         return super().awaited
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, awaited: {self.awaited}, reply: {self.reply!r}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, "
+            f"awaited: {self.awaited}, reply: {self.reply!r}>"
+        )
 
 
 class _EventListeners:
@@ -1414,27 +1432,27 @@ class _EventListeners:
 
     @property
     def enabled_for_commands(self) -> bool:
-        """Are any CommandListener instances registered?"""
+        """Whether any CommandListener instances are registered."""
         return self.__enabled_for_commands
 
     @property
     def enabled_for_server(self) -> bool:
-        """Are any ServerListener instances registered?"""
+        """Whether any ServerListener instances are registered."""
         return self.__enabled_for_server
 
     @property
     def enabled_for_server_heartbeat(self) -> bool:
-        """Are any ServerHeartbeatListener instances registered?"""
+        """Whether any ServerHeartbeatListener instances are registered."""
         return self.__enabled_for_server_heartbeat
 
     @property
     def enabled_for_topology(self) -> bool:
-        """Are any TopologyListener instances registered?"""
+        """Whether any TopologyListener instances are registered."""
         return self.__enabled_for_topology
 
     @property
     def enabled_for_cmap(self) -> bool:
-        """Are any ConnectionPoolListener instances registered?"""
+        """Whether any ConnectionPoolListener instances are registered."""
         return self.__enabled_for_cmap
 
     def event_listeners(self) -> list[_EventListeners]:
@@ -1579,8 +1597,7 @@ class _EventListeners:
                 _handle_exception()
 
     def publish_server_heartbeat_started(self, connection_id: _Address, awaited: bool) -> None:
-        """Publish a ServerHeartbeatStartedEvent to all server heartbeat
-        listeners.
+        """Publish a ServerHeartbeatStartedEvent to all server heartbeat listeners.
 
         :param connection_id: The address (host, port) pair of the connection.
         :param awaited: True if this heartbeat is part of an awaitable hello command.
@@ -1595,8 +1612,7 @@ class _EventListeners:
     def publish_server_heartbeat_succeeded(
         self, connection_id: _Address, duration: float, reply: Hello[dict[str, Any]], awaited: bool
     ) -> None:
-        """Publish a ServerHeartbeatSucceededEvent to all server heartbeat
-        listeners.
+        """Publish a ServerHeartbeatSucceededEvent to all server heartbeat listeners.
 
         :param connection_id: The address (host, port) pair of the connection.
         :param duration: The execution time of the event in the highest possible
@@ -1614,8 +1630,7 @@ class _EventListeners:
     def publish_server_heartbeat_failed(
         self, connection_id: _Address, duration: float, reply: Exception, awaited: bool
     ) -> None:
-        """Publish a ServerHeartbeatFailedEvent to all server heartbeat
-        listeners.
+        """Publish a ServerHeartbeatFailedEvent to all server heartbeat listeners.
 
         :param connection_id: The address (host, port) pair of the connection.
         :param duration: The execution time of the event in the highest possible
@@ -1770,9 +1785,7 @@ class _EventListeners:
                 _handle_exception()
 
     def publish_connection_created(self, address: _Address, connection_id: int) -> None:
-        """Publish a :class:`ConnectionCreatedEvent` to all connection
-        listeners.
-        """
+        """Publish a :class:`ConnectionCreatedEvent` to all connection listeners."""
         event = ConnectionCreatedEvent(address, connection_id)
         for subscriber in self.__cmap_listeners:
             try:
@@ -1792,9 +1805,7 @@ class _EventListeners:
                 _handle_exception()
 
     def publish_connection_closed(self, address: _Address, connection_id: int, reason: str) -> None:
-        """Publish a :class:`ConnectionClosedEvent` to all connection
-        listeners.
-        """
+        """Publish a :class:`ConnectionClosedEvent` to all connection listeners."""
         event = ConnectionClosedEvent(address, connection_id, reason)
         for subscriber in self.__cmap_listeners:
             try:
@@ -1803,9 +1814,7 @@ class _EventListeners:
                 _handle_exception()
 
     def publish_connection_check_out_started(self, address: _Address) -> None:
-        """Publish a :class:`ConnectionCheckOutStartedEvent` to all connection
-        listeners.
-        """
+        """Publish a :class:`ConnectionCheckOutStartedEvent` to all connection listeners."""
         event = ConnectionCheckOutStartedEvent(address)
         for subscriber in self.__cmap_listeners:
             try:
@@ -1816,9 +1825,7 @@ class _EventListeners:
     def publish_connection_check_out_failed(
         self, address: _Address, reason: str, duration: float
     ) -> None:
-        """Publish a :class:`ConnectionCheckOutFailedEvent` to all connection
-        listeners.
-        """
+        """Publish a :class:`ConnectionCheckOutFailedEvent` to all connection listeners."""
         event = ConnectionCheckOutFailedEvent(address, reason, duration)
         for subscriber in self.__cmap_listeners:
             try:
@@ -1829,9 +1836,7 @@ class _EventListeners:
     def publish_connection_checked_out(
         self, address: _Address, connection_id: int, duration: float
     ) -> None:
-        """Publish a :class:`ConnectionCheckedOutEvent` to all connection
-        listeners.
-        """
+        """Publish a :class:`ConnectionCheckedOutEvent` to all connection listeners."""
         event = ConnectionCheckedOutEvent(address, connection_id, duration)
         for subscriber in self.__cmap_listeners:
             try:
@@ -1840,9 +1845,7 @@ class _EventListeners:
                 _handle_exception()
 
     def publish_connection_checked_in(self, address: _Address, connection_id: int) -> None:
-        """Publish a :class:`ConnectionCheckedInEvent` to all connection
-        listeners.
-        """
+        """Publish a :class:`ConnectionCheckedInEvent` to all connection listeners."""
         event = ConnectionCheckedInEvent(address, connection_id)
         for subscriber in self.__cmap_listeners:
             try:

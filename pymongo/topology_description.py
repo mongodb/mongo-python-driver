@@ -113,7 +113,7 @@ class TopologyDescription:
             )
 
     def _init_incompatible_err(self) -> None:
-        """Internal compatibility check for non-load balanced topologies."""
+        """Check compatibility of non-load balanced topologies."""
         for s in self._server_descriptions.values():
             if not s.is_server_type_known:
                 continue
@@ -162,12 +162,12 @@ class TopologyDescription:
         return address in self._server_descriptions
 
     def reset_server(self, address: _Address) -> TopologyDescription:
-        """A copy of this description, with one server marked Unknown."""
+        """Return a copy of this description, with one server marked Unknown."""
         unknown_sd = self._server_descriptions[address].to_unknown()
         return updated_topology_description(self, unknown_sd)
 
     def reset(self) -> TopologyDescription:
-        """A copy of this description, with all servers marked Unknown."""
+        """Return a copy of this description, with all servers marked Unknown."""
         if self._topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary:
             topology_type = TOPOLOGY_TYPE.ReplicaSetNoPrimary
         else:
@@ -265,7 +265,10 @@ class TopologyDescription:
         round_trip_times: list[float] = []
         for server in selection.server_descriptions:
             if server.round_trip_time is None:
-                config_err_msg = f"round_trip_time for server {server.address} is unexpectedly None: {self}, servers: {selection.server_descriptions}"
+                config_err_msg = (
+                    f"round_trip_time for server {server.address} is unexpectedly None: "
+                    f"{self}, servers: {selection.server_descriptions}"
+                )
                 raise ConfigurationError(config_err_msg)
             round_trip_times.append(server.round_trip_time)
         # Round trip time in seconds.
@@ -370,8 +373,9 @@ class TopologyDescription:
         return self._apply_local_threshold(selection)
 
     def has_readable_server(self, read_preference: _ServerMode = ReadPreference.PRIMARY) -> bool:
-        """Does this topology have any readable servers available matching the
-        given read preference?
+        """Check if this topology has any readable servers available.
+
+        The servers must match the given read preference.
 
         :param read_preference: an instance of a read preference from
             :mod:`~pymongo.read_preferences`. Defaults to
@@ -386,7 +390,7 @@ class TopologyDescription:
         return any(self.apply_selector(read_preference))
 
     def has_writable_server(self) -> bool:
-        """Does this topology have a writable server available?
+        """Check if this topology has a writable server available.
 
         .. note:: When connected directly to a single server this method
           always returns ``True``.
@@ -398,7 +402,10 @@ class TopologyDescription:
     def __repr__(self) -> str:
         # Sort the servers by address.
         servers = sorted(self._server_descriptions.values(), key=lambda sd: sd.address)
-        return f"<{self.__class__.__name__} id: {self._topology_settings._topology_id}, topology_type: {self.topology_type_name}, servers: {servers!r}>"
+        return (
+            f"<{self.__class__.__name__} id: {self._topology_settings._topology_id}, "
+            f"topology_type: {self.topology_type_name}, servers: {servers!r}>"
+        )
 
 
 # If topology type is Unknown and we receive a hello response, what should
@@ -446,7 +453,8 @@ def updated_topology_description(
         if set_name is not None and set_name != server_description.replica_set_name:
             error = ConfigurationError(
                 "client is configured to connect to a replica set named "
-                f"'{set_name}' but this node belongs to a set named '{server_description.replica_set_name}'"
+                f"'{set_name}' but this node belongs to a set named "
+                f"'{server_description.replica_set_name}'"
             )
             sds[address] = server_description.to_unknown(error=error)
         # Single type never changes.
@@ -591,7 +599,8 @@ def _update_rs_from_primary(
                 # Stale primary, set to type Unknown.
                 sds[server_description.address] = server_description.to_unknown(
                     PyMongoError(
-                        f"primary marked stale due to electionId/setVersion mismatch, {new_election_tuple} is stale compared to {max_election_tuple}"
+                        f"primary marked stale due to electionId/setVersion mismatch, "
+                        f"{new_election_tuple} is stale compared to {max_election_tuple}"
                     )
                 )
                 return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
@@ -610,7 +619,8 @@ def _update_rs_from_primary(
             # Stale primary, set to type Unknown.
             sds[server_description.address] = server_description.to_unknown(
                 PyMongoError(
-                    f"primary marked stale due to electionId/setVersion mismatch, {new_election_tuple} is stale compared to {max_election_tuple}"
+                    f"primary marked stale due to electionId/setVersion mismatch, "
+                    f"{new_election_tuple} is stale compared to {max_election_tuple}"
                 )
             )
             return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
@@ -702,7 +712,7 @@ def _update_rs_no_primary_from_member(
 
 
 def _check_has_primary(sds: Mapping[_Address, ServerDescription]) -> int:
-    """Current topology type is ReplicaSetWithPrimary. Is primary still known?
+    """Check if the primary is still known when the topology type is ReplicaSetWithPrimary.
 
     Pass in a dict of ServerDescriptions.
 

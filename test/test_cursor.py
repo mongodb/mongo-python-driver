@@ -384,7 +384,8 @@ class TestCursor(IntegrationTest):
         listener = AllowListEventListener("explain")
         client = self.rs_or_single_client(event_listeners=[listener])
 
-        # Create a collection, referred to as collection, with the namespace explain-test.collection.
+        # Create a collection, referred to as collection, with the namespace
+        # explain-test.collection.
         # Workaround for SERVER-108463
         names = client["explain-test"].list_collection_names()
         if "collection" not in names:
@@ -392,11 +393,13 @@ class TestCursor(IntegrationTest):
         else:
             collection = client["explain-test"]["collection"]
 
-        # Run an explained find on collection. The find will have the query predicate { name: 'john doe' }. Specify a maxTimeMS value of 2000ms for the explain.
+        # Run an explained find on collection. The find will have the query predicate
+        # { name: 'john doe' }. Specify a maxTimeMS value of 2000ms for the explain.
         with pymongo.timeout(2.0):
             self.assertTrue(collection.find({"name": "john doe"}).explain())
 
-        # Obtain the command started event for the explain. Confirm that the top-level explain command should has a maxTimeMS value of 2000.
+        # Obtain the command started event for the explain. Confirm that the top-level explain
+        # command should has a maxTimeMS value of 2000.
         started = listener.started_events
         self.assertEqual(len(started), 1)
         assert 1500 < started[0].command["maxTimeMS"] <= 2000

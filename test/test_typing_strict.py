@@ -25,7 +25,7 @@ from pymongo.synchronous.database import Database
 
 
 def test_generic_arguments() -> None:
-    """Ensure known usages of generic arguments pass strict typing"""
+    """Ensure known usages of generic arguments pass strict typing."""
     if not TYPE_CHECKING:
         raise unittest.SkipTest("Used for Type Checking Only")
     mongo_client: pymongo.MongoClient[dict[str, Any]] = pymongo.MongoClient()

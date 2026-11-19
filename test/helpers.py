@@ -108,8 +108,10 @@ class client_knobs:
     def __del__(self):
         if self._enabled:
             msg = (
-                f"ERROR: client_knobs still enabled! HEARTBEAT_FREQUENCY={common.HEARTBEAT_FREQUENCY}, "
-                f"MIN_HEARTBEAT_INTERVAL={common.MIN_HEARTBEAT_INTERVAL}, KILL_CURSOR_FREQUENCY={common.KILL_CURSOR_FREQUENCY}, "
+                f"ERROR: client_knobs still enabled! "
+                f"HEARTBEAT_FREQUENCY={common.HEARTBEAT_FREQUENCY}, "
+                f"MIN_HEARTBEAT_INTERVAL={common.MIN_HEARTBEAT_INTERVAL}, "
+                f"KILL_CURSOR_FREQUENCY={common.KILL_CURSOR_FREQUENCY}, "
                 f"EVENTS_QUEUE_FREQUENCY={common.EVENTS_QUEUE_FREQUENCY}, stack:\n{self._stack}"
             )
             self.disable()

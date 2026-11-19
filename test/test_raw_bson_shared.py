@@ -57,8 +57,9 @@ def _make_shared_doc_bytes() -> bytes:
 
 
 class _TaggedRawBSONDocument(RawBSONDocument):
-    """RawBSONDocument subclass with a different __init__ signature and
-    extra instance state, stored in __dict__.
+    """RawBSONDocument subclass with a different __init__ signature.
+
+    The subclass stores extra instance state in ``__dict__``.
     """
 
     def __init__(self, bson_bytes, tag, codec_options=None):
@@ -338,9 +339,10 @@ class TestRawBSONDocument(UnitTest):
 
 
 class TestRawBSONDocumentConcurrency(unittest.TestCase):
-    """Concurrency and buffer-lifetime regression tests for zero-copy
-    RawBSONDocument; also run under the sanitizer CI tasks (see
-    SANITIZER_FILES in .evergreen/scripts/setup_sanitizer.py).
+    """Concurrency and buffer-lifetime regression tests for zero-copy RawBSONDocument.
+
+    These tests also run under the sanitizer CI tasks (see SANITIZER_FILES in
+    .evergreen/scripts/setup_sanitizer.py).
     """
 
     def test_concurrent_reads_on_shared_document(self):

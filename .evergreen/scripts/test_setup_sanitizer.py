@@ -20,7 +20,7 @@ pytestmark = [pytest.mark.default]
 
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
-    """A fake repo root with a fake env file and stale build artifacts."""
+    """Create a fake repo root with a fake env file and stale build artifacts."""
     root = tmp_path / "repo"
     (root / ".evergreen").mkdir(parents=True)
     (root / "build").mkdir()
@@ -146,10 +146,11 @@ def test_find_matching_clang_picks_the_interpreters_version(monkeypatch):
 
 
 def test_find_matching_clang_falls_back_to_the_newest_older_clang(monkeypatch):
-    """No exact match: the newest clang OLDER than the interpreter's is the
-    stopgap — a newer clang emits references the runtime does not export
-    (the v5 clang 19.1.7 and the system clang 22.1.8 both fail on hosts
-    whose interpreters were built with clang 14.0.6).
+    """No exact match: the newest clang OLDER than the interpreter's is the stopgap.
+
+    A newer clang emits references the runtime does not export (the v5 clang
+    19.1.7 and the system clang 22.1.8 both fail on hosts whose interpreters
+    were built with clang 14.0.6).
     """
     candidates = [
         "/opt/mongodbtoolchain/v4/bin/clang",

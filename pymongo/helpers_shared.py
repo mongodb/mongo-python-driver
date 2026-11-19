@@ -147,7 +147,7 @@ class _RetryPolicy:
         )
 
     def should_retry(self, attempt: int, delay: float) -> bool:
-        """Return if we have retry attempts remaining and the next backoff would not exceed a timeout."""
+        """Return if retry attempts remain and the next backoff would not exceed a timeout."""
         from pymongo import _csot
 
         if attempt > self.attempts:
@@ -196,7 +196,7 @@ def _gen_index_name(keys: _IndexList) -> str:
 def _index_list(
     key_or_list: _Hint, direction: int | str | None = None
 ) -> Sequence[tuple[str, int | str | Mapping[str, Any]]]:
-    """Helper to generate a list of (key, direction) pairs.
+    """Generate a list of (key, direction) pairs.
 
     Takes such a list, or a single key, or a single key and direction.
     """
@@ -213,7 +213,8 @@ def _index_list(
             return list(key_or_list.items())
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError(
-                f"if no direction is specified, key_or_list must be an instance of list, not {type(key_or_list)}"
+                f"if no direction is specified, key_or_list must be an instance of list, "
+                f"not {type(key_or_list)}"
             )
         values: list[tuple[str, int]] = []
         for item in key_or_list:
@@ -224,7 +225,7 @@ def _index_list(
 
 
 def _index_document(index_list: _IndexList) -> dict[str, Any]:
-    """Helper to generate an index specifying document.
+    """Generate an index specifying document.
 
     Takes a list of (key, direction) pairs.
     """
@@ -371,7 +372,7 @@ def _check_write_command_response(result: Mapping[str, Any]) -> None:
 def _fields_list_to_dict(
     fields: Mapping[str, Any] | Iterable[str], option_name: str
 ) -> Mapping[str, Any]:
-    """Takes a sequence of field names and returns a matching dictionary.
+    """Convert a sequence of field names into a matching dictionary.
 
     ["a", "b"] becomes {"a": 1, "b": 1}
 

@@ -301,8 +301,8 @@ class TestHandshake(unittest.TestCase):
         )
 
     def test_handshake_op_msg_not_supported(self):
-        # If a server doesn't understand OP_MSG it will just close the connection, thus the driver should
-        # hint towards OP_MSG potentially not being supported in the error.
+        # If a server doesn't understand OP_MSG it will just close the connection, thus the
+        # driver should hint towards OP_MSG potentially not being supported in the error.
         server = MockupDB()
 
         def responder(request):

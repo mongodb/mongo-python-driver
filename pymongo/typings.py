@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Type aliases used by PyMongo"""
+"""Type aliases used by PyMongo."""
 
 from __future__ import annotations
 
@@ -68,8 +68,9 @@ _AgnosticClientBulk = Union["_AsyncClientBulk", "_ClientBulk"]
 
 
 def strip_optional(elem: _T | None) -> _T:
-    """This function is to allow us to cast all the elements of an iterator from Optional[_T] to _T
-    while inside a list comprehension.
+    """Cast all the elements of an iterator from Optional[_T] to _T.
+
+    This is for use inside a list comprehension.
     """
     assert elem is not None
     return elem

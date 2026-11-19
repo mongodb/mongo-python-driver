@@ -1463,7 +1463,8 @@ class TestAzureEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegratio
             """
         {"secret_azure": {
             "$binary": {
-                "base64": "AQGVERPgAAAAAAAAAAAAAAAC5DbBSwPwfSlBrDtRuglvNvCXD1KzDuCKY2P+4bRFtHDjpTOE2XuytPAUaAbXf1orsPq59PVZmsbTZbt2CB8qaQ==",
+                "base64": "AQGVERPgAAAAAAAAAAAAAAAC5DbBSwPwfSlBrDtRuglvNvCXD1KzDuCKY2P+4bRFtHDjpT"""
+            """OE2XuytPAUaAbXf1orsPq59PVZmsbTZbt2CB8qaQ==",
                 "subType": "06"}
         }}"""
         )
@@ -1488,7 +1489,8 @@ class TestGCPEncryption(AzureGCPEncryptionTestMixin, AsyncEncryptionIntegrationT
             """
         {"secret_gcp": {
             "$binary": {
-                "base64": "ARgj/gAAAAAAAAAAAAAAAAACwFd+Y5Ojw45GUXNvbcIpN9YkRdoHDHkR4kssdn0tIMKlDQOLFkWFY9X07IRlXsxPD8DcTiKnl6XINK28vhcGlg==",
+                "base64": "ARgj/gAAAAAAAAAAAAAAAAACwFd+Y5Ojw45GUXNvbcIpN9YkRdoHDHkR4kssdn0tIMKlDQ"""
+            """OLFkWFY9X07IRlXsxPD8DcTiKnl6XINK28vhcGlg==",
                 "subType": "06"}
         }}"""
         )
@@ -1943,7 +1945,8 @@ class TestKmsTLSProse(AsyncEncryptionIntegrationTest):
             "endpoint": "mongodb://127.0.0.1:9001",
         }
         # Some examples:
-        # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
+        # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'.
+        # (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
         # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
         with self.assertRaisesRegex(
@@ -2053,7 +2056,8 @@ class TestKmsTLSOptions(AsyncEncryptionIntegrationTest):
         with self.assertRaisesRegex(EncryptionError, "expired|certificate verify failed"):
             await self.client_encryption_expired.create_data_key("aws", key)
         # Some examples:
-        # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'. (_ssl.c:1129)"
+        # certificate verify failed: IP address mismatch, certificate is not valid for '127.0.0.1'.
+        # (_ssl.c:1129)"
         # hostname '127.0.0.1' doesn't match 'wronghost.com'
         # 127.0.0.1:9001: ('Certificate does not contain any `subjectAltName`s.',)
         key["endpoint"] = "127.0.0.1:9001"
@@ -2677,11 +2681,13 @@ class TestRewrapWithSeparateClientEncryption(AsyncEncryptionIntegrationTest):
 
         self.assertEqual(rewrap_many_data_key_result.bulk_write_result.modified_count, 1)
 
-        # 7. Call ``client_encryption1.decrypt`` with the ``cipher_text``. Assert the return value is "test".
+        # 7. Call ``client_encryption1.decrypt`` with the ``cipher_text``. Assert the return value
+        # is "test".
         decrypt_result1 = await client_encryption1.decrypt(cipher_text)
         self.assertEqual(decrypt_result1, "test")
 
-        # 8. Call ``client_encryption2.decrypt`` with the ``cipher_text``. Assert the return value is "test".
+        # 8. Call ``client_encryption2.decrypt`` with the ``cipher_text``. Assert the return value
+        # is "test".
         decrypt_result2 = await client_encryption2.decrypt(cipher_text)
         self.assertEqual(decrypt_result2, "test")
 
@@ -2940,7 +2946,8 @@ class TestRangeQueryProse(AsyncEncryptionIntegrationTest):
             # Case 6.
             with self.assertRaisesRegex(
                 EncryptionError,
-                "greater than or equal to the minimum value and less than or equal to the maximum value",
+                "greater than or equal to the minimum value and less than or equal to the maximum"
+                " value",
             ):
                 await self.client_encryption.encrypt(
                     cast_func(201),
@@ -2963,7 +2970,8 @@ class TestRangeQueryProse(AsyncEncryptionIntegrationTest):
                 )
 
             # Case 8.
-            # The spec says we must additionally not run this case with any precision type, not just the ones above.
+            # The spec says we must additionally not run this case with any precision type, not
+            # just the ones above.
             if "Precision" not in name:
                 with self.assertRaisesRegex(
                     EncryptionError,
@@ -3166,7 +3174,8 @@ class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
     async def test_02_no_fields(self):
         with self.assertRaisesRegex(
             TypeError,
-            "create_encrypted_collection.* missing 1 required positional argument: 'encrypted_fields'",
+            "create_encrypted_collection.* missing 1 required positional argument:"
+            " 'encrypted_fields'",
         ):
             await self.client_encryption.create_encrypted_collection(  # type:ignore[call-arg]
                 database=self.db,
@@ -3177,7 +3186,8 @@ class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
         # checkAuthForCreateCollection can be removed when SERVER-102101 is fixed.
         with self.assertRaisesRegex(
             EncryptedCollectionError,
-            "(create|checkAuthForCreateCollection).encryptedFields.fields.keyId' is the wrong type 'bool', expected type 'binData",
+            "(create|checkAuthForCreateCollection).encryptedFields.fields.keyId' is the wrong"
+            " type 'bool', expected type 'binData",
         ):
             await self.client_encryption.create_encrypted_collection(
                 database=self.db,
@@ -3277,7 +3287,8 @@ class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
                 {"path": "dob", "bsonType": "string", "keyId": None},
             ]
         }
-        # Make sure the exception's encrypted_fields object includes the previous keys in the error message even when
+        # Make sure the exception's encrypted_fields object includes the previous keys in the error
+        # message even when
         # generating keys fails.
         with self.assertRaises(
             EncryptedCollectionError,
@@ -3292,7 +3303,8 @@ class TestAutomaticDecryptionKeys(AsyncEncryptionIntegrationTest):
 
     async def test_create_failure(self):
         key = await self.client_encryption.create_data_key(kms_provider="local")
-        # Make sure the exception's encrypted_fields object includes the previous keys in the error message even when
+        # Make sure the exception's encrypted_fields object includes the previous keys in the error
+        # message even when
         # it is the creation of the collection that fails.
         with self.assertRaises(
             EncryptedCollectionError,

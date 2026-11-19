@@ -23,7 +23,7 @@ from typing import Any
 
 
 class ReadConcern:
-    """ReadConcern
+    """ReadConcern.
 
     :param level: (string) The read concern level specifies the level of
           isolation for read operations.  For example, a read operation using a
@@ -48,9 +48,7 @@ class ReadConcern:
 
     @property
     def ok_for_legacy(self) -> bool:
-        """Return ``True`` if this read concern is compatible with
-        old wire protocol versions.
-        """
+        """Return ``True`` if this read concern is compatible with old wire protocol versions."""
         return self.level is None or self.level == "local"
 
     @property

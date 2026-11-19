@@ -87,7 +87,7 @@ class Facade:
         return func(*args)
 
     def encryption(self):
-        """The API's ``encryption`` module."""
+        """Return the API's ``encryption`` module."""
         if self.is_async:
             from pymongo.asynchronous import encryption
         else:
@@ -95,7 +95,7 @@ class Facade:
         return encryption
 
     def kms_connect(self):
-        """The API's ``_kms_connect`` module."""
+        """Return the API's ``_kms_connect`` module."""
         if self.is_async:
             from pymongo.asynchronous import _kms_connect
         else:
@@ -110,7 +110,7 @@ class Facade:
         return module._connect_kms(address, pool_options, callback, timeout)
 
     def proxy(self, proxy_url, tls_context=None, headers=None):
-        """The API's HTTP proxy KMS connect helper."""
+        """Return the API's HTTP proxy KMS connect helper."""
         if self.is_async:
             return AsyncHTTPProxyKMSConnect(proxy_url, tls_context, headers=headers)
         return HTTPProxyKMSConnect(proxy_url, tls_context, headers=headers)
@@ -138,7 +138,7 @@ class Facade:
         return func
 
     def callback_returning(self, value):
-        """A kms_connect_callback that always produces ``value``."""
+        """Return a kms_connect_callback that always produces ``value``."""
         return self.callback(lambda context: value)
 
     def client_tls_context(self, verify=False):
@@ -148,7 +148,7 @@ class Facade:
         return get_ssl_context(None, None, None, None, True, True, False, not self.is_async)
 
     def client_encryption(self, kms_providers, key_vault_namespace, client, kms_connect_callback):
-        """A ClientEncryption for this API using a local key provider."""
+        """Return a ClientEncryption for this API using a local key provider."""
         if self.is_async:
             from pymongo.asynchronous.encryption import AsyncClientEncryption
 
@@ -170,7 +170,7 @@ class Facade:
         )
 
     def simple_client(self):
-        """A lazily-connecting client for this API."""
+        """Return a lazily-connecting client for this API."""
         if self.is_async:
             from pymongo.asynchronous.mongo_client import AsyncMongoClient
 
@@ -206,7 +206,7 @@ def _insecure_client_context():
 
 
 def _kms_context(host="kms.example.com", port=443, timeout=10):
-    """A KMSConnectContext with the defaults used throughout these tests."""
+    """Return a KMSConnectContext with the defaults used throughout these tests."""
     return KMSConnectContext(host=host, port=port, timeout=timeout)
 
 
@@ -266,7 +266,7 @@ def _start_proxy(handler, backlog=1):
 
 @contextmanager
 def _record_and_reply(accepted, reply):
-    """A proxy that records each CONNECT request, replies ``reply``, and closes."""
+    """Create a proxy that records each CONNECT request, replies ``reply``, and closes."""
 
     def handler(conn):
         request = _read_http_request(conn)
@@ -281,7 +281,7 @@ def _record_and_reply(accepted, reply):
 
 @contextmanager
 def _tls_echo_proxy(delay=0):
-    """A TLS CONNECT proxy that replies 200, then echoes one tunneled read."""
+    """Create a TLS CONNECT proxy that replies 200, then echoes one tunneled read."""
     server_ctx = _tls_server_context()
 
     def handler(conn):

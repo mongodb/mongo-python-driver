@@ -332,7 +332,8 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(cmd["batchSize"], 11)
 
     def test_find_batch_size_not_adjusted_when_different(self):
-        # Covers the False branch of `if limit == batch_size:` — distinct from the True branch above.
+        # Covers the False branch of `if limit == batch_size:` — distinct from the True branch
+        # above.
         cmd = _gen_find_command(
             "col",
             {},
@@ -430,7 +431,8 @@ class TestMessage(unittest.TestCase):
         self.assertNotIn("$explain", cmd)
 
     def test_find_dollar_query_with_read_preference_removed(self):
-        # Covers the separate `if "$readPreference" in cmd:` branch — not entered by test_dollar_query_with_explain_removed.
+        # Covers the separate `if "$readPreference" in cmd:` branch — not entered by
+        # test_dollar_query_with_explain_removed.
         spec = {"$query": {"x": 1}, "$readPreference": {"mode": "secondary"}}
         cmd = _gen_find_command(
             "col",
@@ -498,11 +500,11 @@ class TestOpMsgBuilders(unittest.TestCase):
             self.skipTest("_cmessage not built")
 
     def _assert_total_length(self, msg):
-        """The first 4 bytes of an OP_MSG are its back-patched total length."""
+        """Assert the first 4 bytes of an OP_MSG are its back-patched total length."""
         self.assertEqual(struct.unpack("<i", msg[:4])[0], len(msg))
 
     def _assert_command_document(self, msg, command):
-        """The type-0 command document following the header decodes to `command`.
+        """Assert the type-0 command document following the header decodes to `command`.
 
         Returns the command document's size.
         """

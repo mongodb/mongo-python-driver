@@ -100,9 +100,10 @@ _WriteOp = (
 
 
 class ReturnDocument:
-    """An enum used with
-    :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one_and_replace` and
-    :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one_and_update`.
+    """An enum used with the find_one_and_replace and find_one_and_update methods.
+
+    See :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one_and_replace`
+    and :meth:`~pymongo.asynchronous.collection.AsyncCollection.find_one_and_update`.
     """
 
     BEFORE = False
@@ -256,7 +257,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if create or kwargs:
             if _IS_SYNC:
                 warnings.warn(
-                    "The `create` and `kwargs` arguments to AsyncCollection are deprecated and will be removed in PyMongo 5.0",
+                    "The `create` and `kwargs` arguments to AsyncCollection are deprecated and "
+                    "will be removed in PyMongo 5.0",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -328,8 +330,10 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
 
     @property
     def database(self) -> AsyncDatabase[_DocumentType]:
-        """The :class:`~pymongo.asynchronous.database.AsyncDatabase` that this
-        :class:`AsyncCollection` is a part of.
+        """Return the collection's :class:`~pymongo.asynchronous.database.AsyncDatabase`.
+
+        This is the :class:`~pymongo.asynchronous.database.AsyncDatabase` that
+        this :class:`AsyncCollection` is a part of.
         """
         return self._database
 
@@ -405,7 +409,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     next = __next__
 
     def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:
-        """This is only here so that some API misusages are easier to debug."""
+        """Raise an error so that some API misusages are easier to debug."""
         if "." not in self._name:
             raise TypeError(
                 f"'{type(self).__name__}' object is not callable. If you "
@@ -575,7 +579,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         retryable_write: bool = False,
         user_fields: Any | None = None,
     ) -> Mapping[str, Any]:
-        """Internal command helper.
+        """Run a command (internal helper).
 
         :param conn` - A AsyncConnection instance.
         :param command` - The command itself, as a :class:`~bson.son.SON` instance.
@@ -627,7 +631,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         encrypted_fields: Mapping[str, Any] | None = None,
         qev2_required: bool = False,
     ) -> None:
-        """Sends a create command with the given options."""
+        """Send a create command with the given options."""
         cmd: dict[str, Any] = {"create": name}
         if encrypted_fields:
             cmd["encryptedFields"] = encrypted_fields
@@ -644,7 +648,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 raise ConfigurationError(
                     "Driver support of Queryable Encryption is incompatible with server. "
                     "Upgrade server to use Queryable Encryption. "
-                    f"Got maxWireVersion {conn.max_wire_version} but need maxWireVersion >= 21 (MongoDB >=7.0)"
+                    f"Got maxWireVersion {conn.max_wire_version} but need "
+                    "maxWireVersion >= 21 (MongoDB >=7.0)"
                 )
 
             await self._command(
@@ -793,7 +798,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         session: AsyncClientSession | None,
         comment: Any | None = None,
     ) -> Any:
-        """Internal helper for inserting a single document."""
+        """Insert a single document (internal helper)."""
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
         command = {"insert": self.name, "ordered": ordered, "documents": [doc]}
@@ -950,7 +955,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         inserted_ids: list[ObjectId] = []
 
         def gen() -> Iterator[tuple[int, Mapping[str, Any]]]:
-            """A generator that validates documents and handles _ids."""
+            """Validate documents and handle _ids."""
             for document in documents:
                 common.validate_is_document_type("document", document)
                 if not isinstance(document, RawBSONDocument):
@@ -985,7 +990,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         sort: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any] | None:
-        """Internal update / replace helper."""
+        """Update or replace a document (internal helper)."""
         validate_boolean("upsert", upsert)
         collation = validate_collation_or_none(collation)
         write_concern = write_concern or self.write_concern
@@ -1013,7 +1018,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if sort is not None:
             if not acknowledged and conn.max_wire_version < 25:
                 raise ConfigurationError(
-                    "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."
+                    "Must be connected to MongoDB 8.0+ to use sort on unacknowledged "
+                    "update commands."
                 )
             common.validate_is_mapping("sort", sort)
             update_doc["sort"] = sort
@@ -1076,7 +1082,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         sort: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any] | None:
-        """Internal update / replace helper."""
+        """Update or replace a document (internal helper)."""
 
         async def _update(
             session: AsyncClientSession | None, conn: AsyncConnection, retryable_write: bool
@@ -1493,7 +1499,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         let: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any]:
-        """Internal delete helper."""
+        """Delete documents (internal helper)."""
         common.validate_is_mapping("filter", criteria)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
@@ -1543,7 +1549,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         let: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any]:
-        """Internal delete helper."""
+        """Delete documents (internal helper)."""
 
         async def _delete(
             session: AsyncClientSession | None, conn: AsyncConnection, retryable_write: bool
@@ -1754,9 +1760,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         improper type. Returns an instance of
         :class:`~pymongo.asynchronous.cursor.AsyncCursor` corresponding to this query.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             async with collection.find() as cursor:
@@ -1983,7 +1992,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         cmd: dict[str, Any],
         collation: Collation | None,
     ) -> int:
-        """Internal count command helper."""
+        """Run a count command (internal helper)."""
         res = await self._command(
             conn,
             cmd,
@@ -2003,7 +2012,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         collation: _CollationIn | None,
         session: AsyncClientSession | None,
     ) -> Mapping[str, Any] | None:
-        """Internal helper to run an aggregate that returns a single result."""
+        """Run an aggregate that returns a single result (internal helper)."""
         result = await self._command(
             conn,
             cmd,
@@ -2021,8 +2030,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         return batch[0] if batch else None
 
     async def estimated_document_count(self, comment: Any | None = None, **kwargs: Any) -> int:
-        """Get an estimate of the number of documents in this collection using
-        collection metadata.
+        """Get an estimate of the number of documents in this collection.
+
+        Uses collection metadata.
 
         The :meth:`estimated_document_count` method is **not** supported in a
         transaction.
@@ -2040,7 +2050,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 4.2
            This method now always uses the `count`_ command. Due to an oversight in versions
            5.0.0-5.0.8 of MongoDB, the count command was not included in V1 of the
-           `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_. Users of the Stable API with estimated_document_count are
+           `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_.
+           Users of the Stable API with estimated_document_count are
            recommended to upgrade their server version to 5.0.9+ or set
            :attr:`pymongo.server_api.ServerApi.strict` to ``False`` to avoid encountering errors.
 
@@ -2220,7 +2231,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     async def _create_indexes(
         self, indexes: Sequence[IndexModel], session: AsyncClientSession | None, **kwargs: Any
     ) -> list[str]:
-        """Internal createIndexes helper.
+        """Create indexes (internal helper).
 
         :param indexes: A list of :class:`~pymongo.operations.IndexModel`
             instances.
@@ -2267,7 +2278,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> str:
-        """Creates an index on this collection.
+        """Create an index on this collection.
 
         Takes either a single key or a list containing (key, direction) pairs
         or keys.  If no direction is given, :data:`~pymongo.ASCENDING` will
@@ -2384,7 +2395,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
-        """Drops all indexes on this collection.
+        """Drop all indexes on this collection.
 
         Can be used on non-existent collections or collections with no indexes.
         Raises OperationFailure on an error.
@@ -2418,7 +2429,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
-        """Drops the specified index on this collection.
+        """Drop the specified index on this collection.
 
         Can be used on non-existent collections or collections with no
         indexes.  Raises OperationFailure on an error (e.g. trying to
@@ -2505,9 +2516,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
           ...
           SON([('v', 2), ('key', SON([('_id', 1)])), ('name', '_id_')])
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             async with await collection.list_indexes() as cursor:
@@ -2629,9 +2643,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> AsyncCommandCursor[Mapping[str, Any]]:
         """Return a cursor over search indexes for the current collection.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             async with await collection.list_search_indexes() as cursor:
@@ -2820,7 +2837,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
-        """Update a search index by replacing the existing index definition with the provided definition.
+        """Update a search index by replacing the index definition with the provided definition.
 
         :param name: The name of the search index to be updated.
         :param definition: The new search index definition.
@@ -2939,8 +2956,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> AsyncCommandCursor[_DocumentType]:
-        """Perform an aggregation using the aggregation framework on this
-        collection.
+        """Perform an aggregation using the aggregation framework on this collection.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`AsyncCollection`, except when ``$out`` or ``$merge`` are used on
@@ -2955,9 +2971,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. note:: The :attr:`~pymongo.asynchronous.collection.AsyncCollection.write_concern` of
            this collection is automatically applied to this operation.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             async with await collection.aggregate() as cursor:
@@ -2990,7 +3009,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             returning aggregate results using a cursor.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`.
-          - `bypassDocumentValidation` (bool): If ``True``, allows the write to opt-out of document level validation.
+          - `bypassDocumentValidation` (bool): If ``True``, allows the write to opt-out of document
+            level validation.
 
 
         :return: A :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor` over the result
@@ -3159,8 +3179,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         hint: _IndexKeyHint | None = None,
         **kwargs: Any,
     ) -> list[Any]:
-        """Get a list of distinct values for `key` among all documents
-        in this collection.
+        """Get a list of distinct values for `key` among all documents in this collection.
 
         Raises :class:`TypeError` if `key` is not an instance of
         :class:`str`.
@@ -3186,7 +3205,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             command.
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
-            format as passed to :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index`
+            format as passed to
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index`
             (e.g. ``[('field', ASCENDING)]``).
         :param kwargs: See list of options above.
 
@@ -3250,11 +3270,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         let: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> Any:
-        """Internal findAndModify helper."""
+        """Run a findAndModify command (internal helper)."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise TypeError(
-                f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, not {type(return_document)}"
+                f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, "
+                f"not {type(return_document)}"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
         if hint is not None:
@@ -3318,7 +3339,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> _DocumentType | None:
-        """Finds a single document and deletes it, returning the document.
+        """Find a single document and delete it, returning the document.
 
           >>> await db.test.count_documents({'x': 1})
           2
@@ -3414,8 +3435,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> _DocumentType | None:
-        """Finds a single document and replaces it, returning either the
-        original or the replaced document.
+        """Find a single document and replace it.
+
+        Return either the original or the replaced document.
 
           >>> await db.test.find_one({'x': 1})
           {'_id': 0, 'x': 1}
@@ -3534,8 +3556,9 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> _DocumentType | None:
-        """Finds a single document and updates it, returning either the
-        original or the updated document.
+        """Find a single document and update it.
+
+        Return either the original or the updated document.
 
           >>> await db.test.find_one({'_id': 665})
           {'_id': 665, 'done': False, 'count': 25}

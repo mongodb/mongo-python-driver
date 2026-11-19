@@ -823,7 +823,11 @@ class ClientUnitTest(UnitTest):
     def test_validate_suggestion(self):
         """Validate kwargs in constructor."""
         for typo in ["auth", "Auth", "AUTH"]:
-            expected = f"Unknown option: {typo}. Did you mean one of (authsource, authmechanism, authoidcallowedhosts) or maybe a camelCase version of one? Refer to docstring."
+            expected = (
+                f"Unknown option: {typo}. Did you mean one of "
+                "(authsource, authmechanism, authoidcallowedhosts) "
+                "or maybe a camelCase version of one? Refer to docstring."
+            )
             expected = re.escape(expected)
             with self.assertRaisesRegex(ConfigurationError, expected):
                 MongoClient(**{typo: "standard"})  # type: ignore[arg-type]
@@ -1067,8 +1071,9 @@ class TestClient(IntegrationTest):
         self.assertIsNone(session._transaction.conn_mgr)
 
     def test_constants(self):
-        """This test uses MongoClient explicitly to make sure that host and
-        port are not overloaded.
+        """This test uses MongoClient explicitly.
+
+        It makes sure that host and port are not overloaded.
         """
         host, port = client_context.host, client_context.port
         kwargs: dict = client_context.default_client_options.copy()

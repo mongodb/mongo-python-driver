@@ -175,7 +175,10 @@ def raise_config_error(key: str, suggestions: list[str] | None = None) -> NoRetu
     """Raise ConfigurationError with the given key name."""
     msg = f"Unknown option: {key}."
     if suggestions:
-        msg += f" Did you mean one of ({', '.join(suggestions)}) or maybe a camelCase version of one? Refer to docstring."
+        msg += (
+            f" Did you mean one of ({', '.join(suggestions)}) or maybe a camelCase version "
+            "of one? Refer to docstring."
+        )
     raise ConfigurationError(msg)
 
 
@@ -190,7 +193,7 @@ _UUID_REPRESENTATIONS = {
 
 
 def validate_boolean_or_string(option: str, value: Any) -> bool:
-    """Validates that value is True, False, 'true', or 'false'."""
+    """Validate that value is True, False, 'true', or 'false'."""
     if isinstance(value, str):
         if value not in ("true", "false"):
             raise ValueError(f"The value of {option} must be 'true' or 'false'")
@@ -199,7 +202,7 @@ def validate_boolean_or_string(option: str, value: Any) -> bool:
 
 
 def validate_integer(option: str, value: Any) -> int:
-    """Validates that 'value' is an integer (or basestring representation)."""
+    """Validate that 'value' is an integer (or basestring representation)."""
     if isinstance(value, int):
         return value
     elif isinstance(value, str):
@@ -227,7 +230,7 @@ def validate_non_negative_integer(option: str, value: Any) -> int:
 
 
 def validate_readable(option: str, value: Any) -> str | None:
-    """Validates that 'value' is file-like and readable."""
+    """Validate that 'value' is file-like and readable."""
     if value is None:
         return value
     # First make sure its a string py3.3 open(True, 'r') succeeds
@@ -245,21 +248,21 @@ def validate_non_negative_integer_or_none(option: str, value: Any) -> int | None
 
 
 def validate_string(option: str, value: Any) -> str:
-    """Validates that 'value' is an instance of `str`."""
+    """Validate that 'value' is an instance of `str`."""
     if isinstance(value, str):
         return value
     raise TypeError(f"Wrong type for {option}, value must be an instance of str, not {type(value)}")
 
 
 def validate_string_or_none(option: str, value: Any) -> str | None:
-    """Validates that 'value' is an instance of `basestring` or `None`."""
+    """Validate that 'value' is an instance of `basestring` or `None`."""
     if value is None:
         return value
     return validate_string(option, value)
 
 
 def validate_non_negative_int_or_basestring(option: Any, value: Any) -> int | str:
-    """Validates that 'value' is an integer or string."""
+    """Validate that 'value' is an integer or string."""
     if isinstance(value, int):
         return value
     elif isinstance(value, str):
@@ -269,14 +272,13 @@ def validate_non_negative_int_or_basestring(option: Any, value: Any) -> int | st
             return value
         return validate_non_negative_integer(option, val)
     raise TypeError(
-        f"Wrong type for {option}, value must be an non negative integer or a string, not {type(value)}"
+        f"Wrong type for {option}, value must be an non negative integer or a "
+        f"string, not {type(value)}"
     )
 
 
 def validate_positive_float(option: str, value: Any) -> float:
-    """Validates that 'value' is a float, or can be converted to one, and is
-    positive.
-    """
+    """Validate that 'value' is a float, or can be converted to one, and is positive."""
     errmsg = f"{option} must be an integer or float"
     try:
         value = float(value)
@@ -293,28 +295,25 @@ def validate_positive_float(option: str, value: Any) -> float:
 
 
 def validate_positive_float_or_zero(option: str, value: Any) -> float:
-    """Validates that 'value' is 0 or a positive float, or can be converted to
-    0 or a positive float.
-    """
+    """Validate that 'value' is 0 or a positive float, or can be converted to either."""
     if value in (0, "0"):
         return 0
     return validate_positive_float(option, value)
 
 
 def validate_timeout_or_none(option: str, value: Any) -> float | None:
-    """Validates a timeout specified in milliseconds returning
-    a value in floating point seconds.
-    """
+    """Validate a timeout specified in milliseconds returning a value in floating point seconds."""
     if value is None:
         return value
     return validate_positive_float(option, value) / 1000.0
 
 
 def validate_timeout_or_zero(option: str, value: Any) -> float:
-    """Validates a timeout specified in milliseconds returning
-    a value in floating point seconds for the case where None is an error
-    and 0 is valid. Setting the timeout to nothing in the URI string is a
-    config error.
+    """Validate a timeout specified in milliseconds.
+
+    Returns a value in floating point seconds for the case where None is
+    an error and 0 is valid. Setting the timeout to nothing in the URI
+    string is a config error.
     """
     if value is None:
         raise ConfigurationError(f"{option} cannot be None")
@@ -324,9 +323,10 @@ def validate_timeout_or_zero(option: str, value: Any) -> float:
 
 
 def validate_timeout_or_none_or_zero(option: Any, value: Any) -> float | None:
-    """Validates a timeout specified in milliseconds returning
-    a value in floating point seconds. value=0 and value="0" are treated the
-    same as value=None which means unlimited timeout.
+    """Validate a timeout specified in milliseconds.
+
+    Returns a value in floating point seconds. value=0 and value="0" are
+    treated the same as value=None which means unlimited timeout.
     """
     if value in (None, 0, "0"):
         return None
@@ -334,16 +334,14 @@ def validate_timeout_or_none_or_zero(option: Any, value: Any) -> float | None:
 
 
 def validate_timeoutms(option: Any, value: Any) -> float | None:
-    """Validates a timeout specified in milliseconds returning
-    a value in floating point seconds.
-    """
+    """Validate a timeout specified in milliseconds returning a value in floating point seconds."""
     if value is None:
         return None
     return validate_positive_float_or_zero(option, value) / 1000.0
 
 
 def validate_max_staleness(option: str, value: Any) -> int:
-    """Validates maxStalenessSeconds according to the Max Staleness Spec."""
+    """Validate maxStalenessSeconds according to the Max Staleness Spec."""
     if value in (-1, "-1"):
         # Default: No maximum staleness.
         return -1
@@ -455,14 +453,15 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
     if not isinstance(value, str):
         if not isinstance(value, dict):
             raise TypeError(
-                f"Auth mechanism properties must be given as a string or a dictionary, not {type(value)}"
+                f"Auth mechanism properties must be given as a string or a "
+                f"dictionary, not {type(value)}"
             )
         for key, prop_value in value.items():
             if isinstance(prop_value, str):
                 props[key] = prop_value
             elif isinstance(prop_value, bool):
                 props[key] = str(prop_value).lower()
-            elif key in ["ALLOWED_HOSTS"] and isinstance(prop_value, list):
+            elif key == "ALLOWED_HOSTS" and isinstance(prop_value, list):
                 props[key] = prop_value
             elif key in ["OIDC_CALLBACK", "OIDC_HUMAN_CALLBACK"]:
                 from pymongo.auth_oidc_shared import OIDCCallback
@@ -538,21 +537,21 @@ def validate_type_registry(option: Any, value: Any) -> TypeRegistry | None:
 
 
 def validate_list(option: str, value: Any) -> list[Any]:
-    """Validates that 'value' is a list."""
+    """Validate that 'value' is a list."""
     if not isinstance(value, list):
         raise TypeError(f"{option} must be a list, not {type(value)}")
     return value
 
 
 def validate_list_or_none(option: Any, value: Any) -> list[Any] | None:
-    """Validates that 'value' is a list or None."""
+    """Validate that 'value' is a list or None."""
     if value is None:
         return value
     return validate_list(option, value)
 
 
 def validate_list_or_mapping(option: Any, value: Any) -> None:
-    """Validates that 'value' is a list or a document."""
+    """Validate that 'value' is a list or a document."""
     if not isinstance(value, (abc.Mapping, list)):
         raise TypeError(
             f"{option} must either be a list or an instance of dict, "
@@ -612,7 +611,7 @@ def validate_server_api_or_none(option: Any, value: Any) -> ServerApi | None:
 
 
 def validate_is_callable_or_none(option: Any, value: Any) -> Callable[..., Any] | None:
-    """Validates that 'value' is a callable."""
+    """Validate that 'value' is a callable."""
     if value is None:
         return value
     if not callable(value):
@@ -658,7 +657,7 @@ def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
 
 
 def validate_tzinfo(dummy: Any, value: Any) -> datetime.tzinfo | None:
-    """Validate the tzinfo option"""
+    """Validate the tzinfo option."""
     if value is not None and not isinstance(value, datetime.tzinfo):
         raise TypeError(f"{value} must be an instance of datetime.tzinfo")
     return value
@@ -849,7 +848,7 @@ def _get_validator(
 
 
 def validate(option: str, value: Any) -> tuple[str, Any]:
-    """Generic validation function."""
+    """Validate a generic option and value pair."""
     validator = _get_validator(option, VALIDATORS, normed_key=option.lower())
     value = validator(option, value)
     return option, value
@@ -859,6 +858,7 @@ def get_validated_options(
     options: Mapping[str, Any], warn: bool = True
 ) -> MutableMapping[str, Any]:
     """Validate each entry in options and raise a warning if it is not valid.
+
     Returns a copy of options with invalid entries removed.
 
     :param opts: A dict containing MongoDB URI options.
@@ -919,8 +919,7 @@ WRITE_CONCERN_OPTIONS = frozenset(["w", "wtimeout", "wtimeoutms", "fsync", "j", 
 
 
 class BaseObject:
-    """A base class that provides attributes and methods common
-    to multiple pymongo classes.
+    """A base class providing attributes and methods common to pymongo classes.
 
     SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO MONGODB.
     """
@@ -946,27 +945,26 @@ class BaseObject:
 
         if not isinstance(write_concern, WriteConcern):
             raise TypeError(
-                f"write_concern must be an instance of pymongo.write_concern.WriteConcern, not {type(write_concern)}"
+                f"write_concern must be an instance of "
+                f"pymongo.write_concern.WriteConcern, not {type(write_concern)}"
             )
         self._write_concern = write_concern
 
         if not isinstance(read_concern, ReadConcern):
             raise TypeError(
-                f"read_concern must be an instance of pymongo.read_concern.ReadConcern, not {type(read_concern)}"
+                f"read_concern must be an instance of "
+                f"pymongo.read_concern.ReadConcern, not {type(read_concern)}"
             )
         self._read_concern = read_concern
 
     @property
     def codec_options(self) -> CodecOptions[Any]:
-        """Read only access to the :class:`~bson.codec_options.CodecOptions`
-        of this instance.
-        """
+        """Read only access to the :class:`~bson.codec_options.CodecOptions` of this instance."""
         return self._codec_options
 
     @property
     def write_concern(self) -> WriteConcern:
-        """Read only access to the :class:`~pymongo.write_concern.WriteConcern`
-        of this instance.
+        """Read only access to the :class:`~pymongo.write_concern.WriteConcern` of this instance.
 
         .. versionchanged:: 3.0
           The :attr:`write_concern` attribute is now read only.
@@ -1007,8 +1005,7 @@ class BaseObject:
 
     @property
     def read_concern(self) -> ReadConcern:
-        """Read only access to the :class:`~pymongo.read_concern.ReadConcern`
-        of this instance.
+        """Read only access to the :class:`~pymongo.read_concern.ReadConcern` of this instance.
 
         .. versionadded:: 3.2
         """
@@ -1104,7 +1101,7 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
 
 
 def has_c() -> bool:
-    """Is the C extension installed?"""
+    """Check if the C extension is installed."""
     try:
         from pymongo import _cmessage  # type: ignore[attr-defined] # noqa: F401
 

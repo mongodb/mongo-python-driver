@@ -274,7 +274,8 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
     @patch("random.random")
     @async_client_context.require_failCommand_appName
     async def test_01_operation_retry_uses_exponential_backoff(self, random_func):
-        # Drivers should test that retries do not occur immediately when a SystemOverloadedError is encountered.
+        # Drivers should test that retries do not occur immediately when a SystemOverloadedError is
+        # encountered.
 
         # 1. let `client` be a `MongoClient`
         client = self.client
@@ -284,7 +285,8 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
 
         # 3. Now, run transactions without backoff:
 
-        # a. Configure the random number generator used for jitter to always return `0` -- this effectively disables backoff.
+        # a. Configure the random number generator used for jitter to always return `0` -- this
+        # effectively disables backoff.
         random_func.return_value = 0
 
         # b. Configure the following failPoint:
@@ -298,7 +300,8 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
             ),
         )
         async with self.fail_point(fail_point):
-            # c. Execute the following command. Expect that the command errors. Measure the duration of the command execution.
+            # c. Execute the following command. Expect that the command errors. Measure the duration
+            # of the command execution.
             start0 = perf_counter()
             with self.assertRaises(OperationFailure):
                 await collection.insert_one({"a": 1})
@@ -314,8 +317,8 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
             end1 = perf_counter()
 
             # f. Compare the times between the two runs.
-            # The sum of 2 backoffs is 0.6 seconds. There is a 0.6-second window to account for potential variance between the two
-            # runs.
+            # The sum of 2 backoffs is 0.6 seconds. There is a 0.6-second window to account for
+            # potential variance between the two runs.
             self.assertTrue(abs((end1 - start1) - (end0 - start0 + 0.6)) < 0.6)
 
     @async_client_context.require_failCommand_appName
@@ -343,7 +346,8 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 await coll.find_one({})
 
-        # 5. Assert that the raised error contains both the `RetryableError` and `SystemOverloadedError` error labels.
+        # 5. Assert that the raised error contains both the `RetryableError` and
+        # `SystemOverloadedError` error labels.
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
@@ -352,10 +356,12 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
 
     @async_client_context.require_failCommand_appName
     async def test_04_overload_retries_limited_configured(self):
-        # Drivers should test that overload errors are retried a maximum of maxAdaptiveRetries times.
+        # Drivers should test that overload errors are retried a maximum of maxAdaptiveRetries
+        # times.
         max_retries = 1
 
-        # 1. Let `client` be a `MongoClient` with `maxAdaptiveRetries=1` and command event monitoring enabled.
+        # 1. Let `client` be a `MongoClient` with `maxAdaptiveRetries=1` and command event
+        # monitoring enabled.
         client = await self.async_single_client(
             maxAdaptiveRetries=max_retries, event_listeners=[self.listener]
         )
@@ -378,7 +384,8 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
             with self.assertRaises(PyMongoError) as error:
                 await coll.find_one({})
 
-        # 5. Assert that the raised error contains both the `RetryableError` and `SystemOverloadedError` error labels.
+        # 5. Assert that the raised error contains both the `RetryableError` and
+        # `SystemOverloadedError` error labels.
         self.assertIn("RetryableError", str(error.exception))
         self.assertIn("SystemOverloadedError", str(error.exception))
 
@@ -393,7 +400,8 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
     @async_client_context.require_version_min(9, 0, 0, -1)
     @async_client_context.require_failCommand_appName
     async def test_05_overload_errors_with_basebackoffms_override_backoff(self, random_func):
-        # Drivers should test that overload errors with `baseBackoffMS` override the default backoff duration.
+        # Drivers should test that overload errors with `baseBackoffMS` override the default
+        # backoff duration.
 
         # 1. Let `client` be a `MongoClient`.
         client = self.client
@@ -401,8 +409,8 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
         # 2. Let `coll` be a collection.
         coll = client.db.coll
 
-        # 3. Configure the random number generator used for exponential backoff jitter to always return a number as
-        # close as possible to `1`.
+        # 3. Configure the random number generator used for exponential backoff jitter to always
+        # return a number as close as possible to `1`.
         random_func.return_value = 1
 
         # 4. Configure the following failPoint:
@@ -416,8 +424,8 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
             ),
         )
         async with self.fail_point(fail_point):
-            # 5. Insert the document `{ a: 1 }`. Expect that the command errors. Measure the duration of the command
-            # execution.
+            # 5. Insert the document `{ a: 1 }`. Expect that the command errors. Measure the
+            # duration of the command execution.
             start0 = perf_counter()
             with self.assertRaises(OperationFailure):
                 await coll.insert_one({"a": 1})
@@ -435,7 +443,8 @@ class AsyncTestClientBackpressure(AsyncIntegrationTest):
                 end1 = perf_counter()
                 with_base_backoff_ms_time = end1 - start1
 
-                # 8. Assert the server attached `baseBackoffMS` to the error and the driver parsed it.
+                # 8. Assert the server attached `baseBackoffMS` to the error and the driver parsed
+                # it.
                 self.assertEqual(ctx.exception._base_backoff_ms, 50)
             finally:
                 # 9. Run the following command to disable `baseBackoffMS` on overload errors.

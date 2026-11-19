@@ -139,7 +139,7 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
 
     @property
     def direct(self) -> bool | None:
-        """Connect directly to a single server, or use a set of servers?
+        """Connect directly to a single server instead of a set of servers.
 
         True if there is one seed and no replica_set_name.
         """
@@ -186,5 +186,5 @@ class _BaseTopologySettings(Generic[_PoolClassType, _MonitorClassType]):
             return TOPOLOGY_TYPE.Unknown
 
     def get_server_descriptions(self) -> dict[tuple[str, int] | Any, ServerDescription]:
-        """Initial dict of (address, ServerDescription) for all seeds."""
+        """Get the (address, ServerDescription) dict for all seeds."""
         return {address: ServerDescription(address) for address in self.seeds}

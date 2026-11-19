@@ -50,8 +50,10 @@ def _wrap_encryption_errors() -> Iterator[None]:
 
 
 class RewrapManyDataKeyResult:
-    """Result object returned by a
-    :meth:`~pymongo.encryption.ClientEncryption.rewrap_many_data_key` or :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.rewrap_many_data_key` operation.
+    """Result of a rewrap_many_data_key operation.
+
+    Returned by :meth:`~pymongo.encryption.ClientEncryption.rewrap_many_data_key` or
+    :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.rewrap_many_data_key`.
 
     .. versionadded:: 4.2
     """
@@ -61,11 +63,13 @@ class RewrapManyDataKeyResult:
 
     @property
     def bulk_write_result(self) -> BulkWriteResult | None:
-        """The result of the bulk write operation used to update the key vault
-        collection with one or more rewrapped data keys. If
-        :meth:`~pymongo.encryption.ClientEncryption.rewrap_many_data_key` or :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.rewrap_many_data_key` does not
-        find any matching keys to rewrap, no bulk write operation will be executed
-        and this field will be ``None``.
+        """The result of the bulk write used to update the key vault collection.
+
+        The bulk write updates the key vault collection with one or more rewrapped data keys. If
+        :meth:`~pymongo.encryption.ClientEncryption.rewrap_many_data_key` or
+        :meth:`~pymongo.asynchronous.encryption.AsyncClientEncryption.rewrap_many_data_key` does
+        not find any matching keys to rewrap, no bulk write operation will be executed and this
+        field will be ``None``.
         """
         return self._bulk_write_result
 

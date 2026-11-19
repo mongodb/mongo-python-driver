@@ -106,7 +106,9 @@ def _validate_hedge(hedge: _Hedge | None) -> _Hedge | None:
         raise TypeError(f"hedge must be a dictionary, not {hedge!r}")
 
     warnings.warn(
-        "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.",
+        "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads "
+        "are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in "
+        "PyMongo 5.0.",
         DeprecationWarning,
         stacklevel=4,
     )
@@ -160,13 +162,15 @@ class _ServerMode:
 
     @property
     def tag_sets(self) -> _TagSets:
-        """Set ``tag_sets`` to a list of dictionaries like [{'dc': 'ny'}] to
-        read only from members whose ``dc`` tag has the value ``"ny"``.
+        """Set ``tag_sets`` to a list of dictionaries like ``[{'dc': 'ny'}]``.
+
+        Reads only from members whose ``dc`` tag has the value ``"ny"``.
         To specify a priority-order for tag sets, provide a list of
         tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
         set, ``{}``, means "read from any member that matches the mode,
         ignoring tags." MongoClient tries each set of tags in turn
         until it finds a set of tags with at least one matching member.
+
         For example, to only send a query to an analytic node::
 
            Nearest(tag_sets=[{"node":"analytics"}])
@@ -182,15 +186,20 @@ class _ServerMode:
 
     @property
     def max_staleness(self) -> int:
-        """The maximum estimated length of time (in seconds) a replica set
-        secondary can fall behind the primary in replication before it will
-        no longer be selected for operations, or -1 for no maximum.
+        """The maximum estimated time (in seconds) a secondary can fall behind.
+
+        This is the estimated length of time a replica set secondary can fall
+        behind the primary in replication before it will no longer be selected
+        for operations, or -1 for no maximum.
         """
         return self.__max_staleness
 
     @property
     def hedge(self) -> _Hedge | None:
-        """**DEPRECATED** - The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.
+        """**DEPRECATED** - The read preference 'hedge' option is deprecated in PyMongo 4.12+.
+
+        Hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed
+        in PyMongo 5.0.
 
         The read preference ``hedge`` parameter.
 
@@ -214,7 +223,9 @@ class _ServerMode:
         """
         if self.__hedge is not None:
             warnings.warn(
-                "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.",
+                "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged "
+                "reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed "
+                "in PyMongo 5.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -234,7 +245,10 @@ class _ServerMode:
         return 0 if self.__max_staleness == -1 else 5
 
     def __repr__(self) -> str:
-        return f"{self.name}(tag_sets={self.__tag_sets!r}, max_staleness={self.__max_staleness!r}, hedge={self.__hedge!r})"
+        return (
+            f"{self.name}(tag_sets={self.__tag_sets!r}, "
+            f"max_staleness={self.__max_staleness!r}, hedge={self.__hedge!r})"
+        )
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, _ServerMode):
@@ -551,7 +565,9 @@ class ReadPreference:
 
        Nearest(tag_sets=[{"node":"analytics"}])
 
-    See `Read and Write Settings <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_ for code examples.
+    See `Read and Write Settings
+    <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_
+    for code examples.
 
     A read preference is used in three cases:
 

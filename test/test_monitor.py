@@ -88,7 +88,8 @@ class TestMonitor(IntegrationTest):
                 for warning in w:
                     if (
                         issubclass(warning.category, ResourceWarning)
-                        and "Call MongoClient.close() to safely shut down your client and free up resources."
+                        and "Call MongoClient.close() to safely shut down "
+                        "your client and free up resources."
                         in str(warning.message)
                     ):
                         return True
@@ -108,8 +109,9 @@ class TestMonitor(IntegrationTest):
 
     @client_context.require_sync
     def test_close_stops_monitor_thread(self):
-        """PYTHON-1634: close() joins the monitor thread before returning,
-        so callers don't race it while it reads the socket.
+        """PYTHON-1634: close() joins the monitor thread before returning.
+
+        Callers don't race it while it reads the socket.
         """
         client = self.create_client()
         server = next(iter(client._topology._servers.values()))
@@ -132,9 +134,7 @@ class TestMonitor(IntegrationTest):
 
     @client_context.require_async
     def test_close_stops_monitor_task(self):
-        """PYTHON-1634: the async counterpart of
-        test_close_stops_monitor_thread.
-        """
+        """PYTHON-1634: the async counterpart of test_close_stops_monitor_thread."""
         client = self.create_client()
         server = next(iter(client._topology._servers.values()))
         monitor = server._monitor
@@ -150,8 +150,10 @@ class TestMonitor(IntegrationTest):
 
     @client_context.require_sync
     def test_no_thread_start_runtime_err_on_shutdown(self):
-        """Test we silence noisy runtime errors fired when the MongoClient spawns a new thread
-        on process shutdown.
+        """Test we silence noisy runtime errors.
+
+        The errors are fired when the MongoClient spawns a new thread on
+        process shutdown.
         """
         command = [
             sys.executable,

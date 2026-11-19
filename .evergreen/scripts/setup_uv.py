@@ -71,7 +71,7 @@ def _install_uv_astral() -> None:
 
 
 def _uv_exe() -> str:
-    """The uv binary name on this platform."""
+    """Return the uv binary name on this platform."""
     return "uv.exe" if os.name == "nt" else "uv"
 
 

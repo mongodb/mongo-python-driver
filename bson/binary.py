@@ -83,7 +83,9 @@ class UuidRepresentation:
     :class:`~bson.binary.Binary` instance will be returned instead of a
     :class:`uuid.UUID` instance.
 
-    See `unspecified representation details <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#unspecified>`_ for details.
+    See `unspecified representation details
+    <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#unspecified>`_
+    for details.
 
     .. versionadded:: 3.11
     """
@@ -95,7 +97,9 @@ class UuidRepresentation:
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`UUID_SUBTYPE`.
 
-    See `standard representation details <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#standard>`_ for details.
+    See `standard representation details
+    <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#standard>`_
+    for details.
 
     .. versionadded:: 3.11
     """
@@ -107,7 +111,9 @@ class UuidRepresentation:
     and decoded from BSON binary, using RFC-4122 byte order with
     binary subtype :data:`OLD_UUID_SUBTYPE`.
 
-    See `python legacy representation details <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#python_legacy>`_ for details.
+    See `python legacy representation details
+    <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#python_legacy>`_
+    for details.
 
     .. versionadded:: 3.11
     """
@@ -119,7 +125,9 @@ class UuidRepresentation:
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the Java driver's legacy byte order.
 
-    See `Java Legacy UUID <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#java_legacy>`_ for details.
+    See `Java Legacy UUID
+    <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#java_legacy>`_
+    for details.
 
     .. versionadded:: 3.11
     """
@@ -131,7 +139,9 @@ class UuidRepresentation:
     and decoded from BSON binary subtype :data:`OLD_UUID_SUBTYPE`,
     using the C# driver's legacy byte order.
 
-    See `C# Legacy UUID <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#csharp_legacy>`_ for details.
+    See `C# Legacy UUID
+    <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#csharp_legacy>`_
+    for details.
 
     .. versionadded:: 3.11
     """
@@ -233,6 +243,7 @@ class BinaryVectorDtype(Enum):
 
 class BinaryVector:
     """Vector of numbers along with metadata for binary interoperability.
+
     .. versionadded:: 4.10
     """
 
@@ -244,7 +255,8 @@ class BinaryVector:
         dtype: BinaryVectorDtype,
         padding: int = 0,
     ):
-        """
+        """Create a new BinaryVector.
+
         :param data: Sequence of numbers representing the mathematical vector.
         :param dtype:  The data type stored in binary
         :param padding: The number of bits in the final byte that are to be ignored
@@ -341,7 +353,9 @@ class Binary(bytes):
         :param uuid_representation: A member of
             :class:`~bson.binary.UuidRepresentation`. Default:
             :const:`~bson.binary.UuidRepresentation.STANDARD`.
-            See `UUID representations <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_ for details.
+            See `UUID representations
+            <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_
+            for details.
 
         .. versionadded:: 3.11
         """
@@ -390,7 +404,9 @@ class Binary(bytes):
         :param uuid_representation: A member of
             :class:`~bson.binary.UuidRepresentation`. Default:
             :const:`~bson.binary.UuidRepresentation.STANDARD`.
-            See `UUID representations <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_ for details.
+            See `UUID representations
+            <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_
+            for details.
 
         .. versionadded:: 3.11
         """
@@ -422,7 +438,8 @@ class Binary(bytes):
             return UUID(bytes=self)
 
         raise ValueError(
-            f"cannot decode subtype {self.subtype} to {UUID_REPRESENTATION_NAMES[uuid_representation]}"
+            f"cannot decode subtype {self.subtype} to "
+            f"{UUID_REPRESENTATION_NAMES[uuid_representation]}"
         )
 
     @classmethod
@@ -467,7 +484,8 @@ class Binary(bytes):
         :return: Binary packed data identified by dtype and padding.
 
         .. versionchanged:: 4.14
-           When padding is non-zero, ignored bits should be zero. Raise exception on encoding, warn on decoding.
+           When padding is non-zero, ignored bits should be zero. Raise exception on encoding, warn
+           on decoding.
 
         .. versionadded:: 4.10
         """
@@ -484,7 +502,8 @@ class Binary(bytes):
         padding = 0 if padding is None else padding
         if not isinstance(dtype, BinaryVectorDtype):
             raise TypeError(
-                "dtype must be a bson.BinaryVectorDtype of BinaryVectorDType.INT8, PACKED_BIT, FLOAT32"
+                "dtype must be a bson.BinaryVectorDtype of "
+                "BinaryVectorDType.INT8, PACKED_BIT, FLOAT32"
             )
         metadata = struct.pack("<sB", dtype.value, padding)
 
@@ -511,11 +530,13 @@ class Binary(bytes):
                 import numpy as np
             except ImportError as exc:
                 raise ImportError(
-                    "Failed to create binary from vector. Check type. If numpy array, numpy must be installed."
+                    "Failed to create binary from vector. Check type. "
+                    "If numpy array, numpy must be installed."
                 ) from exc
             if not isinstance(vector, np.ndarray):
                 raise TypeError(
-                    "Could not create Binary. Vector must be a BinaryVector, list[int], list[float] or numpy ndarray."
+                    "Could not create Binary. Vector must be a "
+                    "BinaryVector, list[int], list[float] or numpy ndarray."
                 )
             if vector.ndim != 1:
                 raise ValueError(
@@ -540,14 +561,16 @@ class Binary(bytes):
 
         if padding and len(vector) and not (data[-1] & ((1 << padding) - 1)) == 0:
             raise ValueError(
-                "Vector has a padding P, but bits in the final byte lower than P are non-zero. They must be zero."
+                "Vector has a padding P, but bits in the final byte "
+                "lower than P are non-zero. They must be zero."
             )
         return cls(metadata + data, subtype=VECTOR_SUBTYPE)
 
     def as_vector(self, return_numpy: bool = False) -> BinaryVector:
-        """From the Binary, create a list or 1-d numpy array of numbers, along with dtype and padding.
+        """From the Binary, create a list or 1-d numpy array of numbers, with dtype and padding.
 
-        :param return_numpy: If True, BinaryVector.data will be a one-dimensional numpy array. By default, it is a list.
+        :param return_numpy: If True, BinaryVector.data will be a one-dimensional numpy array. By
+            default, it is a list.
         :return: BinaryVector
 
         .. versionadded:: 4.10
@@ -562,7 +585,8 @@ class Binary(bytes):
 
         if padding and dtype != BinaryVectorDtype.PACKED_BIT:
             raise ValueError(
-                f"Corrupt data. Padding ({padding}) must be 0 for all but PACKED_BIT dtypes. ({dtype=})"
+                f"Corrupt data. Padding ({padding}) must be 0 for all but "
+                f"PACKED_BIT dtypes. ({dtype=})"
             )
 
         if not return_numpy:
@@ -594,7 +618,8 @@ class Binary(bytes):
                 unpacked_uint8s = list(struct.unpack_from(format_string, self, offset))
                 if padding and n_bytes and unpacked_uint8s[-1] & (1 << padding) - 1 != 0:
                     warnings.warn(
-                        "Vector has a padding P, but bits in the final byte lower than P are non-zero. For pymongo>=5.0, they must be zero.",
+                        "Vector has a padding P, but bits in the final byte lower than P are "
+                        "non-zero. For pymongo>=5.0, they must be zero.",
                         DeprecationWarning,
                         stacklevel=2,
                     )
@@ -626,7 +651,8 @@ class Binary(bytes):
                 data = np.frombuffer(self[offset:], dtype="uint8")
                 if padding and np.unpackbits(data[-1])[-padding:].sum() > 0:
                     warnings.warn(
-                        "Vector has a padding P, but bits in the final byte lower than P are non-zero. For pymongo>=5.0, they must be zero.",
+                        "Vector has a padding P, but bits in the final byte lower than P are "
+                        "non-zero. For pymongo>=5.0, they must be zero.",
                         DeprecationWarning,
                         stacklevel=2,
                     )

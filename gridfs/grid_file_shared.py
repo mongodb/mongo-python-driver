@@ -58,7 +58,8 @@ def _a_grid_in_property(
             warnings.warn(warn_str, stacklevel=2, category=DeprecationWarning)
         if self._closed:
             raise InvalidOperation(
-                "AsyncGridIn does not support __setattr__ after being closed(). Set the attribute before closing the file or use AsyncGridIn.set() instead"
+                "AsyncGridIn does not support __setattr__ after being closed(). "
+                "Set the attribute before closing the file or use AsyncGridIn.set() instead"
             )
         self._file[field_name] = value
 

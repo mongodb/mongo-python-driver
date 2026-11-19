@@ -246,9 +246,9 @@ class GridFS:
         session: ClientSession | None = None,
         **kwargs: Any,
     ) -> GridOut:
-        """Get the most recent version of a file in GridFS by ``"filename"``
-        or metadata fields.
+        """Get the most recent version of a file in GridFS.
 
+        The file is matched by ``"filename"`` or metadata fields.
         Equivalent to calling :meth:`get_version` with the default
         `version` (``-1``).
 
@@ -292,8 +292,7 @@ class GridFS:
         self._chunks.delete_many({"files_id": {"$eq": file_id}}, session=session)
 
     def list(self, session: ClientSession | None = None) -> list[str]:
-        """List the names of all files stored in this instance of
-        :class:`GridFS`.
+        """List the names of all files stored in this instance of :class:`GridFS`.
 
         :param session: a
             :class:`~pymongo.client_session.ClientSession`
@@ -537,8 +536,7 @@ class GridFSBucket:
         metadata: Mapping[str, Any] | None = None,
         session: ClientSession | None = None,
     ) -> GridIn:
-        """Opens a Stream that the application can write the contents of the
-        file to.
+        """Open a Stream that the application can write the contents of the file to.
 
         The user must specify the filename, and can choose to add any
         additional information in the metadata field of the file document or
@@ -592,8 +590,7 @@ class GridFSBucket:
         metadata: Mapping[str, Any] | None = None,
         session: ClientSession | None = None,
     ) -> GridIn:
-        """Opens a Stream that the application can write the contents of the
-        file to.
+        """Open a Stream that the application can write the contents of the file to.
 
         The user must specify the file id and filename, and can choose to add
         any additional information in the metadata field of the file document
@@ -653,7 +650,7 @@ class GridFSBucket:
         metadata: Mapping[str, Any] | None = None,
         session: ClientSession | None = None,
     ) -> ObjectId:
-        """Uploads a user file to a GridFS bucket.
+        """Upload a user file to a GridFS bucket.
 
         Reads the contents of the user file from `source` and uploads
         it to the file `filename`. Source can be a string or file-like object.
@@ -702,7 +699,7 @@ class GridFSBucket:
         metadata: Mapping[str, Any] | None = None,
         session: ClientSession | None = None,
     ) -> None:
-        """Uploads a user file to a GridFS bucket with a custom file id.
+        """Upload a user file to a GridFS bucket with a custom file id.
 
         Reads the contents of the user file from `source` and uploads
         it to the file `filename`. Source can be a string or file-like object.
@@ -743,8 +740,7 @@ class GridFSBucket:
             gin.write(source)
 
     def open_download_stream(self, file_id: Any, session: ClientSession | None = None) -> GridOut:
-        """Opens a Stream from which the application can read the contents of
-        the stored file specified by file_id.
+        """Open a Stream from which the application can read the stored file specified by file_id.
 
         For example::
 
@@ -776,8 +772,7 @@ class GridFSBucket:
     def download_to_stream(
         self, file_id: Any, destination: Any, session: ClientSession | None = None
     ) -> None:
-        """Downloads the contents of the stored file specified by file_id and
-        writes the contents to `destination`.
+        """Download the contents of the stored file specified by file_id to `destination`.
 
         For example::
 
@@ -810,8 +805,9 @@ class GridFSBucket:
 
     @_csot.apply
     def delete(self, file_id: Any, session: ClientSession | None = None) -> None:
-        """Given an file_id, delete this stored file's files collection document
-        and associated chunks from a GridFS bucket.
+        """Given an file_id, delete this stored file from a GridFS bucket.
+
+        Deletes the stored file's files collection document and associated chunks.
 
         For example::
 
@@ -838,8 +834,9 @@ class GridFSBucket:
 
     @_csot.apply
     def delete_by_name(self, filename: str, session: ClientSession | None = None) -> None:
-        """Given a filename, delete this stored file's files collection document(s)
-        and associated chunks from a GridFS bucket.
+        """Given a filename, delete this stored file from a GridFS bucket.
+
+        Deletes the stored file's files collection document(s) and associated chunks.
 
         For example::
 
@@ -864,7 +861,7 @@ class GridFSBucket:
             raise NoFile(f"no file could be deleted because none matched filename {filename!r}")
 
     def find(self, *args: Any, **kwargs: Any) -> GridOutCursor:
-        """Find and return the files collection documents that match ``filter``
+        """Find and return the files collection documents that match ``filter``.
 
         Returns a cursor that iterates across files matching
         arbitrary queries on the files collection. Can be combined
@@ -913,8 +910,7 @@ class GridFSBucket:
     def open_download_stream_by_name(
         self, filename: str, revision: int = -1, session: ClientSession | None = None
     ) -> GridOut:
-        """Opens a Stream from which the application can read the contents of
-        `filename` and optional `revision`.
+        """Open a Stream from which the application can read `filename` and optional `revision`.
 
         For example::
 
@@ -972,8 +968,7 @@ class GridFSBucket:
         revision: int = -1,
         session: ClientSession | None = None,
     ) -> None:
-        """Write the contents of `filename` (with optional `revision`) to
-        `destination`.
+        """Write the contents of `filename` (with optional `revision`) to `destination`.
 
         For example::
 
@@ -1016,7 +1011,7 @@ class GridFSBucket:
                 destination.write(chunk)
 
     def rename(self, file_id: Any, new_filename: str, session: ClientSession | None = None) -> None:
-        """Renames the stored file with the specified file_id.
+        """Rename the stored file with the specified file_id.
 
         For example::
 
@@ -1048,7 +1043,7 @@ class GridFSBucket:
     def rename_by_name(
         self, filename: str, new_filename: str, session: ClientSession | None = None
     ) -> None:
-        """Renames the stored file with the specified filename.
+        """Rename the stored file with the specified filename.
 
         For example::
 
@@ -1071,7 +1066,8 @@ class GridFSBucket:
         )
         if not result.matched_count:
             raise NoFile(
-                f"no files could be renamed {new_filename!r} because none matched filename {filename!r}"
+                f"no files could be renamed {new_filename!r} "
+                f"because none matched filename {filename!r}"
             )
 
 
@@ -1084,7 +1080,7 @@ class GridIn:
         session: ClientSession | None = None,
         **kwargs: Any,
     ) -> None:
-        """Write a file to GridFS
+        """Write a file to GridFS.
 
         Application developers should generally not need to
         instantiate this class directly - instead see the methods
@@ -1196,7 +1192,7 @@ class GridIn:
 
     @property
     def closed(self) -> bool:
-        """Is this file closed?"""
+        """Whether this file is closed."""
         return self._closed
 
     _id: Any = _grid_in_property("_id", "The ``'_id'`` value for this file.", read_only=True)
@@ -1212,7 +1208,8 @@ class GridIn:
     )
     md5: str | None = _grid_in_property(
         "md5",
-        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file "
+        "if an md5 sum was created.",
         closed_only=True,
     )
 
@@ -1245,7 +1242,8 @@ class GridIn:
                     )
                 else:
                     raise AttributeError(
-                        "GridIn does not support __setattr__ after being closed(). Set the attribute before closing the file or use GridIn.set() instead"
+                        "GridIn does not support __setattr__ after being closed(). "
+                        "Set the attribute before closing the file or use GridIn.set() instead"
                     )
 
     def set(self, name: str, value: Any) -> None:
@@ -1462,7 +1460,7 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         file_document: Any | None = None,
         session: ClientSession | None = None,
     ) -> None:
-        """Read a file from GridFS
+        """Read a file from GridFS.
 
         Application developers should generally not need to
         instantiate this class directly - instead see the methods
@@ -1536,7 +1534,8 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
     )
     md5: str | None = _grid_out_property(
         "md5",
-        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file "
+        "if an md5 sum was created.",
     )
 
     _file: Any
@@ -1606,8 +1605,10 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         return True
 
     def readchunk(self) -> bytes:
-        """Reads a chunk at a time. If the current position is within a
-        chunk the remainder of the chunk is returned.
+        """Read a chunk at a time.
+
+        If the current position is within a chunk the remainder of the
+        chunk is returned.
         """
         self.open()
         received = len(self._buffer) - self._buffer_pos
@@ -1635,7 +1636,7 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         return chunk_data
 
     def _read_size_or_line(self, size: int = -1, line: bool = False) -> bytes:
-        """Internal read() and readline() helper."""
+        """Implement read() and readline()."""
         self.open()
         remainder = int(self.length) - self._position
         if size < 0 or size > remainder:
@@ -1686,8 +1687,7 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         return b"".join(data)
 
     def read(self, size: int = -1) -> bytes:
-        """Read at most `size` bytes from the file (less if there
-        isn't enough data).
+        """Read at most `size` bytes from the file (less if there isn't enough data).
 
         The bytes are returned as an instance of :class:`bytes`
         If `size` is negative or omitted all data is read.
@@ -1788,9 +1788,7 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         return False
 
     def __enter__(self) -> Self:
-        """Makes it possible to use :class:`GridOut` files
-        with the async context manager protocol.
-        """
+        """Enable using :class:`GridOut` files with the async context manager protocol."""
         return self
 
     def __exit__(
@@ -1799,9 +1797,7 @@ class GridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> Any:
-        """Makes it possible to use :class:`GridOut` files
-        with the async context manager protocol.
-        """
+        """Enable using :class:`GridOut` files with the async context manager protocol."""
         self.close()
         return False
 
@@ -1942,8 +1938,9 @@ class GridOutIterator:
 
 
 class GridOutCursor(Cursor):  # type: ignore[type-arg]
-    """A cursor / iterator for returning GridOut objects as the result
-    of an arbitrary query against the GridFS files collection.
+    """A cursor / iterator for returning GridOut objects.
+
+    The GridOut objects are the result of an arbitrary query against the GridFS files collection.
     """
 
     def __init__(
@@ -1957,8 +1954,7 @@ class GridOutCursor(Cursor):  # type: ignore[type-arg]
         batch_size: int = 0,
         session: ClientSession | None = None,
     ) -> None:
-        """Create a new cursor, similar to the normal
-        :class:`~pymongo.cursor.Cursor`.
+        """Create a new cursor, similar to the normal :class:`~pymongo.cursor.Cursor`.
 
         Should not be called directly by application developers - see
         the :class:`~gridfs.GridFS` method :meth:`~gridfs.GridFS.find` instead.
@@ -2007,5 +2003,5 @@ class GridOutCursor(Cursor):  # type: ignore[type-arg]
         raise NotImplementedError("Method does not exist for GridOutCursor")
 
     def _clone_base(self, session: ClientSession | None) -> GridOutCursor:
-        """Creates an empty GridOutCursor for information to be copied into."""
+        """Create an empty GridOutCursor for information to be copied into."""
         return GridOutCursor(self._root_collection, session=session)

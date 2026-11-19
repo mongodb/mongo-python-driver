@@ -14,21 +14,25 @@
 
 """Tools for connecting to MongoDB.
 
-.. seealso:: `Read and Write Settings <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_ for examples of connecting
-   to replica sets or sets of mongos servers.
+.. seealso:: `Read and Write Settings
+   <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_
+   for examples of connecting to replica sets or sets of mongos servers.
 
 To get a :class:`~pymongo.database.Database` instance from a
 :class:`MongoClient` use either dictionary-style or attribute-style
 access:
 
 .. doctest::
+  :options: +NORMALIZE_WHITESPACE
 
   >>> from pymongo import MongoClient
   >>> c = MongoClient()
   >>> c.test_database
-  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test_database')
+  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False,
+  connect=True), 'test_database')
   >>> c["test-database"]
-  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False, connect=True), 'test-database')
+  Database(MongoClient(host=['localhost:27017'], document_class=dict, tz_aware=False,
+  connect=True), 'test-database')
 """
 
 from __future__ import annotations
@@ -266,7 +270,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 print("Server not available")
 
         .. warning:: When using PyMongo in a multiprocessing context, please
-          read `PyMongo multiprocessing <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/mongoclient/#multiprocessing>`_ first.
+          read `PyMongo multiprocessing
+          <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/mongoclient/#multiprocessing>`_
+          first.
 
         .. note:: Many of the following options can be passed using a MongoDB
           URI or keyword parameters. If the same option is passed in a URI and
@@ -302,7 +308,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             return DatetimeMS objects when the underlying datetime is
             out-of-range and 'datetime_clamp' to clamp to the minimum and
             maximum possible datetimes. Defaults to 'datetime'. See
-            `handling out of range datetimes <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes>`_ for details.
+            `handling out of range datetimes
+            <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes>`_
+            for details.
           - `directConnection` (optional): if ``True``, forces this client to
              connect directly to the specified MongoDB host as a standalone.
              If ``false``, the client connects to the entire replica set of
@@ -426,7 +434,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             Python before 3.14 zstd requires the `backports.zstd <https://pypi.org/project/backports.zstd/>`_
             package. By default no compression is used. Compression support
             must also be enabled on the server.
-            See `compress network traffic <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/network-compression/#compress-network-traffic>`_ for details.
+            See `compress network traffic
+            <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/network-compression/#compress-network-traffic>`_
+            for details.
           - `zlibCompressionLevel`: (int) The zlib compression level to use
             when zlib is used as the wire protocol compressor. Supported values
             are -1 through 9. -1 tells the zlib library to use its default
@@ -437,7 +447,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             values are the strings: "standard", "pythonLegacy", "javaLegacy",
             "csharpLegacy", and "unspecified" (the default). New applications
             should consider setting this to "standard" for cross language
-            compatibility. See `handling UUID data <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#unspecified>`_ for details.
+            compatibility. See `handling UUID data
+            <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#unspecified>`_
+            for details.
           - `unicode_decode_error_handler`: The error handler to apply when
             a Unicode-related error occurs during BSON decoding that would
             otherwise raise :exc:`UnicodeDecodeError`. Valid options include
@@ -641,7 +653,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             :class:`~pymongo.encryption_options.AutoEncryptionOpts` which
             configures this client to automatically encrypt collection commands
             and automatically decrypt results. See
-            `client-side field level encryption <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#client-side-field-level-encryption>`_ for an example.
+            `client-side field level encryption
+            <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#client-side-field-level-encryption>`_
+            for an example.
             If a :class:`MongoClient` is configured with
             ``auto_encryption_opts`` and a non-None ``maxPoolSize``, a
             separate internal ``MongoClient`` is created if any of the
@@ -657,15 +671,19 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
           - `server_api`: A
             :class:`~pymongo.server_api.ServerApi` which configures this
-            client to use Stable API. See `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_ for
-            details.
+            client to use Stable API. See `versioned API
+            <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_
+            for details.
 
           | **Overload retry options:**
           | (Requires MongoDB server version 9.0+.)
 
-          - `max_adaptive_retries`: (int) How many retries to allow for overload errors. Defaults to ``2``.
-          - `enable_overload_retargeting`: (boolean) Whether overload retargeting is enabled for this client.
-            If enabled, server overload errors will cause retry attempts to select a server that has not yet returned an overload error, if possible.
+          - `max_adaptive_retries`: (int) How many retries to allow for overload errors. Defaults to
+            ``2``.
+          - `enable_overload_retargeting`: (boolean) Whether overload retargeting is enabled for
+            this client.
+            If enabled, server overload errors will cause retry attempts to select a server that
+            has not yet returned an overload error, if possible.
             Defaults to ``False``.
 
         .. seealso:: The MongoDB documentation on `connections <https://dochub.mongodb.org/core/connections>`_.
@@ -677,7 +695,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
            Added the ``srvAllowedHostsSuffix`` URI and keyword argument.
 
         .. versionchanged:: 4.17
-           Added the ``max_adaptive_retries`` and ``enable_overload_retargeting`` URI and keyword arguments.
+           Added the ``max_adaptive_retries`` and ``enable_overload_retargeting`` URI and keyword
+           arguments.
 
         .. versionchanged:: 4.5
            Added the ``serverMonitoringMode`` keyword argument.
@@ -785,7 +804,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
            reconnect to one of them. In PyMongo 3, the client monitors its
            network latency to all the mongoses continuously, and distributes
            operations evenly among those with the lowest latency. See
-           `load balancing <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-targets/#replica-sets>`_ for more information.
+           `load balancing
+           <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-targets/#replica-sets>`_
+           for more information.
 
            The ``connect`` option is added.
 
@@ -793,7 +814,9 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
            are removed, as well as the ``auto_start_request`` option.
 
            The ``copy_database`` method is removed, see
-           `Copy and Clone Databases <https://www.mongodb.com/docs/database-tools/mongodump/mongodump-examples/#copy-and-clone-databases>`_ for alternatives.
+           `Copy and Clone Databases
+           <https://www.mongodb.com/docs/database-tools/mongodump/mongodump-examples/#copy-and-clone-databases>`_
+           for alternatives.
 
            The :meth:`MongoClient.disconnect` method is removed; it was a
            synonym for :meth:`~pymongo.MongoClient.close`.
@@ -1158,7 +1181,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         self._opened = False
 
     def append_metadata(self, driver_info: DriverInfo) -> None:
-        """Appends the given metadata to existing driver metadata.
+        """Append the given metadata to existing driver metadata.
 
         :param driver_info: a :class:`~pymongo.driver_info.DriverInfo`
 
@@ -1174,7 +1197,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         return self._options.load_balanced and not (session and session.in_transaction)
 
     def _after_fork(self) -> None:
-        """Resets topology in a child after successfully forking."""
+        """Reset topology in a child after successfully forking."""
         self._init_background(self._topology._pid)
         # Reset the session pool to avoid duplicate sessions in the child process.
         self._topology._session_pool.reset()
@@ -1320,7 +1343,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """The description of the connected MongoDB deployment.
 
         >>> client.topology_description
-        <TopologyDescription id: 605a7b04e76489833a7c6113, topology_type: ReplicaSetWithPrimary, servers: [<ServerDescription ('localhost', 27017) server_type: RSPrimary, rtt: 0.0007973677999995488>, <ServerDescription ('localhost', 27018) server_type: RSSecondary, rtt: 0.0005540556000003249>, <ServerDescription ('localhost', 27019) server_type: RSSecondary, rtt: 0.0010367483999999649>]>
+        <TopologyDescription id: 605a7b04e76489833a7c6113, topology_type: ReplicaSetWithPrimary,
+        servers: [<ServerDescription ('localhost', 27017) server_type: RSPrimary, rtt:
+        0.0007973677999995488>, <ServerDescription ('localhost', 27018) server_type: RSSecondary,
+        rtt: 0.0005540556000003249>, <ServerDescription ('localhost', 27019) server_type:
+        RSSecondary, rtt: 0.0010367483999999649>]>
         >>> client.topology_description.topology_type_name
         'ReplicaSetWithPrimary'
 
@@ -1468,8 +1495,10 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
             if self._opened and not self._closed:
                 warnings.warn(
                     (
-                        f"Unclosed {type(self).__name__} opened at:\n{self._topology_settings._stack}"
-                        f"Call {type(self).__name__}.close() to safely shut down your client and free up resources."
+                        f"Unclosed {type(self).__name__} opened at:\n"
+                        f"{self._topology_settings._stack}"
+                        f"Call {type(self).__name__}.close() to safely shut down "
+                        f"your client and free up resources."
                     ),
                     ResourceWarning,
                     stacklevel=2,
@@ -1618,12 +1647,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         write_concern: WriteConcern | None = None,
         read_concern: ReadConcern | None = None,
     ) -> database.Database[_DocumentType]:
-        """Get a :class:`~pymongo.database.Database` with the given name and
-        options.
+        """Get a :class:`~pymongo.database.Database`.
 
-        Useful for creating a :class:`~pymongo.database.Database` with
-        different codec options, read preference, and/or write concern from
-        this :class:`MongoClient`.
+        The returned database uses the given name and options. Useful for creating a
+        :class:`~pymongo.database.Database` with different codec
+        options, read preference, and/or write concern from this :class:`MongoClient`.
 
           >>> client.read_preference
           Primary()
@@ -1698,7 +1726,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     next = __next__
 
     def _server_property(self, attr_name: str) -> Any:
-        """An attribute of the current server's description.
+        """Get an attribute of the current server's description.
 
         If the client is not connected, this will block until a connection is
         established or raise ServerSelectionTimeoutError if no server is
@@ -1794,9 +1822,11 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     @property
     def is_mongos(self) -> bool:
-        """If this client is connected to mongos. If the client is not
-        connected, this will block until a connection is established or raise
-        ServerSelectionTimeoutError if no server is available.
+        """Whether this client is connected to mongos.
+
+        If the client is not connected, this will block until a connection is
+        established or raise ServerSelectionTimeoutError if no server is
+        available.
         """
         return self._server_property("server_type") == SERVER_TYPE.Mongos
 
@@ -1873,7 +1903,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 self._loop = asyncio.get_running_loop()
             elif self._loop != asyncio.get_running_loop():
                 raise RuntimeError(
-                    "Cannot use MongoClient in different event loop. MongoClient uses low-level asyncio APIs that bind it to the event loop it was created on."
+                    "Cannot use MongoClient in different event loop. MongoClient uses"
+                    " low-level asyncio APIs that bind it to the event loop it was created on."
                 )
         if not self._opened:
             if self._resolve_srv_info["is_srv"]:
@@ -1967,7 +1998,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         """Run a _Query/_GetMore operation and return a Response.
 
         :param operation: a _Query or _GetMore object.
-        :param run_with_conn: A callable ``(conn, operation, read_preference) -> Response``
+        :param run_with_conn: A callable
+            ``(conn, operation, read_preference) -> Response``
             that executes the operation on a given connection.
         :param address: Optional address when sending a message
             to a specific server, used for getMore.
@@ -2001,7 +2033,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         operation: str,
         operation_id: int | None = None,
     ) -> T:
-        """Execute an operation with at most one consecutive retries
+        """Execute an operation with at most one consecutive retries.
 
         Returns func()'s return value on success. On error retries the same
         command.
@@ -2038,7 +2070,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         is_aggregate_write: bool = False,
         conn_mgr: Any = None,
     ) -> T:
-        """Internal retryable helper for all client transactions.
+        """Run the internal retryable helper for all client transactions.
 
         :param func: Callback function we want to retry
         :param session: Client Session on which the transaction should occur
@@ -2084,7 +2116,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         is_aggregate_write: bool = False,
         conn_mgr: Any = None,
     ) -> T:
-        """Execute an operation with consecutive retries if possible
+        """Execute an operation with consecutive retries if possible.
 
         Returns func()'s return value on success. On error retries the same
         command.
@@ -2133,7 +2165,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
         bulk: _Bulk | _ClientBulk | None = None,
         operation_id: int | None = None,
     ) -> T:
-        """Execute an operation with consecutive retries if possible
+        """Execute an operation with consecutive retries if possible.
 
         Returns func()'s return value on success. On error retries the same
         command.
@@ -2306,9 +2338,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
 
     # This method is run periodically by a background thread.
     def _process_periodic_tasks(self) -> None:
-        """Process any pending kill cursors requests and
-        maintain connection pool parameters.
-        """
+        """Process any pending kill cursors requests and maintain connection pool parameters."""
         try:
             self._process_kill_cursors()
             self._topology.update_pool()
@@ -2319,7 +2349,7 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 _log_client_error()
 
     def _return_server_session(self, server_session: _ServerSession | _EmptyServerSession) -> None:
-        """Internal: return a _ServerSession to the pool."""
+        """Return a _ServerSession to the pool."""
         if isinstance(server_session, _EmptyServerSession):
             return None
         return self._topology.return_server_session(server_session)
@@ -2371,7 +2401,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                 return bound_session
             else:
                 raise InvalidOperation(
-                    "Only the client that created the bound session can perform operations within its context block. See <PLACEHOLDER> for more information."
+                    "Only the client that created the bound session can perform operations within"
+                    " its context block. See <PLACEHOLDER> for more information."
                 )
         else:
             return None
@@ -2420,9 +2451,12 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> CommandCursor[dict[str, Any]]:
         """Get a cursor over the databases of the connected server.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection,
+        which leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             with client.list_databases() as cursor:
@@ -2555,7 +2589,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
           >>> models = [InsertOne(namespace="db.test", document={'y': 1}),
           ...           DeleteOne(namespace="db.test", filter={'x': 1}),
           ...           InsertOne(namespace="db.coll", document={'y': 2}),
-          ...           ReplaceOne(namespace="db.test", filter={'w': 1}, replacement={'z': 1}, upsert=True)]
+          ...           ReplaceOne(namespace="db.test", filter={'w': 1},
+          ...                       replacement={'z': 1}, upsert=True)]
           >>> result = client.bulk_write(models=models)
           >>> result.inserted_count
           2
@@ -2850,7 +2885,7 @@ class _ClientReadCheckout(_ClientCheckout):
 class _ClientConnectionRetryable(
     _AgnosticClientConnectionRetryableBase[T, "Server", _WriteCall[T] | _ReadCall[T]]
 ):
-    """Responsible for executing retryable connections on read or write operations"""
+    """Responsible for executing retryable connections on read or write operations."""
 
     __slots__ = ()
 
@@ -2858,7 +2893,7 @@ class _ClientConnectionRetryable(
     _session: ClientSession | None
 
     def run(self) -> T:
-        """Runs the supplied func() and attempts a retry
+        """Run the supplied func() and attempt a retry.
 
         :raises: self._last_error: Last exception raised
 
@@ -3017,7 +3052,7 @@ class _ClientConnectionRetryable(
                     time.sleep(delay)
 
     def _get_server(self) -> Server:
-        """Retrieves a server object based on provided object context
+        """Retrieve a server object based on provided object context.
 
         :return: Abstraction to connect to server
         """
@@ -3031,7 +3066,7 @@ class _ClientConnectionRetryable(
         )
 
     def _write(self) -> T:
-        """Wrapper method for write-type retryable client executions
+        """Wrap write-type retryable client executions.
 
         :return: Output for func()'s call
         """
@@ -3063,7 +3098,7 @@ class _ClientConnectionRetryable(
             raise
 
     def _read(self) -> T:
-        """Wrapper method for read-type retryable client executions
+        """Wrap read-type retryable client executions.
 
         :return: Output for func()'s call
         """

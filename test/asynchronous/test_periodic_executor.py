@@ -309,7 +309,8 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
         run_stmt = (
             "main()"
             if _IS_SYNC
-            else 'asyncio.run(main(), loop_factory=asyncio.SelectorEventLoop if sys.platform == "win32" else None)'
+            else "asyncio.run(main(), loop_factory="
+            'asyncio.SelectorEventLoop if sys.platform == "win32" else None)'
         )
         # The sync monitor signals its thread through the event; the async
         # monitor yields to its loop instead. Synchro drops the async yield.

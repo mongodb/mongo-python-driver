@@ -132,8 +132,8 @@ def main(options, mode, urls):
 
         if options.verbose:
             print(
-                f"Getting {urls} {nrequests_per_thread * options.nthreads} times total in {options.nthreads} threads, "
-                f"{nrequests_per_thread} times per thread"
+                f"Getting {urls} {nrequests_per_thread * options.nthreads} times total in "
+                f"{options.nthreads} threads, {nrequests_per_thread} times per thread"
             )
         threads = [
             URLGetterThread(options, urls, nrequests_per_thread) for _ in range(options.nthreads)

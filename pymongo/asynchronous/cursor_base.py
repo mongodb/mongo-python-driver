@@ -166,7 +166,7 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
         )
 
     async def _die_lock(self) -> None:
-        """Closes this cursor."""
+        """Close this cursor."""
         try:
             already_killed = self._killed
         except AttributeError:
@@ -199,7 +199,7 @@ class _AsyncCursorBase(_AgnosticCursorBase[_DocumentType]):
 
     @_csot.apply
     async def to_list(self, length: int | None = None) -> list[_DocumentType]:
-        """Converts the contents of this cursor to a list more efficiently than ``[doc async for doc in cursor]``.
+        """Convert this cursor's contents to a list more efficiently than iterating over it.
 
         To use::
 
