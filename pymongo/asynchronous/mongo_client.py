@@ -222,20 +222,22 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
             from urllib.parse import quote_plus
 
-            uri = "mongodb://%s:%s@%s" % (
-                quote_plus(user), quote_plus(password), host)
+            uri = "mongodb://%s:%s@%s" % (quote_plus(user), quote_plus(password), host)
             client = AsyncMongoClient(uri)
 
         Unix domain sockets are also supported. The socket path must be percent
         encoded in the URI::
 
             uri = "mongodb://%s:%s@%s" % (
-                quote_plus(user), quote_plus(password), quote_plus(socket_path))
+                quote_plus(user),
+                quote_plus(password),
+                quote_plus(socket_path),
+            )
             client = AsyncMongoClient(uri)
 
         But not when passed as a simple hostname::
 
-            client = AsyncMongoClient('/tmp/mongodb-27017.sock')
+            client = AsyncMongoClient("/tmp/mongodb-27017.sock")
 
         Starting with version 3.6, PyMongo supports mongodb+srv:// URIs. The
         URI must include one, and only one, hostname. The hostname will be
@@ -265,10 +267,11 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           like this::
 
             from pymongo.errors import ConnectionFailure
+
             client = AsyncMongoClient()
             try:
                 # The ping command is cheap and does not require auth.
-                client.admin.command('ping')
+                client.admin.command("ping")
             except ConnectionFailure:
                 print("Server not available")
 
@@ -501,6 +504,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
                 def validator(host: str) -> bool:
                     return host.endswith((".a.example.com", ".b.example.com"))
+
 
                 AsyncMongoClient(
                     "mongodb+srv://cluster.example.com/",
@@ -791,7 +795,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
            In PyMongo 2.x, :class:`~pymongo.asynchronous.AsyncMongoClient` accepted a list of
            standalone MongoDB servers and used the first it could connect to::
 
-               AsyncMongoClient(['host1.com:27017', 'host2.com:27017'])
+               AsyncMongoClient(["host1.com:27017", "host2.com:27017"])
 
            A list of multiple standalones is no longer supported; if multiple
            servers are listed they must be members of the same replica set, or
@@ -825,7 +829,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
            instance of :class:`~pymongo.asynchronous.database.AsyncDatabase` for attribute names
            with leading underscores. You must use dict-style lookups instead::
 
-               client['__my_database__']
+               client["__my_database__"]
 
            Not::
 
@@ -1432,6 +1436,8 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
                     return f"document_class={value.__module__}.{value.__name__}"
             if option == "authmechanismproperties":
                 value = common.redact_auth_mechanism_properties_for_repr(value)
+            if option in common.SENSITIVE_OPTIONS_FOR_REPR:
+                return f"{option}='<redacted>'"
             if option in common.TIMEOUT_OPTIONS and value is not None:
                 return f"{option}={int(value * 1000)}"
 
@@ -1591,12 +1597,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
     ) -> database.AsyncDatabase[_DocumentType]:
         """Get the database named in the MongoDB connection URI.
 
-        >>> uri = 'mongodb://host/my_database'
+        >>> uri = "mongodb://host/my_database"
         >>> client = AsyncMongoClient(uri)
         >>> db = client.get_default_database()
-        >>> assert db.name == 'my_database'
+        >>> assert db.name == "my_database"
         >>> db = client.get_database()
-        >>> assert db.name == 'my_database'
+        >>> assert db.name == "my_database"
 
         Useful in scripts where you want to choose which database to use
         based only on the URI in a configuration file.
@@ -1661,8 +1667,7 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           >>> db1.read_preference
           Primary()
           >>> from pymongo import ReadPreference
-          >>> db2 = client.get_database(
-          ...     'test', read_preference=ReadPreference.SECONDARY)
+          >>> db2 = client.get_database("test", read_preference=ReadPreference.SECONDARY)
           >>> db2.read_preference
           Secondary(tag_sets=None)
 
@@ -2587,22 +2592,23 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
 
           >>> async for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           ...
           >>> async for doc in db.coll.find({}):
           ...     print(doc)
-          ...
           {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
           ...
           >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
           >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
-          >>> models = [InsertOne(namespace="db.test", document={'y': 1}),
-          ...           DeleteOne(namespace="db.test", filter={'x': 1}),
-          ...           InsertOne(namespace="db.coll", document={'y': 2}),
-          ...           ReplaceOne(namespace="db.test", filter={'w': 1},
-          ...                       replacement={'z': 1}, upsert=True)]
+          >>> models = [
+          ...     InsertOne(namespace="db.test", document={"y": 1}),
+          ...     DeleteOne(namespace="db.test", filter={"x": 1}),
+          ...     InsertOne(namespace="db.coll", document={"y": 2}),
+          ...     ReplaceOne(
+          ...         namespace="db.test", filter={"w": 1}, replacement={"z": 1}, upsert=True
+          ...     ),
+          ... ]
           >>> result = await client.bulk_write(models=models)
           >>> result.inserted_count
           2
@@ -2614,14 +2620,12 @@ class AsyncMongoClient(common.BaseObject, Generic[_DocumentType]):
           1
           >>> async for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           {'y': 1, '_id': ObjectId('54f62ee2fba5226811f634f1')}
           {'z': 1, '_id': ObjectId('54f62ee28891e756a6e1abd5')}
           ...
           >>> async for doc in db.coll.find({}):
           ...     print(doc)
-          ...
           {'x': 2, '_id': ObjectId('507f1f77bcf86cd799439011')}
           {'y': 2, '_id': ObjectId('507f1f77bcf86cd799439012')}
 

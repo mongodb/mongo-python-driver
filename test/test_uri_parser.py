@@ -30,6 +30,7 @@ from unittest.mock import patch
 
 from bson.binary import JAVA_LEGACY
 from pymongo import ReadPreference
+from pymongo.common import validate
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo.synchronous.uri_parser import parse_uri
 from pymongo.uri_parser_shared import (
@@ -167,11 +168,12 @@ class TestURI(unittest.TestCase):
         self.assertEqual({"authsource": "foobar"}, split_options("authSource=foobar"))
         self.assertEqual({"maxpoolsize": 50}, split_options("maxpoolsize=50"))
 
-        # Test suggestions given when invalid kwarg passed
+        # Test suggestions given when invalid kwarg passed. The key itself is
+        # not named: it comes from a connection string.
 
         expected = (
-            r"Unknown option: auth. Did you mean one of \(authsource, authmechanism, timeoutms\)"
-            r" or maybe a camelCase version of one\? Refer to docstring."
+            r"Unknown option. Did you mean one of \(authsource, authmechanism, timeoutms\) "
+            r"or maybe a camelCase version of one\? Refer to docstring."
         )
         with self.assertRaisesRegex(ConfigurationError, expected):
             split_options("auth=GSSAPI")
@@ -563,11 +565,12 @@ class TestURI(unittest.TestCase):
         self.assertEqual("@localhost:27017", res["database"])
 
     def test_port_with_whitespace(self):
-        with self.assertRaisesRegex(ValueError, "Port contains whitespace character: ' '"):
+        # The whitespace character itself is not echoed in the message.
+        with self.assertRaisesRegex(ValueError, "Port contains whitespace character"):
             parse_uri("mongodb://localhost:27017 ")
-        with self.assertRaisesRegex(ValueError, "Port contains whitespace character: ' '"):
+        with self.assertRaisesRegex(ValueError, "Port contains whitespace character"):
             parse_uri("mongodb://localhost: 27017")
-        with self.assertRaisesRegex(ValueError, r"Port contains whitespace character: '\\n'"):
+        with self.assertRaisesRegex(ValueError, "Port contains whitespace character"):
             parse_uri("mongodb://localhost:27\n017")
 
     def test_parse_uri_options_returns_dict(self):
@@ -714,6 +717,53 @@ class TestURI(unittest.TestCase):
                 parse_uri,
                 "mongodb+srv://host1.example.com",
             )
+
+    def test_parse_error_does_not_echo_value(self):
+        # A rejected option value must not appear in the error message.
+        value = "rejected_option_value"
+        for uri in (
+            f"mongodb://localhost/?readpreference={value}",
+            f"mongodb://localhost/?readPreference={value}",
+        ):
+            with self.assertRaises(ValueError) as ctx:
+                parse_uri(uri)
+            self.assertNotIn(value, str(ctx.exception))
+
+    def test_read_preference_mode_error_message(self):
+        expected = (
+            r"Not a valid read preference\. Must be one of: primary, primaryPreferred, "
+            r"secondary, secondaryPreferred, nearest"
+        )
+        with self.assertRaisesRegex(ValueError, expected):
+            parse_uri("mongodb://localhost/?readPreference=bogus")
+
+    def test_unknown_option_from_uri_is_not_named(self):
+        # A key parsed out of a URI is not named back.
+        key = "rejected_option_key"
+        with self.assertRaises(ConfigurationError) as ctx:
+            parse_uri(f"mongodb://localhost/?{key}=1")
+        self.assertNotIn(key, str(ctx.exception))
+
+    def test_unknown_option_from_dns_is_named(self):
+        # A key from a DNS TXT record is named back: it cannot be
+        # credential text, unlike a key parsed out of a URI.
+        key = "rejected_option_key"
+        with self.assertRaises(ConfigurationError) as ctx:
+            split_options(f"{key}=1", warn=False, from_uri=False)
+        self.assertIn(key, str(ctx.exception))
+
+    def test_unknown_option_from_kwargs_is_named(self):
+        # A keyword argument is named, which stays useful.
+        key = "rejected_option_key"
+        with self.assertRaises(ConfigurationError) as ctx:
+            validate(key, 1)
+        self.assertIn(key, str(ctx.exception))
+
+    def test_bad_database_name_is_not_echoed(self):
+        name = "rejected_database_name"
+        with self.assertRaises(InvalidURI) as ctx:
+            parse_uri(f"mongodb://localhost/{name}$bad")
+        self.assertNotIn(name, str(ctx.exception))
 
 
 class TestMainBlock(unittest.TestCase):

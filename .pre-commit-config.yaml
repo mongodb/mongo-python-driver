@@ -32,7 +32,7 @@ repos:
       name: ruff-format
       entry: uv run --group lint ruff format
       language: system
-      types_or: [python, pyi]
+      types_or: [python, pyi, markdown]
       require_serial: true
 
 - repo: local

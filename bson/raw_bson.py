@@ -36,7 +36,6 @@ Example: Moving a document between different databases/collections
   ...     print(f"raw document: {doc.raw}")
   ...     print(f"decoded document: {bson.decode(doc.raw)}")
   ...     result = replica_db.test.insert_one(doc)
-  ...
   raw document: b'...'
   decoded document: {'_id': 1, 'a': 1}
   raw document: b'...'
