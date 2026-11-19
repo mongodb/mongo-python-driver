@@ -92,9 +92,17 @@ def configure_env(sub_test_name: str, test_args: str) -> str:
                 "its dynamic symbols). Rebuild the toolchain (PYTHON-6067)."
             )
         suppressions = ROOT / ".evergreen" / "tsan-suppressions.txt"
+        # TSan takes one suppressions file: combine CPython's free-threading
+        # suppressions (shipped with the interpreter) with ours.
+        toolchain_suppressions = Path(TSAN_PYTHON).parent.parent / "suppressions_free_threading.txt"
+        combined = ROOT / ".evergreen" / "tsan-suppressions-combined.txt"
+        with combined.open("w", encoding="utf-8") as fid:
+            if toolchain_suppressions.is_file():
+                fid.write(toolchain_suppressions.read_text(encoding="utf-8"))
+            fid.write(suppressions.read_text(encoding="utf-8"))
         write_env(
             "TSAN_OPTIONS",
-            f"halt_on_error=1:handle_segv=0:suppressions={suppressions}",
+            f"halt_on_error=1:handle_segv=0:suppressions={combined}",
         )
     else:
         # -fno-sanitize=function: guard against compiler drift (PYTHON-6167).
