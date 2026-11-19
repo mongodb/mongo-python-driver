@@ -187,7 +187,6 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         else:
             server_timeout = server_selection_timeout
 
-        # Join any monitors closed under the topology lock.
         if self._monitor_tasks:
             self.cleanup_monitors()
 
@@ -534,7 +533,6 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             self._opened = False
             self._closed = True
 
-        # Join the monitors we just closed, now that the lock is released.
         self.cleanup_monitors()
 
         # Publish only after releasing the lock.

@@ -118,10 +118,8 @@ class MonitorBase:
         await self._executor.join(timeout)
 
     async def _wake_and_join_executor(self) -> None:
-        # Wait briefly for the executor to stop before resetting the pool, so
-        # we don't race with a connection it has checked out. The timeout only
-        # bounds the wait: if the executor is still running, the reset closes
-        # its socket once the connection is checked in.
+        # Join before resetting so we don't race a checked-out connection; a
+        # straggler's socket closes when the reset returns its connection.
         self._executor.wake()
         await self._executor.join(_EXECUTOR_JOIN_TIMEOUT)
 

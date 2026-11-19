@@ -349,8 +349,6 @@ class TestRawBSONDocumentConcurrency(unittest.TestCase):
         doc_bytes = _make_shared_doc_bytes()
         shared_doc = RawBSONDocument(doc_bytes)
 
-        # Confirm we're actually exercising the zero-copy memoryview path,
-        # not accidentally testing a byte-copy fallback.
         big_check = shared_doc["big"]
         self.assertIsInstance(big_check.raw, memoryview)
         self.assertTrue(big_check.raw.readonly)
@@ -374,8 +372,7 @@ class TestRawBSONDocumentConcurrency(unittest.TestCase):
                     small = shared_doc["small"]
                     self.assertEqual(small["n"], 1)
 
-                    # Re-encodes a view-backed subdocument while other
-                    # threads may be reading the same underlying buffer.
+                    # Re-encode while other threads still read the same buffer.
                     reencoded = encode({"again": big})
                     self.assertIsInstance(reencoded, bytes)
 
@@ -397,8 +394,6 @@ class TestRawBSONDocumentConcurrency(unittest.TestCase):
         self.assertEqual(errors, [])
 
     def test_buffer_survives_after_source_bytes_are_dropped(self):
-        # Slice a bytearray, wrap it in a RawBSONDocument, then mutate and
-        # drop the original buffer to check for a dangling view.
         encoded = _make_shared_doc_bytes()
         for _ in range(50):
             buf = bytearray(encoded) + b"\x00" * 10

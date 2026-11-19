@@ -407,13 +407,9 @@ def create_fuzz_variants():
 
 
 def create_sanitizer_variants() -> list[BuildVariant]:
-    # Sanitizer checks on every PR (PYTHON-6048, PYTHON-6168): ASan/UBSan
-    # and TSan tasks. The rhel8 toolchain provides the instrumented
-    # CPythons (utils.SANITIZER_PYTHON, utils.TSAN_PYTHON). The host must
-    # carry the llvm-toolset-14 module clang that built those interpreters
-    # (setup_sanitizer.CLANG): the rhel8.7 pool has it. It is also a large
-    # distro, giving ASan's shadow memory and redzones room for the ~6GiB
-    # test_encode_size_limit allocation, so no test is skipped.
+    # Sanitizer checks on every PR (PYTHON-6048, PYTHON-6168). The host needs
+    # the instrumented interpreters, the clang that built them
+    # (setup_sanitizer.CLANG), and memory for ASan's ~6GiB worst case.
     host = DEFAULT_HOST
     return [
         create_variant(
@@ -751,9 +747,8 @@ def create_fuzz_tasks():
 
 
 def create_sanitizer_tasks():
-    # VERSION comes from the variant: a task-level VERSION would trip the
-    # pr-tasks-run-coverage rule, and coverage under sanitizers is not
-    # useful.
+    # VERSION comes from the variant: a task-level VERSION trips the pr
+    # coverage rule.
     tags = ["sanitizer", "pr"]
     expansions = dict(AUTH="noauth", SSL="nossl", TOPOLOGY="standalone")
     server_func = FunctionCall(func="run server", vars=expansions)

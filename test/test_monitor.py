@@ -127,7 +127,6 @@ class TestMonitor(IntegrationTest):
 
         client.close()
 
-        # close() drains the deferred-join queue after releasing the lock.
         self.assertEqual(client._topology._monitor_tasks, [])
         self.assertFalse(thread_alive(monitor._executor))
         self.assertFalse(thread_alive(monitor._rtt_monitor._executor))
@@ -176,8 +175,7 @@ class _SlowExecutor:
         self._delay = delay
 
     def join(self, timeout: float | None = None) -> None:
-        # Blocks with time.sleep on purpose: the sync mirror of this test
-        # needs the same delay, and unasync does not translate asyncio.sleep.
+        # time.sleep on purpose: synchro does not translate asyncio.sleep.
         self._sleep()
 
     def _sleep(self) -> None:

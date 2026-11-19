@@ -96,9 +96,8 @@ PERF_PYTHON_VERSION = "3.11.9"
 # (PYTHON-6048), built by mongo-python-toolchain (PYTHON-6067). Linux only.
 SANITIZER_PYTHON = "/opt/python/3.14-asan-ubsan/bin/python3"
 
-# The TSan-instrumented, free-threaded toolchain CPython used by the TSan
-# sanitizer task (PYTHON-6168), built by mongo-python-toolchain
-# (PYTHON-6067). Linux only.
+# The TSan-instrumented, free-threaded CPython for the TSan task
+# (PYTHON-6168). Linux only.
 TSAN_PYTHON = "/opt/python/3.14t-tsan/bin/python3"
 
 # Tests that do not use run-mongodb directly.
