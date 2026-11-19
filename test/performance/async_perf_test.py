@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Asynchronous Tests for the MongoDB Driver Performance Benchmarking Spec.
+r"""Asynchronous Tests for the MongoDB Driver Performance Benchmarking Spec.
 
 See https://github.com/mongodb/specifications/blob/master/source/benchmarking/benchmarking.md
 
@@ -35,7 +35,7 @@ Then to run all benchmarks quickly::
 
 To run individual benchmarks quickly::
 
-    FASTBENCH=1 python test/performance/async_perf_test.py -v TestRunCommand \\
+    FASTBENCH=1 python test/performance/async_perf_test.py -v TestRunCommand \
         TestFindManyAndEmptyCursor
 """
 
