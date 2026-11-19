@@ -382,6 +382,14 @@ class SrvMonitor(MonitorBase):
         self._fqdn: str = self._settings.fqdn
         self._startup_time = time.monotonic()
 
+    async def close(self) -> None:
+        """Stop DNS polling and join the executor.
+
+        Must be called with the topology lock released.
+        """
+        self.gc_safe_close()
+        await self._wake_and_join_executor()
+
     async def _run(self) -> None:
         # Don't poll right after creation, wait 60 seconds first
         if time.monotonic() < self._startup_time + common.MIN_SRV_RESCAN_INTERVAL:

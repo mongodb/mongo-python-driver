@@ -797,7 +797,7 @@ class TestServerRemovalHardening(AsyncUnitTest):
 
         async def remove_victim():
             async with topology._lock:
-                with patch.object(victim, "close", cancelling_close):
+                with patch.object(victim, "signal_close", cancelling_close):
                     await topology._update_servers()
 
         task = asyncio.create_task(remove_victim())

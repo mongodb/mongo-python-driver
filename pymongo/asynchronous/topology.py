@@ -425,6 +425,9 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             # that didn't include this server.
             if self._opened and self._description.has_server(server_description.address):
                 await self._process_change(server_description, reset_pool, interrupt_connections)
+        # Drains the monitors of servers removed in this change; the join must
+        # not hold the lock (PYTHON-6168).
+        await self.cleanup_monitors()
         # Clear the pool from a failed heartbeat, done outside the lock to avoid blocking on
         # connection close.
         if reset_pool:
@@ -448,6 +451,9 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         async with self._lock:
             if self._opened:
                 await self._process_srv_update(seedlist)
+        # Drains the monitors of servers removed in this change; the join must
+        # not hold the lock (PYTHON-6168).
+        await self.cleanup_monitors()
 
     async def get_primary(self) -> _Address | None:
         """Return primary's address or None."""
@@ -521,8 +527,8 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
                 # Signal the executors; joining them here would block on
                 # on_change(), which needs this lock. cleanup_monitors below
                 # joins and resets with the lock released.
-                await server.signal_close()
                 self._monitor_tasks.append(server._monitor)
+                await server.signal_close()
 
             # Mark all servers Unknown.
             self._description = self._description.reset()
@@ -708,12 +714,13 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
 
         for address, server in list(self._servers.items()):
             if not self._description.has_server(address):
-                # Update our state before closing: close() can cancel the
-                # calling task, so the stale server must be recorded as
-                # removed before close() runs, not after (PYTHON-6226).
-                await server.signal_close()
+                # Record the monitor and remove the server before signaling:
+                # signal_close() awaits the pool close, which the calling task
+                # may cancel (PYTHON-6226). Joins happen in cleanup_monitors(),
+                # outside the lock (on_change() needs it).
                 self._monitor_tasks.append(server._monitor)
                 self._servers.pop(address)
+                await server.signal_close()
 
     async def cleanup_monitors(self) -> None:
         """Close monitors signaled earlier while the topology lock was held.
