@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import random
 import sys
@@ -92,6 +93,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
     def __init__(self, topology_settings: TopologySettings):
         super().__init__(topology_settings)
         self._lock = _create_lock()
+        self._cleanup_lock = asyncio.Lock()
         self._condition = _create_condition(
             self._lock, self._settings.condition_class if _IS_SYNC else None
         )
@@ -400,7 +402,9 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             td_old.topology_type == TOPOLOGY_TYPE.Unknown
             and self._description.topology_type not in SRV_POLLING_TOPOLOGIES
         ):
-            self._srv_monitor.close()
+            # Signal only: close() joins, and on_srv_update() needs this lock.
+            # cleanup_monitors() joins after the lock is released.
+            self._srv_monitor.signal_close()
             self._monitor_tasks.append(self._srv_monitor)
 
         # Wake anything waiting in select_servers().
@@ -723,19 +727,19 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
     def cleanup_monitors(self) -> None:
         """Close monitors signaled earlier while the topology lock was held.
 
-        Close joins each monitor and resets its pool. Always call this with
-        the lock released: a monitor being joined may itself be blocked
-        acquiring the lock.
+        Close joins each monitor and resets its pool, and runs until the queue
+        is empty. Always call this with the topology lock released: a monitor
+        being joined may itself be blocked acquiring the lock.
         """
-        monitors = []
-        try:
+        with self._cleanup_lock:
             while self._monitor_tasks:
-                monitors.append(self._monitor_tasks.pop())
-        except IndexError:
-            pass
-        for monitor in monitors:
-            try:
-                monitor.close()
-            except Exception:  # noqa: S110
-                # One monitor failing to stop must not block the rest.
-                pass
+                monitor = self._monitor_tasks.pop()
+                try:
+                    monitor.close()
+                except asyncio.CancelledError:
+                    # Preserve the monitor for a later cleanup.
+                    self._monitor_tasks.append(monitor)
+                    raise
+                except Exception:  # noqa: S110
+                    # One monitor failing to stop must not block the rest.
+                    pass

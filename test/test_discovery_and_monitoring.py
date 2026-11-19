@@ -824,6 +824,63 @@ class TestServerRemovalHardening(UnitTest):
         self.assertTrue(victim.pool.closed)
 
 
+@unittest.skipUnless(not _IS_SYNC, "PYTHON-6168: task interleaving is async-only")
+class TestMonitorCleanup(UnitTest):
+    def test_cleanup_cancellation_requeues_monitor(self):
+        # A cancelled cleanup must requeue the monitor it was closing, so a
+        # later cleanup (including client shutdown) can finish joining it.
+        topology = create_mock_topology("mongodb://a:27017,b:27017")
+        victim = topology._servers[("a", 27017)]._monitor
+        other = topology._servers[("b", 27017)]._monitor
+
+        def cancelling_close():
+            asyncio.current_task().cancel()
+
+        with patch.object(victim, "close", cancelling_close):
+            topology._monitor_tasks.append(victim)
+            topology._monitor_tasks.append(other)
+            task = asyncio.create_task(topology.cleanup_monitors())
+            with self.assertRaises(asyncio.CancelledError):
+                task
+
+        self.assertIn(victim, topology._monitor_tasks)
+        self.assertNotIn(other, topology._monitor_tasks)
+
+        # A later cleanup finishes the job.
+        topology.cleanup_monitors()
+        self.assertEqual(topology._monitor_tasks, [])
+
+    def test_cleanup_drains_monitors_appended_in_flight(self):
+        # The drain runs until the queue is empty, even when a server is
+        # signaled while an earlier close is still joining.
+        topology = create_mock_topology("mongodb://a:27017,b:27017")
+        first = topology._servers[("a", 27017)]._monitor
+        second = topology._servers[("b", 27017)]._monitor
+        in_flight = asyncio.Event()
+        first_done = asyncio.Event()
+        second_done = asyncio.Event()
+
+        def slow_close():
+            in_flight.set()
+            time.sleep(0.2)
+            first_done.set()
+
+        def fast_close():
+            second_done.set()
+
+        with patch.object(first, "close", slow_close), patch.object(second, "close", fast_close):
+            topology._monitor_tasks.append(first)
+            drain = asyncio.create_task(topology.cleanup_monitors())
+            # Signal the second monitor while the first close is in flight.
+            in_flight.wait()
+            topology._monitor_tasks.append(second)
+            drain
+
+        self.assertTrue(first_done.is_set())
+        self.assertTrue(second_done.is_set())
+        self.assertEqual(topology._monitor_tasks, [])
+
+
 # Generate unified tests.
 globals().update(generate_test_classes(os.path.join(SDAM_PATH, "unified"), module=__name__))
 
