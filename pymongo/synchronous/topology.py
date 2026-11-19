@@ -242,7 +242,8 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
                 if ss is not None:
                     ss.failed(self._error_message(selector), self.description)
                 raise ServerSelectionTimeoutError(
-                    f"{self._error_message(selector)}, Timeout: {timeout}s, Topology Description: {self.description!r}"
+                    f"{self._error_message(selector)}, Timeout: {timeout}s, "
+                    f"Topology Description: {self.description!r}"
                 )
 
             if ss is not None and not logged_waiting:
@@ -341,7 +342,8 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         :param server_selection_timeout: maximum seconds to wait.
             If not provided, the default value
             common.SERVER_SELECTION_TIMEOUT is used.
-        :param operation_id: The unique id of the current operation being performed. Defaults to None if not provided.
+        :param operation_id: The unique id of the current operation being performed. Defaults to
+        None if not provided.
 
         Calls self.open() if needed.
 
@@ -426,7 +428,8 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             # that didn't include this server.
             if self._opened and self._description.has_server(server_description.address):
                 self._process_change(server_description, reset_pool, interrupt_connections)
-        # Clear the pool from a failed heartbeat, done outside the lock to avoid blocking on connection close.
+        # Clear the pool from a failed heartbeat, done outside the lock to avoid blocking on
+        # connection close.
         if reset_pool:
             server = self._servers.get(server_description.address)
             if server:
@@ -548,7 +551,8 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         self._sdam.topology_closed(old_td, self._description)
 
         if self._sdam._publish_server or self._sdam._publish_tp:
-            # Make sure the events executor thread is fully closed before publishing the remaining events
+            # Make sure the events executor thread is fully closed before publishing the
+            # remaining events
             self._events_executor.close()
             self._events_executor.join(1)
             process_events_queue(weakref.ref(self._events))  # type: ignore[arg-type]

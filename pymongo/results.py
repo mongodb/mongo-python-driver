@@ -221,7 +221,10 @@ class _BulkWriteResultBase(_WriteResult):
         super().__init__(acknowledged)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.__bulk_api_result!r}, acknowledged={self.acknowledged})"
+        return (
+            f"{self.__class__.__name__}({self.__bulk_api_result!r}, "
+            f"acknowledged={self.acknowledged})"
+        )
 
     @property
     def bulk_api_result(self) -> dict[str, Any]:
@@ -320,7 +323,10 @@ class ClientBulkWriteResult(_BulkWriteResultBase):
         )
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.bulk_api_result!r}, acknowledged={self.acknowledged}, verbose={self.has_verbose_results})"
+        return (
+            f"{self.__class__.__name__}({self.bulk_api_result!r}, "
+            f"acknowledged={self.acknowledged}, verbose={self.has_verbose_results})"
+        )
 
     def _raise_if_not_verbose(self, property_name: str) -> None:
         """Raise an exception on property access if verbose results are off."""

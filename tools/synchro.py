@@ -140,7 +140,9 @@ replacements = {
     "async_joinall": "joinall",
     "async_simple_test_client": "simple_test_client",
     "_async_create_connection": "_create_connection",
-    "pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts": "pymongo.synchronous.srv_resolver._SrvResolver.get_hosts",
+    "pymongo.asynchronous.srv_resolver._SrvResolver.get_hosts": (
+        "pymongo.synchronous.srv_resolver._SrvResolver.get_hosts"
+    ),
     "dns.asyncresolver.resolve": "dns.resolver.resolve",
     "__aenter__": "__enter__",
     "__aexit__": "__exit__",
@@ -161,7 +163,10 @@ docstring_replacements: dict[tuple[str, str], str] = {
 }
 
 docstring_removals: set[str] = {
-    ".. warning:: This API is currently in beta, meaning the classes, methods, and behaviors described within may change before the full release."
+    (
+        ".. warning:: This API is currently in beta, meaning the classes, methods, "
+        "and behaviors described within may change before the full release."
+    )
 }
 
 import_replacements = {"test.synchronous": "test"}
@@ -287,7 +292,8 @@ def translate_docstrings(lines: list[str]) -> list[str]:
     for i in range(len(lines)):
         for k, value in replacements.items():
             if k in lines[i]:
-                # This sequence of replacements fixes the grammar issues caused by translating async -> sync
+                # This sequence of replacements fixes the grammar issues caused by translating
+                # async -> sync
                 if "an Async" in lines[i]:
                     lines[i] = lines[i].replace("an Async", "a Async")
                 if "an 'Async" in lines[i]:
@@ -307,7 +313,8 @@ def translate_docstrings(lines: list[str]) -> list[str]:
                         "Must be a coroutine function for the asynchronous API.",
                         "Must be a regular function.",
                     )
-                # This ensures docstring links are for `pymongo.X` instead of `pymongo.synchronous.X`
+                # This ensures docstring links are for `pymongo.X` instead of
+                # `pymongo.synchronous.X`
                 if "pymongo.asynchronous" in lines[i] and "import" not in lines[i]:
                     lines[i] = lines[i].replace("pymongo.asynchronous", "pymongo")
                 lines[i] = lines[i].replace(k, value)

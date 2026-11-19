@@ -287,7 +287,7 @@ class TestInitialDnsSeedlistDiscovery(PyMongoTestCase):
         ]
         self.run_initial_dns_seedlist_discovery_prose_tests(test_cases)
 
-    def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(
+    def test_4_throw_when_return_address_does_not_contain_dot_separating_shared_part_of_domain(  # noqa: E501
         self,
     ):
         test_cases = [

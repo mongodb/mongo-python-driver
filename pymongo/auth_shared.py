@@ -194,14 +194,16 @@ def _build_credentials_tuple(
                 passwd = None
                 if not token_resource:
                     raise ConfigurationError(
-                        "Azure environment for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
+                        "Azure environment for MONGODB-OIDC requires a "
+                        "TOKEN_RESOURCE auth mechanism property"
                     )
                 callback = _OIDCAzureCallback(token_resource)
             elif environ == "gcp":
                 passwd = None
                 if not token_resource:
                     raise ConfigurationError(
-                        "GCP provider for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
+                        "GCP provider for MONGODB-OIDC requires a "
+                        "TOKEN_RESOURCE auth mechanism property"
                     )
                 callback = _OIDCGCPCallback(token_resource)
             elif environ == "k8s":

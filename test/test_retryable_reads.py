@@ -287,12 +287,13 @@ class TestRetryableReads(IntegrationTest):
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     @client_context.require_failCommand_fail_point
-    def test_03_01_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available_and_overload_retargeting_is_enabled(
+    def test_03_01_retryable_reads_caused_by_overload_errors_are_retried_on_a_different_replicaset_server_when_one_is_available_and_overload_retargeting_is_enabled(  # noqa: E501
         self,
     ):
         listener = OvertCommandListener()
 
-        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, `enableOverloadRetargeting=True`, and command event monitoring enabled.
+        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`,
+        # `enableOverloadRetargeting=True`, and command event monitoring enabled.
         client = self.rs_or_single_client(
             event_listeners=[listener],
             retryReads=True,
@@ -331,12 +332,13 @@ class TestRetryableReads(IntegrationTest):
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     @client_context.require_failCommand_fail_point
-    def test_03_02_retryable_reads_caused_by_non_overload_errors_are_retried_on_the_same_replicaset_server(
+    def test_03_02_retryable_reads_caused_by_non_overload_errors_are_retried_on_the_same_replicaset_server(  # noqa: E501
         self,
     ):
         listener = OvertCommandListener()
 
-        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
+        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`,
+        # and command event monitoring enabled.
         client = self.rs_or_single_client(
             event_listeners=[listener], retryReads=True, readPreference="primaryPreferred"
         )
@@ -372,12 +374,13 @@ class TestRetryableReads(IntegrationTest):
     @client_context.require_replica_set
     @client_context.require_secondaries_count(1)
     @client_context.require_failCommand_fail_point
-    def test_03_03_retryable_reads_caused_by_overload_errors_are_retried_on_the_same_replicaset_server_when_one_is_available_and_overload_retargeting_is_disabled(
+    def test_03_03_retryable_reads_caused_by_overload_errors_are_retried_on_the_same_replicaset_server_when_one_is_available_and_overload_retargeting_is_disabled(  # noqa: E501
         self,
     ):
         listener = OvertCommandListener()
 
-        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`, and command event monitoring enabled.
+        # 1. Create a client `client` with `retryReads=true`, `readPreference=primaryPreferred`,
+        # and command event monitoring enabled.
         client = self.rs_or_single_client(
             event_listeners=[listener],
             retryReads=True,
@@ -417,8 +420,9 @@ class TestRetryableReads(IntegrationTest):
         # Create a client.
         listener = OvertCommandListener()
 
-        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
-        # code `91` (ShutdownInProgress) and `RetryableError` and `SystemOverloadedError` labels.
+        # Configure the client to listen to CommandFailedEvents. In the attached listener,
+        # configure a fail point with error code `91` (ShutdownInProgress) and `RetryableError` and
+        # `SystemOverloadedError` labels.
         overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -429,7 +433,8 @@ class TestRetryableReads(IntegrationTest):
             },
         }
 
-        # Configure a fail point with error code `91` (ShutdownInProgress) with only the `RetryableError` error label.
+        # Configure a fail point with error code `91` (ShutdownInProgress) with only the
+        # `RetryableError` error label.
         non_overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -441,7 +446,8 @@ class TestRetryableReads(IntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
-            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
+            # Configure the fail point command only if the failed event is for the 91 error
+            # configured in step 2.
             if listener.failed_events:
                 return
             assert event.failure["code"] == 91
@@ -470,8 +476,9 @@ class TestRetryableReads(IntegrationTest):
         # Create a client.
         listener = OvertCommandListener()
 
-        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
-        # code `91` (ShutdownInProgress) and `RetryableError` and `SystemOverloadedError` labels.
+        # Configure the client to listen to CommandFailedEvents. In the attached listener,
+        # configure a fail point with error code `91` (ShutdownInProgress) and `RetryableError` and
+        # `SystemOverloadedError` labels.
         overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -482,7 +489,8 @@ class TestRetryableReads(IntegrationTest):
             },
         }
 
-        # Configure a fail point with error code `91` (ShutdownInProgress) with only the `RetryableError` error label.
+        # Configure a fail point with error code `91` (ShutdownInProgress) with only the
+        # `RetryableError` error label.
         non_overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -494,7 +502,8 @@ class TestRetryableReads(IntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
-            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
+            # Configure the fail point command only if the failed event is for the 91 error
+            # configured in step 2.
             if listener.failed_events:
                 return
             assert event.failure["code"] == 91
@@ -515,7 +524,8 @@ class TestRetryableReads(IntegrationTest):
             with self.assertRaises(PyMongoError):
                 client.db.coll.find_one()
 
-        # Assert that backoff was applied only once for the initial overload error and not for the subsequent non-overload retryable errors.
+        # Assert that backoff was applied only once for the initial overload error and not for the
+        # subsequent non-overload retryable errors.
         self.assertEqual(mock_backoff.call_count, 1)
 
 

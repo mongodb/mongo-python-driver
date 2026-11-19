@@ -265,7 +265,10 @@ class TopologyDescription:
         round_trip_times: list[float] = []
         for server in selection.server_descriptions:
             if server.round_trip_time is None:
-                config_err_msg = f"round_trip_time for server {server.address} is unexpectedly None: {self}, servers: {selection.server_descriptions}"
+                config_err_msg = (
+                    f"round_trip_time for server {server.address} is unexpectedly None: "
+                    f"{self}, servers: {selection.server_descriptions}"
+                )
                 raise ConfigurationError(config_err_msg)
             round_trip_times.append(server.round_trip_time)
         # Round trip time in seconds.
@@ -399,7 +402,10 @@ class TopologyDescription:
     def __repr__(self) -> str:
         # Sort the servers by address.
         servers = sorted(self._server_descriptions.values(), key=lambda sd: sd.address)
-        return f"<{self.__class__.__name__} id: {self._topology_settings._topology_id}, topology_type: {self.topology_type_name}, servers: {servers!r}>"
+        return (
+            f"<{self.__class__.__name__} id: {self._topology_settings._topology_id}, "
+            f"topology_type: {self.topology_type_name}, servers: {servers!r}>"
+        )
 
 
 # If topology type is Unknown and we receive a hello response, what should
@@ -447,7 +453,8 @@ def updated_topology_description(
         if set_name is not None and set_name != server_description.replica_set_name:
             error = ConfigurationError(
                 "client is configured to connect to a replica set named "
-                f"'{set_name}' but this node belongs to a set named '{server_description.replica_set_name}'"
+                f"'{set_name}' but this node belongs to a set named "
+                f"'{server_description.replica_set_name}'"
             )
             sds[address] = server_description.to_unknown(error=error)
         # Single type never changes.
@@ -592,7 +599,8 @@ def _update_rs_from_primary(
                 # Stale primary, set to type Unknown.
                 sds[server_description.address] = server_description.to_unknown(
                     PyMongoError(
-                        f"primary marked stale due to electionId/setVersion mismatch, {new_election_tuple} is stale compared to {max_election_tuple}"
+                        f"primary marked stale due to electionId/setVersion mismatch, "
+                        f"{new_election_tuple} is stale compared to {max_election_tuple}"
                     )
                 )
                 return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id
@@ -611,7 +619,8 @@ def _update_rs_from_primary(
             # Stale primary, set to type Unknown.
             sds[server_description.address] = server_description.to_unknown(
                 PyMongoError(
-                    f"primary marked stale due to electionId/setVersion mismatch, {new_election_tuple} is stale compared to {max_election_tuple}"
+                    f"primary marked stale due to electionId/setVersion mismatch, "
+                    f"{new_election_tuple} is stale compared to {max_election_tuple}"
                 )
             )
             return _check_has_primary(sds), replica_set_name, max_set_version, max_election_id

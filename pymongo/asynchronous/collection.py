@@ -257,7 +257,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if create or kwargs:
             if _IS_SYNC:
                 warnings.warn(
-                    "The `create` and `kwargs` arguments to AsyncCollection are deprecated and will be removed in PyMongo 5.0",
+                    "The `create` and `kwargs` arguments to AsyncCollection are deprecated and "
+                    "will be removed in PyMongo 5.0",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -647,7 +648,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
                 raise ConfigurationError(
                     "Driver support of Queryable Encryption is incompatible with server. "
                     "Upgrade server to use Queryable Encryption. "
-                    f"Got maxWireVersion {conn.max_wire_version} but need maxWireVersion >= 21 (MongoDB >=7.0)"
+                    f"Got maxWireVersion {conn.max_wire_version} but need "
+                    "maxWireVersion >= 21 (MongoDB >=7.0)"
                 )
 
             await self._command(
@@ -1016,7 +1018,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         if sort is not None:
             if not acknowledged and conn.max_wire_version < 25:
                 raise ConfigurationError(
-                    "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."
+                    "Must be connected to MongoDB 8.0+ to use sort on unacknowledged "
+                    "update commands."
                 )
             common.validate_is_mapping("sort", sort)
             update_doc["sort"] = sort
@@ -1751,9 +1754,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         improper type. Returns an instance of
         :class:`~pymongo.asynchronous.cursor.AsyncCursor` corresponding to this query.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             async with collection.find() as cursor:
@@ -2038,7 +2044,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 4.2
            This method now always uses the `count`_ command. Due to an oversight in versions
            5.0.0-5.0.8 of MongoDB, the count command was not included in V1 of the
-           `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_. Users of the Stable API with estimated_document_count are
+           `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_.
+           Users of the Stable API with estimated_document_count are
            recommended to upgrade their server version to 5.0.9+ or set
            :attr:`pymongo.server_api.ServerApi.strict` to ``False`` to avoid encountering errors.
 
@@ -2501,9 +2508,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
           ...     print(index)
           SON([('v', 2), ('key', SON([('_id', 1)])), ('name', '_id_')])
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             async with await collection.list_indexes() as cursor:
@@ -2625,9 +2635,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
     ) -> AsyncCommandCursor[Mapping[str, Any]]:
         """Return a cursor over search indexes for the current collection.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             async with await collection.list_search_indexes() as cursor:
@@ -2816,7 +2829,7 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
-        """Update a search index by replacing the existing index definition with the provided definition.
+        """Update a search index by replacing the index definition with the provided definition.
 
         :param name: The name of the search index to be updated.
         :param definition: The new search index definition.
@@ -2950,9 +2963,12 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         .. note:: The :attr:`~pymongo.asynchronous.collection.AsyncCollection.write_concern` of
            this collection is automatically applied to this operation.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`AsyncCursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             async with await collection.aggregate() as cursor:
@@ -2985,7 +3001,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             returning aggregate results using a cursor.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`.
-          - `bypassDocumentValidation` (bool): If ``True``, allows the write to opt-out of document level validation.
+          - `bypassDocumentValidation` (bool): If ``True``, allows the write to opt-out of document
+            level validation.
 
 
         :return: A :class:`~pymongo.asynchronous.command_cursor.AsyncCommandCursor` over the result
@@ -3181,7 +3198,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
             command.
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
-            format as passed to :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index`
+            format as passed to
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index`
             (e.g. ``[('field', ASCENDING)]``).
         :param kwargs: See list of options above.
 
@@ -3249,7 +3267,8 @@ class AsyncCollection(common.BaseObject, Generic[_DocumentType]):
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise TypeError(
-                f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, not {type(return_document)}"
+                f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, "
+                f"not {type(return_document)}"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
         if hint is not None:

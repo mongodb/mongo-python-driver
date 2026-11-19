@@ -182,7 +182,8 @@ class TestPymongo(IntegrationTest):
         new_requests: list[InsertOne[Movie] | ReplaceOne[Movie]] = list.copy(input_list)
         self.assertTrue(coll.bulk_write(new_requests).acknowledged)
 
-    # Because ReplaceOne is not generic, type checking is not enforced for ReplaceOne in the first example.
+    # Because ReplaceOne is not generic, type checking is not enforced for ReplaceOne in the first
+    # example.
     @only_type_check
     def test_bulk_write_heterogeneous(self):
         coll: Collection[Movie] = self.coll

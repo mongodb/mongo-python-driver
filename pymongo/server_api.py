@@ -66,7 +66,9 @@ For example::
     >>> client.test.command('count', 'test')
     Traceback (most recent call last):
     ...
-    pymongo.errors.OperationFailure: Provided apiStrict:true, but the command count is not in API Version 1, full error: {'ok': 0.0, 'errmsg': 'Provided apiStrict:true, but the command count is not in API Version 1', 'code': 323, 'codeName': 'APIStrictError'
+    pymongo.errors.OperationFailure: Provided apiStrict:true, but the command count is not in API
+    Version 1, full error: {'ok': 0.0, 'errmsg': 'Provided apiStrict:true, but the command count is
+    not in API Version 1', 'code': 323, 'codeName': 'APIStrictError'
 
 Detecting API Deprecations
 ``````````````````````````

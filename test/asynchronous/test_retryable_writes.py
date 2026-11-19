@@ -629,10 +629,13 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
 
 
 class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
-    # Only run against replica sets as mongos does not propagate the NoWritesPerformed label to the drivers.
+    # Only run against replica sets as mongos does not propagate the NoWritesPerformed label to
+    # the drivers.
     @async_client_context.require_replica_set
     # Run against server versions 6.0 and above.
     @async_client_context.require_version_min(6, 0)  # type: ignore[untyped-decorator]
+    # The tests configure the failCommand fail point.
+    @async_client_context.require_failCommand_fail_point
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         self.setup_client = MongoClient(**async_client_context.default_client_options)
@@ -647,13 +650,14 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
             cmd.pop("data", None)
         self.setup_client.admin.command(cmd)
 
-    async def test_01_drivers_return_the_correct_error_when_receiving_only_errors_without_NoWritesPerformed(
+    async def test_01_drivers_return_the_correct_error_when_receiving_only_errors_without_NoWritesPerformed(  # noqa: E501
         self,
     ) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
 
-        # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and SystemOverloadedError error labels.
+        # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and
+        # SystemOverloadedError error labels.
         command_args = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -664,7 +668,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
             },
         }
 
-        # Via the command monitoring CommandFailedEvent, configure a fail point with error code 10107 (NotWritablePrimary).
+        # Via the command monitoring CommandFailedEvent, configure a fail point with error code
+        # 10107 (NotWritablePrimary).
         command_args_inner = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -676,7 +681,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
-            # Configure the 10107 fail point command only if the the failed event is for the 91 error configured in step 2.
+            # Configure the 10107 fail point command only if the the failed event is for the 91
+            # error configured in step 2.
             if listener.failed_events:
                 return
             assert event.failure["code"] == 91
@@ -699,13 +705,14 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         # Assert that the error code of the server error is 10107.
         assert exc.exception.errors["code"] == 10107  # type:ignore[call-overload]
 
-    async def test_02_drivers_return_the_correct_error_when_receiving_only_errors_with_NoWritesPerformed(
+    async def test_02_drivers_return_the_correct_error_when_receiving_only_errors_with_NoWritesPerformed(  # noqa: E501
         self,
     ) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
 
-        # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and SystemOverloadedError error labels.
+        # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and
+        # SystemOverloadedError error labels.
         command_args = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -716,8 +723,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
             },
         }
 
-        # Via the command monitoring CommandFailedEvent, configure a fail point with error code `10107` (NotWritablePrimary)
-        # and a NoWritesPerformed label.
+        # Via the command monitoring CommandFailedEvent, configure a fail point with error code
+        # `10107` (NotWritablePrimary) and a NoWritesPerformed label.
         command_args_inner = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -731,7 +738,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         def failed(event: CommandFailedEvent) -> None:
             if listener.failed_events:
                 return
-            # Configure the 10107 fail point command only if the the failed event is for the 91 error configured in step 2.
+            # Configure the 10107 fail point command only if the the failed event is for the 91
+            # error configured in step 2.
             assert event.failure["code"] == 91
             self.configure_fail_point_sync(command_args_inner)
             self.addCleanup(self.configure_fail_point_sync, {}, off=True)
@@ -752,14 +760,15 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         # Assert that the error code of the server error is 91.
         assert exc.exception.errors["code"] == 91  # type:ignore[call-overload]
 
-    async def test_03_drivers_return_the_correct_error_when_receiving_some_errors_with_NoWritesPerformed_and_some_without_NoWritesPerformed(
+    async def test_03_drivers_return_the_correct_error_when_receiving_some_errors_with_NoWritesPerformed_and_some_without_NoWritesPerformed(  # noqa: E501
         self,
     ) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
 
-        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
-        # code `91` (NotWritablePrimary) and the `NoWritesPerformed`, `RetryableError` and `SystemOverloadedError` labels.
+        # Configure the client to listen to CommandFailedEvents. In the attached listener,
+        # configure a fail point with error code `91` (NotWritablePrimary) and the
+        # `NoWritesPerformed`, `RetryableError` and `SystemOverloadedError` labels.
         command_args_inner = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -770,8 +779,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
             },
         }
 
-        # Configure a fail point with error code `91` (ShutdownInProgress) with the `RetryableError` and
-        # `SystemOverloadedError` error labels but without the `NoWritesPerformed` error label.
+        # Configure a fail point with error code `91` (ShutdownInProgress) with the `RetryableError`
+        # and `SystemOverloadedError` error labels but without the `NoWritesPerformed` error label.
         command_args = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -783,7 +792,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
-            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
+            # Configure the fail point command only if the failed event is for the 91 error
+            # configured in step 2.
             if listener.failed_events:
                 return
             assert event.failure["code"] == 91
@@ -812,8 +822,9 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
 
-        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
-        # code `91` (ShutdownInProgress) and `RetryableError` and `SystemOverloadedError` labels.
+        # Configure the client to listen to CommandFailedEvents. In the attached listener,
+        # configure a fail point with error code `91` (ShutdownInProgress) and `RetryableError` and
+        # `SystemOverloadedError` labels.
         overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -824,7 +835,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
             },
         }
 
-        # Configure a fail point with error code `91` (ShutdownInProgress) with the `RetryableError` and `RetryableWriteError` error labels.
+        # Configure a fail point with error code `91` (ShutdownInProgress) with the `RetryableError`
+        # and `RetryableWriteError` error labels.
         non_overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -836,7 +848,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
-            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
+            # Configure the fail point command only if the failed event is for the 91 error
+            # configured in step 2.
             if listener.failed_events:
                 return
             assert event.failure["code"] == 91
@@ -863,8 +876,9 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         # Create a client.
         listener = OvertCommandListener()
 
-        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
-        # code `91` (ShutdownInProgress) and `RetryableError` and `SystemOverloadedError` labels.
+        # Configure the client to listen to CommandFailedEvents. In the attached listener,
+        # configure a fail point with error code `91` (ShutdownInProgress) and `RetryableError` and
+        # `SystemOverloadedError` labels.
         overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -875,7 +889,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
             },
         }
 
-        # Configure a fail point with error code `91` (ShutdownInProgress) with only the `RetryableError` error label.
+        # Configure a fail point with error code `91` (ShutdownInProgress) with only the
+        # `RetryableError` error label.
         non_overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -887,7 +902,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
-            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
+            # Configure the fail point command only if the failed event is for the 91 error
+            # configured in step 2.
             if listener.failed_events:
                 return
             assert event.failure["code"] == 91
@@ -907,7 +923,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(AsyncIntegrationTest):
             with self.assertRaises(PyMongoError):
                 await client.db.coll.insert_one({})
 
-        # Assert that backoff was applied only once for the initial overload error and not for the subsequent non-overload retryable errors.
+        # Assert that backoff was applied only once for the initial overload error and not for the
+        # subsequent non-overload retryable errors.
         self.assertEqual(mock_backoff.call_count, 1)
 
 

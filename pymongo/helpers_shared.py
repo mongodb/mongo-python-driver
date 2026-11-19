@@ -147,7 +147,7 @@ class _RetryPolicy:
         )
 
     def should_retry(self, attempt: int, delay: float) -> bool:
-        """Return if we have retry attempts remaining and the next backoff would not exceed a timeout."""
+        """Return if retry attempts remain and the next backoff would not exceed a timeout."""
         from pymongo import _csot
 
         if attempt > self.attempts:
@@ -213,7 +213,8 @@ def _index_list(
             return list(key_or_list.items())
         elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError(
-                f"if no direction is specified, key_or_list must be an instance of list, not {type(key_or_list)}"
+                f"if no direction is specified, key_or_list must be an instance of list, "
+                f"not {type(key_or_list)}"
             )
         values: list[tuple[str, int]] = []
         for item in key_or_list:
