@@ -1,6 +1,19 @@
 Changelog
 =========
 
+Changes in Version 4.21.0 (unreleased)
+--------------------------------------
+
+Bug fixes
+.........
+
+- Fixed a bug where the ``MONGODB_LOG_MAX_DOCUMENT_LENGTH`` environment
+  variable was ignored because PyMongo read the misspelled
+  ``MONGOB_LOG_MAX_DOCUMENT_LENGTH`` instead. The misspelled name is still
+  read when ``MONGODB_LOG_MAX_DOCUMENT_LENGTH`` is not set (`PYTHON-5939`_).
+
+.. _PYTHON-5939: https://jira.mongodb.org/browse/PYTHON-5939
+
 Changes in Version 4.20.1 (2026/11/19)
 --------------------------------------
 
