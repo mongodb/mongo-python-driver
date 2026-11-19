@@ -429,6 +429,7 @@ def delay(sec):
 
         import signal
 
+
         # Raise KeyboardInterrupt in 1 second
         def sigalarm(num, frame):
             raise KeyboardInterrupt
