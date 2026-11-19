@@ -35,8 +35,8 @@ Then to run all benchmarks quickly::
 
 To run individual benchmarks quickly::
 
-    FASTBENCH=1 python test/performance/async_perf_test.py -v TestRunCommand
-    TestFindManyAndEmptyCursor
+    FASTBENCH=1 python test/performance/async_perf_test.py -v TestRunCommand \\
+        TestFindManyAndEmptyCursor
 """
 
 from __future__ import annotations
