@@ -24,13 +24,7 @@ from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequenc
 from difflib import get_close_matches
 from importlib.metadata import requires, version
 from inspect import signature
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    NoReturn,
-    Self,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, NoReturn, Self, overload
 from urllib.parse import unquote_plus
 
 from bson import SON
@@ -173,7 +167,7 @@ def clean_node(node: str) -> tuple[str, int]:
 
 
 def raise_config_error(
-    key: str, suggestions: Optional[list[str]] = None, from_uri: bool = False
+    key: str, suggestions: list[str] | None = None, from_uri: bool = False
 ) -> NoReturn:
     """Raise ConfigurationError with the given key name.
 
@@ -236,8 +230,8 @@ def validate_non_negative_integer(option: str, value: Any) -> int:
     return val
 
 
-def validate_readable(option: str, value: Any, from_uri: bool = False) -> Optional[str]:
-    """Validates that 'value' is file-like and readable."""
+def validate_readable(option: str, value: Any, from_uri: bool = False) -> str | None:
+    """Validate that 'value' is file-like and readable."""
     if value is None:
         return value
     # First make sure its a string py3.3 open(True, 'r') succeeds
@@ -710,7 +704,7 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Any | None
 
 def validate_datetime_conversion(
     option: Any, value: Any, from_uri: bool = False
-) -> Optional[DatetimeConversion]:
+) -> DatetimeConversion | None:
     """Validate a DatetimeConversion string."""
     if value is None:
         return DatetimeConversion.DATETIME
@@ -883,7 +877,7 @@ TIMEOUT_OPTIONS: list[str] = [
 def _get_validator(
     key: str,
     validators: dict[str, Callable[[Any, Any], Any]],
-    normed_key: Optional[str] = None,
+    normed_key: str | None = None,
     from_uri: bool = False,
 ) -> Callable[[Any, Any], Any]:
     normed_key = normed_key or key

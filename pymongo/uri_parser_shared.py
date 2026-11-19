@@ -382,7 +382,7 @@ def _normalize_options(options: _CaseInsensitiveDictionary) -> _CaseInsensitiveD
 def validate_options(
     opts: Mapping[str, Any], warn: bool = False, from_uri: bool = False
 ) -> MutableMapping[str, Any]:
-    """Validates and normalizes options passed in a MongoDB URI.
+    """Validate and normalizes options passed in a MongoDB URI.
 
     Returns a new dictionary of validated and normalized options. If warn is
     False then errors will be thrown for invalid options, otherwise they will
@@ -444,7 +444,7 @@ def split_options(
 
     if validate:
         options = cast(
-            _CaseInsensitiveDictionary, validate_options(options, warn, from_uri=from_uri)
+            "_CaseInsensitiveDictionary", validate_options(options, warn, from_uri=from_uri)
         )
         if options.get("authsource") == "":
             raise InvalidURI("the authSource database cannot be an empty string")

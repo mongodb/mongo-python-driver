@@ -60,7 +60,7 @@ def _have_zstd() -> bool:
 
 
 def validate_compressors(
-    dummy: Any, value: Union[str, Iterable[str]], from_uri: bool = False
+    dummy: Any, value: str | Iterable[str], from_uri: bool = False
 ) -> list[str]:
     try:
         # `value` is string.

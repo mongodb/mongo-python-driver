@@ -171,7 +171,10 @@ class TestURI(unittest.TestCase):
         # Test suggestions given when invalid kwarg passed. The key itself is
         # not named: it comes from a connection string.
 
-        expected = r"Unknown option. Did you mean one of \(authsource, authmechanism, timeoutms\) or maybe a camelCase version of one\? Refer to docstring."
+        expected = (
+            r"Unknown option. Did you mean one of \(authsource, authmechanism, timeoutms\) "
+            r"or maybe a camelCase version of one\? Refer to docstring."
+        )
         with self.assertRaisesRegex(ConfigurationError, expected):
             split_options("auth=GSSAPI")
 
@@ -727,7 +730,10 @@ class TestURI(unittest.TestCase):
             self.assertNotIn(value, str(ctx.exception))
 
     def test_read_preference_mode_error_message(self):
-        expected = r"Not a valid read preference\. Must be one of: primary, primaryPreferred, secondary, secondaryPreferred, nearest"
+        expected = (
+            r"Not a valid read preference\. Must be one of: primary, primaryPreferred, "
+            r"secondary, secondaryPreferred, nearest"
+        )
         with self.assertRaisesRegex(ValueError, expected):
             parse_uri("mongodb://localhost/?readPreference=bogus")
 
