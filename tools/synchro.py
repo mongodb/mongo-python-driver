@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +30,7 @@ from pathlib import Path
 from unasync import Rule, unasync_files  # type: ignore[import-untyped,import-not-found]
 
 MANIFEST = ".synchro-modified"
+STAGING = ".synchro-staging"
 
 replacements = {
     "AsyncCollection": "Collection",
@@ -350,6 +352,204 @@ def process_ignores(lines: list[str]) -> list[str]:
     return lines
 
 
+def git_tracked_files(dests: list[Path]) -> set[Path] | None:
+    """Return the subset of dests git tracks, or None when git is unusable.
+
+    A ``None`` result makes callers treat every destination as tracked,
+    which skips unchanged files as before.
+    """
+    if not dests:
+        return set()
+    command = ["git", "ls-files", "--", *(str(dest) for dest in dests)]
+    try:
+        result = subprocess.run(  # noqa: S603
+            command,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return {Path(line) for line in result.stdout.splitlines()}
+
+
+def clear_manifest(manifest: Path) -> None:
+    """Remove the staging manifest so nothing is staged for this run."""
+    try:
+        manifest.unlink(missing_ok=True)
+    except OSError as unlink_error:
+        print(f"Synchro: could not remove {manifest}: {unlink_error!r}", file=sys.stderr)
+
+
+def copy_changed_files(
+    pairs: list[tuple[Path, Path]],
+    manifest: Path | None = None,
+    tracked: set[Path] | None = None,
+) -> list[Path]:
+    """Copy staged files into the working tree when their content differs.
+
+    Each destination is backed up, written through a temporary sibling,
+    and atomically replaced, so a failed write never truncates it. If a
+    later step fails or is interrupted, what was already written is
+    restored and the manifest is removed, leaving the working tree
+    unchanged. An unchanged destination that ``tracked`` does not contain
+    is listed in the manifest without being rewritten, so a newly
+    generated module reaches the staging hook on its first commit.
+    """
+    written: list[tuple[Path, bytes | None, Path | None]] = []
+    replaced: list[Path] = []
+    included: list[Path] = []
+    try:
+        for staged, dest in pairs:
+            new = staged.read_bytes()
+            old = dest.read_bytes() if dest.is_file() else None
+            if old == new:
+                if tracked is not None and dest not in tracked:
+                    included.append(dest)
+                continue
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            backup: Path | None = None
+            if old is not None:
+                backup = dest.with_name(dest.name + ".synchro-backup")
+                if backup.exists() and not backup.samefile(dest):
+                    # A failed run left this backup holding the only copy of
+                    # the original; refuse to overwrite it. Kept outside the
+                    # try below so the refusal is not swallowed.
+                    raise OSError(
+                        f"Synchro: {backup} holds the unrecovered original of "
+                        f"{dest}; inspect and remove it manually, then re-run "
+                        "the hook."
+                    )
+                try:
+                    backup.unlink(missing_ok=True)
+                    os.link(dest, backup)
+                except OSError:
+                    # No hard-link support: try a full copy before giving up
+                    # on an on-disk backup.
+                    try:
+                        shutil.copyfile(dest, backup)
+                    except OSError:
+                        # Remove a partial copy so no garbage stray remains.
+                        backup.unlink(missing_ok=True)
+                        backup = None
+            # Track before replacing so an interrupt cannot skip the rollback.
+            written.append((dest, old, backup))
+            tmp = dest.with_name(dest.name + ".synchro-tmp")
+            try:
+                tmp.write_bytes(new)
+                tmp.replace(dest)
+            except BaseException:
+                try:
+                    landed = dest.read_bytes() == new
+                except OSError:
+                    landed = True  # cannot verify; keep the entry and attempt the restore
+                if not landed:
+                    # The rename is atomic: nothing was published, so the
+                    # destination still holds its original and the rollback
+                    # must not rewrite it.
+                    written.pop()
+                    if backup is not None:
+                        backup.unlink(missing_ok=True)
+                raise
+            finally:
+                tmp.unlink(missing_ok=True)
+            replaced.append(dest)
+            included.append(dest)
+        if manifest is not None:
+            names = [f"./{dest.as_posix()}" for dest in included]
+            tmp_manifest = manifest.with_name(manifest.name + ".synchro-tmp")
+            try:
+                tmp_manifest.write_text("\n".join(names) + ("\n" if names else ""))
+                tmp_manifest.replace(manifest)
+            finally:
+                tmp_manifest.unlink(missing_ok=True)
+    except BaseException:
+        # A failed run claims nothing to stage, whatever happens next.
+        if manifest is not None:
+            clear_manifest(manifest)
+        # Restore in reverse so each restore releases space for the next.
+        # Any exception, including Ctrl-C, must restore the tree, and a
+        # failing restore must not strand the others.
+        for dest, old, backup in reversed(written):
+            try:
+                if backup is not None:
+                    backup.replace(dest)
+                elif old is None:
+                    dest.unlink(missing_ok=True)
+                else:
+                    # No backup: rewrite through the temporary sibling, so a
+                    # failing restore leaves the published content in place.
+                    tmp_restore = dest.with_name(dest.name + ".synchro-tmp")
+                    try:
+                        tmp_restore.write_bytes(old)
+                        tmp_restore.replace(dest)
+                    finally:
+                        tmp_restore.unlink(missing_ok=True)
+            except BaseException as restore_error:
+                print(
+                    f"Synchro: could not restore {dest}: {restore_error!r}",
+                    file=sys.stderr,
+                )
+        raise
+    # Publication succeeded, so the backups are obsolete. A backup left
+    # behind by a failed unlink or a failed restore holds the only copy
+    # of an original; the next run's guard refuses to overwrite it and
+    # asks for it to be removed manually.
+    for _, _, backup in written:
+        if backup is not None:
+            try:
+                backup.unlink(missing_ok=True)
+            except OSError as unlink_error:
+                # A backup left behind makes the next run refuse publication
+                # with recovery guidance; a completed publication must not
+                # fail over the cleanup.
+                print(
+                    f"Synchro: could not remove {backup}: {unlink_error!r}",
+                    file=sys.stderr,
+                )
+    return replaced
+
+
+def prepare_staging() -> None:
+    """Recreate the out-of-tree staging area used to generate sync files.
+
+    A copy of pyproject.toml at the staging root keeps ruff's
+    per-file-ignores (e.g. ``test/*.py``) and first-party import
+    classification identical to a run against the repo root.
+    """
+    shutil.rmtree(STAGING, ignore_errors=True)
+    for base in (_pymongo_dest_base, _gridfs_dest_base, _test_dest_base):
+        Path(STAGING, base[2:]).mkdir(parents=True, exist_ok=True)
+    shutil.copyfile("pyproject.toml", f"{STAGING}/pyproject.toml")
+    config = Path(STAGING, "pyproject.toml")
+    lines = config.read_text().splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if line.startswith("isort.required-imports"):
+            lines.insert(i + 1, 'isort.known-first-party = ["pymongo", "gridfs", "bson", "test"]\n')
+            break
+    else:
+        print(
+            "Synchro: no isort.required-imports line in pyproject.toml, so "
+            "isort.known-first-party was not added to the staged ruff config and "
+            "import classification may differ from the repo root.",
+            file=sys.stderr,
+        )
+    config.write_text("".join(lines))
+
+
+def mirrored_test_files(filtered_tests: list[str]) -> list[str]:
+    """Return the generated test paths for the given async test files.
+
+    A test file is mirrored only when its synchronous counterpart already
+    exists in ``test/``.
+    """
+    return [
+        _test_dest_base + Path(f).name
+        for f in filtered_tests
+        if (Path(_test_dest_base) / Path(f).name).is_file()
+    ]
+
+
 def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[str, str]) -> None:
     unasync_files(
         files,
@@ -365,6 +565,10 @@ def unasync_directory(files: list[str], src: str, dest: str, replacements: dict[
 
 def main() -> None:
     is_ci = bool(os.environ.get("CI"))
+    # Any run that fails before publication must claim nothing to stage, so
+    # the previous run's manifest is dropped up front; a successful run
+    # publishes a fresh one below.
+    clear_manifest(Path(MANIFEST))
     modified_files = [f"./{f}" for f in sys.argv[1:]]
     errored = False
     for fname in async_files + gridfs_files + test_files:
@@ -387,68 +591,77 @@ def main() -> None:
     filtered_gridfs = [f for f in gridfs_files if not modified_set or f in modified_set]
     filtered_tests = [f for f in test_files if not modified_set or f in modified_set]
 
-    ruff_extra = [] if is_ci else ["--silent"]
-
     # Check async source files for problems before generating sync output.
     async_sources = filtered_async + filtered_gridfs + filtered_tests
     if async_sources:
         subprocess.run(  # noqa: S603
-            [sys.executable, "-m", "ruff", "check", *async_sources, *ruff_extra],
+            [sys.executable, "-m", "ruff", "check", *async_sources],
             check=True,
         )
 
-    unasync_directory(filtered_async, _pymongo_base, _pymongo_dest_base, replacements)
-    unasync_directory(filtered_gridfs, _gridfs_base, _gridfs_dest_base, replacements)
-    unasync_directory(filtered_tests, _test_base, _test_dest_base, replacements)
+    try:
+        prepare_staging()
+        generated_pymongo = [_pymongo_dest_base + Path(f).name for f in filtered_async]
+        generated_gridfs = [_gridfs_dest_base + Path(f).name for f in filtered_gridfs]
+        generated_tests = mirrored_test_files(filtered_tests)
+        generated_names = generated_pymongo + generated_gridfs + generated_tests
+        staged_pymongo = [f"{STAGING}/{name[2:]}" for name in generated_pymongo]
+        staged_gridfs = [f"{STAGING}/{name[2:]}" for name in generated_gridfs]
+        staged_tests = [f"{STAGING}/{name[2:]}" for name in generated_tests]
+        staged_names = staged_pymongo + staged_gridfs + staged_tests
 
-    # Derive generated output paths directly from filtered source paths.
-    generated_pymongo = [_pymongo_dest_base + Path(f).name for f in filtered_async]
-    generated_gridfs = [_gridfs_dest_base + Path(f).name for f in filtered_gridfs]
-    generated_tests = [
-        _test_dest_base + Path(f).name
-        for f in filtered_tests
-        if (Path(_test_dest_base) / Path(f).name).is_file()
-    ]
-
-    docstring_translate_files = generated_pymongo + generated_gridfs + generated_tests
-
-    process_files(
-        generated_pymongo + generated_gridfs + generated_tests,
-        docstring_translate_files,
-        generated_tests,
-    )
-
-    generated_files = generated_pymongo + generated_gridfs + generated_tests
-
-    if is_ci and generated_files:
-        print(f"Synchro generated {len(generated_files)} file(s):")
-        for f in generated_files:
-            print(f"  {f}")
-
-    if generated_files:
-        subprocess.run(  # noqa: S603
-            [sys.executable, "-m", "ruff", "check", *generated_files, "--fix", *ruff_extra],
-            check=is_ci,
+        unasync_directory(
+            filtered_async, _pymongo_base, f"{STAGING}/{_pymongo_dest_base[2:]}", replacements
         )
-        subprocess.run(  # noqa: S603
-            [sys.executable, "-m", "ruff", "format", *generated_files, *ruff_extra],
-            check=is_ci,
+        unasync_directory(
+            filtered_gridfs, _gridfs_base, f"{STAGING}/{_gridfs_dest_base[2:]}", replacements
+        )
+        unasync_directory(
+            filtered_tests, _test_base, f"{STAGING}/{_test_dest_base[2:]}", replacements
         )
 
-    if is_ci and generated_files:
-        result = subprocess.run(  # noqa: S603
-            ["git", "diff", "--name-only", "--", *generated_files],  # noqa: S607
-            capture_output=True,
-            text=True,
-            check=True,
+        process_files(staged_names, staged_names, staged_tests)
+
+        if staged_names:
+            try:
+                subprocess.run(  # noqa: S603
+                    [sys.executable, "-m", "ruff", "check", *staged_names, "--fix"],
+                    check=True,
+                )
+                subprocess.run(  # noqa: S603
+                    [sys.executable, "-m", "ruff", "format", *staged_names],
+                    check=True,
+                )
+            except subprocess.CalledProcessError:
+                print(
+                    "Synchro: ruff failed on the generated sync output. Fix the error in "
+                    "the corresponding async source file and run the synchro hook again; "
+                    "the working tree was left unchanged.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+        pairs = [
+            (Path(staged), Path(name))
+            for staged, name in zip(staged_names, generated_names, strict=True)
+        ]
+        # In CI the drift itself is the report, so neither the manifest nor
+        # untracked detection runs and the copied drift is left in place.
+        changed = copy_changed_files(
+            pairs,
+            manifest=None if is_ci else Path(MANIFEST),
+            tracked=None if is_ci else git_tracked_files([dest for _, dest in pairs]),
         )
-        if result.stdout.strip():
-            print("Sync files are out of date. Run `just lint --all-files synchro` to regenerate:")
-            for f in result.stdout.strip().splitlines():
+        changed_names = [f"./{dest.as_posix()}" for dest in changed]
+
+        if is_ci and changed_names:
+            print(f"Synchro generated {len(changed_names)} file(s):")
+            for f in changed_names:
                 print(f"  {f}")
+            print("Sync files are out of date. Run `just lint --all-files synchro` to regenerate:")
             sys.exit(1)
-
-    Path(MANIFEST).write_text("\n".join(generated_files) + ("\n" if generated_files else ""))
+    finally:
+        shutil.rmtree(STAGING, ignore_errors=True)
 
 
 if __name__ == "__main__":
