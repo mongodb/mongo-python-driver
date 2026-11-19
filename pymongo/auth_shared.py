@@ -101,7 +101,7 @@ def _validate_canonicalize_host_name(value: str | bool) -> str | bool:
         return value in ["true", True]
 
     if value not in valid_names:
-        raise ValueError(f"CANONICALIZE_HOST_NAME '{value}' not in valid options: {valid_names}")
+        raise ValueError(f"CANONICALIZE_HOST_NAME not in valid options: {valid_names}")
     return value
 
 

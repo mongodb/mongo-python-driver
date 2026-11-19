@@ -1436,6 +1436,8 @@ class MongoClient(common.BaseObject, Generic[_DocumentType]):
                     return f"document_class={value.__module__}.{value.__name__}"
             if option == "authmechanismproperties":
                 value = common.redact_auth_mechanism_properties_for_repr(value)
+            if option in common.SENSITIVE_OPTIONS_FOR_REPR:
+                return f"{option}='<redacted>'"
             if option in common.TIMEOUT_OPTIONS and value is not None:
                 return f"{option}={int(value * 1000)}"
 
