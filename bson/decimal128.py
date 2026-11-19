@@ -69,7 +69,7 @@ class DecimalEncoder(TypeEncoder):
 
     For example::
         opts = CodecOptions(type_registry=TypeRegistry([DecimalEncoder()]))
-        bson.encode({"d": decimal.Decimal('1.0')}, codec_options=opts)
+        bson.encode({"d": decimal.Decimal("1.0")}, codec_options=opts)
 
     .. versionadded:: 4.15
     """

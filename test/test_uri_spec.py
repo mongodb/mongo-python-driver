@@ -266,6 +266,9 @@ def create_tests(test_path):
             if not filename.endswith(".json"):
                 # skip everything that is not a test specification
                 continue
+            if filename == "credential-disclosure.json":
+                # has its own runner: test_credential_disclosure.py
+                continue
             json_path = os.path.join(dirpath, filename)
             with open(json_path, encoding="utf-8") as scenario_stream:
                 scenario_def = json.load(scenario_stream)

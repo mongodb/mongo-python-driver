@@ -868,36 +868,32 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
         :data:`~pymongo.ASCENDING` or :data:`~pymongo.DESCENDING`.::
 
             # Synchronous
-            for doc in collection.find().sort('field', pymongo.ASCENDING):
+            for doc in collection.find().sort("field", pymongo.ASCENDING):
                 print(doc)
 
             # Asynchronous
-            async for doc in collection.find().sort('field', pymongo.ASCENDING):
+            async for doc in collection.find().sort("field", pymongo.ASCENDING):
                 print(doc)
 
         To sort by multiple fields, pass a list of (key, direction) pairs.
         If just a name is given, :data:`~pymongo.ASCENDING` will be inferred::
 
             # Synchronous
-            for doc in collection.find().sort([
-                    'field1',
-                    ('field2', pymongo.DESCENDING)]):
+            for doc in collection.find().sort(["field1", ("field2", pymongo.DESCENDING)]):
                 print(doc)
 
             # Asynchronous
-            async for doc in collection.find().sort([
-                    'field1',
-                    ('field2', pymongo.DESCENDING)]):
+            async for doc in collection.find().sort(["field1", ("field2", pymongo.DESCENDING)]):
                 print(doc)
 
         Text search results can be sorted by relevance::
 
             cursor = db.test.find(
-                {'$text': {'$search': 'some words'}},
-                {'score': {'$meta': 'textScore'}})
+                {"$text": {"$search": "some words"}}, {"score": {"$meta": "textScore"}}
+            )
 
             # Sort by 'score' field.
-            cursor.sort([('score', {'$meta': 'textScore'})])
+            cursor.sort([("score", {"$meta": "textScore"})])
 
             # Synchronous
             for doc in cursor:
@@ -983,11 +979,11 @@ class _AgnosticCursor(_AgnosticCursorBase[_DocumentType]):
 
             # Find all documents where field "a" is less than "b" plus "c".
             # Synchronous
-            for doc in db.test.find().where('this.a < (this.b + this.c)'):
+            for doc in db.test.find().where("this.a < (this.b + this.c)"):
                 print(doc)
 
             # Asynchronous
-            async for doc in db.test.find().where('this.a < (this.b + this.c)'):
+            async for doc in db.test.find().where("this.a < (this.b + this.c)"):
                 print(doc)
 
         Raises :class:`TypeError` if `code` is not an instance of

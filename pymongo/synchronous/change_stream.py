@@ -118,7 +118,7 @@ class ChangeStream(_AgnosticChangeStream[_DocumentType, "MongoClient[_DocumentTy
 
             try:
                 resume_token = None
-                pipeline = [{'$match': {'operationType': 'insert'}}]
+                pipeline = [{"$match": {"operationType": "insert"}}]
                 with db.collection.watch(pipeline) as stream:
                     for insert_change in stream:
                         print(insert_change)
@@ -129,13 +129,12 @@ class ChangeStream(_AgnosticChangeStream[_DocumentType, "MongoClient[_DocumentTy
                 if resume_token is None:
                     # There is no usable resume token because there was a
                     # failure during ChangeStream initialization.
-                    logging.error('...')
+                    logging.error("...")
                 else:
                     # Use the interrupted ChangeStream's resume token to create
                     # a new ChangeStream. The new stream will continue from the
                     # last seen insert change without missing any events.
-                    with db.collection.watch(
-                            pipeline, resume_after=resume_token) as stream:
+                    with db.collection.watch(pipeline, resume_after=resume_token) as stream:
                         for insert_change in stream:
                             print(insert_change)
 

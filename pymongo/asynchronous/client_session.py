@@ -326,8 +326,10 @@ class AsyncClientSession(
               orders = session.client.db.orders
               inventory = session.client.db.inventory
               await orders.insert_one({"sku": "abc123", "qty": 100}, session=session)
-              await inventory.update_one({"sku": "abc123", "qty": {"$gte": 100}},
-                                   {"$inc": {"qty": -100}}, session=session)
+              await inventory.update_one(
+                  {"sku": "abc123", "qty": {"$gte": 100}}, {"$inc": {"qty": -100}}, session=session
+              )
+
 
           async with client.start_session() as session:
               await session.with_transaction(callback)

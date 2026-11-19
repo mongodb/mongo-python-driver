@@ -7,19 +7,14 @@ Changes in Version 4.21.0 (unreleased)
 Bug fixes
 .........
 
-- Fixed a bug where a cancelled async command published a
-  ``CommandStartedEvent`` (and its "Command started" log message) without a
-  correlating ``CommandFailedEvent``. A cancellation now publishes the failure
-  before the ``CancelledError`` propagates (`PYTHON-6187`_).
 - Fixed a bug where the ``MONGODB_LOG_MAX_DOCUMENT_LENGTH`` environment
   variable was ignored because PyMongo read the misspelled
   ``MONGOB_LOG_MAX_DOCUMENT_LENGTH`` instead. The misspelled name is still
   read when ``MONGODB_LOG_MAX_DOCUMENT_LENGTH`` is not set (`PYTHON-5939`_).
 
-.. _PYTHON-6187: https://jira.mongodb.org/browse/PYTHON-6187
 .. _PYTHON-5939: https://jira.mongodb.org/browse/PYTHON-5939
 
-Changes in Version 4.20.1 (2026/XX/XX)
+Changes in Version 4.20.1 (2026/11/19)
 --------------------------------------
 
 Version 4.20.1 is a bug fix release.
@@ -30,8 +25,17 @@ Bug fixes
 - Fixed a bug where ``getMore`` commands in load-balanced mode were not
   retried when the server returned a retryable overload error
   (`PYTHON-6262`_).
+- Fixed a bug where a cancelled async command published a
+  ``CommandStartedEvent`` (and its "Command started" log message) without a
+  correlating ``CommandFailedEvent``. A cancellation now publishes the failure
+  before the ``CancelledError`` propagates (`PYTHON-6187`_).
+- Sanitize parsing error messages. (`PYTHON-6058`_)
+- Improved credential validation. (`PYTHON-6073`_)
 
 .. _PYTHON-6262: https://jira.mongodb.org/browse/PYTHON-6262
+.. _PYTHON-6187: https://jira.mongodb.org/browse/PYTHON-6187
+.. _PYTHON-6058: https://jira.mongodb.org/browse/PYTHON-6058
+.. _PYTHON-6073: https://jira.mongodb.org/browse/PYTHON-6073
 
 Changes in Version 4.20.0 (2026/11/12)
 --------------------------------------
