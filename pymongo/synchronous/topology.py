@@ -429,8 +429,8 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             # that didn't include this server.
             if self._opened and self._description.has_server(server_description.address):
                 self._process_change(server_description, reset_pool, interrupt_connections)
-        # Drains the monitors of servers removed in this change; the join must
-        # not hold the lock (PYTHON-6168).
+        # Drain the monitors removed in this change; the join must not hold
+        # the lock (PYTHON-6168).
         self.cleanup_monitors()
         # Clear the pool from a failed heartbeat, done outside the lock to avoid blocking on
         # connection close.
@@ -455,8 +455,8 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         with self._lock:
             if self._opened:
                 self._process_srv_update(seedlist)
-        # Drains the monitors of servers removed in this change; the join must
-        # not hold the lock (PYTHON-6168).
+        # Drain the monitors removed in this change; the join must not hold
+        # the lock (PYTHON-6168).
         self.cleanup_monitors()
 
     def get_primary(self) -> _Address | None:
@@ -527,8 +527,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             old_td = self._description
             for server in self._servers.values():
                 # Signal the executors; joining them here would block on
-                # on_change(), which needs this lock. cleanup_monitors below
-                # joins and resets with the lock released.
+                # on_change(), which needs this lock.
                 self._monitor_tasks.append(server._monitor)
                 server.signal_close()
 
@@ -546,7 +545,9 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             self._opened = False
             self._closed = True
 
-        self.cleanup_monitors()
+        # Wait for any in-flight cleanup, then close every signaled monitor.
+        with self._cleanup_lock:
+            self._drain_monitors()
 
         # Publish only after releasing the lock.
         if self._sdam._publish_tp:
@@ -716,10 +717,8 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
 
         for address, server in list(self._servers.items()):
             if not self._description.has_server(address):
-                # Record the monitor and remove the server before signaling:
-                # signal_close() awaits the pool close, which the calling task
-                # may cancel (PYTHON-6226). Joins happen in cleanup_monitors(),
-                # outside the lock (on_change() needs it).
+                # Record before signaling: signal_close() may be cancelled
+                # mid-(PYTHON-6226). Joins happen in cleanup_monitors().
                 self._monitor_tasks.append(server._monitor)
                 self._servers.pop(address)
                 server.signal_close()
@@ -727,19 +726,25 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
     def cleanup_monitors(self) -> None:
         """Close monitors signaled earlier while the topology lock was held.
 
-        Close joins each monitor and resets its pool, and runs until the queue
-        is empty. Always call this with the topology lock released: a monitor
-        being joined may itself be blocked acquiring the lock.
+        Concurrent callers return immediately: a running cleanup drains the
+        queue before releasing the lock. Always call this with the topology
+        lock released: a monitor being joined may itself be blocked acquiring
+        the lock.
         """
+        if self._cleanup_lock.locked():
+            return
         with self._cleanup_lock:
-            while self._monitor_tasks:
-                monitor = self._monitor_tasks.pop()
-                try:
-                    monitor.close()
-                except asyncio.CancelledError:
-                    # Preserve the monitor for a later cleanup.
-                    self._monitor_tasks.append(monitor)
-                    raise
-                except Exception:  # noqa: S110
-                    # One monitor failing to stop must not block the rest.
-                    pass
+            self._drain_monitors()
+
+    def _drain_monitors(self) -> None:
+        while self._monitor_tasks:
+            monitor = self._monitor_tasks.pop()
+            try:
+                monitor.close()
+            except asyncio.CancelledError:
+                # Preserve the monitor for a later cleanup.
+                self._monitor_tasks.append(monitor)
+                raise
+            except Exception:  # noqa: S110
+                # One monitor failing to stop must not block the rest.
+                pass

@@ -88,8 +88,8 @@ class AsyncPeriodicExecutor:
             self._task.cancel()
 
     async def join(self, timeout: float | None = None) -> None:
-        # Waiting on our own task cannot complete: returning lets the caller
-        # finish its shutdown and the executor see the stop signal.
+        # Waiting on our own task cannot complete; returning lets the caller
+        # finish its shutdown.
         if self._task is not None and self._task is not asyncio.current_task():
             await asyncio.wait([self._task], timeout=timeout)  # type-ignore: [arg-type]
 
