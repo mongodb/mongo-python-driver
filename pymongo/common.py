@@ -879,7 +879,7 @@ def _get_validator(
     validators: dict[str, Callable[[Any, Any], Any]],
     normed_key: str | None = None,
     from_uri: bool = False,
-) -> Callable[[Any, Any], Any]:
+) -> Callable[..., Any]:
     normed_key = normed_key or key
     try:
         return validators[normed_key]
@@ -933,7 +933,7 @@ def get_validated_options(
                 opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key, from_uri=from_uri
             )
             if from_uri and "from_uri" in signature(validator).parameters:
-                validated = validator(opt, value, from_uri=True)
+                validated = validator(opt, value, from_uri=True)  # type: ignore[call-arg]
             else:
                 validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
