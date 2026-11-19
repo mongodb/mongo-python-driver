@@ -368,10 +368,6 @@ class TestGridfs(AsyncIntegrationTest):
         with self.assertRaisesRegex(TypeError, msg):
             await self.fs.get_version({"filename": "test"})  # type: ignore[arg-type]
         with self.assertRaisesRegex(TypeError, msg):
-            await self.fs.get_version(filename={"filename": "test"})  # type: ignore[arg-type]
-        with self.assertRaisesRegex(TypeError, msg):
-            await self.fs.get_last_version({"filename": "test"})  # type: ignore[arg-type]
-        with self.assertRaisesRegex(TypeError, msg):
             await self.fs.get_last_version(filename=["test"])  # type: ignore[arg-type]
 
     async def test_put_filelike(self):

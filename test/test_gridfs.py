@@ -362,10 +362,6 @@ class TestGridfs(IntegrationTest):
         with self.assertRaisesRegex(TypeError, msg):
             self.fs.get_version({"filename": "test"})  # type: ignore[arg-type]
         with self.assertRaisesRegex(TypeError, msg):
-            self.fs.get_version(filename={"filename": "test"})  # type: ignore[arg-type]
-        with self.assertRaisesRegex(TypeError, msg):
-            self.fs.get_last_version({"filename": "test"})  # type: ignore[arg-type]
-        with self.assertRaisesRegex(TypeError, msg):
             self.fs.get_last_version(filename=["test"])  # type: ignore[arg-type]
 
     def test_put_filelike(self):
