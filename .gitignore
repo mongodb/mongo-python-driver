@@ -33,6 +33,7 @@ results.json
 .synchro-modified
 .synchro-staging/
 *.synchro-backup
+*.synchro-tmp
 .evergreen/atlas_x509_dev_client_certificate.pem
 .evergreen/atlas_x509_sfp_client_certificate.pem
 

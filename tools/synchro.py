@@ -484,9 +484,10 @@ def copy_changed_files(
                     file=sys.stderr,
                 )
         raise
-    # Publication succeeded, so the backups are obsolete. A restore that
-    # failed above kept its backup as the only copy of the original; it is
-    # reclaimed losslessly on the next run, before the new backup is linked.
+    # Publication succeeded, so the backups are obsolete. A backup left
+    # behind by a failed unlink or a failed restore holds the only copy
+    # of an original; the next run's guard refuses to overwrite it and
+    # asks for it to be removed manually.
     for _, _, backup in written:
         if backup is not None:
             try:
