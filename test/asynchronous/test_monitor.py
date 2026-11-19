@@ -149,7 +149,10 @@ class TestMonitor(AsyncIntegrationTest):
 
         self.assertEqual(client._topology._monitor_tasks, [])
         self.assertTrue(monitor._executor._task.done())
-        self.assertTrue(monitor._rtt_monitor._executor._task.done())
+        # The RTT executor may never start (polling RTT in FaaS environments).
+        rtt_task = monitor._rtt_monitor._executor._task
+        if rtt_task is not None:
+            self.assertTrue(rtt_task.done())
 
     @async_client_context.require_sync
     def test_no_thread_start_runtime_err_on_shutdown(self):

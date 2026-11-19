@@ -79,6 +79,16 @@ class Server:
             # interrupts the monitor close (PYTHON-6226).
             self._pool.close()
 
+    def signal_close(self) -> None:
+        """Stop the monitor and clear the pool without joining it.
+
+        Joining blocks on on_change(), which needs the topology lock: the
+        topology defers close() to its unlocked cleanup phase.
+        """
+        self._sdam.server_closed(self._description.address)
+        self._monitor.signal_close()
+        self._pool.close()
+
     def request_check(self) -> None:
         """Check the server's state soon."""
         self._monitor.request_check()

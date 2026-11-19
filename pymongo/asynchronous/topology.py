@@ -30,7 +30,7 @@ from pymongo._telemetry import (
     _ServerSelectionTelemetry,
     log_server_selection_succeeded,
 )
-from pymongo.asynchronous.monitor import _EXECUTOR_JOIN_TIMEOUT, MonitorBase, SrvMonitor
+from pymongo.asynchronous.monitor import MonitorBase, SrvMonitor
 from pymongo.asynchronous.pool import Pool
 from pymongo.asynchronous.server import Server
 from pymongo.errors import (
@@ -518,7 +518,10 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         async with self._lock:
             old_td = self._description
             for server in self._servers.values():
-                await server.close()
+                # Signal the executors; joining them here would block on
+                # on_change(), which needs this lock. cleanup_monitors below
+                # joins and resets with the lock released.
+                await server.signal_close()
                 self._monitor_tasks.append(server._monitor)
 
             # Mark all servers Unknown.
@@ -529,7 +532,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
 
             # Stop SRV polling thread.
             if self._srv_monitor:
-                await self._srv_monitor.close()
+                self._srv_monitor.signal_close()
                 self._monitor_tasks.append(self._srv_monitor)
 
             self._opened = False
@@ -708,25 +711,26 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
                 # Update our state before closing: close() can cancel the
                 # calling task, so the stale server must be recorded as
                 # removed before close() runs, not after (PYTHON-6226).
+                await server.signal_close()
                 self._monitor_tasks.append(server._monitor)
                 self._servers.pop(address)
-                await server.close()
 
     async def cleanup_monitors(self) -> None:
-        """Join monitors closed earlier while the topology lock was held.
+        """Close monitors signaled earlier while the topology lock was held.
 
-        Always call this with the lock released: a monitor being joined may
-        itself be blocked acquiring the lock.
+        Close joins each monitor and resets its pool. Always call this with
+        the lock released: a monitor being joined may itself be blocked
+        acquiring the lock.
         """
-        tasks = []
+        monitors = []
         try:
             while self._monitor_tasks:
-                tasks.append(self._monitor_tasks.pop())
+                monitors.append(self._monitor_tasks.pop())
         except IndexError:
             pass
-        for t in tasks:
+        for monitor in monitors:
             try:
-                await t.join(_EXECUTOR_JOIN_TIMEOUT)
+                await monitor.close()
             except Exception:  # noqa: S110
                 # One monitor failing to stop must not block the rest.
                 pass

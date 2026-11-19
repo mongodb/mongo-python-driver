@@ -409,6 +409,9 @@ class TestRawBSONDocumentConcurrency(unittest.TestCase):
             del buf
             gc.collect()
             self.assertEqual(copied["small"]["n"], 1)
+            # The still-lazy views must decode from their kept buffer copies.
+            self.assertEqual(copied["big"]["payload"], BIG_PAYLOAD)
+            self.assertEqual([doc["idx"] for doc in copied["arr"]], [0, 1, 2])
 
 
 class _FakeBulkWriteContext:

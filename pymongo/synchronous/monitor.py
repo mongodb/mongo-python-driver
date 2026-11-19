@@ -102,6 +102,14 @@ class MonitorBase:
         """GC safe close."""
         self._executor.close()
 
+    def signal_close(self) -> None:
+        """Stop the executors without joining them.
+
+        Joining blocks on on_change(), which needs the topology lock: call
+        close() with the lock released to join and reset the pool.
+        """
+        self.gc_safe_close()
+
     def close(self) -> None:
         """Close and stop monitoring.
 
@@ -169,6 +177,11 @@ class Monitor(MonitorBase):
             self._stream = False
         else:
             self._stream = not _is_faas()
+
+    def signal_close(self) -> None:
+        """Stop the heartbeat and RTT executors without joining them."""
+        super().signal_close()
+        self._rtt_monitor.gc_safe_close()
 
     def cancel_check(self) -> None:
         """Cancel any concurrent hello check.
