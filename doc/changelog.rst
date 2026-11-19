@@ -21,7 +21,7 @@ Bug fixes
 
 .. _PYTHON-6262: https://jira.mongodb.org/browse/PYTHON-6262
 .. _PYTHON-6187: https://jira.mongodb.org/browse/PYTHON-6187
-.. _CVE-2026-129926: https://www.cve.org/CVERecord?id=CVE-2026-129927
+.. _CVE-2026-129927: https://www.cve.org/CVERecord?id=CVE-2026-129927
 .. _CVE-2026-129926: https://www.cve.org/CVERecord?id=CVE-2026-129926
 
 Changes in Version 4.20.0 (2026/11/12)
