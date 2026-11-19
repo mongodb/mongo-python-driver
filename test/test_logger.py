@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 from bson import json_util
 from pymongo.errors import OperationFailure
-from pymongo.logger import _DEFAULT_DOCUMENT_LENGTH, _CommandStatusMessage
+from pymongo.logger import _DEFAULT_DOCUMENT_LENGTH, LogMessage, _CommandStatusMessage
 from test import IntegrationTest, client_context, unittest
 
 _IS_SYNC = True
@@ -44,7 +44,7 @@ class TestLogger(IntegrationTest):
         db = self.db
 
         with patch.dict("os.environ"):
-            os.environ.pop("MONGOB_LOG_MAX_DOCUMENT_LENGTH", None)
+            os.environ.pop("MONGODB_LOG_MAX_DOCUMENT_LENGTH", None)
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                 db.coll.insert_many(docs)
 
@@ -68,7 +68,7 @@ class TestLogger(IntegrationTest):
     def test_configured_truncation_limit(self):
         cmd = {"hello": True}
         db = self.db
-        with patch.dict("os.environ", {"MONGOB_LOG_MAX_DOCUMENT_LENGTH": "5"}):
+        with patch.dict("os.environ", {"MONGODB_LOG_MAX_DOCUMENT_LENGTH": "5"}):
             with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                 db.command(cmd)
 
@@ -98,7 +98,7 @@ class TestLogger(IntegrationTest):
             multi_byte_char_str += str_to_repeat
 
         for length in document_lengths:
-            with patch.dict("os.environ", {"MONGOB_LOG_MAX_DOCUMENT_LENGTH": length}):
+            with patch.dict("os.environ", {"MONGODB_LOG_MAX_DOCUMENT_LENGTH": length}):
                 with self.assertLogs("pymongo.command", level="DEBUG") as cm:
                     self.db.coll.insert_one({"x": multi_byte_char_str})
                     cmd_started_log = self._get_command_log(
@@ -165,6 +165,35 @@ class TestLogger(IntegrationTest):
             r.getMessage() for r in cm.records if "Retrying write attempt" in r.getMessage()
         ]
         self.assertEqual(len(retry_messages), 1)
+
+
+class TestLogMessageTruncation(unittest.TestCase):
+    def _command_log(self):
+        msg = LogMessage(
+            message=_CommandStatusMessage.STARTED,
+            commandName="insert",
+            command={"insert": "coll", "documents": [{"x": "y" * 50}]},
+        )
+        return json_util.loads(str(msg))["command"]
+
+    def test_max_document_length_env_var(self):
+        with patch.dict("os.environ", {"MONGODB_LOG_MAX_DOCUMENT_LENGTH": "10"}):
+            os.environ.pop("MONGOB_LOG_MAX_DOCUMENT_LENGTH", None)
+            self.assertEqual(len(self._command_log()), 10 + 3)
+
+    def test_max_document_length_env_var_takes_precedence(self):
+        env = {
+            "MONGODB_LOG_MAX_DOCUMENT_LENGTH": "10",
+            "MONGOB_LOG_MAX_DOCUMENT_LENGTH": "20",
+        }
+        with patch.dict("os.environ", env):
+            self.assertEqual(len(self._command_log()), 10 + 3)
+
+    def test_misspelled_max_document_length_env_var(self):
+        # The misspelled name was the only one read before PYTHON-5939.
+        with patch.dict("os.environ", {"MONGOB_LOG_MAX_DOCUMENT_LENGTH": "10"}):
+            os.environ.pop("MONGODB_LOG_MAX_DOCUMENT_LENGTH", None)
+            self.assertEqual(len(self._command_log()), 10 + 3)
 
 
 if __name__ == "__main__":
