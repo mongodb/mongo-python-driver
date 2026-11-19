@@ -1,6 +1,19 @@
 Changelog
 =========
 
+Changes in Version 4.20.2 (unreleased)
+--------------------------------------
+
+Bug fixes
+.........
+
+- Fixed a bug where :meth:`~gridfs.GridFS.get_version` and
+  :meth:`~gridfs.GridFS.get_last_version` accepted a non-string ``filename``
+  and treated a dict as query criteria. They now raise :exc:`TypeError`
+  (`PYTHON-6183`_).
+
+.. _PYTHON-6183: https://jira.mongodb.org/browse/PYTHON-6183
+
 Changes in Version 4.20.1 (2026/11/19)
 --------------------------------------
 
@@ -12,10 +25,6 @@ Bug fixes
 - Fixed a bug where ``getMore`` commands in load-balanced mode were not
   retried when the server returned a retryable overload error
   (`PYTHON-6262`_).
-- Fixed a bug where :meth:`~gridfs.GridFS.get_version` and
-  :meth:`~gridfs.GridFS.get_last_version` accepted a non-string ``filename``
-  and treated a dict as query criteria. They now raise :exc:`TypeError`
-  (`PYTHON-6183`_).
 - Fixed a bug where a cancelled async command published a
   ``CommandStartedEvent`` (and its "Command started" log message) without a
   correlating ``CommandFailedEvent``. A cancellation now publishes the failure
@@ -24,7 +33,6 @@ Bug fixes
 - Improved credential validation. (`PYTHON-6073`_)
 
 .. _PYTHON-6262: https://jira.mongodb.org/browse/PYTHON-6262
-.. _PYTHON-6183: https://jira.mongodb.org/browse/PYTHON-6183
 .. _PYTHON-6187: https://jira.mongodb.org/browse/PYTHON-6187
 .. _PYTHON-6058: https://jira.mongodb.org/browse/PYTHON-6058
 .. _PYTHON-6073: https://jira.mongodb.org/browse/PYTHON-6073

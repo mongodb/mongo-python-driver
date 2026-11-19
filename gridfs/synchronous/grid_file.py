@@ -217,7 +217,7 @@ class GridFS:
             :class:`~pymongo.client_session.ClientSession`
         :param kwargs: find files by custom metadata.
 
-        .. versionchanged:: 4.20.1
+        .. versionchanged:: 4.20.2
            Raise :class:`TypeError` if `filename` is not a string or `None`.
 
         .. versionchanged:: 3.6
@@ -264,6 +264,9 @@ class GridFS:
         :param session: a
             :class:`~pymongo.client_session.ClientSession`
         :param kwargs: find files by custom metadata.
+
+        .. versionchanged:: 4.20.2
+           Raise :class:`TypeError` if `filename` is not a string or `None`.
 
         .. versionchanged:: 3.6
            Added ``session`` parameter.
