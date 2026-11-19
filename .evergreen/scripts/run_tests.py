@@ -128,7 +128,8 @@ def handle_aws_lambda() -> None:
         raise ValueError("Could not find docker!")
     image = "quay.io/pypa/manylinux2014_x86_64:latest"
     run_command(
-        f'{docker} run --rm -v "{ROOT}:/src" --platform linux/amd64 {image} /src/test/lambda/build_internal.sh'
+        f'{docker} run --rm -v "{ROOT}:/src" --platform linux/amd64 {image} '
+        "/src/test/lambda/build_internal.sh"
     )
     for dname in dirs:
         target = ROOT / "test/lambda/mongodb" / dname

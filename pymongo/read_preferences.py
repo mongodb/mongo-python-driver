@@ -106,7 +106,9 @@ def _validate_hedge(hedge: _Hedge | None) -> _Hedge | None:
         raise TypeError(f"hedge must be a dictionary, not {hedge!r}")
 
     warnings.warn(
-        "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.",
+        "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads "
+        "are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in "
+        "PyMongo 5.0.",
         DeprecationWarning,
         stacklevel=4,
     )
@@ -171,7 +173,7 @@ class _ServerMode:
 
         For example, to only send a query to an analytic node::
 
-           Nearest(tag_sets=[{"node":"analytics"}])
+           Nearest(tag_sets=[{"node": "analytics"}])
 
         Or using :class:`SecondaryPreferred`::
 
@@ -194,7 +196,10 @@ class _ServerMode:
 
     @property
     def hedge(self) -> _Hedge | None:
-        """**DEPRECATED** - The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.
+        """**DEPRECATED** - The read preference 'hedge' option is deprecated in PyMongo 4.12+.
+
+        Hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed
+        in PyMongo 5.0.
 
         The read preference ``hedge`` parameter.
 
@@ -218,7 +223,9 @@ class _ServerMode:
         """
         if self.__hedge is not None:
             warnings.warn(
-                "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed in PyMongo 5.0.",
+                "The read preference 'hedge' option is deprecated in PyMongo 4.12+ because hedged "
+                "reads are deprecated in MongoDB version 8.0+. Support for 'hedge' will be removed "
+                "in PyMongo 5.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -238,7 +245,10 @@ class _ServerMode:
         return 0 if self.__max_staleness == -1 else 5
 
     def __repr__(self) -> str:
-        return f"{self.name}(tag_sets={self.__tag_sets!r}, max_staleness={self.__max_staleness!r}, hedge={self.__hedge!r})"
+        return (
+            f"{self.name}(tag_sets={self.__tag_sets!r}, "
+            f"max_staleness={self.__max_staleness!r}, hedge={self.__hedge!r})"
+        )
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, _ServerMode):
@@ -553,9 +563,11 @@ class ReadPreference:
 
     Apps can also create a custom read preference, for example::
 
-       Nearest(tag_sets=[{"node":"analytics"}])
+       Nearest(tag_sets=[{"node": "analytics"}])
 
-    See `Read and Write Settings <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_ for code examples.
+    See `Read and Write Settings
+    <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/configure/#read-and-write-settings>`_
+    for code examples.
 
     A read preference is used in three cases:
 

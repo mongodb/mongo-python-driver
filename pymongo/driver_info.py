@@ -44,7 +44,8 @@ class DriverInfo(namedtuple("DriverInfo", ["name", "version", "platform"])):
         for key, value in self._asdict().items():
             if value is not None and not isinstance(value, str):
                 raise TypeError(
-                    f"Wrong type for DriverInfo {key} option, value must be an instance of str, not {type(value)}"
+                    f"Wrong type for DriverInfo {key} option, value must be an "
+                    f"instance of str, not {type(value)}"
                 )
             if value and "|" in value:
                 raise ValueError(f"DriverInfo {key} must not contain the '|' delimiter")

@@ -101,7 +101,7 @@ def _validate_canonicalize_host_name(value: str | bool) -> str | bool:
         return value in ["true", True]
 
     if value not in valid_names:
-        raise ValueError(f"CANONICALIZE_HOST_NAME '{value}' not in valid options: {valid_names}")
+        raise ValueError(f"CANONICALIZE_HOST_NAME not in valid options: {valid_names}")
     return value
 
 
@@ -194,14 +194,16 @@ def _build_credentials_tuple(
                 passwd = None
                 if not token_resource:
                     raise ConfigurationError(
-                        "Azure environment for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
+                        "Azure environment for MONGODB-OIDC requires a "
+                        "TOKEN_RESOURCE auth mechanism property"
                     )
                 callback = _OIDCAzureCallback(token_resource)
             elif environ == "gcp":
                 passwd = None
                 if not token_resource:
                     raise ConfigurationError(
-                        "GCP provider for MONGODB-OIDC requires a TOKEN_RESOURCE auth mechanism property"
+                        "GCP provider for MONGODB-OIDC requires a "
+                        "TOKEN_RESOURCE auth mechanism property"
                     )
                 callback = _OIDCGCPCallback(token_resource)
             elif environ == "k8s":
@@ -224,6 +226,8 @@ def _build_credentials_tuple(
 
     elif mech == "PLAIN":
         source_database = source or database or "$external"
+        if (user and "\x00" in user) or (passwd and "\x00" in passwd):
+            raise ConfigurationError("PLAIN credentials cannot contain NUL characters.")
         return MongoCredential(mech, source_database, user, passwd, None, None)
     else:
         source_database = source or database or "admin"

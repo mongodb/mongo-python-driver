@@ -367,8 +367,7 @@ class AsyncGridFS:
         arbitrary queries on the files collection. Can be combined
         with other modifiers for additional control. For example::
 
-          for grid_out in fs.find({"filename": "lisa.txt"},
-                                  no_cursor_timeout=True):
+          for grid_out in fs.find({"filename": "lisa.txt"}, no_cursor_timeout=True):
               data = grid_out.read()
 
         would iterate through all versions of "lisa.txt" stored in GridFS.
@@ -556,8 +555,8 @@ class AsyncGridFSBucket:
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
           with fs.open_upload_stream(
-                "test_file", chunk_size_bytes=4,
-                metadata={"contentType": "text/plain"}) as grid_in:
+              "test_file", chunk_size_bytes=4, metadata={"contentType": "text/plain"}
+          ) as grid_in:
               grid_in.write("data I want to store!")
           # uploaded on close
 
@@ -610,10 +609,8 @@ class AsyncGridFSBucket:
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
           with fs.open_upload_stream_with_id(
-                ObjectId(),
-                "test_file",
-                chunk_size_bytes=4,
-                metadata={"contentType": "text/plain"}) as grid_in:
+              ObjectId(), "test_file", chunk_size_bytes=4, metadata={"contentType": "text/plain"}
+          ) as grid_in:
               grid_in.write("data I want to store!")
           # uploaded on close
 
@@ -672,7 +669,8 @@ class AsyncGridFSBucket:
               "test_file",
               "data I want to store!",
               chunk_size_bytes=4,
-              metadata={"contentType": "text/plain"})
+              metadata={"contentType": "text/plain"},
+          )
 
         Returns the _id of the uploaded file.
 
@@ -724,7 +722,8 @@ class AsyncGridFSBucket:
               "test_file",
               "data I want to store!",
               chunk_size_bytes=4,
-              metadata={"contentType": "text/plain"})
+              metadata={"contentType": "text/plain"},
+          )
 
         Raises :exc:`~gridfs.errors.NoFile` if no such version of
         that file exists.
@@ -795,7 +794,7 @@ class AsyncGridFSBucket:
           # Get _id of file to read
           file_id = fs.upload_from_stream("test_file", "data I want to store!")
           # Get file to write to
-          file = open('myfile','wb+')
+          file = open("myfile", "wb+")
           fs.download_to_stream(file_id, file)
           file.seek(0)
           contents = file.read()
@@ -885,8 +884,7 @@ class AsyncGridFSBucket:
 
         For example::
 
-          for grid_data in fs.find({"filename": "lisa.txt"},
-                                  no_cursor_timeout=True):
+          for grid_data in fs.find({"filename": "lisa.txt"}, no_cursor_timeout=True):
               data = grid_data.read()
 
         would iterate through all versions of "lisa.txt" stored in GridFS.
@@ -991,7 +989,7 @@ class AsyncGridFSBucket:
           my_db = MongoClient().test
           fs = GridFSBucket(my_db)
           # Get file to write to
-          file = open('myfile','wb')
+          file = open("myfile", "wb")
           fs.download_to_stream_by_name("test_file", file)
 
         Raises :exc:`~gridfs.errors.NoFile` if no such version of
@@ -1086,7 +1084,8 @@ class AsyncGridFSBucket:
         )
         if not result.matched_count:
             raise NoFile(
-                f"no files could be renamed {new_filename!r} because none matched filename {filename!r}"
+                f"no files could be renamed {new_filename!r} "
+                f"because none matched filename {filename!r}"
             )
 
 
@@ -1151,7 +1150,8 @@ class AsyncGridIn:
         """
         if not isinstance(root_collection, AsyncCollection):
             raise TypeError(
-                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}"
+                f"root_collection must be an instance of AsyncCollection, "
+                f"not {type(root_collection)}"
             )
 
         if not root_collection.write_concern.acknowledged:
@@ -1233,7 +1233,8 @@ class AsyncGridIn:
     )
     md5: str | None = _a_grid_in_property(
         "md5",
-        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file "
+        "if an md5 sum was created.",
         closed_only=True,
     )
 
@@ -1266,7 +1267,8 @@ class AsyncGridIn:
                     )
                 else:
                     raise AttributeError(
-                        "AsyncGridIn does not support __setattr__ after being closed(). Set the attribute before closing the file or use AsyncGridIn.set() instead"
+                        "AsyncGridIn does not support __setattr__ after being closed(). "
+                        "Set the attribute before closing the file or use AsyncGridIn.set() instead"
                     )
 
     async def set(self, name: str, value: Any) -> None:
@@ -1516,7 +1518,8 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
         """
         if not isinstance(root_collection, AsyncCollection):
             raise TypeError(
-                f"root_collection must be an instance of AsyncCollection, not {type(root_collection)}"
+                f"root_collection must be an instance of AsyncCollection, "
+                f"not {type(root_collection)}"
             )
         _disallow_transactions(session)
 
@@ -1557,7 +1560,8 @@ class AsyncGridOut(GRIDOUT_BASE_CLASS):  # type: ignore
     )
     md5: str | None = _a_grid_out_property(
         "md5",
-        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file if an md5 sum was created.",
+        "DEPRECATED, will be removed in PyMongo 5.0. MD5 of the contents of this file "
+        "if an md5 sum was created.",
     )
 
     _file: Any

@@ -23,13 +23,8 @@ from collections import OrderedDict, abc
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from difflib import get_close_matches
 from importlib.metadata import requires, version
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    NoReturn,
-    Self,
-    overload,
-)
+from inspect import signature
+from typing import TYPE_CHECKING, Any, NoReturn, Self, overload
 from urllib.parse import unquote_plus
 
 from bson import SON
@@ -171,11 +166,20 @@ def clean_node(node: str) -> tuple[str, int]:
     return host.lower(), port
 
 
-def raise_config_error(key: str, suggestions: list[str] | None = None) -> NoReturn:
-    """Raise ConfigurationError with the given key name."""
-    msg = f"Unknown option: {key}."
+def raise_config_error(
+    key: str, suggestions: list[str] | None = None, from_uri: bool = False
+) -> NoReturn:
+    """Raise ConfigurationError with the given key name.
+
+    If ``from_uri`` is True the key came from a connection string and is not
+    named in the message.
+    """
+    msg = "Unknown option." if from_uri else f"Unknown option: {key}."
     if suggestions:
-        msg += f" Did you mean one of ({', '.join(suggestions)}) or maybe a camelCase version of one? Refer to docstring."
+        msg += (
+            f" Did you mean one of ({', '.join(suggestions)}) or maybe a camelCase version "
+            "of one? Refer to docstring."
+        )
     raise ConfigurationError(msg)
 
 
@@ -226,14 +230,22 @@ def validate_non_negative_integer(option: str, value: Any) -> int:
     return val
 
 
-def validate_readable(option: str, value: Any) -> str | None:
+def validate_readable(option: str, value: Any, from_uri: bool = False) -> str | None:
     """Validate that 'value' is file-like and readable."""
     if value is None:
         return value
     # First make sure its a string py3.3 open(True, 'r') succeeds
     # Used in ssl cert checking due to poor ssl module error reporting
     value = validate_string(option, value)
-    open(value).close()
+    if from_uri:
+        # Keep the exception type and errno but not the path. Not
+        # chained: the chained exception's message contains the path.
+        try:
+            open(value).close()
+        except OSError as exc:
+            raise type(exc)(exc.errno, f"The {option} file is not readable") from None
+    else:
+        open(value).close()
     return value
 
 
@@ -269,7 +281,8 @@ def validate_non_negative_int_or_basestring(option: Any, value: Any) -> int | st
             return value
         return validate_non_negative_integer(option, val)
     raise TypeError(
-        f"Wrong type for {option}, value must be an non negative integer or a string, not {type(value)}"
+        f"Wrong type for {option}, value must be an non negative integer or a "
+        f"string, not {type(value)}"
     )
 
 
@@ -359,7 +372,7 @@ def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
        mode.
     """
     if value not in _MONGOS_MODES:
-        raise ValueError(f"{value} is not a valid read preference")
+        raise ValueError(f"Not a valid read preference. Must be one of: {', '.join(_MONGOS_MODES)}")
     return value
 
 
@@ -372,11 +385,15 @@ def validate_auth_mechanism(option: str, value: Any) -> str:
     return value
 
 
-def validate_uuid_representation(dummy: Any, value: Any) -> int:
+def validate_uuid_representation(dummy: Any, value: Any, from_uri: bool = False) -> int:
     """Validate the uuid representation option selected in the URI."""
     try:
         return _UUID_REPRESENTATIONS[value]
     except KeyError:
+        if from_uri:
+            raise ValueError(
+                f"Invalid UUID representation. Must be one of {tuple(_UUID_REPRESENTATIONS)}"
+            ) from None
         raise ValueError(
             f"{value} is an invalid UUID representation. "
             "Must be one of "
@@ -384,7 +401,9 @@ def validate_uuid_representation(dummy: Any, value: Any) -> int:
         ) from None
 
 
-def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]:
+def validate_read_preference_tags(
+    name: str, value: Any, from_uri: bool = False
+) -> list[dict[str, str]]:
     """Parse readPreferenceTags if passed as a client kwarg."""
     if not isinstance(value, list):
         value = [value]
@@ -401,6 +420,8 @@ def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]
                 tags[unquote_plus(key)] = unquote_plus(val)
             tag_sets.append(tags)
         except Exception:
+            if from_uri:
+                raise ValueError(f"Invalid read preference tags value for {name}") from None
             raise ValueError(f"{tag_set!r} not a valid value for {name}") from None
     return tag_sets
 
@@ -430,6 +451,16 @@ _SAFE_AUTH_MECHANISM_PROPS_FOR_REPR = frozenset(
     ]
 )
 
+# Sensitive options per the URI options spec. Their arguments MUST NOT appear
+# in string representations of client configuration.
+SENSITIVE_OPTIONS_FOR_REPR = frozenset(
+    [
+        "proxyusername",
+        "proxypassword",
+        "tlscertificatekeyfilepassword",
+    ]
+)
+
 
 def redact_auth_mechanism_properties_for_repr(value: Any) -> Any:
     """Redact sensitive auth mechanism properties before including them in repr."""
@@ -449,7 +480,8 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
     if not isinstance(value, str):
         if not isinstance(value, dict):
             raise TypeError(
-                f"Auth mechanism properties must be given as a string or a dictionary, not {type(value)}"
+                f"Auth mechanism properties must be given as a string or a "
+                f"dictionary, not {type(value)}"
             )
         for key, prop_value in value.items():
             if isinstance(prop_value, str):
@@ -605,7 +637,7 @@ def validate_server_api_or_none(option: Any, value: Any) -> ServerApi | None:
     return value
 
 
-def validate_is_callable_or_none(option: Any, value: Any) -> Callable[..., Any] | None:
+def validate_is_callable_or_none(option: Any, value: Any) -> Callable[[Any, Any], Any] | None:
     """Validate that 'value' is a callable."""
     if value is None:
         return value
@@ -644,7 +676,7 @@ def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
     """Validate the Unicode decode error handler option of CodecOptions."""
     if value not in _UNICODE_DECODE_ERROR_HANDLERS:
         raise ValueError(
-            f"{value} is an invalid Unicode decode error handler. "
+            "Invalid Unicode decode error handler. "
             "Must be one of "
             f"{tuple(_UNICODE_DECODE_ERROR_HANDLERS)}"
         )
@@ -670,7 +702,9 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Any | None
     return value
 
 
-def validate_datetime_conversion(option: Any, value: Any) -> DatetimeConversion | None:
+def validate_datetime_conversion(
+    option: Any, value: Any, from_uri: bool = False
+) -> DatetimeConversion | None:
     """Validate a DatetimeConversion string."""
     if value is None:
         return DatetimeConversion.DATETIME
@@ -678,7 +712,14 @@ def validate_datetime_conversion(option: Any, value: Any) -> DatetimeConversion 
     if isinstance(value, str):
         if value.isdigit():
             return DatetimeConversion(int(value))
-        return DatetimeConversion[value]
+        try:
+            return DatetimeConversion[value]
+        except KeyError:
+            # Not ValueError: get_validated_options would demote it to a
+            # warning, where before this change the KeyError propagated.
+            if from_uri:
+                raise KeyError(f"Invalid {option} value") from None
+            raise
     elif isinstance(value, int):
         return DatetimeConversion(value)
 
@@ -687,9 +728,11 @@ def validate_datetime_conversion(option: Any, value: Any) -> DatetimeConversion 
     )
 
 
-def validate_server_monitoring_mode(option: str, value: str) -> str:
+def validate_server_monitoring_mode(option: str, value: str, from_uri: bool = False) -> str:
     """Validate the serverMonitoringMode option."""
     if value not in {"auto", "stream", "poll"}:
+        if from_uri:
+            raise ValueError(f'{option} is invalid. Must be one of "auto", "stream", or "poll"')
         raise ValueError(
             f'{option}={value!r} is invalid. Must be one of "auto", "stream", or "poll"'
         )
@@ -832,14 +875,17 @@ TIMEOUT_OPTIONS: list[str] = [
 
 
 def _get_validator(
-    key: str, validators: dict[str, Callable[[Any, Any], Any]], normed_key: str | None = None
+    key: str,
+    validators: dict[str, Callable[[Any, Any], Any]],
+    normed_key: str | None = None,
+    from_uri: bool = False,
 ) -> Callable[[Any, Any], Any]:
     normed_key = normed_key or key
     try:
         return validators[normed_key]
     except KeyError:
         suggestions = get_close_matches(normed_key, validators, cutoff=0.2)
-        raise_config_error(key, suggestions)
+        raise_config_error(key, suggestions, from_uri=from_uri)
 
 
 def validate(option: str, value: Any) -> tuple[str, Any]:
@@ -850,7 +896,7 @@ def validate(option: str, value: Any) -> tuple[str, Any]:
 
 
 def get_validated_options(
-    options: Mapping[str, Any], warn: bool = True
+    options: Mapping[str, Any], warn: bool = True, from_uri: bool = False
 ) -> MutableMapping[str, Any]:
     """Validate each entry in options and raise a warning if it is not valid.
 
@@ -883,8 +929,13 @@ def get_validated_options(
     for opt, value in options.items():
         normed_key = get_normed_key(opt)
         try:
-            validator = _get_validator(opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key)
-            validated = validator(opt, value)
+            validator = _get_validator(
+                opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key, from_uri=from_uri
+            )
+            if from_uri and "from_uri" in signature(validator).parameters:
+                validated = validator(opt, value, from_uri=True)  # type: ignore[call-arg]
+            else:
+                validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
             if (
                 normed_key == "authmechanismproperties"
@@ -940,13 +991,15 @@ class BaseObject:
 
         if not isinstance(write_concern, WriteConcern):
             raise TypeError(
-                f"write_concern must be an instance of pymongo.write_concern.WriteConcern, not {type(write_concern)}"
+                f"write_concern must be an instance of "
+                f"pymongo.write_concern.WriteConcern, not {type(write_concern)}"
             )
         self._write_concern = write_concern
 
         if not isinstance(read_concern, ReadConcern):
             raise TypeError(
-                f"read_concern must be an instance of pymongo.read_concern.ReadConcern, not {type(read_concern)}"
+                f"read_concern must be an instance of "
+                f"pymongo.read_concern.ReadConcern, not {type(read_concern)}"
             )
         self._read_concern = read_concern
 

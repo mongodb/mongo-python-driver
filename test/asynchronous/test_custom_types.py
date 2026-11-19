@@ -430,7 +430,8 @@ class TestBSONCustomTypeEncoderAndFallbackEncoderTandem(unittest.TestCase):
             type_registry=TypeRegistry([self.B2A()], fallback_encoder=self.fallback_encoder_A2B)
         )
 
-        # GC while the stack is exhausted may trigger an unraisable RecursionError that causes a failure
+        # GC while the stack is exhausted may trigger an unraisable RecursionError that causes a
+        # failure
         gc.collect()
         gc.disable()
         try:

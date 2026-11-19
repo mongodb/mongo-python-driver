@@ -58,7 +58,9 @@ class TypeEncoder(abc.ABC):
     Codec classes must implement the ``python_type`` attribute, and the
     ``transform_python`` method to support encoding.
 
-    See `encode data with type codecs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#encode-data-with-type-codecs>`_ documentation for an example.
+    See `encode data with type codecs
+    <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#encode-data-with-type-codecs>`_
+    documentation for an example.
     """
 
     @abc.abstractproperty
@@ -79,7 +81,9 @@ class TypeDecoder(abc.ABC):
     Codec classes must implement the ``bson_type`` attribute, and the
     ``transform_bson`` method to support decoding.
 
-    See `encode data with type codecs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#encode-data-with-type-codecs>`_ documentation for an example.
+    See `encode data with type codecs
+    <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#encode-data-with-type-codecs>`_
+    documentation for an example.
     """
 
     @abc.abstractproperty
@@ -102,7 +106,9 @@ class TypeCodec(TypeEncoder, TypeDecoder):
     ``bson_type`` attribute, and the ``transform_bson`` method to support
     decoding.
 
-    See `encode data with type codecs <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#encode-data-with-type-codecs>`_ documentation for an example.
+    See `encode data with type codecs
+    <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#encode-data-with-type-codecs>`_
+    documentation for an example.
     """
 
 
@@ -123,7 +129,9 @@ class TypeRegistry:
       >>> type_registry = TypeRegistry([Codec1, Codec2, Codec3, ...],
       ...                              fallback_encoder)
 
-    See `add codec to the type registry <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#add-codec-to-the-type-registry>`_ documentation for an example.
+    See `add codec to the type registry
+    <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/custom-types/type-codecs/#add-codec-to-the-type-registry>`_
+    documentation for an example.
 
     :param type_codecs: iterable of type codec instances. If
         ``type_codecs`` contains multiple codecs that transform a single
@@ -162,7 +170,8 @@ class TypeRegistry:
                 self._decoder_map[codec.bson_type] = codec.transform_bson
             if not is_valid_codec:
                 raise TypeError(
-                    f"Expected an instance of {TypeEncoder.__name__}, {TypeDecoder.__name__}, or {TypeCodec.__name__}, got {codec!r} instead"
+                    f"Expected an instance of {TypeEncoder.__name__}, {TypeDecoder.__name__}, "
+                    f"or {TypeCodec.__name__}, got {codec!r} instead"
                 )
 
     @property
@@ -187,7 +196,10 @@ class TypeRegistry:
                 raise TypeError(err_msg)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(type_codecs={self.__type_codecs!r}, fallback_encoder={self._fallback_encoder!r})"
+        return (
+            f"{self.__class__.__name__}(type_codecs={self.__type_codecs!r}, "
+            f"fallback_encoder={self._fallback_encoder!r})"
+        )
 
     def __eq__(self, other: object) -> Any:
         if not isinstance(other, type(self)):
@@ -322,11 +334,13 @@ else:
               >>> doc._id
               ObjectId('5b3016359110ea14e8c58b93')
 
-            See `Dates and Times <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#dates-and-times>`_ for examples using the `tz_aware` and
-            `tzinfo` options.
+            See `Dates and Times
+            <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#dates-and-times>`_
+            for examples using the `tz_aware` and `tzinfo` options.
 
-            See `UUID <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_ for examples using the `uuid_representation`
-            option.
+            See `UUID
+            <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_
+            for examples using the `uuid_representation` option.
 
             :param document_class: BSON documents returned in queries will be decoded
                 to an instance of this class. Must be a subclass of
@@ -339,7 +353,9 @@ else:
                 :data:`~bson.binary.UuidRepresentation.UNSPECIFIED`. New
                 applications should consider setting this to
                 :data:`~bson.binary.UuidRepresentation.STANDARD` for cross language
-                compatibility. See `UUID representations <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_ for details.
+                compatibility. See `UUID representations
+                <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/uuid/#universally-unique-ids--uuids->`_
+                for details.
             :param unicode_decode_error_handler: The error handler to apply when
                 a Unicode-related error occurs during BSON decoding that would
                 otherwise raise :exc:`UnicodeDecodeError`. Valid options include
@@ -408,7 +424,8 @@ else:
                 )
             if not isinstance(unicode_decode_error_handler, str):
                 raise TypeError(
-                    f"unicode_decode_error_handler must be a string, not {type(unicode_decode_error_handler)}"
+                    f"unicode_decode_error_handler must be a string, "
+                    f"not {type(unicode_decode_error_handler)}"
                 )
             if tzinfo is not None:
                 if not isinstance(tzinfo, datetime.tzinfo):
@@ -449,9 +466,11 @@ else:
             )
 
             return (
-                f"document_class={document_class_repr}, tz_aware={self.tz_aware!r}, uuid_representation={uuid_rep_repr}, "
-                f"unicode_decode_error_handler={self.unicode_decode_error_handler!r}, tzinfo={self.tzinfo!r}, "
-                f"type_registry={self.type_registry!r}, datetime_conversion={self.datetime_conversion!s}"
+                f"document_class={document_class_repr}, tz_aware={self.tz_aware!r}, "
+                f"uuid_representation={uuid_rep_repr}, "
+                f"unicode_decode_error_handler={self.unicode_decode_error_handler!r}, "
+                f"tzinfo={self.tzinfo!r}, type_registry={self.type_registry!r}, "
+                f"datetime_conversion={self.datetime_conversion!s}"
             )
 
         def __repr__(self) -> str:

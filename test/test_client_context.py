@@ -31,7 +31,8 @@ class TestClientContext(UnitTest):
         self.assertTrue(
             client_context.connected,
             "client context must be connected when "
-            f"PYMONGO_MUST_CONNECT is set. Failed attempts:\n{client_context.connection_attempt_info()}",
+            f"PYMONGO_MUST_CONNECT is set. Failed attempts:\n"
+            f"{client_context.connection_attempt_info()}",
         )
 
     def test_enableTestCommands_is_disabled(self):

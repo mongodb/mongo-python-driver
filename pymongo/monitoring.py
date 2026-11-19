@@ -33,34 +33,41 @@ For example, a simple command logger might be implemented like this::
 
     from pymongo import monitoring
 
-    class CommandLogger(monitoring.CommandListener):
 
+    class CommandLogger(monitoring.CommandListener):
         def started(self, event):
-            logging.info("Command {0.command_name} with request id "
-                         "{0.request_id} started on server "
-                         "{0.connection_id}".format(event))
+            logging.info(
+                "Command {0.command_name} with request id "
+                "{0.request_id} started on server "
+                "{0.connection_id}".format(event)
+            )
 
         def succeeded(self, event):
-            logging.info("Command {0.command_name} with request id "
-                         "{0.request_id} on server {0.connection_id} "
-                         "succeeded in {0.duration_micros} "
-                         "microseconds".format(event))
+            logging.info(
+                "Command {0.command_name} with request id "
+                "{0.request_id} on server {0.connection_id} "
+                "succeeded in {0.duration_micros} "
+                "microseconds".format(event)
+            )
 
         def failed(self, event):
-            logging.info("Command {0.command_name} with request id "
-                         "{0.request_id} on server {0.connection_id} "
-                         "failed in {0.duration_micros} "
-                         "microseconds".format(event))
+            logging.info(
+                "Command {0.command_name} with request id "
+                "{0.request_id} on server {0.connection_id} "
+                "failed in {0.duration_micros} "
+                "microseconds".format(event)
+            )
+
 
     monitoring.register(CommandLogger())
 
 Server discovery and monitoring events are also available. For example::
 
     class ServerLogger(monitoring.ServerListener):
-
         def opened(self, event):
-            logging.info("Server {0.server_address} added to topology "
-                         "{0.topology_id}".format(event))
+            logging.info(
+                "Server {0.server_address} added to topology {0.topology_id}".format(event)
+            )
 
         def description_changed(self, event):
             previous_server_type = event.previous_description.server_type
@@ -70,38 +77,41 @@ Server discovery and monitoring events are also available. For example::
                 logging.info(
                     "Server {0.server_address} changed type from "
                     "{0.previous_description.server_type_name} to "
-                    "{0.new_description.server_type_name}".format(event))
+                    "{0.new_description.server_type_name}".format(event)
+                )
 
         def closed(self, event):
-            logging.warning("Server {0.server_address} removed from topology "
-                            "{0.topology_id}".format(event))
+            logging.warning(
+                "Server {0.server_address} removed from topology {0.topology_id}".format(event)
+            )
 
 
     class HeartbeatLogger(monitoring.ServerHeartbeatListener):
-
         def started(self, event):
-            logging.info("Heartbeat sent to server "
-                         "{0.connection_id}".format(event))
+            logging.info("Heartbeat sent to server {0.connection_id}".format(event))
 
         def succeeded(self, event):
             # The reply.document attribute was added in PyMongo 3.4.
-            logging.info("Heartbeat to server {0.connection_id} "
-                         "succeeded with reply "
-                         "{0.reply.document}".format(event))
+            logging.info(
+                "Heartbeat to server {0.connection_id} "
+                "succeeded with reply "
+                "{0.reply.document}".format(event)
+            )
 
         def failed(self, event):
-            logging.warning("Heartbeat to server {0.connection_id} "
-                            "failed with error {0.reply}".format(event))
+            logging.warning(
+                "Heartbeat to server {0.connection_id} failed with error {0.reply}".format(event)
+            )
+
 
     class TopologyLogger(monitoring.TopologyListener):
-
         def opened(self, event):
-            logging.info("Topology with id {0.topology_id} "
-                         "opened".format(event))
+            logging.info("Topology with id {0.topology_id} opened".format(event))
 
         def description_changed(self, event):
-            logging.info("Topology description updated for "
-                         "topology id {0.topology_id}".format(event))
+            logging.info(
+                "Topology description updated for topology id {0.topology_id}".format(event)
+            )
             previous_topology_type = event.previous_description.topology_type
             new_topology_type = event.new_description.topology_type
             if new_topology_type != previous_topology_type:
@@ -109,7 +119,8 @@ Server discovery and monitoring events are also available. For example::
                 logging.info(
                     "Topology {0.topology_id} changed type from "
                     "{0.previous_description.topology_type_name} to "
-                    "{0.new_description.topology_type_name}".format(event))
+                    "{0.new_description.topology_type_name}".format(event)
+                )
             # The has_writable_server and has_readable_server methods
             # were added in PyMongo 3.4.
             if not event.new_description.has_writable_server():
@@ -118,13 +129,11 @@ Server discovery and monitoring events are also available. For example::
                 logging.warning("No readable servers available.")
 
         def closed(self, event):
-            logging.info("Topology with id {0.topology_id} "
-                         "closed".format(event))
+            logging.info("Topology with id {0.topology_id} closed".format(event))
 
 Connection monitoring and pooling events are also available. For example::
 
     class ConnectionPoolLogger(ConnectionPoolListener):
-
         def pool_created(self, event):
             logging.info("[pool {0.address}] pool created".format(event))
 
@@ -138,33 +147,42 @@ Connection monitoring and pooling events are also available. For example::
             logging.info("[pool {0.address}] pool closed".format(event))
 
         def connection_created(self, event):
-            logging.info("[pool {0.address}][connection #{0.connection_id}] "
-                         "connection created".format(event))
+            logging.info(
+                "[pool {0.address}][connection #{0.connection_id}] connection created".format(event)
+            )
 
         def connection_ready(self, event):
-            logging.info("[pool {0.address}][connection #{0.connection_id}] "
-                         "connection setup succeeded".format(event))
+            logging.info(
+                "[pool {0.address}][connection #{0.connection_id}] "
+                "connection setup succeeded".format(event)
+            )
 
         def connection_closed(self, event):
-            logging.info("[pool {0.address}][connection #{0.connection_id}] "
-                         "connection closed, reason: "
-                         "{0.reason}".format(event))
+            logging.info(
+                "[pool {0.address}][connection #{0.connection_id}] "
+                "connection closed, reason: "
+                "{0.reason}".format(event)
+            )
 
         def connection_check_out_started(self, event):
-            logging.info("[pool {0.address}] connection check out "
-                         "started".format(event))
+            logging.info("[pool {0.address}] connection check out started".format(event))
 
         def connection_check_out_failed(self, event):
-            logging.info("[pool {0.address}] connection check out "
-                         "failed, reason: {0.reason}".format(event))
+            logging.info(
+                "[pool {0.address}] connection check out failed, reason: {0.reason}".format(event)
+            )
 
         def connection_checked_out(self, event):
-            logging.info("[pool {0.address}][connection #{0.connection_id}] "
-                         "connection checked out of pool".format(event))
+            logging.info(
+                "[pool {0.address}][connection #{0.connection_id}] "
+                "connection checked out of pool".format(event)
+            )
 
         def connection_checked_in(self, event):
-            logging.info("[pool {0.address}][connection #{0.connection_id}] "
-                         "connection checked into pool".format(event))
+            logging.info(
+                "[pool {0.address}][connection #{0.connection_id}] "
+                "connection checked into pool".format(event)
+            )
 
 
 Event listeners can also be registered per instance of
@@ -655,7 +673,11 @@ class CommandStartedEvent(_CommandEvent):
         return super().database_name
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, "
+            f"command: {self.command_name!r}, operation_id: {self.operation_id}, "
+            f"service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+        )
 
 
 class CommandSucceededEvent(_CommandEvent):
@@ -713,7 +735,12 @@ class CommandSucceededEvent(_CommandEvent):
         return self.__reply
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, duration_micros: {self.duration_micros}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, "
+            f"command: {self.command_name!r}, operation_id: {self.operation_id}, "
+            f"duration_micros: {self.duration_micros}, service_id: {self.service_id}, "
+            f"server_connection_id: {self.server_connection_id}>"
+        )
 
 
 class CommandFailedEvent(_CommandEvent):
@@ -768,8 +795,10 @@ class CommandFailedEvent(_CommandEvent):
 
     def __repr__(self) -> str:
         return (
-            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, command: {self.command_name!r}, operation_id: {self.operation_id}, duration_micros: {self.duration_micros}, "
-            f"failure: {self.failure!r}, service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
+            f"<{self.__class__.__name__} {self.connection_id} db: {self.database_name!r}, "
+            f"command: {self.command_name!r}, operation_id: {self.operation_id}, "
+            f"duration_micros: {self.duration_micros}, failure: {self.failure!r}, "
+            f"service_id: {self.service_id}, server_connection_id: {self.server_connection_id}>"
         )
 
 
@@ -832,7 +861,8 @@ class PoolClearedEvent(_PoolEvent):
     :param address: The address (host, port) pair of the server this Pool is
        attempting to connect to.
     :param service_id: The service_id this command was sent to, or ``None``.
-    :param interrupt_connections: True if all active connections were interrupted by the Pool during clearing.
+    :param interrupt_connections: True if all active connections were interrupted by the Pool during
+       clearing.
 
     .. versionadded:: 3.9
     """
@@ -868,7 +898,10 @@ class PoolClearedEvent(_PoolEvent):
         return self.__interrupt_connections
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.address!r}, {self.__service_id!r}, {self.__interrupt_connections!r})"
+        return (
+            f"{self.__class__.__name__}({self.address!r}, "
+            f"{self.__service_id!r}, {self.__interrupt_connections!r})"
+        )
 
 
 class PoolClosedEvent(_PoolEvent):
@@ -974,7 +1007,10 @@ class _ConnectionDurationEvent(_ConnectionIdEvent):
         return self.__duration
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.address!r}, {self.connection_id!r}, {self.__duration!r})"
+        return (
+            f"{self.__class__.__name__}({self.address!r}, "
+            f"{self.connection_id!r}, {self.__duration!r})"
+        )
 
 
 class ConnectionCreatedEvent(_ConnectionIdEvent):
@@ -1033,7 +1069,10 @@ class ConnectionClosedEvent(_ConnectionIdEvent):
         return self.__reason
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.address!r}, {self.connection_id!r}, {self.__reason!r})"
+        return (
+            f"{self.__class__.__name__}({self.address!r}, "
+            f"{self.connection_id!r}, {self.__reason!r})"
+        )
 
 
 class ConnectionCheckOutStartedEvent(_ConnectionEvent):
@@ -1155,7 +1194,10 @@ class ServerDescriptionChangedEvent(_ServerEvent):
         return self.__new_description
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.server_address} changed from: {self.previous_description}, to: {self.new_description}>"
+        return (
+            f"<{self.__class__.__name__} {self.server_address} "
+            f"changed from: {self.previous_description}, to: {self.new_description}>"
+        )
 
 
 class ServerOpeningEvent(_ServerEvent):
@@ -1222,7 +1264,10 @@ class TopologyDescriptionChangedEvent(TopologyEvent):
         return self.__new_description
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} topology_id: {self.topology_id} changed from: {self.previous_description}, to: {self.new_description}>"
+        return (
+            f"<{self.__class__.__name__} topology_id: {self.topology_id} "
+            f"changed from: {self.previous_description}, to: {self.new_description}>"
+        )
 
 
 class TopologyOpenedEvent(TopologyEvent):
@@ -1320,7 +1365,10 @@ class ServerHeartbeatSucceededEvent(_ServerHeartbeatEvent):
         return super().awaited
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, awaited: {self.awaited}, reply: {self.reply}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, "
+            f"awaited: {self.awaited}, reply: {self.reply}>"
+        )
 
 
 class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
@@ -1361,7 +1409,10 @@ class ServerHeartbeatFailedEvent(_ServerHeartbeatEvent):
         return super().awaited
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, awaited: {self.awaited}, reply: {self.reply!r}>"
+        return (
+            f"<{self.__class__.__name__} {self.connection_id} duration: {self.duration}, "
+            f"awaited: {self.awaited}, reply: {self.reply!r}>"
+        )
 
 
 class _EventListeners:

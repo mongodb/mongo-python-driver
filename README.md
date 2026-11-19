@@ -184,7 +184,6 @@ ObjectId('4aba160ee23f6b543e000002')
 {'x': 10, '_id': ObjectId('4aba15ebe23f6b53b0000000')}
 >>> for item in db.my_collection.find():
 ...     print(item["x"])
-...
 10
 8
 11
@@ -192,7 +191,6 @@ ObjectId('4aba160ee23f6b543e000002')
 'x_1'
 >>> for item in db.my_collection.find().sort("x", pymongo.ASCENDING):
 ...     print(item["x"])
-...
 8
 10
 11

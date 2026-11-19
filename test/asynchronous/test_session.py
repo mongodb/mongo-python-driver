@@ -230,7 +230,8 @@ class TestSession(AsyncIntegrationTest):
                     kw = copy.copy(kw)
                     with self.assertRaisesRegex(
                         InvalidOperation,
-                        "Only the client that created the bound session can perform operations within its context block",
+                        "Only the client that created the bound session "
+                        "can perform operations within its context block",
                     ):
                         await f(*args, **kw)
 
@@ -1323,7 +1324,8 @@ class TestClusterTime(AsyncIntegrationTest):
 
             # Advance the server's $clusterTime by performing an insert via another client.
             await self.db.coll.insert_one({"advance": "$clusterTime"})
-            # Wait until the client C1 processes the next pair of SDAM heartbeat started + succeeded events.
+            # Wait until the client C1 processes the next pair of SDAM heartbeat started + succeeded
+            # events.
             heartbeat_listener.reset()
 
             async def next_heartbeat():

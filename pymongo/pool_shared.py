@@ -101,7 +101,10 @@ class _ConnectionTelemetryInfo(Protocol):
 
 
 class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
-    """Shared base class for AsyncConnection and Connection. Subclasses contain all methods that perform I/O."""
+    """Shared base class for AsyncConnection and Connection.
+
+    Subclasses contain all methods that perform I/O.
+    """
 
     def __init__(
         self,
@@ -183,7 +186,10 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
             timeout_details = _get_timeout_details(self.opts)
             formatted = format_timeout_details(timeout_details)
             # CSOT: raise an error without running the command since we know it will time out.
-            errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f} {formatted}"
+            errmsg = (
+                f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= "
+                f"network round trip time:{rtt:.5f} {formatted}"
+            )
             raise ExecutionTimeout(
                 errmsg,
                 50,
@@ -225,7 +231,8 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
         if session:
             if session._client is not client:
                 raise InvalidOperation(
-                    f"Can only use session with the {type(session._client).__name__} that started it"
+                    f"Can only use session with the {type(session._client).__name__} "
+                    f"that started it"
                 )
 
     def send_cluster_time(
@@ -264,7 +271,7 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
 
 
 class _AgnosticBasePool(Generic[_ConnT]):
-    """Shared base class for async and sync Pool. Subclasses contain all methods that perform I/O."""
+    """Shared base class for async and sync Pool. Subclasses contain methods that perform I/O."""
 
     def __init__(
         self,
@@ -419,7 +426,8 @@ class _AgnosticBasePool(Generic[_ConnT]):
             other_ops = self.active_sockets - self.ncursors - self.ntxns
             raise WaitQueueTimeoutError(
                 "Timeout waiting for connection from the connection pool. "
-                f"maxPoolSize: {self.opts.max_pool_size}, connections in use by cursors: {self.ncursors}, "
+                f"maxPoolSize: {self.opts.max_pool_size}, connections in use by cursors: "
+                f"{self.ncursors}, "
                 f"connections in use by transactions: {self.ntxns}, connections in use "
                 f"by other operations: {other_ops}, timeout: {timeout}"
             )
@@ -978,7 +986,7 @@ def _configured_socket_interface(
     options: PoolOptions,
     ssl_session_cache: list[Any] | None = None,
 ) -> NetworkingInterface:
-    """Given (host, port) and PoolOptions, return a NetworkingInterface wrapping a configured socket.
+    """Given (host, port) and PoolOptions, return a NetworkingInterface for a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
 

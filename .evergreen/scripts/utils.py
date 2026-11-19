@@ -163,7 +163,10 @@ def get_test_options(
         )
         if known_test_name:
             example_sub_test_name = sub_test_choices[0] if sub_test_choices else "azure"
-            help_text = f"The sub test name, for example {example_sub_test_name!r}. Required for {known_test_name!r}."
+            help_text = (
+                f"The sub test name, for example {example_sub_test_name!r}. "
+                f"Required for {known_test_name!r}."
+            )
             if sub_test_choices:
                 help_text += f" One of: {', '.join(sub_test_choices)}."
         else:

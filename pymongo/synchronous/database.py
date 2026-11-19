@@ -104,7 +104,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
            of :class:`~pymongo.collection.Collection` for attribute names
            with leading underscores. You must use dict-style lookups instead::
 
-               db['__my_collection__']
+               db["__my_collection__"]
 
            Not:
 
@@ -174,7 +174,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           >>> db1.read_preference
           Primary()
           >>> from pymongo.read_preferences import Secondary
-          >>> db2 = db1.with_options(read_preference=Secondary([{'node': 'analytics'}]))
+          >>> db2 = db1.with_options(read_preference=Secondary([{"node": "analytics"}]))
           >>> db1.read_preference
           Primary()
           >>> db2.read_preference
@@ -265,8 +265,7 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           >>> coll1.read_preference
           Primary()
           >>> from pymongo import ReadPreference
-          >>> coll2 = db.get_collection(
-          ...     'test', read_preference=ReadPreference.SECONDARY)
+          >>> coll2 = db.get_collection("test", read_preference=ReadPreference.SECONDARY)
           >>> coll2.read_preference
           Secondary(tag_sets=None)
 
@@ -650,9 +649,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
         which case  :attr:`~pymongo.read_preferences.ReadPreference.PRIMARY`
         is used.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement.
 
         .. note:: This method does not support the 'explain' option. Please
@@ -890,7 +892,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
            when decoding the command response.
 
         .. note:: If this client has been configured to use MongoDB Stable
-           API (see `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_), then :meth:`command` will
+           API (see `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_),
+           then :meth:`command` will
            automatically add API versioning options to the given command.
            Explicitly adding API versioning options in the command and
            declaring an API version on the client is not supported.
@@ -984,7 +987,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
           :class:`~pymongo.client_session.ClientSession`.
         :param comment: A user-provided comment to attach to future getMores for this
           command.
-        :param max_await_time_ms: The number of ms to wait for more data on future getMores for this command.
+        :param max_await_time_ms: The number of ms to wait for more data on future getMores for
+          this command.
         :param kwargs: additional keyword arguments will
           be added to the command document before it is sent
 
@@ -996,7 +1000,8 @@ class Database(common.BaseObject, Generic[_DocumentType]):
            when decoding the command response.
 
         .. note:: If this client has been configured to use MongoDB Stable
-           API (see `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_), then :meth:`command` will
+           API (see `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_),
+           then :meth:`command` will
            automatically add API versioning options to the given command.
            Explicitly adding API versioning options in the command and
            declaring an API version on the client is not supported.
@@ -1156,9 +1161,12 @@ class Database(common.BaseObject, Generic[_DocumentType]):
     ) -> CommandCursor[MutableMapping[str, Any]]:
         """Get a cursor over the collections of this database.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             with database.list_collections() as cursor:
@@ -1283,22 +1291,21 @@ class Database(common.BaseObject, Generic[_DocumentType]):
             Queryable Encryption. For example::
 
                 {
-                  "escCollection": "enxcol_.encryptedCollection.esc",
-                  "ecocCollection": "enxcol_.encryptedCollection.ecoc",
-                  "fields": [
-                      {
-                          "path": "firstName",
-                          "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
-                          "bsonType": "string",
-                          "queries": {"queryType": "equality"}
-                      },
-                      {
-                          "path": "ssn",
-                          "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
-                          "bsonType": "string"
-                      }
-                  ]
-
+                    "escCollection": "enxcol_.encryptedCollection.esc",
+                    "ecocCollection": "enxcol_.encryptedCollection.ecoc",
+                    "fields": [
+                        {
+                            "path": "firstName",
+                            "keyId": Binary.from_uuid(UUID("00000000-0000-0000-0000-000000000000")),
+                            "bsonType": "string",
+                            "queries": {"queryType": "equality"},
+                        },
+                        {
+                            "path": "ssn",
+                            "keyId": Binary.from_uuid(UUID("04104104-1041-0410-4104-104104104104")),
+                            "bsonType": "string",
+                        },
+                    ],
                 }
 
 

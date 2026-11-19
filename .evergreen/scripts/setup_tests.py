@@ -592,7 +592,8 @@ def handle_test_env() -> None:
         corpus_dir.mkdir(parents=True)
         zip_path = scratch_dir / "corpus-seed.zip"
         run_command(
-            f"{sys.executable} fuzz/build_corpus.py {zip_path} --data-dir {ROOT / 'test' / 'bson_corpus'}"
+            f"{sys.executable} fuzz/build_corpus.py {zip_path} "
+            f"--data-dir {ROOT / 'test' / 'bson_corpus'}"
         )
         with zipfile.ZipFile(zip_path) as zf:
             zf.extractall(corpus_dir)

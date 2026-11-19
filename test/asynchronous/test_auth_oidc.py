@@ -206,7 +206,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         await client.close()
 
     async def test_1_2_single_principal_explicit_username(self):
-        # Create a client with MONGODB_URI_SINGLE, a username of test_user1, authMechanism=MONGODB-OIDC, and the OIDC human callback.
+        # Create a client with MONGODB_URI_SINGLE, a username of test_user1,
+        # authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = await self.create_client(username="test_user1")
         # Perform a find operation that succeeds.
         await client.test.coll.find_one()
@@ -216,7 +217,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
     async def test_1_3_multiple_principal_user_1(self):
         if not self.uri_multiple:
             raise unittest.SkipTest("Test Requires Server with Multiple Workflow IdPs")
-        # Create a client with MONGODB_URI_MULTI, a username of test_user1, authMechanism=MONGODB-OIDC, and the OIDC human callback.
+        # Create a client with MONGODB_URI_MULTI, a username of test_user1,
+        # authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = await self.create_client(self.uri_multiple, username="test_user1")
         # Perform a find operation that succeeds.
         await client.test.coll.find_one()
@@ -227,7 +229,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         if not self.uri_multiple:
             raise unittest.SkipTest("Test Requires Server with Multiple Workflow IdPs")
         # Create a human callback that reads in the generated test_user2 token file.
-        # Create a client with MONGODB_URI_MULTI, a username of test_user2, authMechanism=MONGODB-OIDC, and the OIDC human callback.
+        # Create a client with MONGODB_URI_MULTI, a username of test_user2,
+        # authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = await self.create_client(self.uri_multiple, username="test_user2")
         # Perform a find operation that succeeds.
         await client.test.coll.find_one()
@@ -237,7 +240,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
     async def test_1_5_multiple_principal_no_user(self):
         if not self.uri_multiple:
             raise unittest.SkipTest("Test Requires Server with Multiple Workflow IdPs")
-        # Create a client with MONGODB_URI_MULTI, no username, authMechanism=MONGODB-OIDC, and the OIDC human callback.
+        # Create a client with MONGODB_URI_MULTI, no username, authMechanism=MONGODB-OIDC, and the
+        # OIDC human callback.
         client = await self.create_client(self.uri_multiple)
         # Assert that a find operation fails.
         with self.assertRaises(OperationFailure):
@@ -276,7 +280,9 @@ class TestAuthOIDCHuman(OIDCTestBase):
         await client.close()
 
     async def test_1_7_allowed_hosts_in_connection_string_ignored(self):
-        # Create an OIDC configured client with the connection string: `mongodb+srv://example.com/?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D` and a Human Callback.
+        # Create an OIDC configured client with the connection string:
+        # `mongodb+srv://example.com/?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D`
+        # and a Human Callback.
         # Assert that the creation of the client raises a configuration error.
         uri = "mongodb+srv://example.com?authMechanism=MONGODB-OIDC&authMechanismProperties=ALLOWED_HOSTS:%5B%22example.com%22%5D"
         with self.assertRaises(ConfigurationError), warnings.catch_warnings():
@@ -290,7 +296,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
     async def test_1_8_machine_idp_human_callback(self):
         if not os.environ.get("OIDC_IS_LOCAL"):
             raise unittest.SkipTest("Test Requires Local OIDC server")
-        # Create a client with MONGODB_URI_SINGLE, a username of test_machine, authMechanism=MONGODB-OIDC, and the OIDC human callback.
+        # Create a client with MONGODB_URI_SINGLE, a username of test_machine,
+        # authMechanism=MONGODB-OIDC, and the OIDC human callback.
         client = await self.create_client(username="test_machine")
         # Perform a find operation that succeeds.
         await client.test.coll.find_one()
@@ -298,16 +305,19 @@ class TestAuthOIDCHuman(OIDCTestBase):
         await client.close()
 
     async def test_2_1_valid_callback_inputs(self):
-        # Create a AsyncMongoClient with a human callback that validates its inputs and returns a valid access token.
+        # Create a AsyncMongoClient with a human callback that validates its inputs and returns a
+        # valid access token.
         client = await self.create_client()
-        # Perform a find operation that succeeds. Verify that the human callback was called with the appropriate inputs, including the timeout parameter if possible.
+        # Perform a find operation that succeeds. Verify that the human callback was called with the
+        # appropriate inputs, including the timeout parameter if possible.
         # Ensure that there are no unexpected fields.
         await client.test.coll.find_one()
         # Close the client.
         await client.close()
 
     async def test_2_2_callback_returns_missing_data(self):
-        # Create a AsyncMongoClient with a human callback that returns data not conforming to the OIDCCredential with missing fields.
+        # Create a AsyncMongoClient with a human callback that returns data not conforming to the
+        # OIDCCredential with missing fields.
         class CustomCB(OIDCCallback):
             def fetch(self, ctx):
                 return dict()
@@ -320,7 +330,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         await client.close()
 
     async def test_2_3_refresh_token_is_passed_to_the_callback(self):
-        # Create a AsyncMongoClient with a human callback that checks for the presence of a refresh token.
+        # Create a AsyncMongoClient with a human callback that checks for the presence of a refresh
+        # token.
         client = await self.create_client()
 
         # Perform a find operation that succeeds.
@@ -418,7 +429,8 @@ class TestAuthOIDCHuman(OIDCTestBase):
         self.assertEqual(self.request_called, 2)
 
         # Assert that the ordering of list started events is [find, find].
-        # Note that if the listener stat could not be cleared then there will be an extra find command.
+        # Note that if the listener stat could not be cleared then there will be an extra find
+        # command.
         started_events = [
             i.command_name for i in listener.started_events if not i.command_name.startswith("sasl")
         ]
@@ -835,11 +847,13 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.assertEqual(self.request_called, 1)
 
     async def test_2_1_valid_callback_inputs(self):
-        # Create a AsyncMongoClient configured with an OIDC callback that validates its inputs and returns a valid access token.
+        # Create a AsyncMongoClient configured with an OIDC callback that validates its inputs and
+        # returns a valid access token.
         client = await self.create_client()
         # Perform a find operation that succeeds.
         await client.test.coll.find_one()
-        # Assert that the OIDC callback was called with the appropriate inputs, including the timeout parameter if possible. Ensure that there are no unexpected fields.
+        # Assert that the OIDC callback was called with the appropriate inputs, including the
+        # timeout parameter if possible. Ensure that there are no unexpected fields.
         self.assertEqual(self.request_called, 1)
 
     async def test_2_2_oidc_callback_returns_null(self):
@@ -854,7 +868,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
             await client.test.coll.find_one()
 
     async def test_2_3_oidc_callback_returns_missing_data(self):
-        # Create a AsyncMongoClient configured with an OIDC callback that returns data not conforming to the OIDCCredential with missing fields.
+        # Create a AsyncMongoClient configured with an OIDC callback that returns data not
+        # conforming to the OIDCCredential with missing fields.
         class CustomCallback(OIDCCallback):
             count = 0
 
@@ -868,7 +883,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
             await client.test.coll.find_one()
 
     async def test_2_4_invalid_client_configuration_with_callback(self):
-        # Create a AsyncMongoClient configured with an OIDC callback and auth mechanism property ENVIRONMENT:test.
+        # Create a AsyncMongoClient configured with an OIDC callback and auth mechanism property
+        # ENVIRONMENT:test.
         request_cb = self.create_request_cb()
         props: dict = {"OIDC_CALLBACK": request_cb, "ENVIRONMENT": "test"}
         # Assert it returns a client configuration error.
@@ -876,13 +892,15 @@ class TestAuthOIDCMachine(OIDCTestBase):
             await self.create_client(authmechanismproperties=props)
 
     async def test_2_5_invalid_use_of_ALLOWED_HOSTS(self):
-        # Create an OIDC configured client with auth mechanism properties `{"ENVIRONMENT": "test", "ALLOWED_HOSTS": []}`.
+        # Create an OIDC configured client with auth mechanism properties
+        # `{"ENVIRONMENT": "test", "ALLOWED_HOSTS": []}`.
         props: dict = {"ENVIRONMENT": "test", "ALLOWED_HOSTS": []}
         # Assert it returns a client configuration error.
         with self.assertRaises(ConfigurationError):
             await self.create_client(authmechanismproperties=props)
 
-        # Create an OIDC configured client with auth mechanism properties `{"OIDC_CALLBACK": "<my_callback>", "ALLOWED_HOSTS": []}`.
+        # Create an OIDC configured client with auth mechanism properties
+        # `{"OIDC_CALLBACK": "<my_callback>", "ALLOWED_HOSTS": []}`.
         props: dict = {"OIDC_CALLBACK": self.create_request_cb(), "ALLOWED_HOSTS": []}
         # Assert it returns a client configuration error.
         with self.assertRaises(ConfigurationError):
@@ -931,7 +949,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
         self.assertEqual(self.request_called, 1)
 
     async def test_3_2_authentication_failures_without_cached_tokens_returns_an_error(self):
-        # Create a AsyncMongoClient configured with retryReads=false and an OIDC callback that always returns invalid access tokens.
+        # Create a AsyncMongoClient configured with retryReads=false and an OIDC callback that
+        # always returns invalid access tokens.
         class CustomCallback(OIDCCallback):
             count = 0
 
@@ -1069,7 +1088,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
         client = await self.create_client(event_listeners=[listener])
         await client.aconnect()
 
-        # Preload the *Client Cache* with a valid access token to enforce Speculative Authentication.
+        # Preload the *Client Cache* with a valid access token to enforce Speculative
+        # Authentication.
         client2 = await self.create_client()
         await client2.test.coll.find_one()
         client.options.pool_options._credentials.cache.data = (
@@ -1122,7 +1142,8 @@ class TestAuthOIDCMachine(OIDCTestBase):
                 # In the started session perform a `find` operation that succeeds.
                 await client.test.coll.find_one({}, session=session)
 
-        # Assert that the callback was called 2 times (once during the connection handshake, and again during reauthentication).
+        # Assert that the callback was called 2 times (once during the connection handshake, and
+        # again during reauthentication).
         self.assertEqual(self.request_called, 2)
 
     async def test_5_1_azure_with_no_username(self):

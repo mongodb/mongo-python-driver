@@ -41,7 +41,8 @@ if TYPE_CHECKING:
     from pymongo.typings import _AgnosticBulk, _AgnosticClientBulk
 
 
-# Hint supports index name, "myIndex", a list of either strings or index pairs: [('x', 1), ('y', -1), 'z''], or a dictionary
+# Hint supports index name, "myIndex", a list of either strings or index pairs:
+# [('x', 1), ('y', -1), 'z''], or a dictionary
 _IndexList = Sequence[str | tuple[str, int | str | Mapping[str, Any]]] | Mapping[str, Any]
 _IndexKeyHint = str | _IndexList
 
@@ -105,8 +106,10 @@ class InsertOne(Generic[_DocumentType]):
     def __init__(self, document: _DocumentType, namespace: str | None = None) -> None:
         """Create an InsertOne instance.
 
-        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`, :meth:`~pymongo.collection.Collection.bulk_write`,
-        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write` and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`,
+        :meth:`~pymongo.collection.Collection.bulk_write`,
+        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write`
+        and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
 
         :param document: The document to insert. If the document is missing an
             _id field one will be added.
@@ -126,7 +129,8 @@ class InsertOne(Generic[_DocumentType]):
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         if not self._namespace:
             raise InvalidOperation(
-                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+                "MongoClient.bulk_write requires a namespace to be provided for "
+                "each write operation"
             )
         bulkobj.add_insert(
             self._namespace,
@@ -201,7 +205,10 @@ class _DeleteOp:
 
     def __repr__(self) -> str:
         if self._namespace:
-            return f"{self.__class__.__name__}({self._filter!r}, {self._collation!r}, {self._hint!r}, {self._namespace!r})"
+            return (
+                f"{self.__class__.__name__}({self._filter!r}, {self._collation!r}, "
+                f"{self._hint!r}, {self._namespace!r})"
+            )
         return f"{self.__class__.__name__}({self._filter!r}, {self._collation!r}, {self._hint!r})"
 
 
@@ -219,8 +226,10 @@ class DeleteOne(_DeleteOp):
     ) -> None:
         """Create a DeleteOne instance.
 
-        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`, :meth:`~pymongo.collection.Collection.bulk_write`,
-        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write` and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`,
+        :meth:`~pymongo.collection.Collection.bulk_write`,
+        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write`
+        and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
 
         :param filter: A query that matches the document to delete.
         :param collation: An instance of
@@ -228,7 +237,8 @@ class DeleteOne(_DeleteOp):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.4 and above.
         :param namespace: (optional) The namespace in which to delete a document.
@@ -255,7 +265,8 @@ class DeleteOne(_DeleteOp):
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         if not self._namespace:
             raise InvalidOperation(
-                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+                "MongoClient.bulk_write requires a namespace to be provided for "
+                "each write operation"
             )
         bulkobj.add_delete(
             self._namespace,
@@ -280,8 +291,10 @@ class DeleteMany(_DeleteOp):
     ) -> None:
         """Create a DeleteMany instance.
 
-        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`, :meth:`~pymongo.collection.Collection.bulk_write`,
-        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write` and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`,
+        :meth:`~pymongo.collection.Collection.bulk_write`,
+        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write`
+        and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
 
         :param filter: A query that matches the documents to delete.
         :param collation: An instance of
@@ -289,7 +302,8 @@ class DeleteMany(_DeleteOp):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``). This option is only supported on
             MongoDB 4.4 and above.
         :param namespace: (optional) The namespace in which to delete documents.
@@ -316,7 +330,8 @@ class DeleteMany(_DeleteOp):
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         if not self._namespace:
             raise InvalidOperation(
-                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+                "MongoClient.bulk_write requires a namespace to be provided for "
+                "each write operation"
             )
         bulkobj.add_delete(
             self._namespace,
@@ -352,8 +367,10 @@ class ReplaceOne(Generic[_DocumentType]):
     ) -> None:
         """Create a ReplaceOne instance.
 
-        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`, :meth:`~pymongo.collection.Collection.bulk_write`,
-        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write` and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`,
+        :meth:`~pymongo.collection.Collection.bulk_write`,
+        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write`
+        and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
 
         :param filter: A query that matches the document to replace.
         :param replacement: The new document.
@@ -364,7 +381,8 @@ class ReplaceOne(Generic[_DocumentType]):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``).
         :param sort: Specify which document the operation updates if the query matches
             multiple documents. The first document matched by the sort order will be updated.
@@ -410,7 +428,8 @@ class ReplaceOne(Generic[_DocumentType]):
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         if not self._namespace:
             raise InvalidOperation(
-                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+                "MongoClient.bulk_write requires a namespace to be provided for "
+                "each write operation"
             )
         bulkobj.add_replace(
             self._namespace,
@@ -451,8 +470,14 @@ class ReplaceOne(Generic[_DocumentType]):
 
     def __repr__(self) -> str:
         if self._namespace:
-            return f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, {self._collation!r}, {self._hint!r}, {self._namespace!r}, {self._sort!r})"
-        return f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, {self._collation!r}, {self._hint!r}, {self._sort!r})"
+            return (
+                f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, "
+                f"{self._collation!r}, {self._hint!r}, {self._namespace!r}, {self._sort!r})"
+            )
+        return (
+            f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, "
+            f"{self._collation!r}, {self._hint!r}, {self._sort!r})"
+        )
 
 
 class _UpdateOp:
@@ -528,8 +553,15 @@ class _UpdateOp:
 
     def __repr__(self) -> str:
         if self._namespace:
-            return f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, {self._collation!r}, {self._array_filters!r}, {self._hint!r}, {self._namespace!r}, {self._sort!r})"
-        return f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, {self._collation!r}, {self._array_filters!r}, {self._hint!r}, {self._sort!r})"
+            return (
+                f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, "
+                f"{self._collation!r}, {self._array_filters!r}, {self._hint!r}, "
+                f"{self._namespace!r}, {self._sort!r})"
+            )
+        return (
+            f"{self.__class__.__name__}({self._filter!r}, {self._doc!r}, {self._upsert!r}, "
+            f"{self._collation!r}, {self._array_filters!r}, {self._hint!r}, {self._sort!r})"
+        )
 
 
 class UpdateOne(_UpdateOp):
@@ -550,8 +582,10 @@ class UpdateOne(_UpdateOp):
     ) -> None:
         """Represent an update_one operation.
 
-        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`, :meth:`~pymongo.collection.Collection.bulk_write`,
-        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write` and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`,
+        :meth:`~pymongo.collection.Collection.bulk_write`,
+        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write`
+        and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
 
         :param filter: A query that matches the document to update.
         :param update: The modifications to apply.
@@ -564,7 +598,8 @@ class UpdateOne(_UpdateOp):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``).
         :param namespace: The namespace in which to update a document.
         :param sort: Specify which document the operation updates if the query matches
@@ -602,7 +637,8 @@ class UpdateOne(_UpdateOp):
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         if not self._namespace:
             raise InvalidOperation(
-                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+                "MongoClient.bulk_write requires a namespace to be provided for "
+                "each write operation"
             )
         bulkobj.add_update(
             self._namespace,
@@ -634,8 +670,10 @@ class UpdateMany(_UpdateOp):
     ) -> None:
         """Create an UpdateMany instance.
 
-        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`, :meth:`~pymongo.collection.Collection.bulk_write`,
-        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write` and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.bulk_write`,
+        :meth:`~pymongo.collection.Collection.bulk_write`,
+        :meth:`~pymongo.asynchronous.mongo_client.AsyncMongoClient.bulk_write`
+        and :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
 
         :param filter: A query that matches the documents to update.
         :param update: The modifications to apply.
@@ -648,7 +686,8 @@ class UpdateMany(_UpdateOp):
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
             format as passed to
-            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or :meth:`~pymongo.collection.Collection.create_index` (e.g.
+            :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_index` or
+            :meth:`~pymongo.collection.Collection.create_index` (e.g.
             ``[('field', ASCENDING)]``).
         :param namespace: (optional) The namespace in which to update documents.
 
@@ -681,7 +720,8 @@ class UpdateMany(_UpdateOp):
         """Add this operation to the _AsyncClientBulk/_ClientBulk instance `bulkobj`."""
         if not self._namespace:
             raise InvalidOperation(
-                "MongoClient.bulk_write requires a namespace to be provided for each write operation"
+                "MongoClient.bulk_write requires a namespace to be provided for "
+                "each write operation"
             )
         bulkobj.add_update(
             self._namespace,
@@ -703,7 +743,8 @@ class IndexModel:
     def __init__(self, keys: _IndexKeyHint, **kwargs: Any) -> None:
         """Create an Index instance.
 
-        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_indexes` and :meth:`~pymongo.collection.Collection.create_indexes`.
+        For use with :meth:`~pymongo.asynchronous.collection.AsyncCollection.create_indexes` and
+        :meth:`~pymongo.collection.Collection.create_indexes`.
 
         Takes either a single key or a list containing (key, direction) pairs
         or keys.  If no direction is given, :data:`~pymongo.ASCENDING` will
@@ -797,11 +838,13 @@ class SearchIndexModel:
     ) -> None:
         """Create a Search Index instance.
 
-        For use with :meth:`~pymongo.collection.AsyncCollection.create_search_index` and :meth:`~pymongo.collection.AsyncCollection.create_search_indexes`.
+        For use with :meth:`~pymongo.collection.AsyncCollection.create_search_index` and
+        :meth:`~pymongo.collection.AsyncCollection.create_search_indexes`.
 
         :param definition: The definition for this index.
         :param name: The name for this index, if present.
-        :param type: The type for this index which defaults to "search". Alternative values include "vectorSearch".
+        :param type: The type for this index which defaults to "search". Alternative values include
+            "vectorSearch".
         :param kwargs: Keyword arguments supplying any additional options.
 
         .. note:: Search indexes require a MongoDB server version 7.0+ Atlas cluster.

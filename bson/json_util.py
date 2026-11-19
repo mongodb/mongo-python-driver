@@ -29,10 +29,13 @@ Example usage (deserialization):
 .. doctest::
 
    >>> from bson.json_util import loads
-   >>> loads(
-   ...     '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": "80", "$binary": "AQIDBA=="}}]'
+   >>> loads(  # doctest: +NORMALIZE_WHITESPACE
+   ...     '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, '
+   ...     '{"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, '
+   ...     '{"bin": {"$type": "80", "$binary": "AQIDBA=="}}]'
    ... )
-   [{'foo': [1, 2]}, {'bar': {'hello': 'world'}}, {'code': Code('function x() { return 1; }', {})}, {'bin': Binary(b'...', 128)}]
+   [{'foo': [1, 2]}, {'bar': {'hello': 'world'}},
+    {'code': Code('function x() { return 1; }', {})}, {'bin': Binary(b'...', 128)}]
 
 Example usage with :const:`RELAXED_JSON_OPTIONS` (the default):
 
@@ -40,7 +43,7 @@ Example usage with :const:`RELAXED_JSON_OPTIONS` (the default):
 
    >>> from bson import Binary, Code
    >>> from bson.json_util import dumps
-   >>> dumps(
+   >>> dumps(  # doctest: +NORMALIZE_WHITESPACE
    ...     [
    ...         {"foo": [1, 2]},
    ...         {"bar": {"hello": "world"}},
@@ -48,7 +51,8 @@ Example usage with :const:`RELAXED_JSON_OPTIONS` (the default):
    ...         {"bin": Binary(b"\x01\x02\x03\x04")},
    ...     ]
    ... )
-   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
+   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1;
+    }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
 
 Example usage (with :const:`CANONICAL_JSON_OPTIONS`):
 
@@ -56,7 +60,7 @@ Example usage (with :const:`CANONICAL_JSON_OPTIONS`):
 
    >>> from bson import Binary, Code
    >>> from bson.json_util import dumps, CANONICAL_JSON_OPTIONS
-   >>> dumps(
+   >>> dumps(  # doctest: +NORMALIZE_WHITESPACE
    ...     [
    ...         {"foo": [1, 2]},
    ...         {"bar": {"hello": "world"}},
@@ -65,7 +69,9 @@ Example usage (with :const:`CANONICAL_JSON_OPTIONS`):
    ...     ],
    ...     json_options=CANONICAL_JSON_OPTIONS,
    ... )
-   '[{"foo": [{"$numberInt": "1"}, {"$numberInt": "2"}]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
+   '[{"foo": [{"$numberInt": "1"}, {"$numberInt": "2"}]}, {"bar": {"hello": "world"}}, {"code":
+    {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType":
+    "00"}}}]'
 
 Example usage (with :const:`LEGACY_JSON_OPTIONS`):
 
@@ -73,7 +79,7 @@ Example usage (with :const:`LEGACY_JSON_OPTIONS`):
 
    >>> from bson import Binary, Code
    >>> from bson.json_util import dumps, LEGACY_JSON_OPTIONS
-   >>> dumps(
+   >>> dumps(  # doctest: +NORMALIZE_WHITESPACE
    ...     [
    ...         {"foo": [1, 2]},
    ...         {"bar": {"hello": "world"}},
@@ -82,7 +88,8 @@ Example usage (with :const:`LEGACY_JSON_OPTIONS`):
    ...     ],
    ...     json_options=LEGACY_JSON_OPTIONS,
    ... )
-   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }", "$scope": {}}}, {"bin": {"$binary": "AQIDBA==", "$type": "00"}}]'
+   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }",
+    "$scope": {}}}, {"bin": {"$binary": "AQIDBA==", "$type": "00"}}]'
 
 Alternatively, you can manually pass the `default` to :func:`json.dumps`.
 It won't handle :class:`~bson.binary.Binary` and :class:`~bson.code.Code`
@@ -279,7 +286,9 @@ class JSONOptions(_BASE_CLASS):
             return DatetimeMS objects when the underlying datetime is
             out-of-range and 'datetime_clamp' to clamp to the minimum and
             maximum possible datetimes. Defaults to 'datetime'. See
-            `handling out of range datetimes <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes>`_ for details.
+            `handling out of range datetimes
+            <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes>`_
+            for details.
         :param args: arguments to :class:`~bson.codec_options.CodecOptions`
         :param kwargs: arguments to :class:`~bson.codec_options.CodecOptions`
 
@@ -370,7 +379,8 @@ class JSONOptions(_BASE_CLASS):
         return (
             f"strict_number_long={self.strict_number_long!r}, "
             f"datetime_representation={self.datetime_representation!r}, "
-            f"strict_uuid={self.strict_uuid!r}, json_mode={self.json_mode!r}, {super()._arguments_repr()}"
+            f"strict_uuid={self.strict_uuid!r}, json_mode={self.json_mode!r}, "
+            f"{super()._arguments_repr()}"
         )
 
     def with_options(self, **kwargs: Any) -> JSONOptions:

@@ -1131,7 +1131,8 @@ class TestTransactionExamples(AsyncIntegrationTest):
 
         # Start Transactions withTxn API Example 1
 
-        # For a replica set, include the replica set name and a seedlist of the members in the URI string; e.g.
+        # For a replica set, include the replica set name and a seedlist of the members in the
+        # URI string; e.g.
         # uriString = 'mongodb://mongodb0.example.com:27017,mongodb1.example.com:27017/?replicaSet=myRepl'
         # For a sharded cluster, connect to the mongos instances; e.g.
         # uriString = 'mongodb://mongos0.example.com:27017,mongos1.example.com:27017/'
@@ -1143,7 +1144,8 @@ class TestTransactionExamples(AsyncIntegrationTest):
         await client.get_database("mydb1", write_concern=wc_majority).foo.insert_one({"abc": 0})
         await client.get_database("mydb2", write_concern=wc_majority).bar.insert_one({"xyz": 0})
 
-        # Step 1: Define the callback that specifies the sequence of operations to perform inside the transactions.
+        # Step 1: Define the callback that specifies the sequence of operations to perform inside
+        # the transactions.
         async def callback(session):
             collection_one = session.client.mydb1.foo
             collection_two = session.client.mydb2.bar
@@ -1154,7 +1156,8 @@ class TestTransactionExamples(AsyncIntegrationTest):
 
         # Step 2: Start a client session.
         async with client.start_session() as session:
-            # Step 3: Use with_transaction to start a transaction, execute the callback, and commit (or abort on error).
+            # Step 3: Use with_transaction to start a transaction, execute the callback, and commit
+            # (or abort on error).
             await session.with_transaction(callback)
 
         # End Transactions withTxn API Example 1
@@ -1317,7 +1320,9 @@ class TestVersionedApiExamples(AsyncIntegrationTest):
         ):
             await client.db.command("count", "sales", query={})
         # Start Versioned API Example 6
-        # pymongo.errors.OperationFailure: Provided apiStrict:true, but the command count is not in API Version 1, full error: {'ok': 0.0, 'errmsg': 'Provided apiStrict:true, but the command count is not in API Version 1', 'code': 323, 'codeName': 'APIStrictError'}
+        # pymongo.errors.OperationFailure: Provided apiStrict:true, but the command count is not
+        # in API Version 1, full error: {'ok': 0.0, 'errmsg': 'Provided apiStrict:true, but the
+        # command count is not in API Version 1', 'code': 323, 'codeName': 'APIStrictError'}
         # End Versioned API Example 6
 
         # Start Versioned API Example 7
@@ -1429,7 +1434,10 @@ class TestSnapshotQueryExamples(AsyncIntegrationTest):
     async def check_for_snapshot(self, collection):
         """Wait for snapshot reads to become available to prevent this error.
 
-        [246:SnapshotUnavailable]: Unable to read from a snapshot due to pending collection catalog changes; please retry the operation. Snapshot timestamp is Timestamp(1646666892, 4). Collection minimum is Timestamp(1646666892, 5) (on localhost:27017, modern retry, attempt 1)
+        [246:SnapshotUnavailable]: Unable to read from a snapshot due to pending
+        collection catalog changes; please retry the operation. Snapshot timestamp is
+        Timestamp(1646666892, 4). Collection minimum is Timestamp(1646666892, 5) (on
+        localhost:27017, modern retry, attempt 1)
         From https://github.com/mongodb/mongo-ruby-driver/commit/7c4117b58e3d12e237f7536f7521e18fc15f79ac
         """
         async with self.client.start_session(snapshot=True) as s:

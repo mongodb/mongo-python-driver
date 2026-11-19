@@ -184,7 +184,11 @@ def _parse_srv(
         nodes = dns_resolver.get_hosts()
         dns_options = dns_resolver.get_options()
         if dns_options:
-            parsed_dns_options = split_options(dns_options, validate, warn, normalize)
+            # DNS TXT record keys are named in errors: they cannot be
+            # credential text, unlike keys taken from a connection string.
+            parsed_dns_options = split_options(
+                dns_options, validate, warn, normalize, from_uri=False
+            )
             if set(parsed_dns_options) - _ALLOWED_TXT_OPTS:
                 raise ConfigurationError(
                     "Only authSource, replicaSet, and loadBalanced are supported from DNS"
