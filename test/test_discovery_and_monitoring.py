@@ -865,6 +865,9 @@ class TestMonitorCleanup(UnitTest):
                 in_flight.set()
                 second_appended.wait(timeout=5)
                 second_done.set()
+
+            def fast_close():
+                second_done.set()
         else:
             in_flight = asyncio.Event()
             second_done = asyncio.Event()
