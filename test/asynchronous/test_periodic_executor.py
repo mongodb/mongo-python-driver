@@ -180,6 +180,25 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
         await executor.join(timeout=2)
         self.assertEqual(runs, 2, "executor did not restart after a self-close")
 
+    async def test_join_from_own_task_does_not_stall(self):
+        # A heartbeat removing its own server joins its own task; waiting on
+        # the current task cannot complete and would stall for the full
+        # timeout (PYTHON-6168).
+        elapsed = None
+
+        async def target():
+            nonlocal elapsed
+            start = time.monotonic()
+            await executor.join(timeout=2)
+            elapsed = time.monotonic() - start
+            return False
+
+        executor = self._make_executor(target=target)
+        executor.open()
+        await executor.join(timeout=2)
+        assert elapsed is not None
+        self.assertLess(elapsed, 1.0, "join() from the executor's own task stalled")
+
     async def test_close_from_thread_without_event_loop(self):
         # close() can run off the event loop as a weakref callback, where
         # asyncio.current_task() raises RuntimeError.
