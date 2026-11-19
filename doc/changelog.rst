@@ -12,9 +12,10 @@ Bug fixes
 - Fixed a bug where ``getMore`` commands in load-balanced mode were not
   retried when the server returned a retryable overload error
   (`PYTHON-6262`_).
-- GridFS ``get_version`` and ``get_last_version`` now raise ``TypeError`` when
-  ``filename`` is not a string or ``None``, instead of treating a dict as query
-  criteria (`PYTHON-6183`_).
+- Fixed a bug where :meth:`~gridfs.GridFS.get_version` and
+  :meth:`~gridfs.GridFS.get_last_version` accepted a non-string ``filename``
+  and treated a dict as query criteria. They now raise :exc:`TypeError`
+  (`PYTHON-6183`_).
 
 .. _PYTHON-6183: https://jira.mongodb.org/browse/PYTHON-6183
 .. _PYTHON-6262: https://jira.mongodb.org/browse/PYTHON-6262
