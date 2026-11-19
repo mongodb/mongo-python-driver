@@ -829,8 +829,8 @@ class TestServerRemovalHardening(AsyncUnitTest):
         self.assertTrue(victim.pool.closed)
 
 
-@unittest.skipUnless(not _IS_SYNC, "PYTHON-6168: task interleaving is async-only")
 class TestMonitorCleanup(AsyncUnitTest):
+    @unittest.skipUnless(not _IS_SYNC, "PYTHON-6168: task cancellation is async-only")
     async def test_cleanup_cancellation_requeues_monitor(self):
         # A cancelled cleanup must requeue the monitor it was closing, so a
         # later cleanup (including client shutdown) can finish joining it.

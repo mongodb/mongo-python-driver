@@ -93,7 +93,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
     def __init__(self, topology_settings: TopologySettings):
         super().__init__(topology_settings)
         self._lock = _create_lock()
-        self._cleanup_lock = asyncio.Lock()
+        self._cleanup_lock = _create_lock()
         self._condition = _create_condition(
             self._lock, self._settings.condition_class if _IS_SYNC else None
         )
