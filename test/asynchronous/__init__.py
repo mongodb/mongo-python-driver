@@ -430,9 +430,8 @@ class AsyncClientContext:
         if "parsed" in self.cmd_line:
             if not self.cmd_line["parsed"].get("net", {}).get("ipv6"):
                 return False
-        else:
-            if "--ipv6" not in self.cmd_line["argv"]:
-                return False
+        elif "--ipv6" not in self.cmd_line["argv"]:
+            return False
 
         # The server was started with --ipv6. Is there an IPv6 route to it?
         try:
@@ -567,8 +566,9 @@ class AsyncClientContext:
         return self._require(lambda: self.is_rs, "Not connected to a replica set", func=func)
 
     def require_secondaries_count(self, count):
-        """Run a test only if the client is connected to a replica set that has
-        `count` secondaries.
+        """Run a test only if the client is connected to a replica set.
+
+        The replica set must have `count` secondaries.
         """
 
         async def sec_count():
@@ -590,8 +590,9 @@ class AsyncClientContext:
         return False
 
     def require_secondary_read_pref(self):
-        """Run a test only if the client is connected to a cluster that
-        supports secondary read preference
+        """Run a test only if the client is connected to a cluster.
+
+        The cluster must support secondary read preference.
         """
         return self._require(
             lambda: self.supports_secondary_read_pref,
@@ -619,8 +620,9 @@ class AsyncClientContext:
         return self._require(lambda: self.is_mongos, "Must be connected to a mongos", func=func)
 
     def require_multiple_mongoses(self, func):
-        """Run a test only if the client is connected to a sharded cluster
-        that has 2 mongos nodes.
+        """Run a test only if the client is connected to a sharded cluster.
+
+        The cluster must have 2 mongos nodes.
         """
         return self._require(
             lambda: len(self.mongoses) > 1, "Must have multiple mongoses available", func=func
@@ -680,9 +682,10 @@ class AsyncClientContext:
         return False
 
     def require_cluster_type(self, topologies=None):
-        """Run a test only if the client is connected to a cluster that
-        conforms to one of the specified topologies. Acceptable topologies
-        are 'single', 'replicaset', and 'sharded'.
+        """Run a test only if the client is connected to a conforming cluster.
+
+        The cluster must conform to one of the specified topologies.
+        Acceptable topologies are 'single', 'replicaset', and 'sharded'.
         """
         topologies = topologies or []
 
@@ -698,9 +701,7 @@ class AsyncClientContext:
         )
 
     def require_failCommand_fail_point(self, func: Any) -> Any:
-        """Run a test only if the server supports the failCommand fail
-        point.
-        """
+        """Run a test only if the server supports the failCommand fail point."""
         return self._require(
             lambda: self.supports_failCommand_fail_point,
             "failCommand fail point must be supported",
@@ -838,7 +839,7 @@ class AsyncClientContext:
 
     @property
     def supports_failCommand_fail_point(self):
-        """Does the server support the failCommand fail point?"""
+        """Does the server support the failCommand fail point."""
         return self.test_commands_enabled
 
     @property
@@ -944,7 +945,7 @@ class AsyncPyMongoTestCase(unittest.TestCase):
     def fork(
         self, target: Callable, timeout: float = 60
     ) -> Generator[multiprocessing.Process, None, None]:
-        """Helper for tests that use os.fork()
+        """Provide a helper for tests that use os.fork().
 
         Use in a with statement:
 
@@ -1333,7 +1334,7 @@ async def _create_user(authdb, user, pwd=None, roles=None, **kwargs):
 
 
 async def connected(client):
-    """Convenience to wait for a newly-constructed client to connect."""
+    """Wait for a newly-constructed client to connect (convenience helper)."""
     with warnings.catch_warnings():
         # Ignore warning that ping is always routed to primary even
         # if client's read preference isn't PRIMARY.

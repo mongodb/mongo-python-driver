@@ -352,7 +352,7 @@ def _get_ocsp_response(
 
 
 def _ocsp_callback(conn: Connection, ocsp_bytes: bytes, user_data: _CallbackData | None) -> bool:
-    """Callback for use with OpenSSL.SSL.Context.set_ocsp_client_callback."""
+    """Act as the callback for use with OpenSSL.SSL.Context.set_ocsp_client_callback."""
     # always pass in user_data but OpenSSL requires it be optional
     assert user_data
     cert = conn.get_peer_certificate(as_cryptography=True)

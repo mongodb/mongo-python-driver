@@ -29,10 +29,13 @@ Example usage (deserialization):
 .. doctest::
 
    >>> from bson.json_util import loads
-   >>> loads(
-   ...     '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": "80", "$binary": "AQIDBA=="}}]'
+   >>> loads(  # doctest: +NORMALIZE_WHITESPACE
+   ...     '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, '
+   ...     '{"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, '
+   ...     '{"bin": {"$type": "80", "$binary": "AQIDBA=="}}]'
    ... )
-   [{'foo': [1, 2]}, {'bar': {'hello': 'world'}}, {'code': Code('function x() { return 1; }', {})}, {'bin': Binary(b'...', 128)}]
+   [{'foo': [1, 2]}, {'bar': {'hello': 'world'}},
+    {'code': Code('function x() { return 1; }', {})}, {'bin': Binary(b'...', 128)}]
 
 Example usage with :const:`RELAXED_JSON_OPTIONS` (the default):
 
@@ -40,7 +43,7 @@ Example usage with :const:`RELAXED_JSON_OPTIONS` (the default):
 
    >>> from bson import Binary, Code
    >>> from bson.json_util import dumps
-   >>> dumps(
+   >>> dumps(  # doctest: +NORMALIZE_WHITESPACE
    ...     [
    ...         {"foo": [1, 2]},
    ...         {"bar": {"hello": "world"}},
@@ -48,7 +51,8 @@ Example usage with :const:`RELAXED_JSON_OPTIONS` (the default):
    ...         {"bin": Binary(b"\x01\x02\x03\x04")},
    ...     ]
    ... )
-   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
+   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1;
+    }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
 
 Example usage (with :const:`CANONICAL_JSON_OPTIONS`):
 
@@ -56,7 +60,7 @@ Example usage (with :const:`CANONICAL_JSON_OPTIONS`):
 
    >>> from bson import Binary, Code
    >>> from bson.json_util import dumps, CANONICAL_JSON_OPTIONS
-   >>> dumps(
+   >>> dumps(  # doctest: +NORMALIZE_WHITESPACE
    ...     [
    ...         {"foo": [1, 2]},
    ...         {"bar": {"hello": "world"}},
@@ -65,7 +69,9 @@ Example usage (with :const:`CANONICAL_JSON_OPTIONS`):
    ...     ],
    ...     json_options=CANONICAL_JSON_OPTIONS,
    ... )
-   '[{"foo": [{"$numberInt": "1"}, {"$numberInt": "2"}]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType": "00"}}}]'
+   '[{"foo": [{"$numberInt": "1"}, {"$numberInt": "2"}]}, {"bar": {"hello": "world"}}, {"code":
+    {"$code": "function x() { return 1; }"}}, {"bin": {"$binary": {"base64": "AQIDBA==", "subType":
+    "00"}}}]'
 
 Example usage (with :const:`LEGACY_JSON_OPTIONS`):
 
@@ -73,7 +79,7 @@ Example usage (with :const:`LEGACY_JSON_OPTIONS`):
 
    >>> from bson import Binary, Code
    >>> from bson.json_util import dumps, LEGACY_JSON_OPTIONS
-   >>> dumps(
+   >>> dumps(  # doctest: +NORMALIZE_WHITESPACE
    ...     [
    ...         {"foo": [1, 2]},
    ...         {"bar": {"hello": "world"}},
@@ -82,7 +88,8 @@ Example usage (with :const:`LEGACY_JSON_OPTIONS`):
    ...     ],
    ...     json_options=LEGACY_JSON_OPTIONS,
    ... )
-   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }", "$scope": {}}}, {"bin": {"$binary": "AQIDBA==", "$type": "00"}}]'
+   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }",
+    "$scope": {}}}, {"bin": {"$binary": "AQIDBA==", "$type": "00"}}]'
 
 Alternatively, you can manually pass the `default` to :func:`json.dumps`.
 It won't handle :class:`~bson.binary.Binary` and :class:`~bson.code.Code`
@@ -250,7 +257,7 @@ class JSONOptions(_BASE_CLASS):
     document_class: type[MutableMapping[str, Any]]
 
     def __init__(self, *args: Any, **kwargs: Any):
-        """Encapsulates JSON options for :func:`dumps` and :func:`loads`.
+        """Encapsulate JSON options for :func:`dumps` and :func:`loads`.
 
         :param strict_number_long: If ``True``, :class:`~bson.int64.Int64` objects
             are encoded to MongoDB Extended JSON's *Strict mode* type
@@ -284,7 +291,9 @@ class JSONOptions(_BASE_CLASS):
             return DatetimeMS objects when the underlying datetime is
             out-of-range and 'datetime_clamp' to clamp to the minimum and
             maximum possible datetimes. Defaults to 'datetime'. See
-            `handling out of range datetimes <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes>`_ for details.
+            `handling out of range datetimes
+            <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/data-formats/dates-and-times/#handling-out-of-range-datetimes>`_
+            for details.
         :param args: arguments to :class:`~bson.codec_options.CodecOptions`
         :param kwargs: arguments to :class:`~bson.codec_options.CodecOptions`
 
@@ -375,12 +384,14 @@ class JSONOptions(_BASE_CLASS):
         return (
             f"strict_number_long={self.strict_number_long!r}, "
             f"datetime_representation={self.datetime_representation!r}, "
-            f"strict_uuid={self.strict_uuid!r}, json_mode={self.json_mode!r}, {super()._arguments_repr()}"
+            f"strict_uuid={self.strict_uuid!r}, json_mode={self.json_mode!r}, "
+            f"{super()._arguments_repr()}"
         )
 
     def with_options(self, **kwargs: Any) -> JSONOptions:
-        """
-        Make a copy of this JSONOptions, overriding some options::
+        """Make a copy of this JSONOptions, overriding some options.
+
+        For example::
 
             >>> from bson.json_util import CANONICAL_JSON_OPTIONS
             >>> CANONICAL_JSON_OPTIONS.tz_aware
@@ -436,9 +447,9 @@ The same as :const:`RELAXED_JSON_OPTIONS`.
 
 
 def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
-    """Helper function that wraps :func:`json.dumps`.
+    """Wrap :func:`json.dumps` to handle BSON types.
 
-    Recursive function that handles all BSON types including
+    Recursively handles all BSON types including
     :class:`~bson.binary.Binary` and :class:`~bson.code.Code`.
 
     :param json_options: A :class:`JSONOptions` instance used to modify the
@@ -457,7 +468,7 @@ def dumps(obj: Any, *args: Any, **kwargs: Any) -> str:
 
 
 def loads(s: str | bytes | bytearray, *args: Any, **kwargs: Any) -> Any:
-    """Helper function that wraps :func:`json.loads`.
+    """Wrap :func:`json.loads` to handle BSON types.
 
     Automatically passes the object_hook for BSON type conversion.
 
@@ -491,9 +502,7 @@ def loads(s: str | bytes | bytearray, *args: Any, **kwargs: Any) -> Any:
 
 
 def _json_convert(obj: Any, json_options: JSONOptions = DEFAULT_JSON_OPTIONS) -> Any:
-    """Recursive helper method that converts BSON types so they can be
-    converted into json.
-    """
+    """Recursive helper method that converts BSON types so they can be converted into json."""
     if hasattr(obj, "items"):
         return {k: _json_convert(v, json_options) for k, v in obj.items()}
     elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes)):
@@ -1073,7 +1082,7 @@ _VARIABLE_SIZE_TABLE: dict[Any, Callable[[Any], int]] = {
 
 
 def get_size(obj: Any, max_size: int, current_size: int = 0) -> int:
-    """Recursively finds size of objects"""
+    """Recursively find the size of objects."""
     if current_size >= max_size:
         return current_size
 

@@ -252,9 +252,7 @@ class TestRetryableWrites(IgnoreDeprecationsTest):
     @client_context.require_replica_set
     @client_context.require_test_commands
     def test_retry_timeout_raises_original_error(self):
-        """A ServerSelectionTimeoutError on the retry attempt raises the
-        original error.
-        """
+        """A ServerSelectionTimeoutError on the retry attempt raises the original error."""
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
         topology = client._topology
@@ -588,8 +586,10 @@ class TestPoolPausedError(IntegrationTest):
 class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
     @client_context.require_replica_set
     def test_increment_transaction_id_without_sending_command(self):
-        """Test that the txnNumber field is properly incremented, even when
-        the first attempt fails before sending the command.
+        """Test that the txnNumber field is properly incremented.
+
+        This holds even when the first attempt fails before sending the
+        command.
         """
         listener = OvertCommandListener()
         client = self.rs_or_single_client(retryWrites=True, event_listeners=[listener])
@@ -623,10 +623,13 @@ class TestRetryableWritesTxnNumber(IgnoreDeprecationsTest):
 
 
 class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
-    # Only run against replica sets as mongos does not propagate the NoWritesPerformed label to the drivers.
+    # Only run against replica sets as mongos does not propagate the NoWritesPerformed label to
+    # the drivers.
     @client_context.require_replica_set
     # Run against server versions 6.0 and above.
     @client_context.require_version_min(6, 0)  # type: ignore[untyped-decorator]
+    # The tests configure the failCommand fail point.
+    @client_context.require_failCommand_fail_point
     def setUp(self) -> None:
         super().setUp()
         self.setup_client = MongoClient(**client_context.default_client_options)
@@ -641,13 +644,14 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
             cmd.pop("data", None)
         self.setup_client.admin.command(cmd)
 
-    def test_01_drivers_return_the_correct_error_when_receiving_only_errors_without_NoWritesPerformed(
+    def test_01_drivers_return_the_correct_error_when_receiving_only_errors_without_NoWritesPerformed(  # noqa: E501
         self,
     ) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
 
-        # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and SystemOverloadedError error labels.
+        # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and
+        # SystemOverloadedError error labels.
         command_args = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -658,7 +662,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
             },
         }
 
-        # Via the command monitoring CommandFailedEvent, configure a fail point with error code 10107 (NotWritablePrimary).
+        # Via the command monitoring CommandFailedEvent, configure a fail point with error code
+        # 10107 (NotWritablePrimary).
         command_args_inner = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -670,7 +675,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
-            # Configure the 10107 fail point command only if the the failed event is for the 91 error configured in step 2.
+            # Configure the 10107 fail point command only if the the failed event is for the 91
+            # error configured in step 2.
             if listener.failed_events:
                 return
             assert event.failure["code"] == 91
@@ -693,13 +699,14 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         # Assert that the error code of the server error is 10107.
         assert exc.exception.errors["code"] == 10107  # type:ignore[call-overload]
 
-    def test_02_drivers_return_the_correct_error_when_receiving_only_errors_with_NoWritesPerformed(
+    def test_02_drivers_return_the_correct_error_when_receiving_only_errors_with_NoWritesPerformed(  # noqa: E501
         self,
     ) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
 
-        # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and SystemOverloadedError error labels.
+        # Configure a fail point with error code 91 (ShutdownInProgress) with the RetryableError and
+        # SystemOverloadedError error labels.
         command_args = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -710,8 +717,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
             },
         }
 
-        # Via the command monitoring CommandFailedEvent, configure a fail point with error code `10107` (NotWritablePrimary)
-        # and a NoWritesPerformed label.
+        # Via the command monitoring CommandFailedEvent, configure a fail point with error code
+        # `10107` (NotWritablePrimary) and a NoWritesPerformed label.
         command_args_inner = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -725,7 +732,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         def failed(event: CommandFailedEvent) -> None:
             if listener.failed_events:
                 return
-            # Configure the 10107 fail point command only if the the failed event is for the 91 error configured in step 2.
+            # Configure the 10107 fail point command only if the the failed event is for the 91
+            # error configured in step 2.
             assert event.failure["code"] == 91
             self.configure_fail_point_sync(command_args_inner)
             self.addCleanup(self.configure_fail_point_sync, {}, off=True)
@@ -746,14 +754,15 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         # Assert that the error code of the server error is 91.
         assert exc.exception.errors["code"] == 91  # type:ignore[call-overload]
 
-    def test_03_drivers_return_the_correct_error_when_receiving_some_errors_with_NoWritesPerformed_and_some_without_NoWritesPerformed(
+    def test_03_drivers_return_the_correct_error_when_receiving_some_errors_with_NoWritesPerformed_and_some_without_NoWritesPerformed(  # noqa: E501
         self,
     ) -> None:
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
 
-        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
-        # code `91` (NotWritablePrimary) and the `NoWritesPerformed`, `RetryableError` and `SystemOverloadedError` labels.
+        # Configure the client to listen to CommandFailedEvents. In the attached listener,
+        # configure a fail point with error code `91` (NotWritablePrimary) and the
+        # `NoWritesPerformed`, `RetryableError` and `SystemOverloadedError` labels.
         command_args_inner = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -764,8 +773,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
             },
         }
 
-        # Configure a fail point with error code `91` (ShutdownInProgress) with the `RetryableError` and
-        # `SystemOverloadedError` error labels but without the `NoWritesPerformed` error label.
+        # Configure a fail point with error code `91` (ShutdownInProgress) with the `RetryableError`
+        # and `SystemOverloadedError` error labels but without the `NoWritesPerformed` error label.
         command_args = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -777,7 +786,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
-            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
+            # Configure the fail point command only if the failed event is for the 91 error
+            # configured in step 2.
             if listener.failed_events:
                 return
             assert event.failure["code"] == 91
@@ -806,8 +816,9 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         # Create a client with retryWrites=true.
         listener = OvertCommandListener()
 
-        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
-        # code `91` (ShutdownInProgress) and `RetryableError` and `SystemOverloadedError` labels.
+        # Configure the client to listen to CommandFailedEvents. In the attached listener,
+        # configure a fail point with error code `91` (ShutdownInProgress) and `RetryableError` and
+        # `SystemOverloadedError` labels.
         overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -818,7 +829,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
             },
         }
 
-        # Configure a fail point with error code `91` (ShutdownInProgress) with the `RetryableError` and `RetryableWriteError` error labels.
+        # Configure a fail point with error code `91` (ShutdownInProgress) with the `RetryableError`
+        # and `RetryableWriteError` error labels.
         non_overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -830,7 +842,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
-            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
+            # Configure the fail point command only if the failed event is for the 91 error
+            # configured in step 2.
             if listener.failed_events:
                 return
             assert event.failure["code"] == 91
@@ -857,8 +870,9 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         # Create a client.
         listener = OvertCommandListener()
 
-        # Configure the client to listen to CommandFailedEvents. In the attached listener, configure a fail point with error
-        # code `91` (ShutdownInProgress) and `RetryableError` and `SystemOverloadedError` labels.
+        # Configure the client to listen to CommandFailedEvents. In the attached listener,
+        # configure a fail point with error code `91` (ShutdownInProgress) and `RetryableError` and
+        # `SystemOverloadedError` labels.
         overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": {"times": 1},
@@ -869,7 +883,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
             },
         }
 
-        # Configure a fail point with error code `91` (ShutdownInProgress) with only the `RetryableError` error label.
+        # Configure a fail point with error code `91` (ShutdownInProgress) with only the
+        # `RetryableError` error label.
         non_overload_fail_point = {
             "configureFailPoint": "failCommand",
             "mode": "alwaysOn",
@@ -881,7 +896,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
         }
 
         def failed(event: CommandFailedEvent) -> None:
-            # Configure the fail point command only if the failed event is for the 91 error configured in step 2.
+            # Configure the fail point command only if the failed event is for the 91 error
+            # configured in step 2.
             if listener.failed_events:
                 return
             assert event.failure["code"] == 91
@@ -901,7 +917,8 @@ class TestErrorPropagationAfterEncounteringMultipleErrors(IntegrationTest):
             with self.assertRaises(PyMongoError):
                 client.db.coll.insert_one({})
 
-        # Assert that backoff was applied only once for the initial overload error and not for the subsequent non-overload retryable errors.
+        # Assert that backoff was applied only once for the initial overload error and not for the
+        # subsequent non-overload retryable errors.
         self.assertEqual(mock_backoff.call_count, 1)
 
 

@@ -76,8 +76,8 @@ _POLL_TIMEOUT = 0.5
 BLOCKING_IO_ERRORS = (BlockingIOError, *BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
 
 
-# These socket-based I/O methods are for KMS requests and any other network operations that do not use
-# the MongoDB wire protocol
+# These socket-based I/O methods are for KMS requests and any other network operations that do not
+# use the MongoDB wire protocol
 async def async_socket_sendall(sock: socket.socket | _sslConn, buf: bytes) -> None:
     timeout = sock.gettimeout()
     loop = asyncio.get_running_loop()
@@ -115,7 +115,8 @@ if sys.platform != "win32":
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
-                # KMS responses update their expected size after the first batch, stop reading after one loop
+                # KMS responses update their expected size after the first batch, stop reading after
+                # one loop
                 if once:
                     return mv[:read]
                 total_read += read
@@ -165,7 +166,8 @@ else:
                 read = conn.recv_into(mv[total_read:])
                 if read == 0:
                     raise OSError("connection closed")
-                # KMS responses update their expected size after the first batch, stop reading after one loop
+                # KMS responses update their expected size after the first batch, stop reading after
+                # one loop
                 if once:
                     return mv[:read]
             except BLOCKING_IO_ERRORS:
@@ -483,8 +485,10 @@ class PyMongoProtocol(BufferedProtocol):
         return self._timeout
 
     def connection_made(self, transport: BaseTransport) -> None:
-        """Called exactly once when a connection is made.
-        The transport argument is the transport representing the write side of the connection.
+        """Handle a new connection.
+
+        Called exactly once when a connection is made. The transport argument is
+        the transport representing the write side of the connection.
         """
         self.transport = transport  # type: ignore[assignment]
         self.transport.set_write_buffer_limits(MAX_MESSAGE_SIZE, MAX_MESSAGE_SIZE)
@@ -531,10 +535,11 @@ class PyMongoProtocol(BufferedProtocol):
         raise OSError("connection closed")
 
     def get_buffer(self, sizehint: int) -> memoryview:
-        """Called to allocate a new receive buffer.
-        The asyncio loop calls this method expecting to receive a non-empty buffer to fill with data.
-        If any data does not fit into the returned buffer, this method will be called again until
-        either no data remains or an empty buffer is returned.
+        """Allocate a new receive buffer.
+
+        The asyncio loop calls this method expecting to receive a non-empty buffer to fill with
+        data. If any data does not fit into the returned buffer, this method will be called again
+        until either no data remains or an empty buffer is returned.
         """
         # Due to a bug, Python <=3.11 will call get_buffer() even after we raise
         # ProtocolError in buffer_updated() and call connection_lost(). We allocate
@@ -552,7 +557,7 @@ class PyMongoProtocol(BufferedProtocol):
         return self._message[self._message_index :]  # type: ignore[index]
 
     def buffer_updated(self, nbytes: int) -> None:
-        """Called when the buffer was updated with the received data"""
+        """Handle received data once the buffer has been updated."""
         # Wrote 0 bytes into a non-empty buffer, signal connection closed
         if nbytes == 0:
             self.close(OSError("connection closed"))
@@ -587,8 +592,8 @@ class PyMongoProtocol(BufferedProtocol):
                 if uncompressed_size <= 0 or uncompressed_size + 16 > self._max_message_size:
                     self.close(
                         ProtocolError(
-                            f"Uncompressed message size ({uncompressed_size!r}) is invalid or larger "
-                            f"than server max message size "
+                            f"Uncompressed message size ({uncompressed_size!r}) is invalid or "
+                            f"larger than server max message size "
                             f"({self._max_message_size!r})"
                         )
                     )
@@ -697,11 +702,10 @@ async def async_receive_message(
     timeout = conn.conn.gettimeout
     if _csot.get_timeout():
         deadline = _csot.get_deadline()
+    elif timeout:
+        deadline = time.monotonic() + timeout
     else:
-        if timeout:
-            deadline = time.monotonic() + timeout
-        else:
-            deadline = None
+        deadline = None
     if deadline:
         # When the timeout has expired perform one final check to
         # see if the socket is readable. This helps avoid spurious

@@ -90,7 +90,9 @@ _VERBOSE_CONNECTION_ERROR_REASONS = {
     ConnectionCheckOutFailedReason.POOL_CLOSED: "Connection pool was closed",
     ConnectionClosedReason.STALE: "Connection pool was stale",
     ConnectionClosedReason.ERROR: "An error occurred while using the connection",
-    ConnectionCheckOutFailedReason.CONN_ERROR: "An error occurred while trying to establish a new connection",
+    ConnectionCheckOutFailedReason.CONN_ERROR: (
+        "An error occurred while trying to establish a new connection"
+    ),
     ConnectionClosedReason.IDLE: "Connection was idle too long",
     ConnectionCheckOutFailedReason.TIMEOUT: "Connection exceeded the specified timeout",
 }

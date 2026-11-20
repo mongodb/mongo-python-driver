@@ -101,7 +101,10 @@ class _ConnectionTelemetryInfo(Protocol):
 
 
 class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
-    """Shared base class for AsyncConnection and Connection. Subclasses contain all methods that perform I/O."""
+    """Shared base class for AsyncConnection and Connection.
+
+    Subclasses contain all methods that perform I/O.
+    """
 
     def __init__(
         self,
@@ -183,7 +186,10 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
             timeout_details = _get_timeout_details(self.opts)
             formatted = format_timeout_details(timeout_details)
             # CSOT: raise an error without running the command since we know it will time out.
-            errmsg = f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= network round trip time:{rtt:.5f} {formatted}"
+            errmsg = (
+                f"operation would exceed time limit, remaining timeout:{timeout:.5f} <= "
+                f"network round trip time:{rtt:.5f} {formatted}"
+            )
             raise ExecutionTimeout(
                 errmsg,
                 50,
@@ -225,7 +231,8 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
         if session:
             if session._client is not client:
                 raise InvalidOperation(
-                    f"Can only use session with the {type(session._client).__name__} that started it"
+                    f"Can only use session with the {type(session._client).__name__} "
+                    f"that started it"
                 )
 
     def send_cluster_time(
@@ -264,7 +271,7 @@ class _AgnosticBaseConnection(_ConnectionTelemetryInfo, Generic[_PoolT]):
 
 
 class _AgnosticBasePool(Generic[_ConnT]):
-    """Shared base class for async and sync Pool. Subclasses contain all methods that perform I/O."""
+    """Shared base class for async and sync Pool. Subclasses contain methods that perform I/O."""
 
     def __init__(
         self,
@@ -273,7 +280,8 @@ class _AgnosticBasePool(Generic[_ConnT]):
         is_sdam: bool = False,
         client_id: ObjectId | None = None,
     ):
-        """
+        """Create a new pool.
+
         :param address: a (hostname, port) tuple
         :param options: a PoolOptions instance
         :param is_sdam: whether to call hello for each new connection
@@ -418,7 +426,8 @@ class _AgnosticBasePool(Generic[_ConnT]):
             other_ops = self.active_sockets - self.ncursors - self.ntxns
             raise WaitQueueTimeoutError(
                 "Timeout waiting for connection from the connection pool. "
-                f"maxPoolSize: {self.opts.max_pool_size}, connections in use by cursors: {self.ncursors}, "
+                f"maxPoolSize: {self.opts.max_pool_size}, connections in use by cursors: "
+                f"{self.ncursors}, "
                 f"connections in use by transactions: {self.ntxns}, connections in use "
                 f"by other operations: {other_ops}, timeout: {timeout}"
             )
@@ -448,7 +457,7 @@ except ImportError:
     # (Jython, IronPython, ..), systems that don't provide
     # everything we need from fcntl, etc.
     def _set_non_inheritable_non_atomic(fd: int) -> None:
-        """Dummy function for platforms that don't provide fcntl."""
+        """Do nothing on platforms that don't provide fcntl."""
 
 
 _MAX_TCP_KEEPIDLE = 120
@@ -545,14 +554,12 @@ class _CancellationContext:
 
     @property
     def cancelled(self) -> bool:
-        """Was cancel called?"""
+        """Whether cancel was called."""
         return self._cancelled
 
 
 class _PoolClosedError(PyMongoError):
-    """Internal error raised when a thread tries to get a connection from a
-    closed pool.
-    """
+    """Internal error raised when a thread tries to get a connection from a closed pool."""
 
 
 class _PoolGeneration:
@@ -576,8 +583,8 @@ class _PoolGeneration:
         """Increment the generation for the given service_id."""
         self._generation += 1
         if service_id is None:
-            for service_id in self._generations:
-                self._generations[service_id] += 1
+            for sid in self._generations:
+                self._generations[sid] += 1
         else:
             self._generations[service_id] += 1
 
@@ -979,7 +986,7 @@ def _configured_socket_interface(
     options: PoolOptions,
     ssl_session_cache: list[Any] | None = None,
 ) -> NetworkingInterface:
-    """Given (host, port) and PoolOptions, return a NetworkingInterface wrapping a configured socket.
+    """Given (host, port) and PoolOptions, return a NetworkingInterface for a configured socket.
 
     Can raise socket.error, ConnectionFailure, or _CertificateError.
 

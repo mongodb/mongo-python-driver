@@ -113,14 +113,15 @@ class TestReadPreferencesBase(AsyncIntegrationTest):
         self.addAsyncCleanup(self.db.coll.drop)
 
     async def read_from_which_host(self, client):
-        """Do a find() on the client and return which host was used"""
+        """Do a find() on the client and return which host was used."""
         cursor = client.pymongo_test.coll.find()
         await anext(cursor)
         return cursor.address
 
     async def read_from_which_kind(self, client):
-        """Do a find() on the client and return 'primary' or 'secondary'
-        depending on which the client used.
+        """Do a find() on the client and return 'primary' or 'secondary'.
+
+        Which one is returned depends on which the client used.
         """
         address = await self.read_from_which_host(client)
         if address == await client.primary:
@@ -336,9 +337,9 @@ class ReadPrefTester(AsyncMongoClient):
     @contextlib.asynccontextmanager
     async def _conn_from_server(self, read_preference, server, session):  # type: ignore[override]
         context = super()._conn_from_server(read_preference, server, session)
-        async with context as (conn, read_preference):
+        async with context as (conn, read_pref):
             await self.record_a_read(conn.address)
-            yield conn, read_preference
+            yield conn, read_pref
 
     async def record_a_read(self, address):
         server = await (await self._get_topology()).select_server_by_address(address, _Op.TEST, 0)

@@ -105,9 +105,10 @@ _WriteOp = (
 
 
 class ReturnDocument:
-    """An enum used with
-    :meth:`~pymongo.collection.Collection.find_one_and_replace` and
-    :meth:`~pymongo.collection.Collection.find_one_and_update`.
+    """An enum used with the find_one_and_replace and find_one_and_update methods.
+
+    See :meth:`~pymongo.collection.Collection.find_one_and_replace`
+    and :meth:`~pymongo.collection.Collection.find_one_and_update`.
     """
 
     BEFORE = False
@@ -221,7 +222,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
            names with leading underscores. You must use dict-style lookups
            instead::
 
-               collection['__my_collection__']
+               collection["__my_collection__"]
 
            Not:
 
@@ -264,7 +265,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if create or kwargs:
             if _IS_SYNC:
                 warnings.warn(
-                    "The `create` and `kwargs` arguments to Collection are deprecated and will be removed in PyMongo 5.0",
+                    "The `create` and `kwargs` arguments to Collection are deprecated and "
+                    "will be removed in PyMongo 5.0",
                     DeprecationWarning,
                     stacklevel=2,
                 )
@@ -334,8 +336,10 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
     @property
     def database(self) -> Database[_DocumentType]:
-        """The :class:`~pymongo.database.Database` that this
-        :class:`Collection` is a part of.
+        """Return the collection's :class:`~pymongo.database.Database`.
+
+        This is the :class:`~pymongo.database.Database` that
+        this :class:`Collection` is a part of.
         """
         return self._database
 
@@ -411,7 +415,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     next = __next__
 
     def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:
-        """This is only here so that some API misusages are easier to debug."""
+        """Raise an error so that some API misusages are easier to debug."""
         if "." not in self._name:
             raise TypeError(
                 f"'{type(self).__name__}' object is not callable. If you "
@@ -581,7 +585,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         retryable_write: bool = False,
         user_fields: Any | None = None,
     ) -> Mapping[str, Any]:
-        """Internal command helper.
+        """Run a command (internal helper).
 
         :param conn` - A Connection instance.
         :param command` - The command itself, as a :class:`~bson.son.SON` instance.
@@ -633,7 +637,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         encrypted_fields: Mapping[str, Any] | None = None,
         qev2_required: bool = False,
     ) -> None:
-        """Sends a create command with the given options."""
+        """Send a create command with the given options."""
         cmd: dict[str, Any] = {"create": name}
         if encrypted_fields:
             cmd["encryptedFields"] = encrypted_fields
@@ -648,7 +652,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
                 raise ConfigurationError(
                     "Driver support of Queryable Encryption is incompatible with server. "
                     "Upgrade server to use Queryable Encryption. "
-                    f"Got maxWireVersion {conn.max_wire_version} but need maxWireVersion >= 21 (MongoDB >=7.0)"
+                    f"Got maxWireVersion {conn.max_wire_version} but need "
+                    "maxWireVersion >= 21 (MongoDB >=7.0)"
                 )
 
             self._command(
@@ -709,14 +714,15 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
           >>> for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634ef')}
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           >>> # DeleteMany, UpdateOne, and UpdateMany are also available.
-          ...
           >>> from pymongo import InsertOne, DeleteOne, ReplaceOne
-          >>> requests = [InsertOne({'y': 1}), DeleteOne({'x': 1}),
-          ...             ReplaceOne({'w': 1}, {'z': 1}, upsert=True)]
+          >>> requests = [
+          ...     InsertOne({"y": 1}),
+          ...     DeleteOne({"x": 1}),
+          ...     ReplaceOne({"w": 1}, {"z": 1}, upsert=True),
+          ... ]
           >>> result = db.test.bulk_write(requests)
           >>> result.inserted_count
           1
@@ -728,7 +734,6 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           {2: ObjectId('54f62ee28891e756a6e1abd5')}
           >>> for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': ObjectId('54f62e60fba5226811f634f0')}
           {'y': 1, '_id': ObjectId('54f62ee2fba5226811f634f1')}
           {'z': 1, '_id': ObjectId('54f62ee28891e756a6e1abd5')}
@@ -795,7 +800,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         session: ClientSession | None,
         comment: Any | None = None,
     ) -> Any:
-        """Internal helper for inserting a single document."""
+        """Insert a single document (internal helper)."""
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
         command = {"insert": self.name, "ordered": ordered, "documents": [doc]}
@@ -837,12 +842,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> InsertOneResult:
         """Insert a single document.
 
-          >>> db.test.count_documents({'x': 1})
+          >>> db.test.count_documents({"x": 1})
           0
-          >>> result = db.test.insert_one({'x': 1})
+          >>> result = db.test.insert_one({"x": 1})
           >>> result.inserted_id
           ObjectId('54f112defba522406c9cc208')
-          >>> db.test.find_one({'x': 1})
+          >>> db.test.find_one({"x": 1})
           {'x': 1, '_id': ObjectId('54f112defba522406c9cc208')}
 
         :param document: The document to insert. Must be a mutable mapping
@@ -905,7 +910,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
           >>> db.test.count_documents({})
           0
-          >>> result = db.test.insert_many([{'x': i} for i in range(2)])
+          >>> result = db.test.insert_many([{"x": i} for i in range(2)])
           >>> result.inserted_ids
           [ObjectId('54f113fffba522406c9cc20e'), ObjectId('54f113fffba522406c9cc20f')]
           >>> db.test.count_documents({})
@@ -952,7 +957,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         inserted_ids: list[ObjectId] = []
 
         def gen() -> Iterator[tuple[int, Mapping[str, Any]]]:
-            """A generator that validates documents and handles _ids."""
+            """Validate documents and handle _ids."""
             for document in documents:
                 common.validate_is_document_type("document", document)
                 if not isinstance(document, RawBSONDocument):
@@ -987,7 +992,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         sort: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any] | None:
-        """Internal update / replace helper."""
+        """Update or replace a document (internal helper)."""
         validate_boolean("upsert", upsert)
         collation = validate_collation_or_none(collation)
         write_concern = write_concern or self.write_concern
@@ -1015,7 +1020,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         if sort is not None:
             if not acknowledged and conn.max_wire_version < WIRE_VERSION_8_0:
                 raise ConfigurationError(
-                    "Must be connected to MongoDB 8.0+ to use sort on unacknowledged update commands."
+                    "Must be connected to MongoDB 8.0+ to use sort on unacknowledged "
+                    "update commands."
                 )
             common.validate_is_mapping("sort", sort)
             update_doc["sort"] = sort
@@ -1078,7 +1084,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         sort: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any] | None:
-        """Internal update / replace helper."""
+        """Update or replace a document (internal helper)."""
 
         def _update(
             session: ClientSession | None, conn: Connection, retryable_write: bool
@@ -1127,29 +1133,27 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
           >>> for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': ObjectId('54f4c5befba5220aa4d6dee7')}
-          >>> result = db.test.replace_one({'x': 1}, {'y': 1})
+          >>> result = db.test.replace_one({"x": 1}, {"y": 1})
           >>> result.matched_count
           1
           >>> result.modified_count
           1
           >>> for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'y': 1, '_id': ObjectId('54f4c5befba5220aa4d6dee7')}
 
         The *upsert* option can be used to insert a new document if a matching
         document does not exist.
 
-          >>> result = db.test.replace_one({'x': 1}, {'x': 1}, True)
+          >>> result = db.test.replace_one({"x": 1}, {"x": 1}, True)
           >>> result.matched_count
           0
           >>> result.modified_count
           0
           >>> result.upserted_id
           ObjectId('54f11e5c8891e756a6e1abd4')
-          >>> db.test.find_one({'x': 1})
+          >>> db.test.find_one({"x": 1})
           {'x': 1, '_id': ObjectId('54f11e5c8891e756a6e1abd4')}
 
         :param filter: A query that matches the document to replace.
@@ -1236,18 +1240,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
           >>> for doc in db.test.find():
           ...     print(doc)
-          ...
           {'x': 1, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
-          >>> result = db.test.update_one({'x': 1}, {'$inc': {'x': 3}})
+          >>> result = db.test.update_one({"x": 1}, {"$inc": {"x": 3}})
           >>> result.matched_count
           1
           >>> result.modified_count
           1
           >>> for doc in db.test.find():
           ...     print(doc)
-          ...
           {'x': 4, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
@@ -1255,7 +1257,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         If ``upsert=True`` and no documents match the filter, create a
         new document based on the filter criteria and update modifications.
 
-          >>> result = db.test.update_one({'x': -10}, {'$inc': {'x': 3}}, upsert=True)
+          >>> result = db.test.update_one({"x": -10}, {"$inc": {"x": 3}}, upsert=True)
           >>> result.matched_count
           0
           >>> result.modified_count
@@ -1354,18 +1356,16 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
           >>> for doc in db.test.find():
           ...     print(doc)
-          ...
           {'x': 1, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
-          >>> result = db.test.update_many({'x': 1}, {'$inc': {'x': 3}})
+          >>> result = db.test.update_many({"x": 1}, {"$inc": {"x": 3}})
           >>> result.matched_count
           3
           >>> result.modified_count
           3
           >>> for doc in db.test.find():
           ...     print(doc)
-          ...
           {'x': 4, '_id': 0}
           {'x': 4, '_id': 1}
           {'x': 4, '_id': 2}
@@ -1495,7 +1495,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         let: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any]:
-        """Internal delete helper."""
+        """Delete documents (internal helper)."""
         common.validate_is_mapping("filter", criteria)
         write_concern = write_concern or self.write_concern
         acknowledged = write_concern.acknowledged
@@ -1545,7 +1545,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         let: Mapping[str, Any] | None = None,
         comment: Any | None = None,
     ) -> Mapping[str, Any]:
-        """Internal delete helper."""
+        """Delete documents (internal helper)."""
 
         def _delete(
             session: ClientSession | None, conn: Connection, retryable_write: bool
@@ -1583,12 +1583,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> DeleteResult:
         """Delete a single document matching the filter.
 
-          >>> db.test.count_documents({'x': 1})
+          >>> db.test.count_documents({"x": 1})
           3
-          >>> result = db.test.delete_one({'x': 1})
+          >>> result = db.test.delete_one({"x": 1})
           >>> result.deleted_count
           1
-          >>> db.test.count_documents({'x': 1})
+          >>> db.test.count_documents({"x": 1})
           2
 
         :param filter: A query that matches the document to delete.
@@ -1648,12 +1648,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> DeleteResult:
         """Delete one or more documents matching the filter.
 
-          >>> db.test.count_documents({'x': 1})
+          >>> db.test.count_documents({"x": 1})
           3
-          >>> result = db.test.delete_many({'x': 1})
+          >>> result = db.test.delete_many({"x": 1})
           >>> result.deleted_count
           3
-          >>> db.test.count_documents({'x': 1})
+          >>> db.test.count_documents({"x": 1})
           0
 
         :param filter: A query that matches the documents to delete.
@@ -1756,9 +1756,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         improper type. Returns an instance of
         :class:`~pymongo.cursor.Cursor` corresponding to this query.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             with collection.find() as cursor:
@@ -1985,7 +1988,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         cmd: dict[str, Any],
         collation: Collation | None,
     ) -> int:
-        """Internal count command helper."""
+        """Run a count command (internal helper)."""
         res = self._command(
             conn,
             cmd,
@@ -2005,7 +2008,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         collation: _CollationIn | None,
         session: ClientSession | None,
     ) -> Mapping[str, Any] | None:
-        """Internal helper to run an aggregate that returns a single result."""
+        """Run an aggregate that returns a single result (internal helper)."""
         result = self._command(
             conn,
             cmd,
@@ -2023,8 +2026,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         return batch[0] if batch else None
 
     def estimated_document_count(self, comment: Any | None = None, **kwargs: Any) -> int:
-        """Get an estimate of the number of documents in this collection using
-        collection metadata.
+        """Get an estimate of the number of documents in this collection.
+
+        Uses collection metadata.
 
         The :meth:`estimated_document_count` method is **not** supported in a
         transaction.
@@ -2042,7 +2046,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. versionchanged:: 4.2
            This method now always uses the `count`_ command. Due to an oversight in versions
            5.0.0-5.0.8 of MongoDB, the count command was not included in V1 of the
-           `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_. Users of the Stable API with estimated_document_count are
+           `versioned API <https://www.mongodb.com/docs/manual/reference/stable-api/#what-is-the-stable-api--and-should-you-use-it->`_.
+           Users of the Stable API with estimated_document_count are
            recommended to upgrade their server version to 5.0.9+ or set
            :attr:`pymongo.server_api.ServerApi.strict` to ``False`` to avoid encountering errors.
 
@@ -2179,8 +2184,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         """Create one or more indexes on this collection.
 
           >>> from pymongo import IndexModel, ASCENDING, DESCENDING
-          >>> index1 = IndexModel([("hello", DESCENDING),
-          ...                      ("world", ASCENDING)], name="hello_world")
+          >>> index1 = IndexModel([("hello", DESCENDING), ("world", ASCENDING)], name="hello_world")
           >>> index2 = IndexModel([("goodbye", DESCENDING)])
           >>> db.test.create_indexes([index1, index2])
           ["hello_world", "goodbye_-1"]
@@ -2220,7 +2224,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     def _create_indexes(
         self, indexes: Sequence[IndexModel], session: ClientSession | None, **kwargs: Any
     ) -> list[str]:
-        """Internal createIndexes helper.
+        """Create indexes (internal helper).
 
         :param indexes: A list of :class:`~pymongo.operations.IndexModel`
             instances.
@@ -2265,7 +2269,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> str:
-        """Creates an index on this collection.
+        """Create an index on this collection.
 
         Takes either a single key or a list containing (key, direction) pairs
         or keys.  If no direction is given, :data:`~pymongo.ASCENDING` will
@@ -2382,7 +2386,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
-        """Drops all indexes on this collection.
+        """Drop all indexes on this collection.
 
         Can be used on non-existent collections or collections with no indexes.
         Raises OperationFailure on an error.
@@ -2416,7 +2420,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
-        """Drops the specified index on this collection.
+        """Drop the specified index on this collection.
 
         Can be used on non-existent collections or collections with no
         indexes.  Raises OperationFailure on an error (e.g. trying to
@@ -2498,12 +2502,14 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
           >>> for index in db.test.list_indexes():
           ...     print(index)
-          ...
           SON([('v', 2), ('key', SON([('_id', 1)])), ('name', '_id_')])
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             with collection.list_indexes() as cursor:
@@ -2625,9 +2631,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
     ) -> CommandCursor[Mapping[str, Any]]:
         """Return a cursor over search indexes for the current collection.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             with collection.list_search_indexes() as cursor:
@@ -2814,7 +2823,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> None:
-        """Update a search index by replacing the existing index definition with the provided definition.
+        """Update a search index by replacing the index definition with the provided definition.
 
         :param name: The name of the search index to be updated.
         :param definition: The new search index definition.
@@ -2929,8 +2938,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> CommandCursor[_DocumentType]:
-        """Perform an aggregation using the aggregation framework on this
-        collection.
+        """Perform an aggregation using the aggregation framework on this collection.
 
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`, except when ``$out`` or ``$merge`` are used on
@@ -2945,9 +2953,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         .. note:: The :attr:`~pymongo.collection.Collection.write_concern` of
            this collection is automatically applied to this operation.
 
-        Cursors are closed automatically when they are exhausted (the last batch of data is retrieved from the database).
-        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which leaves resources open but unused for a potentially long period of time.
-        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no longer needed,
+        Cursors are closed automatically when they are exhausted (the last batch of data is
+        retrieved from the database).
+        If a cursor is not exhausted, it will be closed automatically upon garbage collection, which
+        leaves resources open but unused for a potentially long period of time.
+        To avoid this, best practice is to call :meth:`Cursor.close` when the cursor is no
+        longer needed,
         or use the cursor in a with statement::
 
             with collection.aggregate() as cursor:
@@ -2980,7 +2991,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             returning aggregate results using a cursor.
           - `collation` (optional): An instance of
             :class:`~pymongo.collation.Collation`.
-          - `bypassDocumentValidation` (bool): If ``True``, allows the write to opt-out of document level validation.
+          - `bypassDocumentValidation` (bool): If ``True``, allows the write to opt-out of document
+            level validation.
 
 
         :return: A :class:`~pymongo.command_cursor.CommandCursor` over the result
@@ -3043,8 +3055,9 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         :mod:`bson` module.
 
           >>> import bson
-          >>> cursor = db.test.aggregate_raw_batches([
-          ...     {'$project': {'x': {'$multiply': [2, '$x']}}}])
+          >>> cursor = db.test.aggregate_raw_batches(
+          ...     [{"$project": {"x": {"$multiply": [2, "$x"]}}}]
+          ... )
           >>> for batch in cursor:
           ...     print(bson.decode_all(batch))
 
@@ -3149,8 +3162,7 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         hint: _IndexKeyHint | None = None,
         **kwargs: Any,
     ) -> list[Any]:
-        """Get a list of distinct values for `key` among all documents
-        in this collection.
+        """Get a list of distinct values for `key` among all documents in this collection.
 
         Raises :class:`TypeError` if `key` is not an instance of
         :class:`str`.
@@ -3176,7 +3188,8 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
             command.
         :param hint: An index to use to support the query
             predicate specified either by its string name, or in the same
-            format as passed to :meth:`~pymongo.collection.Collection.create_index`
+            format as passed to
+            :meth:`~pymongo.collection.Collection.create_index`
             (e.g. ``[('field', ASCENDING)]``).
         :param kwargs: See list of options above.
 
@@ -3240,11 +3253,12 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         let: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> Any:
-        """Internal findAndModify helper."""
+        """Run a findAndModify command (internal helper)."""
         common.validate_is_mapping("filter", filter)
         if not isinstance(return_document, bool):
             raise TypeError(
-                f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, not {type(return_document)}"
+                f"return_document must be ReturnDocument.BEFORE or ReturnDocument.AFTER, "
+                f"not {type(return_document)}"
             )
         collation = validate_collation_or_none(kwargs.pop("collation", None))
         if hint is not None:
@@ -3308,34 +3322,32 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> _DocumentType | None:
-        """Finds a single document and deletes it, returning the document.
+        """Find a single document and delete it, returning the document.
 
-          >>> db.test.count_documents({'x': 1})
+          >>> db.test.count_documents({"x": 1})
           2
-          >>> db.test.find_one_and_delete({'x': 1})
+          >>> db.test.find_one_and_delete({"x": 1})
           {'x': 1, '_id': ObjectId('54f4e12bfba5220aa4d6dee8')}
-          >>> db.test.count_documents({'x': 1})
+          >>> db.test.count_documents({"x": 1})
           1
 
         Returns ``None`` if no document matches the filter.
 
-          >>> db.test.find_one_and_delete({'_exists': False})
+          >>> db.test.find_one_and_delete({"_exists": False})
 
         If multiple documents match *filter*, a *sort* can be applied.
 
-          >>> for doc in db.test.find({'x': 1}):
+          >>> for doc in db.test.find({"x": 1}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
-          >>> db.test.find_one_and_delete(
-          ...     {'x': 1}, sort=[('_id', pymongo.DESCENDING)])
+          >>> db.test.find_one_and_delete({"x": 1}, sort=[("_id", pymongo.DESCENDING)])
           {'x': 1, '_id': 2}
 
         The *projection* option can be used to limit the fields returned.
 
-          >>> db.test.find_one_and_delete({'x': 1}, projection={'_id': False})
+          >>> db.test.find_one_and_delete({"x": 1}, projection={"_id": False})
           {'x': 1}
 
         :param filter: A query that matches the document to delete.
@@ -3404,20 +3416,21 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> _DocumentType | None:
-        """Finds a single document and replaces it, returning either the
-        original or the replaced document.
+        """Find a single document and replace it.
 
-          >>> db.test.find_one({'x': 1})
+        Return either the original or the replaced document.
+
+          >>> db.test.find_one({"x": 1})
           {'_id': 0, 'x': 1}
-          >>> db.test.find_one_and_replace({'x': 1}, {'y': 2})
+          >>> db.test.find_one_and_replace({"x": 1}, {"y": 2})
           {'_id': 0, 'x': 1}
-          >>> db.test.find_one({'x': 1})
-          >>> db.test.find_one({'y': 2})
+          >>> db.test.find_one({"x": 1})
+          >>> db.test.find_one({"y": 2})
           {'_id': 0, 'y': 2}
 
         Returns ``None`` if no document matches the filter.
 
-          >>> db.test.find_one_and_replace({'_exists': False}, {'x': 1})
+          >>> db.test.find_one_and_replace({"_exists": False}, {"x": 1})
 
         The :meth:`find_one_and_replace` method differs from
         :meth:`find_one_and_update` by replacing the document matched by
@@ -3425,15 +3438,13 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
           >>> for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'x': 1, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
-          >>> db.test.find_one_and_replace({'x': 1}, {'y': 1})
+          >>> db.test.find_one_and_replace({"x": 1}, {"y": 1})
           {'x': 1, '_id': 0}
           >>> for doc in db.test.find({}):
           ...     print(doc)
-          ...
           {'y': 1, '_id': 0}
           {'x': 1, '_id': 1}
           {'x': 1, '_id': 2}
@@ -3524,21 +3535,22 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
         comment: Any | None = None,
         **kwargs: Any,
     ) -> _DocumentType | None:
-        """Finds a single document and updates it, returning either the
-        original or the updated document.
+        """Find a single document and update it.
 
-          >>> db.test.find_one({'_id': 665})
+        Return either the original or the updated document.
+
+          >>> db.test.find_one({"_id": 665})
           {'_id': 665, 'done': False, 'count': 25}
           >>> db.test.find_one_and_update(
-          ...    {'_id': 665}, {'$inc': {'count': 1}, '$set': {'done': True}})
+          ...     {"_id": 665}, {"$inc": {"count": 1}, "$set": {"done": True}}
+          ... )
           {'_id': 665, 'done': False, 'count': 25}
-          >>> db.test.find_one({'_id': 665})
+          >>> db.test.find_one({"_id": 665})
           {'_id': 665, 'done': True, 'count': 26}
 
         Returns ``None`` if no document matches the filter.
 
-          >>> db.test.find_one_and_update(
-          ...    {'_exists': False}, {'$inc': {'count': 1}})
+          >>> db.test.find_one_and_update({"_exists": False}, {"$inc": {"count": 1}})
 
         When the filter matches, by default :meth:`find_one_and_update`
         returns the original version of the document before the update was
@@ -3548,18 +3560,18 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
 
           >>> from pymongo import ReturnDocument
           >>> db.example.find_one_and_update(
-          ...     {'_id': 'userid'},
-          ...     {'$inc': {'seq': 1}},
-          ...     return_document=ReturnDocument.AFTER)
+          ...     {"_id": "userid"}, {"$inc": {"seq": 1}}, return_document=ReturnDocument.AFTER
+          ... )
           {'_id': 'userid', 'seq': 1}
 
         You can limit the fields returned with the *projection* option.
 
           >>> db.example.find_one_and_update(
-          ...     {'_id': 'userid'},
-          ...     {'$inc': {'seq': 1}},
-          ...     projection={'seq': True, '_id': False},
-          ...     return_document=ReturnDocument.AFTER)
+          ...     {"_id": "userid"},
+          ...     {"$inc": {"seq": 1}},
+          ...     projection={"seq": True, "_id": False},
+          ...     return_document=ReturnDocument.AFTER,
+          ... )
           {'seq': 2}
 
         The *upsert* option can be used to create the document if it doesn't
@@ -3568,24 +3580,23 @@ class Collection(common.BaseObject, Generic[_DocumentType]):
           >>> (db.example.delete_many({})).deleted_count
           1
           >>> db.example.find_one_and_update(
-          ...     {'_id': 'userid'},
-          ...     {'$inc': {'seq': 1}},
-          ...     projection={'seq': True, '_id': False},
+          ...     {"_id": "userid"},
+          ...     {"$inc": {"seq": 1}},
+          ...     projection={"seq": True, "_id": False},
           ...     upsert=True,
-          ...     return_document=ReturnDocument.AFTER)
+          ...     return_document=ReturnDocument.AFTER,
+          ... )
           {'seq': 1}
 
         If multiple documents match *filter*, a *sort* can be applied.
 
-          >>> for doc in db.test.find({'done': True}):
+          >>> for doc in db.test.find({"done": True}):
           ...     print(doc)
-          ...
           {'_id': 665, 'done': True, 'result': {'count': 26}}
           {'_id': 701, 'done': True, 'result': {'count': 17}}
           >>> db.test.find_one_and_update(
-          ...     {'done': True},
-          ...     {'$set': {'final': True}},
-          ...     sort=[('_id', pymongo.DESCENDING)])
+          ...     {"done": True}, {"$set": {"final": True}}, sort=[("_id", pymongo.DESCENDING)]
+          ... )
           {'_id': 701, 'done': True, 'result': {'count': 17}}
 
         :param filter: A query that matches the document to update.

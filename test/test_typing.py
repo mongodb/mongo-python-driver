@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test that each file in mypy_fails/ actually fails mypy, and test some
-sample client code that uses PyMongo typings.
+"""Test that each file in mypy_fails/ actually fails mypy.
+
+Also test some sample client code that uses PyMongo typings.
 """
 
 from __future__ import annotations
@@ -181,7 +182,8 @@ class TestPymongo(IntegrationTest):
         new_requests: list[InsertOne[Movie] | ReplaceOne[Movie]] = list.copy(input_list)
         self.assertTrue(coll.bulk_write(new_requests).acknowledged)
 
-    # Because ReplaceOne is not generic, type checking is not enforced for ReplaceOne in the first example.
+    # Because ReplaceOne is not generic, type checking is not enforced for ReplaceOne in the first
+    # example.
     @only_type_check
     def test_bulk_write_heterogeneous(self):
         coll: Collection[Movie] = self.coll

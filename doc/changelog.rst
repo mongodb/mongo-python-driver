@@ -1,7 +1,20 @@
 Changelog
 =========
 
-Changes in Version 4.20.1 (2026/XX/XX)
+Changes in Version 4.20.2 (unreleased)
+--------------------------------------
+
+Bug fixes
+.........
+
+- Fixed a bug where :meth:`~gridfs.GridFS.get_version` and
+  :meth:`~gridfs.GridFS.get_last_version` accepted a non-string ``filename``
+  and treated a dict as query criteria. They now raise :exc:`TypeError`
+  (`PYTHON-6183`_).
+
+.. _PYTHON-6183: https://jira.mongodb.org/browse/PYTHON-6183
+
+Changes in Version 4.20.1 (2026/11/19)
 --------------------------------------
 
 Version 4.20.1 is a bug fix release.
@@ -12,8 +25,17 @@ Bug fixes
 - Fixed a bug where ``getMore`` commands in load-balanced mode were not
   retried when the server returned a retryable overload error
   (`PYTHON-6262`_).
+- Fixed a bug where a cancelled async command published a
+  ``CommandStartedEvent`` (and its "Command started" log message) without a
+  correlating ``CommandFailedEvent``. A cancellation now publishes the failure
+  before the ``CancelledError`` propagates (`PYTHON-6187`_).
+- Sanitize parsing error messages. (`CVE-2026-129927`_)
+- Improved credential validation. (`CVE-2026-129926`_).
 
 .. _PYTHON-6262: https://jira.mongodb.org/browse/PYTHON-6262
+.. _PYTHON-6187: https://jira.mongodb.org/browse/PYTHON-6187
+.. _CVE-2026-129927: https://www.cve.org/CVERecord?id=CVE-2026-129927
+.. _CVE-2026-129926: https://www.cve.org/CVERecord?id=CVE-2026-129926
 
 Changes in Version 4.20.0 (2026/11/12)
 --------------------------------------

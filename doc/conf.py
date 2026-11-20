@@ -44,7 +44,10 @@ master_doc = "index"
 
 # General information about the project.
 project = "PyMongo"
-copyright = "MongoDB, Inc. 2008-present. MongoDB, Mongo, and the leaf logo are registered trademarks of MongoDB, Inc"
+copyright = (
+    "MongoDB, Inc. 2008-present. MongoDB, Mongo, and the leaf logo are registered trademarks "
+    "of MongoDB, Inc"
+)
 html_show_sphinx = False
 
 # The version info for the project you're documenting, acts as replacement for

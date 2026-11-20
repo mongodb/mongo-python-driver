@@ -12,10 +12,10 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""A CPython compatible SSLContext implementation wrapping PyOpenSSL's
-context.
+"""A CPython compatible SSLContext implementation wrapping PyOpenSSL's context.
 
-Due to limitations of the CPython asyncio.Protocol implementation for SSL, the async API does not support PyOpenSSL.
+Due to limitations of the CPython asyncio.Protocol implementation for SSL, the async API does not
+support PyOpenSSL.
 """
 
 from __future__ import annotations
@@ -27,8 +27,8 @@ from errno import EINTR as _EINTR
 from ipaddress import ip_address as _ip_address
 from typing import TYPE_CHECKING, Any, TypeVar
 
-import cryptography.x509 as x509
 import service_identity
+from cryptography import x509
 from OpenSSL import SSL as _SSL
 from OpenSSL import crypto as _crypto
 
@@ -203,9 +203,7 @@ class _CallbackData:
 
 
 class SSLContext:
-    """A CPython compatible SSLContext implementation wrapping PyOpenSSL's
-    context.
-    """
+    """A CPython compatible SSLContext implementation wrapping PyOpenSSL's context."""
 
     __slots__ = ("_callback_data", "_check_hostname", "_ctx", "_options", "_protocol")
 
@@ -227,14 +225,16 @@ class SSLContext:
     @property
     def protocol(self) -> int:
         """The protocol version chosen when constructing the context.
+
         This attribute is read-only.
         """
         return self._protocol
 
     def __get_verify_mode(self) -> VerifyMode:
-        """Whether to try to verify other peers' certificates and how to
-        behave if verification fails. This attribute must be one of
-        ssl.CERT_NONE, ssl.CERT_OPTIONAL or ssl.CERT_REQUIRED.
+        """Whether to verify other peers' certificates and how to behave if verification fails.
+
+        This attribute must be one of ssl.CERT_NONE, ssl.CERT_OPTIONAL or
+        ssl.CERT_REQUIRED.
         """
         return _REVERSE_VERIFY_MAP[self._ctx.get_verify_mode()]
 
@@ -280,8 +280,9 @@ class SSLContext:
         keyfile: str | bytes | None = None,
         password: str | None = None,
     ) -> None:
-        """Load a private key and the corresponding certificate. The certfile
-        string must be the path to a single file in PEM format containing the
+        """Load a private key and the corresponding certificate.
+
+        The certfile string must be the path to a single file in PEM format containing the
         certificate as well as any number of CA certificates needed to
         establish the certificate's authenticity. The keyfile string, if
         present, must point to a file containing the private key. Otherwise
@@ -305,9 +306,10 @@ class SSLContext:
         self._ctx.check_privatekey()
 
     def load_verify_locations(self, cafile: str | None = None, capath: str | None = None) -> None:
-        """Load a set of "certification authority"(CA) certificates used to
-        validate other peers' certificates when `~verify_mode` is other than
-        ssl.CERT_NONE.
+        """Load a set of "certification authority"(CA) certificates.
+
+        They are used to validate other peers' certificates when
+        `~verify_mode` is other than ssl.CERT_NONE.
         """
         self._ctx.load_verify_locations(cafile, capath)
 
@@ -337,7 +339,7 @@ class SSLContext:
                     )
 
     def load_default_certs(self) -> None:
-        """A PyOpenSSL version of load_default_certs from CPython."""
+        """Provide a PyOpenSSL version of load_default_certs from CPython."""
         # PyOpenSSL is incapable of loading CA certs from Windows, and mostly
         # incapable on macOS.
         # https://www.pyopenssl.org/en/stable/api/ssl.html#OpenSSL.SSL.Context.set_default_verify_paths
@@ -353,9 +355,7 @@ class SSLContext:
         self._ctx.set_default_verify_paths()
 
     def set_default_verify_paths(self) -> None:
-        """Specify that the platform provided CA certificates are to be used
-        for verification purposes.
-        """
+        """Specify that the platform's CA certificates are used for verification purposes."""
         # Note: See PyOpenSSL's docs for limitations, which are similar
         # but not that same as CPython's.
         self._ctx.set_default_verify_paths()
@@ -369,9 +369,7 @@ class SSLContext:
         server_hostname: str | None = None,
         session: _SSL.Session | None = None,
     ) -> _sslConn:
-        """Wrap an existing Python socket connection and return a TLS socket
-        object.
-        """
+        """Wrap an existing Python socket connection and return a TLS socket object."""
         ssl_conn = _sslConn(self._ctx, sock, suppress_ragged_eofs)
         if session:
             ssl_conn.set_session(session)

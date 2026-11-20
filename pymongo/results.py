@@ -50,7 +50,7 @@ class _WriteResult:
 
     @property
     def acknowledged(self) -> bool:
-        """Is this the result of an acknowledged write operation?
+        """Whether this is the result of an acknowledged write operation.
 
         The :attr:`acknowledged` attribute will be ``False`` when using
         ``WriteConcern(w=0)``, otherwise ``True``.
@@ -69,8 +69,9 @@ class _WriteResult:
 
 
 class InsertOneResult(_WriteResult):
-    """The return type for :meth:`~pymongo.collection.Collection.insert_one`
-    and as part of :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+    """The return type for :meth:`~pymongo.collection.Collection.insert_one`.
+
+    Also used as part of :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
     """
 
     __slots__ = ("__inserted_id",)
@@ -117,9 +118,10 @@ class InsertManyResult(_WriteResult):
 
 
 class UpdateResult(_WriteResult):
-    """The return type for :meth:`~pymongo.collection.Collection.update_one`,
-    :meth:`~pymongo.collection.Collection.update_many`, and
-    :meth:`~pymongo.collection.Collection.replace_one`, and as part of
+    """The return type for :meth:`~pymongo.collection.Collection.update_one`.
+
+    Also the return type for :meth:`~pymongo.collection.Collection.update_many`
+    and :meth:`~pymongo.collection.Collection.replace_one`, and used as part of
     :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
     """
 
@@ -164,9 +166,7 @@ class UpdateResult(_WriteResult):
 
     @property
     def upserted_id(self) -> Any:
-        """The _id of the inserted document if an upsert took place. Otherwise
-        ``None``.
-        """
+        """The _id of the inserted document if an upsert took place. Otherwise ``None``."""
         self._raise_if_unacknowledged("upserted_id")
         assert self.__raw_result is not None
         if self.__in_client_bulk and self.__raw_result.get("upserted"):
@@ -184,9 +184,10 @@ class UpdateResult(_WriteResult):
 
 
 class DeleteResult(_WriteResult):
-    """The return type for :meth:`~pymongo.collection.Collection.delete_one`
-    and :meth:`~pymongo.collection.Collection.delete_many`
-    and as part of :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
+    """The return type for :meth:`~pymongo.collection.Collection.delete_one`.
+
+    Also the return type for :meth:`~pymongo.collection.Collection.delete_many`,
+    and used as part of :meth:`~pymongo.mongo_client.MongoClient.bulk_write`.
     """
 
     __slots__ = ("__raw_result",)
@@ -220,7 +221,10 @@ class _BulkWriteResultBase(_WriteResult):
         super().__init__(acknowledged)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.__bulk_api_result!r}, acknowledged={self.acknowledged})"
+        return (
+            f"{self.__class__.__name__}({self.__bulk_api_result!r}, "
+            f"acknowledged={self.acknowledged})"
+        )
 
     @property
     def bulk_api_result(self) -> dict[str, Any]:
@@ -319,7 +323,10 @@ class ClientBulkWriteResult(_BulkWriteResultBase):
         )
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.bulk_api_result!r}, acknowledged={self.acknowledged}, verbose={self.has_verbose_results})"
+        return (
+            f"{self.__class__.__name__}({self.bulk_api_result!r}, "
+            f"acknowledged={self.acknowledged}, verbose={self.has_verbose_results})"
+        )
 
     def _raise_if_not_verbose(self, property_name: str) -> None:
         """Raise an exception on property access if verbose results are off."""

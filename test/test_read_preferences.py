@@ -113,14 +113,15 @@ class TestReadPreferencesBase(IntegrationTest):
         self.addCleanup(self.db.coll.drop)
 
     def read_from_which_host(self, client):
-        """Do a find() on the client and return which host was used"""
+        """Do a find() on the client and return which host was used."""
         cursor = client.pymongo_test.coll.find()
         next(cursor)
         return cursor.address
 
     def read_from_which_kind(self, client):
-        """Do a find() on the client and return 'primary' or 'secondary'
-        depending on which the client used.
+        """Do a find() on the client and return 'primary' or 'secondary'.
+
+        Which one is returned depends on which the client used.
         """
         address = self.read_from_which_host(client)
         if address == client.primary:
@@ -316,9 +317,9 @@ class ReadPrefTester(MongoClient):
     @contextlib.contextmanager
     def _conn_from_server(self, read_preference, server, session):  # type: ignore[override]
         context = super()._conn_from_server(read_preference, server, session)
-        with context as (conn, read_preference):
+        with context as (conn, read_pref):
             self.record_a_read(conn.address)
-            yield conn, read_preference
+            yield conn, read_pref
 
     def record_a_read(self, address):
         server = (self._get_topology()).select_server_by_address(address, _Op.TEST, 0)

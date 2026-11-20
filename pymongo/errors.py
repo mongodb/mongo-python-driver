@@ -92,8 +92,9 @@ class WaitQueueTimeoutError(ConnectionFailure):
 
 
 class AutoReconnect(ConnectionFailure):
-    """Raised when a connection to the database is lost and an attempt to
-    auto-reconnect will be made.
+    """Raised when a connection to the database is lost.
+
+    An attempt to auto-reconnect will be made.
 
     In order to auto-reconnect you must handle this exception, recognizing that
     the operation which caused it has not necessarily succeeded. Future
@@ -161,7 +162,7 @@ class NotPrimaryError(AutoReconnect):
 
 
 class ServerSelectionTimeoutError(AutoReconnect):
-    """Thrown when no MongoDB server is available for an operation
+    """Thrown when no MongoDB server is available for an operation.
 
     If there is no suitable server for an operation PyMongo tries for
     ``serverSelectionTimeoutMS`` (default 30 seconds) to find one, then
@@ -237,16 +238,17 @@ class OperationFailure(PyMongoError):
 
 
 class CursorNotFound(OperationFailure):
-    """Raised while iterating query results if the cursor is
-    invalidated on the server.
+    """Raised while iterating query results if the cursor is invalidated on the server.
 
     .. versionadded:: 2.7
     """
 
 
 class ExecutionTimeout(OperationFailure):
-    """Raised when a database operation times out, exceeding the $maxTimeMS
-    set in the query or command option.
+    """Raised when a database operation times out.
+
+    The operation exceeded the $maxTimeMS set in the query or command
+    option.
 
     .. note:: Requires server version **>= 2.6.0**
 
@@ -273,8 +275,7 @@ class WriteError(OperationFailure):
 
 
 class WTimeoutError(WriteConcernError):
-    """Raised when a database operation times out (i.e. wtimeout expires)
-    before replication completes.
+    """Raised when a database operation times out (wtimeout expires) before replication completes.
 
     With newer versions of MongoDB the `details` attribute may include
     write concern fields like 'n', 'updatedExisting', or 'writtenTo'.
@@ -339,11 +340,11 @@ class ClientBulkWriteException(OperationFailure):
 
     @property
     def error(self) -> Any | None:
-        """A top-level error that occurred when attempting to
-        communicate with the server or execute the bulk write.
+        """A top-level error that occurred during this operation.
 
-        This value may not be populated if the exception was
-        thrown due to errors occurring on individual writes.
+        The error occurred when attempting to communicate with the server
+        or execute the bulk write. This value may not be populated if the
+        exception was thrown due to errors occurring on individual writes.
         """
         return self.details.get("error", None)
 
@@ -366,8 +367,10 @@ class ClientBulkWriteException(OperationFailure):
 
     @property
     def partial_result(self) -> ClientBulkWriteResult | None:
-        """The results of any successful operations that were
-        performed before the error was encountered.
+        """The results of successful operations performed before the error.
+
+        The results are from operations that ran before the error was
+        encountered.
         """
         from pymongo.results import ClientBulkWriteResult
 
@@ -437,12 +440,12 @@ class EncryptedCollectionError(EncryptionError):
 
     @property
     def encrypted_fields(self) -> Mapping[str, Any]:
-        """The encrypted_fields document that allows inferring which data keys are *known* to be created.
+        """The encrypted_fields document for inferring which data keys are *known* to be created.
 
-        Note that the returned document is not guaranteed to contain information about *all* of the data keys that
-        were created, for example in the case of an indefinite error like a timeout. Use the `cause` property to
-        determine whether a definite or indefinite error caused this error, and only rely on the accuracy of the
-        encrypted_fields if the error is definite.
+        Note that the returned document is not guaranteed to contain information about *all* of the
+        data keys that were created, for example in the case of an indefinite error like a timeout.
+        Use the `cause` property to determine whether a definite or indefinite error caused this
+        error, and only rely on the accuracy of the encrypted_fields if the error is definite.
         """
         return self.__encrypted_fields
 

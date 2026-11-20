@@ -80,7 +80,8 @@ class TestSubinterpreters(AsyncIntegrationTest):
         run_stmt = (
             "main()"
             if _IS_SYNC
-            else 'asyncio.run(main(), loop_factory=asyncio.SelectorEventLoop if sys.platform == "win32" else None)'
+            else "asyncio.run(main(), loop_factory="
+            'asyncio.SelectorEventLoop if sys.platform == "win32" else None)'
         )
         # The sync monitor reads the queue on its thread; the async monitor
         # reads it off-loop so the client's tasks keep running.
@@ -212,7 +213,8 @@ class TestSubinterpreters(AsyncIntegrationTest):
         run_stmt = (
             "main()"
             if _IS_SYNC
-            else 'asyncio.run(main(), loop_factory=asyncio.SelectorEventLoop if sys.platform == "win32" else None)'
+            else "asyncio.run(main(), loop_factory="
+            'asyncio.SelectorEventLoop if sys.platform == "win32" else None)'
         )
 
         # The worker's sys.path lacks the repo root, so submit the builtin exec

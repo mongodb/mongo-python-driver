@@ -69,8 +69,9 @@ class AsyncChangeStream(_AgnosticChangeStream[_DocumentType, "AsyncMongoClient[_
         self._cursor = await self._create_cursor()
 
     async def _run_aggregation_cmd(self, session: AsyncClientSession | None) -> AsyncCommandCursor:  # type: ignore[type-arg]
-        """Run the full aggregation pipeline for this AsyncChangeStream and return
-        the corresponding AsyncCommandCursor.
+        """Run the full aggregation pipeline for this AsyncChangeStream.
+
+        Return the corresponding AsyncCommandCursor.
         """
         cmd = self._aggregation_command_class(
             self._target,
@@ -117,7 +118,7 @@ class AsyncChangeStream(_AgnosticChangeStream[_DocumentType, "AsyncMongoClient[_
 
             try:
                 resume_token = None
-                pipeline = [{'$match': {'operationType': 'insert'}}]
+                pipeline = [{"$match": {"operationType": "insert"}}]
                 async with await db.collection.watch(pipeline) as stream:
                     async for insert_change in stream:
                         print(insert_change)
@@ -128,13 +129,14 @@ class AsyncChangeStream(_AgnosticChangeStream[_DocumentType, "AsyncMongoClient[_
                 if resume_token is None:
                     # There is no usable resume token because there was a
                     # failure during AsyncChangeStream initialization.
-                    logging.error('...')
+                    logging.error("...")
                 else:
                     # Use the interrupted AsyncChangeStream's resume token to create
                     # a new AsyncChangeStream. The new stream will continue from the
                     # last seen insert change without missing any events.
                     async with await db.collection.watch(
-                            pipeline, resume_after=resume_token) as stream:
+                        pipeline, resume_after=resume_token
+                    ) as stream:
                         async for insert_change in stream:
                             print(insert_change)
 

@@ -102,7 +102,8 @@ class _OIDCAWSCallback(OIDCCallback):
         token_file = os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
         if not token_file:
             raise RuntimeError(
-                'MONGODB-OIDC with an "aws" provider requires "AWS_WEB_IDENTITY_TOKEN_FILE" to be set'
+                'MONGODB-OIDC with an "aws" provider requires '
+                '"AWS_WEB_IDENTITY_TOKEN_FILE" to be set'
             )
         with open(token_file) as fid:
             return OIDCCallbackResult(access_token=fid.read().strip())
@@ -214,7 +215,8 @@ def _get_authenticator(
                 found = True
         if not found:
             raise ConfigurationError(
-                f"Refusing to connect to {address[0]}, which is not in authOIDCAllowedHosts: {allowed_hosts}"
+                f"Refusing to connect to {address[0]}, which is not in "
+                f"authOIDCAllowedHosts: {allowed_hosts}"
             )
 
     if credentials.cache.data:

@@ -70,7 +70,7 @@ class DecimalEncoder(TypeEncoder):
 
     For example::
         opts = CodecOptions(type_registry=TypeRegistry([DecimalEncoder()]))
-        bson.encode({"d": decimal.Decimal('1.0')}, codec_options=opts)
+        bson.encode({"d": decimal.Decimal("1.0")}, codec_options=opts)
 
     .. versionadded:: 4.15
     """
@@ -102,16 +102,14 @@ class DecimalDecoder(TypeDecoder):
 
 
 def create_decimal128_context() -> decimal.Context:
-    """Returns an instance of :class:`decimal.Context` appropriate
-    for working with IEEE-754 128-bit decimal floating point values.
-    """
+    """Return a :class:`decimal.Context` for IEEE-754 128-bit decimal floats."""
     opts = _CTX_OPTIONS.copy()
     opts["traps"] = []
     return decimal.Context(**opts)  # type: ignore
 
 
 def _decimal_to_128(value: _VALUE_OPTIONS) -> tuple[int, int]:
-    """Converts a decimal.Decimal to BID (high bits, low bits).
+    """Convert a decimal.Decimal to BID (high bits, low bits).
 
     :param value: An instance of decimal.Decimal
     """
@@ -159,7 +157,9 @@ def _decimal_to_128(value: _VALUE_OPTIONS) -> tuple[int, int]:
 
 
 class Decimal128:
-    """BSON Decimal128 type::
+    """BSON Decimal128 type.
+
+    ::
 
       >>> Decimal128(Decimal("0.0005"))
       Decimal128('0.0005')
@@ -272,9 +272,7 @@ class Decimal128:
             raise TypeError(f"Cannot convert {value!r} to Decimal128")
 
     def to_decimal(self) -> decimal.Decimal:
-        """Returns an instance of :class:`decimal.Decimal` for this
-        :class:`Decimal128`.
-        """
+        """Return an instance of :class:`decimal.Decimal` for this :class:`Decimal128`."""
         high = self.__high
         low = self.__low
         sign = 1 if (high & _SIGN) else 0
@@ -319,8 +317,7 @@ class Decimal128:
 
     @classmethod
     def from_bid(cls: type[Decimal128], value: bytes) -> Decimal128:
-        """Create an instance of :class:`Decimal128` from Binary Integer
-        Decimal string.
+        """Create an instance of :class:`Decimal128` from BID string.
 
         :param value: 16 byte string (128-bit IEEE 754-2008 decimal floating
             point in Binary Integer Decimal (BID) format).

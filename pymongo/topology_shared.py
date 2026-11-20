@@ -211,7 +211,7 @@ class _AgnosticTopologyBase(Generic[_PoolT, _ServerT]):
         self._session_pool.return_server_session(server_session)
 
     def _new_selection(self) -> Selection:
-        """A Selection object, initially including all known servers.
+        """Return a Selection object, initially including all known servers.
 
         Hold the lock when calling this.
         """
@@ -301,7 +301,10 @@ class _AgnosticTopologyBase(Generic[_PoolT, _ServerT]):
             if not servers:
                 if is_replica_set:
                     # We removed all servers because of the wrong setName?
-                    return f'No {server_plural} available for replica set name "{self._settings.replica_set_name}"'
+                    return (
+                        f"No {server_plural} available for replica set name "
+                        f'"{self._settings.replica_set_name}"'
+                    )
                 else:
                     return f"No {server_plural} available"
 
@@ -331,8 +334,9 @@ class _AgnosticTopologyBase(Generic[_PoolT, _ServerT]):
         return f"<{self.__class__.__name__} {msg}{self._description!r}>"
 
     def eq_props(self) -> tuple[tuple[_Address, ...], str | None, str | None, str]:
-        """The properties to use for MongoClient/AsyncMongoClient and Topology
-        equality checks.
+        """Return the properties used for equality checks.
+
+        These properties are used by MongoClient/AsyncMongoClient and Topology.
         """
         ts = self._settings
         return (tuple(sorted(ts.seeds)), ts.replica_set_name, ts.fqdn, ts.srv_service_name)

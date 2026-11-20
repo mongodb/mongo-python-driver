@@ -300,7 +300,10 @@ class ServerDescription:
         errmsg = ""
         if self.error:
             errmsg = f", error={self.error!r}"
-        return f"<{self.__class__.__name__} {self.address} server_type: {self.server_type_name}, rtt: {self.round_trip_time}{errmsg}>"
+        return (
+            f"<{self.__class__.__name__} {self.address} server_type: {self.server_type_name}, "
+            f"rtt: {self.round_trip_time}{errmsg}>"
+        )
 
     # For unittesting only. Use under no circumstances!
     _host_to_round_trip_time: dict = {}  # type: ignore[type-arg]

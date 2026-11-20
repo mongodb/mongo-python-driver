@@ -363,6 +363,13 @@ class TestGridfs(AsyncIntegrationTest):
         await self.fs.delete(two)
         await self.fs.delete(three)
 
+    async def test_get_version_invalid_filename(self):
+        msg = "Wrong type for filename"
+        with self.assertRaisesRegex(TypeError, msg):
+            await self.fs.get_version({"filename": "test"})  # type: ignore[arg-type]
+        with self.assertRaisesRegex(TypeError, msg):
+            await self.fs.get_last_version(filename=["test"])  # type: ignore[arg-type]
+
     async def test_put_filelike(self):
         oid = await self.fs.put(BytesIO(b"hello world"), chunk_size=1)
         self.assertEqual(11, await self.db.fs.chunks.count_documents({}))

@@ -96,13 +96,14 @@ class _SrvResolver:
             is_special_use = suffix in SPECIAL_USE_LABELS
             if len(suffix.split(".")) < _MIN_DOMAIN_LABELS and not is_special_use:
                 raise ConfigurationError(
-                    f"srvAllowedHostsSuffix must contain at least {_MIN_DOMAIN_LABELS} '.' separated labels, "
-                    f"got: {srv_allowed_hosts_suffix}"
+                    f"srvAllowedHostsSuffix must contain at least {_MIN_DOMAIN_LABELS} "
+                    f"'.' separated labels, got: {srv_allowed_hosts_suffix}"
                 )
 
             if not is_special_use and is_public_suffix(suffix):
                 raise ConfigurationError(
-                    f"srvAllowedHostsSuffix must not be a public suffix, got: {srv_allowed_hosts_suffix}"
+                    f"srvAllowedHostsSuffix must not be a public suffix, "
+                    f"got: {srv_allowed_hosts_suffix}"
                 )
             self.__srv_allowed_hosts_suffix = "." + suffix
 

@@ -106,7 +106,8 @@ class SearchIndexIntegrationBase(PyMongoTestCase):
         )
         self.client.drop_database(_NAME)
         self.db = self.client[self.db_name]
-        # Create a collection with the "create" command using a randomly generated name (referred to as ``coll0``).
+        # Create a collection with the "create" command using a randomly generated name
+        # (referred to as ``coll0``).
         self.coll0 = self.db.create_collection(f"col{uuid.uuid4()}")
 
     def _poll(self, check, timeout_msg):
@@ -182,7 +183,8 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_1(self):
         """Driver can successfully create and list search indexes."""
-        # Create a new search index on ``self.coll0`` with the ``createSearchIndex`` helper.  Use the following definition:
+        # Create a new search index on ``self.coll0`` with the ``createSearchIndex`` helper.  Use
+        # following definition:
         model = {"name": _NAME, "definition": {"mappings": {"dynamic": False}}}
         resp = self.coll0.create_search_index(model)
         self.addCleanup(self.drop_and_wait, self.coll0, _NAME)
@@ -190,11 +192,14 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Assert that the command returns the name of the index: ``"test-search-index"``.
         self.assertEqual(resp, _NAME)
 
-        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied and store the value in a variable ``index``:
-        # An index with the ``name`` of ``test-search-index`` is present and the index has a field ``queryable`` with a value of ``true``.
+        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following
+        # condition is satisfied and store the value in a variable ``index``:
+        # An index with the ``name`` of ``test-search-index`` is present and the index has a field
+        # ``queryable`` with a value of ``true``.
         index = self.wait_for_ready(self.coll0)
 
-        # . Assert that ``index`` has a property ``latestDefinition`` whose value is ``{ 'mappings': { 'dynamic': false } }``
+        # . Assert that ``index`` has a property ``latestDefinition`` whose value is
+        # ``{ 'mappings': { 'dynamic': false } }``
         self.assertIn("latestDefinition", index)
         self.assertEqual(index["latestDefinition"], model["definition"])
 
@@ -215,19 +220,25 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         for index in index_definitions:
             self.addCleanup(self.drop_and_wait, self.coll0, index["name"])
 
-        # .Assert that the command returns an array containing the new indexes' names: ``["test-search-index-1", "test-search-index-2"]``.
+        # .Assert that the command returns an array containing the new indexes' names:
+        # ``["test-search-index-1", "test-search-index-2"]``.
         indices = (self.coll0.list_search_indexes()).to_list()
         names = [i["name"] for i in indices]
         self.assertIn(name1, names)
         self.assertIn(name2, names)
 
-        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied.
-        # An index with the ``name`` of ``test-search-index-1`` is present and index has a field ``queryable`` with the value of ``true``. Store result in ``index1``.
-        # An index with the ``name`` of ``test-search-index-2`` is present and index has a field ``queryable`` with the value of ``true``. Store result in ``index2``.
+        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following
+        # condition is satisfied.
+        # An index with the ``name`` of ``test-search-index-1`` is present and index has a field
+        # ``queryable`` with the value of ``true``. Store result in ``index1``.
+        # An index with the ``name`` of ``test-search-index-2`` is present and index has a field
+        # ``queryable`` with the value of ``true``. Store result in ``index2``.
         index1 = self.wait_for_ready(self.coll0, name1)
         index2 = self.wait_for_ready(self.coll0, name2)
 
-        # Assert that ``index1`` and ``index2`` have the property ``latestDefinition`` whose value is ``{ "mappings" : { "dynamic" : false } }``
+        # Assert that ``index1`` and ``index2`` have the property ``latestDefinition`` whose value
+        # is
+        # ``{ "mappings" : { "dynamic" : false } }``
         for index in [index1, index2]:
             self.assertIn("latestDefinition", index)
             self.assertEqual(index["latestDefinition"], definition)
@@ -242,12 +253,15 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Assert that the command returns the name of the index: ``"test-search-index"``.
         self.assertEqual(resp, "test-search-index")
 
-        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied:
-        #   An index with the ``name`` of ``test-search-index`` is present and index has a field ``queryable`` with the value of ``true``.
+        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following
+        # condition is satisfied:
+        #   An index with the ``name`` of ``test-search-index`` is present and index has a field
+        #   ``queryable`` with the value of ``true``.
         self.wait_for_ready(self.coll0)
 
         # Run a ``dropSearchIndex`` on ``self.coll0``, using ``test-search-index`` for the name.
-        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until ``listSearchIndexes`` returns an empty array.
+        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until
+        # ``listSearchIndexes`` returns an empty array.
         self.drop_and_wait(self.coll0, _NAME)
 
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
@@ -261,8 +275,10 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Assert that the command returns the name of the index: ``"test-search-index"``.
         self.assertEqual(resp, _NAME)
 
-        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied:
-        #  An index with the ``name`` of ``test-search-index`` is present and index has a field ``queryable`` with the value of ``true``.
+        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following
+        # condition is satisfied:
+        #  An index with the ``name`` of ``test-search-index`` is present and index has a field
+        #  ``queryable`` with the value of ``true``.
         self.wait_for_ready(self.coll0)
 
         # Run a ``updateSearchIndex`` on ``self.coll0``.
@@ -270,13 +286,17 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         model2: dict[str, Any] = {"name": _NAME, "definition": {"mappings": {"dynamic": True}}}
         self.coll0.update_search_index(_NAME, model2["definition"])
 
-        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied:
-        #   An index with the ``name`` of ``test-search-index`` is present.  This index is referred to as ``index``.
-        # The index has a field ``queryable`` with a value of ``true`` and has a field ``status`` with the value of ``READY``.
+        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following
+        # condition is satisfied:
+        #   An index with the ``name`` of ``test-search-index`` is present.  This index is referred
+        #   to as ``index``.
+        # The index has a field ``queryable`` with a value of ``true`` and has a field ``status``
+        # with the value of ``READY``.
         predicate = lambda index: index.get("queryable") is True and index.get("status") == "READY"
         self.wait_for_ready(self.coll0, predicate=predicate)
 
-        # Assert that an index is present with the name ``test-search-index`` and the definition has a property ``latestDefinition`` whose value is ``{ 'mappings': { 'dynamic': true } }``.
+        # Assert that an index is present with the name ``test-search-index`` and the definition has
+        # a property ``latestDefinition`` whose value is ``{ 'mappings': { 'dynamic': true } }``.
         index = ((self.coll0.list_search_indexes(_NAME)).to_list())[0]
         self.assertIn("latestDefinition", index)
         self.assertEqual(index["latestDefinition"], model2["definition"])
@@ -284,7 +304,8 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_5(self):
         """``dropSearchIndex`` suppresses namespace not found errors."""
-        # Create a driver-side collection object for a randomly generated collection name.  Do not create this collection on the server.
+        # Create a driver-side collection object for a randomly generated collection name.  Do not
+        # create this collection on the server.
         coll0 = self.db[f"col{uuid.uuid4()}"]
 
         # Run a ``dropSearchIndex`` command and assert that no error is thrown.
@@ -292,8 +313,9 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
 
     @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
     def test_case_6(self):
-        """Driver can successfully create and list search indexes with non-default readConcern and writeConcern."""
-        # Apply a write concern ``WriteConcern(w=1)`` and a read concern with ``ReadConcern(level="majority")`` to ``self.coll0``.
+        """Driver can create and list search indexes with non-default readConcern, writeConcern."""
+        # Apply a write concern ``WriteConcern(w=1)`` and a read concern with
+        # ``ReadConcern(level="majority")`` to ``self.coll0``.
         coll0 = self.coll0.with_options(
             write_concern=WriteConcern(w="1"), read_concern=ReadConcern(level="majority")
         )
@@ -307,11 +329,14 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Assert that the command returns the name of the index: ``"test-search-index-case6"``.
         self.assertEqual(resp, name)
 
-        # Run ``coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition is satisfied and store the value in a variable ``index``:
-        # - An index with the ``name`` of ``test-search-index-case6`` is present and the index has a field ``queryable`` with a value of ``true``.
+        # Run ``coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following condition
+        # is satisfied and store the value in a variable ``index``:
+        # - An index with the ``name`` of ``test-search-index-case6`` is present and the index has a
+        # field ``queryable`` with a value of ``true``.
         index = self.wait_for_ready(coll0, name)
 
-        # Assert that ``index`` has a property ``latestDefinition`` whose value is ``{ 'mappings': { 'dynamic': false } }``
+        # Assert that ``index`` has a property ``latestDefinition`` whose value is
+        # ``{ 'mappings': { 'dynamic': false } }``
         self.assertIn("latestDefinition", index)
         self.assertEqual(index["latestDefinition"], model["definition"])
 
@@ -371,7 +396,8 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
         # Assert that the index model contains the correct index type: ``"vectorSearch"``.
         self.assertEqual(resp["type"], "vectorSearch")
 
-        # Catch the error raised when trying to create a vector search index without specifying the type
+        # Catch the error raised when trying to create a vector search index without specifying the
+        # type
         with self.assertRaises(OperationFailure) as e:
             self.coll0.create_search_index(
                 model={"name": _NAME + "-error", "definition": vector_search_definition}

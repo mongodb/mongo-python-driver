@@ -34,6 +34,7 @@ from pymongo.client_options import _parse_ssl_options
 from pymongo.common import (
     INTERNAL_URI_OPTION_NAME_MAP,
     URI_OPTIONS_DEPRECATION_MAP,
+    URI_OPTIONS_VALIDATOR_MAP,
     _CaseInsensitiveDictionary,
     get_validated_options,
 )
@@ -132,7 +133,8 @@ def _unquoted_percent(s: str) -> bool:
 
 
 def parse_userinfo(userinfo: str) -> tuple[str, str]:
-    """Validates the format of user information in a MongoDB URI.
+    """Validate the format of user information in a MongoDB URI.
+
     Reserved characters that are gen-delimiters (":", "/", "?", "#", "[",
     "]", "@") as per RFC 3986 must be escaped.
 
@@ -156,7 +158,7 @@ def parse_userinfo(userinfo: str) -> tuple[str, str]:
 
 
 def parse_ipv6_literal_host(entity: str, default_port: int | None) -> tuple[str, str | int | None]:
-    """Validates an IPv6 literal host:port string.
+    """Validate an IPv6 literal host:port string.
 
     Returns a 2-tuple of IPv6 literal followed by port where
     port is default_port if it wasn't specified in entity.
@@ -177,7 +179,7 @@ def parse_ipv6_literal_host(entity: str, default_port: int | None) -> tuple[str,
 
 
 def parse_host(entity: str, default_port: int | None = DEFAULT_PORT) -> _Address:
-    """Validates a host string
+    """Validate a host string.
 
     Returns a 2-tuple of host followed by port where port is default_port
     if it wasn't specified in the string.
@@ -208,13 +210,13 @@ def parse_host(entity: str, default_port: int | None = DEFAULT_PORT) -> _Address
             if all(c.isspace() or c.isdigit() for c in port):
                 for c in port:
                     if c.isspace():
-                        raise ValueError(f"Port contains whitespace character: {c!r}")
+                        raise ValueError("Port contains whitespace character")
 
             # A non-digit port indicates that the URI is invalid, likely because the password
             # or username were not escaped.
             raise ValueError(
-                "Port contains non-digit characters. Hint: username and password must be escaped according to "
-                "RFC 3986, use urllib.parse.quote_plus"
+                "Port contains non-digit characters. Hint: username and password must be "
+                "escaped according to RFC 3986, use urllib.parse.quote_plus"
             )
         if int(port) > _MAX_PORT or int(port) <= 0:
             raise ValueError(f"Port must be an integer between 0 and {_MAX_PORT}")
@@ -236,7 +238,8 @@ _IMPLICIT_TLSINSECURE_OPTS = {
 
 
 def _parse_options(opts: str, delim: str | None) -> _CaseInsensitiveDictionary:
-    """Helper method for split_options which creates the options dict.
+    """Create the options dict for split_options.
+
     Also handles the creation of a list for the URI tag_sets/
     readpreferencetags portion, and the use of a unicode options string.
     """
@@ -247,7 +250,12 @@ def _parse_options(opts: str, delim: str | None) -> _CaseInsensitiveDictionary:
             options.setdefault(key, []).append(value)
         else:
             if key in options:
-                warnings.warn(f"Duplicate URI option '{key}'.", stacklevel=2)
+                # An unrecognized key may be credential text and is not
+                # named.
+                if key.lower() in URI_OPTIONS_VALIDATOR_MAP:
+                    warnings.warn(f"Duplicate URI option '{key.lower()}'.", stacklevel=2)
+                else:
+                    warnings.warn("Duplicate URI option.", stacklevel=2)
             if key.lower() == "authmechanismproperties":
                 val = value
             else:
@@ -258,8 +266,7 @@ def _parse_options(opts: str, delim: str | None) -> _CaseInsensitiveDictionary:
 
 
 def _handle_security_options(options: _CaseInsensitiveDictionary) -> _CaseInsensitiveDictionary:
-    """Raise appropriate errors when conflicting TLS options are present in
-    the options dictionary.
+    """Raise errors when conflicting TLS options are present in the options dictionary.
 
     :param options: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
@@ -311,9 +318,10 @@ def _handle_security_options(options: _CaseInsensitiveDictionary) -> _CaseInsens
 
 
 def _handle_option_deprecations(options: _CaseInsensitiveDictionary) -> _CaseInsensitiveDictionary:
-    """Issue appropriate warnings when deprecated options are present in the
-    options dictionary. Removes deprecated option key, value pairs if the
-    options dictionary is found to also have the renamed option.
+    """Issue warnings for deprecated options present in the options dictionary.
+
+    Removes deprecated option key, value pairs if the options dictionary is
+    found to also have the renamed option.
 
     :param options: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
@@ -350,8 +358,9 @@ def _handle_option_deprecations(options: _CaseInsensitiveDictionary) -> _CaseIns
 
 
 def _normalize_options(options: _CaseInsensitiveDictionary) -> _CaseInsensitiveDictionary:
-    """Normalizes option names in the options dictionary by converting them to
-    their internally-used names.
+    """Normalize option names in the options dictionary.
+
+    Option names are converted to their internally-used names.
 
     :param options: Instance of _CaseInsensitiveDictionary containing
           MongoDB URI options.
@@ -371,8 +380,10 @@ def _normalize_options(options: _CaseInsensitiveDictionary) -> _CaseInsensitiveD
     return options
 
 
-def validate_options(opts: Mapping[str, Any], warn: bool = False) -> MutableMapping[str, Any]:
-    """Validates and normalizes options passed in a MongoDB URI.
+def validate_options(
+    opts: Mapping[str, Any], warn: bool = False, from_uri: bool = False
+) -> MutableMapping[str, Any]:
+    """Validate and normalizes options passed in a MongoDB URI.
 
     Returns a new dictionary of validated and normalized options. If warn is
     False then errors will be thrown for invalid options, otherwise they will
@@ -382,15 +393,20 @@ def validate_options(opts: Mapping[str, Any], warn: bool = False) -> MutableMapp
     :param warn: If ``True`` then warnings will be logged and
           invalid options will be ignored. Otherwise invalid options will
           cause errors.
+    :param from_uri: If ``True`` the options came from a connection string,
+          so an unrecognized key is not named in an error.
     """
-    return get_validated_options(opts, warn)
+    return get_validated_options(opts, warn, from_uri=from_uri)
 
 
 def split_options(
-    opts: str, validate: bool = True, warn: bool = False, normalize: bool = True
+    opts: str,
+    validate: bool = True,
+    warn: bool = False,
+    normalize: bool = True,
+    from_uri: bool = True,
 ) -> MutableMapping[str, Any]:
-    """Takes the options portion of a MongoDB URI, validates each option
-    and returns the options in a dictionary.
+    """Take the options portion of a MongoDB URI and return the options in a dictionary.
 
     :param opt: A string representing MongoDB URI options.
     :param validate: If ``True`` (the default), validate and normalize all
@@ -399,6 +415,10 @@ def split_options(
           during validation of options.
     :param normalize: If ``True`` (the default), renames all options to their
           internally-used names.
+    :param from_uri: If ``True`` (the default), the options came from a
+          connection string, so an unrecognized key is not named in an
+          error. Keys from DNS TXT records are named: they cannot be
+          credential text.
     """
     and_idx = opts.find("&")
     semi_idx = opts.find(";")
@@ -424,7 +444,9 @@ def split_options(
         options = _normalize_options(options)
 
     if validate:
-        options = cast("_CaseInsensitiveDictionary", validate_options(options, warn))
+        options = cast(
+            "_CaseInsensitiveDictionary", validate_options(options, warn, from_uri=from_uri)
+        )
         if options.get("authsource") == "":
             raise InvalidURI("the authSource database cannot be an empty string")
 
@@ -432,9 +454,9 @@ def split_options(
 
 
 def split_hosts(hosts: str, default_port: int | None = DEFAULT_PORT) -> list[_Address]:
-    """Takes a string of the form host1[:port],host2[:port]... and
-    splits it into (host, port) tuples. If [:port] isn't present the
-    default_port is used.
+    """Split a string of the form host1[:port],host2[:port]... into (host, port) tuples.
+
+    If [:port] isn't present the default_port is used.
 
     Returns a set of 2-tuples containing the host name (or IP) followed by
     port number.
@@ -462,7 +484,7 @@ def split_hosts(hosts: str, default_port: int | None = DEFAULT_PORT) -> list[_Ad
         elif "%" in entity:
             raise InvalidURI(
                 "Percent-encoding is only allowed in Unix domain socket paths "
-                f"and IPv6 zone indexes, not in hostnames: {entity}"
+                "and IPv6 zone indexes, not in hostnames"
             )
         nodes.append(parse_host(node, port))
     return nodes
@@ -572,7 +594,7 @@ def _validate_uri(
         if "." in dbase:
             dbase, collection = dbase.split(".", 1)
         if _BAD_DB_CHARS.search(dbase):
-            raise InvalidURI(f'Bad database name "{dbase}"')
+            raise InvalidURI("Bad database name")
     else:
         dbase = None
 
@@ -585,7 +607,7 @@ def _validate_uri(
         hosts = host_part
 
     if "/" in hosts:
-        raise InvalidURI(f"Any '/' in a unix domain socket must be percent-encoded: {host_part}")
+        raise InvalidURI("Any '/' in a unix domain socket must be percent-encoded")
 
     fqdn = None
     srv_max_hosts = srv_max_hosts or options.get("srvMaxHosts")

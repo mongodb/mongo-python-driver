@@ -26,14 +26,14 @@ from pymongo.errors import ConfigurationError
 
 # Duplicated here to avoid a circular import.
 def validate_boolean(option: str, value: Any) -> bool:
-    """Validates that 'value' is True or False."""
+    """Validate that 'value' is True or False."""
     if isinstance(value, bool):
         return value
     raise TypeError(f"{option} must be True or False, was: {option}={value}")
 
 
 class WriteConcern:
-    """WriteConcern
+    """WriteConcern.
 
     :param w: (integer or string) Used with replication, write operations
           will block until they have been replicated to the specified number
@@ -121,9 +121,7 @@ class WriteConcern:
 
     @property
     def acknowledged(self) -> bool:
-        """If ``True`` write operations will wait for acknowledgement before
-        returning.
-        """
+        """If ``True`` write operations will wait for acknowledgement before returning."""
         return self.__acknowledged
 
     def __repr__(self) -> str:

@@ -106,7 +106,8 @@ ORCHESTRATOR_NAME_K8S = "kubernetes"
 
 
 def get_container_env_info() -> dict[str, str]:
-    """Returns the runtime and orchestrator of a container.
+    """Return the runtime and orchestrator of a container.
+
     If neither value is present, the metadata client.env.container field will be omitted.
     """
     container = {}
@@ -491,7 +492,7 @@ class PoolOptions:
         _truncate_metadata(self.__metadata)
 
     def _update_metadata(self, driver: DriverInfo) -> None:
-        """Updates the client's metadata."""
+        """Update the client's metadata."""
         with self.__metadata_lock:
             driver = _normalize_driver(driver)
             if driver in self.__appended_drivers:
@@ -553,8 +554,9 @@ class PoolOptions:
 
     @property
     def max_pool_size(self) -> float:
-        """The maximum allowable number of concurrent connections to each
-        connected server. Requests to a server will block if there are
+        """The maximum allowable number of concurrent connections to each connected server.
+
+        Requests to a server will block if there are
         `maxPoolSize` outstanding connections to the requested server.
         Defaults to 100. A value of 0 or ``None`` means no limit.
 
@@ -568,16 +570,16 @@ class PoolOptions:
 
     @property
     def min_pool_size(self) -> int:
-        """The minimum required number of concurrent connections that the pool
-        will maintain to each connected server. Default is 0.
+        """The minimum required number of concurrent connections to each connected server.
+
+        The pool will maintain at least this many connections to each
+        connected server. Default is 0.
         """
         return self.__min_pool_size
 
     @property
     def max_connecting(self) -> int:
-        """The maximum number of concurrent connection creation attempts per
-        pool. Defaults to 2.
-        """
+        """The maximum number of concurrent connection creation attempts per pool. Defaults to 2."""
         return self.__max_connecting
 
     @property
@@ -586,8 +588,9 @@ class PoolOptions:
 
     @property
     def max_idle_time_seconds(self) -> int | None:
-        """The maximum number of seconds that a connection can remain
-        idle in the pool before being removed and replaced. Defaults to
+        """The maximum number of seconds that a connection can remain idle in the pool.
+
+        The connection is removed and replaced after this time. Defaults to
         `None` (no limit).
         """
         return self.__max_idle_time_seconds
@@ -604,8 +607,9 @@ class PoolOptions:
 
     @property
     def wait_queue_timeout(self) -> int | None:
-        """How long a thread will wait for a socket from the pool if the pool
-        has no free sockets.
+        """How long a thread will wait for a socket from the pool.
+
+        This only applies if the pool has no free sockets.
         """
         return self.__wait_queue_timeout
 

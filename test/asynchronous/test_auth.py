@@ -29,7 +29,7 @@ import pytest
 from pymongo import AsyncMongoClient, monitoring
 from pymongo.asynchronous.auth import HAVE_KERBEROS, _canonicalize_hostname
 from pymongo.auth_shared import _build_credentials_tuple
-from pymongo.errors import OperationFailure
+from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.hello import HelloCompat
 from pymongo.read_preferences import ReadPreference
 from pymongo.saslprep import HAVE_STRINGPREP
@@ -394,6 +394,19 @@ class TestSASLPlain(AsyncPyMongoTestCase):
             await bad_user.admin.command("ping")
         with self.assertRaises(OperationFailure):
             await bad_pwd.admin.command("ping")
+
+    async def test_sasl_plain_nul_in_credentials(self):
+        for username, password in (
+            ("user\x00name", "password"),
+            ("username", "pass\x00word"),
+        ):
+            with (
+                self.subTest(username=username, password=password),
+                self.assertRaisesRegex(ConfigurationError, "cannot contain NUL characters"),
+            ):
+                self.simple_client(
+                    authMechanism="PLAIN", connect=False, username=username, password=password
+                )
 
 
 class TestSCRAMSHA1(AsyncIntegrationTest):

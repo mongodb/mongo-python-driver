@@ -96,9 +96,12 @@ class AutoEncryptionOpts:
         users. To configure automatic *decryption* without automatic
         *encryption* set ``bypass_auto_encryption=True``. Explicit
         encryption and explicit decryption is also supported for all users
-        with the :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption` and :class:`~pymongo.encryption.ClientEncryption` classes.
+        with the :class:`~pymongo.asynchronous.encryption.AsyncClientEncryption` and
+        :class:`~pymongo.encryption.ClientEncryption` classes.
 
-        See `client-side field level encryption <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#client-side-field-level-encryption>`_ for an example.
+        See `client-side field level encryption
+        <https://www.mongodb.com/docs/languages/python/pymongo-driver/current/security/in-use-encryption/#client-side-field-level-encryption>`_
+        for an example.
 
         :param kms_providers: Map of KMS provider options. The `kms_providers`
             map values differ by provider:
@@ -132,8 +135,8 @@ class AutoEncryptionOpts:
             For example, to configure multiple local KMS providers::
 
               kms_providers = {
-                  "local": {"key": local_kek1},        # Unnamed KMS provider.
-                  "local:myname": {"key": local_kek2}, # Named KMS provider with name "myname".
+                  "local": {"key": local_kek1},  # Unnamed KMS provider.
+                  "local:myname": {"key": local_kek2},  # Named KMS provider with name "myname".
               }
 
         :param key_vault_namespace: The namespace for the key vault collection.
@@ -180,10 +183,11 @@ class AutoEncryptionOpts:
         :param kms_tls_options:  A map of KMS provider names to TLS
             options to use when creating secure connections to KMS providers.
             Accepts the same TLS options as
-            :class:`pymongo.mongo_client.AsyncMongoClient` and :class:`pymongo.mongo_client.MongoClient`. For example, to
+            :class:`pymongo.mongo_client.AsyncMongoClient` and
+            :class:`pymongo.mongo_client.MongoClient`. For example, to
             override the system default CA file::
 
-              kms_tls_options={'kmip': {'tlsCAFile': certifi.where()}}
+              kms_tls_options = {"kmip": {"tlsCAFile": certifi.where()}}
 
             Or to supply a client certificate::
 
@@ -205,13 +209,15 @@ class AutoEncryptionOpts:
                       "fields": [
                           {
                               "path": "firstName",
-                              "keyId": Binary.from_uuid(UUID('00000000-0000-0000-0000-000000000000')),
+                              "keyId": Binary.from_uuid(
+                                  UUID('00000000-0000-0000-0000-000000000000')),
                               "bsonType": "string",
                               "queries": {"queryType": "equality"}
                           },
                           {
                               "path": "ssn",
-                              "keyId": Binary.from_uuid(UUID('04104104-1041-0410-4104-104104104104')),
+                              "keyId": Binary.from_uuid(
+                                  UUID('04104104-1041-0410-4104-104104104104')),
                               "bsonType": "string"
                           }
                       ]
@@ -387,9 +393,11 @@ class SubstringOpts(TypedDict):
 
     # strMaxLength is the maximum allowed length to insert. Inserting longer strings will error.
     strMaxLength: int
-    # strMinQueryLength is the minimum allowed query length. Querying with a shorter string will error.
+    # strMinQueryLength is the minimum allowed query length. Querying with a shorter string will
+    # error.
     strMinQueryLength: int
-    # strMaxQueryLength is the maximum allowed query length. Querying with a longer string will error.
+    # strMaxQueryLength is the maximum allowed query length. Querying with a longer string will
+    # error.
     strMaxQueryLength: int
 
 
@@ -399,9 +407,11 @@ class PrefixOpts(TypedDict):
     .. versionadded:: 4.15
     """
 
-    # strMinQueryLength is the minimum allowed query length. Querying with a shorter string will error.
+    # strMinQueryLength is the minimum allowed query length. Querying with a shorter string will
+    # error.
     strMinQueryLength: int
-    # strMaxQueryLength is the maximum allowed query length. Querying with a longer string will error.
+    # strMaxQueryLength is the maximum allowed query length. Querying with a longer string will
+    # error.
     strMaxQueryLength: int
 
 
@@ -411,7 +421,9 @@ class SuffixOpts(TypedDict):
     .. versionadded:: 4.15
     """
 
-    # strMinQueryLength is the minimum allowed query length. Querying with a shorter string will error.
+    # strMinQueryLength is the minimum allowed query length. Querying with a shorter string will
+    # error.
     strMinQueryLength: int
-    # strMaxQueryLength is the maximum allowed query length. Querying with a longer string will error.
+    # strMaxQueryLength is the maximum allowed query length. Querying with a longer string will
+    # error.
     strMaxQueryLength: int

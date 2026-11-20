@@ -120,9 +120,7 @@ class _AgnosticChangeStream(Generic[_DocumentType, _ClientT]):
 
     @property
     def _client(self) -> _ClientT:
-        """The client against which the aggregation commands for
-        this ChangeStream will be run.
-        """
+        """The client against which the aggregation commands for this ChangeStream will be run."""
         raise NotImplementedError
 
     def _change_stream_options(self) -> dict[str, Any]:
@@ -166,8 +164,9 @@ class _AgnosticChangeStream(Generic[_DocumentType, _ClientT]):
         return full_pipeline
 
     def _process_result(self, result: Mapping[str, Any]) -> None:
-        """Callback that caches the postBatchResumeToken or
-        startAtOperationTime from a changeStream aggregate command response
+        """Cache the postBatchResumeToken or startAtOperationTime.
+
+        The values come from a changeStream aggregate command response
         containing an empty batch of change documents.
         """
         if not result["cursor"]["firstBatch"]:
@@ -187,8 +186,7 @@ class _AgnosticChangeStream(Generic[_DocumentType, _ClientT]):
 
     @property
     def resume_token(self) -> Mapping[str, Any] | None:
-        """The cached resume token that will be used to resume after the most
-        recently returned change.
+        """The cached resume token used to resume after the most recent change.
 
         .. versionadded:: 3.9
         """
@@ -196,7 +194,7 @@ class _AgnosticChangeStream(Generic[_DocumentType, _ClientT]):
 
     @property
     def alive(self) -> bool:
-        """Does this cursor have the potential to return more data?
+        """Check whether this cursor has the potential to return more data.
 
         .. note:: Even if :attr:`alive` is ``True``, :meth:`next` can raise
             :exc:`StopIteration` (sync) or :exc:`StopAsyncIteration` (async),

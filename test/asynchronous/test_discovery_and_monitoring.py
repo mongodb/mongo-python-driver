@@ -287,7 +287,8 @@ def create_tests():
             )
             if max_version < common.MIN_SUPPORTED_WIRE_VERSION:
                 new_test = unittest.skip(
-                    f"Server wire version {max_version} is below minimum {common.MIN_SUPPORTED_WIRE_VERSION}"
+                    f"Server wire version {max_version} is below minimum "
+                    f"{common.MIN_SUPPORTED_WIRE_VERSION}"
                 )(new_test)
 
             setattr(TestAllScenarios, new_test.__name__, new_test)
@@ -466,7 +467,8 @@ class TestPoolManagement(AsyncIntegrationTest):
                 await listener.async_wait_for_event(monitoring.ServerHeartbeatFailedEvent, 1)
             # Wait until all idle connections are closed to simulate real-world conditions
             await listener.async_wait_for_event(monitoring.ConnectionClosedEvent, 10)
-            # Wait for one more find to complete after the pool has been reset, then shutdown the task
+            # Wait for one more find to complete after the pool has been reset, then shutdown
+            # task
             n = len(latencies)
             await async_wait_until(lambda: len(latencies) >= n + 1, "run one more find")
             should_exit.append(True)
@@ -565,16 +567,13 @@ class TestServerMonitoringMode(AsyncIntegrationTest):
                     if _IS_SYNC:
                         if monitor._rtt_monitor._executor._thread is None:
                             return False
-                    else:
-                        if monitor._rtt_monitor._executor._task is None:
-                            return False
-                else:
-                    if _IS_SYNC:
-                        if monitor._rtt_monitor._executor._thread is not None:
-                            return False
-                    else:
-                        if monitor._rtt_monitor._executor._task is not None:
-                            return False
+                    elif monitor._rtt_monitor._executor._task is None:
+                        return False
+                elif _IS_SYNC:
+                    if monitor._rtt_monitor._executor._thread is not None:
+                        return False
+                elif monitor._rtt_monitor._executor._task is not None:
+                    return False
             return True
 
         await async_wait_until(predicate, "find all RTT monitors")

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import os
 import platform
 import shutil
 import stat
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -25,6 +27,7 @@ from utils import (
     get_test_options,
     read_env,
     run_command,
+    shell_escape,
     write_env,
 )
 
@@ -57,13 +60,15 @@ EXTRAS_MAP = {
 # Map the test name to test group.
 GROUP_MAP = dict(fuzz="fuzz", mockupdb="mockupdb", perf="perf")
 
-# The test files run under ASan/UBSan (PYTHON-6048). They exercise the
-# buffer-protocol acquisition path in bson/_cbsonmodule.c
-# (_get_buffer/_prepare_input_buffer) and the wire-message builders in
+# The test files run under ASan/UBSan (PYTHON-6048, PYTHON-6285). They
+# exercise the buffer-protocol acquisition path in bson/_cbsonmodule.c
+# (_get_buffer/_prepare_input_buffer), the wire-message builders in
 # pymongo/_cmessagemodule.c (_op_msg, _batched_op_msg,
-# _encode_batched_write_command).
+# _encode_batched_write_command), and the hostile-input and boundary tests
+# driving the decoder and builders directly.
 SANITIZER_FILES = [
     "test/test_bson.py",
+    "test/test_message.py",
     "test/test_raw_bson.py",
     "test/test_raw_bson_shared.py",
     "test/test_client.py",
@@ -185,6 +190,44 @@ def load_config_from_file(path: str | Path) -> dict[str, str]:
     for key, value in config.items():
         write_env(key, value)
     return config
+
+
+# Minimum major OpenSSL version to use the system library instead of a local build.
+_MIN_SYSTEM_OPENSSL_MAJOR = 3
+
+
+def ensure_openssl3() -> None:
+    """Build a local OpenSSL 3 when the system library is older (PYTHON-6167).
+
+    cryptography 47+ refuses OpenSSL 1.1.x.
+    """
+    if PLATFORM != "linux":
+        return
+    openssl = shutil.which("openssl")
+    if openssl:
+        version = subprocess.run(  # noqa: S603
+            [openssl, "version"], capture_output=True, text=True, check=True
+        ).stdout.split()[1]
+        if int(version.split(".")[0]) >= _MIN_SYSTEM_OPENSSL_MAJOR:
+            return
+    LOGGER.info("No system OpenSSL 3: building one into the drivers-evergreen-tools prefix...")
+    env = subprocess.run(  # noqa: S603
+        [
+            "/bin/bash",
+            "-c",
+            '. "$1" >/dev/null && env',
+            "bash",
+            f"{DRIVERS_TOOLS}/.evergreen/install-openssl3.sh",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    for line in env.splitlines():
+        name, _, value = line.partition("=")
+        if name in ("OPENSSL_DIR", "LD_LIBRARY_PATH"):
+            os.environ[name] = value
+            write_env(name, value)
 
 
 def get_secrets(name: str) -> dict[str, str]:
@@ -447,18 +490,29 @@ def handle_test_env() -> None:
     if sub_test_name == "pyopenssl":
         UV_ARGS.append("--extra ocsp")
 
+    if test_name == "encryption" or sub_test_name == "pyopenssl":
+        # The free-threaded cells build cryptography from source, which
+        # refuses OpenSSL 1.1: build OpenSSL 3 on Linux (PYTHON-6167).
+        if "t" in os.environ.get("UV_PYTHON", ""):
+            ensure_openssl3()
+
     if opts.crypt_shared:
+        # The tests run their crypt_shared cases only when this is set.
+        write_env("TEST_CRYPT_SHARED", "1")
         config = read_env(f"{DRIVERS_TOOLS}/mo-expansion.sh")
         CRYPT_SHARED_DIR = Path(config["CRYPT_SHARED_LIB_PATH"]).parent.as_posix()
         LOGGER.info("Using crypt_shared_dir %s", CRYPT_SHARED_DIR)
+        # The trailing expansions must stay live; escape the literal prefix.
+        escaped_dir = shell_escape(CRYPT_SHARED_DIR)
         if PLATFORM == "windows":
-            write_env("PATH", f"{CRYPT_SHARED_DIR}:$PATH")
+            write_env("PATH", f"{escaped_dir}:$PATH", escape=False)
         else:
             write_env(
                 "DYLD_FALLBACK_LIBRARY_PATH",
-                f"{CRYPT_SHARED_DIR}:${{DYLD_FALLBACK_LIBRARY_PATH:-}}",
+                f"{escaped_dir}:${{DYLD_FALLBACK_LIBRARY_PATH:-}}",
+                escape=False,
             )
-            write_env("LD_LIBRARY_PATH", f"{CRYPT_SHARED_DIR}:${{LD_LIBRARY_PATH:-}}")
+            write_env("LD_LIBRARY_PATH", f"{escaped_dir}:${{LD_LIBRARY_PATH:-}}", escape=False)
 
     if test_name == "kms":
         from kms_tester import setup_kms
@@ -544,11 +598,30 @@ def handle_test_env() -> None:
         corpus_dir.mkdir(parents=True)
         zip_path = scratch_dir / "corpus-seed.zip"
         run_command(
-            f"{sys.executable} fuzz/build_corpus.py {zip_path} --data-dir {ROOT / 'test' / 'bson_corpus'}"
+            f"{sys.executable} fuzz/build_corpus.py {zip_path} "
+            f"--data-dir {ROOT / 'test' / 'bson_corpus'}"
         )
         with zipfile.ZipFile(zip_path) as zf:
             zf.extractall(corpus_dir)
         zip_path.unlink()
+        if sub_test_name == "fuzz":
+            # PYTHON-6178 Also seed from the committed corpus of previously
+            # captured inputs, so the nightly builds on prior discoveries
+            # instead of the spec seeds alone. Regression runs (PRs) keep
+            # running only the reproducers and the spec seed corpus.
+            committed_dir = ROOT / "fuzz" / "corpus"
+            if committed_dir.is_dir():
+                for path in sorted(committed_dir.iterdir()):
+                    if path.name.startswith("."):
+                        continue
+                    shutil.copyfile(path, corpus_dir / path.name)
+        # Manifest of every input this run starts from; capture_corpus.py
+        # treats these digests as already-known, so only units the fuzzer
+        # discovered during the run get captured.
+        with open(scratch_dir / "baseline.txt", "w", encoding="utf-8") as fp:
+            for path in sorted(corpus_dir.iterdir()):
+                if path.is_file():
+                    fp.write(hashlib.sha256(path.read_bytes()).hexdigest() + "\n")
         write_env("FUZZ_CORPUS_DIR", str(corpus_dir))
 
     if test_name == "sanitizer":
@@ -569,7 +642,13 @@ def handle_test_env() -> None:
         # and fail loudly rather than silently skip the C extension build.
         write_env("UV_PYTHON", SANITIZER_PYTHON)
         write_env("PYMONGO_C_EXT_MUST_BUILD")
-        write_env("CFLAGS", "-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1")
+        # -fno-sanitize=function: the toolchain interpreter's UBSan runtime
+        # predates the image's clang, whose function check references a
+        # handler the runtime does not provide (PYTHON-6167).
+        write_env(
+            "CFLAGS",
+            "-fsanitize=address,undefined -fno-sanitize=function -fno-omit-frame-pointer -g -O1",
+        )
         write_env("LDFLAGS", "-fsanitize=address,undefined")
         # CPython's pymalloc trips LeakSanitizer with false positives.
         write_env("ASAN_OPTIONS", "detect_leaks=0")
@@ -599,6 +678,12 @@ def handle_test_env() -> None:
         TEST_SUITE = TEST_SUITE_MAP.get(test_name)
         if TEST_SUITE:
             TEST_ARGS = f"-m {TEST_SUITE} {TEST_ARGS}"
+        # Suites sharing one pytest marker across test/ and test/asynchronous/
+        # select the sync or async half by path when SYNC is set.
+        if opts.sync == "async":
+            TEST_ARGS = f"test/asynchronous {TEST_ARGS}"
+        elif opts.sync == "sync":
+            TEST_ARGS = f"--ignore=test/asynchronous {TEST_ARGS}"
 
     write_env("TEST_ARGS", TEST_ARGS)
     write_env("UV_ARGS", " ".join(UV_ARGS))

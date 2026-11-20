@@ -149,7 +149,7 @@ class _AsyncClientBulk(_AgnosticClientBulkBase):
         ops: list[tuple[str, Mapping[str, Any]]],
         namespaces: list[str],
     ) -> tuple[list[Mapping[str, Any]], list[Mapping[str, Any]]]:
-        """Executes a batch of bulkWrite server commands (unack)."""
+        """Execute a batch of bulkWrite server commands (unack)."""
         request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(cmd, ops, namespaces)
         await self.unack_write(bwc, cmd, request_id, msg, to_send_ops, to_send_ns, self.client)  # type: ignore[arg-type]
         return to_send_ops, to_send_ns
@@ -161,7 +161,7 @@ class _AsyncClientBulk(_AgnosticClientBulkBase):
         ops: list[tuple[str, Mapping[str, Any]]],
         namespaces: list[str],
     ) -> tuple[dict[str, Any], list[Mapping[str, Any]], list[Mapping[str, Any]]]:
-        """Executes a batch of bulkWrite server commands (ack)."""
+        """Execute a batch of bulkWrite server commands (ack)."""
         request_id, msg, to_send_ops, to_send_ns = bwc.batch_command(cmd, ops, namespaces)
         result = await self.write_command(
             bwc, cmd, request_id, msg, to_send_ops, to_send_ns, self.client
@@ -175,7 +175,7 @@ class _AsyncClientBulk(_AgnosticClientBulkBase):
         conn: AsyncConnection,
         session: AsyncClientSession | None,
     ) -> None:
-        """Internal helper for processing the server reply command cursor."""
+        """Process the server reply command cursor (internal helper)."""
         if result.get("cursor"):
             if session:
                 session._leave_alive = True
@@ -230,7 +230,7 @@ class _AsyncClientBulk(_AgnosticClientBulkBase):
         full_result: MutableMapping[str, Any],
         final_write_concern: WriteConcern | None = None,
     ) -> None:
-        """Internal helper for executing batches of bulkWrite commands."""
+        """Execute batches of bulkWrite commands (internal helper)."""
         db_name = "admin"
         cmd_name = "bulkWrite"
         listeners = self.client._event_listeners

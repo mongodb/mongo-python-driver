@@ -455,6 +455,10 @@ wheels (CPython 3.12-3.14).
 - Time-boxed fuzzing (runs daily on Evergreen): `just setup-tests fuzz fuzz`
   then `just run-tests`.  Set `FUZZ_MAX_TIME` (seconds, default 300) to change
   the per-target budget.
+- Nightly fuzzing captures coverage-increasing inputs into `fuzz/corpus/`
+  via an automated PR (PYTHON-6178); see [fuzz/README.md](fuzz/README.md).
+  To run that flow on demand, patch the task:
+  `evergreen patch --variant fuzz-rhel8 --task fuzz`.
 
 ## Testing time-dependent operations
 
@@ -472,7 +476,9 @@ wheels (CPython 3.12-3.14).
 - The bulk of the logic will typically be in `.evergreen/scripts/setup_tests.py`.  This is where you should fetch secrets and make them available using `write_env`, start services, and write other env vars needed using `write_env`.
 - If there are any special test considerations, including not running `pytest` at all, handle it in `.evergreen/scripts/run_tests.py`.
 - If there are any services or atlas clusters to teardown, handle them in `.evergreen/scripts/teardown_tests.py`.
-- Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`.
+- Add functions to generate the test variant(s) and task(s) to the `.evergreen/scripts/generate_config.py`;
+  the per-suite task families live in `.evergreen/scripts/task_suite_families.py` (re-exported by
+  `generate_config.py`).
 - There are some considerations about the Python version used in the test:
     - To request a specific Python, set `UV_PYTHON` (e.g. `UV_PYTHON=3.10` or `UV_PYTHON=3.14t`).
 Tasks are host-agnostic, so the interpreter lookup happens on the host: for a plain
@@ -614,10 +620,11 @@ To prevent the `synchro` hook from accidentally overwriting code, it first check
 of a file is changing and not its async counterpart, and will fail.
 In the unlikely scenario that you want to override this behavior, first export `OVERRIDE_SYNCHRO_CHECK=1`.
 
-Sometimes, the `synchro` hook will fail and introduce changes many previously unmodified files. This is due to static
-Python errors, such as missing imports, incorrect syntax, or other fatal typos. To resolve these issues,
-run `pre-commit run --all-files --hook-stage manual ruff` and fix all reported errors before running the `synchro`
-hook again.
+The `synchro` hook stages the generated files and copies into the working tree only those whose content changed, so
+a failed run leaves the working tree unchanged and stages nothing. If the hook reports a ruff failure on the
+generated output, fix the error in the corresponding `pymongo/asynchronous` source file and run the hook again. If
+it refuses to run because a `.synchro-backup` file holds an unrecovered original from a failed run, inspect and
+remove that file manually, then run the hook again.
 
 ## CPU profiling
 

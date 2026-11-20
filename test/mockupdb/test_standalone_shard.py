@@ -57,7 +57,8 @@ class TestStandaloneShard(unittest.TestCase):
                             {
                                 "code": 20,
                                 "codeName": "IllegalOperation",
-                                "errmsg": "Transaction numbers are only allowed on a replica set member or mongos",
+                                "errmsg": "Transaction numbers are only allowed on a replica set"
+                                " member or mongos",
                                 "index": 0,
                             }
                         ],

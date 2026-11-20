@@ -60,7 +60,9 @@ def _have_zstd() -> bool:
         return False
 
 
-def validate_compressors(dummy: Any, value: str | Iterable[str]) -> list[str]:
+def validate_compressors(
+    dummy: Any, value: str | Iterable[str], from_uri: bool = False
+) -> list[str]:
     try:
         # `value` is string.
         compressors = value.split(",")  # type: ignore[union-attr]
@@ -71,7 +73,10 @@ def validate_compressors(dummy: Any, value: str | Iterable[str]) -> list[str]:
     for compressor in compressors[:]:
         if compressor not in _SUPPORTED_COMPRESSORS:
             compressors.remove(compressor)
-            warnings.warn(f"Unsupported compressor: {compressor}", stacklevel=2)
+            if from_uri:
+                warnings.warn("Unsupported compressor", stacklevel=2)
+            else:
+                warnings.warn(f"Unsupported compressor: {compressor}", stacklevel=2)
         elif compressor == "snappy" and not _have_snappy():
             compressors.remove(compressor)
             warnings.warn(
@@ -103,10 +108,12 @@ def validate_compressors(dummy: Any, value: str | Iterable[str]) -> list[str]:
     return compressors
 
 
-def validate_zlib_compression_level(option: str, value: Any) -> int:
+def validate_zlib_compression_level(option: str, value: Any, from_uri: bool = False) -> int:
     try:
         level = int(value)
     except Exception:
+        if from_uri:
+            raise TypeError(f"{option} must be an integer") from None
         raise TypeError(f"{option} must be an integer, not {value!r}") from None
     if level < -1 or level > _MAX_ZLIB_COMPRESSION_LEVEL:
         raise ValueError(f"{option} must be between -1 and 9, not {level}.")

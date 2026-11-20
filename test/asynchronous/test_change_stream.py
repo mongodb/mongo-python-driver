@@ -113,8 +113,9 @@ class TestAsyncChangeStreamBase(AsyncIntegrationTest):
                 return (await cs.next())["_id"]
 
     async def get_start_at_operation_time(self):
-        """Get an operationTime. Advances the operation clock beyond the most
-        recently returned timestamp.
+        """Get an operationTime.
+
+        Advances the operation clock beyond the most recently returned timestamp.
         """
         optime = (await self.client.admin.command("ping"))["operationTime"]
         return Timestamp(optime.time, optime.inc + 1)
@@ -292,9 +293,7 @@ class APITestsMixin:
 
     @no_type_check
     async def test_full_pipeline(self):
-        """$changeStream must be the first stage in a change stream pipeline
-        sent to the server.
-        """
+        """$changeStream must be the first stage in a change stream pipeline sent to the server."""
         await self._test_full_pipeline({})
 
     @no_type_check
@@ -333,7 +332,7 @@ class APITestsMixin:
     @no_type_check
     @async_client_context.require_sync
     async def test_next_blocks(self):
-        """Test that next blocks until a change is readable"""
+        """Test that next blocks until a change is readable."""
         # Use a short wait time to speed up the test.
         async with await self.change_stream(max_await_time_ms=250) as change_stream:
             self._test_next_blocks(change_stream)
@@ -501,9 +500,10 @@ class ProseSpecTestsMixin:
         return change
 
     def _get_expected_resume_token_legacy(self, stream, listener, previous_change=None):
-        """Predicts what the resume token should currently be for server
-        versions that don't support postBatchResumeToken. Assumes the stream
-        has never returned any changes if previous_change is None.
+        """Predicts what the resume token should currently be.
+
+        For server versions that don't support postBatchResumeToken. Assumes
+        the stream has never returned any changes if previous_change is None.
         """
         if previous_change is None:
             agg_cmd = listener.started_events[0]
@@ -513,11 +513,12 @@ class ProseSpecTestsMixin:
         return previous_change["_id"]
 
     def _get_expected_resume_token(self, stream, listener, previous_change=None):
-        """Predicts what the resume token should currently be for server
-        versions that support postBatchResumeToken. Assumes the stream has
-        never returned any changes if previous_change is None. Assumes
-        listener is a AllowListEventListener that listens for aggregate and
-        getMore commands.
+        """Predicts what the resume token should currently be.
+
+        For server versions that support postBatchResumeToken. Assumes the
+        stream has never returned any changes if previous_change is None.
+        Assumes listener is a AllowListEventListener that listens for
+        aggregate and getMore commands.
         """
         if previous_change is None or stream._cursor._has_next():
             token = self._get_expected_resume_token_legacy(stream, listener, previous_change)
@@ -529,9 +530,7 @@ class ProseSpecTestsMixin:
 
     @no_type_check
     async def _test_raises_error_on_missing_id(self, expected_exception):
-        """AsyncChangeStream will raise an exception if the server response is
-        missing the resume token.
-        """
+        """AsyncChangeStream will raise an exception if the response is missing the resume token."""
         async with await self.change_stream([{"$project": {"_id": 0}}]) as change_stream:
             await self.watched_collection().insert_one({})
             with self.assertRaises(expected_exception):
@@ -811,9 +810,7 @@ class TestClusterAsyncChangeStream(TestAsyncChangeStreamBase, APITestsMixin):
             self._test_next_blocks(change_stream)
 
     async def test_full_pipeline(self):
-        """$changeStream must be the first stage in a change stream pipeline
-        sent to the server.
-        """
+        """$changeStream must be the first stage in a change stream pipeline sent to the server."""
         await self._test_full_pipeline({"allChangesForCluster": True})
 
 
@@ -1084,9 +1081,7 @@ class TestAllLegacyScenarios(AsyncIntegrationTest):
         )
 
     def assert_list_contents_are_subset(self, superlist, sublist):
-        """Check that each element in sublist is a subset of the corresponding
-        element in superlist.
-        """
+        """Check that each sublist element is a subset of the corresponding superlist element."""
         self.assertEqual(len(superlist), len(sublist))
         for sup, sub in zip(superlist, sublist, strict=True):
             if isinstance(sub, dict):

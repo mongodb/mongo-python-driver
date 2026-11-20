@@ -23,13 +23,8 @@ from collections import OrderedDict, abc
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from difflib import get_close_matches
 from importlib.metadata import requires, version
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    NoReturn,
-    Self,
-    overload,
-)
+from inspect import signature
+from typing import TYPE_CHECKING, Any, NoReturn, Self, overload
 from urllib.parse import unquote_plus
 
 from bson import SON
@@ -181,11 +176,20 @@ def clean_node(node: str) -> tuple[str, int]:
     return host.lower(), port
 
 
-def raise_config_error(key: str, suggestions: list[str] | None = None) -> NoReturn:
-    """Raise ConfigurationError with the given key name."""
-    msg = f"Unknown option: {key}."
+def raise_config_error(
+    key: str, suggestions: list[str] | None = None, from_uri: bool = False
+) -> NoReturn:
+    """Raise ConfigurationError with the given key name.
+
+    If ``from_uri`` is True the key came from a connection string and is not
+    named in the message.
+    """
+    msg = "Unknown option." if from_uri else f"Unknown option: {key}."
     if suggestions:
-        msg += f" Did you mean one of ({', '.join(suggestions)}) or maybe a camelCase version of one? Refer to docstring."
+        msg += (
+            f" Did you mean one of ({', '.join(suggestions)}) or maybe a camelCase version "
+            "of one? Refer to docstring."
+        )
     raise ConfigurationError(msg)
 
 
@@ -200,7 +204,7 @@ _UUID_REPRESENTATIONS = {
 
 
 def validate_boolean_or_string(option: str, value: Any) -> bool:
-    """Validates that value is True, False, 'true', or 'false'."""
+    """Validate that value is True, False, 'true', or 'false'."""
     if isinstance(value, str):
         if value not in ("true", "false"):
             raise ValueError(f"The value of {option} must be 'true' or 'false'")
@@ -209,7 +213,7 @@ def validate_boolean_or_string(option: str, value: Any) -> bool:
 
 
 def validate_integer(option: str, value: Any) -> int:
-    """Validates that 'value' is an integer (or basestring representation)."""
+    """Validate that 'value' is an integer (or basestring representation)."""
     if isinstance(value, int):
         return value
     elif isinstance(value, str):
@@ -236,14 +240,22 @@ def validate_non_negative_integer(option: str, value: Any) -> int:
     return val
 
 
-def validate_readable(option: str, value: Any) -> str | None:
-    """Validates that 'value' is file-like and readable."""
+def validate_readable(option: str, value: Any, from_uri: bool = False) -> str | None:
+    """Validate that 'value' is file-like and readable."""
     if value is None:
         return value
     # First make sure its a string py3.3 open(True, 'r') succeeds
     # Used in ssl cert checking due to poor ssl module error reporting
     value = validate_string(option, value)
-    open(value).close()
+    if from_uri:
+        # Keep the exception type and errno but not the path. Not
+        # chained: the chained exception's message contains the path.
+        try:
+            open(value).close()
+        except OSError as exc:
+            raise type(exc)(exc.errno, f"The {option} file is not readable") from None
+    else:
+        open(value).close()
     return value
 
 
@@ -255,21 +267,21 @@ def validate_non_negative_integer_or_none(option: str, value: Any) -> int | None
 
 
 def validate_string(option: str, value: Any) -> str:
-    """Validates that 'value' is an instance of `str`."""
+    """Validate that 'value' is an instance of `str`."""
     if isinstance(value, str):
         return value
     raise TypeError(f"Wrong type for {option}, value must be an instance of str, not {type(value)}")
 
 
 def validate_string_or_none(option: str, value: Any) -> str | None:
-    """Validates that 'value' is an instance of `basestring` or `None`."""
+    """Validate that 'value' is an instance of `basestring` or `None`."""
     if value is None:
         return value
     return validate_string(option, value)
 
 
 def validate_non_negative_int_or_basestring(option: Any, value: Any) -> int | str:
-    """Validates that 'value' is an integer or string."""
+    """Validate that 'value' is an integer or string."""
     if isinstance(value, int):
         return value
     elif isinstance(value, str):
@@ -279,14 +291,13 @@ def validate_non_negative_int_or_basestring(option: Any, value: Any) -> int | st
             return value
         return validate_non_negative_integer(option, val)
     raise TypeError(
-        f"Wrong type for {option}, value must be an non negative integer or a string, not {type(value)}"
+        f"Wrong type for {option}, value must be an non negative integer or a "
+        f"string, not {type(value)}"
     )
 
 
 def validate_positive_float(option: str, value: Any) -> float:
-    """Validates that 'value' is a float, or can be converted to one, and is
-    positive.
-    """
+    """Validate that 'value' is a float, or can be converted to one, and is positive."""
     errmsg = f"{option} must be an integer or float"
     try:
         value = float(value)
@@ -303,58 +314,54 @@ def validate_positive_float(option: str, value: Any) -> float:
 
 
 def validate_positive_float_or_zero(option: str, value: Any) -> float:
-    """Validates that 'value' is 0 or a positive float, or can be converted to
-    0 or a positive float.
-    """
-    if value == 0 or value == "0":
+    """Validate that 'value' is 0 or a positive float, or can be converted to either."""
+    if value in (0, "0"):
         return 0
     return validate_positive_float(option, value)
 
 
 def validate_timeout_or_none(option: str, value: Any) -> float | None:
-    """Validates a timeout specified in milliseconds returning
-    a value in floating point seconds.
-    """
+    """Validate a timeout specified in milliseconds returning a value in floating point seconds."""
     if value is None:
         return value
     return validate_positive_float(option, value) / 1000.0
 
 
 def validate_timeout_or_zero(option: str, value: Any) -> float:
-    """Validates a timeout specified in milliseconds returning
-    a value in floating point seconds for the case where None is an error
-    and 0 is valid. Setting the timeout to nothing in the URI string is a
-    config error.
+    """Validate a timeout specified in milliseconds.
+
+    Returns a value in floating point seconds for the case where None is
+    an error and 0 is valid. Setting the timeout to nothing in the URI
+    string is a config error.
     """
     if value is None:
         raise ConfigurationError(f"{option} cannot be None")
-    if value == 0 or value == "0":
+    if value in (0, "0"):
         return 0
     return validate_positive_float(option, value) / 1000.0
 
 
 def validate_timeout_or_none_or_zero(option: Any, value: Any) -> float | None:
-    """Validates a timeout specified in milliseconds returning
-    a value in floating point seconds. value=0 and value="0" are treated the
-    same as value=None which means unlimited timeout.
+    """Validate a timeout specified in milliseconds.
+
+    Returns a value in floating point seconds. value=0 and value="0" are
+    treated the same as value=None which means unlimited timeout.
     """
-    if value is None or value == 0 or value == "0":
+    if value in (None, 0, "0"):
         return None
     return validate_positive_float(option, value) / 1000.0
 
 
 def validate_timeoutms(option: Any, value: Any) -> float | None:
-    """Validates a timeout specified in milliseconds returning
-    a value in floating point seconds.
-    """
+    """Validate a timeout specified in milliseconds returning a value in floating point seconds."""
     if value is None:
         return None
     return validate_positive_float_or_zero(option, value) / 1000.0
 
 
 def validate_max_staleness(option: str, value: Any) -> int:
-    """Validates maxStalenessSeconds according to the Max Staleness Spec."""
-    if value == -1 or value == "-1":
+    """Validate maxStalenessSeconds according to the Max Staleness Spec."""
+    if value in (-1, "-1"):
         # Default: No maximum staleness.
         return -1
     return validate_positive_integer(option, value)
@@ -375,7 +382,7 @@ def validate_read_preference_mode(dummy: Any, value: Any) -> _ServerMode:
        mode.
     """
     if value not in _MONGOS_MODES:
-        raise ValueError(f"{value} is not a valid read preference")
+        raise ValueError(f"Not a valid read preference. Must be one of: {', '.join(_MONGOS_MODES)}")
     return value
 
 
@@ -388,11 +395,15 @@ def validate_auth_mechanism(option: str, value: Any) -> str:
     return value
 
 
-def validate_uuid_representation(dummy: Any, value: Any) -> int:
+def validate_uuid_representation(dummy: Any, value: Any, from_uri: bool = False) -> int:
     """Validate the uuid representation option selected in the URI."""
     try:
         return _UUID_REPRESENTATIONS[value]
     except KeyError:
+        if from_uri:
+            raise ValueError(
+                f"Invalid UUID representation. Must be one of {tuple(_UUID_REPRESENTATIONS)}"
+            ) from None
         raise ValueError(
             f"{value} is an invalid UUID representation. "
             "Must be one of "
@@ -400,7 +411,9 @@ def validate_uuid_representation(dummy: Any, value: Any) -> int:
         ) from None
 
 
-def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]:
+def validate_read_preference_tags(
+    name: str, value: Any, from_uri: bool = False
+) -> list[dict[str, str]]:
     """Parse readPreferenceTags if passed as a client kwarg."""
     if not isinstance(value, list):
         value = [value]
@@ -417,6 +430,8 @@ def validate_read_preference_tags(name: str, value: Any) -> list[dict[str, str]]
                 tags[unquote_plus(key)] = unquote_plus(val)
             tag_sets.append(tags)
         except Exception:
+            if from_uri:
+                raise ValueError(f"Invalid read preference tags value for {name}") from None
             raise ValueError(f"{tag_set!r} not a valid value for {name}") from None
     return tag_sets
 
@@ -446,6 +461,16 @@ _SAFE_AUTH_MECHANISM_PROPS_FOR_REPR = frozenset(
     ]
 )
 
+# Sensitive options per the URI options spec. Their arguments MUST NOT appear
+# in string representations of client configuration.
+SENSITIVE_OPTIONS_FOR_REPR = frozenset(
+    [
+        "proxyusername",
+        "proxypassword",
+        "tlscertificatekeyfilepassword",
+    ]
+)
+
 
 def redact_auth_mechanism_properties_for_repr(value: Any) -> Any:
     """Redact sensitive auth mechanism properties before including them in repr."""
@@ -465,23 +490,28 @@ def validate_auth_mechanism_properties(option: str, value: Any) -> dict[str, boo
     if not isinstance(value, str):
         if not isinstance(value, dict):
             raise TypeError(
-                f"Auth mechanism properties must be given as a string or a dictionary, not {type(value)}"
+                f"Auth mechanism properties must be given as a string or a "
+                f"dictionary, not {type(value)}"
             )
-        for key, value in value.items():  # noqa: B020
-            if isinstance(value, str):
-                props[key] = value
-            elif isinstance(value, bool):
-                props[key] = str(value).lower()
-            elif key in ["ALLOWED_HOSTS"] and isinstance(value, list):
-                props[key] = value
+        for key, prop_value in value.items():
+            if isinstance(prop_value, str):
+                props[key] = prop_value
+            elif isinstance(prop_value, bool):
+                props[key] = str(prop_value).lower()
+            elif key == "ALLOWED_HOSTS" and isinstance(prop_value, list):
+                props[key] = prop_value
             elif key in ["OIDC_CALLBACK", "OIDC_HUMAN_CALLBACK"]:
                 from pymongo.auth_oidc_shared import OIDCCallback
 
-                if not isinstance(value, OIDCCallback):
-                    raise TypeError(f"callback must be an OIDCCallback object, not {type(value)}")
-                props[key] = value
+                if not isinstance(prop_value, OIDCCallback):
+                    raise TypeError(
+                        f"callback must be an OIDCCallback object, not {type(prop_value)}"
+                    )
+                props[key] = prop_value
             else:
-                raise TypeError(f"Invalid type for auth mechanism property {key}, {type(value)}")
+                raise TypeError(
+                    f"Invalid type for auth mechanism property {key}, {type(prop_value)}"
+                )
         return props
 
     value = validate_string(option, value)
@@ -544,21 +574,21 @@ def validate_type_registry(option: Any, value: Any) -> TypeRegistry | None:
 
 
 def validate_list(option: str, value: Any) -> list[Any]:
-    """Validates that 'value' is a list."""
+    """Validate that 'value' is a list."""
     if not isinstance(value, list):
         raise TypeError(f"{option} must be a list, not {type(value)}")
     return value
 
 
 def validate_list_or_none(option: Any, value: Any) -> list[Any] | None:
-    """Validates that 'value' is a list or None."""
+    """Validate that 'value' is a list or None."""
     if value is None:
         return value
     return validate_list(option, value)
 
 
 def validate_list_or_mapping(option: Any, value: Any) -> None:
-    """Validates that 'value' is a list or a document."""
+    """Validate that 'value' is a list or a document."""
     if not isinstance(value, (abc.Mapping, list)):
         raise TypeError(
             f"{option} must either be a list or an instance of dict, "
@@ -617,8 +647,8 @@ def validate_server_api_or_none(option: Any, value: Any) -> ServerApi | None:
     return value
 
 
-def validate_is_callable_or_none(option: Any, value: Any) -> Callable[..., Any] | None:
-    """Validates that 'value' is a callable."""
+def validate_is_callable_or_none(option: Any, value: Any) -> Callable[[Any, Any], Any] | None:
+    """Validate that 'value' is a callable."""
     if value is None:
         return value
     if not callable(value):
@@ -656,7 +686,7 @@ def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
     """Validate the Unicode decode error handler option of CodecOptions."""
     if value not in _UNICODE_DECODE_ERROR_HANDLERS:
         raise ValueError(
-            f"{value} is an invalid Unicode decode error handler. "
+            "Invalid Unicode decode error handler. "
             "Must be one of "
             f"{tuple(_UNICODE_DECODE_ERROR_HANDLERS)}"
         )
@@ -664,7 +694,7 @@ def validate_unicode_decode_error_handler(dummy: Any, value: str) -> str:
 
 
 def validate_tzinfo(dummy: Any, value: Any) -> datetime.tzinfo | None:
-    """Validate the tzinfo option"""
+    """Validate the tzinfo option."""
     if value is not None and not isinstance(value, datetime.tzinfo):
         raise TypeError(f"{value} must be an instance of datetime.tzinfo")
     return value
@@ -682,7 +712,9 @@ def validate_auto_encryption_opts_or_none(option: Any, value: Any) -> Any | None
     return value
 
 
-def validate_datetime_conversion(option: Any, value: Any) -> DatetimeConversion | None:
+def validate_datetime_conversion(
+    option: Any, value: Any, from_uri: bool = False
+) -> DatetimeConversion | None:
     """Validate a DatetimeConversion string."""
     if value is None:
         return DatetimeConversion.DATETIME
@@ -690,7 +722,14 @@ def validate_datetime_conversion(option: Any, value: Any) -> DatetimeConversion 
     if isinstance(value, str):
         if value.isdigit():
             return DatetimeConversion(int(value))
-        return DatetimeConversion[value]
+        try:
+            return DatetimeConversion[value]
+        except KeyError:
+            # Not ValueError: get_validated_options would demote it to a
+            # warning, where before this change the KeyError propagated.
+            if from_uri:
+                raise KeyError(f"Invalid {option} value") from None
+            raise
     elif isinstance(value, int):
         return DatetimeConversion(value)
 
@@ -699,9 +738,11 @@ def validate_datetime_conversion(option: Any, value: Any) -> DatetimeConversion 
     )
 
 
-def validate_server_monitoring_mode(option: str, value: str) -> str:
+def validate_server_monitoring_mode(option: str, value: str, from_uri: bool = False) -> str:
     """Validate the serverMonitoringMode option."""
     if value not in {"auto", "stream", "poll"}:
+        if from_uri:
+            raise ValueError(f'{option} is invalid. Must be one of "auto", "stream", or "poll"')
         raise ValueError(
             f'{option}={value!r} is invalid. Must be one of "auto", "stream", or "poll"'
         )
@@ -844,27 +885,31 @@ TIMEOUT_OPTIONS: list[str] = [
 
 
 def _get_validator(
-    key: str, validators: dict[str, Callable[[Any, Any], Any]], normed_key: str | None = None
+    key: str,
+    validators: dict[str, Callable[[Any, Any], Any]],
+    normed_key: str | None = None,
+    from_uri: bool = False,
 ) -> Callable[[Any, Any], Any]:
     normed_key = normed_key or key
     try:
         return validators[normed_key]
     except KeyError:
         suggestions = get_close_matches(normed_key, validators, cutoff=0.2)
-        raise_config_error(key, suggestions)
+        raise_config_error(key, suggestions, from_uri=from_uri)
 
 
 def validate(option: str, value: Any) -> tuple[str, Any]:
-    """Generic validation function."""
+    """Validate a generic option and value pair."""
     validator = _get_validator(option, VALIDATORS, normed_key=option.lower())
     value = validator(option, value)
     return option, value
 
 
 def get_validated_options(
-    options: Mapping[str, Any], warn: bool = True
+    options: Mapping[str, Any], warn: bool = True, from_uri: bool = False
 ) -> MutableMapping[str, Any]:
     """Validate each entry in options and raise a warning if it is not valid.
+
     Returns a copy of options with invalid entries removed.
 
     :param opts: A dict containing MongoDB URI options.
@@ -894,8 +939,13 @@ def get_validated_options(
     for opt, value in options.items():
         normed_key = get_normed_key(opt)
         try:
-            validator = _get_validator(opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key)
-            validated = validator(opt, value)
+            validator = _get_validator(
+                opt, URI_OPTIONS_VALIDATOR_MAP, normed_key=normed_key, from_uri=from_uri
+            )
+            if from_uri and "from_uri" in signature(validator).parameters:
+                validated = validator(opt, value, from_uri=True)  # type: ignore[call-arg]
+            else:
+                validated = validator(opt, value)
         except (ValueError, TypeError, ConfigurationError) as exc:
             if (
                 normed_key == "authmechanismproperties"
@@ -925,8 +975,7 @@ WRITE_CONCERN_OPTIONS = frozenset(["w", "wtimeout", "wtimeoutms", "fsync", "j", 
 
 
 class BaseObject:
-    """A base class that provides attributes and methods common
-    to multiple pymongo classes.
+    """A base class providing attributes and methods common to pymongo classes.
 
     SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO MONGODB.
     """
@@ -952,27 +1001,26 @@ class BaseObject:
 
         if not isinstance(write_concern, WriteConcern):
             raise TypeError(
-                f"write_concern must be an instance of pymongo.write_concern.WriteConcern, not {type(write_concern)}"
+                f"write_concern must be an instance of "
+                f"pymongo.write_concern.WriteConcern, not {type(write_concern)}"
             )
         self._write_concern = write_concern
 
         if not isinstance(read_concern, ReadConcern):
             raise TypeError(
-                f"read_concern must be an instance of pymongo.read_concern.ReadConcern, not {type(read_concern)}"
+                f"read_concern must be an instance of "
+                f"pymongo.read_concern.ReadConcern, not {type(read_concern)}"
             )
         self._read_concern = read_concern
 
     @property
     def codec_options(self) -> CodecOptions[Any]:
-        """Read only access to the :class:`~bson.codec_options.CodecOptions`
-        of this instance.
-        """
+        """Read only access to the :class:`~bson.codec_options.CodecOptions` of this instance."""
         return self._codec_options
 
     @property
     def write_concern(self) -> WriteConcern:
-        """Read only access to the :class:`~pymongo.write_concern.WriteConcern`
-        of this instance.
+        """Read only access to the :class:`~pymongo.write_concern.WriteConcern` of this instance.
 
         .. versionchanged:: 3.0
           The :attr:`write_concern` attribute is now read only.
@@ -1013,8 +1061,7 @@ class BaseObject:
 
     @property
     def read_concern(self) -> ReadConcern:
-        """Read only access to the :class:`~pymongo.read_concern.ReadConcern`
-        of this instance.
+        """Read only access to the :class:`~pymongo.read_concern.ReadConcern` of this instance.
 
         .. versionadded:: 3.2
         """
@@ -1110,7 +1157,7 @@ class _CaseInsensitiveDictionary(MutableMapping[str, Any]):
 
 
 def has_c() -> bool:
-    """Is the C extension installed?"""
+    """Check if the C extension is installed."""
     try:
         from pymongo import _cmessage  # type: ignore[attr-defined] # noqa: F401
 
