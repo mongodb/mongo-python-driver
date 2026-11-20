@@ -105,7 +105,7 @@ class MonitorBase:
     def signal_close(self) -> None:
         """Stop the executors without joining them.
 
-        Joining blocks on on_change(), which needs the topology lock: call
+        Joining blocks on on_change(), which needs the topology lock. Call
         close() with the lock released to join and reset the pool.
         """
         self.gc_safe_close()
@@ -120,13 +120,13 @@ class MonitorBase:
     async def join(self, timeout: float | None = None) -> None:
         """Wait for the monitor to stop.
 
-        :param timeout: Maximum time in seconds to wait; ``None`` waits
-            indefinitely.
+        :param timeout: Maximum time in seconds to wait, or ``None`` to
+            wait indefinitely.
         """
         await self._executor.join(timeout)
 
     async def _wake_and_join_executor(self) -> None:
-        # Join before resetting so we don't race a checked-out connection; a
+        # Join before resetting so we don't race a checked-out connection. A
         # straggler's socket closes when the reset returns its connection.
         self._executor.wake()
         await self._executor.join(_EXECUTOR_JOIN_TIMEOUT)
@@ -213,11 +213,11 @@ class Monitor(MonitorBase):
     async def join(self, timeout: float | None = None) -> None:
         """Wait for the monitor to stop.
 
-        The timeout budgets both executors: the RTT monitor gets whatever
+        The timeout budgets both executors. The RTT monitor gets whatever
         remains after the heartbeat executor stops.
 
-        :param timeout: Maximum time in seconds to wait; ``None`` waits
-            indefinitely.
+        :param timeout: Maximum time in seconds to wait, or ``None`` to
+            wait indefinitely.
         """
         start = time.monotonic()
         await self._executor.join(timeout)

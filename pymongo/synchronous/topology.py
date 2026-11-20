@@ -429,7 +429,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
             # that didn't include this server.
             if self._opened and self._description.has_server(server_description.address):
                 self._process_change(server_description, reset_pool, interrupt_connections)
-        # Drain the monitors removed in this change; the join must not hold
+        # Drain the monitors removed in this change. The join must not hold
         # the lock (PYTHON-6168).
         self.cleanup_monitors()
         # Clear the pool from a failed heartbeat, done outside the lock to avoid blocking on
@@ -455,7 +455,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         with self._lock:
             if self._opened:
                 self._process_srv_update(seedlist)
-        # Drain the monitors removed in this change; the join must not hold
+        # Drain the monitors removed in this change. The join must not hold
         # the lock (PYTHON-6168).
         self.cleanup_monitors()
 
@@ -526,7 +526,7 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
         with self._lock:
             old_td = self._description
             for server in self._servers.values():
-                # Signal the executors; joining them here would block on
+                # Signal the executors. Joining them here would block on
                 # on_change(), which needs this lock.
                 self._monitor_tasks.append(server._monitor)
                 server.signal_close()
@@ -726,9 +726,9 @@ class Topology(_AgnosticTopologyBase[Pool, Server]):
     def cleanup_monitors(self) -> None:
         """Close monitors signaled earlier while the topology lock was held.
 
-        Concurrent callers return immediately: a running cleanup drains the
-        queue before releasing the lock. Always call this with the topology
-        lock released: a monitor being joined may itself be blocked acquiring
+        Concurrent callers return immediately because a running cleanup drains
+        the queue before releasing the lock. Always call this with the topology
+        lock released. A monitor being joined may itself be blocked acquiring
         the lock.
         """
         if _IS_SYNC:

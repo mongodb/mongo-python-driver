@@ -180,7 +180,7 @@ class TestPeriodicExecutor(UnitTest):
         self.assertEqual(runs, 2, "executor did not restart after a self-close")
 
     def test_join_from_own_task_does_not_stall(self):
-        # A heartbeat removing its own server joins its own task; waiting on
+        # A heartbeat removing its own server joins its own task. Waiting on
         # the current task cannot complete and would stall for the full
         # timeout (PYTHON-6168).
         elapsed = None

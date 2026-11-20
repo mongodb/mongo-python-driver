@@ -34,7 +34,7 @@ def tsan_interface_exported(python_binary: str) -> bool:
     """Check the interpreter's dynamic symbols for the TSan interface.
 
     Instrumented extensions resolve __tsan_func_entry and friends against
-    the interpreter's dynamic exports; an interpreter built without the
+    the interpreter's dynamic exports. An interpreter built without the
     sanitizer exports none of them.
     """
     nm = shutil.which("nm")
@@ -61,8 +61,8 @@ def configure_env(sub_test_name: str, test_args: str) -> str:
         raise RuntimeError("The sanitizer tests require the Linux Python toolchain.")
     if not Path(python).is_file():
         raise RuntimeError(
-            f"Sanitizer interpreter not found at {python}; the task must run "
-            "on a host with the sanitizer toolchain Python."
+            f"Sanitizer interpreter not found at {python}. Run the task on a "
+            "host with the sanitizer toolchain Python."
         )
     if not Path(CLANG).is_file():
         raise RuntimeError(
@@ -79,7 +79,7 @@ def configure_env(sub_test_name: str, test_args: str) -> str:
     write_env("CXX", CLANGXX)
     write_env("UV_PYTHON", python)
     write_env("PYMONGO_C_EXT_MUST_BUILD")
-    # Env-var flags sit outside uv's cache key; skip the cache so wheels
+    # Env-var flags sit outside uv's cache key. Skip the cache so wheels
     # rebuild instrumented.
     write_env("UV_NO_CACHE", "1")
     if tsan:
@@ -113,7 +113,7 @@ def configure_env(sub_test_name: str, test_args: str) -> str:
         write_env("LDFLAGS", "-fsanitize=address,undefined")
         # CPython's pymalloc trips LeakSanitizer with false positives.
         write_env("ASAN_OPTIONS", "detect_leaks=0")
-        # UBSan only warns by default; make undefined behavior fail the task.
+        # UBSan only warns by default, so make undefined behavior fail the task.
         write_env("UBSAN_OPTIONS", "halt_on_error=1:print_stacktrace=1")
     # No LD_PRELOAD: the interpreter self-initializes its runtimes, and a
     # mismatched preloaded runtime mixes sanitizers in one process.

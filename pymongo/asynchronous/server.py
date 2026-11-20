@@ -82,7 +82,7 @@ class Server:
     async def signal_close(self) -> None:
         """Stop the monitor and clear the pool without joining it.
 
-        Joining blocks on on_change(), which needs the topology lock: the
+        Joining blocks on on_change(), which needs the topology lock, so the
         topology defers close() to its unlocked cleanup phase.
         """
         self._sdam.server_closed(self._description.address)

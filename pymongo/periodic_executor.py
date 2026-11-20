@@ -88,7 +88,7 @@ class AsyncPeriodicExecutor:
             self._task.cancel()
 
     async def join(self, timeout: float | None = None) -> None:
-        # Waiting on our own task cannot complete; returning lets the caller
+        # Waiting on our own task cannot complete. Returning lets the caller
         # finish its shutdown.
         if self._task is not None and self._task is not asyncio.current_task():
             await asyncio.wait([self._task], timeout=timeout)  # type-ignore: [arg-type]
@@ -136,7 +136,7 @@ def _daemon_threads_allowed() -> bool:
     """Whether daemon threads are allowed in the current interpreter.
 
     Subinterpreters do not allow daemon threads, so a PeriodicExecutor
-    there runs on a non-daemon thread instead: _shutdown_executors stops
+    there runs on a non-daemon thread instead. _shutdown_executors stops
     and joins it during interpreter shutdown.
     """
     # Python 3.12+ exposes the same check CPython itself uses to enforce
@@ -181,7 +181,7 @@ class PeriodicExecutor:
         self._skip_sleep = False
         self._thread_will_exit = False
         self._lock = _create_lock()
-        # Wakes the run loop immediately on close(); the lock is fork-tracked.
+        # Wakes the run loop immediately on close(). The lock is fork-tracked.
         self._stop_condition = _create_condition(_create_lock())
         self._stop_flag = False
         # The run-loop thread's ident, to detect a re-entrant close().
@@ -260,7 +260,7 @@ class PeriodicExecutor:
         """Wake a thread waiting in _run() on _stop_condition.
 
         close() also runs as a weakref callback during garbage collection, so
-        this never blocks: the notify is skipped when the lock is held or the
+        this never blocks. The notify is skipped when the lock is held or the
         callback re-enters the waiter's thread, and the waiter notices the
         flag at its next poll.
         """

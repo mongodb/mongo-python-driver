@@ -417,7 +417,7 @@ the same for local checkouts with `just install`).
 
 ### Using a local checkout instead
 
-Set `DRIVERS_TOOLS` to the path of a local clone — the environment variable wins over the
+Set `DRIVERS_TOOLS` to the path of a local clone. The environment variable wins over the
 submodule default:
 
 ```bash

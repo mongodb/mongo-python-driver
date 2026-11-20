@@ -208,7 +208,7 @@ class TestMonitorJoin(unittest.TestCase):
 
         monitor.join(1)
         rtt_timeout = rtt.timeouts[0]
-        # Narrowing only; the verified assertion is assertLess below.
+        # Narrowing only. The verified assertion is assertLess below.
         assert isinstance(rtt_timeout, float)
         self.assertLess(rtt_timeout, 0.95)
 
