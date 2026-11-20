@@ -19,8 +19,10 @@ VERSIONS = [
     },
 ]
 
+_EXPECTED_ARGC = 3
+
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "--index":
+    if len(sys.argv) == _EXPECTED_ARGC and sys.argv[1] == "--index":
         # Emit one version pair in GITHUB_OUTPUT format.
         entry = VERSIONS[int(sys.argv[2])]
         print(f"python-version={entry['python-version']}")

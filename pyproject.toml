@@ -228,6 +228,7 @@ extend-select = [
   "PLR1730",     # pylint: `if` statement can be replaced by `min()` or `max()`
   "PLR1733",     # pylint: unnecessary dict index lookup while iterating `.items()`
   "PLR1736",     # pylint: unnecessary list index lookup while iterating `enumerate()`
+  "PLR2004",     # pylint: magic value used in comparison
   "PLR2044",     # pylint: empty comment
   "PLR5501",     # pylint: `else: if` should be `elif`
   "D202",        # pydocstyle: no blank lines between docstring and function body
@@ -291,6 +292,7 @@ pycodestyle.max-doc-length = 100
 # shorter once "async " is dropped).
 "test/test_dns.py" = ["RUF100"]
 "test/test_retryable_writes.py" = ["RUF100"]
+"test/**/*.py" = ["PLR2004"]
 "tools/*.py" = ["T201"]
 "tools/test_*.py" = ["E402", "S"]
 "fuzz/*.py" = ["T201", "E402"]

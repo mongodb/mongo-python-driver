@@ -68,6 +68,9 @@ except ImportError:
 
 _IS_SYNC = False
 
+# RFC 5802 requires at least 4096 SCRAM iterations.
+_MIN_SCRAM_ITERATIONS = 4096
+
 
 async def _authenticate_scram(
     credentials: MongoCredential, conn: AsyncConnection, mechanism: str
@@ -102,7 +105,7 @@ async def _authenticate_scram(
     server_first = res["payload"]
     parsed = _parse_scram_response(server_first)
     iterations = int(parsed[b"i"])
-    if iterations < 4096:
+    if iterations < _MIN_SCRAM_ITERATIONS:
         raise OperationFailure("Server returned an invalid iteration count.")
     salt = parsed[b"s"]
     rnonce = parsed[b"r"]
