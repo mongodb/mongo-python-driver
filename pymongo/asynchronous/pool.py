@@ -513,18 +513,26 @@ class Pool(_AgnosticBasePool["AsyncConnection"]):
         # publishing the PoolClearedEvent.
         if close:
             if not _IS_SYNC:
-                await asyncio.gather(
-                    *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets],  # type: ignore[func-returns-value]
-                    return_exceptions=True,
+                # Shield the gather from a cancelled caller: the sockets are
+                # already detached from the pool, so a cancelled close would
+                # leak them.
+                await asyncio.shield(
+                    asyncio.gather(
+                        *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets],
+                        return_exceptions=True,
+                    )
                 )
             else:
                 for conn in sockets:
                     await conn.close_conn(ConnectionClosedReason.POOL_CLOSED)
             self._telemetry.pool_closed()
         elif not _IS_SYNC:
-            await asyncio.gather(
-                *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
-                return_exceptions=True,
+            # Shielded as above: a cancelled reset would leak the sockets.
+            await asyncio.shield(
+                asyncio.gather(
+                    *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],
+                    return_exceptions=True,
+                )
             )
         else:
             for conn in sockets:

@@ -284,13 +284,16 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
     def test_close_after_fork_while_notification_lock_held(self):
         # A fork while the notification lock is held inherits it locked in the
         # child: the fork reset frees it and close() must not block.
-        from pymongo.lock import _forkable_locks
+        from pymongo.lock import _forkable_locks, _release_locks
 
         executor = self._make_executor(interval=60.0, min_interval=0.05)
         executor.open()
         # The condition's lock participates in the fork reset.
         self.assertIn(executor._stop_condition._lock, _forkable_locks)
         executor._stop_condition.acquire()  # Simulate the lock held at fork.
+        _release_locks()  # The after_in_child hook: the reset frees the lock.
+        self.assertTrue(executor._stop_condition.acquire(False))
+        executor._stop_condition.release()
         done = threading.Event()
 
         def child_close():
@@ -301,7 +304,6 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
         closer.start()
         closer.join(timeout=2)
         self.assertTrue(done.is_set(), "close() blocked on the notification lock")
-        executor._stop_condition.release()
         executor.join(timeout=2)
         self.assertTrue(executor._stopped)
 

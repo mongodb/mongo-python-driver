@@ -33,7 +33,7 @@ from pymongo import MongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _create_lock
-from pymongo.monitoring import _EventListeners
+from pymongo.monitoring import ConnectionClosedReason, _EventListeners
 from pymongo.pool_shared import _wrap_socket_tls
 from test.utils import flaky, get_pool, joinall
 
@@ -954,6 +954,41 @@ class TestWrapSocketTLS(PyMongoTestCase):
 
         self.assertIs(result, left)
         self.assertEqual(result.gettimeout(), 7.5)
+
+
+class TestPoolCloseCancellation(unittest.TestCase):
+    # The close gathers must be shielded from a cancelled caller: the sockets
+    # are detached from the pool first, so a cancelled close would leak them.
+    @unittest.skipUnless(not _IS_SYNC, "cancellation is async-only")
+    def test_close_completes_despite_cancellation(self):
+        pool = Pool(("localhost", 27017), PoolOptions())
+        reasons: list[list[str]] = [[], []]
+        started = asyncio.Event()
+        proceed = asyncio.Event()
+        closed = asyncio.Event()
+
+        class FakeConn:
+            def __init__(self, n):
+                self.n = n
+
+            def close_conn(self, reason):
+                if self.n == 0:
+                    started.set()
+                    proceed.wait()
+                reasons[self.n].append(reason)
+                if all(reasons):
+                    closed.set()
+
+        pool.conns = [FakeConn(0), FakeConn(1)]
+        task = asyncio.create_task(pool.close())
+        started.wait()
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            task
+        proceed.set()
+        asyncio.wait_for(closed.wait(), timeout=2)
+        self.assertEqual(reasons[0], [ConnectionClosedReason.POOL_CLOSED])
+        self.assertEqual(reasons[1], [ConnectionClosedReason.POOL_CLOSED])
 
 
 if __name__ == "__main__":
