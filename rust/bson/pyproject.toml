@@ -1,0 +1,15 @@
+[build-system]
+requires = ["maturin>=1.15,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "pymongo-rbson"
+version = "0.1.0"
+description = "Rust-backed BSON codec for PyMongo (drop-in alternative to bson._cbson)"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.maturin]
+# The extension module is the top-level `_rbson` (like `bson._cbson`), not a
+# package: `import _rbson` yields the native module directly.
+module-name = "_rbson"
