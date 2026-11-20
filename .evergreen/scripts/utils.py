@@ -96,6 +96,10 @@ PERF_PYTHON_VERSION = "3.11.9"
 # (PYTHON-6048), built by mongo-python-toolchain (PYTHON-6067). Linux only.
 SANITIZER_PYTHON = "/opt/python/3.14-asan-ubsan/bin/python3"
 
+# The TSan-instrumented, free-threaded CPython for the TSan task
+# (PYTHON-6168). Linux only.
+TSAN_PYTHON = "/opt/python/3.14t-tsan/bin/python3"
+
 # Tests that do not use run-mongodb directly.
 NO_RUN_ORCHESTRATION = [
     "auth_oidc",
@@ -317,8 +321,8 @@ def read_env(path: Path | str) -> dict[str, str]:
 def shell_escape(value: str) -> str:
     """Escape a value for a double-quoted shell context.
 
-    The inverse of read_env's unescaping. Backslashes are escaped first;
-    otherwise a backslash-prefixed substitution re-arms when the file is
+    The inverse of read_env's unescaping. Backslashes are escaped first.
+    Otherwise a backslash-prefixed substitution re-arms when the file is
     sourced (PYTHON-6167).
     """
     return value.replace("\\", "\\\\").replace("$", "\\$").replace("`", "\\`").replace('"', '\\"')
@@ -327,7 +331,7 @@ def shell_escape(value: str) -> str:
 def write_env(name: str, value: Any = "1", escape: bool = True) -> None:
     """Append an export line for the value to the test environment file.
 
-    The value persists literally; pass escape=False to keep live expansions,
+    The value persists literally. Pass escape=False to keep live expansions,
     like a trailing `$PATH` (PYTHON-6167).
     """
     with ENV_FILE.open("a", newline="\n") as fid:

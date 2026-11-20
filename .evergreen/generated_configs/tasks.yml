@@ -2866,7 +2866,7 @@ tasks:
     tags: [perf]
 
   # Sanitizer tests
-  - name: test-sanitizer
+  - name: test-sanitizer-asan
     commands:
       - func: run server
         vars:
@@ -2879,6 +2879,22 @@ tasks:
           SSL: nossl
           TOPOLOGY: standalone
           TEST_NAME: sanitizer
+          SUB_TEST_NAME: asan
+    tags: [sanitizer, pr]
+  - name: test-sanitizer-tsan
+    commands:
+      - func: run server
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+      - func: run tests
+        vars:
+          AUTH: noauth
+          SSL: nossl
+          TOPOLOGY: standalone
+          TEST_NAME: sanitizer
+          SUB_TEST_NAME: tsan
     tags: [sanitizer, pr]
 
   # Search index tests

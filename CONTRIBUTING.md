@@ -417,7 +417,7 @@ the same for local checkouts with `just install`).
 
 ### Using a local checkout instead
 
-Set `DRIVERS_TOOLS` to the path of a local clone — the environment variable wins over the
+Set `DRIVERS_TOOLS` to the path of a local clone. The environment variable wins over the
 submodule default:
 
 ```bash
@@ -509,13 +509,25 @@ CPython version whose toolchain dir exists, `UV_PYTHON_SEARCH_PATH` points uv at
 The `sanitizer` test suite (PYTHON-6048) builds the C extensions with
 `-fsanitize=address,undefined` against the toolchain's ASan/UBSan-instrumented
 CPython (`SANITIZER_PYTHON` in `.evergreen/scripts/utils.py`) and runs the
-files listed in `SANITIZER_FILES` in `.evergreen/scripts/setup_tests.py`. The
+files listed in `SANITIZER_FILES` in `.evergreen/scripts/setup_sanitizer.py`. The
 toolchain interpreter initializes the sanitizer runtimes itself. It runs on
 PRs via the "Sanitizer RHEL8" variant. To run it on a Linux host with the
 toolchain:
 
     just run-server
     just setup-tests sanitizer
+    just run-tests
+
+The `sanitizer tsan` suite (PYTHON-6168) builds the C extensions with
+`-fsanitize=thread` against the toolchain's TSan-instrumented,
+free-threaded CPython (`TSAN_PYTHON` in `.evergreen/scripts/utils.py`) and
+runs the same files as the ASan suite with ThreadSanitizer set to halt on
+error (suppressions in `.evergreen/tsan-suppressions.txt`). It runs on PRs
+with the same "Sanitizer RHEL8" variant. To run it on a Linux host with the
+toolchain:
+
+    just run-server
+    just setup-tests sanitizer tsan
     just run-tests
 
 ## Handling flaky tests

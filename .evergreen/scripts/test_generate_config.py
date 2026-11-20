@@ -756,25 +756,31 @@ def test_sync_option_env_override(monkeypatch):
 
 
 def test_sanitizer_task_wiring():
-    """PYTHON-6048: one pr-tagged sanitizer task, selected by exactly one variant.
+    """PYTHON-6048/PYTHON-6168: pr-tagged sanitizer tasks, selected by one variant.
 
-    The variant pins MAX_VERSION and runs on a large host for ASan's
-    memory headroom. VERSION stays off the task so it is exempt from the
-    pr COVERAGE rule (coverage under ASan is not useful).
+    Each task is selected by exactly one variant that pins MAX_VERSION and
+    runs on a rhel8.7 large host, which carries the llvm-toolset-14 module
+    clang that built the interpreters and has the memory headroom ASan
+    needs. VERSION stays off the tasks so they are exempt from the pr
+    COVERAGE rule (coverage under sanitizers is not useful).
     """
     tasks = [task for task in all_tasks() if "sanitizer" in (task.tags or [])]
-    assert len(tasks) == 1
-    task = tasks[0]
-    assert "pr" in task.tags
-    funcs = [getattr(cmd, "func", None) for cmd in task.commands]
-    assert funcs == ["run server", "run tests"]
-    vars_ = task_vars(task)
-    assert vars_["TEST_NAME"] == "sanitizer"
-    assert vars_["TOPOLOGY"] == "standalone"
-    assert vars_["AUTH"] == "noauth"
-    assert vars_["SSL"] == "nossl"
-    assert "VERSION" not in vars_
-    variants = [v for v in all_variants() if variant_selects(v, task)]
-    assert len(variants) == 1
-    assert variants[0].run_on == ["rhel8.10-large"]
-    assert (variants[0].expansions or {}).get("VERSION") == generate_config_utils.MAX_VERSION
+    assert {task.name for task in tasks} == {
+        "test-sanitizer-asan",
+        "test-sanitizer-tsan",
+    }
+    for task in tasks:
+        assert "pr" in task.tags
+        funcs = [getattr(cmd, "func", None) for cmd in task.commands]
+        assert funcs == ["run server", "run tests"]
+        vars_ = task_vars(task)
+        assert vars_["TEST_NAME"] == "sanitizer"
+        assert vars_["SUB_TEST_NAME"] in ("asan", "tsan")
+        assert vars_["TOPOLOGY"] == "standalone"
+        assert vars_["AUTH"] == "noauth"
+        assert vars_["SSL"] == "nossl"
+        assert "VERSION" not in vars_
+        variants = [v for v in all_variants() if variant_selects(v, task)]
+        assert len(variants) == 1
+        assert variants[0].run_on == ["rhel87-large"]
+        assert (variants[0].expansions or {}).get("VERSION") == generate_config_utils.MAX_VERSION

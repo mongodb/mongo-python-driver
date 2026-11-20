@@ -24,7 +24,7 @@ import weakref
 from typing import Any
 
 from pymongo import _csot, _op_id
-from pymongo.lock import _create_lock
+from pymongo.lock import _create_condition, _create_lock
 
 _IS_SYNC = False
 
@@ -87,8 +87,10 @@ class AsyncPeriodicExecutor:
         if self._task is not current:
             self._task.cancel()
 
-    async def join(self, timeout: int | None = None) -> None:
-        if self._task is not None:
+    async def join(self, timeout: float | None = None) -> None:
+        # Waiting on our own task cannot complete. Returning lets the caller
+        # finish its shutdown.
+        if self._task is not None and self._task is not asyncio.current_task():
             await asyncio.wait([self._task], timeout=timeout)  # type-ignore: [arg-type]
 
     def wake(self) -> None:
@@ -134,7 +136,7 @@ def _daemon_threads_allowed() -> bool:
     """Whether daemon threads are allowed in the current interpreter.
 
     Subinterpreters do not allow daemon threads, so a PeriodicExecutor
-    there runs on a non-daemon thread instead: _shutdown_executors stops
+    there runs on a non-daemon thread instead. _shutdown_executors stops
     and joins it during interpreter shutdown.
     """
     # Python 3.12+ exposes the same check CPython itself uses to enforce
@@ -179,6 +181,11 @@ class PeriodicExecutor:
         self._skip_sleep = False
         self._thread_will_exit = False
         self._lock = _create_lock()
+        # Wakes the run loop immediately on close(). The lock is fork-tracked.
+        self._stop_condition = _create_condition(_create_lock())
+        self._stop_flag = False
+        # The run-loop thread's ident, to detect a re-entrant close().
+        self._run_loop_ident: int | None = None
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
@@ -202,6 +209,8 @@ class PeriodicExecutor:
                     pass
             self._thread_will_exit = False
             self._stopped = False
+            # Reset even when reusing a live thread: a set flag would spin it.
+            self._stop_flag = False
         started: Any = False
         try:
             started = self._thread and self._thread.is_alive()
@@ -245,8 +254,30 @@ class PeriodicExecutor:
         callback; see monitor.py.
         """
         self._stopped = True
+        self._wake_waiter()
 
-    def join(self, timeout: int | None = None) -> None:
+    def _wake_waiter(self) -> None:
+        """Wake a thread waiting in _run() on _stop_condition.
+
+        close() also runs as a weakref callback during garbage collection, so
+        this never blocks. The notify is skipped when the lock is held or the
+        callback re-enters the waiter's thread, and the waiter notices the
+        flag at its next poll.
+        """
+        # A GC callback can run once the interpreter is finalizing, when the
+        # threading module's globals are already None: set the flag lock-free.
+        ident = threading.get_ident() if threading else None
+        if ident is None or self._run_loop_ident == ident:
+            self._stop_flag = True
+            return
+        if self._stop_condition.acquire(False):
+            try:
+                self._stop_flag = True
+                self._stop_condition.notify_all()
+            finally:
+                self._stop_condition.release()
+
+    def join(self, timeout: float | None = None) -> None:
         if self._thread is not None:
             try:
                 self._thread.join(timeout)
@@ -289,10 +320,17 @@ class PeriodicExecutor:
                 self._skip_sleep = False
             else:
                 deadline = time.monotonic() + self._interval
-                while not self._stopped and time.monotonic() < deadline:
-                    time.sleep(self._min_interval)
-                    if self._event:
-                        break  # Early wake.
+                self._run_loop_ident = threading.get_ident()
+                try:
+                    while not self._stopped and time.monotonic() < deadline:
+                        with self._stop_condition:
+                            if self._stop_flag:
+                                break  # Closed.
+                            self._stop_condition.wait(self._min_interval)
+                        if self._event:
+                            break  # Early wake.
+                finally:
+                    self._run_loop_ident = None
 
             self._event = False
 

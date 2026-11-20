@@ -65,7 +65,9 @@ if TYPE_CHECKING:
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
-_POLL_TIMEOUT = 0.5
+# How often a blocking read wakes to check the cancellation signal: this
+# bounds the delay of a cancelled read, e.g. a monitor joined during close.
+_POLL_TIMEOUT = 0.05
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
 BLOCKING_IO_ERRORS = (BlockingIOError, *BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
 
@@ -280,7 +282,7 @@ def wait_for_read(conn: Connection, deadline: float | None) -> None:
         if hasattr(sock, "pending") and sock.pending() > 0:
             readable = True
         else:
-            # Wait up to 500ms for the socket to become readable and then
+            # Wait up to 50ms for the socket to become readable and then
             # check for cancellation.
             if deadline:
                 remaining = deadline - time.monotonic()

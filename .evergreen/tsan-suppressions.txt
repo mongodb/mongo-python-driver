@@ -1,0 +1,12 @@
+# PyMongo-specific ThreadSanitizer suppressions.
+#
+# Add an entry only for a race judged benign after investigation, with a
+# comment saying why: a PyMongo C-extension race, or a CPython-internal race
+# the toolchain's own suppressions do not cover.
+#
+# Reference: https://github.com/google/sanitizers/wiki/ThreadSanitizerSuppressions
+
+# CPython-internal: under free-threading the GC path (memory_clear) and a
+# worker's deferred refcount merge (memory_dealloc) can both enter
+# _memory_release for the same memoryview. Both stacks are within CPython.
+race_top:_memory_release

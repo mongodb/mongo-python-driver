@@ -20,16 +20,19 @@ import asyncio
 import gc
 import subprocess
 import sys
+import time
 import warnings
 from functools import partial
 
 sys.path[0:0] = [""]
 
 from pymongo.periodic_executor import _EXECUTORS
+from pymongo.synchronous.monitor import Monitor
 from test import IntegrationTest, client_context, connected, unittest
 from test.utils import (
     wait_until,
 )
+from test.utils import wait_until as sync_wait_until
 from test.utils_shared import (
     ServerAndTopologyEventListener,
     gevent_monkey_patched,
@@ -105,6 +108,49 @@ class TestMonitor(IntegrationTest):
             wait_until(lambda: executor._stopped, f"closed executor: {executor._name}", timeout=5)
 
     @client_context.require_sync
+    def test_close_stops_monitor_thread(self):
+        """PYTHON-1634: close() joins the monitor thread before returning.
+
+        Callers don't race it while it reads the socket.
+        """
+        client = self.create_client()
+        server = next(iter(client._topology._servers.values()))
+        monitor = server._monitor
+
+        def thread_alive(executor):
+            try:
+                return executor._thread is not None and executor._thread.is_alive()
+            except ReferenceError:
+                return False
+
+        sync_wait_until(lambda: thread_alive(monitor._executor), "monitor thread never started")
+
+        client.close()
+
+        self.assertEqual(client._topology._monitor_tasks, [])
+        self.assertFalse(thread_alive(monitor._executor))
+        self.assertFalse(thread_alive(monitor._rtt_monitor._executor))
+
+    @client_context.require_async
+    def test_close_stops_monitor_task(self):
+        """PYTHON-1634: the async counterpart of test_close_stops_monitor_thread."""
+        client = self.create_client()
+        server = next(iter(client._topology._servers.values()))
+        monitor = server._monitor
+
+        self.assertIsNotNone(monitor._executor._task)
+        self.assertFalse(monitor._executor._task.done())
+
+        client.close()
+
+        self.assertEqual(client._topology._monitor_tasks, [])
+        self.assertTrue(monitor._executor._task.done())
+        # The RTT executor may never start (polling RTT in FaaS environments).
+        rtt_task = monitor._rtt_monitor._executor._task
+        if rtt_task is not None:
+            self.assertTrue(rtt_task.done())
+
+    @client_context.require_sync
     def test_no_thread_start_runtime_err_on_shutdown(self):
         """Test we silence noisy runtime errors.
 
@@ -123,6 +169,57 @@ class TestMonitor(IntegrationTest):
 
         self.assertFalse(completed_process.stderr)
         self.assertFalse(completed_process.stdout)
+
+
+class _SlowExecutor:
+    """Executor stand-in whose join takes a fixed time."""
+
+    def __init__(self, delay: float) -> None:
+        self._delay = delay
+
+    def join(self, timeout: float | None = None) -> None:
+        # time.sleep on purpose: synchro does not translate asyncio.sleep.
+        self._sleep()
+
+    def _sleep(self) -> None:
+        time.sleep(self._delay)
+
+
+class _RecordingExecutor:
+    """Executor stand-in that records the timeouts it is joined with."""
+
+    def __init__(self) -> None:
+        self.timeouts: list[float | None] = []
+
+    def join(self, timeout: float | None = None) -> None:
+        self.timeouts.append(timeout)
+
+
+class TestMonitorJoin(unittest.TestCase):
+    """Unit tests for the timeout budget in Monitor.join."""
+
+    def test_rtt_join_gets_unspent_budget(self):
+        # PYTHON-1634: after the heartbeat executor stops, the RTT monitor
+        # gets whatever budget remains, never more.
+        monitor = Monitor.__new__(Monitor)
+        monitor._executor = _SlowExecutor(0.45)  # type: ignore[assignment]
+        rtt = _RecordingExecutor()
+        monitor._rtt_monitor = rtt  # type: ignore[assignment]
+
+        monitor.join(1)
+        rtt_timeout = rtt.timeouts[0]
+        # Narrowing only. The verified assertion is assertLess below.
+        assert isinstance(rtt_timeout, float)
+        self.assertLess(rtt_timeout, 0.95)
+
+    def test_join_without_timeout_waits_indefinitely(self):
+        monitor = Monitor.__new__(Monitor)
+        monitor._executor = _SlowExecutor(0)  # type: ignore[assignment]
+        rtt = _RecordingExecutor()
+        monitor._rtt_monitor = rtt  # type: ignore[assignment]
+
+        monitor.join(None)
+        self.assertEqual(rtt.timeouts, [None])
 
 
 if __name__ == "__main__":

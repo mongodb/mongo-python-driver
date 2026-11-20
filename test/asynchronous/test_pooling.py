@@ -33,7 +33,7 @@ from pymongo import AsyncMongoClient, message, timeout
 from pymongo.errors import AutoReconnect, ConnectionFailure, DuplicateKeyError
 from pymongo.hello import HelloCompat
 from pymongo.lock import _async_create_lock
-from pymongo.monitoring import _EventListeners
+from pymongo.monitoring import ConnectionClosedReason, _EventListeners
 from pymongo.pool_shared import _async_wrap_socket_tls
 from test.asynchronous.utils import async_get_pool, async_joinall, flaky
 
@@ -956,6 +956,41 @@ class TestWrapSocketTLS(AsyncPyMongoTestCase):
 
         self.assertIs(result, left)
         self.assertEqual(result.gettimeout(), 7.5)
+
+
+class TestPoolCloseCancellation(unittest.IsolatedAsyncioTestCase):
+    # The close gathers must be shielded from a cancelled caller: the sockets
+    # are detached from the pool first, so a cancelled close would leak them.
+    @unittest.skipUnless(not _IS_SYNC, "cancellation is async-only")
+    async def test_close_completes_despite_cancellation(self):
+        pool = Pool(("localhost", 27017), PoolOptions())
+        reasons: list[list[str]] = [[], []]
+        started = asyncio.Event()
+        proceed = asyncio.Event()
+        closed = asyncio.Event()
+
+        class FakeConn:
+            def __init__(self, n):
+                self.n = n
+
+            async def close_conn(self, reason):
+                if self.n == 0:
+                    started.set()
+                    await proceed.wait()
+                reasons[self.n].append(reason)
+                if all(reasons):
+                    closed.set()
+
+        pool.conns = [FakeConn(0), FakeConn(1)]
+        task = asyncio.create_task(pool.close())  # type: ignore[func-returns-value]
+        await started.wait()
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+        proceed.set()
+        await asyncio.wait_for(closed.wait(), timeout=2)
+        self.assertEqual(reasons[0], [ConnectionClosedReason.POOL_CLOSED])
+        self.assertEqual(reasons[1], [ConnectionClosedReason.POOL_CLOSED])
 
 
 if __name__ == "__main__":

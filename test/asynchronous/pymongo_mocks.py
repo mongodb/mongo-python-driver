@@ -70,6 +70,9 @@ class DummyMonitor:
     async def join(self):
         pass
 
+    def signal_close(self):
+        self.opened = False
+
     def open(self):
         self.opened = True
 
