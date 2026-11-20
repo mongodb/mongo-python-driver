@@ -276,7 +276,10 @@ class TestPeriodicExecutor(UnitTest):
             "the target did not respect its interval after a live reopen",
         )
 
-    @unittest.skipUnless(_IS_SYNC, "fork semantics apply to the threaded executor")
+    @unittest.skipUnless(
+        _IS_SYNC and hasattr(os, "register_at_fork"),
+        "fork lock tracking requires the threaded executor and os.register_at_fork",
+    )
     def test_close_after_fork_while_notification_lock_held(self):
         # A fork while the notification lock is held inherits it locked in the
         # child: the fork reset frees it and close() must not block.
