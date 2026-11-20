@@ -25,6 +25,7 @@ import sys
 import textwrap
 import threading
 import time
+import warnings
 from typing import Any, Optional
 from unittest import mock
 
@@ -296,7 +297,11 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
         self.assertIn(executor._stop_condition._lock, _forkable_locks)
         executor._stop_condition.acquire()  # Held across the fork.
         read_fd, write_fd = os.pipe()
-        pid = os.fork()
+        with warnings.catch_warnings():
+            # The test forks a multi-threaded process on purpose: the reset
+            # exists for production forks of exactly this shape.
+            warnings.simplefilter("ignore", DeprecationWarning)
+            pid = os.fork()
         if pid == 0:
             # The child runs the real hook: no other thread survives the
             # fork, the state the reset is designed for.

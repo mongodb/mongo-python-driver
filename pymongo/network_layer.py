@@ -282,7 +282,7 @@ def wait_for_read(conn: Connection, deadline: float | None) -> None:
         if hasattr(sock, "pending") and sock.pending() > 0:
             readable = True
         else:
-            # Wait up to 500ms for the socket to become readable and then
+            # Wait up to 50ms for the socket to become readable and then
             # check for cancellation.
             if deadline:
                 remaining = deadline - time.monotonic()

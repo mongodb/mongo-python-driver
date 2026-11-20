@@ -264,7 +264,10 @@ class PeriodicExecutor:
         callback re-enters the waiter's thread, and the waiter notices the
         flag at its next poll.
         """
-        if self._run_loop_ident == threading.get_ident():
+        # A GC callback can run once the interpreter is finalizing, when the
+        # threading module's globals are already None: set the flag lock-free.
+        ident = threading.get_ident() if threading else None
+        if ident is None or self._run_loop_ident == ident:
             self._stop_flag = True
             return
         if self._stop_condition.acquire(False):

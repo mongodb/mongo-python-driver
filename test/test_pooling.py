@@ -980,7 +980,7 @@ class TestPoolCloseCancellation(unittest.TestCase):
                     closed.set()
 
         pool.conns = [FakeConn(0), FakeConn(1)]
-        task = asyncio.create_task(pool.close())
+        task = asyncio.create_task(pool.close())  # type: ignore[func-returns-value]
         started.wait()
         task.cancel()
         with self.assertRaises(asyncio.CancelledError):
