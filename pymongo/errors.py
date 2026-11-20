@@ -32,7 +32,10 @@ if TYPE_CHECKING:
 
 # Server error codes.
 _MAX_TIME_MS_EXPIRED_CODE = 50
-_MMAPV1_TRANSACTION_NUMBER_CODE = 20
+_ILLEGAL_OPERATION_CODE = 20
+
+# HTTP status code for a successful response.
+_HTTP_OK = 200
 
 
 class PyMongoError(Exception):
@@ -226,7 +229,7 @@ class OperationFailure(PyMongoError):
 
     @property
     def timeout(self) -> bool:
-        return self.__code in (50,)
+        return self.__code == _MAX_TIME_MS_EXPIRED_CODE
 
     @property
     def _base_backoff_ms(self) -> float | None:

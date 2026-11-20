@@ -401,8 +401,8 @@ def _get_binary(
     position += 5
     if subtype == OLD_BINARY_SUBTYPE:
         length2 = _UNPACK_INT_FROM(data, position)[0]
-        position += 4
-        if length2 != length - 4:
+        position += _INT32_SIZE
+        if length2 != length - _INT32_SIZE:
             raise InvalidBSON("invalid binary (st 2) - lengths don't match!")
         length = length2
     end = position + length
@@ -1401,7 +1401,7 @@ def decode_file_iter(
     opts = codec_options or DEFAULT_CODEC_OPTIONS
     while True:
         # Read size of next object.
-        size_data: Any = file_obj.read(4)
+        size_data: Any = file_obj.read(_INT32_SIZE)
         if not size_data:
             break  # Finished with file normally.
         elif len(size_data) != _INT32_SIZE:

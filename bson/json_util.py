@@ -119,6 +119,7 @@ from typing import (
     cast,
 )
 
+from bson import _INT32_MAX, _INT32_MIN
 from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
@@ -142,11 +143,6 @@ from bson.tz_util import utc
 
 # Legacy mongoexport subtype values use the top 32 bits for a negative sign.
 _MONGOEXPORT_SUBTYPE_MASK = 0xFFFFFF80
-_MAX_SUBTYPE_HEX_LENGTH = 2
-_BINARY_COMPONENT_COUNT = 2
-_REGEX_COMPONENT_COUNT = 2
-_DBREF_COMPONENT_COUNT = 2
-_SINGLE_FIELD_COUNT = 1
 _TZ_OFFSET_HH_COLON_MM_LENGTH = 6
 _TZ_OFFSET_HHMM_LENGTH = 5
 _TZ_OFFSET_HH_LENGTH = 3
@@ -244,8 +240,6 @@ if TYPE_CHECKING:
     _BASE_CLASS = CodecOptions[MutableMapping[str, Any]]
 else:
     _BASE_CLASS = CodecOptions
-
-_INT32_MAX = 2**31
 
 
 class JSONOptions(_BASE_CLASS):
@@ -588,9 +582,9 @@ def _parse_canonical_binary(doc: Any, json_options: JSONOptions) -> Binary | uui
     subtype = binary["subType"]
     if not isinstance(b64, str):
         raise TypeError(f"$binary base64 must be a string: {doc}")
-    if not isinstance(subtype, str) or len(subtype) > _MAX_SUBTYPE_HEX_LENGTH:
+    if not isinstance(subtype, str) or len(subtype) > 2:  # noqa: PLR2004
         raise TypeError(f"$binary subType must be a string at most 2 characters: {doc}")
-    if len(binary) != _BINARY_COMPONENT_COUNT:
+    if len(binary) != 2:  # noqa: PLR2004
         raise TypeError(f'$binary must include only "base64" and "subType" components: {doc}')
 
     data = base64.b64decode(b64.encode())
@@ -692,9 +686,9 @@ def _parse_canonical_code(doc: Any, dummy0: Any) -> Code:
 def _parse_canonical_regex(doc: Any, dummy0: Any) -> Regex[str]:
     """Decode a JSON regex to bson.regex.Regex."""
     regex = doc["$regularExpression"]
-    if len(doc) != _SINGLE_FIELD_COUNT:
+    if len(doc) != 1:
         raise TypeError(f"Bad $regularExpression, extra field(s): {doc}")
-    if len(regex) != _REGEX_COMPONENT_COUNT:
+    if len(regex) != 2:  # noqa: PLR2004
         raise TypeError(
             f'Bad $regularExpression must include only "pattern and "options" components: {doc}'
         )
@@ -729,7 +723,7 @@ def _parse_canonical_dbpointer(doc: Any, dummy0: Any) -> Any:
             raise TypeError(f"Bad $dbPointer, extra field $db: {dbref_doc}")
         if not isinstance(dbref.id, ObjectId):
             raise TypeError(f"Bad $dbPointer, $id must be an ObjectId: {dbref_doc}")
-        if len(dbref_doc) != _DBREF_COMPONENT_COUNT:
+        if len(dbref_doc) != 2:  # noqa: PLR2004
             raise TypeError(f"Bad $dbPointer, extra field(s) in DBRef: {dbref_doc}")
         return dbref
     else:
@@ -893,7 +887,7 @@ def _encode_regex(obj: Any, json_options: JSONOptions) -> dict:  # type: ignore[
 
 def _encode_int(obj: int, json_options: JSONOptions) -> Any:
     if json_options.json_mode == JSONMode.CANONICAL:
-        if -_INT32_MAX <= obj < _INT32_MAX:
+        if _INT32_MIN <= obj <= _INT32_MAX:
             return {"$numberInt": str(obj)}
         return {"$numberLong": str(obj)}
     return obj

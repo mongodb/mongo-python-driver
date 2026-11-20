@@ -87,9 +87,9 @@ _RETRYABLE_ERROR_CODES: frozenset[int] = _NOT_PRIMARY_CODES | frozenset(
     ]
 )
 
-# Server code raised for findAndModify with upsert and other duplicate key errors.
 _DUPLICATE_KEY_CODE: int = 11000
-_DUPLICATE_KEY_CODES: frozenset[int] = frozenset([11000, 11001, 12582])
+# Server codes raised for findAndModify with upsert and other duplicate key errors.
+_DUPLICATE_KEY_CODES: frozenset[int] = frozenset([_DUPLICATE_KEY_CODE, 11001, 12582])
 _CURSOR_NOT_FOUND_CODE: int = 43
 _NAMESPACE_NOT_FOUND_CODE: int = 26
 

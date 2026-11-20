@@ -328,7 +328,7 @@ class Decimal128:
         if not isinstance(value, bytes):
             raise TypeError(f"value must be an instance of bytes, not {type(value)}")
         if len(value) != _BYTE_LENGTH:
-            raise ValueError("value must be exactly 16 bytes")
+            raise ValueError(f"value must be exactly {_BYTE_LENGTH} bytes")
         return cls((_UNPACK_64(value[8:])[0], _UNPACK_64(value[:8])[0]))  # type: ignore
 
     @property

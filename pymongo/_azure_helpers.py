@@ -20,7 +20,7 @@ import json
 from typing import Any
 from urllib.parse import quote
 
-_HTTP_OK = 200
+from pymongo.errors import _HTTP_OK
 
 
 def _get_azure_response(

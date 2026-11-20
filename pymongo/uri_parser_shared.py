@@ -217,7 +217,7 @@ def parse_host(entity: str, default_port: int | None = DEFAULT_PORT) -> _Address
                 "RFC 3986, use urllib.parse.quote_plus"
             )
         if int(port) > _MAX_PORT or int(port) <= 0:
-            raise ValueError("Port must be an integer between 0 and 65535")
+            raise ValueError(f"Port must be an integer between 0 and {_MAX_PORT}")
         port = int(port)
 
     # Normalize hostname to lowercase, since DNS is case-insensitive:

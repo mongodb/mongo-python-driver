@@ -156,7 +156,7 @@ if result == ...
 from pymongo import MongoClient
 
 if TYPE_CHECKING:
-	from pymongo.collection import Collection
+    from pymongo.collection import Collection
 ```
 
 # Backwards compatibility

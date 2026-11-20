@@ -42,9 +42,6 @@ _SECONDARY = 2
 _SECONDARY_PREFERRED = 3
 _NEAREST = 4
 
-# MongoDB 5.0, the first server that supports agg $out/$merge with secondary read preference.
-_MIN_AGG_WRITE_WIRE_VERSION = 13
-
 
 _MONGOS_MODES = (
     "primary",
@@ -498,11 +495,16 @@ class _AggWritePref:
         self.effective_pref: _ServerMode = ReadPreference.PRIMARY
 
     def selection_hook(self, topology_description: TopologyDescription) -> None:
+        # Import locally to avoid a circular import through pymongo.common.
+        # MongoDB 5.0 is the first server that supports agg $out/$merge with
+        # secondary read preference.
+        from pymongo.common import WIRE_VERSION_5_0
+
         common_wv = topology_description.common_wire_version
         if (
             topology_description.has_readable_server(ReadPreference.PRIMARY_PREFERRED)
             and common_wv
-            and common_wv < _MIN_AGG_WRITE_WIRE_VERSION
+            and common_wv < WIRE_VERSION_5_0
         ):
             self.effective_pref = ReadPreference.PRIMARY
         else:

@@ -34,7 +34,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from pymongo.errors import ConfigurationError
+from pymongo.errors import _HTTP_OK, ConfigurationError
 
 
 @dataclass(frozen=True)
@@ -86,8 +86,7 @@ def _close_rejected_kms_socket(obj: Any) -> None:
 # Cap the CONNECT response header so a silent proxy cannot grow the buffer without bound.
 _MAX_CONNECT_HEADER = 8192
 
-# HTTP status codes for a successful CONNECT response.
-_HTTP_OK = 200
+# HTTP status codes for a CONNECT response.
 _HTTP_REDIRECT = 300
 _HTTP_STATUS_CODE_LENGTH = 3
 _MIN_HTTP_STATUS_PARTS = 2

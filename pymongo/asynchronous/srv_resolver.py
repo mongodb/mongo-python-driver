@@ -96,7 +96,7 @@ class _SrvResolver:
             is_special_use = suffix in SPECIAL_USE_LABELS
             if len(suffix.split(".")) < _MIN_DOMAIN_LABELS and not is_special_use:
                 raise ConfigurationError(
-                    "srvAllowedHostsSuffix must contain at least two '.' separated labels, "
+                    f"srvAllowedHostsSuffix must contain at least {_MIN_DOMAIN_LABELS} '.' separated labels, "
                     f"got: {srv_allowed_hosts_suffix}"
                 )
 

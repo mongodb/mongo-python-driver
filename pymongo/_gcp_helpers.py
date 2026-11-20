@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import Any
 
-_HTTP_OK = 200
+from pymongo.errors import _HTTP_OK
 
 
 def _get_gcp_response(resource: str, timeout: float = 5) -> dict[str, Any]:

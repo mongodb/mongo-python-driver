@@ -64,6 +64,7 @@ from requests import post as _post
 from requests.exceptions import RequestException as _RequestException
 
 from pymongo import _csot
+from pymongo.errors import _HTTP_OK
 from pymongo.ocsp_cache import _next_update, _this_update
 
 if TYPE_CHECKING:
@@ -114,8 +115,6 @@ if TYPE_CHECKING:
 # 0 (failure).
 
 _LOGGER = _logging.getLogger(__name__)
-
-_HTTP_OK = 200
 
 _CERT_REGEX = _re.compile(
     b"-----BEGIN CERTIFICATE[^\r\n]+.+?-----END CERTIFICATE[^\r\n]+", _re.DOTALL

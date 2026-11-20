@@ -630,13 +630,15 @@ class PyMongoProtocol(BufferedProtocol):
         if op_code == _OP_COMPRESSED:  # OP_COMPRESSED
             if length <= _OP_COMPRESSED_MESSAGE_SIZE:
                 raise ProtocolError(
-                    f"Message length ({length!r}) not longer than standard OP_COMPRESSED message header size (25)"
+                    f"Message length ({length!r}) not longer than standard OP_COMPRESSED "
+                    f"message header size ({_OP_COMPRESSED_MESSAGE_SIZE})"
                 )
             expecting_compression = True
             length -= 9
         if length <= _MESSAGE_HEADER_SIZE:
             raise ProtocolError(
-                f"Message length ({length!r}) not longer than standard message header size (16)"
+                f"Message length ({length!r}) not longer than standard message header size "
+                f"({_MESSAGE_HEADER_SIZE})"
             )
         if length > self._max_message_size:
             raise ProtocolError(
@@ -767,7 +769,8 @@ def receive_message(
     if op_code == _OP_COMPRESSED:
         if length <= _OP_COMPRESSED_MESSAGE_SIZE:
             raise ProtocolError(
-                f"Message length ({length!r}) not longer than standard OP_COMPRESSED message header size (25)"
+                f"Message length ({length!r}) not longer than standard OP_COMPRESSED "
+                f"message header size ({_OP_COMPRESSED_MESSAGE_SIZE})"
             )
         op_code, uncompressed_size, compressor_id = _UNPACK_COMPRESSION_HEADER(
             receive_data(conn, 9, deadline)

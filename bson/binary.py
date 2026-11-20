@@ -215,8 +215,6 @@ _UUID_LENGTH = 16
 _MAX_PADDING = 7
 _INT8_MIN = -128
 _INT8_MAX = 127
-# Packed-bit vectors are restricted to the signed int8 range when built from numpy arrays.
-_PACKED_BIT_MAX = 127
 
 
 class BinaryVectorDtype(Enum):
@@ -542,7 +540,7 @@ class Binary(bytes):
                 else:
                     raise ValueError("Values found outside INT8 range.")
             elif dtype == BinaryVectorDtype.PACKED_BIT:
-                if vector.min() >= 0 and vector.max() <= _PACKED_BIT_MAX:
+                if vector.min() >= 0 and vector.max() <= _INT8_MAX:
                     vector = vector.astype(np.dtype("uint8"), copy=False)
                 else:
                     raise ValueError("Values found outside UINT8 range.")

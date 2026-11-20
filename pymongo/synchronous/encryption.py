@@ -983,7 +983,9 @@ class ClientEncryption(Generic[_DocumentType]):
         """
         self._check_closed()
         if not (isinstance(value, Binary) and value.subtype == _ENCRYPTED_SUBTYPE):
-            raise TypeError("value to decrypt must be a bson.binary.Binary with subtype 6")
+            raise TypeError(
+                f"value to decrypt must be a bson.binary.Binary with subtype {_ENCRYPTED_SUBTYPE}"
+            )
 
         with _wrap_encryption_errors():
             doc = encode({"v": value})

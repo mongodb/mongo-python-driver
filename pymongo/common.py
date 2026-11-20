@@ -595,7 +595,7 @@ def validate_appname_or_none(option: str, value: Any) -> str | None:
     validate_string(option, value)
     # We need length in bytes, so encode utf8 first.
     if len(value.encode("utf-8")) > _MAX_APP_NAME_LENGTH:
-        raise ValueError(f"{option} must be <= 128 bytes")
+        raise ValueError(f"{option} must be <= {_MAX_APP_NAME_LENGTH} bytes")
     return value
 
 
