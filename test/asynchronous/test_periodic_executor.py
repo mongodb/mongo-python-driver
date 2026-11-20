@@ -19,6 +19,8 @@ from __future__ import annotations
 import asyncio
 import importlib
 import os
+import select
+import signal
 import sys
 import textwrap
 import threading
@@ -283,27 +285,45 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
     )
     def test_close_after_fork_while_notification_lock_held(self):
         # A fork while the notification lock is held inherits it locked in the
-        # child: the fork reset frees it and close() must not block.
+        # child: the fork reset frees it and close() must not block. The reset
+        # runs in the forked child itself: it releases every tracked lock,
+        # which is only safe where no other thread survives.
         from pymongo.lock import _forkable_locks, _release_locks
 
         executor = self._make_executor(interval=60.0, min_interval=0.05)
         executor.open()
         # The condition's lock participates in the fork reset.
         self.assertIn(executor._stop_condition._lock, _forkable_locks)
-        executor._stop_condition.acquire()  # Simulate the lock held at fork.
-        _release_locks()  # The after_in_child hook: the reset frees the lock.
-        self.assertTrue(executor._stop_condition.acquire(False))
-        executor._stop_condition.release()
-        done = threading.Event()
-
-        def child_close():
-            executor.close()  # Must not block on the inherited lock.
-            done.set()
-
-        closer = threading.Thread(target=child_close, daemon=True)
-        closer.start()
-        closer.join(timeout=2)
-        self.assertTrue(done.is_set(), "close() blocked on the notification lock")
+        executor._stop_condition.acquire()  # Held across the fork.
+        read_fd, write_fd = os.pipe()
+        pid = os.fork()
+        if pid == 0:
+            # The child runs the real hook: no other thread survives the
+            # fork, the state the reset is designed for.
+            outcome = b"ok"
+            try:
+                _release_locks()  # The after_in_child hook.
+                if not executor._stop_condition.acquire(False):
+                    outcome = b"locked"
+                else:
+                    executor._stop_condition.release()
+                    executor.close()  # Must not block on the inherited lock.
+            except BaseException:
+                outcome = b"error"
+            os.write(write_fd, outcome)
+            os._exit(0)
+        try:
+            ready, _, _ = select.select([read_fd], [], [], 5)
+            if not ready:
+                os.kill(pid, signal.SIGKILL)
+                self.fail("forked child hung: the reset or close blocked")
+            self.assertEqual(os.read(read_fd, 8), b"ok", "the reset did not free the lock")
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
+            os.waitpid(pid, 0)
+            executor._stop_condition.release()
+        executor.close()
         executor.join(timeout=2)
         self.assertTrue(executor._stopped)
 

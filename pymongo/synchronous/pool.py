@@ -518,7 +518,7 @@ class Pool(_AgnosticBasePool["Connection"]):
                 # leak them.
                 asyncio.shield(
                     asyncio.gather(
-                        *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets],
+                        *[conn.close_conn(ConnectionClosedReason.POOL_CLOSED) for conn in sockets],  # type: ignore[func-returns-value]
                         return_exceptions=True,
                     )
                 )
@@ -530,7 +530,7 @@ class Pool(_AgnosticBasePool["Connection"]):
             # Shielded as above: a cancelled reset would leak the sockets.
             asyncio.shield(
                 asyncio.gather(
-                    *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],
+                    *[conn.close_conn(ConnectionClosedReason.STALE) for conn in sockets],  # type: ignore[func-returns-value]
                     return_exceptions=True,
                 )
             )
