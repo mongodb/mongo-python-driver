@@ -24,7 +24,7 @@ import weakref
 from typing import Any
 
 from pymongo import _csot, _op_id
-from pymongo.lock import _create_lock
+from pymongo.lock import _create_condition, _create_lock
 
 _IS_SYNC = False
 
@@ -181,9 +181,11 @@ class PeriodicExecutor:
         self._skip_sleep = False
         self._thread_will_exit = False
         self._lock = _create_lock()
-        # Set by close() to end the run loop's wait immediately; a plain
-        # time.sleep would delay the thread's exit by up to min_interval.
-        self._stop_event = threading.Event()
+        # Wakes the run loop immediately on close(); the lock is fork-tracked.
+        self._stop_condition = _create_condition(_create_lock())
+        self._stop_flag = False
+        # The run-loop thread's ident, to detect a re-entrant close().
+        self._run_loop_ident: int | None = None
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
@@ -207,6 +209,8 @@ class PeriodicExecutor:
                     pass
             self._thread_will_exit = False
             self._stopped = False
+            # Reset even when reusing a live thread: a set flag would spin it.
+            self._stop_flag = False
         started: Any = False
         try:
             started = self._thread and self._thread.is_alive()
@@ -215,7 +219,6 @@ class PeriodicExecutor:
             pass
 
         if not started:
-            self._stop_event.clear()
             thread = threading.Thread(target=self._run, name=self._name)
             try:
                 # Subinterpreters do not allow daemon threads, so fall back
@@ -251,7 +254,25 @@ class PeriodicExecutor:
         callback; see monitor.py.
         """
         self._stopped = True
-        self._stop_event.set()
+        self._wake_waiter()
+
+    def _wake_waiter(self) -> None:
+        """Wake a thread waiting in _run() on _stop_condition.
+
+        close() also runs as a weakref callback during garbage collection, so
+        this never blocks: the notify is skipped when the lock is held or the
+        callback re-enters the waiter's thread, and the waiter notices the
+        flag at its next poll.
+        """
+        if self._run_loop_ident == threading.get_ident():
+            self._stop_flag = True
+            return
+        if self._stop_condition.acquire(False):
+            try:
+                self._stop_flag = True
+                self._stop_condition.notify_all()
+            finally:
+                self._stop_condition.release()
 
     def join(self, timeout: float | None = None) -> None:
         if self._thread is not None:
@@ -296,11 +317,17 @@ class PeriodicExecutor:
                 self._skip_sleep = False
             else:
                 deadline = time.monotonic() + self._interval
-                while not self._stopped and time.monotonic() < deadline:
-                    if self._stop_event.wait(self._min_interval):
-                        break  # Closed.
-                    if self._event:
-                        break  # Early wake.
+                self._run_loop_ident = threading.get_ident()
+                try:
+                    while not self._stopped and time.monotonic() < deadline:
+                        with self._stop_condition:
+                            if self._stop_flag:
+                                break  # Closed.
+                            self._stop_condition.wait(self._min_interval)
+                        if self._event:
+                            break  # Early wake.
+                finally:
+                    self._run_loop_ident = None
 
             self._event = False
 

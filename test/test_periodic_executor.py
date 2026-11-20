@@ -233,6 +233,91 @@ class TestPeriodicExecutor(UnitTest):
             "close() did not interrupt the executor's wait",
         )
 
+    def test_close_then_reopen_live_thread_respects_interval(self):
+        # A live-thread reopen must reset the stop signal, or the target spins.
+        if _IS_SYNC:
+            entered = threading.Event()
+            release = threading.Event()
+        else:
+            entered = asyncio.Event()
+            release = asyncio.Event()
+        calls = 0
+
+        def target():
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                entered.set()
+                if _IS_SYNC:
+                    release.wait(timeout=5)
+                else:
+                    assert isinstance(release, asyncio.Event)
+                    asyncio.wait_for(release.wait(), timeout=5)
+            return calls < 3
+
+        executor = self._make_executor(interval=60.0, min_interval=0.05, target=target)
+        executor.open()
+        if _IS_SYNC:
+            entered.wait(timeout=2)
+        else:
+            assert isinstance(entered, asyncio.Event)
+            asyncio.wait_for(entered.wait(), timeout=2)
+        # Close and reopen while the target is blocked: the thread is reused.
+        executor.close()
+        executor.open()
+        if _IS_SYNC:
+            release.set()
+        else:
+            release.set()
+        executor.join(timeout=3)
+        self.assertEqual(
+            calls,
+            1,
+            "the target did not respect its interval after a live reopen",
+        )
+
+    @unittest.skipUnless(_IS_SYNC, "fork semantics apply to the threaded executor")
+    def test_close_after_fork_while_notification_lock_held(self):
+        # A fork while the notification lock is held inherits it locked in the
+        # child: the fork reset frees it and close() must not block.
+        from pymongo.lock import _forkable_locks
+
+        executor = self._make_executor(interval=60.0, min_interval=0.05)
+        executor.open()
+        # The condition's lock participates in the fork reset.
+        self.assertIn(executor._stop_condition._lock, _forkable_locks)
+        executor._stop_condition.acquire()  # Simulate the lock held at fork.
+        done = threading.Event()
+
+        def child_close():
+            executor.close()  # Must not block on the inherited lock.
+            done.set()
+
+        closer = threading.Thread(target=child_close, daemon=True)
+        closer.start()
+        closer.join(timeout=2)
+        self.assertTrue(done.is_set(), "close() blocked on the notification lock")
+        executor._stop_condition.release()
+        executor.join(timeout=2)
+        self.assertTrue(executor._stopped)
+
+    @unittest.skipUnless(_IS_SYNC, "fork semantics apply to the threaded executor")
+    def test_close_reentrant_on_notification_lock(self):
+        # A GC callback can re-enter close() on the run-loop's own thread
+        # while the notification lock is held: it must not block.
+        executor = self._make_executor(interval=60.0, min_interval=0.05)
+        executor.open()
+        time.sleep(0.2)  # Let the executor's thread enter its wait.
+        # Simulate the callback: the run-loop ident, the lock held.
+        executor._run_loop_ident = threading.get_ident()
+        start = time.monotonic()
+        with executor._stop_condition:
+            executor.close()
+        elapsed = time.monotonic() - start
+        self.assertLess(elapsed, 2.0, "close() blocked on the notification lock")
+        executor.join(timeout=2)
+        self.assertTrue(executor._stopped)
+
     def test_close_from_thread_without_event_loop(self):
         # close() can run off the event loop as a weakref callback, where
         # asyncio.current_task() raises RuntimeError.
