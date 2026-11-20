@@ -198,6 +198,41 @@ class TestPeriodicExecutor(UnitTest):
         assert elapsed is not None
         self.assertLess(elapsed, 1.0, "join() from the executor's own task stalled")
 
+    def test_close_interrupts_wait(self):
+        # close() must end the executor's wait immediately: shutdown paths
+        # join the executor, and a wait that only ends at the next tick burns
+        # up to min_interval of the join budget on every close.
+        min_interval = 10.0
+        if _IS_SYNC:
+            started = threading.Event()
+        else:
+            started = asyncio.Event()
+
+        def target():
+            started.set()
+            return True
+
+        executor = self._make_executor(interval=60.0, min_interval=min_interval, target=target)
+        executor.open()
+        if _IS_SYNC:
+            started.wait(timeout=2)
+            settle = threading.Event()
+            settle.wait(0.1)  # Let the executor enter its wait.
+        else:
+            assert isinstance(started, asyncio.Event)
+            asyncio.wait_for(started.wait(), timeout=2)
+            time.sleep(0.1)
+
+        start = time.monotonic()
+        executor.close()
+        executor.join(timeout=15)
+        elapsed = time.monotonic() - start
+        self.assertLess(
+            elapsed,
+            min_interval / 2,
+            "close() did not interrupt the executor's wait",
+        )
+
     def test_close_from_thread_without_event_loop(self):
         # close() can run off the event loop as a weakref callback, where
         # asyncio.current_task() raises RuntimeError.

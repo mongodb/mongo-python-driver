@@ -65,7 +65,9 @@ if TYPE_CHECKING:
 
 _UNPACK_HEADER = struct.Struct("<iiii").unpack
 _UNPACK_COMPRESSION_HEADER = struct.Struct("<iiB").unpack
-_POLL_TIMEOUT = 0.5
+# How often a blocking read wakes to check the cancellation signal: this
+# bounds the delay of a cancelled read, e.g. a monitor joined during close.
+_POLL_TIMEOUT = 0.05
 # Errors raised by sockets (and TLS sockets) when in non-blocking mode.
 BLOCKING_IO_ERRORS = (BlockingIOError, *BLOCKING_IO_LOOKUP_ERROR, *ssl_support.BLOCKING_IO_ERRORS)
 

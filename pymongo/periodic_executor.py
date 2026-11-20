@@ -181,6 +181,9 @@ class PeriodicExecutor:
         self._skip_sleep = False
         self._thread_will_exit = False
         self._lock = _create_lock()
+        # Set by close() to end the run loop's wait immediately; a plain
+        # time.sleep would delay the thread's exit by up to min_interval.
+        self._stop_event = threading.Event()
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(name={self._name}) object at 0x{id(self):x}>"
@@ -212,6 +215,7 @@ class PeriodicExecutor:
             pass
 
         if not started:
+            self._stop_event.clear()
             thread = threading.Thread(target=self._run, name=self._name)
             try:
                 # Subinterpreters do not allow daemon threads, so fall back
@@ -247,6 +251,7 @@ class PeriodicExecutor:
         callback; see monitor.py.
         """
         self._stopped = True
+        self._stop_event.set()
 
     def join(self, timeout: float | None = None) -> None:
         if self._thread is not None:
@@ -292,7 +297,8 @@ class PeriodicExecutor:
             else:
                 deadline = time.monotonic() + self._interval
                 while not self._stopped and time.monotonic() < deadline:
-                    time.sleep(self._min_interval)
+                    if self._stop_event.wait(self._min_interval):
+                        break  # Closed.
                     if self._event:
                         break  # Early wake.
 
