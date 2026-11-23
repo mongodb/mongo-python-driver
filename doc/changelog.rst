@@ -2,6 +2,7 @@ Changelog
 =========
 
 Changes in Version 4.20.2 (unreleased)
+--------------------------------------
 
 Bug fixes
 .........
