@@ -10,6 +10,7 @@ toolchain root selected through PYMONGO_TOOLCHAIN_ROOT.
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import os
 import shutil
@@ -521,3 +522,17 @@ def test_main_pinned_self_overwrite_runs_from_copy(tmp_path, project):
     assert proc.returncode == 0, proc.stderr
     assert (bin_dir / "uv").exists()
     assert f"installed-from=uv{PIN}\n" in log.read_text()
+
+
+def test_setup_uv_supports_python_36():
+    """setup_uv.py runs under the host's system python3, 3.6 on RHEL8 (PYTHON-6286)."""
+    # feature_version checks grammar only; it does not validate __future__
+    # feature names, so scan for those imports explicitly.
+    tree = ast.parse(SETUP_UV.read_text(), filename=str(SETUP_UV), feature_version=(3, 6))
+    futures = [
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module == "__future__"
+        for alias in node.names
+    ]
+    assert not futures, f"Python 3.6 rejects these __future__ imports: {futures}"
