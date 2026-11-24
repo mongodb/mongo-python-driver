@@ -133,12 +133,32 @@ class TestMatchEvaluatorUtil(UnitTest):
         with self.assertRaises(AssertionError):
             self.match_evaluator.match_result({"x": {"$$lte": 5}}, {"x": 6})
 
+    def test_lte_whole_result(self):
+        # A special operator can match an entire operation result or an
+        # array element, in which case there is no field key to compare.
+        self.match_evaluator.match_result({"$$lte": 5}, 5)
+        self.match_evaluator.match_result([{"$$lte": 5}], [5])
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result({"$$lte": 5}, 6)
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result([{"$$lte": 5}], [6])
+
     def test_gte(self):
         # Added in schema version 1.29.
         self.match_evaluator.match_result({"x": {"$$gte": 5}}, {"x": 5})
         self.match_evaluator.match_result({"x": {"$$gte": 5}}, {"x": 6})
         with self.assertRaises(AssertionError):
             self.match_evaluator.match_result({"x": {"$$gte": 5}}, {"x": 3})
+
+    def test_gte_whole_result(self):
+        # A special operator can match an entire operation result or an
+        # array element, in which case there is no field key to compare.
+        self.match_evaluator.match_result({"$$gte": 5}, 5)
+        self.match_evaluator.match_result([{"$$gte": 5}], [5])
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result({"$$gte": 5}, 3)
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result([{"$$gte": 5}], [3])
 
 
 if __name__ == "__main__":

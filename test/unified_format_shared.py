@@ -449,14 +449,16 @@ class MatchEvaluatorUtil:
         self.test.assertEqual(expected_lsid, actual[key_to_compare])
 
     def _operation_lte(self, spec, actual, key_to_compare):
-        if key_to_compare not in actual:
+        if key_to_compare is not None and key_to_compare not in actual:
             self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
-        self.test.assertLessEqual(actual[key_to_compare], spec)
+        value = actual[key_to_compare] if key_to_compare else actual
+        self.test.assertLessEqual(value, spec)
 
     def _operation_gte(self, spec, actual, key_to_compare):
-        if key_to_compare not in actual:
+        if key_to_compare is not None and key_to_compare not in actual:
             self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
-        self.test.assertGreaterEqual(actual[key_to_compare], spec)
+        value = actual[key_to_compare] if key_to_compare else actual
+        self.test.assertGreaterEqual(value, spec)
 
     def _operation_matchAsDocument(self, spec, actual, key_to_compare):
         self._match_document(spec, json_util.loads(actual[key_to_compare]), False, test=True)
