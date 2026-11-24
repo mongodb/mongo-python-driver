@@ -443,32 +443,43 @@ def test_non_standard_cov_tasks_have_no_cov_companions():
 def test_fuzz_task_wiring():
     """Test the fuzz task wiring.
 
-    Two fuzz variants: the pr-tagged regression variant runs the reproducers on
-    every PR; the nightly variant (which also captures the corpus) carries no
-    "pr" tag, so PR patch builds never select it, while its default patchability
-    keeps it manually runnable (`evergreen patch --variant fuzz-rhel8 --task fuzz`).
+    Three fuzz flows: the pr-tagged regression variant runs the reproducers
+    on every PR; the nightly variant fuzzes for crash discovery; the weekly
+    variant also captures the corpus. The non-pr variants carry no "pr" tag,
+    so PR patch builds never select them, while their default patchability
+    keeps them manually runnable
+    (`evergreen patch --variant fuzz-rhel8 --task fuzz`).
     """
     tasks = [task for task in all_tasks() if "fuzz" in (task.tags or [])]
     assert [task.name for task in tasks if "pr" in (task.tags or [])] == ["fuzz-regression"]
-    assert [task.name for task in tasks if "pr" not in (task.tags or [])] == ["fuzz"]
+    assert [task.name for task in tasks if "pr" not in (task.tags or [])] == [
+        "fuzz",
+        "fuzz-capture",
+    ]
     variants = generate_config.create_fuzz_variants()
-    assert len(variants) == 2
-    regression, nightly = variants
+    assert len(variants) == 3
+    regression, nightly, capture_variant = variants
     assert variant_selects(regression, tasks[0])
     assert "pr" in (regression.tags or [])
     assert variant_selects(nightly, tasks[1])
     assert nightly.batchtime == generate_config_utils.BATCHTIME_DAY
+    assert variant_selects(capture_variant, tasks[2])
+    assert capture_variant.batchtime == generate_config_utils.BATCHTIME_WEEK
     # Webhook PR patch builds only select pr-tagged variants.
     assert not nightly.tags
+    assert not capture_variant.tags
+    # The nightly fuzz task is crash discovery only: its last command is
+    # the "run tests" FunctionCall, with no capture command.
+    assert tasks[1].commands[-1].func == "run tests"
     # The capture subprocess bootstraps the comment-bot github app, whose
     # secrets live in AWS Secrets Manager: it needs the assumed-role
     # credentials (as resync_specs and backport-pr also pass them).
-    capture = tasks[1].commands[-1]
+    capture = tasks[2].commands[-1]
     env_vars = capture.params["include_expansions_in_env"]
     for var in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"):
         assert var in env_vars, f"capture subprocess missing {var}"
     # The capture no longer keys off is_patch: manual patch runs must
-    # capture too, and the nightly variant never runs in a PR build.
+    # capture too, and the weekly variant never runs in a PR build.
     assert "is_patch" not in env_vars
 
 

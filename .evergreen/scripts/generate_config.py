@@ -389,12 +389,13 @@ def create_doctests_variants():
 
 
 def create_fuzz_variants():
-    # Two variants for the two fuzz flows: the regression reproducers run
-    # on every PR, the time-boxed fuzzing runs nightly. The nightly variant
-    # carries no "pr" tag, so PR patch builds never select it, while its
-    # default patchability keeps it manually runnable
-    # (`evergreen patch --variant fuzz-rhel8 --task fuzz`). The host needs
-    # CPython, which the rhel8 toolchain provides.
+    # Three variants for the three fuzz flows: the regression reproducers run
+    # on every PR, the time-boxed fuzzing for crash discovery runs nightly,
+    # and the weekly variant also captures the corpus (opens the automated
+    # [Fuzz Corpus] PR). The non-pr variants carry no "pr" tag, so PR patch
+    # builds never select them, while their default patchability keeps them
+    # manually runnable (`evergreen patch --variant fuzz-rhel8 --task fuzz`).
+    # The host needs CPython, which the rhel8 toolchain provides.
     host = HOSTS["rhel8"]
     return [
         create_variant(
@@ -402,6 +403,12 @@ def create_fuzz_variants():
         ),
         create_variant(
             [".fuzz-nightly"], get_variant_name("Fuzz", host), host=host, batchtime=BATCHTIME_DAY
+        ),
+        create_variant(
+            [".fuzz-weekly"],
+            get_variant_name("Fuzz Capture", host),
+            host=host,
+            batchtime=BATCHTIME_WEEK,
         ),
     ]
 
@@ -722,8 +729,16 @@ def create_fuzz_tasks():
     test_func = FunctionCall(func="run tests", vars=test_vars)
     tasks = [EvgTask(name="fuzz-regression", tags=tags, commands=[test_func])]
 
-    # Time-boxed fuzzing against the generated seed corpus.
+    # Time-boxed fuzzing against the generated seed corpus, for crash
+    # discovery; corpus capture moved to the weekly fuzz-capture task.
     tags = ["fuzz", "fuzz-nightly"]
+    test_vars = dict(TEST_NAME="fuzz", SUB_TEST_NAME="fuzz", UV_PYTHON="3.13")
+    test_func = FunctionCall(func="run tests", vars=test_vars)
+    tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func]))
+
+    # The weekly capture task fuzzes too (the capture reads the task-local
+    # fuzz-scratch/ corpus, so it must stay attached to a fuzzing run).
+    tags = ["fuzz", "fuzz-weekly"]
     test_vars = dict(TEST_NAME="fuzz", SUB_TEST_NAME="fuzz", UV_PYTHON="3.13")
     test_func = FunctionCall(func="run tests", vars=test_vars)
     # PYTHON-6178: while the scratch corpus still exists, capture the new
@@ -743,7 +758,7 @@ def create_fuzz_tasks():
             "AWS_SESSION_TOKEN",
         ],
     )
-    tasks.append(EvgTask(name="fuzz", tags=tags, commands=[test_func, capture_cmd]))
+    tasks.append(EvgTask(name="fuzz-capture", tags=tags, commands=[test_func, capture_cmd]))
     return tasks
 
 
