@@ -132,6 +132,10 @@ class TestMatchEvaluatorUtil(UnitTest):
         self.match_evaluator.match_result({"x": {"$$lte": 5}}, {"x": 3})
         with self.assertRaises(AssertionError):
             self.match_evaluator.match_result({"x": {"$$lte": 5}}, {"x": 6})
+        # An empty field name is a valid field key, not whole-result matching.
+        self.match_evaluator.match_result({"": {"$$lte": 5}}, {"": 5})
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result({"": {"$$lte": 5}}, {"": 6})
 
     def test_lte_whole_result(self):
         # A special operator can match an entire operation result or an
@@ -149,6 +153,10 @@ class TestMatchEvaluatorUtil(UnitTest):
         self.match_evaluator.match_result({"x": {"$$gte": 5}}, {"x": 6})
         with self.assertRaises(AssertionError):
             self.match_evaluator.match_result({"x": {"$$gte": 5}}, {"x": 3})
+        # An empty field name is a valid field key, not whole-result matching.
+        self.match_evaluator.match_result({"": {"$$gte": 5}}, {"": 5})
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result({"": {"$$gte": 5}}, {"": 3})
 
     def test_gte_whole_result(self):
         # A special operator can match an entire operation result or an

@@ -451,13 +451,13 @@ class MatchEvaluatorUtil:
     def _operation_lte(self, spec, actual, key_to_compare):
         if key_to_compare is not None and key_to_compare not in actual:
             self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
-        value = actual[key_to_compare] if key_to_compare else actual
+        value = actual[key_to_compare] if key_to_compare is not None else actual
         self.test.assertLessEqual(value, spec)
 
     def _operation_gte(self, spec, actual, key_to_compare):
         if key_to_compare is not None and key_to_compare not in actual:
             self.test.fail(f"Actual command is missing the {key_to_compare} field: {spec}")
-        value = actual[key_to_compare] if key_to_compare else actual
+        value = actual[key_to_compare] if key_to_compare is not None else actual
         self.test.assertGreaterEqual(value, spec)
 
     def _operation_matchAsDocument(self, spec, actual, key_to_compare):
