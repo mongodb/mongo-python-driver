@@ -1,8 +1,9 @@
 #!/bin/bash
 # PYTHON-6178: capture coverage-increasing inputs from a fuzz run and open
 # an automated PR growing fuzz/corpus/. Runs as the last command of the
-# nightly "fuzz" task, while the scratch corpus exists; manual
-# `evergreen patch --variant fuzz-rhel8 --task fuzz` runs capture too.
+# weekly "fuzz-capture" task, while the scratch corpus exists; manual
+# `evergreen patch --variant fuzz-capture-rhel8 --task fuzz-capture` runs
+# capture too.
 set -eu
 
 # Same environment as just.sh: venv on PATH for a modern Python.

@@ -77,7 +77,9 @@ default mutation cap of 4096 bytes would keep the nightly away from
 long-string and many-field code paths.
 
 Run the targets against the corpus. Time-boxed runs suit CI; this runs on
-Evergreen as the `fuzz` sub-test, daily:
+Evergreen as the `fuzz` sub-test, daily. The nightly `fuzz` task is crash
+discovery only; the weekly `fuzz-capture` task fuzzes and captures the
+corpus (below):
 
 ```bash
 just setup-tests fuzz fuzz
@@ -95,15 +97,15 @@ after the corpus directory. The `Failed to find function __sanitizer_*`
 startup warnings are benign libFuzzer symbol probes on uninstrumented runs;
 native ASan-instrumented fuzzing is tracked separately (PYTHON-6169).
 
-### Captured corpus (nightly)
+### Captured corpus (weekly)
 
-The nightly run seeds from the spec seed corpus plus every unit in
+The weekly capture run seeds from the spec seed corpus plus every unit in
 `corpus/`, and libFuzzer writes each coverage-increasing ("interesting")
 input it discovers back into its corpus directory. After the targets
-finish, the `fuzz` task captures those new units, replays them through
-every target once so a unit that fails any target is never published (it
-stays in `fuzz-scratch/` for triage), and opens an automated
-"[Fuzz Corpus]" PR against main (PYTHON-6178). Later nights
+finish, the `fuzz-capture` task captures those new units, replays them
+through every target once so a unit that fails any target is never
+published (it stays in `fuzz-scratch/` for triage), and opens an automated
+"[Fuzz Corpus]" PR against main (PYTHON-6178). Later weeks
 build on prior discoveries instead of restarting from the spec seeds.
 
 Growth is bounded by per-unit and per-run caps, overridable on Evergreen:
@@ -115,7 +117,7 @@ Growth is bounded by per-unit and per-run caps, overridable on Evergreen:
 Units over a cap are discarded, not deferred: they are never persisted, so
 the fuzzer may re-derive them on later nights. A run that finds nothing new
 opens no PR. The capture deduplicates against `main` only, so while a
-`[Fuzz Corpus]` PR is open, later nights can re-capture its still-pending
+`[Fuzz Corpus]` PR is open, later weeks can re-capture its still-pending
 units and the PRs overlap until one merges (digest-named files keep that
 conflict-free). Crashing inputs are excluded:
 they land in `fuzz-scratch/` as `crash-*` artifacts and follow the
@@ -141,11 +143,11 @@ gives atheris a graceful exit so coverage.py can flush its report.
 
 ```
 build_corpus.py     Seed corpus builder (mirrors the Go driver's build-oss-fuzz-corpus)
-capture_corpus.py   Nightly capture of new coverage-increasing inputs (PYTHON-6178)
+capture_corpus.py   Weekly capture of new coverage-increasing inputs (PYTHON-6178)
 fuzz_decode.py      Fuzz target: bson.decode()
 fuzz_decode_all.py  Fuzz target: bson.decode_all()
 fuzz_is_valid.py    Fuzz target: bson.is_valid()
 fuzz_shared.py      Code shared by the fuzz targets
-corpus/             Captured coverage-increasing inputs; grown by automated nightly PRs
+corpus/             Captured coverage-increasing inputs; grown by automated weekly PRs
 regression/         Known bug reproducers; run with the seed corpus on PRs
 ```
