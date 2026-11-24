@@ -54,6 +54,7 @@ jobs:
     outputs:
       create: ${{ steps.compute.outputs.create }}
       branch_name: ${{ steps.compute.outputs.branch_name }}
+      branch_version: ${{ steps.compute.outputs.branch_version }}
     steps:
       - name: Compute the release branch name
         id: compute
@@ -65,12 +66,16 @@ jobs:
           # A release branch is only created for a new major/minor line (X.Y.0);
           # an explicitly provided branch_name (manual dispatch) always wins.
           # Dry runs pass a ref rather than a version, so they never create branches.
+          # The branch is set to the next patch dev version (4.17.0 -> 4.17.1.dev0).
           if [ -n "$BRANCH_NAME" ]; then
             branch_name="$BRANCH_NAME"
-          elif [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.0$ ]]; then
-            branch_name="v$(echo "$VERSION" | cut -d. -f1-2)"
+            branch_version="$VERSION"
+          elif [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.0$ ]]; then
+            branch_name="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+            branch_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.1.dev0"
           else
             branch_name=""
+            branch_version=""
           fi
           if [ -n "$branch_name" ]; then
             echo "create=true" >> "$GITHUB_OUTPUT"
@@ -78,6 +83,7 @@ jobs:
             echo "create=false" >> "$GITHUB_OUTPUT"
           fi
           echo "branch_name=$branch_name" >> "$GITHUB_OUTPUT"
+          echo "branch_version=$branch_version" >> "$GITHUB_OUTPUT"
 
   create-branch:
     needs: release-branch
@@ -125,7 +131,7 @@ jobs:
         id: create-branch
         with:
           branch_name: ${{ needs.release-branch.outputs.branch_name }}
-          version: ${{ inputs.version }}
+          version: ${{ needs.release-branch.outputs.branch_version }}
           base_ref: ${{ inputs.base_ref }}
           push_changes: ${{ inputs.push_changes }}
           version_bump_script: hatch version
