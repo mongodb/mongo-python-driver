@@ -404,6 +404,26 @@ class TestSearchIndexProse(SearchIndexIntegrationBase):
             )
         self.assertIn("Attribute mappings missing.", e.exception.details["errmsg"])
 
+    @flaky(reason="PYTHON-6056", affects_cpython_linux=True)
+    def test_case_9(self):
+        """Drivers use server default for unspecified name ("default") and type ("search")."""
+        # Create a new search index on ``self.coll0`` without specifying the name or type.
+        model = {"definition": {"mappings": {"dynamic": True}}}
+        resp = self.coll0.create_search_index(model)
+        self.addCleanup(self.drop_and_wait, self.coll0, "default")
+
+        # Assert that the command returns the name of the index: ``"default"``.
+        self.assertEqual(resp, "default")
+
+        # Run ``self.coll0.listSearchIndexes()`` repeatedly every 5 seconds until the following
+        # condition is satisfied and store the value in a variable ``index``:
+        # An index with the ``name`` of ``default`` is present and the index has a field
+        # ``queryable`` with a value of ``true``.
+        index = self.wait_for_ready(self.coll0, "default")
+
+        # Assert that ``index`` has a property ``type`` whose value is ``search``.
+        self.assertEqual(index["type"], "search")
+
 
 globals().update(
     generate_test_classes(
