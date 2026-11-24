@@ -79,6 +79,8 @@ SANITIZER_FILES = [
 # (MONGOCRYPT-938).
 LIBMONGOCRYPT_VERSION = "1.21.0"
 
+_HTTP_OK = 200
+
 
 def is_set(var: str) -> bool:
     value = os.environ.get(var, "")
@@ -154,7 +156,7 @@ def setup_libmongocrypt():
 
     LOGGER.info(f"Fetching {url}...")
     with request.urlopen(request.Request(url), timeout=15.0) as response:  # noqa: S310
-        if response.status == 200:
+        if response.status == _HTTP_OK:
             with Path("libmongocrypt.tar.gz").open("wb") as f:
                 f.write(response.read())
             Path("libmongocrypt").mkdir()
@@ -190,6 +192,10 @@ def load_config_from_file(path: str | Path) -> dict[str, str]:
     return config
 
 
+# Minimum major OpenSSL version to use the system library instead of a local build.
+_MIN_SYSTEM_OPENSSL_MAJOR = 3
+
+
 def ensure_openssl3() -> None:
     """Build a local OpenSSL 3 when the system library is older (PYTHON-6167).
 
@@ -202,7 +208,7 @@ def ensure_openssl3() -> None:
         version = subprocess.run(  # noqa: S603
             [openssl, "version"], capture_output=True, text=True, check=True
         ).stdout.split()[1]
-        if int(version.split(".")[0]) >= 3:
+        if int(version.split(".")[0]) >= _MIN_SYSTEM_OPENSSL_MAJOR:
             return
     LOGGER.info("No system OpenSSL 3: building one into the drivers-evergreen-tools prefix...")
     env = subprocess.run(  # noqa: S603

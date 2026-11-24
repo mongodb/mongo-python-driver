@@ -64,6 +64,7 @@ from requests import post as _post
 from requests.exceptions import RequestException as _RequestException
 
 from pymongo import _csot
+from pymongo.errors import _HTTP_OK
 from pymongo.ocsp_cache import _next_update, _this_update
 
 if TYPE_CHECKING:
@@ -327,7 +328,7 @@ def _get_ocsp_response(
         except _RequestException as exc:
             _LOGGER.debug("HTTP request failed: %s", exc)
             return None
-        if response.status_code != 200:
+        if response.status_code != _HTTP_OK:
             _LOGGER.debug("HTTP request returned %d", response.status_code)
             return None
         ocsp_response = _load_der_ocsp_response(response.content)

@@ -35,6 +35,7 @@ from pymongo.asynchronous.command_runner import (
 )
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.helpers import _handle_reauth
+from pymongo.common import WIRE_VERSION_8_0
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
@@ -385,7 +386,7 @@ class _AsyncClientBulk(_AgnosticClientBulkBase):
             conn: AsyncConnection,
             retryable: bool,
         ) -> None:
-            if conn.max_wire_version < 25:
+            if conn.max_wire_version < WIRE_VERSION_8_0:
                 raise InvalidOperation(
                     "MongoClient.bulk_write requires MongoDB server version 8.0+."
                 )
@@ -485,7 +486,7 @@ class _AsyncClientBulk(_AgnosticClientBulkBase):
 
         if not self.write_concern.acknowledged:
             async with await self.client._conn_for_writes(session, operation) as connection:
-                if connection.max_wire_version < 25:
+                if connection.max_wire_version < WIRE_VERSION_8_0:
                     raise InvalidOperation(
                         "MongoClient.bulk_write requires MongoDB server version 8.0+."
                     )

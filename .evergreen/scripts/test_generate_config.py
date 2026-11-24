@@ -33,6 +33,11 @@ SUITE_FAMILIES = {
     "test-storage-inmemory": "default",
 }
 
+_MIN_PR_TASKS = 2
+_MAX_STANDARD_PR_TASKS = 5
+_MAX_NEWER_STANDARD_PR_TASKS = 3
+_FUZZ_VARIANT_COUNT = 2
+
 
 def all_tasks():
     tasks = []
@@ -251,7 +256,7 @@ def test_pr_tasks_cover_version_boundaries():
         assert seen == set(pythons), (
             f"{version} pr tasks pin {sorted(seen)}, want {sorted(pythons)}"
         )
-        assert len(tasks) >= 2, f"{version} has too few server-version pr tasks"
+        assert len(tasks) >= _MIN_PR_TASKS, f"{version} has too few server-version pr tasks"
 
 
 def test_amazon2023_no_toolchain_variant_runs_on_prs():
@@ -345,7 +350,9 @@ def test_standard_family_pr_budget():
     ubuntu22 compression filter).
     """
     tasks = [task for task in pr_tasks() if "test-standard" in (task.tags or [])]
-    assert len(tasks) <= 5, f"too many test-standard PR tasks: {[t.name for t in tasks]}"
+    assert len(tasks) <= _MAX_STANDARD_PR_TASKS, (
+        f"too many test-standard PR tasks: {[t.name for t in tasks]}"
+    )
     newer = [
         task
         for task in tasks
@@ -354,7 +361,9 @@ def test_standard_family_pr_budget():
             for tag in ("python-3.14", "python-3.14t", "python-3.15", "python-3.15t")
         )
     ]
-    assert len(newer) <= 3, f"too many 3.14+ test-standard PR tasks: {[t.name for t in newer]}"
+    assert len(newer) <= _MAX_NEWER_STANDARD_PR_TASKS, (
+        f"too many 3.14+ test-standard PR tasks: {[t.name for t in newer]}"
+    )
 
 
 def test_pr_tasks_run_coverage():
@@ -452,7 +461,7 @@ def test_fuzz_task_wiring():
     assert [task.name for task in tasks if "pr" in (task.tags or [])] == ["fuzz-regression"]
     assert [task.name for task in tasks if "pr" not in (task.tags or [])] == ["fuzz"]
     variants = generate_config.create_fuzz_variants()
-    assert len(variants) == 2
+    assert len(variants) == _FUZZ_VARIANT_COUNT
     regression, nightly = variants
     assert variant_selects(regression, tasks[0])
     assert "pr" in (regression.tags or [])

@@ -56,6 +56,12 @@ from pymongo.ssl_support import (
     BLOCKING_IO_WRITE_ERROR,
 )
 
+# MongoDB wire protocol header sizes.
+_MESSAGE_HEADER_SIZE = 16
+_COMPRESSION_HEADER_SIZE = 9
+_OP_COMPRESSED = 2012
+_OP_COMPRESSED_MESSAGE_SIZE = _MESSAGE_HEADER_SIZE + _COMPRESSION_HEADER_SIZE
+
 if TYPE_CHECKING:
     import socket
     from collections.abc import Callable
@@ -560,7 +566,7 @@ class PyMongoProtocol(BufferedProtocol):
             return
         if self._expecting_header:
             self._header_index += nbytes
-            if self._header_index >= 16:
+            if self._header_index >= _MESSAGE_HEADER_SIZE:
                 self._expecting_header = False
                 try:
                     (
@@ -576,7 +582,7 @@ class PyMongoProtocol(BufferedProtocol):
             return
         if self._expecting_compression:
             self._compression_index += nbytes
-            if self._compression_index >= 9:
+            if self._compression_index >= _COMPRESSION_HEADER_SIZE:
                 self._expecting_compression = False
                 (
                     self._op_code,
@@ -626,17 +632,18 @@ class PyMongoProtocol(BufferedProtocol):
         """Unpack a MongoDB Wire Protocol header."""
         length, _, response_to, op_code = _UNPACK_HEADER(self._header)
         expecting_compression = False
-        if op_code == 2012:  # OP_COMPRESSED
-            if length <= 25:
+        if op_code == _OP_COMPRESSED:  # OP_COMPRESSED
+            if length <= _OP_COMPRESSED_MESSAGE_SIZE:
                 raise ProtocolError(
-                    f"Message length ({length!r}) not longer than standard "
-                    f"OP_COMPRESSED message header size (25)"
+                    f"Message length ({length!r}) not longer than standard OP_COMPRESSED "
+                    f"message header size ({_OP_COMPRESSED_MESSAGE_SIZE})"
                 )
             expecting_compression = True
             length -= 9
-        if length <= 16:
+        if length <= _MESSAGE_HEADER_SIZE:
             raise ProtocolError(
-                f"Message length ({length!r}) not longer than standard message header size (16)"
+                f"Message length ({length!r}) not longer than standard message header size "
+                f"({_MESSAGE_HEADER_SIZE})"
             )
         if length > self._max_message_size:
             raise ProtocolError(
@@ -753,7 +760,7 @@ def receive_message(
     if request_id is not None:
         if request_id != response_to:
             raise ProtocolError(f"Got response id {response_to!r} but expected {request_id!r}")
-    if length <= 16:
+    if length <= _MESSAGE_HEADER_SIZE:
         raise ProtocolError(
             f"Message length ({length!r}) not longer than standard message header size (16)"
         )
@@ -763,11 +770,11 @@ def receive_message(
             f"message size ({max_message_size!r})"
         )
     data: memoryview | bytes
-    if op_code == 2012:
-        if length <= 25:
+    if op_code == _OP_COMPRESSED:
+        if length <= _OP_COMPRESSED_MESSAGE_SIZE:
             raise ProtocolError(
-                f"Message length ({length!r}) not longer than standard "
-                f"OP_COMPRESSED message header size (25)"
+                f"Message length ({length!r}) not longer than standard OP_COMPRESSED "
+                f"message header size ({_OP_COMPRESSED_MESSAGE_SIZE})"
             )
         op_code, uncompressed_size, compressor_id = _UNPACK_COMPRESSION_HEADER(
             receive_data(conn, 9, deadline)

@@ -126,6 +126,7 @@ from typing import (
     cast,
 )
 
+from bson import _INT32_MAX, _INT32_MIN
 from bson.binary import ALL_UUID_SUBTYPES, UUID_SUBTYPE, Binary, UuidRepresentation
 from bson.code import Code
 from bson.codec_options import CodecOptions, DatetimeConversion
@@ -146,6 +147,12 @@ from bson.regex import Regex
 from bson.son import RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
+
+# Legacy mongoexport subtype values use the top 32 bits for a negative sign.
+_MONGOEXPORT_SUBTYPE_MASK = 0xFFFFFF80
+_TZ_OFFSET_HH_COLON_MM_LENGTH = 6
+_TZ_OFFSET_HHMM_LENGTH = 5
+_TZ_OFFSET_HH_LENGTH = 3
 
 _RE_OPT_TABLE = {
     "i": re.IGNORECASE,
@@ -240,8 +247,6 @@ if TYPE_CHECKING:
     _BASE_CLASS = CodecOptions[MutableMapping[str, Any]]
 else:
     _BASE_CLASS = CodecOptions
-
-_INT32_MAX = 2**31
 
 
 class JSONOptions(_BASE_CLASS):
@@ -574,7 +579,7 @@ def _parse_legacy_binary(doc: Any, json_options: JSONOptions) -> Binary | uuid.U
     if isinstance(doc["$type"], int):
         doc["$type"] = "{:02x}".format(doc["$type"])
     subtype = int(doc["$type"], 16)
-    if subtype >= 0xFFFFFF80:  # Handle mongoexport values
+    if subtype >= _MONGOEXPORT_SUBTYPE_MASK:  # Handle mongoexport values
         subtype = int(doc["$type"][6:], 16)
     data = base64.b64decode(doc["$binary"].encode())
     return _binary_or_uuid(data, subtype, json_options)
@@ -586,9 +591,9 @@ def _parse_canonical_binary(doc: Any, json_options: JSONOptions) -> Binary | uui
     subtype = binary["subType"]
     if not isinstance(b64, str):
         raise TypeError(f"$binary base64 must be a string: {doc}")
-    if not isinstance(subtype, str) or len(subtype) > 2:
+    if not isinstance(subtype, str) or len(subtype) > 2:  # noqa: PLR2004
         raise TypeError(f"$binary subType must be a string at most 2 characters: {doc}")
-    if len(binary) != 2:
+    if len(binary) != 2:  # noqa: PLR2004
         raise TypeError(f'$binary must include only "base64" and "subType" components: {doc}')
 
     data = base64.b64decode(b64.encode())
@@ -639,12 +644,12 @@ def _parse_canonical_datetime(
         )
 
         if offset and offset != "Z":
-            if len(offset) == 6:
+            if len(offset) == _TZ_OFFSET_HH_COLON_MM_LENGTH:
                 hours, minutes = offset[1:].split(":")
                 secs = int(hours) * 3600 + int(minutes) * 60
-            elif len(offset) == 5:
+            elif len(offset) == _TZ_OFFSET_HHMM_LENGTH:
                 secs = int(offset[1:3]) * 3600 + int(offset[3:]) * 60
-            elif len(offset) == 3:
+            elif len(offset) == _TZ_OFFSET_HH_LENGTH:
                 secs = int(offset[1:3]) * 3600
             if offset[0] == "-":
                 secs *= -1
@@ -692,7 +697,7 @@ def _parse_canonical_regex(doc: Any, dummy0: Any) -> Regex[str]:
     regex = doc["$regularExpression"]
     if len(doc) != 1:
         raise TypeError(f"Bad $regularExpression, extra field(s): {doc}")
-    if len(regex) != 2:
+    if len(regex) != 2:  # noqa: PLR2004
         raise TypeError(
             f'Bad $regularExpression must include only "pattern and "options" components: {doc}'
         )
@@ -727,7 +732,7 @@ def _parse_canonical_dbpointer(doc: Any, dummy0: Any) -> Any:
             raise TypeError(f"Bad $dbPointer, extra field $db: {dbref_doc}")
         if not isinstance(dbref.id, ObjectId):
             raise TypeError(f"Bad $dbPointer, $id must be an ObjectId: {dbref_doc}")
-        if len(dbref_doc) != 2:
+        if len(dbref_doc) != 2:  # noqa: PLR2004
             raise TypeError(f"Bad $dbPointer, extra field(s) in DBRef: {dbref_doc}")
         return dbref
     else:
@@ -891,7 +896,7 @@ def _encode_regex(obj: Any, json_options: JSONOptions) -> dict:  # type: ignore[
 
 def _encode_int(obj: int, json_options: JSONOptions) -> Any:
     if json_options.json_mode == JSONMode.CANONICAL:
-        if -_INT32_MAX <= obj < _INT32_MAX:
+        if _INT32_MIN <= obj <= _INT32_MAX:
             return {"$numberInt": str(obj)}
         return {"$numberLong": str(obj)}
     return obj

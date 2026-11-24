@@ -100,6 +100,7 @@ from bson.binary import (
     ALL_UUID_SUBTYPES,
     CSHARP_LEGACY,
     JAVA_LEGACY,
+    OLD_BINARY_SUBTYPE,
     OLD_UUID_SUBTYPE,
     STANDARD,
     UUID_SUBTYPE,
@@ -229,6 +230,12 @@ BSONLON = b"\x12"  # 64bit int
 BSONDEC = b"\x13"  # Decimal128
 BSONMIN = b"\xff"  # Min key
 BSONMAX = b"\x7f"  # Max key
+
+_INT32_MIN = -(2**31)
+_INT32_MAX = 2**31 - 1
+_INT32_SIZE = 4
+# A BSON document is at minimum the 4-byte length prefix and the EOO byte.
+_MIN_DOCUMENT_SIZE = 5
 
 
 _UNPACK_FLOAT_FROM = struct.Struct("<d").unpack_from
@@ -394,10 +401,10 @@ def _get_binary(
     """Decode a BSON binary to bson.binary.Binary or python UUID."""
     length, subtype = _UNPACK_LENGTH_SUBTYPE_FROM(data, position)
     position += 5
-    if subtype == 2:
+    if subtype == OLD_BINARY_SUBTYPE:
         length2 = _UNPACK_INT_FROM(data, position)[0]
-        position += 4
-        if length2 != length - 4:
+        position += _INT32_SIZE
+        if length2 != length - _INT32_SIZE:
             raise InvalidBSON("invalid binary (st 2) - lengths don't match!")
         length = length2
     end = position + length
@@ -786,7 +793,7 @@ def _encode_text(name: bytes, value: str, dummy0: Any, dummy1: Any) -> bytes:
 def _encode_binary(name: bytes, value: Binary, dummy0: Any, dummy1: Any) -> bytes:
     """Encode bson.binary.Binary."""
     subtype = value.subtype
-    if subtype == 2:
+    if subtype == OLD_BINARY_SUBTYPE:
         value = _PACK_INT(len(value)) + value  # type: ignore
     return b"\x05" + name + _PACK_LENGTH_SUBTYPE(len(value), subtype) + value
 
@@ -864,7 +871,7 @@ def _encode_code(name: bytes, value: Code, dummy: Any, opts: CodecOptions[Any]) 
 
 def _encode_int(name: bytes, value: int, dummy0: Any, dummy1: Any) -> bytes:
     """Encode a python int."""
-    if -2147483648 <= value <= 2147483647:
+    if _INT32_MIN <= value <= _INT32_MAX:
         return b"\x10" + name + _PACK_INT(value)
     else:
         try:
@@ -1137,10 +1144,10 @@ def _decode_all(data: _ReadableBuffer, opts: CodecOptions[_DocumentType]) -> lis
     try:
         while position < data_len:
             # A document is at minimum 5 bytes: the 4-byte size and the EOO.
-            if data_len - position < 5:
+            if data_len - position < _MIN_DOCUMENT_SIZE:
                 raise InvalidBSON("not enough data for a BSON document")
             obj_size = _UNPACK_INT_FROM(data, position)[0]
-            if obj_size < 5:
+            if obj_size < _MIN_DOCUMENT_SIZE:
                 raise InvalidBSON("invalid message size")
             if data_len - position < obj_size:
                 raise InvalidBSON("objsize too large")
@@ -1397,12 +1404,12 @@ def decode_file_iter(
     opts = codec_options or DEFAULT_CODEC_OPTIONS
     while True:
         # Read size of next object.
-        size_data: Any = file_obj.read(4)
+        size_data: Any = file_obj.read(_INT32_SIZE)
         if not size_data:
             break  # Finished with file normally.
-        elif len(size_data) != 4:
+        elif len(size_data) != _INT32_SIZE:
             raise InvalidBSON("cut off in middle of objsize")
-        obj_size = _UNPACK_INT_FROM(size_data, 0)[0] - 4
+        obj_size = _UNPACK_INT_FROM(size_data, 0)[0] - _INT32_SIZE
         elements = size_data + file_obj.read(max(0, obj_size))
         yield _bson_to_dict(elements, opts)  # type:ignore[misc]
 
