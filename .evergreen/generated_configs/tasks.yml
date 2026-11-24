@@ -221,6 +221,14 @@ tasks:
           TEST_NAME: fuzz
           SUB_TEST_NAME: fuzz
           UV_PYTHON: "3.13"
+    tags: [fuzz, fuzz-nightly]
+  - name: fuzz-capture
+    commands:
+      - func: run tests
+        vars:
+          TEST_NAME: fuzz
+          SUB_TEST_NAME: fuzz
+          UV_PYTHON: "3.13"
       - command: subprocess.exec
         params:
           binary: bash
@@ -234,7 +242,7 @@ tasks:
             - AWS_SECRET_ACCESS_KEY
             - AWS_SESSION_TOKEN
         type: test
-    tags: [fuzz, fuzz-nightly]
+    tags: [fuzz, fuzz-weekly]
 
   # Getdata tests
   - name: getdata

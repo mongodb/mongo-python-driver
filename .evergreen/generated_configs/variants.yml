@@ -215,6 +215,13 @@ buildvariants:
     run_on:
       - rhel8.10-small
     batchtime: 1440
+  - name: fuzz-capture-rhel8
+    tasks:
+      - name: .fuzz-weekly
+    display_name: Fuzz Capture RHEL8
+    run_on:
+      - rhel8.10-small
+    batchtime: 10080
 
   # Green framework tests
   - name: green-gevent-rhel8

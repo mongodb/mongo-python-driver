@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -24,9 +25,11 @@ from bson import ObjectId
 from test import UnitTest, unittest
 from test.asynchronous.unified_format import (
     MatchEvaluatorUtil,
+    UnifiedSpecTestMixinV1,
     generate_test_classes,
     get_test_path,
 )
+from test.version import Version
 
 _IS_SYNC = False
 
@@ -53,6 +56,41 @@ globals().update(
         ],
     )
 )
+
+
+class TestSchemaVersionCoverage(UnitTest):
+    def test_all_spec_files_are_supported(self):
+        # PYTHON-6293: a spec resync that bumps a file's schemaVersion past
+        # the runner's SCHEMA_VERSION otherwise only surfaces as a runtime
+        # failure in asyncSetUp. Every consumed spec file must declare a
+        # schema version the runner supports.
+        # test/unified-test-format/invalid/ is not consumed by the runner and
+        # valid-fail/ files (including schemaVersion-unsupported.json) are
+        # deliberately invalid, so both are skipped.
+        runner_version = UnifiedSpecTestMixinV1.SCHEMA_VERSION
+        root = get_test_path()
+        skipped = (
+            os.path.join("unified-test-format", "invalid"),
+            os.path.join("unified-test-format", "valid-fail"),
+        )
+        unsupported = []
+        for dirpath, dirnames, filenames in os.walk(root):
+            rel = os.path.relpath(dirpath, root)
+            if any(rel == prefix or rel.startswith(prefix + os.sep) for prefix in skipped):
+                continue
+            for filename in sorted(filenames):
+                if not filename.endswith(".json"):
+                    continue
+                with open(os.path.join(dirpath, filename)) as fpath:
+                    spec = json.load(fpath)
+                version = spec.get("schemaVersion") if isinstance(spec, dict) else None
+                if not isinstance(version, str):
+                    continue
+                parsed = Version.from_string(version)
+                if parsed[0] != runner_version[0] or parsed > runner_version:
+                    unsupported.append((os.path.join(rel, filename), version))
+
+        self.assertEqual(unsupported, [])
 
 
 class TestMatchEvaluatorUtil(UnitTest):
@@ -87,6 +125,48 @@ class TestMatchEvaluatorUtil(UnitTest):
                 "ns": {"db": "change-stream-tests", "coll": "test"},
             },
         )
+
+    def test_lte(self):
+        # Added in schema version 1.9.
+        self.match_evaluator.match_result({"x": {"$$lte": 5}}, {"x": 5})
+        self.match_evaluator.match_result({"x": {"$$lte": 5}}, {"x": 3})
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result({"x": {"$$lte": 5}}, {"x": 6})
+        # An empty field name is a valid field key, not whole-result matching.
+        self.match_evaluator.match_result({"": {"$$lte": 5}}, {"": 5})
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result({"": {"$$lte": 5}}, {"": 6})
+
+    def test_lte_whole_result(self):
+        # A special operator can match an entire operation result or an
+        # array element, in which case there is no field key to compare.
+        self.match_evaluator.match_result({"$$lte": 5}, 5)
+        self.match_evaluator.match_result([{"$$lte": 5}], [5])
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result({"$$lte": 5}, 6)
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result([{"$$lte": 5}], [6])
+
+    def test_gte(self):
+        # Added in schema version 1.29.
+        self.match_evaluator.match_result({"x": {"$$gte": 5}}, {"x": 5})
+        self.match_evaluator.match_result({"x": {"$$gte": 5}}, {"x": 6})
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result({"x": {"$$gte": 5}}, {"x": 3})
+        # An empty field name is a valid field key, not whole-result matching.
+        self.match_evaluator.match_result({"": {"$$gte": 5}}, {"": 5})
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result({"": {"$$gte": 5}}, {"": 3})
+
+    def test_gte_whole_result(self):
+        # A special operator can match an entire operation result or an
+        # array element, in which case there is no field key to compare.
+        self.match_evaluator.match_result({"$$gte": 5}, 5)
+        self.match_evaluator.match_result([{"$$gte": 5}], [5])
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result({"$$gte": 5}, 3)
+        with self.assertRaises(AssertionError):
+            self.match_evaluator.match_result([{"$$gte": 5}], [3])
 
 
 if __name__ == "__main__":
