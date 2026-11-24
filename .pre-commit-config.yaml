@@ -13,7 +13,7 @@ repos:
     exclude: template.yaml
   - id: debug-statements
   - id: end-of-file-fixer
-    exclude: WHEEL
+    exclude: WHEEL|^fuzz/corpus/
     exclude_types: [json]
   - id: forbid-new-submodules
   - id: trailing-whitespace
