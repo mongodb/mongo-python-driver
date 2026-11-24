@@ -115,11 +115,14 @@ jobs:
     # new major/minor line (X.Y.0) and no-ops for patch releases; dry runs pass
     # a ref instead of a version, so they never create a branch.
     needs: [pre-publish, post-publish]
-    uses: ./.github/workflows/create-release-branch.yml
+    uses: $/.github/workflows/create-release-branch.yml
     permissions:
       id-token: write
       contents: write
-    secrets: inherit
+    secrets:
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      AWS_SECRET_ID: ${{ secrets.AWS_SECRET_ID }}
     with:
       version: ${{ needs.pre-publish.outputs.version }}
       base_ref: ${{ needs.pre-publish.outputs.version }}

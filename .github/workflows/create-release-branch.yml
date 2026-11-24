@@ -31,6 +31,13 @@ on:
           required: false
           type: string
           default: "true"
+    secrets:
+      APP_PRIVATE_KEY:
+        required: true
+      AWS_ROLE_ARN:
+        required: true
+      AWS_SECRET_ID:
+        required: true
 
 concurrency:
   group: create-branch-${{ github.ref }}
@@ -43,6 +50,7 @@ defaults:
 jobs:
   release-branch:
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       create: ${{ steps.compute.outputs.create }}
       branch_name: ${{ steps.compute.outputs.branch_name }}
