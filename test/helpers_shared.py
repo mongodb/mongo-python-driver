@@ -121,7 +121,7 @@ ALL_KMS_PROVIDERS = dict(
 DEFAULT_KMS_TLS = dict(kmip=dict(tlsCAFile=CA_PEM, tlsCertificateKeyFile=CLIENT_PEM))
 
 # Ensure Evergreen metadata doesn't result in truncation
-os.environ.setdefault("MONGOB_LOG_MAX_DOCUMENT_LENGTH", "2000")
+os.environ.setdefault("MONGODB_LOG_MAX_DOCUMENT_LENGTH", "2000")
 
 
 def is_server_resolvable():

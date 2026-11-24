@@ -10,10 +10,9 @@ The project always controls a uv in UV_TOOL_BIN_DIR: the pinned version when
 elsewhere on PATH may be invisible to later steps, so setup never accepts it
 as-is.
 
-This runs under the host's system python3, which may be older than our minimum supported version.
+This runs under the host's system python3, which may be as old as Python 3.6 (RHEL 8).
+Keep it free of __future__ imports and other 3.7+ syntax. test_setup_uv.py checks this.
 """
-
-from __future__ import annotations
 
 import os
 import re
