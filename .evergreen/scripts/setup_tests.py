@@ -679,6 +679,11 @@ def handle_test_env() -> None:
         elif opts.sync == "sync":
             TEST_ARGS = f"--ignore=test/asynchronous {TEST_ARGS}"
 
+    # pytest>=9.2 caches rewritten modules as hash-based pycs; importlib
+    # rejects them on FIPS hosts (PYTHON-6287).
+    if is_set("REQUIRE_FIPS"):
+        TEST_ARGS = f"--assert=plain {TEST_ARGS}"
+
     write_env("TEST_ARGS", TEST_ARGS)
     write_env("UV_ARGS", " ".join(UV_ARGS))
 

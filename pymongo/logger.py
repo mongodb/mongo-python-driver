@@ -168,7 +168,13 @@ class LogMessage:
             self._kwargs["durationMS"] = self._kwargs["durationMS"].total_seconds() * 1000
         if "serviceId" in self._kwargs:
             self._kwargs["serviceId"] = str(self._kwargs["serviceId"])
-        document_length = int(os.getenv("MONGOB_LOG_MAX_DOCUMENT_LENGTH", _DEFAULT_DOCUMENT_LENGTH))
+        document_length = int(
+            os.getenv(
+                "MONGODB_LOG_MAX_DOCUMENT_LENGTH",
+                # Fall back to the misspelled name that older versions read.
+                os.getenv("MONGOB_LOG_MAX_DOCUMENT_LENGTH", _DEFAULT_DOCUMENT_LENGTH),
+            )
+        )
         if document_length < 0:
             document_length = _DEFAULT_DOCUMENT_LENGTH
         is_server_side_error = self._kwargs.pop("isServerSideError", False)
