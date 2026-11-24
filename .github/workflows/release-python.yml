@@ -109,3 +109,17 @@ jobs:
           evergreen_project: ${{ env.EVERGREEN_PROJECT }}
           token: ${{ github.token }}
           dry_run: ${{ env.DRY_RUN }}
+
+  create-release-branch:
+    # Runs only after the whole release succeeds. Creates a vX.Y branch for a
+    # new major/minor line (X.Y.0) and no-ops for patch releases; dry runs pass
+    # a ref instead of a version, so they never create a branch.
+    needs: [pre-publish, post-publish]
+    uses: ./.github/workflows/create-release-branch.yml
+    permissions:
+      id-token: write
+      contents: write
+    secrets: inherit
+    with:
+      version: ${{ needs.pre-publish.outputs.version }}
+      base_ref: ${{ needs.pre-publish.outputs.version }}
