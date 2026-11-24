@@ -8,7 +8,7 @@ setup_tests.py and the committed fuzz/corpus/ contents, copies the new
 units into an output directory named by their SHA-256 digests, and writes
 a Markdown summary for the automated corpus PR body.
 
-Pure stdlib: this runs on the Evergreen nightly host after the fuzz
+Pure stdlib: this runs on the Evergreen weekly capture host after the fuzz
 targets finish, and its unit tests must run everywhere (no atheris, no
 bson).
 

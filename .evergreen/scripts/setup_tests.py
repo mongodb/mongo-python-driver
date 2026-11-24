@@ -600,9 +600,10 @@ def handle_test_env() -> None:
         zip_path.unlink()
         if sub_test_name == "fuzz":
             # PYTHON-6178 Also seed from the committed corpus of previously
-            # captured inputs, so the nightly builds on prior discoveries
-            # instead of the spec seeds alone. Regression runs (PRs) keep
-            # running only the reproducers and the spec seed corpus.
+            # captured inputs, so the nightly and weekly runs build on prior
+            # discoveries instead of the spec seeds alone. Regression runs
+            # (PRs) keep running only the reproducers and the spec seed
+            # corpus.
             committed_dir = ROOT / "fuzz" / "corpus"
             if committed_dir.is_dir():
                 for path in sorted(committed_dir.iterdir()):
