@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Changes in Version 4.20.2 (unreleased)
+Changes in Version 4.20.2 (2026/11/25)
 --------------------------------------
 
 Bug fixes
@@ -15,9 +15,16 @@ Bug fixes
   variable was ignored because PyMongo read the misspelled
   ``MONGOB_LOG_MAX_DOCUMENT_LENGTH`` instead. The misspelled name is still
   read when ``MONGODB_LOG_MAX_DOCUMENT_LENGTH`` is not set (`PYTHON-5939`_).
+- Fixed a bug where the C extension's BSON decoder could read past the end
+  of the input buffer when decoding an array whose last element is
+  truncated (`CVE-2026-135898`_).
+- Hardened the driver's handling of stapled OCSP responses to better
+  conform with the OCSP specification (`CVE-2026-135146`_).
 
 .. _PYTHON-6183: https://jira.mongodb.org/browse/PYTHON-6183
 .. _PYTHON-5939: https://jira.mongodb.org/browse/PYTHON-5939
+.. _CVE-2026-135146: https://vulnogram.org/seaview/?CVE-2026-135146
+.. _CVE-2026-135898: https://vulnogram.org/seaview/?CVE-2026-135898
 
 Changes in Version 4.20.1 (2026/11/19)
 --------------------------------------
