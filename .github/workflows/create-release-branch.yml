@@ -14,6 +14,30 @@ on:
         push_changes:
           description: Whether to push the changes
           default: "true"
+  workflow_call:
+    inputs:
+        version:
+          description: >-
+            The released version. A branch is only created for a new
+            major/minor line (X.Y.0); patch releases reuse the existing branch.
+          required: true
+          type: string
+        base_ref:
+          description: The base reference for the branch (typically the release tag)
+          required: false
+          type: string
+        push_changes:
+          description: Whether to push the changes
+          required: false
+          type: string
+          default: "true"
+    secrets:
+      APP_PRIVATE_KEY:
+        required: true
+      AWS_ROLE_ARN:
+        required: true
+      AWS_SECRET_ID:
+        required: true
 
 concurrency:
   group: create-branch-${{ github.ref }}
@@ -24,14 +48,51 @@ defaults:
     shell: bash -eux {0}
 
 jobs:
+  release-branch:
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      create: ${{ steps.compute.outputs.create }}
+      branch_name: ${{ steps.compute.outputs.branch_name }}
+      branch_version: ${{ steps.compute.outputs.branch_version }}
+    steps:
+      - name: Compute the release branch name
+        id: compute
+        shell: bash -eu {0}
+        env:
+          VERSION: ${{ inputs.version }}
+          BRANCH_NAME: ${{ inputs.branch_name }}
+        run: |
+          # A release branch is only created for a new major/minor line (X.Y.0);
+          # an explicitly provided branch_name (manual dispatch) always wins.
+          # Dry runs pass a ref rather than a version, so they never create branches.
+          # The branch is set to the next patch dev version (4.17.0 -> 4.17.1.dev0).
+          if [ -n "$BRANCH_NAME" ]; then
+            branch_name="$BRANCH_NAME"
+            branch_version="$VERSION"
+          elif [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.0$ ]]; then
+            branch_name="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+            branch_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.1.dev0"
+          else
+            branch_name=""
+            branch_version=""
+          fi
+          if [ -n "$branch_name" ]; then
+            echo "create=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "create=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "branch_name=$branch_name" >> "$GITHUB_OUTPUT"
+          echo "branch_version=$branch_version" >> "$GITHUB_OUTPUT"
+
   create-branch:
+    needs: release-branch
+    if: needs.release-branch.outputs.create == 'true'
     environment: release
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: write
-    outputs:
-      version: ${{ steps.pre-publish.outputs.version }}
     steps:
       - name: Create app token
         id: app-token
@@ -50,14 +111,15 @@ jobs:
         with:
           ref: ${{ github.ref }}
           token: ${{ env.GH_TOKEN }}
-          fetch-depth: 1
+          # Full history and tags so base_ref (the release tag) can be resolved.
+          fetch-depth: 0
           persist-credentials: false
       - name: Configure git auth for push
         shell: bash -eu {0}
         run: |
           auth_header=$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)
           git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ${auth_header}"
-      - uses: mongodb-labs/drivers-github-tools/setup@99b1cbd729bc83bf7fc74e1b2a97fffad3d65d7b  # v3.1.1
+      - uses: mongodb-labs/drivers-github-tools/setup@034ec34103f5a8080e19e09af25f0f6b7597bf8a  # v3.2.0
         with:
           aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
           aws_region_name: ${{ vars.AWS_REGION_NAME }}
@@ -65,11 +127,11 @@ jobs:
           artifactory_username: ${{ vars.ARTIFACTORY_USERNAME }}
       - name: Get hatch
         run: pip install hatch
-      - uses: mongodb-labs/drivers-github-tools/create-branch@99b1cbd729bc83bf7fc74e1b2a97fffad3d65d7b  # v3.1.1
+      - uses: mongodb-labs/drivers-github-tools/create-branch@034ec34103f5a8080e19e09af25f0f6b7597bf8a  # v3.2.0
         id: create-branch
         with:
-          branch_name: ${{ inputs.branch_name }}
-          version: ${{ inputs.version }}
+          branch_name: ${{ needs.release-branch.outputs.branch_name }}
+          version: ${{ needs.release-branch.outputs.branch_version }}
           base_ref: ${{ inputs.base_ref }}
           push_changes: ${{ inputs.push_changes }}
           version_bump_script: hatch version
