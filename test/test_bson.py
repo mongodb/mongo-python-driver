@@ -513,6 +513,45 @@ class TestBSON(unittest.TestCase):
                     with self.assertRaises(InvalidBSON):
                         decode_all(mm)
 
+    def test_truncated_array_element_rejected(self):
+        # PYTHON-6256: an array element truncated by the end of its
+        # sub-document must be rejected, matching the pure-Python decoder.
+        bad_bsons = [
+            # Int64 value extends past the end of the array sub-document.
+            (
+                "truncated int64 element",
+                b"\x13\x00\x00\x00\x04\x61\x00\x0b\x00\x00\x00\x12\x04\x0a\x09\x00\x00\x00\x00",
+            ),
+            # Code with scope value extends past the end of the array
+            # sub-document.
+            (
+                "truncated code_w_scope element",
+                b"\x13\x00\x00\x00\x04\x61\x00\x0b\x00\x00\x00\x0f\xff\x0a\x00\x00\x00\x00",
+            ),
+        ]
+        for description, data in bad_bsons:
+            with self.subTest(description, bad_bson=data):
+                self.assertFalse(is_valid(data))
+                with self.assertRaises(InvalidBSON):
+                    decode(data)
+                with self.assertRaises(InvalidBSON):
+                    decode(bytearray(data))
+                with self.assertRaises(InvalidBSON):
+                    decode(memoryview(data))
+                with self.assertRaises(InvalidBSON):
+                    decode(array.array("B", data))
+                with self.assertRaises(InvalidBSON):
+                    list(decode_iter(data))
+                with self.assertRaises(InvalidBSON):
+                    decode_all(data)
+                with mmap.mmap(-1, len(data)) as mm:
+                    mm.write(data)
+                    mm.seek(0)
+                    with self.assertRaises(InvalidBSON):
+                        decode(mm)
+                    with self.assertRaises(InvalidBSON):
+                        decode_all(mm)
+
     def test_decode_all_partial_document(self):
         # PYTHON-6163: decode_all() must reject buffers ending in a partial
         # document, matching the C extension, which raises InvalidBSON when
