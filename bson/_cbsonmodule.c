@@ -2276,11 +2276,16 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
 
                 unsigned char bson_type = (unsigned char)buffer[(*position)++];
 
-                size_t key_size = strlen(buffer + *position);
-                if (max < key_size) {
+                /* PYTHON-6256: Search for the key's NUL within the array's
+                 * remaining bytes rather than the outer document's, so keys
+                 * and values are bounded by the sub-document. */
+                const char* key = buffer + *position;
+                const char* key_end = memchr(key, 0, end - *position);
+                if (!key_end) {
                     Py_DECREF(value);
                     goto invalid;
                 }
+                size_t key_size = (size_t)(key_end - key);
                 /* just skip the key, they're in order. */
                 *position += (unsigned)key_size + 1;
                 if (Py_EnterRecursiveCall(" while decoding a list value")) {
@@ -2288,7 +2293,7 @@ static PyObject* get_value(PyObject* self, PyObject* name, const char* buffer,
                     goto invalid;
                 }
                 to_append = get_value(self, name, buffer, position, bson_type,
-                                      max - (unsigned)key_size, options, raw_array);
+                                      end - *position, options, raw_array);
                 Py_LeaveRecursiveCall();
                 if (!to_append) {
                     Py_DECREF(value);
