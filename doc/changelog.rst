@@ -15,9 +15,16 @@ Bug fixes
   variable was ignored because PyMongo read the misspelled
   ``MONGOB_LOG_MAX_DOCUMENT_LENGTH`` instead. The misspelled name is still
   read when ``MONGODB_LOG_MAX_DOCUMENT_LENGTH`` is not set (`PYTHON-5939`_).
+- Fixed a bug where the C extension's BSON decoder could read past the end
+  of the input buffer when decoding an array whose last element is
+  truncated (`PYTHON-6256`_).
+- Hardened the driver's handling of stapled OCSP responses to better
+  conform with the OCSP specification (`PYTHON-6189`_).
 
 .. _PYTHON-6183: https://jira.mongodb.org/browse/PYTHON-6183
 .. _PYTHON-5939: https://jira.mongodb.org/browse/PYTHON-5939
+.. _PYTHON-6189: https://jira.mongodb.org/browse/PYTHON-6189
+.. _PYTHON-6256: https://jira.mongodb.org/browse/PYTHON-6256
 
 Changes in Version 4.20.1 (2026/11/19)
 --------------------------------------
