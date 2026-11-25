@@ -21,7 +21,7 @@ import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -33,6 +33,9 @@ from pymongo.errors import ServerSelectionTimeoutError
 from test import unittest
 
 pytestmark = pytest.mark.ocsp
+
+if TYPE_CHECKING:
+    from OpenSSL.SSL import Connection
 
 CA_FILE = os.environ.get("CA_FILE")
 OCSP_TLS_SHOULD_SUCCEED = os.environ.get("OCSP_TLS_SHOULD_SUCCEED") == "true"
@@ -76,7 +79,10 @@ class TestOCSP(unittest.TestCase):
 pytest.importorskip("cryptography")
 pytest.importorskip("requests")
 
+from cryptography import x509
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.mlkem import (
@@ -87,14 +93,24 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import (
     AuthorityInformationAccess,
+    BasicConstraints,
     ExtensionNotFound,
     Name,
+    NameAttribute,
+    NameOID,
     TLSFeature,
     TLSFeatureType,
+    ocsp,
 )
-from cryptography.x509.ocsp import OCSPCertStatus, OCSPResponseStatus
+from cryptography.x509.ocsp import (
+    OCSPCertStatus,
+    OCSPRequestBuilder,
+    OCSPResponseBuilder,
+    OCSPResponseStatus,
+)
 from cryptography.x509.oid import AuthorityInformationAccessOID, ExtendedKeyUsageOID
 
+from pymongo.ocsp_cache import _OCSPCache
 from pymongo.ocsp_support import (
     _get_certs_by_key_hash,
     _get_certs_by_name,
@@ -796,6 +812,10 @@ class TestOcspCallback(unittest.TestCase):
         mock_build.return_value = Mock()
         ocsp_resp = Mock()
         ocsp_resp.response_status = OCSPResponseStatus.SUCCESSFUL
+        # Must appear to cover the peer certificate.
+        ocsp_resp.serial_number = mock_build.return_value.serial_number
+        ocsp_resp.issuer_name_hash = mock_build.return_value.issuer_name_hash
+        ocsp_resp.issuer_key_hash = mock_build.return_value.issuer_key_hash
         ocsp_resp.certificate_status = OCSPCertStatus.REVOKED
         mock_load.return_value = ocsp_resp
         cache = MagicMock()
@@ -815,11 +835,148 @@ class TestOcspCallback(unittest.TestCase):
         mock_build.return_value = Mock()
         ocsp_resp = Mock()
         ocsp_resp.response_status = OCSPResponseStatus.SUCCESSFUL
+        # Must appear to cover the peer certificate.
+        ocsp_resp.serial_number = mock_build.return_value.serial_number
+        ocsp_resp.issuer_name_hash = mock_build.return_value.issuer_name_hash
+        ocsp_resp.issuer_key_hash = mock_build.return_value.issuer_key_hash
         ocsp_resp.certificate_status = OCSPCertStatus.GOOD
         mock_load.return_value = ocsp_resp
         cache = MagicMock()
         self.assertTrue(_ocsp_callback(conn, b"stapled", self._setup_user_data(cache=cache)))
         cache.__setitem__.assert_called_once_with(mock_build.return_value, ocsp_resp)
+
+    @patch("pymongo.ocsp_support._build_ocsp_request")
+    @patch("pymongo.ocsp_support._verify_response", return_value=1)
+    @patch("pymongo.ocsp_support._load_der_ocsp_response")
+    @patch("pymongo.ocsp_support._get_issuer_cert")
+    @patch("pymongo.ocsp_support._get_extension", return_value=None)
+    def test_stapled_other_cert_rejected(
+        self, _mock_get_ext, mock_issuer, mock_load, _mock_verify_resp, mock_build
+    ):
+        # A mismatched CertID is rejected and not cached.
+        conn = self._setup_conn()
+        mock_issuer.return_value = Mock()
+        mock_build.return_value = Mock()
+        ocsp_resp = Mock()
+        ocsp_resp.response_status = OCSPResponseStatus.SUCCESSFUL
+        ocsp_resp.serial_number = Mock()  # != request serial
+        ocsp_resp.certificate_status = OCSPCertStatus.GOOD
+        mock_load.return_value = ocsp_resp
+        cache = MagicMock()
+        self.assertFalse(_ocsp_callback(conn, b"stapled", self._setup_user_data(cache=cache)))
+        cache.__setitem__.assert_not_called()
+
+
+def _generate_key():
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+
+def _generate_cert(serial, common_name, cert_key, issuer_cert=None, issuer_key=None):
+    """Create a real certificate, optionally signed by an issuer."""
+    builder = (
+        x509.CertificateBuilder()
+        .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, common_name)]))
+        .issuer_name(
+            issuer_cert.subject
+            if issuer_cert is not None
+            else x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, common_name)])
+        )
+        .public_key(cert_key.public_key())
+        .serial_number(serial)
+        .not_valid_before(datetime.now(timezone.utc) - timedelta(hours=1))
+        .not_valid_after(datetime.now(timezone.utc) + timedelta(days=1))
+        .add_extension(BasicConstraints(ca=issuer_cert is None, path_length=None), critical=True)
+    )
+    return builder.sign(issuer_key if issuer_key is not None else cert_key, hashes.SHA256())
+
+
+def _generate_response(cert, issuer, issuer_key, status):
+    """Create a real, correctly issuer-signed OCSP response for a certificate."""
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    response = (
+        OCSPResponseBuilder()
+        .add_response(
+            cert=cert,
+            issuer=issuer,
+            algorithm=hashes.SHA1(),
+            cert_status=status,
+            this_update=now - timedelta(minutes=2),
+            next_update=now + timedelta(hours=1),
+            revocation_time=now - timedelta(minutes=3)
+            if status == OCSPCertStatus.REVOKED
+            else None,
+            revocation_reason=None,
+        )
+        .responder_id(ocsp.OCSPResponderEncoding.NAME, issuer)
+        .sign(issuer_key, hashes.SHA256())
+    )
+    return response.public_bytes(serialization.Encoding.DER)
+
+
+class _FakeConn:
+    """Stand-in for OpenSSL.SSL.Connection that returns real certificates."""
+
+    def __init__(self, cert, chain):
+        self._cert = cert
+        self._chain = chain
+
+    def get_peer_certificate(self, as_cryptography=False):
+        return self._cert
+
+    def get_verified_chain(self, as_cryptography=False):
+        return self._chain
+
+
+class TestStapledCertId(unittest.TestCase):
+    """A stapled response must cover the peer certificate."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.root_key = _generate_key()
+        cls.root = _generate_cert(100, "Test Root", cls.root_key)
+        cls.peer_key = _generate_key()
+        cls.peer = _generate_cert(901, "test-server", cls.peer_key, cls.root, cls.root_key)
+        cls.other_key = _generate_key()
+        cls.other = _generate_cert(902, "other.invalid", cls.other_key, cls.root, cls.root_key)
+
+    def _callback_data(self):
+        user_data = Mock()
+        user_data.check_ocsp_endpoint = True
+        user_data.ocsp_response_cache = _OCSPCache()
+        return user_data
+
+    def _request_for(self, cert):
+        return OCSPRequestBuilder().add_certificate(cert, self.root, hashes.SHA1()).build()
+
+    def test_stapled_other_cert_rejected(self):
+        # A mismatched CertID is rejected and not cached.
+        staple = _generate_response(self.other, self.root, self.root_key, OCSPCertStatus.GOOD)
+        user_data = self._callback_data()
+        conn = cast("Connection", _FakeConn(self.peer, [self.root]))
+        self.assertFalse(_ocsp_callback(conn, staple, user_data))
+        # Nothing was cached.
+        self.assertEqual(len(user_data.ocsp_response_cache._data), 0)
+
+    def test_stapled_peer_good_accepted(self):
+        staple = _generate_response(self.peer, self.root, self.root_key, OCSPCertStatus.GOOD)
+        user_data = self._callback_data()
+        conn = cast("Connection", _FakeConn(self.peer, [self.root]))
+        self.assertTrue(_ocsp_callback(conn, staple, user_data))
+        self.assertEqual(
+            user_data.ocsp_response_cache[self._request_for(self.peer)].certificate_status,
+            OCSPCertStatus.GOOD,
+        )
+
+    def test_stapled_peer_revoked_rejected(self):
+        staple = _generate_response(self.peer, self.root, self.root_key, OCSPCertStatus.REVOKED)
+        user_data = self._callback_data()
+        conn = cast("Connection", _FakeConn(self.peer, [self.root]))
+        self.assertFalse(_ocsp_callback(conn, staple, user_data))
+        # Revoked is conclusive, so the response SHOULD be cached per the spec.
+        self.assertEqual(
+            user_data.ocsp_response_cache[self._request_for(self.peer)].certificate_status,
+            OCSPCertStatus.REVOKED,
+        )
 
 
 if __name__ == "__main__":

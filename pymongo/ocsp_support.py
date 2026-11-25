@@ -435,7 +435,18 @@ def _ocsp_callback(conn: Connection, ocsp_bytes: bytes, user_data: _CallbackData
         return False
     if not _verify_response(issuer, response):
         return False
+    # A stapled response must cover the peer certificate; per the OCSP
+    # spec's suggested behavior, end the connection if it does not.
+    ocsp_request = _build_ocsp_request(cert, issuer)
+    if (
+        response.serial_number != ocsp_request.serial_number
+        or response.issuer_name_hash != ocsp_request.issuer_name_hash
+        or response.issuer_key_hash != ocsp_request.issuer_key_hash
+    ):
+        # Non-SHA-1 CertIDs also fail here.
+        _LOGGER.debug("Stapled OCSP response does not cover the peer certificate")
+        return False
     # Cache the verified, stapled response.
-    ocsp_response_cache[_build_ocsp_request(cert, issuer)] = response
+    ocsp_response_cache[ocsp_request] = response
     _LOGGER.debug("OCSP cert status: %r", response.certificate_status)
     return response.certificate_status != _OCSPCertStatus.REVOKED
