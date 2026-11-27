@@ -19,10 +19,13 @@ from __future__ import annotations
 import asyncio
 import importlib
 import os
+import select
+import signal
 import sys
 import textwrap
 import threading
 import time
+import warnings
 from typing import Any, Optional
 from unittest import mock
 
@@ -179,6 +182,172 @@ class TestAsyncPeriodicExecutor(AsyncUnitTest):
         executor.open()
         await executor.join(timeout=2)
         self.assertEqual(runs, 2, "executor did not restart after a self-close")
+
+    async def test_join_from_own_task_does_not_stall(self):
+        # A heartbeat removing its own server joins its own task. Waiting on
+        # the current task cannot complete and would stall for the full
+        # timeout (PYTHON-6168).
+        elapsed = None
+
+        async def target():
+            nonlocal elapsed
+            start = time.monotonic()
+            await executor.join(timeout=2)
+            elapsed = time.monotonic() - start
+            return False
+
+        executor = self._make_executor(target=target)
+        executor.open()
+        await executor.join(timeout=2)
+        assert elapsed is not None
+        self.assertLess(elapsed, 1.0, "join() from the executor's own task stalled")
+
+    async def test_close_interrupts_wait(self):
+        # close() must end the executor's wait immediately: shutdown paths
+        # join the executor, and a wait that only ends at the next tick burns
+        # up to min_interval of the join budget on every close.
+        min_interval = 10.0
+        if _IS_SYNC:
+            started = threading.Event()
+        else:
+            started = asyncio.Event()
+
+        async def target():
+            started.set()
+            return True
+
+        executor = self._make_executor(interval=60.0, min_interval=min_interval, target=target)
+        executor.open()
+        if _IS_SYNC:
+            started.wait(timeout=2)
+            settle = threading.Event()
+            settle.wait(0.1)  # Let the executor enter its wait.
+        else:
+            assert isinstance(started, asyncio.Event)
+            await asyncio.wait_for(started.wait(), timeout=2)
+            await asyncio.sleep(0.1)
+
+        start = time.monotonic()
+        executor.close()
+        await executor.join(timeout=15)
+        elapsed = time.monotonic() - start
+        self.assertLess(
+            elapsed,
+            min_interval / 2,
+            "close() did not interrupt the executor's wait",
+        )
+
+    async def test_close_then_reopen_live_thread_respects_interval(self):
+        # A live-thread reopen must reset the stop signal, or the target spins.
+        if _IS_SYNC:
+            entered = threading.Event()
+            release = threading.Event()
+        else:
+            entered = asyncio.Event()
+            release = asyncio.Event()
+        calls = 0
+
+        async def target():
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                entered.set()
+                if _IS_SYNC:
+                    release.wait(timeout=5)
+                else:
+                    assert isinstance(release, asyncio.Event)
+                    await asyncio.wait_for(release.wait(), timeout=5)
+            return calls < 3
+
+        executor = self._make_executor(interval=60.0, min_interval=0.05, target=target)
+        executor.open()
+        if _IS_SYNC:
+            entered.wait(timeout=2)
+        else:
+            assert isinstance(entered, asyncio.Event)
+            await asyncio.wait_for(entered.wait(), timeout=2)
+        # Close and reopen while the target is blocked: the thread is reused.
+        executor.close()
+        executor.open()
+        if _IS_SYNC:
+            release.set()
+        else:
+            release.set()
+        await executor.join(timeout=3)
+        self.assertEqual(
+            calls,
+            1,
+            "the target did not respect its interval after a live reopen",
+        )
+
+    @unittest.skipUnless(
+        _IS_SYNC and hasattr(os, "register_at_fork"),
+        "fork lock tracking requires the threaded executor and os.register_at_fork",
+    )
+    def test_close_after_fork_while_notification_lock_held(self):
+        # A fork while the notification lock is held inherits it locked in the
+        # child: the fork reset frees it and close() must not block. The reset
+        # runs in the forked child itself: it releases every tracked lock,
+        # which is only safe where no other thread survives.
+        from pymongo.lock import _forkable_locks, _release_locks
+
+        executor = self._make_executor(interval=60.0, min_interval=0.05)
+        executor.open()
+        # The condition's lock participates in the fork reset.
+        self.assertIn(executor._stop_condition._lock, _forkable_locks)
+        executor._stop_condition.acquire()  # Held across the fork.
+        read_fd, write_fd = os.pipe()
+        with warnings.catch_warnings():
+            # The test forks a multi-threaded process on purpose: the reset
+            # exists for production forks of exactly this shape.
+            warnings.simplefilter("ignore", DeprecationWarning)
+            pid = os.fork()
+        if pid == 0:
+            # The child runs the real hook: no other thread survives the
+            # fork, the state the reset is designed for.
+            outcome = b"ok"
+            try:
+                _release_locks()  # The after_in_child hook.
+                if not executor._stop_condition.acquire(False):
+                    outcome = b"locked"
+                else:
+                    executor._stop_condition.release()
+                    executor.close()  # Must not block on the inherited lock.
+            except BaseException:
+                outcome = b"error"
+            os.write(write_fd, outcome)
+            os._exit(0)
+        try:
+            ready, _, _ = select.select([read_fd], [], [], 5)
+            if not ready:
+                os.kill(pid, signal.SIGKILL)
+                self.fail("forked child hung: the reset or close blocked")
+            self.assertEqual(os.read(read_fd, 8), b"ok", "the reset did not free the lock")
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
+            os.waitpid(pid, 0)
+            executor._stop_condition.release()
+        executor.close()
+        executor.join(timeout=2)
+        self.assertTrue(executor._stopped)
+
+    @unittest.skipUnless(_IS_SYNC, "fork semantics apply to the threaded executor")
+    def test_close_reentrant_on_notification_lock(self):
+        # A GC callback can re-enter close() on the run-loop's own thread
+        # while the notification lock is held: it must not block.
+        executor = self._make_executor(interval=60.0, min_interval=0.05)
+        executor.open()
+        time.sleep(0.2)  # Let the executor's thread enter its wait.
+        # Simulate the callback: the run-loop ident, the lock held.
+        executor._run_loop_ident = threading.get_ident()
+        start = time.monotonic()
+        with executor._stop_condition:
+            executor.close()
+        elapsed = time.monotonic() - start
+        self.assertLess(elapsed, 2.0, "close() blocked on the notification lock")
+        executor.join(timeout=2)
+        self.assertTrue(executor._stopped)
 
     async def test_close_from_thread_without_event_loop(self):
         # close() can run off the event loop as a weakref callback, where

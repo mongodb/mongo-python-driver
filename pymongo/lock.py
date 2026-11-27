@@ -80,6 +80,11 @@ def _release_locks() -> None:
             lock.release()
 
 
+if _HAS_REGISTER_AT_FORK:
+    # Threads do not survive a fork: release the tracked locks they held.
+    os.register_at_fork(after_in_child=_release_locks)
+
+
 async def _async_cond_wait(condition: Condition, timeout: float | None) -> bool:
     try:
         return await wait_for(condition.wait(), timeout)

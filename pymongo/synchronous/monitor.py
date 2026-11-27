@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import atexit
 import threading
 import time
@@ -45,6 +44,9 @@ if TYPE_CHECKING:
     from pymongo.synchronous.topology import Topology
 
 _IS_SYNC = True
+
+# Seconds to wait for an executor to stop before resetting the pool.
+_EXECUTOR_JOIN_TIMEOUT = 1
 
 
 def _sanitize(error: Exception) -> None:
@@ -100,6 +102,14 @@ class MonitorBase:
         """GC safe close."""
         self._executor.close()
 
+    def signal_close(self) -> None:
+        """Stop the executors without joining them.
+
+        Joining blocks on on_change(), which needs the topology lock. Call
+        close() with the lock released to join and reset the pool.
+        """
+        self.gc_safe_close()
+
     def close(self) -> None:
         """Close and stop monitoring.
 
@@ -107,9 +117,19 @@ class MonitorBase:
         """
         self.gc_safe_close()
 
-    def join(self) -> None:
-        """Wait for the monitor to stop."""
-        self._executor.join()
+    def join(self, timeout: float | None = None) -> None:
+        """Wait for the monitor to stop.
+
+        :param timeout: Maximum time in seconds to wait, or ``None`` to
+            wait indefinitely.
+        """
+        self._executor.join(timeout)
+
+    def _wake_and_join_executor(self) -> None:
+        # Join before resetting so we don't race a checked-out connection. A
+        # straggler's socket closes when the reset returns its connection.
+        self._executor.wake()
+        self._executor.join(_EXECUTOR_JOIN_TIMEOUT)
 
     def request_check(self) -> None:
         """If the monitor is sleeping, wake it soon."""
@@ -158,6 +178,11 @@ class Monitor(MonitorBase):
         else:
             self._stream = not _is_faas()
 
+    def signal_close(self) -> None:
+        """Stop the heartbeat and RTT executors without joining them."""
+        super().signal_close()
+        self._rtt_monitor.gc_safe_close()
+
     def cancel_check(self) -> None:
         """Cancel any concurrent hello check.
 
@@ -185,12 +210,25 @@ class Monitor(MonitorBase):
         self._rtt_monitor.gc_safe_close()
         self.cancel_check()
 
-    def join(self) -> None:
-        asyncio.gather(self._executor.join(), self._rtt_monitor.join(), return_exceptions=True)  # type: ignore[func-returns-value]
+    def join(self, timeout: float | None = None) -> None:
+        """Wait for the monitor to stop.
+
+        The timeout budgets both executors. The RTT monitor gets whatever
+        remains after the heartbeat executor stops.
+
+        :param timeout: Maximum time in seconds to wait, or ``None`` to
+            wait indefinitely.
+        """
+        start = time.monotonic()
+        self._executor.join(timeout)
+        if timeout is not None:
+            timeout = max(0.0, timeout - (time.monotonic() - start))
+        self._rtt_monitor.join(timeout)
 
     def close(self) -> None:
         self.gc_safe_close()
         self._rtt_monitor.close()
+        self._wake_and_join_executor()
         # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
         self._reset_connection()
@@ -344,6 +382,14 @@ class SrvMonitor(MonitorBase):
         self._fqdn: str = self._settings.fqdn
         self._startup_time = time.monotonic()
 
+    def close(self) -> None:
+        """Stop DNS polling and join the executor.
+
+        Must be called with the topology lock released.
+        """
+        self.gc_safe_close()
+        self._wake_and_join_executor()
+
     def _run(self) -> None:
         # Don't poll right after creation, wait 60 seconds first
         if time.monotonic() < self._startup_time + common.MIN_SRV_RESCAN_INTERVAL:
@@ -407,6 +453,7 @@ class _RttMonitor(MonitorBase):
 
     def close(self) -> None:
         self.gc_safe_close()
+        self._wake_and_join_executor()
         # Increment the generation and maybe close the socket. If the executor
         # thread has the socket checked out, it will be closed when checked in.
         self._pool.reset()

@@ -7,6 +7,11 @@ Changes in Version 4.20.2 (2026/11/25)
 Bug fixes
 .........
 
+- Fixed a race between a server monitor's background thread and connection
+  pool teardown during
+  :meth:`~pymongo.synchronous.mongo_client.MongoClient.close`. Closing a
+  client now waits (with a bounded timeout) for its monitor threads to stop
+  before returning (`PYTHON-1634`_).
 - Fixed a bug where :meth:`~gridfs.GridFS.get_version` and
   :meth:`~gridfs.GridFS.get_last_version` accepted a non-string ``filename``
   and treated a dict as query criteria. They now raise :exc:`TypeError`
@@ -21,6 +26,7 @@ Bug fixes
 - Hardened the driver's handling of stapled OCSP responses to better
   conform with the OCSP specification (`CVE-2026-135146`_).
 
+.. _PYTHON-1634: https://jira.mongodb.org/browse/PYTHON-1634
 .. _PYTHON-6183: https://jira.mongodb.org/browse/PYTHON-6183
 .. _PYTHON-5939: https://jira.mongodb.org/browse/PYTHON-5939
 .. _CVE-2026-135146: https://vulnogram.org/seaview/?CVE-2026-135146

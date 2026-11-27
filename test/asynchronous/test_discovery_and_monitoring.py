@@ -797,7 +797,7 @@ class TestServerRemovalHardening(AsyncUnitTest):
 
         async def remove_victim():
             async with topology._lock:
-                with patch.object(victim, "close", cancelling_close):
+                with patch.object(victim, "signal_close", cancelling_close):
                     await topology._update_servers()
 
         task = asyncio.create_task(remove_victim())
@@ -827,6 +827,150 @@ class TestServerRemovalHardening(AsyncUnitTest):
             await task
 
         self.assertTrue(victim.pool.closed)
+
+
+class TestMonitorCleanup(AsyncUnitTest):
+    @unittest.skipUnless(not _IS_SYNC, "PYTHON-6168: task cancellation is async-only")
+    async def test_cleanup_cancellation_requeues_monitor(self):
+        # A cancelled cleanup must requeue the monitor it was closing, so a
+        # later cleanup (including client shutdown) can finish joining it.
+        topology = await create_mock_topology("mongodb://a:27017,b:27017")
+        victim = topology._servers[("a", 27017)]._monitor
+        other = topology._servers[("b", 27017)]._monitor
+
+        async def cancelling_close():
+            asyncio.current_task().cancel()
+            await asyncio.sleep(0)
+
+        with patch.object(victim, "close", cancelling_close):
+            topology._monitor_tasks.append(victim)
+            topology._monitor_tasks.append(other)
+            task = asyncio.create_task(topology.cleanup_monitors())
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+
+        self.assertIn(victim, topology._monitor_tasks)
+        self.assertNotIn(other, topology._monitor_tasks)
+
+        # A later cleanup finishes the job.
+        await topology.cleanup_monitors()
+        self.assertEqual(topology._monitor_tasks, [])
+
+    @unittest.skipUnless(not _IS_SYNC, "PYTHON-6168: task interleaving is async-only")
+    async def test_cleanup_concurrent_caller_skips_in_flight_cleanup(self):
+        # A concurrent cleanup returns immediately: the running cleanup owns
+        # the queue.
+        topology = await create_mock_topology("mongodb://a:27017,b:27017")
+        first = topology._servers[("a", 27017)]._monitor
+        second = topology._servers[("b", 27017)]._monitor
+        in_flight = asyncio.Event()
+        release = asyncio.Event()
+        first_done = asyncio.Event()
+        second_done = asyncio.Event()
+
+        async def slow_close():
+            in_flight.set()
+            await release.wait()
+            first_done.set()
+
+        async def fast_close():
+            second_done.set()
+
+        with patch.object(first, "close", slow_close), patch.object(second, "close", fast_close):
+            topology._monitor_tasks.append(first)
+            cleanup = asyncio.create_task(topology.cleanup_monitors())
+            await in_flight.wait()
+
+            # The concurrent caller returns before the second close runs.
+            await topology.cleanup_monitors()
+            self.assertFalse(second_done.is_set())
+
+            topology._monitor_tasks.append(second)
+            release.set()
+            await cleanup
+            self.assertTrue(first_done.is_set())
+            self.assertTrue(second_done.is_set())
+            self.assertEqual(topology._monitor_tasks, [])
+
+    async def test_cleanup_skips_when_cleanup_lock_held(self):
+        # A caller returns immediately when another cleanup holds the lock,
+        # leaving its monitors queued for the running cleanup to drain.
+        topology = await create_mock_topology("mongodb://a:27017,b:27017")
+        monitor = topology._servers[("a", 27017)]._monitor
+        topology._monitor_tasks.append(monitor)
+        if _IS_SYNC:
+            topology._cleanup_lock.acquire()
+        else:
+            await topology._cleanup_lock.acquire()
+        await topology.cleanup_monitors()
+        self.assertIn(monitor, topology._monitor_tasks)
+        topology._cleanup_lock.release()
+        await topology.cleanup_monitors()
+        self.assertEqual(topology._monitor_tasks, [])
+
+    async def test_cleanup_releases_cleanup_lock(self):
+        # The cleanup lock must be released when cleanup_monitors returns,
+        # including on the nonblocking acquire path in the sync driver.
+        topology = await create_mock_topology("mongodb://a:27017,b:27017")
+        monitor = topology._servers[("a", 27017)]._monitor
+        topology._monitor_tasks.append(monitor)
+        await topology.cleanup_monitors()
+        self.assertFalse(topology._cleanup_lock.locked())
+        await topology.cleanup_monitors()
+        self.assertFalse(topology._cleanup_lock.locked())
+        self.assertEqual(topology._monitor_tasks, [])
+
+    async def test_cleanup_drains_monitors_appended_in_flight(self):
+        # The drain runs until the queue is empty, even when a server is
+        # signaled while an earlier close is still joining.
+        topology = await create_mock_topology("mongodb://a:27017,b:27017")
+        first = topology._servers[("a", 27017)]._monitor
+        second = topology._servers[("b", 27017)]._monitor
+        if _IS_SYNC:
+            in_flight = threading.Event()
+            second_appended = threading.Event()
+            second_done = threading.Event()
+
+            def slow_close():
+                in_flight.set()
+                second_appended.wait(timeout=5)
+                second_done.set()
+
+            def fast_close():
+                second_done.set()
+        else:
+            in_flight = asyncio.Event()
+            second_done = asyncio.Event()
+
+            async def slow_close():
+                in_flight.set()
+                await asyncio.sleep(0.2)
+                second_done.set()
+
+            async def fast_close():
+                second_done.set()
+
+        with patch.object(first, "close", slow_close), patch.object(second, "close", fast_close):
+            topology._monitor_tasks.append(first)
+            if _IS_SYNC:
+                drain = threading.Thread(target=topology.cleanup_monitors)
+                drain.start()
+            else:
+                drain = asyncio.create_task(topology.cleanup_monitors())
+            # Signal the second monitor while the first close is in flight.
+            if _IS_SYNC:
+                in_flight.wait()
+            else:
+                await in_flight.wait()
+            topology._monitor_tasks.append(second)
+            if _IS_SYNC:
+                second_appended.set()
+                drain.join(timeout=5)
+            else:
+                await drain
+
+        self.assertTrue(second_done.is_set())
+        self.assertEqual(topology._monitor_tasks, [])
 
 
 # Generate unified tests.
