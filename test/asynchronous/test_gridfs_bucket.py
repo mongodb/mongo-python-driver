@@ -129,6 +129,12 @@ class TestGridfs(AsyncIntegrationTest):
         self.assertEqual(0, await self.db.fs.files.count_documents({}))
         self.assertEqual(0, await self.db.fs.chunks.count_documents({}))
 
+    async def test_delete_by_name_invalid_filename(self):
+        await self.fs.upload_from_stream("test_filename", b"hello")
+        with self.assertRaisesRegex(TypeError, "Wrong type for filename"):
+            await self.fs.delete_by_name({"$ne": None})  # type: ignore[arg-type]
+        self.assertEqual(1, await self.db.fs.files.count_documents({}))
+
     async def test_empty_file(self):
         oid = await self.fs.upload_from_stream("test_filename", b"")
         self.assertEqual(b"", await (await self.fs.open_download_stream(oid)).read())
@@ -463,6 +469,14 @@ class TestGridfs(AsyncIntegrationTest):
         self.assertEqual(
             b"testing", await (await self.fs.open_download_stream_by_name("second_name")).read()
         )
+
+    async def test_rename_by_name_invalid_filename(self):
+        await self.fs.upload_from_stream("first_name", b"testing")
+        with self.assertRaisesRegex(TypeError, "Wrong type for filename"):
+            await self.fs.rename_by_name({"$ne": None}, "second_name")  # type: ignore[arg-type]
+        with self.assertRaisesRegex(TypeError, "Wrong type for new_filename"):
+            await self.fs.rename_by_name("first_name", {"$set": 1})  # type: ignore[arg-type]
+        self.assertEqual(1, await self.db.fs.files.count_documents({"filename": "first_name"}))
 
     @patch("gridfs.asynchronous.grid_file._UPLOAD_BUFFER_SIZE", 5)
     async def test_abort(self):
