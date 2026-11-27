@@ -864,12 +864,17 @@ class AsyncGridFSBucket:
           await fs.delete_by_name("test_file")
 
         Raises :exc:`~gridfs.errors.NoFile` if no file with the given filename exists.
+        Raises :exc:`TypeError` if `filename` is not a string.
 
         :param filename: The name of the file to be deleted.
         :param session: a :class:`~pymongo.client_session.AsyncClientSession`
 
+        .. versionchanged:: 4.20.3
+           Raise :exc:`TypeError` if `filename` is not a string.
+
         .. versionadded:: 4.12
         """
+        validate_string("filename", filename)
         _disallow_transactions(session)
         files = self._files.find({"filename": filename}, {"_id": 1}, session=session)
         file_ids = [file["_id"] async for file in files]
@@ -1074,13 +1079,19 @@ class AsyncGridFSBucket:
           await fs.rename_by_name("test_file", "new_test_name")
 
         Raises :exc:`~gridfs.errors.NoFile` if no file with the given filename exists.
+        Raises :exc:`TypeError` if `filename` or `new_filename` is not a string.
 
         :param filename: The filename of the file to be renamed.
         :param new_filename: The new name of the file.
         :param session: a :class:`~pymongo.client_session.AsyncClientSession`
 
+        .. versionchanged:: 4.20.3
+           Raise :exc:`TypeError` if `filename` or `new_filename` is not a string.
+
         .. versionadded:: 4.12
         """
+        validate_string("filename", filename)
+        validate_string("new_filename", new_filename)
         _disallow_transactions(session)
         result = await self._files.update_many(
             {"filename": filename}, {"$set": {"filename": new_filename}}, session=session

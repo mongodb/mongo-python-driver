@@ -1,6 +1,19 @@
 Changelog
 =========
 
+Changes in Version 4.20.3 (unreleased)
+--------------------------------------
+
+Bug fixes
+.........
+
+- Fixed a bug where :meth:`~gridfs.GridFSBucket.delete_by_name` and
+  :meth:`~gridfs.GridFSBucket.rename_by_name` accepted a non-string
+  ``filename`` and treated a dict as query criteria. They now raise
+  :exc:`TypeError` (`PYTHON-6299`_).
+
+.. _PYTHON-6299: https://jira.mongodb.org/browse/PYTHON-6299
+
 Changes in Version 4.20.2 (2026/11/25)
 --------------------------------------
 
