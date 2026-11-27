@@ -544,10 +544,14 @@ def validate_document_class(
     # relying on catching the error.
     check_class = getattr(value, "__origin__", value)
     try:
-        is_mapping = issubclass(check_class, abc.MutableMapping)
+        is_mapping = issubclass(check_class, abc.MutableMapping) or issubclass(
+            value, RawBSONDocument
+        )
     except TypeError:
+        # `value` is not a class at all (for example an instance was passed
+        # instead of a class), so neither issubclass() call is meaningful.
         is_mapping = False
-    if not is_mapping and not issubclass(value, RawBSONDocument):
+    if not is_mapping:
         raise TypeError(
             f"{option} must be dict, bson.son.SON, "
             "bson.raw_bson.RawBSONDocument, or a "
